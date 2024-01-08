@@ -659,6 +659,27 @@ std::unique_ptr<Condition> Condition::clone() const {
   return copy;
 }
 
+/// @brief replace variables in the condition with other variables
+void Condition::replaceVariables(
+    std::unordered_map<VariableId, Variable const*> const& replacements) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceVariables(_root, replacements, true);
+}
+
+void Condition::replaceAttributeAccess(Variable const* searchVariable,
+                                       std::span<std::string_view> attribute,
+                                       Variable const* replaceVariable) {
+  if (_root == nullptr) {
+    return;
+  }
+
+  _root = Ast::replaceAttributeAccess(_ast, _root, searchVariable, attribute,
+                                      replaceVariable);
+}
+
 /// @brief add a sub-condition to the condition
 /// the sub-condition will be AND-combined with the existing condition(s)
 void Condition::andCombine(AstNode const* node) {
@@ -715,9 +736,13 @@ std::pair<bool, bool> Condition::findIndexes(
                    usedIndexes, dummy));
   }
 
+  ReadOwnWrites readOwnWrites =
+      ExecutionNode::castTo<DocumentProducingNode const*>(node)
+          ->canReadOwnWrites();
+
   return aql::utils::getBestIndexHandlesForFilterCondition(
       trx, coll, _ast, _root, reference, sortCondition, itemsInIndex,
-      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex);
+      node->hint(), usedIndexes, _isSorted, isAllCoveredByIndex, readOwnWrites);
 }
 
 /// @brief get the attributes for a sub-condition that are const

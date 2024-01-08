@@ -32,6 +32,7 @@
 
 #include "Basics/Common.h"
 #include "Cluster/ClusterTypes.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb {
@@ -53,36 +54,36 @@ class CollectionInfoCurrent {
   virtual ~CollectionInfoCurrent();
 
  public:
-  bool add(std::string_view shardID, VPackSlice slice);
+  bool add(ShardID const& shardID, VPackSlice slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns the indexes
   //////////////////////////////////////////////////////////////////////////////
 
-  [[nodiscard]] VPackSlice getIndexes(std::string_view shardID) const;
+  [[nodiscard]] VPackSlice getIndexes(ShardID const& shardID) const;
 
   /// @brief returns the error flag for a shardID
-  [[nodiscard]] bool error(std::string_view shardID) const;
+  [[nodiscard]] bool error(ShardID const& shardID) const;
 
   /// @brief returns the error flag for all shardIDs
   [[nodiscard]] containers::FlatHashMap<ShardID, bool> error() const;
 
   /// @brief returns the errorNum for one shardID
-  [[nodiscard]] int errorNum(std::string_view shardID) const;
+  [[nodiscard]] int errorNum(ShardID const& shardID) const;
 
   /// @brief returns the errorNum for all shardIDs
   [[nodiscard]] containers::FlatHashMap<ShardID, int> errorNum() const;
 
   /// @brief returns the current leader and followers for a shard
   [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> servers(
-      std::string_view shardID) const;
+      ShardID const& shardID) const;
 
   /// @brief returns the current failover candidates for the given shard
   [[nodiscard]] TEST_VIRTUAL std::vector<ServerID> failoverCandidates(
-      std::string_view shardID) const;
+      ShardID const& shardID) const;
 
   /// @brief returns the errorMessage entry for one shardID
-  [[nodiscard]] std::string errorMessage(std::string_view shardID) const;
+  [[nodiscard]] std::string errorMessage(ShardID const& shardID) const;
 
   /// @brief get version that underlies this info in Current in the agency
   [[nodiscard]] uint64_t getCurrentVersion() const;
@@ -90,7 +91,7 @@ class CollectionInfoCurrent {
  private:
   /// @brief local helper to return boolean flags
   [[nodiscard]] bool getFlag(std::string_view name,
-                             std::string_view shardID) const;
+                             ShardID const& shardID) const;
 
   /// @brief local helper to return a map to boolean
   [[nodiscard]] containers::FlatHashMap<ShardID, bool> getFlag(

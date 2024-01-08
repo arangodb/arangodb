@@ -22,12 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
-#include <memory>
 #include "Cluster/ClusterTypes.h"
+
+#include <memory>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+struct ShardID;
 
 template<typename T>
 class ResultT;

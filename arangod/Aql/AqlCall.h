@@ -108,23 +108,6 @@ struct AqlCall {
 
   auto toString() const -> std::string;
 
-  // TODO Remove me, this will not be necessary later
-  static AqlCall SimulateSkipSome(std::size_t toSkip) {
-    return AqlCall{/*offset*/ toSkip, /*softLimit*/ 0u,
-                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
-  // TODO Remove me, this will not be necessary later
-  static AqlCall SimulateGetSome(std::size_t atMost) {
-    return AqlCall{/*offset*/ 0, /*softLimit*/ atMost,
-                   /*hardLimit*/ AqlCall::Infinity{}, /*fullCount*/ false};
-  }
-
-  static bool IsFastForwardCall(AqlCall const& call) noexcept {
-    return call.hasHardLimit() && call.getLimit() == 0 &&
-           call.getOffset() == 0 && !call.needsFullCount();
-  }
-
   std::size_t offset{0};
   // TODO: The defaultBatchSize function could move into this file instead
   // TODO We must guarantee that at most one of those is not Infinity.

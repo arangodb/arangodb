@@ -31,6 +31,12 @@
 
 namespace arangodb::replication2::storage::wal {
 
+#ifdef RECORD_UNIT_TEST
+// In order to avoid an ODR violation for `RecordTest.cpp`, we need to put this
+// in an anonymous namespace.
+namespace {
+#endif
+
 // An record in the WAL consists of a (compressed) header, the payload, some
 // optional padding and a footer.
 // We want everything to be 8 byte aligned, so we squeeze the index, term, type
@@ -134,4 +140,7 @@ inline Record::CompressedHeader::CompressedHeader(Header h)
 #endif
 }
 
+#ifdef RECORD_UNIT_TEST
+}  // anonymous namespace
+#endif
 }  // namespace arangodb::replication2::storage::wal

@@ -207,7 +207,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             // optimization, so force it - if we wouldn't force it here it would
             // mean that for a FILTER-less query we would be a lot less
             // efficient for some indexes
-            auto inode = new IndexNode(
+            auto inode = plan->createNode<IndexNode>(
                 plan.get(), plan->nextId(), en->collection(), en->outVariable(),
                 std::vector<transaction::Methods::IndexHandle>{picked},
                 false,  // here we are not using inverted index so for sure no
@@ -215,7 +215,6 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                 std::move(condition), opts);
             en->CollectionAccessingNode::cloneInto(*inode);
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
-            plan->registerNode(inode);
             plan->replaceNode(n, inode);
 
             if (en->isRestricted()) {
@@ -310,13 +309,12 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           opts.useCache = false;
           auto condition = std::make_unique<Condition>(plan->getAst());
           condition->normalize(plan.get());
-          auto inode = new IndexNode(
+          auto inode = plan->createNode<IndexNode>(
               plan.get(), plan->nextId(), en->collection(), en->outVariable(),
               std::vector<transaction::Methods::IndexHandle>{picked},
               false,  // here we are not using inverted index so for sure no
                       // "whole" coverage
               std::move(condition), opts);
-          plan->registerNode(inode);
           plan->replaceNode(n, inode);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);

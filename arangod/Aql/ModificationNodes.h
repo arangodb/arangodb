@@ -67,6 +67,9 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   /// why we can make it final here.
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   /// @brief data modification is non-deterministic
   bool isDeterministic() override final { return false; }
 
@@ -177,11 +180,17 @@ class RemoveNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -232,11 +241,17 @@ class InsertNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -291,6 +306,12 @@ class UpdateReplaceNode : public ModificationNode {
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief set the input key variable
   void setInKeyVariable(Variable const* var) { _inKeyVariable = var; }
 
@@ -340,8 +361,8 @@ class UpdateNode : public UpdateReplaceNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 };
 
 /// @brief class ReplaceNode
@@ -371,8 +392,8 @@ class ReplaceNode : public UpdateReplaceNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 };
 
 /// @brief class UpsertNode
@@ -386,19 +407,7 @@ class UpsertNode : public ModificationNode {
              Collection const* collection, ModificationOptions const& options,
              Variable const* inDocVariable, Variable const* insertVariable,
              Variable const* updateVariable, Variable const* outVariableNew,
-             bool isReplace)
-      : ModificationNode(plan, id, collection, options, nullptr,
-                         outVariableNew),
-        _inDocVariable(inDocVariable),
-        _insertVariable(insertVariable),
-        _updateVariable(updateVariable),
-        _isReplace(isReplace) {
-    TRI_ASSERT(_inDocVariable != nullptr);
-    TRI_ASSERT(_insertVariable != nullptr);
-    TRI_ASSERT(_updateVariable != nullptr);
-
-    TRI_ASSERT(_outVariableOld == nullptr);
-  }
+             bool isReplace, bool canReadOwnWrites);
 
   UpsertNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -413,11 +422,17 @@ class UpsertNode : public ModificationNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final {
@@ -455,6 +470,8 @@ class UpsertNode : public ModificationNode {
 
   /// @brief whether to perform a REPLACE (or an UPDATE alternatively)
   bool _isReplace;
+
+  bool _canReadOwnWrites;
 };
 
 }  // namespace aql

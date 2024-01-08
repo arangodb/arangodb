@@ -198,15 +198,14 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
       edgeCollectionInfos;
   edgeCollectionInfos.reserve(edgeShards.size());
 
-  for (ShardID const& edgeShard : edgeShards) {
+  for (auto const& edgeShard : edgeShards) {
     edgeCollectionInfos.emplace_back(
         std::make_unique<traverser::EdgeCollectionInfo>(resourceMonitor, &trx,
                                                         edgeShard));
   }
 
   std::string documentId;  // temp buffer for _id of vertex
-  auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId token,
-                                                     VPackSlice slice) {
+  auto cb = [&](LocalDocumentId token, aql::DocumentData&&, VPackSlice slice) {
     Vertex<V, E> ventry;
     auto keySlice = transaction::helpers::extractKeyFromDocument(slice);
     auto key = keySlice.copyString();
@@ -236,7 +235,7 @@ auto GraphLoader<V, E>::loadVertices(LoadableVertexShard loadableVertexShard)
     }
     result->emplace(std::move(ventry));
     return true;
-  });
+  };
 
   while (cursor->nextDocument(cb, batchSize)) {
     if (config->vocbase()->server().isStopping()) {
@@ -282,19 +281,18 @@ void GraphLoader<V, E>::loadEdges(transaction::Methods& trx,
         1000)) { /* continue loading */
     }
   } else {
-    auto cb = IndexIterator::makeDocumentCallbackF(
-        [&](LocalDocumentId /*token*/, VPackSlice slice) {
-          slice = slice.resolveExternal();
-          std::string_view toValue =
-              transaction::helpers::extractToFromDocument(slice).stringView();
-          auto toVertexID = config->documentIdToPregel(toValue);
+    auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice slice) {
+      slice = slice.resolveExternal();
+      std::string_view toValue =
+          transaction::helpers::extractToFromDocument(slice).stringView();
+      auto toVertexID = config->documentIdToPregel(toValue);
 
-          auto edge = Edge<E>(toVertexID, {});
-          graphFormat->copyEdgeData(
-              *trx.transactionContext()->getVPackOptions(), slice, edge.data());
-          vertex.addEdge(std::move(edge));
-          return true;
-        });
+      auto edge = Edge<E>(toVertexID, {});
+      graphFormat->copyEdgeData(*trx.transactionContext()->getVPackOptions(),
+                                slice, edge.data());
+      vertex.addEdge(std::move(edge));
+      return true;
+    };
     while (cursor->nextDocument(cb, 1000)) { /* continue loading */
       // Might overcount a bit;
     }

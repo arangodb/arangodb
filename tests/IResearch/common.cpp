@@ -33,6 +33,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryRegistry.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"
@@ -72,8 +73,10 @@
 
 #include "../3rdParty/iresearch/tests/tests_config.hpp"
 
+#ifdef USE_V8
 #include <libplatform/libplatform.h>
 #include <v8.h>
+#endif
 
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -503,6 +506,7 @@ void init(bool withICU /*= false*/) {
   }
 }
 
+#ifdef USE_V8
 /// @note once V8 is initialized all 'CATCH' errors will result in SIGILL
 void v8Init() {
   class V8Init {
@@ -516,7 +520,11 @@ void v8Init() {
     }
     ~V8Init() {
       v8::V8::Dispose();
+#ifdef V8_UPGRADE
+      v8::V8::DisposePlatform();
+#else
       v8::V8::ShutdownPlatform();
+#endif
     }
 
    private:
@@ -524,6 +532,7 @@ void v8Init() {
   };
   [[maybe_unused]] static const V8Init init;
 }
+#endif
 
 bool assertRules(
     TRI_vocbase_t& vocbase, std::string const& queryString,

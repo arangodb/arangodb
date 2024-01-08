@@ -1238,11 +1238,11 @@ describe('_api/gharial', () => {
         expect(db._collection(eName)).to.not.be.null;
         expect(db._collection(vName)).to.not.be.null;
 
-        const key = 'bob';
-        const doc = db[vName].document(key);
+        const doc = db[eName].any();
+        const edgeKey = doc._key;
         const revision = doc._rev; // get a valid revision
 
-        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
+        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + eName + '/' + edgeKey, {
           headers: {
             'if-match': revision
           }
@@ -1263,15 +1263,15 @@ describe('_api/gharial', () => {
         expect(db._collection(eName)).to.not.be.null;
         expect(db._collection(vName)).to.not.be.null;
 
-        const key = 'bob';
-        const doc = db[vName].document(key);
+        const doc = db[eName].any();
+        const edgeKey = doc._key;
         let revision = doc._rev; // get a valid revision
         revision = revision + 'x';
 
         const revisions = [null, undefined, true, false, revision];
 
         revisions.forEach(function (rev) {
-          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
+          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + eName + '/' + edgeKey, {
               'if-match': rev
           });
           expect(req.error).to.equal(true);
@@ -1292,11 +1292,11 @@ describe('_api/gharial', () => {
         expect(db._collection(eName)).to.not.be.null;
         expect(db._collection(vName)).to.not.be.null;
 
-        const key = 'bob';
-        const doc = db[vName].document(key);
+        const doc = db[eName].any();
+        const edgeKey = doc._key;
         const revision = doc._rev; // get a valid revision
 
-        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
+        let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + eName + '/' + edgeKey, {
             'if-none-match': revision
         });
         expect(req.code).to.equal(304);
@@ -1314,15 +1314,15 @@ describe('_api/gharial', () => {
         expect(db._collection(eName)).to.not.be.null;
         expect(db._collection(vName)).to.not.be.null;
 
-        const key = 'bob';
-        const doc = db[vName].document(key);
+        const doc = db[eName].any();
+        const edgeKey = doc._key;
         let revision = doc._rev; // get a valid revision
         revision = revision + 'x';
 
         const revisions = [null, undefined, true, false, revision];
 
         revisions.forEach(function (rev) {
-          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + vName + '/' + key, {
+          let req = arango.GET(url + '/' + exampleGraphName + '/edge/' + eName + '/' + edgeKey, {
               'if-none-match': rev
           });
           expect(req.code).to.equal(200);

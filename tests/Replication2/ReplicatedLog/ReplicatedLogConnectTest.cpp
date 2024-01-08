@@ -210,7 +210,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_connect) {
         return leaderMock;
       });
 
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
 
@@ -257,7 +257,7 @@ TEST_F(ReplicatedLogConnectTest, construct_leader_on_update_config) {
         return leaderMock;
       });
 
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   EXPECT_CALL(std::move(*leaderMock), resign).WillOnce([&] {
     return std::make_tuple(
@@ -301,7 +301,7 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
   // create initial state and connection
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   // update term and make A leader
   term.setTerm(LogTerm{2}).setLeader("A");
@@ -323,7 +323,7 @@ TEST_F(ReplicatedLogConnectTest, update_leader_to_follower) {
         std::unique_ptr<IReplicatedStateHandle>(stateHandlePtr),
         DeferredAction{});
   });
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
   testing::Mock::VerifyAndClearExpectations(participantsFactoryMock.get());
 
   EXPECT_CALL(std::move(*followerMock), resign).WillOnce([&] {
@@ -363,7 +363,7 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   // create initial state and connection
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   EXPECT_CALL(*participantsFactoryMock, constructLeader)
       .WillOnce([&](std::unique_ptr<storage::IStorageEngineMethods> methods,
@@ -388,7 +388,7 @@ TEST_F(ReplicatedLogConnectTest, update_follower_to_leader) {
   });
   // update term and make myself leader
   term.setTerm(LogTerm{2}).setLeader(myself);
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   EXPECT_CALL(std::move(*leaderMock), resign).WillOnce([&] {
     return std::make_tuple(
@@ -428,7 +428,7 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
       });
   auto connection =
       log->connect(std::unique_ptr<IReplicatedStateHandle>{stateHandlePtr});
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   EXPECT_CALL(*leaderMock, updateParticipantsConfig)
       .WillOnce(
@@ -450,7 +450,7 @@ TEST_F(ReplicatedLogConnectTest, leader_on_update_config) {
 
   // should update leader, but not rebuild
   config.setParticipant("C", {}).incGeneration();
-  log->updateConfig(term.get(), config.get(), myself);
+  std::ignore = log->updateConfig(term.get(), config.get(), myself);
 
   EXPECT_CALL(std::move(*leaderMock), resign).WillOnce([&] {
     return std::make_tuple(

@@ -23,9 +23,9 @@
 #include <gtest/gtest.h>
 
 #include "Aql/AqlExecutorTestCase.h"
-#include "Mocks/FakeScheduler.h"
-
 #include "Aql/AsyncExecutor.h"
+#include "Aql/SharedQueryState.h"
+#include "Mocks/FakeScheduler.h"
 
 #include <random>
 

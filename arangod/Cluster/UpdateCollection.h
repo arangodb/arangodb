@@ -45,10 +45,10 @@ class UpdateCollection : public ActionBase, public ShardDefinition {
   void setState(ActionState state) override final;
 
  private:
-  auto updateCollectionReplication2(
+  static auto updateCollectionReplication2(
       ShardID const& shard, CollectionID const& collection,
       velocypack::SharedSlice props,
-      std::shared_ptr<LogicalCollection> coll) const noexcept -> Result;
+      std::shared_ptr<LogicalCollection> coll) noexcept -> Result;
 };
 
 }  // namespace maintenance

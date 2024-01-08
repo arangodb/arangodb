@@ -1,0 +1,83 @@
+# First rebuild glibc with a special option and provide some .deb files:
+
+FROM ubuntu:23.10 as glibcdebs
+
+COPY ./static /static
+RUN /static/prepare.sh
+RUN /static/rebuild_glibc.sh
+
+# Now prepare a standard Ubuntu image and install the provided .deb files
+# for glibc as a preparation:
+
+FROM ubuntu:23.10 as prepare
+
+RUN apt-get update && apt-get upgrade -y && apt-get install -y libgd3 linux-libc-dev libcrypt-dev libnsl-dev rpcsvc-proto libtirpc-dev
+
+COPY --from=glibcdebs /root/debs /debs
+RUN dpkg -i /debs/*.deb
+
+# Now build V8:
+
+FROM ubuntu:23.10 as v81
+
+COPY ./tools/build_v8_arm64.sh /tools/build_v8_arm64.sh
+RUN /tools/build_v8_arm64.sh
+
+FROM v81 as v8
+
+COPY ./tools/install_v8_arm64.sh /tools/install_v8_arm64.sh
+RUN /tools/install_v8_arm64.sh
+
+# Finally, build the actual build image based on the above preparation:
+
+FROM prepare
+
+MAINTAINER Max Neunhoeffer <max@arangodb.com>
+
+ARG ARCH="aarch64"
+
+# We provide gcc 13.2.0 as well as clang 16.0.6 from Ubunutu 23.10
+
+ENV COMPILER_VERSION 13
+ENV CLANG_VERSION 16
+
+RUN apt-get update --fix-missing && \
+    apt-get install -y software-properties-common && \
+    apt-get update && \
+    apt-get upgrade -y
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update --fix-missing && apt-get install -y build-essential gcc-${COMPILER_VERSION} g++-${COMPILER_VERSION} cmake make bison flex python3 ccache git libjemalloc-dev vim exuberant-ctags gdb fish psmisc sudo debhelper debconf jq wget libdb-dev curl gnupg2 gcovr prometheus bc tcpdump liburing-dev cppcheck clang-${CLANG_VERSION} lldb-${CLANG_VERSION} lld-${CLANG_VERSION} libc++-${CLANG_VERSION}-dev libc++abi-${CLANG_VERSION}-dev libclang-common-${CLANG_VERSION}-dev libclang-rt-${CLANG_VERSION}-dev && apt-get clean
+
+# sccache for cloud compiler cache:
+
+RUN curl -L https://github.com/mozilla/sccache/releases/download/v0.3.1/sccache-v0.3.1-${ARCH}-unknown-linux-musl.tar.gz | tar xvz -C /tmp && mv /tmp/sccache-v0.3.1-${ARCH}-unknown-linux-musl/sccache /usr/bin/sccache && chmod +x /usr/bin/sccache && rm -rf /tmp/sccache-v0.2.15-${ARCH}-unknown-linux-musl
+
+# Fetch V8:
+COPY --from=v8 /opt/v8/lib /opt/v8/lib
+COPY --from=v8 /opt/v8/include /opt/v8/include
+COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
+
+# Build openssl and openldap libraries in specific versions and with static
+# libraries, install with prefix /opt:
+
+COPY ./tools/* /tools/
+
+RUN [ "/tools/install.sh", "3.1", "4" ]
+
+COPY ./scripts /scripts
+
+# Provide clang as "clang" and "clang++":
+
+RUN update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-${CLANG_VERSION} 100 && update-alternatives --install /usr/bin/clang clang /usr/bin/clang-${CLANG_VERSION} 100
+
+RUN /scripts/create-sccache-hardlinks.sh
+
+RUN LC_ALL="C" update-ccache-symlinks
+
+RUN git config --global --add safe.directory '*'
+
+RUN apt-get install -y python3-pip && pip3 install py7zr psutil cppcheck-junit --break-system-packages
+
+CMD [ "/usr/bin/fish" ]

@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -160,12 +161,12 @@ bool EnsureIndex::first() {
           [this](double d) { return setProgress(d); });
 
       if (vocbase->replicationVersion() == replication::Version::TWO) {
-        return ensureIndexReplication2(vocbase, *col, body.slice(),
-                                       std::move(lambda));
+        return ensureIndexReplication2(col, body.slice(), std::move(lambda));
       }
       auto index = VPackBuilder();
       auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
-                                               std::move(lambda));
+                                               std::move(lambda))
+                     .get();
       if (res.ok()) {
         indexCreationLogging(index.slice());
       }
@@ -206,7 +207,15 @@ bool EnsureIndex::first() {
       // then, if you are missing components, such as database name, will
       // you be able to produce an IndexError?
 
-      _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from creating the index eventually.
+      if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+          res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+        // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+      } else {
+        _feature.storeIndexError(database, collection, shard, id, eb.steal());
+      }
       result(TRI_ERROR_INTERNAL, error.str());
       return false;
     }
@@ -232,20 +241,20 @@ void EnsureIndex::indexCreationLogging(VPackSlice index) {
 }
 
 auto EnsureIndex::ensureIndexReplication2(
-    TRI_vocbase_t* vocbase, LogicalCollection& col, VPackSlice indexInfo,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) -> Result {
-  if (auto state = vocbase->getReplicatedStateById(col.replicatedStateId());
-      state.ok()) {
-    auto leaderState = std::dynamic_pointer_cast<
-        replication2::replicated_state::document::DocumentLeaderState>(
-        state.get()->getLeader());
-    if (leaderState != nullptr) {
-      return leaderState->createIndex(col, indexInfo, std::move(progress))
-          .get();
-    } else {
-      // TODO prevent busy loop and wait for log to become ready (CINFRA-831)
-      std::this_thread::sleep_for(std::chrono::milliseconds{50});
-    }
+    std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    -> Result {
+  auto maybeShardID = ShardID::shardIdFromString(coll->name());
+  if (ADB_UNLIKELY(maybeShardID.fail())) {
+    // This will only throw if we take a real collection here and not a shard.
+    TRI_ASSERT(false) << "Tried to ensure index on Collection " << coll->name()
+                      << " which is not considered a shard.";
+    return maybeShardID.result();
   }
-  return {TRI_ERROR_INTERNAL};
+  return basics::catchToResult([&coll, shard = maybeShardID.get(), indexInfo,
+                                progress = std::move(progress)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->createIndex(shard, indexInfo, std::move(progress))
+        .get();
+  });
 }

@@ -122,14 +122,18 @@ BaseEngine::BaseEngine(TRI_vocbase_t& vocbase, aql::QueryContext& query,
   for (auto collection : VPackObjectIterator(vertexSlice)) {
     ResourceUsageAllocator<MonitoredCollectionToShardMap, ResourceMonitor>
         alloc = {_query.resourceMonitor()};
-    MonitoredStringVector shards{alloc};
+    MonitoredShardIDVector shards{alloc};
     TRI_ASSERT(collection.value.isArray());
     for (auto shard : VPackArrayIterator(collection.value)) {
       TRI_ASSERT(shard.isString());
-      std::string name = shard.copyString();
-      _query.collections().add(name, AccessMode::Type::READ,
+      auto shardString = shard.copyString();
+      auto maybeShardID = ShardID::shardIdFromString(shardString);
+      _query.collections().add(shardString, AccessMode::Type::READ,
                                aql::Collection::Hint::Shard);
-      shards.emplace_back(std::move(name));
+      TRI_ASSERT(maybeShardID.ok())
+          << "Parsed a list of shards contianing an invalid name: "
+          << shardString;
+      shards.emplace_back(std::move(maybeShardID.get()));
     }
     _vertexShards.emplace(collection.key.copyString(), std::move(shards));
   }
@@ -189,22 +193,22 @@ void BaseEngine::getVertexData(VPackSlice vertex, VPackBuilder& builder,
       return;
     }
     std::string_view vertex = id.substr(pos + 1);
-    auto cb = IndexIterator::makeDocumentCallbackF(
-        [&](LocalDocumentId, VPackSlice doc) {
-          // FOUND. short circuit.
-          read++;
-          builder.add(v);
-          if (!options().getVertexProjections().empty()) {
-            VPackObjectBuilder guard(&builder);
-            options().getVertexProjections().toVelocyPackFromDocument(
-                builder, doc, _trx.get());
-          } else {
-            builder.add(doc);
-          }
-          return true;
-        });
+    auto cb = [&](LocalDocumentId, aql::DocumentData&&, VPackSlice doc) {
+      // FOUND. short circuit.
+      read++;
+      builder.add(v);
+      if (!options().getVertexProjections().empty()) {
+        VPackObjectBuilder guard(&builder);
+        options().getVertexProjections().toVelocyPackFromDocument(builder, doc,
+                                                                  _trx.get());
+      } else {
+        builder.add(doc);
+      }
+      return true;
+    };
     for (auto const& shard : shards->second) {
-      Result res = _trx->documentFastPathLocal(shard, vertex, cb);
+      Result res =
+          _trx->documentFastPathLocal(std::string{shard}, vertex, cb).get();
       if (res.ok()) {
         break;
       }

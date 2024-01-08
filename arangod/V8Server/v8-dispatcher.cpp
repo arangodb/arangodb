@@ -22,6 +22,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "v8-dispatcher.h"
 
 #include <velocypack/Builder.h>
@@ -46,7 +50,6 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 #include "V8/v8-vpack.h"
-#include "V8Server/V8Context.h"
 #include "V8Server/V8DealerFeature.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Methods/Tasks.h"

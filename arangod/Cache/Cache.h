@@ -234,7 +234,8 @@ class Cache : public std::enable_shared_from_this<Cache> {
 
  protected:
   void requestGrow();
-  void requestMigrate(std::uint32_t requestedLogSize = 0);
+  void requestMigrate(Table* table, std::uint32_t requestedLogSize,
+                      std::uint32_t currentLogSize);
 
   static void freeValue(CachedValue* value) noexcept;
   bool reclaimMemory(std::uint64_t size) noexcept;
@@ -242,7 +243,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   void recordHit();
   void recordMiss();
 
-  bool reportInsert(bool hadEviction);
+  bool reportInsert(Table* table, bool hadEviction);
 
   // management
   Metadata& metadata();
@@ -264,7 +265,7 @@ class Cache : public std::enable_shared_from_this<Cache> {
   virtual bool freeMemoryWhile(
       std::function<bool(std::uint64_t)> const& cb) = 0;
 
-  virtual void migrateBucket(void* sourcePtr,
+  virtual void migrateBucket(Table* table, void* sourcePtr,
                              std::unique_ptr<Table::Subtable> targets,
                              Table& newTable) = 0;
 

@@ -91,14 +91,15 @@ class CollectionReader : public ICollectionReader {
 struct IDatabaseSnapshot {
   virtual ~IDatabaseSnapshot() = default;
   [[nodiscard]] virtual auto createCollectionReader(
-      std::string_view collectionName)
+      std::shared_ptr<LogicalCollection> shard)
       -> std::unique_ptr<ICollectionReader> = 0;
   virtual auto resetTransaction() -> Result = 0;
 };
 
 struct DatabaseSnapshot : IDatabaseSnapshot {
   explicit DatabaseSnapshot(TRI_vocbase_t& vocbase);
-  [[nodiscard]] auto createCollectionReader(std::string_view collectionName)
+  [[nodiscard]] auto createCollectionReader(
+      std::shared_ptr<LogicalCollection> shard)
       -> std::unique_ptr<ICollectionReader> override;
   auto resetTransaction() -> Result override;
 

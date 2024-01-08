@@ -488,35 +488,38 @@ void Constituent::callElection() {
     if (i == _id) {
       continue;
     }
-    network::sendRequest(cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
-                         "/_api/agency_priv/requestVote",
-                         VPackBuffer<uint8_t>(), reqOpts)
-        .thenValue([=](network::Response r) {
-          if (r.ok() && r.statusCode() == 200) {
-            VPackSlice slc = r.slice();
+    std::ignore =
+        network::sendRequest(
+            cp, _agent->config().poolAt(i), fuerte::RestVerb::Get,
+            "/_api/agency_priv/requestVote", VPackBuffer<uint8_t>(), reqOpts)
+            .thenValue([=](network::Response r) {
+              if (r.ok() && r.statusCode() == 200) {
+                VPackSlice slc = r.slice();
 
-            // Got ballot
-            if (slc.isObject() && slc.hasKey("term") &&
-                slc.hasKey("voteGranted")) {
-              // Follow right away?
-              term_t receivedT = slc.get("term").getUInt();
-              if (receivedT >
-                  savedTerm) {  // only count vote if term is equal or smaller
-                term_t expectedT = maxTermReceived->load();
-                maxTermReceived->compare_exchange_strong(expectedT, receivedT);
-              } else {
-                // Check result and counts
-                if (slc.get("voteGranted").getBool()) {  // majority in favor?
-                  yea->fetch_add(1);
-                  // Vote is counted as yea
-                  return;
+                // Got ballot
+                if (slc.isObject() && slc.hasKey("term") &&
+                    slc.hasKey("voteGranted")) {
+                  // Follow right away?
+                  term_t receivedT = slc.get("term").getUInt();
+                  if (receivedT > savedTerm) {  // only count vote if term is
+                                                // equal or smaller
+                    term_t expectedT = maxTermReceived->load();
+                    maxTermReceived->compare_exchange_strong(expectedT,
+                                                             receivedT);
+                  } else {
+                    // Check result and counts
+                    if (slc.get("voteGranted")
+                            .getBool()) {  // majority in favor?
+                      yea->fetch_add(1);
+                      // Vote is counted as yea
+                      return;
+                    }
+                  }
                 }
               }
-            }
-          }
-          // Count the vote as a nay
-          nay->fetch_add(1);
-        });
+              // Count the vote as a nay
+              nay->fetch_add(1);
+            });
   }
 
   // We collect votes, we leave the following loop when one of the following

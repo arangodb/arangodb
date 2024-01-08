@@ -90,9 +90,8 @@ class Scopes {
   /// @brief destroy the scopes
   ~Scopes();
 
- public:
   /// @brief number of currently active scopes
-  size_t numActive() const { return _activeScopes.size(); }
+  size_t numActive() const noexcept { return _activeScopes.size(); }
 
   /// @brief return the type of the currently active scope
   ScopeType type() const {
@@ -102,7 +101,9 @@ class Scopes {
 
   /// @brief whether or not the $CURRENT variable can be used at the caller's
   /// current position
-  bool canUseCurrentVariable() const { return (!_currentVariables.empty()); }
+  bool canUseCurrentVariable() const noexcept {
+    return (!_currentVariables.empty());
+  }
 
   /// @brief start a new scope
   void start(ScopeType);

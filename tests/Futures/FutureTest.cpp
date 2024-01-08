@@ -154,12 +154,12 @@ TEST(FutureTest, lacksPreconditionValid) {
   // Ops that don't throw FutureInvalid if !valid() --
   // without precondition: valid()
 
-#define DOIT(STMT)        \
-  do {                    \
-    auto f = makeValid(); \
-    { STMT; }             \
-    ::copy(std::move(f)); \
-    STMT;                 \
+#define DOIT(STMT)                      \
+  do {                                  \
+    auto f = makeValid();               \
+    { STMT; }                           \
+    std::ignore = ::copy(std::move(f)); \
+    STMT;                               \
   } while (false)
 
   // .valid() itself
@@ -167,7 +167,7 @@ TEST(FutureTest, lacksPreconditionValid) {
 
   // move-ctor - move-copy to local, copy(), pass-by-move-value
   DOIT(auto other = std::move(f));
-  DOIT(copy(std::move(f)));
+  DOIT(std::ignore = copy(std::move(f)));
   DOIT(([](auto) {})(std::move(f)));
 
   // move-assignment into either {valid | invalid}
@@ -187,12 +187,12 @@ TEST(FutureTest, hasPreconditionValid) {
   // Ops that require validity; precondition: valid();
   // throw FutureInvalid if !valid()
 
-#define DOIT(STMT)          \
-  do {                      \
-    auto f = makeValid();   \
-    STMT;                   \
-    ::copy(std::move(f));   \
-    EXPECT_ANY_THROW(STMT); \
+#define DOIT(STMT)                      \
+  do {                                  \
+    auto f = makeValid();               \
+    STMT;                               \
+    std::ignore = ::copy(std::move(f)); \
+    EXPECT_ANY_THROW(STMT);             \
   } while (false)
 
   DOIT(f.isReady());
@@ -203,8 +203,8 @@ TEST(FutureTest, hasPreconditionValid) {
   DOIT(f.hasException());
   DOIT(f.get());
   // DOIT(std::move(f).then());
-  DOIT(std::move(f).thenValue([](int&&) noexcept -> void {}));
-  DOIT(std::move(f).thenValue([](auto&&) noexcept -> void {}));
+  DOIT(std::ignore = std::move(f).thenValue([](int&&) noexcept -> void {}));
+  DOIT(std::ignore = std::move(f).thenValue([](auto&&) noexcept -> void {}));
 
 #undef DOIT
 }
@@ -671,12 +671,12 @@ TEST(FutureTest, makeFuture2) {
 
   auto failfun = []() -> int { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfun), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfun));
+  EXPECT_NO_THROW(std::ignore = makeFutureWith(failfun));
   EXPECT_THROW(makeFutureWith(failfun).get(), eggs_t);
 
   auto failfunf = []() -> Future<int> { throw eggs; };
   // EXPECT_TYPE(makeFutureWith(failfunf), Future<int>);
-  EXPECT_NO_THROW(makeFutureWith(failfunf));
+  EXPECT_NO_THROW(std::ignore = makeFutureWith(failfunf));
   EXPECT_THROW(makeFutureWith(failfunf).get(), eggs_t);
 
   // EXPECT_TYPE(makeFuture(), Future<Unit>);
@@ -742,7 +742,7 @@ TEST(FutureTest, CircularDependencySharedPtrSelfReset) {
   Promise<int64_t> promise;
   auto ptr = std::make_shared<Future<int64_t>>(promise.getFuture());
 
-  std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
+  std::ignore = std::move(*ptr).then([ptr](Try<int64_t>&& /* uid */) mutable {
     ASSERT_TRUE(1 == ptr.use_count());
 
     // Leaving no references to ourselves.

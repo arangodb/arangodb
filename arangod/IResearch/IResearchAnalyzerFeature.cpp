@@ -58,12 +58,14 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/GeoAnalyzer.h"
 #include "IResearchAqlAnalyzer.h"
 #include "IResearch/IResearchIdentityAnalyzer.h"
 #include "IResearch/IResearchLink.h"
 #include "IResearch/IResearchKludge.h"
+#include "IResearch/Wildcard/Analyzer.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -130,6 +132,8 @@ REGISTER_ANALYZER_VPACK(GeoVPackAnalyzer, GeoVPackAnalyzer::make,
                         GeoVPackAnalyzer::normalize);
 REGISTER_ANALYZER_VPACK(GeoPointAnalyzer, GeoPointAnalyzer::make,
                         GeoPointAnalyzer::normalize);
+REGISTER_ANALYZER_VPACK(wildcard::Analyzer, wildcard::Analyzer::make,
+                        wildcard::Analyzer::normalize);
 REGISTER_ANALYZER_VPACK(AqlAnalyzer, AqlAnalyzer::make_vpack,
                         AqlAnalyzer::normalize_vpack);
 REGISTER_ANALYZER_JSON(AqlAnalyzer, AqlAnalyzer::make_json,
@@ -355,10 +359,12 @@ aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
       default:
         processNumeric(current);
     }
-    // de-stack all closing arrays
+    // de-stack all closing arrays.
+    // arrayIteratorsStack only contains non-empty arrays.
     while (!arrayIteratorStack.empty()) {
       auto& currentArrayIterator = arrayIteratorStack.back();
-      if (!currentArrayIterator.isLast()) {
+      if (currentArrayIterator.valid() &&
+          currentArrayIterator.index() + 1 < currentArrayIterator.size()) {
         currentArrayIterator.next();
         current = currentArrayIterator.value();
         // next array for next item
@@ -432,7 +438,7 @@ bool equalAnalyzer(AnalyzerPool const& pool, std::string_view type,
                                 pool.properties()))) {
     // failed to re-normalize definition - strange. It was already normalized
     // once. Some bug in load/store?
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     LOG_TOPIC("a4073", WARN, arangodb::iresearch::TOPIC)
         << "failed to re-normalize properties for analyzer type '"
         << pool.type() << "' properties '" << pool.properties().toString()
@@ -515,7 +521,7 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
 
       auto shards = collection->shardIds();
       if (ADB_UNLIKELY(!shards)) {
-        TRI_ASSERT(FALSE);
+        TRI_ASSERT(false);
         return {};  // treat missing collection as if there are no analyzers
       }
 
@@ -540,8 +546,8 @@ Result visitAnalyzers(TRI_vocbase_t& vocbase,
       // satellite collections and dirty-reads may break this assumption.
       // In that case we just proceed with regular cluster query
       if (shards->begin()->second.front() == ServerState::instance()->getId()) {
-        auto oneShardQueryString = aql::QueryString(
-            absl::StrCat("FOR d IN ", shards->begin()->first, " RETURN d"));
+        auto oneShardQueryString = aql::QueryString(absl::StrCat(
+            "FOR d IN ", std::string{shards->begin()->first}, " RETURN d"));
         auto query = aql::Query::create(
             transaction::StandaloneContext::create(vocbase, operationOrigin),
             std::move(oneShardQueryString), nullptr);
@@ -807,6 +813,9 @@ getAnalyzerMeta(irs::analysis::analyzer const* analyzer) noexcept {
   } else if (type == irs::type<GeoPointAnalyzer>::id()) {
     return {AnalyzerValueType::Object | AnalyzerValueType::Array,
             AnalyzerValueType::String, &GeoPointAnalyzer::store};
+  } else if (type == irs::type<wildcard::Analyzer>::id()) {
+    return {AnalyzerValueType::String, AnalyzerValueType::String,
+            &wildcard::Analyzer::store};
   }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
@@ -915,8 +924,7 @@ bool AnalyzerPool::operator==(AnalyzerPool const& rhs) const {
          basics::VelocyPackHelper::equal(_properties, rhs._properties, true);
 }
 
-bool AnalyzerPool::init(std::string_view const& type,
-                        VPackSlice const properties,
+bool AnalyzerPool::init(std::string_view type, VPackSlice const properties,
                         AnalyzersRevision::Revision revision, Features features,
                         LinkVersion version) {
   try {
@@ -1085,7 +1093,11 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
     : ArangodFeature{server, *this} {
   setOptional(true);
+#ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
   // used for registering IResearch analyzer functions
   startsAfter<aql::AqlFunctionFeature>();
   // used for getting the system database
@@ -1191,7 +1203,7 @@ Result IResearchAnalyzerFeature::createAnalyzerPool(
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  const auto validationRes = features.validate();
+  const auto validationRes = features.validate(type);
   if (validationRes.fail()) {
     return validationRes;
   }
@@ -1254,7 +1266,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
 
   // validate that features are supported by arangod an ensure that their
   // dependencies are met
-  auto validationRes = features.validate();
+  auto validationRes = features.validate(type);
   if (validationRes.fail()) {
     return validationRes;
   }
@@ -2006,7 +2018,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to remove dangling analyzers from '",
                            database, "' Aql error: (",
-                           static_cast<int>(deleteResult.errorNumber()), " ) ",
+                           static_cast<int>(deleteResult.errorNumber()), ") ",
                            deleteResult.errorMessage())};
     }
 
@@ -2024,7 +2036,7 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
       return {TRI_ERROR_INTERNAL,
               absl::StrCat("failure to restore dangling analyzers from '",
                            database, "' Aql error: (",
-                           static_cast<int>(updateResult.errorNumber()), " ) ",
+                           static_cast<int>(updateResult.errorNumber()), ") ",
                            updateResult.errorMessage())};
     }
 
@@ -2986,7 +2998,7 @@ bool IResearchAnalyzerFeature::visit(
 
 void IResearchAnalyzerFeature::cleanupAnalyzers(std::string_view database) {
   if (ADB_UNLIKELY(database.empty())) {
-    TRI_ASSERT(FALSE);
+    TRI_ASSERT(false);
     return;
   }
   for (auto itr = _analyzers.begin(), end = _analyzers.end(); itr != end;) {
@@ -3091,7 +3103,7 @@ bool Features::add(std::string_view featureName) {
   return false;
 }
 
-Result Features::validate() const {
+Result Features::validate(std::string_view type) const {
   if (hasFeatures(irs::IndexFeatures::OFFS) &&
       !hasFeatures(irs::IndexFeatures::POS)) {
     return {TRI_ERROR_BAD_PARAMETER,
@@ -3106,9 +3118,14 @@ Result Features::validate() const {
             "specified"};
   }
 
-  constexpr irs::IndexFeatures kSupportedFeatures = irs::IndexFeatures::OFFS |
-                                                    irs::IndexFeatures::POS |
-                                                    irs::IndexFeatures::FREQ;
+  // wildcard shouldn't have offs in the index
+  // TODO(MBkkt) geo analyzers shouldn't have freq, pos, offs in the index
+  bool isWildcardAnalyzer = type == wildcard::Analyzer::type_name();
+
+  irs::IndexFeatures kSupportedFeatures =
+      irs::IndexFeatures::FREQ | irs::IndexFeatures::POS |
+      (isWildcardAnalyzer ? irs::IndexFeatures::NONE
+                          : irs::IndexFeatures::OFFS);
 
   if (kSupportedFeatures != (_indexFeatures | kSupportedFeatures)) {
     return {

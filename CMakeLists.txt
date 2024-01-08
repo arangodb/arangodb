@@ -140,8 +140,8 @@ endif()
 message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
 
 if (MSVC)
-  option(USE_CLCACHE_MODE
-    "whether we want to use CLCACHE-specific build options"
+  option(USE_CCACHE
+    "whether we want to use ccache"
     OFF
   )
 endif ()
@@ -196,6 +196,25 @@ if (STATIC_EXECUTABLES)
   endif ()
 endif()
 
+# enable V8/JavaScript in executables. 
+# note that V8 will always be built, regardless of the value of this option.
+# this is required because the V8 build step also builds ICU, which is needed
+# in all programs.
+# if set to OFF, V8 will not be linked to arangod and the client-tools, 
+# and V8 integration code for arangod will not be compiled. 
+# additionally, arangosh will not be built.
+# setting the option to OFF will further disable all JavaScript support in
+# arangod, rendering the web UI, JavaScript transactions, AQL user-defined
+# functions (UDFs), Foxx and some other smaller features unusable.
+# setting this option to OFF also renders many tests unusable as many tests
+# depend on JavaScript.
+# setting the option to OFF is highly experimental option and not well tested.
+# use at your own risk!
+option(USE_V8 "build with V8/JavaScript support" ON)
+if (USE_V8)
+  add_definitions("-DUSE_V8=1")
+endif ()
+
 # enable dtrace
 option(USE_DTRACE "enable dtrace probes" OFF)
 if (USE_DTRACE)
@@ -227,15 +246,6 @@ set(ARANGODB_HELP_LINK       "https://docs.arangodb.com/${ARANGODB_VERSION_MAJOR
 set(ARANGODB_CONTACT         "hackers@arangodb.com")
 set(ARANGODB_FRIENDLY_STRING "ArangoDB - the native multi-model NoSQL database")
 
-# MSVC
-set(ARANGO_BENCH_FRIENDLY_STRING   "arangobench - stress test tool")
-set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-set(ARANGO_DUMP_FRIENDLY_STRING    "arangodump - data and configuration dumping tool")
-set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
-set(ARANGO_EXPORT_FRIENDLY_STRING  "arangoexport - data exporter")
-set(ARANGO_IMPORT_FRIENDLY_STRING  "arangoimport - data importer")
-set(ARANGOSH_FRIENDLY_STRING       "arangosh - commandline client")
-set(ARANGO_VPACK_FRIENDLY_STRING   "arangovpack - VelocyPack formatter")
 
 # binaries
 set(BIN_ARANGOBENCH   arangobench)
@@ -319,7 +329,13 @@ function(determine_repository_version source_dir build_repository have_build_rep
   elseif(BUILD_REPO_INFO STREQUAL "release")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
-      COMMAND ${GIT_EXE} describe --all --tags --match v${ARANGODB_PLAIN_VERSION}
+      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[1-9][0-9]*$")
+        string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
+      else()
+        set(RELEASE_TAG ${ARANGODB_VERSION})
+      endif()
+      set(RELEASE_TAG "v${RELEASE_TAG}")
+      COMMAND ${GIT_EXE} describe --all --tags --match ${RELEASE_TAG}
       OUTPUT_VARIABLE TAG_RAW)
     if (NOT TAG_RAW)
       message(FATAL_ERROR "Can't extract tag using the command: 'git describe --all --tags --match v${ARANGODB_PLAIN_VERSION}")
@@ -473,12 +489,6 @@ endif ()
 if (LINKER_IS_MOLD AND USE_BUILD_ID_READER)
   message(SEND_ERROR "It looks like you're using mold as a linker. That doesn't work together with USE_BUILD_ID_READER. Either disable USE_BUILD_ID_READER, or use another linker.")
 endif ()
-
-if (CROSS_COMPILING)
-# currently off, need additional params to configure like --host=triple <params>
-  SET(USE_JEMALLOC OFF)
-  SET(USE_LIBUNWIND OFF)
-endif()
 
 ################################################################################
 ## EXTERNAL PROGRAMS
@@ -809,6 +819,7 @@ endfunction()
 # ------------------------------------------------------------------------------
 
 option(USE_JEMALLOC_PROF "use jemalloc profiler" ON)
+option(USE_JEMALLOC_CHECKS "use jemalloc extended safety checks" ON)
 
 if (USE_JEMALLOC)
   add_definitions("-DARANGODB_HAVE_JEMALLOC=1")
@@ -933,10 +944,56 @@ if (MSVC)
   set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
   set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
 
-  if (USE_CLCACHE_MODE)
-    set(CMAKE_VS_GLOBALS "TrackFileAccess=false")
-    add_definitions(/Z7)
-  endif ()
+  if(USE_CCACHE)
+    find_program(CCACHE ccache REQUIRED)
+
+    if(CCACHE)
+      message(STATUS "Using ccache: ${CCACHE}")
+
+      # if ccache is installed with Chocolatey on Windows, the found exe is a shim file hiding the real location.
+      # get real location by querying for the target.
+      execute_process(
+          COMMAND powershell
+              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
+          OUTPUT_VARIABLE CCACHE_REAL
+          RESULT_VARIABLE CCACHE_RESULT_CODE
+          OUTPUT_STRIP_TRAILING_WHITESPACE
+      )
+
+      if(CCACHE_RESULT_CODE)
+        set( CCACHE ${CCACHE_REAL} )
+        message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
+      endif()
+
+      # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
+      # this solution also does not require administrative rights on Windows.
+      file(COPY_FILE 
+        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
+        ONLY_IF_DIFFERENT
+      )
+
+      set(CMAKE_VS_GLOBALS
+        "CLToolExe=cl.exe"
+        "CLToolPath=${CMAKE_BINARY_DIR}"
+        "TrackFileAccess=false"
+        "UseMultiToolTask=true"
+        "DebugInformationFormat=OldStyle"
+      )
+
+      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
+      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
+        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
+      endif()
+    else(CCACHE)
+      message(STATUS "CCACHE NOT FOUND")
+    endif(CCACHE)
+  endif(USE_CCACHE)
 
   add_definitions(/bigobj)
   if (CMAKE_COMPILER_IS_CLANG) # clang-cl
@@ -952,6 +1009,18 @@ else () # NOT MSVC
     set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
     if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
       set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
+    endif()
+    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+      # the following warning types need to be suppressed with newer
+      # versions of g++, as they produce a lot of false positives.
+      # if the no-error directives are removed, a lot 3rdParty libraries
+      # such as date, fmt, and immer cannot be compiled anymore.
+      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
     endif()
   elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
@@ -1318,48 +1387,6 @@ add_subdirectory(arangod)
 
 if (USE_GOOGLE_TESTS)
   add_subdirectory(tests)
-endif ()
-
-add_dependencies(arangobench   zlibstatic)
-if (USE_ENTERPRISE)
-  add_dependencies(arangobackup  zlibstatic)
-endif ()
-add_dependencies(arangod       zlibstatic)
-add_dependencies(arangodump    zlibstatic)
-add_dependencies(arangoexport  zlibstatic)
-add_dependencies(arangoimport  zlibstatic)
-add_dependencies(arangorestore zlibstatic)
-add_dependencies(arangosh      zlibstatic)
-
-if (UNIX)
-  add_dependencies(arangobench   man)
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  man)
-  endif ()
-  add_dependencies(arangod       man)
-  add_dependencies(arangodump    man)
-  add_dependencies(arangoexport  man)
-  add_dependencies(arangoimport  man)
-  add_dependencies(arangorestore man)
-  add_dependencies(arangosh      man)
-endif ()
-
-if (NOT USE_PRECOMPILED_V8)
-  # all binaries depend on v8_build because it contains ICU as well
-  add_dependencies(arangobench   v8_build)
-
-  if (USE_ENTERPRISE)
-    add_dependencies(arangobackup  v8_build)
-  endif ()
-  add_dependencies(arangod       v8_build)
-  add_dependencies(arangodump    v8_build)
-  add_dependencies(arangoexport  v8_build)
-  add_dependencies(arangoimport  v8_build)
-  add_dependencies(arangorestore v8_build)
-  add_dependencies(arangosh      v8_build)
-  if (USE_GOOGLE_TESTS)
-    add_dependencies(arangodbtests v8_build)
-  endif ()
 endif ()
 
 add_custom_target(packages

@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Aql/EdgeConditionBuilder.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/TraversalExecutor.h"
 #include "Graph/Types/UniquenessLevel.h"
@@ -141,14 +141,20 @@ class TraversalNode : public virtual GraphNode {
       bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
@@ -251,8 +257,7 @@ class TraversalNode : public virtual GraphNode {
   void checkConditionsDefined() const;
 #endif
 
-  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
-                            bool withProperties) const;
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c) const;
 
   /// @brief vertex output variable
   Variable const* _pathOutVariable;

@@ -46,7 +46,8 @@ class ClusterTransactionState final : public TransactionState {
   [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
-  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] futures::Future<Result> beginTransaction(
+      transaction::Hints hints) override;
 
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<Result> commitTransaction(

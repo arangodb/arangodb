@@ -50,13 +50,13 @@ RestStatus RestSimpleQueryHandler::execute() {
   if (type == rest::RequestType::PUT) {
     if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_PATH) {
       // all query
-      return allDocuments();
+      return waitForFuture(allDocuments());
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_ALL_KEYS_PATH) {
       // all-keys query
-      return allDocumentKeys();
+      return waitForFuture(allDocumentKeys());
     } else if (prefix == RestVocbaseBaseHandler::SIMPLE_QUERY_BY_EXAMPLE) {
       // by-example query
-      return byExample();
+      return waitForFuture(byExample());
     }
   }
 
@@ -65,12 +65,12 @@ RestStatus RestSimpleQueryHandler::execute() {
   return RestStatus::DONE;
 }
 
-RestStatus RestSimpleQueryHandler::allDocuments() {
+futures::Future<RestStatus> RestSimpleQueryHandler::allDocuments() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   std::string collectionName;
@@ -86,7 +86,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -148,7 +148,7 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
   data.close();
 
   // now run the actual query and handle the result
-  return registerQueryOrCursor(
+  co_return co_await registerQueryOrCursor(
       data.slice(), transaction::OperationOriginREST{"fetching all documents"});
 }
 
@@ -156,12 +156,12 @@ RestStatus RestSimpleQueryHandler::allDocuments() {
 /// @brief return a cursor with all document keys from the collection
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestSimpleQueryHandler::allDocumentKeys() {
+futures::Future<RestStatus> RestSimpleQueryHandler::allDocumentKeys() {
   bool parseSuccess = false;
   VPackSlice const body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   std::string collectionName;
@@ -177,7 +177,7 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   if (collectionName.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(collectionName);
@@ -216,8 +216,9 @@ RestStatus RestSimpleQueryHandler::allDocumentKeys() {
   data.close();  // bindVars
   data.close();
 
-  return registerQueryOrCursor(data.slice(), transaction::OperationOriginREST{
-                                                 "fetching all document keys"});
+  co_return co_await registerQueryOrCursor(
+      data.slice(),
+      transaction::OperationOriginREST{"fetching all document keys"});
 }
 
 static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
@@ -259,17 +260,17 @@ static void buildExampleQuery(VPackBuilder& result, std::string const& cname,
 /// @brief return a cursor with all documents matching the example
 //////////////////////////////////////////////////////////////////////////////
 
-RestStatus RestSimpleQueryHandler::byExample() {
+futures::Future<RestStatus> RestSimpleQueryHandler::byExample() {
   bool parseSuccess = false;
   VPackSlice body = this->parseVPackBody(parseSuccess);
   if (!parseSuccess) {
     // error message generated in parseVPackBody
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   if (!body.isObject() || !body.get("example").isObject()) {
     generateError(ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   // velocypack will throw an exception for negative numbers
@@ -292,7 +293,7 @@ RestStatus RestSimpleQueryHandler::byExample() {
   if (cname.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_TYPE_ERROR,
                   "expecting string for <collection>");
-    return RestStatus::DONE;
+    co_return RestStatus::DONE;
   }
 
   auto col = _vocbase.lookupCollection(cname);
@@ -314,6 +315,6 @@ RestStatus RestSimpleQueryHandler::byExample() {
   data.add("count", VPackSlice::trueSlice());
   data.close();
 
-  return registerQueryOrCursor(
+  co_return co_await registerQueryOrCursor(
       data.slice(), transaction::OperationOriginREST{"querying by example"});
 }

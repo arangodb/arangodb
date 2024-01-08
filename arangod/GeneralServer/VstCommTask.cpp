@@ -203,7 +203,7 @@ bool VstCommTask<T>::processChunk(fuerte::vst::Chunk const& chunk) {
   }
 
   if (chunk.header.isFirst()) {
-    this->acquireStatistics(chunk.header.messageID())
+    this->acquireRequestStatistics(chunk.header.messageID())
         .SET_READ_START(TRI_microtime());
 
     // single chunk optimization
@@ -292,7 +292,7 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
     // error is handled below
   }
 
-  RequestStatistics::Item const& stat = this->statistics(messageId);
+  RequestStatistics::Item const& stat = this->requestStatistics(messageId);
   stat.SET_READ_END();
   stat.ADD_RECEIVED_BYTES(buffer.size());
 
@@ -567,7 +567,7 @@ void VstCommTask<T>::handleVstAuthRequest(VPackSlice header, uint64_t mId,
   // a forwarding, since we always forward with HTTP.
   if (_authMethod != AuthenticationMethod::NONE && _authToken.authenticated() &&
       _authToken.username().empty()) {
-    this->statistics(mId).SET_SUPERUSER();
+    this->requestStatistics(mId).SET_SUPERUSER();
   }
 
   if (_authToken.authenticated() || !this->_auth->isActive()) {

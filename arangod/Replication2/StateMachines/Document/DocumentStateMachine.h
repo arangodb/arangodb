@@ -91,7 +91,8 @@ struct DocumentFactory {
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
       transaction::IManager& transactionManager);
 
-  auto constructFollower(std::unique_ptr<DocumentCore> core)
+  auto constructFollower(std::unique_ptr<DocumentCore> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<DocumentFollowerState>;
 
   auto constructLeader(std::unique_ptr<DocumentCore> core)
@@ -112,6 +113,3 @@ extern template struct replicated_state::ReplicatedState<
     document::DocumentState>;
 
 }  // namespace arangodb::replication2::replicated_state
-
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"

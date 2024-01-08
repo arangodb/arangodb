@@ -23,12 +23,13 @@
 #pragma once
 
 #include <chrono>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Actor/HandlerBase.h"
 #include "Basics/TimeString.h"
 #include "Inspection/Status.h"
 #include "Inspection/Format.h"
 #include "Inspection/VPackWithErrorT.h"
+#include "Logger/LogMacros.h"
 #include "Pregel/DatabaseTypes.h"
 #include "Pregel/StatusMessages.h"
 #include "Pregel/StatusWriter/CollectionStatusWriter.h"
@@ -302,6 +303,7 @@ auto inspect(Inspector& f, StatusState& x) {
 
 template<typename Runtime>
 struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
+  using ActorPID = typename Runtime::ActorPID;
   auto updateStatusDocument() {
     statuswriter::CollectionStatusWriter cWriter{
         this->state->vocbaseGuard.database(), this->state->status->id.number};
@@ -495,21 +497,23 @@ struct StatusHandler : actor::HandlerBase<Runtime, StatusState> {
   }
 
   auto operator()(message::Cleanup& msg) -> std::unique_ptr<StatusState> {
-    this->finish();
+    this->finish(actor::ExitReason::kFinished);
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::UnknownMessage unknown)
+  auto operator()(actor::message::UnknownMessage<ActorPID> unknown)
       -> std::unique_ptr<StatusState> {
-    LOG_TOPIC("eb6f2", INFO, Logger::PREGEL) << fmt::format(
-        "Status Actor: Error - sent unknown message to {}", unknown.receiver);
+    LOG_TOPIC("eb6f2", INFO, Logger::PREGEL)
+        << fmt::format("Status Actor: Error - sent unknown message to {}",
+                       inspection::json(unknown.receiver));
     return std::move(this->state);
   }
 
-  auto operator()(actor::message::ActorNotFound notFound)
+  auto operator()(actor::message::ActorNotFound<ActorPID> notFound)
       -> std::unique_ptr<StatusState> {
-    LOG_TOPIC("e31f6", INFO, Logger::PREGEL) << fmt::format(
-        "Status Actor: Error - receiving actor {} not found", notFound.actor);
+    LOG_TOPIC("e31f6", INFO, Logger::PREGEL)
+        << fmt::format("Status Actor: Error - receiving actor {} not found",
+                       inspection::json(notFound.actor));
     return std::move(this->state);
   }
 

@@ -264,7 +264,7 @@ void RefactoredSingleServerEdgeCursor<
     AqlValueGuard guard(a, mustDestroy);
 
     AqlValueMaterializer materializer(&(ctx.trx().vpackOptions()));
-    VPackSlice slice = materializer.slice(a, false);
+    VPackSlice slice = materializer.slice(a);
     AstNode* evaluatedNode = ast->nodeFromVPack(slice, true);
 
     AstNode* tmp = _accessor->getCondition();
@@ -358,8 +358,8 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
           });
     } else {
       // fetch full documents
-      auto cb = IndexIterator::makeDocumentCallbackF([&](LocalDocumentId token,
-                                                         VPackSlice edgeDoc) {
+      auto cb = [&](LocalDocumentId token, aql::DocumentData&&,
+                    VPackSlice edgeDoc) {
         stats.incrScannedIndex(1);
 #ifdef USE_ENTERPRISE
         if (_trx->skipInaccessible()) {
@@ -384,7 +384,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
 
         callback(std::move(edgeToken), edgeDoc, cursorID);
         return true;
-      });
+      };
       cursor.all([&](LocalDocumentId token) {
         return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
       });

@@ -144,10 +144,12 @@ std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexStoredValues("storedValues");
+std::string const StaticStrings::IndexPrefixFields("prefixFields");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
 std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
+std::string const StaticStrings::IndexCreationError("creationError");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -169,6 +171,7 @@ std::string const StaticStrings::UseCache("useCache");
 std::string const StaticStrings::Parallelism("parallelism");
 std::string const StaticStrings::ForceOneShardAttributeValue(
     "forceOneShardAttributeValue");
+std::string const StaticStrings::JoinStrategyType("joinStrategyType");
 
 // HTTP headers
 std::string const StaticStrings::Accept("accept");
@@ -194,6 +197,7 @@ std::string const StaticStrings::Authorization("authorization");
 std::string const StaticStrings::BatchContentType(
     "application/x-arango-batchpart");
 std::string const StaticStrings::CacheControl("cache-control");
+std::string const StaticStrings::Chunked("chunked");
 std::string const StaticStrings::Close("Close");
 std::string const StaticStrings::ClusterCommSource("x-arango-source");
 std::string const StaticStrings::Code("code");
@@ -201,6 +205,7 @@ std::string const StaticStrings::Connection("connection");
 std::string const StaticStrings::ContentEncoding("content-encoding");
 std::string const StaticStrings::ContentLength("content-length");
 std::string const StaticStrings::ContentTypeHeader("content-type");
+std::string const StaticStrings::Cookie("cookie");
 std::string const StaticStrings::CorsMethods(
     "DELETE, GET, HEAD, OPTIONS, PATCH, POST, PUT");
 std::string const StaticStrings::Error("error");
@@ -403,6 +408,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
+std::string const StaticStrings::AqlFastPath("x-arango-fast-path");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");

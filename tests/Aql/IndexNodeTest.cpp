@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/IndexNode.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Cluster/ServerState.h"
@@ -101,7 +102,7 @@ TEST_F(IndexNodeTest, objectQuery) {
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"obj.a\", \"obj.b\", \"obj.c\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -182,7 +183,7 @@ TEST_F(IndexNodeTest, expansionQuery) {
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
       "\"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -236,7 +237,7 @@ TEST_F(IndexNodeTest, expansionIndexAndNotExpansionDocumentQuery) {
       "{\"type\": \"hash\", \"fields\": [\"tags.hop[*].foo.fo\", "
       "\"tags.hop[*].bar.br\", \"tags.hop[*].baz.bz\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -278,7 +279,7 @@ TEST_F(IndexNodeTest, lastExpansionQuery) {
   auto indexJson = arangodb::velocypack::Parser::fromJson(
       "{\"type\": \"hash\", \"fields\": [\"tags[*]\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
 
@@ -340,7 +341,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "{\"type\": \"hash\", \"id\": 2086177, \"fields\": [\"obj.a\", "
       "\"obj.b\", \"obj.c\"]}");
   auto createdIndex = false;
-  auto index = collection->createIndex(indexJson->slice(), createdIndex);
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
   ASSERT_TRUE(createdIndex);
   ASSERT_FALSE(!index);
   // auto jsonDocument = arangodb::velocypack::Parser::fromJson("{\"obj\":
@@ -447,7 +448,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "    \"name\" : \"7\""
       "  },"
       "  \"outVariable\" : {"
-      "    \"id\" : 0,"
+      "    \"id\" : 3,"
       "    \"name\" : \"d\""
       "  },"
       "  \"producesResult\" : true,"
@@ -464,7 +465,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  \"varInfoList\" : ["
       "    {"
       "      \"RegisterId\" : 3,"
-      "      \"VariableId\" : 0,"
+      "      \"VariableId\" : 3,"
       "      \"depth\" : 2"
       "    },"
       "    {"
@@ -485,7 +486,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       "  ],"
       "  \"varsUsedLaterStack\" : [ ["
       "    {"
-      "      \"id\" : 0,"
+      "      \"id\" : 3,"
       "      \"name\" : \"d\""
       "    },"
       "    {"
@@ -529,7 +530,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
     {
       auto vars = query->ast()->variables();
       for (auto const& v : {std::make_unique<arangodb::aql::Variable>(
-                                "d", 0, false, resourceMonitor),
+                                "d", 3, false, resourceMonitor),
                             std::make_unique<arangodb::aql::Variable>(
                                 "3", 4, false, resourceMonitor),
                             std::make_unique<arangodb::aql::Variable>(
@@ -565,36 +566,12 @@ TEST_F(IndexNodeTest, constructIndexNode) {
       {
         auto indNodeClone =
             dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
-                const_cast<arangodb::aql::ExecutionPlan*>(query->plan()), true,
-                false));
+                const_cast<arangodb::aql::ExecutionPlan*>(query->plan()),
+                true));
 
         EXPECT_EQ(indNode.getType(), indNodeClone->getType());
         EXPECT_EQ(indNode.outVariable(), indNodeClone->outVariable());
         EXPECT_EQ(indNode.plan(), indNodeClone->plan());
-        EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
-        EXPECT_EQ(indNode.isLateMaterialized(),
-                  indNodeClone->isLateMaterialized());
-
-        ASSERT_TRUE(indNodeClone->isLateMaterialized());
-      }
-
-      // with properties
-      {
-        auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
-            vocbase, arangodb::transaction::OperationOriginTestCase{});
-        auto queryClone = arangodb::aql::Query::create(
-            ctx, arangodb::aql::QueryString(std::string_view("RETURN 1")),
-            nullptr);
-        queryClone->prepareQuery();
-        indNode.invalidateVarUsage();
-        auto indNodeClone =
-            dynamic_cast<arangodb::aql::IndexNode*>(indNode.clone(
-                const_cast<arangodb::aql::ExecutionPlan*>(queryClone->plan()),
-                true, true));
-
-        EXPECT_EQ(indNode.getType(), indNodeClone->getType());
-        EXPECT_NE(indNode.outVariable(), indNodeClone->outVariable());
-        EXPECT_NE(indNode.plan(), indNodeClone->plan());
         EXPECT_EQ(indNode.vocbase(), indNodeClone->vocbase());
         EXPECT_EQ(indNode.isLateMaterialized(),
                   indNodeClone->isLateMaterialized());

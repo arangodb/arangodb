@@ -20,17 +20,24 @@
 ///
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
+#include "CollectionGroupSupervision.h"
+
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
-#include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/ParticipantsHealth.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+
+#include <velocypack/Slice.h>
+
 #include <random>
 
 using namespace arangodb;
@@ -157,9 +164,8 @@ auto createCollectionPlanSpec(
   }
   shardList.reserve(target.attributes.immutableAttributes.numberOfShards);
   std::generate_n(std::back_inserter(shardList),
-                  target.attributes.immutableAttributes.numberOfShards, [&] {
-                    return basics::StringUtils::concatT("s", uniqid.next());
-                  });
+                  target.attributes.immutableAttributes.numberOfShards,
+                  [&] { return ShardID{uniqid.next()}; });
 
   auto mapping = computeShardList(logs, shardSheaves, shardList);
   return ag::CollectionPlanSpecification{collection, std::move(shardList),
@@ -221,9 +227,8 @@ auto createCollectionGroupTarget(
     // If we have shadow collections we do not have any shards
     if (!targetCollection.immutableProperties.shadowCollections.has_value()) {
       std::generate_n(std::back_inserter(shardList),
-                      attributes.immutableAttributes.numberOfShards, [&] {
-                        return basics::StringUtils::concatT("s", uniqid.next());
-                      });
+                      attributes.immutableAttributes.numberOfShards,
+                      [&] { return ShardID{uniqid.next()}; });
 
       for (size_t k = 0; k < shardList.size(); ++k) {
         ResponsibleServerList serverids{};
@@ -294,6 +299,16 @@ auto pickBestServerToRemoveFromLog(
                    });
   return servers.front();
 }
+auto checkCollectionGroupAttributes(
+    ag::CollectionGroupTargetSpecification const& target,
+    ag::CollectionGroupPlanSpecification const& plan) -> Action {
+  if (target.attributes.mutableAttributes !=
+      plan.attributes.mutableAttributes) {
+    return UpdateCollectionGroupInPlan{target.id,
+                                       target.attributes.mutableAttributes};
+  }
+  return NoActionRequired{};
+}
 
 auto checkAssociatedReplicatedLogs(
     ag::CollectionGroupTargetSpecification const& target,
@@ -327,6 +342,12 @@ auto checkAssociatedReplicatedLogs(
     if (log.target.config != wantedConfig) {
       // we have to update this replicated log
       return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
+    }
+
+    for (auto const& p : log.target.participants) {
+      if (!health.contains(p.first)) {
+        return RemoveParticipantFromLog{log.target.id, p.first};
+      }
     }
 
     auto currentReplicationFactor = log.target.participants.size();
@@ -479,11 +500,10 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
           return RemoveCollectionIndexPlan{cid, it.sharedSlice()};
         }
         if (arangodb::basics::VelocyPackHelper::getBooleanValue(
-                idx, StaticStrings::IndexIsBuilding, false)) {
-          // Index is still Flagged as isBuilding. Let us test if it converged
-
-          // TODO: We do not yet implement errors that could appear during
-          // creation of a UniqueIndex
+                idx, StaticStrings::IndexIsBuilding, false) &&
+            !idx.hasKey(StaticStrings::IndexCreationError)) {
+          // Index is still Flagged as isBuilding, and has not yet reported an
+          // error. Let us test if it converged, or errored.
           auto const& currentCollection = group.currentCollections.find(cid);
           // Let us protect against Collection not created, although it should
           // be, as we are trying to add an index to it right now.
@@ -494,8 +514,20 @@ auto checkCollectionsOfGroup(CollectionGroup const& group,
               bool foundLocalIndex = false;
               for (auto const& index : shard.indexes) {
                 if (index.get(StaticStrings::IndexId).isEqualString(indexId)) {
-                  foundLocalIndex = true;
-                  break;
+                  if (index.get(StaticStrings::Error).isTrue()) {
+                    ErrorCode errorNum{
+                        basics::VelocyPackHelper::getNumericValue<int>(
+                            index.slice(), StaticStrings::ErrorNum,
+                            TRI_ERROR_INTERNAL.value())};
+                    auto errorMessage =
+                        basics::VelocyPackHelper::getStringValue(
+                            index.slice(), StaticStrings::ErrorMessage, "");
+                    Result res{errorNum, std::move(errorMessage)};
+                    return IndexErrorCurrent{cid, it.sharedSlice(), res};
+                  } else {
+                    foundLocalIndex = true;
+                    break;
+                  }
                 }
               }
               if (!foundLocalIndex) {
@@ -558,6 +590,11 @@ auto document::supervision::checkCollectionGroup(
   if (not group.plan.has_value()) {
     // create collection group in plan
     return createCollectionGroupTarget(database, group, uniqid, health);
+  }
+  // Check CollectionGroupAttributes
+  if (auto action = checkCollectionGroupAttributes(group.target, *group.plan);
+      not std::holds_alternative<NoActionRequired>(action)) {
+    return action;
   }
 
   // check replicated logs
@@ -701,10 +738,15 @@ struct TransactionBuilder {
             velocypack::serialize(builder, it.value);
           });
     }
-    // Special handling for Schema, which can be nullopt and should be removed
+    // Special handling for Schema, which can be nullopt, in which case if
+    // should be set to null.
+    // Note: we cannot _remove_ it, because the maintenance ignores properties
+    // that are not present in the plan.
     if (!action.spec.schema.has_value()) {
-      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
-          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+      tmp = std::move(tmp).set(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/schema"),
+          VPackSlice::nullSlice());
     }
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
@@ -774,6 +816,34 @@ struct TransactionBuilder {
               builder.add(key.copyString(), value);
             }
           }
+        });
+    env = std::move(tmp)
+              .inc("/arango/Plan/Version")
+              .precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/Collections/", database, "/", action.cid))
+              .end();
+  }
+
+  void operator()(IndexErrorCurrent const& action) {
+    auto tmp = env.write();
+    // Just overwrite all indexes as defined by the Action
+    tmp = std::move(tmp).replace(
+        basics::StringUtils::concatT("/arango/Plan/Collections/", database, "/",
+                                     action.cid, "/indexes"),
+        [&](VPackBuilder& builder) {
+          // Old value, take from the Action
+          builder.add(action.index.slice());
+        },
+        [&](VPackBuilder& builder) {
+          // New value, take everything from the action, but add the error field
+          // Note: We keep the isBuildingFlag on purpose. This way the index
+          // stays invisible for usage.
+          TRI_ASSERT(action.index.slice().isObject());
+          VPackObjectBuilder guard{&builder};
+          builder.add(VPackObjectIterator(action.index.slice()));
+          builder.add(VPackValue(StaticStrings::IndexCreationError));
+          velocypack::serialize(builder, action.error);
         });
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
@@ -859,6 +929,22 @@ struct TransactionBuilder {
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .end();
+  }
+
+  void operator()(UpdateCollectionGroupInPlan const& action) {
+    auto write = env.write().emplace_object(
+        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
+                                     "/", action.id.id(),
+                                     "/attributes/mutable"),
+        [&](VPackBuilder& builder) {
+          velocypack::serialize(builder, action.spec);
+        });
+    env = write.precs()
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Target/CollectionGroups/", database, "/", gid.id()))
+              .isNotEmpty(basics::StringUtils::concatT(
+                  "/arango/Plan/CollectionGroups/", database, "/", gid.id()))
               .end();
   }
 

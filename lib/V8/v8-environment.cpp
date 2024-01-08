@@ -21,6 +21,10 @@
 /// @author Wilfried Goesgens
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 #include <cstdint>
@@ -273,7 +277,6 @@ void TRI_InitV8Env(v8::Isolate* isolate, v8::Handle<v8::Context> context) {
   ft->SetClassName(TRI_V8_ASCII_STRING(isolate, "ENV"));
 
   rt = ft->InstanceTemplate();
-  // rt->SetInternalFieldCount(3);
 
   rt->SetHandler(v8::NamedPropertyHandlerConfiguration(
       EnvGetter, EnvSetter, EnvQuery, EnvDeleter, EnvEnumerator,

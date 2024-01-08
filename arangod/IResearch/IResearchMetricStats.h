@@ -57,9 +57,14 @@ class MetricStats : public metrics::Guard<IResearchDataStore::Stats> {
     TRI_ASSERT(start != std::string_view::npos);
     start += kShard.size();
     TRI_ASSERT(start < labels.size());
-    std::string /*TODO(MBkkt) Fix cluster info interface*/ shardId{
+    std::string /*TODO(MBkkt) Fix cluster info interface*/ shardName{
         labels.substr(start, labels.size() - start - 1)};
-    auto r = ci.getResponsibleServer(shardId);
+    auto maybeShardID = ShardID::shardIdFromString(shardName);
+    if (maybeShardID.fail()) {
+      return true;  // This is equivalent to the code below, if we could not
+                    // parse shard id, we should skip this shard
+    }
+    auto r = ci.getResponsibleServer(maybeShardID.get());
     if (r->empty()) {
       return true;  // TODO(MBkkt) We should fix cluster info :(
     }

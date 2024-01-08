@@ -72,8 +72,7 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, double defaultWeight,
-      std::string weightAttribute, transaction::Methods* trx,
-      arangodb::aql::QueryContext& query,
+      std::string weightAttribute, arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       graph::ClusterBaseProviderOptions&& clusterBaseProviderOptions,
@@ -92,8 +91,7 @@ class TraversalExecutorInfos {
       traverser::TraverserOptions::UniquenessLevel vertexUniqueness,
       traverser::TraverserOptions::UniquenessLevel edgeUniqueness,
       traverser::TraverserOptions::Order order, double defaultWeight,
-      std::string weightAttribute, transaction::Methods* trx,
-      arangodb::aql::QueryContext& query,
+      std::string weightAttribute, arangodb::aql::QueryContext& query,
       arangodb::graph::PathValidatorOptions&& pathValidatorOptions,
       arangodb::graph::OneSidedEnumeratorOptions&& enumeratorOptions,
       graph::SingleServerBaseProviderOptions&& singleServerBaseProviderOptions,
@@ -180,12 +178,12 @@ class TraversalExecutorInfos {
   traverser::TraverserOptions::Order _order;
   double _defaultWeight;
   std::string _weightAttribute;
-  transaction::Methods* _trx;
   arangodb::aql::QueryContext& _query;
+  transaction::Methods _trx;
 };
 
 /**
- * @brief Implementation of Traversal Node
+ * @brief Implementation of traversal executor
  */
 class TraversalExecutor {
  public:
@@ -217,7 +215,6 @@ class TraversalExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
-  // NEW (refactor)
   auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
 
  private:
@@ -228,7 +225,7 @@ class TraversalExecutor {
   Ast _ast;
   InputAqlItemRow _inputRow;
 
-  /// @brief the refactored finder variant.
+  /// @brief the finder variant.
   arangodb::graph::TraversalEnumerator* _traversalEnumerator;
 };
 

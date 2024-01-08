@@ -45,11 +45,12 @@ using namespace arangodb;
 using namespace arangodb::basics;
 
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
-                           std::unique_ptr<basics::StringBuffer> buffer)
+                           std::unique_ptr<basics::StringBuffer> buffer,
+                           rest::ResponseCompressionType rct)
     : GeneralResponse(code, mid),
       _body(std::move(buffer)),
       _bodySize(0),
-      _allowCompression(false) {
+      _allowCompression(rct) {
   _contentType = ContentType::TEXT;
 
   if (!_body) {
@@ -139,6 +140,18 @@ size_t HttpResponse::bodySize() const {
   }
   TRI_ASSERT(_body != nullptr);
   return _body->length();
+}
+
+void HttpResponse::setAllowCompression(
+    rest::ResponseCompressionType rct) noexcept {
+  if (_allowCompression == rest::ResponseCompressionType::kUnset) {
+    _allowCompression = rct;
+  }
+}
+
+rest::ResponseCompressionType HttpResponse::compressionAllowed()
+    const noexcept {
+  return _allowCompression;
 }
 
 void HttpResponse::writeHeader(StringBuffer* output) {
@@ -415,4 +428,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
 
     headResponse(static_cast<size_t>(sink.length()));
   }
+}
+
+ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
+  return _body->zlibDeflate(onlyIfSmaller);
+}
+
+ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
+  return _body->gzipCompress(onlyIfSmaller);
 }

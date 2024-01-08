@@ -23,8 +23,11 @@
 
 #include "FileWriterImpl.h"
 
-#include <fcntl.h>
 #include <cstring>
+#ifndef _WIN32
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 #include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"

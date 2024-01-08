@@ -752,14 +752,14 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 }
 }  // namespace
 
-bool RocksDBBuilderIndex::Locker::lock() {
+futures::Future<bool> RocksDBBuilderIndex::Locker::lock() {
   if (!_locked) {
-    if (_collection->lockWrite() != TRI_ERROR_NO_ERROR) {
-      return false;
+    if (co_await _collection->lockWrite() != TRI_ERROR_NO_ERROR) {
+      co_return false;
     }
     _locked = true;
   }
-  return true;
+  co_return true;
 }
 
 void RocksDBBuilderIndex::Locker::unlock() {
@@ -770,7 +770,7 @@ void RocksDBBuilderIndex::Locker::unlock() {
 }
 
 // Background index filler task
-Result RocksDBBuilderIndex::fillIndexBackground(
+futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
     Locker& locker,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(locker.isLocked());
@@ -847,7 +847,7 @@ Result RocksDBBuilderIndex::fillIndexBackground(
   }
 
   if (res.fail()) {
-    return res;
+    co_return res;
   }
 
   auto reportProgress = [this](uint64_t docsProcessed) {
@@ -887,14 +887,14 @@ Result RocksDBBuilderIndex::fillIndexBackground(
     }
 
     if (res.fail() && !res.is(TRI_ERROR_ARANGO_TRY_AGAIN)) {
-      return res;
+      co_return res;
     }
 
     scanFrom = lastScanned;
   } while (maxCatchups-- > 0 && numScanned > 5000);
 
-  if (!locker.lock()) {  // acquire exclusive collection lock
-    return res.reset(TRI_ERROR_LOCK_TIMEOUT);
+  if (!co_await locker.lock()) {  // acquire exclusive collection lock
+    co_return res.reset(TRI_ERROR_LOCK_TIMEOUT);
   }
 
   // Step 3. Scan the WAL for documents with a lock
@@ -920,5 +920,5 @@ Result RocksDBBuilderIndex::fillIndexBackground(
                     *lowerBoundTracker);
   }
 
-  return res;
+  co_return res;
 }

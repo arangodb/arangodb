@@ -117,9 +117,6 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
                      slice.typeName()));
   }
 
-  // we only have 2 different keys to check. using an std::map requires
-  // dynamic memory allocation and would be wasteful. instead, use a simple
-  // std::array here to get rid of any allocations
   auto expectedPropertiesFound =
       std::array<std::pair<std::string_view, bool>, 2>{
           {{StaticStrings::AqlCallListSpecific, false},
@@ -171,7 +168,8 @@ auto AqlCallList::fromVelocyPack(VPackSlice slice) -> ResultT<AqlCallList> {
 
   AqlCallList result{AqlCall{}};
 
-  for (auto it : velocypack::ObjectIterator(slice)) {
+  for (auto it :
+       velocypack::ObjectIterator(slice, /*useSequentialIteration*/ true)) {
     auto key = it.key.stringView();
 
     if (auto propIt = std::find_if(

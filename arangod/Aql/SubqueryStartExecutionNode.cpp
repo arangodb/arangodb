@@ -81,15 +81,14 @@ std::unique_ptr<ExecutionBlock> SubqueryStartNode::createBlock(
 
   // On purpose exclude the _subqueryOutVariable
   return std::make_unique<ExecutionBlockImpl<SubqueryStartExecutor>>(
-      &engine, this, registerInfos, RegisterInfos{registerInfos});
+      &engine, this, registerInfos, registerInfos);
 }
 
 ExecutionNode* SubqueryStartNode::clone(ExecutionPlan* plan,
-                                        bool withDependencies,
-                                        bool withProperties) const {
+                                        bool withDependencies) const {
   // On purpose exclude the _subqueryOutVariable
-  auto c = std::make_unique<SubqueryStartNode>(plan, _id, nullptr);
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::make_unique<SubqueryStartNode>(plan, _id, nullptr),
+                     withDependencies);
 }
 
 bool SubqueryStartNode::isEqualTo(ExecutionNode const& other) const {

@@ -53,6 +53,7 @@ TEST_F(
   auto tid = TransactionId{6};
   auto op = createDocumentOperation(TRI_VOC_DOCUMENT_OPERATION_UPDATE, tid);
 
+  // Create transaction for the first time.
   EXPECT_CALL(*handlersFactoryMock,
               createTransaction(_, tid, shardId, AccessMode::Type::WRITE))
       .Times(1);
@@ -61,7 +62,7 @@ TEST_F(
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
   EXPECT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
 
-  // Use an existing entry and expect the transaction to be reused
+  // Use an existing transaction ID and expect the transaction to be reused.
   EXPECT_CALL(*handlersFactoryMock, createTransaction(_, _, _, _)).Times(0);
   res = transactionHandler.applyEntry(op);
   EXPECT_TRUE(res.ok()) << res;

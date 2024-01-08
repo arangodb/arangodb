@@ -1,5 +1,8 @@
-import { Button, FormLabel, Input, Stack } from "@chakra-ui/react";
+import { Button, Stack } from "@chakra-ui/react";
+import { Form, Formik } from "formik";
 import React from "react";
+import * as Yup from "yup";
+import { InputControl } from "../../../components/form/InputControl";
 import {
   Modal,
   ModalBody,
@@ -7,9 +10,18 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { useQueryContext } from "../QueryContextProvider";
+import { QueryType } from "./useFetchUserSavedQueries";
 
+const getQueryExists = ({
+  savedQueries,
+  queryName
+}: {
+  savedQueries: QueryType[] | undefined;
+  queryName: string;
+}) => {
+  return !!savedQueries?.some(query => query.name === queryName);
+};
 export const SaveAsModal = () => {
-  const [newQueryName, setNewQueryName] = React.useState<string>("");
   const {
     onSaveAs,
     onSave,
@@ -18,10 +30,11 @@ export const SaveAsModal = () => {
     isSaveAsModalOpen,
     onCloseSaveAsModal
   } = useQueryContext();
-  const queryExists = !!savedQueries?.find(
-    query => query.name === newQueryName
-  );
-  const handleSave = async () => {
+  const handleSave = async (newQueryName: string) => {
+    const queryExists = getQueryExists({
+      savedQueries,
+      queryName: newQueryName
+    });
     if (queryExists) {
       await onSave(newQueryName);
       setCurrentQueryName(newQueryName);
@@ -34,30 +47,52 @@ export const SaveAsModal = () => {
   };
   return (
     <Modal isOpen={isSaveAsModalOpen} onClose={onCloseSaveAsModal}>
-      <ModalHeader>Save Query</ModalHeader>
-      <ModalBody>
-        <FormLabel htmlFor="newQueryName">Query Name</FormLabel>
-        <Input
-          id="newQueryName"
-          onChange={e => {
-            setNewQueryName(e.target.value);
-          }}
-        />
-      </ModalBody>
-      <ModalFooter>
-        <Stack direction="row">
-          <Button colorScheme="gray" onClick={() => onCloseSaveAsModal()}>
-            Cancel
-          </Button>
-          <Button
-            isDisabled={newQueryName === ""}
-            colorScheme="green"
-            onClick={handleSave}
-          >
-            {queryExists ? "Update" : "Save"}
-          </Button>
-        </Stack>
-      </ModalFooter>
+      <Formik
+        onSubmit={values => handleSave(values.newQueryName)}
+        initialValues={{
+          newQueryName: ""
+        }}
+        validationSchema={Yup.object().shape({
+          newQueryName: Yup.string()
+            .required("Name is required")
+            .matches(
+              /^(\s*[a-zA-Z0-9\-._]+\s*)+$/,
+              'Only characters, numbers and ".", "_", "-" symbols are allowed'
+            )
+        })}
+      >
+        {({ values: { newQueryName } }) => {
+          const queryExists = getQueryExists({
+            savedQueries,
+            queryName: newQueryName
+          });
+          return (
+            <Form>
+              <ModalHeader>Save Query</ModalHeader>
+              <ModalBody>
+                <InputControl name="newQueryName" />
+              </ModalBody>
+              <ModalFooter>
+                <Stack direction="row">
+                  <Button
+                    colorScheme="gray"
+                    onClick={() => onCloseSaveAsModal()}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    isDisabled={newQueryName === ""}
+                    colorScheme="green"
+                  >
+                    {queryExists ? "Update" : "Save"}
+                  </Button>
+                </Stack>
+              </ModalFooter>
+            </Form>
+          );
+        }}
+      </Formik>
     </Modal>
   );
 };

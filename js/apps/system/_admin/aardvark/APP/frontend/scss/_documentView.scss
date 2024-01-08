@@ -80,15 +80,15 @@
   }
 
   .document-bold-font {
-    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
-    font-size: 11pt;
+    font-family: var(--mono-font-family);
+    font-size: 14px;
     min-width: 55px;
   }
 
   .document-thin-font {
     color: $c-positive;
-    font-family: droid sans mono, monospace, courier new, courier, sans-serif;
-    font-size: 11pt;
+    font-family: var(--mono-font-family);
+    font-size: 14px;
   }
 
   .document-type-container {

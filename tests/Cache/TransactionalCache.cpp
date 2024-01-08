@@ -202,7 +202,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   auto cache = manager.createCache<BinaryKeyHasher>(CacheType::Transactional,
                                                     false, cacheLimit);
 
-  Transaction* tx = manager.beginTransaction(false);
+  Transaction tx;
+  manager.beginTransaction(tx, false);
 
   for (std::uint64_t i = 0; i < 1024; i++) {
     CachedValue* value = CachedValue::construct(&i, sizeof(std::uint64_t), &i,
@@ -240,7 +241,7 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   }
 
   manager.endTransaction(tx);
-  tx = manager.beginTransaction(false);
+  manager.beginTransaction(tx, false);
 
   std::uint64_t reinserted = 0;
   for (std::uint64_t i = 512; i < 1024; i++) {
@@ -316,7 +317,8 @@ TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   std::atomic<std::uint64_t> missCount(0);
   auto worker = [&manager, &cache, initialInserts, operationCount, &hitCount,
                  &missCount](std::uint64_t lower, std::uint64_t upper) -> void {
-    Transaction* tx = manager.beginTransaction(false);
+    Transaction tx;
+    manager.beginTransaction(tx, false);
     // fill with some initial data
     for (std::uint64_t i = 0; i < initialInserts; i++) {
       std::uint64_t item = lower + i;

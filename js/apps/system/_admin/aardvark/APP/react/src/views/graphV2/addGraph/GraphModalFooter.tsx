@@ -14,10 +14,10 @@ export const GraphModalFooter = ({ onClose }: { onClose: () => void }) => {
         {mode === "edit" && (
           <EditGraphButtons graph={initialGraph} onClose={onClose} />
         )}
-        <Button onClick={onClose} colorScheme="gray">
+        <Button size="sm" onClick={onClose} colorScheme="gray">
           Cancel
         </Button>
-        <Button colorScheme="blue" type="submit" isLoading={isSubmitting}>
+        <Button size="sm" colorScheme="green" type="submit" isLoading={isSubmitting}>
           {mode === "add" ? "Create" : "Save"}
         </Button>
       </Stack>

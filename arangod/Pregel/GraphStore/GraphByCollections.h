@@ -36,8 +36,8 @@ struct GraphByCollections {
       edgeCollectionRestrictions;
   std::string shardKeyAttribute;
 
-  [[nodiscard]] auto isRestricted(ShardID vertexCollection,
-                                  ShardID edgeCollection) const -> bool {
+  [[nodiscard]] auto isRestricted(PregelShardID vertexCollection,
+                                  PregelShardID edgeCollection) const -> bool {
     auto maybeEdgeRestrictions =
         edgeCollectionRestrictions.find(vertexCollection);
 

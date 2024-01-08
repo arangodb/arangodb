@@ -91,11 +91,6 @@ WindowsServiceFeature::WindowsServiceFeature(Server& server)
     std::cout << "failed to open windows event log!" << std::endl;
     exit(EXIT_FAILURE);
   }
-  //#if 0
-  /// this even is slower than valgrind:
-  //  _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF |
-  //  _CRTDBG_CHECK_ALWAYS_DF );
-  //#endif
 }
 
 // So we have a valid minidump area during startup:

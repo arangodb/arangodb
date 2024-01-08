@@ -229,7 +229,8 @@ struct DefaultFactory {
       -> std::shared_ptr<LeaderType> {
     return std::make_shared<LeaderType>(std::move(core));
   }
-  auto constructFollower(std::unique_ptr<CoreType> core)
+  auto constructFollower(std::unique_ptr<CoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<FollowerType> {
     return std::make_shared<FollowerType>(std::move(core));
   }
@@ -261,7 +262,8 @@ struct RecordingFactory {
     leaders.push_back(ptr);
     return ptr;
   }
-  auto constructFollower(std::unique_ptr<CoreType> core)
+  auto constructFollower(std::unique_ptr<CoreType> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<FollowerType> {
     auto ptr = std::make_shared<FollowerType>(std::move(core));
     followers.push_back(ptr);

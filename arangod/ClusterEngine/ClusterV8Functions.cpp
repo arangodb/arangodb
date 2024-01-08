@@ -21,8 +21,9 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ApplicationFeatures/ApplicationServer.h"
 #include "ClusterV8Functions.h"
+
+#include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Functions.h"
 #include "Basics/Exceptions.h"
 #include "Basics/Result.h"
@@ -189,7 +190,7 @@ static void JS_WaitForEstimatorSync(
 }
 
 void ClusterV8Functions::registerResources() {
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);
 
   TRI_GET_SERVER_GLOBALS(ArangodServer);

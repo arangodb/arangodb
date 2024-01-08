@@ -104,7 +104,8 @@ class Index {
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX,
+    TRI_IDX_TYPE_MDI_INDEX,
+    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
     TRI_IDX_TYPE_INVERTED_INDEX
   };
 
@@ -189,26 +190,6 @@ class Index {
     return result;
   }
 
-  /// @brief return the index fields names incl. tracking the resources
-  /// using a resourceMonitor. This needed to be implemented next to the
-  /// method above as we do not have always a resourceMonitor in place
-  /// when acquiring the index fields names.
-  std::vector<MonitoredStringVector> trackedFieldNames(
-      arangodb::ResourceMonitor& resourceMonitor) const {
-    std::vector<MonitoredStringVector> result;
-    result.reserve(_fields.size());
-
-    for (auto const& it : _fields) {
-      MonitoredStringVector parts{resourceMonitor};
-      parts.reserve(it.size());
-      for (auto const& it2 : it) {
-        parts.emplace_back(it2.name);
-      }
-      result.emplace_back(std::move(parts));
-    }
-    return result;
-  }
-
   /// @brief whether or not the ith attribute is expanded (somewhere)
   bool isAttributeExpanded(size_t i) const {
     if (i >= _fields.size()) {
@@ -243,6 +224,28 @@ class Index {
       return basics::AttributeName::isIdentical(attribute, vec_id, true);
     }
     return false;
+  }
+
+  /// @brief whether or not the given attribute vector matches any of the index
+  /// fields In case it does, the position will be returned as well.
+  std::pair<bool, size_t> attributeMatchesWithPos(
+      std::vector<basics::AttributeName> const& attribute,
+      bool isPrimary = false) const {
+    size_t pos = 0;
+    for (auto const& it : _fields) {
+      if (basics::AttributeName::isIdentical(attribute, it, true)) {
+        return {true, pos};
+      }
+      pos++;
+    }
+    if (isPrimary) {
+      static std::vector<basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return basics::AttributeName::isIdentical(attribute, vec_id, true)
+                 ? std::pair<bool, size_t>(true, pos)
+                 : std::pair<bool, size_t>(false, -1);
+    }
+    return {false, -1};
   }
 
   /// @brief whether or not any attribute is expanded

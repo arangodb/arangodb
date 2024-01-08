@@ -48,7 +48,7 @@ ModifierOperationType RemoveModifierCompletion::accumulate(
     CollectionNameResolver const& collectionNameResolver{
         _infos._query.resolver()};
 
-    std::string key{}, rev{};
+    std::string key, rev;
     Result result = getKeyAndRevision(collectionNameResolver, inDoc, key, rev);
     if (!result.ok()) {
       if (!_infos._ignoreErrors) {

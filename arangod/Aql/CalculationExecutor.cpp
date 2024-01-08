@@ -34,7 +34,10 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+
+#ifdef USE_V8
 #include "V8/v8-globals.h"
+#endif
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -50,12 +53,12 @@ CalculationExecutorInfos::CalculationExecutorInfos(
 template<CalculationType calculationType>
 CalculationExecutor<calculationType>::CalculationExecutor(
     Fetcher& fetcher, CalculationExecutorInfos& infos)
-    : _trx(infos.getQuery().newTrxContext()),
-      _infos(infos),
+    : _infos(infos),
+      _trx(_infos.getQuery().newTrxContext()),
       _fetcher(fetcher),
       _currentRow(InputAqlItemRow{CreateInvalidInputRowHint{}}),
       _rowState(ExecutionState::HASMORE),
-      _hasEnteredContext(false) {}
+      _hasEnteredExecutor(false) {}
 
 template<CalculationType calculationType>
 CalculationExecutor<calculationType>::~CalculationExecutor() = default;
@@ -96,9 +99,10 @@ CalculationExecutor<calculationType>::produceRows(
     doEvaluation(input, output);
     output.advanceRow();
 
-    // _hasEnteredContext implies the query has entered the context, but not
+    // _hasEnteredExecutor implies the query has entered the context, but not
     // the other way round because it may be owned by exterior.
-    TRI_ASSERT(!_hasEnteredContext || _infos.getQuery().hasEnteredV8Context());
+    TRI_ASSERT(!_hasEnteredExecutor ||
+               _infos.getQuery().hasEnteredV8Executor());
 
     // The following only affects V8Conditions. If we should exit the V8 context
     // between blocks, because we might have to wait for client or upstream,
@@ -107,20 +111,21 @@ CalculationExecutor<calculationType>::produceRows(
     // as we only leave the context open when there are rows left in the current
     // block.
     // Note that _infos.getQuery().hasEnteredContext() may be true, even if
-    // _hasEnteredContext is false, if (and only if) the query context is owned
+    // _hasEnteredExecutor is false, if (and only if) the query context is owned
     // by exterior.
-    TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredContext ||
+    TRI_ASSERT(!shouldExitContextBetweenBlocks() || !_hasEnteredExecutor ||
                state == ExecutorState::HASMORE);
   }
 
   return {inputRange.upstreamState(), NoStats{}, output.getClientCall()};
 }
 
+#ifdef USE_V8
 template<CalculationType calculationType>
 template<CalculationType U, typename>
 void CalculationExecutor<calculationType>::enterContext() {
-  _infos.getQuery().enterV8Context();
-  _hasEnteredContext = true;
+  _infos.getQuery().enterV8Executor();
+  _hasEnteredExecutor = true;
 }
 
 template<CalculationType calculationType>
@@ -129,10 +134,11 @@ void CalculationExecutor<calculationType>::exitContext() noexcept {
   if (shouldExitContextBetweenBlocks()) {
     // must invalidate the expression now as we might be called from
     // different threads
-    _infos.getQuery().exitV8Context();
-    _hasEnteredContext = false;
+    _infos.getQuery().exitV8Executor();
+    _hasEnteredExecutor = false;
   }
 }
+#endif
 
 template<CalculationType calculationType>
 bool CalculationExecutor<calculationType>::shouldExitContextBetweenBlocks()
@@ -183,6 +189,7 @@ void CalculationExecutor<CalculationType::Condition>::doEvaluation(
   output.moveValueInto(_infos.getOutputRegisterId(), input, &guard);
 }
 
+#ifdef USE_V8
 template<>
 void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     InputAqlItemRow& input, OutputAqlItemRow& output) {
@@ -194,12 +201,12 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
   // upstream might send us to sleep, it is expected that we enter the context
   // exactly on the first row of every block.
   TRI_ASSERT(!shouldExitContextBetweenBlocks() ||
-             _hasEnteredContext == !input.isFirstDataRowInBlock());
+             _hasEnteredExecutor == !input.isFirstDataRowInBlock());
 
   enterContext();
   auto contextGuard = scopeGuard([this]() noexcept { exitContext(); });
 
-  ISOLATE;
+  v8::Isolate* isolate = v8::Isolate::GetCurrent();
   v8::HandleScope scope(isolate);  // do not delete this!
   // execute the expression
   ExecutorExpressionContext ctx(_trx, _infos.getQuery(),
@@ -224,8 +231,11 @@ void CalculationExecutor<CalculationType::V8Condition>::doEvaluation(
     contextGuard.cancel();
   }
 }
+#endif
 
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Condition>;
+#ifdef USE_V8
 template class ::arangodb::aql::CalculationExecutor<
     CalculationType::V8Condition>;
+#endif
 template class ::arangodb::aql::CalculationExecutor<CalculationType::Reference>;

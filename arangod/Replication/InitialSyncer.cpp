@@ -44,7 +44,12 @@ InitialSyncer::~InitialSyncer() {
 
   try {
     if (!_state.isChildSyncer) {
-      _batch.finish(_state.connection, _progress, _state.syncerId);
+      // we cannot pass _progress here because it refers to
+      // some properties of the derived class (DatabaseInitialSyncer).
+      // instead we create our own progress info object here
+      // that does nothing.
+      replutils::ProgressInfo progress([](std::string const&) {});
+      _batch.finish(_state.connection, progress, _state.syncerId);
     }
   } catch (...) {
   }

@@ -25,21 +25,19 @@
 #pragma once
 
 #include "Aql/ExecutionNode.h"
+#include "Aql/VarInfoMap.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
-#include "Aql/VarInfoMap.h"
 
 #include <memory>
 #include <stack>
 #include <vector>
 
-namespace arangodb {
-namespace velocypack {
+namespace arangodb::velocypack {
 class Builder;
 class Slice;
-}  // namespace velocypack
-}  // namespace arangodb
+}  // namespace arangodb::velocypack
 
 namespace arangodb::aql {
 

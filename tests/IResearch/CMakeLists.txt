@@ -94,10 +94,13 @@ target_link_libraries(arangodbtests-iresearch
   arango_agency
   arango_cluster_engine
   arango_rocksdb
-  arango_v8server
   arangoserver
   boost_boost
 )
+
+if (USE_V8)
+  target_link_libraries(arangodbtests-iresearch arango_v8server)
+endif ()
 
 target_include_directories(arangodbtests-iresearch PRIVATE
   ${PROJECT_SOURCE_DIR}/arangod
@@ -108,9 +111,14 @@ target_include_directories(arangodbtests-iresearch PRIVATE
 # add these includes as system includes because otherwise
 # the compiler will emit warnings for fakeit.hpp
 target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
-  ${V8_INTERNAL_INCLUDE_DIR}
   ${CMAKE_SOURCE_DIR}/3rdParty/fakeit-gtest
 )
+
+if (USE_V8) 
+  target_include_directories(arangodbtests-iresearch SYSTEM PRIVATE
+    ${V8_INTERNAL_INCLUDE_DIR})
+endif ()
+
 
 target_link_libraries(arangodbtests-iresearch v8_interface)
 

@@ -3192,7 +3192,7 @@ class QueryNumericTermSearch : public QueryNumericTerm {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     createIndex(1);

@@ -45,7 +45,7 @@ class MultiGetContext {
 
   RocksDBTransactionMethods* methods{};
   StorageSnapshot const* snapshot{};
-  using ValueType = std::unique_ptr<std::string>;  // null mean was error
+  using ValueType = aql::DocumentData;  // null mean was error
   std::vector<ValueType> values;
 
   template<typename Func>
@@ -58,15 +58,14 @@ class MultiGetContext {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     auto* physical = dynamic_cast<RocksDBMetaCollection*>(base);
     if (ADB_UNLIKELY(physical == nullptr)) {
-      base->lookup(&trx, id,
-                   IndexIterator::makeDocumentCallbackF(
-                       [&](LocalDocumentId, VPackSlice slice) {
-                         values[_global] =
-                             std::make_unique<std::string>(std::string_view{
-                                 slice.startAs<char>(), slice.byteSize()});
-                         return true;
-                       }),
-                   {.readCache = false, .fillCache = false}, snapshot);
+      base->lookup(
+          &trx, id,
+          [&](LocalDocumentId, ValueType&&, VPackSlice doc) {
+            values[_global] = std::make_unique<std::string>(
+                std::string_view{doc.startAs<char>(), doc.byteSize()});
+            return true;
+          },
+          {.readCache = false, .fillCache = false}, snapshot);
       return _global++;
     }
 #else

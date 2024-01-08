@@ -84,11 +84,13 @@ DependencyProxy<blockPassthrough>::executeForDependency(
     THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
   }
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (skipped.nothingSkipped() && block == nullptr) {
     // We're either waiting or Done
     TRI_ASSERT(state == ExecutionState::DONE ||
                state == ExecutionState::WAITING);
   }
+#endif
   return {state, skipped, std::move(block)};
 }
 
@@ -117,19 +119,19 @@ void DependencyProxy<blockPassthrough>::reset() {
 }
 
 template<BlockPassthrough blockPassthrough>
-ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() {
+ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlock() const {
   return upstreamBlockForDependency(_currentDependency);
 }
 
 template<BlockPassthrough blockPassthrough>
 ExecutionBlock& DependencyProxy<blockPassthrough>::upstreamBlockForDependency(
-    size_t index) {
+    size_t index) const {
   TRI_ASSERT(_dependencies.size() > index);
   return *_dependencies[index];
 }
 
 template<BlockPassthrough blockPassthrough>
-bool DependencyProxy<blockPassthrough>::advanceDependency() {
+bool DependencyProxy<blockPassthrough>::advanceDependency() noexcept {
   if (_currentDependency + 1 >= _dependencies.size()) {
     return false;
   }

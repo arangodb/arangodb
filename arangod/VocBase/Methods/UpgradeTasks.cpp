@@ -88,8 +88,9 @@ arangodb::Result recreateGeoIndex(TRI_vocbase_t& vocbase,
   }
 
   bool created = false;
-  auto newIndex = collection.getPhysical()->createIndex(
-      newDesc.slice(), /*restore*/ true, created);
+  auto newIndex = collection.getPhysical()
+                      ->createIndex(newDesc.slice(), /*restore*/ true, created)
+                      .get();
 
   if (!created) {
     res.reset(TRI_ERROR_INTERNAL);
@@ -363,7 +364,8 @@ Result createIndex(
             "Collection " + name + " not found"};
   }
   return methods::Indexes::createIndex(*(*colIt), type, fields, unique, sparse,
-                                       false /*estimates*/);
+                                       false /*estimates*/)
+      .get();
 }
 
 Result createSystemStatisticsIndices(

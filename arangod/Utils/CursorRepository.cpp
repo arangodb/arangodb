@@ -26,12 +26,14 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCursor.h"
+#include "Aql/QueryResult.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Metrics/Gauge.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/ticks.h"
@@ -55,9 +57,13 @@ using namespace arangodb;
 /// @brief create a cursor repository
 ////////////////////////////////////////////////////////////////////////////////
 
-CursorRepository::CursorRepository(TRI_vocbase_t& vocbase)
-    : _vocbase(vocbase), _lock(), _cursors(), _softShutdownOngoing(nullptr) {
-  _cursors.reserve(64);
+CursorRepository::CursorRepository(
+    TRI_vocbase_t& vocbase, metrics::Gauge<uint64_t>* numberOfCursorsMetric,
+    metrics::Gauge<uint64_t>* memoryUsageMetric)
+    : _vocbase(vocbase),
+      _softShutdownOngoing(nullptr),
+      _numberOfCursorsMetric(numberOfCursorsMetric),
+      _memoryUsageMetric(memoryUsageMetric) {
   if (ServerState::instance()->isCoordinator()) {
     try {
       auto const& softShutdownFeature{
@@ -101,15 +107,23 @@ CursorRepository::~CursorRepository() {
     ++tries;
   }
 
+  size_t n = 0;
+  uint64_t memoryUsage = 0;
   {
     std::lock_guard mutexLocker{_lock};
 
     for (auto it : _cursors) {
+      memoryUsage += it.second.first->memoryUsage();
       delete it.second.first;
     }
 
+    n = _cursors.size();
+
     _cursors.clear();
   }
+
+  decreaseNumberOfCursorsMetric(n);
+  decreaseMemoryUsageMetric(memoryUsage);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -121,13 +135,16 @@ Cursor* CursorRepository::addCursor(std::unique_ptr<Cursor> cursor) {
   TRI_ASSERT(cursor != nullptr);
   TRI_ASSERT(cursor->isUsed());
 
-  CursorId const id = cursor->id();
+  CursorId id = cursor->id();
   std::string user = ExecContext::current().user();
 
   {
     std::lock_guard mutexLocker{_lock};
     _cursors.emplace(id, std::make_pair(cursor.get(), std::move(user)));
   }
+
+  increaseNumberOfCursorsMetric(1);
+  increaseMemoryUsageMetric(cursor->memoryUsage());
 
   TRI_IF_FAILURE(
       "CursorRepository::directKillStreamQueryAfterCursorIsBeingCreated") {
@@ -174,6 +191,8 @@ Cursor* CursorRepository::createFromQueryResult(aql::QueryResult&& result,
 Cursor* CursorRepository::createQueryStream(
     std::shared_ptr<arangodb::aql::Query> q, size_t batchSize, double ttl,
     bool isRetriable, transaction::OperationOrigin operationOrigin) {
+  TRI_ASSERT(q->queryOptions().stream);
+
   if (_softShutdownOngoing != nullptr &&
       _softShutdownOngoing->load(std::memory_order_relaxed)) {
     // Refuse to create the cursor:
@@ -194,6 +213,7 @@ Cursor* CursorRepository::createQueryStream(
 
 bool CursorRepository::remove(CursorId id) {
   arangodb::Cursor* cursor = nullptr;
+  uint64_t memoryUsage = 0;
 
   {
     std::lock_guard mutexLocker{_lock};
@@ -213,8 +233,12 @@ bool CursorRepository::remove(CursorId id) {
     }
 
     // cursor not in use by someone else
+    memoryUsage = cursor->memoryUsage();
     _cursors.erase(it);
   }
+
+  decreaseNumberOfCursorsMetric(1);
+  decreaseMemoryUsageMetric(memoryUsage);
 
   TRI_ASSERT(cursor != nullptr);
 
@@ -269,6 +293,7 @@ Cursor* CursorRepository::find(CursorId id, bool& busy) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void CursorRepository::release(Cursor* cursor) {
+  uint64_t memoryUsage = 0;
   {
     std::lock_guard mutexLocker{_lock};
 
@@ -279,15 +304,19 @@ void CursorRepository::release(Cursor* cursor) {
       return;
     }
 
+    memoryUsage = cursor->memoryUsage();
     // remove from the list
     _cursors.erase(cursor->id());
   }
+
+  decreaseNumberOfCursorsMetric(1);
+  decreaseMemoryUsageMetric(memoryUsage);
 
   // and free the cursor
   delete cursor;
 }
 
-size_t CursorRepository::count() {
+size_t CursorRepository::count() const {
   std::lock_guard mutexLocker{_lock};
   return _cursors.size();
 }
@@ -296,10 +325,10 @@ size_t CursorRepository::count() {
 /// @brief whether or not the repository contains a used cursor
 ////////////////////////////////////////////////////////////////////////////////
 
-bool CursorRepository::containsUsedCursor() {
+bool CursorRepository::containsUsedCursor() const {
   std::lock_guard mutexLocker{_lock};
 
-  for (auto it : _cursors) {
+  for (auto const& it : _cursors) {
     if (it.second.first->isUsed()) {
       return true;
     }
@@ -315,6 +344,7 @@ bool CursorRepository::containsUsedCursor() {
 bool CursorRepository::garbageCollect(bool force) {
   auto const now = TRI_microtime();
   containers::SmallVector<arangodb::Cursor*, 8> found;
+  uint64_t memoryUsage = 0;
 
   try {
     std::lock_guard mutexLocker{_lock};
@@ -356,8 +386,37 @@ bool CursorRepository::garbageCollect(bool force) {
   // remove cursors outside the lock
   for (auto it : found) {
     TRI_ASSERT(it != nullptr);
+    memoryUsage += it->memoryUsage();
     delete it;
   }
 
-  return (!found.empty());
+  decreaseNumberOfCursorsMetric(found.size());
+  decreaseMemoryUsageMetric(memoryUsage);
+
+  return !found.empty();
+}
+
+void CursorRepository::increaseNumberOfCursorsMetric(size_t value) noexcept {
+  TRI_ASSERT(value == 1);
+  if (_numberOfCursorsMetric != nullptr) {
+    _numberOfCursorsMetric->fetch_add(value);
+  }
+}
+
+void CursorRepository::decreaseNumberOfCursorsMetric(size_t value) noexcept {
+  if (_numberOfCursorsMetric != nullptr) {
+    _numberOfCursorsMetric->fetch_sub(value);
+  }
+}
+
+void CursorRepository::increaseMemoryUsageMetric(size_t value) noexcept {
+  if (_memoryUsageMetric != nullptr) {
+    _memoryUsageMetric->fetch_add(value);
+  }
+}
+
+void CursorRepository::decreaseMemoryUsageMetric(size_t value) noexcept {
+  if (_memoryUsageMetric != nullptr) {
+    _memoryUsageMetric->fetch_sub(value);
+  }
 }

@@ -31,7 +31,6 @@
 
 #include <memory>
 #include <queue>
-#include <unordered_set>
 #include <utility>
 
 namespace arangodb::aql {
@@ -85,14 +84,13 @@ class DependencyProxy {
   void setDistributeId(std::string const& distId) { _distributeId = distId; }
 
  protected:
-  [[nodiscard]] ExecutionBlock& upstreamBlock();
+  [[nodiscard]] ExecutionBlock& upstreamBlock() const;
 
-  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index);
-
- private:
-  [[nodiscard]] bool advanceDependency();
+  [[nodiscard]] ExecutionBlock& upstreamBlockForDependency(size_t index) const;
 
  private:
+  [[nodiscard]] bool advanceDependency() noexcept;
+
   std::vector<ExecutionBlock*> const& _dependencies;
   RegisterCount const _nrInputRegisters;
   std::string _distributeId;

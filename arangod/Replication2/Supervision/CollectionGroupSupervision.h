@@ -59,6 +59,10 @@ struct AddCollectionGroupToPlan {
   std::unordered_map<CollectionID, agency::CollectionPlanSpecification>
       collections;
 };
+struct UpdateCollectionGroupInPlan {
+  agency::CollectionGroupId id;
+  agency::CollectionGroup::Attributes::MutableAttributes spec;
+};
 struct UpdateCollectionShardMap {
   CollectionID cid;
   PlanShardToServerMapping mapping;
@@ -92,6 +96,12 @@ struct IndexConvergedCurrent {
   arangodb::velocypack::SharedSlice index;
 };
 
+struct IndexErrorCurrent {
+  CollectionID cid;
+  arangodb::velocypack::SharedSlice index;
+  Result error;
+};
+
 struct NoActionRequired {};
 struct NoActionPossible {
   std::string reason;
@@ -101,9 +111,10 @@ struct NoActionPossible {
 using Action = std::variant<
     NoActionRequired, NoActionPossible, UpdateReplicatedLogConfig,
     UpdateConvergedVersion, DropCollectionPlan, DropCollectionGroup,
-    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionShardMap,
-    AddParticipantToLog, RemoveParticipantFromLog, UpdateCollectionPlan,
-    RemoveCollectionIndexPlan, AddCollectionIndexPlan, IndexConvergedCurrent>;
+    AddCollectionToPlan, AddCollectionGroupToPlan, UpdateCollectionGroupInPlan,
+    UpdateCollectionShardMap, AddParticipantToLog, RemoveParticipantFromLog,
+    UpdateCollectionPlan, RemoveCollectionIndexPlan, AddCollectionIndexPlan,
+    IndexConvergedCurrent, IndexErrorCurrent>;
 
 struct CollectionGroup {
   agency::CollectionGroupTargetSpecification target;

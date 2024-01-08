@@ -23,6 +23,10 @@
 
 #include "v8-shell.h"
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "ApplicationFeatures/ShellColorsFeature.h"
 #include "V8/V8SecurityFeature.h"
 #include "Basics/Exceptions.h"

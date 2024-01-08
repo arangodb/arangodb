@@ -125,7 +125,7 @@ class Features {
   ///        dependencies are met
   /// @return Result containing error description if any
   //////////////////////////////////////////////////////////////////////////////
-  Result validate() const;
+  Result validate(std::string_view type = {}) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief visit feature names
@@ -147,14 +147,14 @@ class Features {
     return !(*this == rhs);
   }
 
- private:
   bool hasFeatures(irs::IndexFeatures test) const noexcept {
     return (test == (_indexFeatures & test));
   }
 
+ private:
   FieldFeatures _fieldFeatures{FieldFeatures::NONE};
   irs::IndexFeatures _indexFeatures{irs::IndexFeatures::NONE};
-};  // Features
+};
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @class AnalyzerPool
@@ -206,9 +206,6 @@ class AnalyzerPool : private irs::util::noncopyable {
   irs::features_t fieldFeatures() const noexcept {
     return {_fieldFeatures.data(), _fieldFeatures.size()};
   }
-  irs::IndexFeatures indexFeatures() const noexcept {
-    return features().indexFeatures();
-  }
   std::string const& name() const noexcept { return _name; }
   VPackSlice properties() const noexcept { return _properties; }
   std::string_view const& type() const noexcept { return _type; }
@@ -242,7 +239,7 @@ class AnalyzerPool : private irs::util::noncopyable {
 
   void toVelocyPack(velocypack::Builder& builder, std::string_view const& name);
 
-  bool init(std::string_view const& type, VPackSlice const properties,
+  bool init(std::string_view type, VPackSlice const properties,
             AnalyzersRevision::Revision revision, Features features,
             LinkVersion version);
   void setKey(std::string_view type);

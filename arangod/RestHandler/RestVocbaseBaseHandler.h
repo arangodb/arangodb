@@ -192,16 +192,16 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
    * @return A freshly created transaction for the given collection with proper
    * locking or a leased transaction.
    */
-  std::unique_ptr<transaction::Methods> createTransaction(
+  futures::Future<std::unique_ptr<transaction::Methods>> createTransaction(
       std::string const& cname, AccessMode::Type mode,
       OperationOptions const& opOptions,
       transaction::OperationOrigin operationOrigin,
       transaction::Options&& trxOpts = transaction::Options()) const;
 
   /// @brief create proper transaction context, including the proper IDs
-  std::shared_ptr<transaction::Context> createTransactionContext(
-      AccessMode::Type mode,
-      transaction::OperationOrigin operationOrigin) const;
+  futures::Future<std::shared_ptr<transaction::Context>>
+  createTransactionContext(AccessMode::Type mode,
+                           transaction::OperationOrigin operationOrigin) const;
 
  protected:
   /// @brief request context

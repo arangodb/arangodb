@@ -50,13 +50,21 @@ namespace aql {
  */
 class AqlCallStack {
  public:
+  struct Empty {};
+
   // Initial
+  explicit AqlCallStack(Empty);
   explicit AqlCallStack(AqlCallList call);
   // Used in subquery
   AqlCallStack(AqlCallStack const& other, AqlCallList call);
   // Used to pass between blocks
   AqlCallStack(AqlCallStack const& other) = default;
   AqlCallStack(AqlCallStack&& other) noexcept = default;
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // For tests
+  explicit AqlCallStack(std::initializer_list<AqlCallList> calls);
+#endif
 
   AqlCallStack& operator=(AqlCallStack const& other) = default;
   AqlCallStack& operator=(AqlCallStack&& other) noexcept = default;
@@ -68,6 +76,8 @@ class AqlCallStack {
   // Get the top most Call element.
   // This is popped of the stack and caller can take responsibility for it
   AqlCallList popCall();
+
+  void popDepthsLowerThan(size_t depth);
 
   // Peek at the topmost Call element (this must be relevant).
   // The responsibility for the peek-ed call will stay with the stack

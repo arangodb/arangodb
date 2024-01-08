@@ -24,20 +24,21 @@
 #pragma once
 
 #include <cstdint>
+#include <limits>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief Structure to maintain information about an individual transaction.
 struct Transaction {
-  std::uint64_t term;
-  bool readOnly;
-  bool sensitive;
+  static constexpr auto kInvalidTerm =
+      std::numeric_limits<std::uint64_t>::max();
 
-  Transaction();
-  explicit Transaction(bool ro);
+  std::uint64_t term = kInvalidTerm;
+  bool readOnly = true;
+  bool sensitive = false;
+
+  Transaction() = default;
+  explicit Transaction(bool ro) : readOnly{ro}, sensitive{!ro} {}
 };
 
-};  // end namespace cache
-};  // end namespace arangodb
+}  // namespace arangodb::cache

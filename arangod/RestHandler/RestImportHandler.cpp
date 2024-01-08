@@ -1062,9 +1062,7 @@ void RestImportHandler::createVelocyPackObject(VPackBuilder& result,
     VPackSlice const value = itValues.value();
 
     if (key.isString() && !value.isNone() && !value.isNull()) {
-      VPackValueLength l;
-      char const* p = key.getString(l);
-      result.add(p, l, value);
+      result.add(key.stringView(), value);
     }
 
     itKeys.next();

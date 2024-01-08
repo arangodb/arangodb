@@ -39,7 +39,7 @@ function fuerteResponseTestSuite () {
     },
     
     testGetRaw : function () {
-      let response = arango.GET_RAW("/_api/version");
+      let response = arango.GET_RAW("/_api/version", { 'accept-encoding': 'identity' });
       assertFalse(response.error);
       assertTrue(response.hasOwnProperty("parsedBody"));
       assertEqual("arango", response.parsedBody.server);

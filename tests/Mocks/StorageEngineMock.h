@@ -66,7 +66,7 @@ class TransactionStateMock : public arangodb::TransactionState {
   [[nodiscard]] bool ensureSnapshot() override { return false; }
   arangodb::Result abortTransaction(
       arangodb::transaction::Methods* trx) override;
-  arangodb::Result beginTransaction(
+  arangodb::futures::Future<arangodb::Result> beginTransaction(
       arangodb::transaction::Hints hints) override;
   arangodb::futures::Future<arangodb::Result> commitTransaction(
       arangodb::transaction::Methods* trx) override;
@@ -125,7 +125,9 @@ class StorageEngineMock : public arangodb::StorageEngine {
       arangodb::aql::OptimizerRulesFeature& feature) override;
   void addRestHandlers(
       arangodb::rest::RestHandlerFactory& handlerFactory) override;
+#ifdef USE_V8
   void addV8Functions() override;
+#endif
   void changeCollection(TRI_vocbase_t& vocbase,
                         arangodb::LogicalCollection const& collection) override;
   arangodb::Result changeView(arangodb::LogicalView const& view,

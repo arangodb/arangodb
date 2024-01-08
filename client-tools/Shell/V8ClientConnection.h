@@ -51,7 +51,6 @@ class RequestFuzzer;
 namespace httpclient {
 class GeneralClientConnection;
 class SimpleHttpClient;
-class SimpleHttpResult;
 }  // namespace httpclient
 
 namespace fuerte {

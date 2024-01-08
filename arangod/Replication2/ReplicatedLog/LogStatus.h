@@ -27,7 +27,6 @@
 #include <unordered_map>
 #include <variant>
 
-#include <Inspection/VPack.h>
 #include <Inspection/Transformers.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>

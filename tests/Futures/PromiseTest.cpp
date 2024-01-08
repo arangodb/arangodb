@@ -163,7 +163,7 @@ TEST(PromiseTest, hasPreconditionValid) {
   auto const except = std::logic_error("foo");
   auto const ewrap = std::make_exception_ptr(except);
 
-  DOIT(p.getFuture());
+  DOIT(std::ignore = p.getFuture());
   DOIT(p.setException(except));
   DOIT(p.setException(ewrap));
   // DOIT(p.setInterruptHandler([](auto&) {}));

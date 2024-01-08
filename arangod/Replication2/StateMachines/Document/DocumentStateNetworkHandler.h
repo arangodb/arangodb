@@ -47,7 +47,7 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> = 0;
+  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
@@ -59,9 +59,10 @@ class DocumentStateLeaderInterface
  public:
   explicit DocumentStateLeaderInterface(ParticipantId participantId,
                                         GlobalLogIdentifier gid,
-                                        network::ConnectionPool* pool);
+                                        network::ConnectionPool* pool,
+                                        LoggerContext loggerContext);
 
-  auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> override;
+  auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> override;
   auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> override;
   auto finishSnapshot(SnapshotId id) -> futures::Future<Result> override;
@@ -76,6 +77,7 @@ class DocumentStateLeaderInterface
   ParticipantId _participantId;
   GlobalLogIdentifier _gid;
   network::ConnectionPool* _pool;
+  LoggerContext const _loggerContext;
 };
 
 /**
@@ -90,7 +92,8 @@ struct IDocumentStateNetworkHandler {
 class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
  public:
   explicit DocumentStateNetworkHandler(GlobalLogIdentifier gid,
-                                       network::ConnectionPool* pool);
+                                       network::ConnectionPool* pool,
+                                       LoggerContext loggerContext);
 
   auto getLeaderInterface(ParticipantId participantId) noexcept
       -> std::shared_ptr<IDocumentStateLeaderInterface> override;
@@ -98,6 +101,7 @@ class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
  private:
   GlobalLogIdentifier _gid;
   network::ConnectionPool* _pool;
+  LoggerContext const _loggerContext;
 };
 
 }  // namespace replication2::replicated_state::document

@@ -11,6 +11,8 @@ race:SharedAqlItemBlockPtr::operator->
 signal:lib/Basics/CrashHandler.cpp
 signal:crashHandlerSignalHandler
 
+signal:c_exit_handler
+
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
 # this register is later read to populate the variable `oldest_snapshot`.

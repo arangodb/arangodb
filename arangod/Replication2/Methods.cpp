@@ -226,7 +226,8 @@ struct ReplicatedLogMethodsDBServer final
                                          "multi insert list must not be empty");
         }
 
-        return log->waitFor(indexes.back())
+        auto lastIndex = indexes.back();
+        return log->waitFor(lastIndex)
           .thenValue([indexes = std::move(indexes)](auto&& result) mutable {
             return std::make_pair(std::move(indexes),
                                   std::forward<decltype(result)>(result));

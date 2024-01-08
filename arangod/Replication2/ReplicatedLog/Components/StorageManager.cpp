@@ -29,7 +29,6 @@
 #include "Basics/Guarded.h"
 #include "Inspection/VPack.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/coro-helper.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
@@ -297,14 +296,14 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
       }
     }
 
-    co_return futures::unit;
+    co_return;
   };
 
   // check if a thread is working on the queue
   if (not guard->workerActive) {
     // otherwise start a worker
     guard->workerActive = true;
-    worker(std::move(guard), shared_from_this());
+    std::ignore = worker(std::move(guard), shared_from_this());
   }
 }
 

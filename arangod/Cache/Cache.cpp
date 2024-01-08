@@ -173,10 +173,14 @@ void Cache::sizeHint(uint64_t numElements) {
       static_cast<double>(numElements) /
       (static_cast<double>(_slotsPerBucket) * _manager->idealUpperFillRatio()));
   std::uint32_t requestedLogSize = 0;
-  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets;
+  for (; (static_cast<std::uint64_t>(1) << requestedLogSize) < numBuckets &&
+         requestedLogSize < Table::kMaxLogSize;
        requestedLogSize++) {
   }
-  requestMigrate(requestedLogSize);
+
+  std::shared_ptr<Table> table = this->table();
+  requestedLogSize = std::min(requestedLogSize, Table::kMaxLogSize);
+  requestMigrate(table.get(), requestedLogSize, table->logSize());
 }
 
 std::pair<double, double> Cache::hitRates() {
@@ -280,7 +284,13 @@ void Cache::requestGrow() {
   }
 }
 
-void Cache::requestMigrate(std::uint32_t requestedLogSize) {
+void Cache::requestMigrate(Table* table, std::uint32_t requestedLogSize,
+                           std::uint32_t currentLogSize) {
+  TRI_ASSERT(table != nullptr);
+  if (requestedLogSize == currentLogSize) {
+    // nothing to do. exit immediately.
+    return;
+  }
   // fail fast if inside banned window
   if (isShutdown() ||
       std::chrono::steady_clock::now().time_since_epoch().count() <=
@@ -291,15 +301,13 @@ void Cache::requestMigrate(std::uint32_t requestedLogSize) {
   SpinLocker taskGuard(SpinLocker::Mode::Write, _taskLock);
   if (std::chrono::steady_clock::now().time_since_epoch().count() >
       _migrateRequestTime.load()) {
-    std::shared_ptr<cache::Table> table = this->table();
-    TRI_ASSERT(table != nullptr);
-
     bool ok = false;
     {
       SpinLocker metaGuard(SpinLocker::Mode::Read, _metadata.lock());
       ok = !_metadata.isMigrating() && (requestedLogSize != table->logSize());
     }
     if (ok) {
+      requestedLogSize = std::min(requestedLogSize, Table::kMaxLogSize);
       auto result = _manager->requestMigrate(this, requestedLogSize);
       _migrateRequestTime.store(result.second.time_since_epoch().count());
     }
@@ -366,7 +374,8 @@ void Cache::recordMiss() {
   _manager->reportMiss();
 }
 
-bool Cache::reportInsert(bool hadEviction) {
+bool Cache::reportInsert(Table* table, bool hadEviction) {
+  TRI_ASSERT(table != nullptr);
   try {
     ensureEvictionStats();
   } catch (...) {
@@ -393,8 +402,6 @@ bool Cache::reportInsert(bool hadEviction) {
         ((static_cast<double>(evictions) / static_cast<double>(total)) >
          kEvictionRateThreshold)) {
       shouldMigrate = true;
-      std::shared_ptr<cache::Table> table = this->table();
-      TRI_ASSERT(table != nullptr);
       table->signalEvictions();
     }
     _evictionStats->insertEvictions.reset(std::memory_order_relaxed);
@@ -441,6 +448,9 @@ void Cache::ensureEvictionStats() {
 Metadata& Cache::metadata() { return _metadata; }
 
 std::shared_ptr<Table> Cache::table() const {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  _manager->trackTableCall();
+#endif
   return std::atomic_load_explicit(&_table, std::memory_order_acquire);
 }
 
@@ -544,7 +554,7 @@ bool Cache::migrate(std::shared_ptr<Table> newTable) {
   // do the actual migration
   for (std::uint64_t i = 0; i < table->size();
        i++) {  // need uint64 for end condition
-    migrateBucket(table->primaryBucket(static_cast<uint32_t>(i)),
+    migrateBucket(table.get(), table->primaryBucket(static_cast<uint32_t>(i)),
                   table->auxiliaryBuckets(static_cast<uint32_t>(i)), *newTable);
   }
 

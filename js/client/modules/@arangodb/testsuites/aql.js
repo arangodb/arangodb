@@ -27,14 +27,11 @@
 
 const functionsDocumentation = {
   'shell_v8': 'Arangodb V8 integration',
-  'shell_server_v8': 'Arangodb V8 integration run inside of coordinator / dbserver',
   'shell_api': 'shell client tests - only *api*',
   'shell_api_multi': 'shell client tests - only *api* - to be run in multi protocol environments',
   'shell_client': 'shell client tests',
   'shell_client_multi': 'shell client tests to be run in multiple protocol environments',
-  'shell_server': 'shell server tests',
   'shell_client_aql': 'AQL tests in the client',
-  'shell_server_aql': 'AQL tests in the server',
   'shell_server_only': 'server specific tests',
   'shell_client_transaction': 'transaction tests',
   'shell_client_replication2_recovery': 'replication2 cluster recovery tests',
@@ -55,14 +52,11 @@ const YELLOW = require('internal').COLORS.COLOR_YELLOW;
 
 const testPaths = {
   'shell_v8': [ tu.pathForTesting('common/v8')],
-  'shell_server_v8': [ tu.pathForTesting('common/v8')],
   'shell_api': [ tu.pathForTesting('client/shell/api')],
   'shell_api_multi': [ tu.pathForTesting('client/shell/api/multi')],
   'shell_client': [ tu.pathForTesting('common/shell'), tu.pathForTesting('client/shell')],
   'shell_client_multi': [ tu.pathForTesting('common/shell/multi'), tu.pathForTesting('client/shell/multi')],
-  'shell_server': [ tu.pathForTesting('common/shell'), tu.pathForTesting('server/shell') ],
   'shell_server_only': [ tu.pathForTesting('server/shell') ],
-  'shell_server_aql': [ tu.pathForTesting('server/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_aql': [ tu.pathForTesting('client/aql'), tu.pathForTesting('common/aql') ],
   'shell_client_transaction': [ tu.pathForTesting('client/shell/transaction')],
   'shell_client_replication2_recovery': [ tu.pathForTesting('client/shell/transaction/replication2_recovery')],
@@ -148,17 +142,6 @@ function shellV8 (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_v8, options);
   testCases = tu.splitBuckets(options, testCases);
   let rc = new shellv8Runner(options, 'shell_v8', []).run(testCases);
-  return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_server_v8
-// //////////////////////////////////////////////////////////////////////////////
-
-function shellV8Server (options) {
-  let testCases = tu.scanTestPaths(testPaths.shell_server_v8, options);
-  testCases = tu.splitBuckets(options, testCases);
-  let rc = new tu.runOnArangodRunner(options, 'shell_v8', []).run(testCases);
   return rc;
 }
 
@@ -250,26 +233,9 @@ function shellClientMulti (options) {
   return rc;
 }
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_server
-// //////////////////////////////////////////////////////////////////////////////
-
-function shellServer (options) {
-  options.propagateInstanceInfo = true;
-
-  let testCases = tu.scanTestPaths(testPaths.shell_server, options);
-
-  testCases = tu.splitBuckets(options, testCases);
-
-  let opts = ensureServers(options, 3);
-  let rc = new tu.runOnArangodRunner(opts, 'shell_server', {}).run(testCases);
-  options.cleanup = options.cleanup && opts.cleanup;
-  return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_server_only
-// //////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
+// @brief TEST: shell_server_only
+//////////////////////////////////////////////////////////////////////////////
 
 function shellServerOnly (options) {
   let testCases = tu.scanTestPaths(testPaths.shell_server_only, options);
@@ -280,38 +246,6 @@ function shellServerOnly (options) {
   let rc = new tu.runOnArangodRunner(opts, 'shell_server_only', {}).run(testCases);
   options.cleanup = options.cleanup && opts.cleanup;
   return rc;
-}
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief TEST: shell_server_aql
-// //////////////////////////////////////////////////////////////////////////////
-
-function shellServerAql (options) {
-  let testCases;
-  let name = 'shell_server_aql';
-
-  if (!options.skipAql) {
-    testCases = tu.scanTestPaths(testPaths.shell_server_aql, options);
-    if (options.skipRanges) {
-      testCases = _.filter(testCases,
-                           function (p) { return p.indexOf('ranges-combined') === -1; });
-      name = 'shell_server_aql_skipranges';
-    }
-
-    testCases = tu.splitBuckets(options, testCases);
-
-    let opts = ensureServers(options, 3);
-    let rc = new tu.runOnArangodRunner(opts, name, {}).run(testCases);
-    options.cleanup = options.cleanup && opts.cleanup;
-    return rc;
-  }
-
-  return {
-    shell_server_aql: {
-      status: true,
-      skipped: true
-    }
-  };
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -410,14 +344,11 @@ function shellClientReplication2Recovery(options) {
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['shell_v8'] = shellV8;
-  testFns['shell_server_v8'] = shellV8Server;
   testFns['shell_api'] = shellApiClient;
   testFns['shell_api_multi'] = shellApiMulti;
   testFns['shell_client'] = shellClient;
   testFns['shell_client_multi'] = shellClientMulti;
-  testFns['shell_server'] = shellServer;
   testFns['shell_client_aql'] = shellClientAql;
-  testFns['shell_server_aql'] = shellServerAql;
   testFns['shell_server_only'] = shellServerOnly;
   testFns['shell_client_transaction'] = shellClientTransaction;
   testFns['shell_client_replication2_recovery'] = shellClientReplication2Recovery;

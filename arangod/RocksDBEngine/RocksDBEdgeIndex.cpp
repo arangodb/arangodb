@@ -441,7 +441,7 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
 
         if (!cacheKey.empty()) {
           TRI_ASSERT(cacheKey == fromTo || fromTo.ends_with(cacheKey));
-          // only look up a key in the cache if the key is syntactially valid.
+          // only look up a key in the cache if the key is syntactically valid.
           // this is important because we can only tell syntactically valid keys
           // apart from prefix-compressed keys.
           auto finding = _cache->find(cacheKey.data(),
@@ -583,6 +583,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
            iterator->Next()) {
         LocalDocumentId const docId =
             RocksDBKey::edgeDocumentId(iterator->key());
+
+        TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
 
         // adding documentId and _from or _to value
         _builder.add(VPackValue(docId.id()));

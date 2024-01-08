@@ -37,7 +37,8 @@ struct ProducingResults : ExecutionState {
   [[nodiscard]] auto name() const -> std::string override {
     return "producing results";
   };
-  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
+  auto receive(actor::DistributedActorPID const& sender,
+               actor::DistributedActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 

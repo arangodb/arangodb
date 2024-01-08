@@ -31,14 +31,17 @@
 #include "Aql/QueryContext.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryResult.h"
+#ifdef USE_V8
 #include "Aql/QueryResultV8.h"
+#endif
 #include "Aql/QueryString.h"
-#include "Aql/SharedQueryState.h"
 #include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
-#include "V8Server/V8Context.h"
+#ifdef USE_V8
+#include "V8Server/V8Executor.h"
+#endif
 
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
@@ -53,13 +56,11 @@ struct TRI_vocbase_t;
 namespace arangodb {
 
 class CollectionNameResolver;
-class LogicalDataSource;  // forward declaration
+class LogicalDataSource;
 
 namespace transaction {
-
 class Context;
 class Methods;
-
 }  // namespace transaction
 namespace aql {
 
@@ -69,6 +70,7 @@ class ExecutionEngine;
 struct ExecutionStats;
 struct QueryCacheResultEntry;
 struct QueryProfile;
+class SharedQueryState;
 
 /// @brief an AQL query
 class Query : public QueryContext, public std::enable_shared_from_this<Query> {
@@ -141,9 +143,11 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ///        need to wait.
   QueryResult executeSync();
 
+#ifdef USE_V8
   /// @brief execute an AQL query
   /// may only be called with an active V8 handle scope
   QueryResultV8 executeV8(v8::Isolate* isolate);
+#endif
 
   /// @brief Enter finalization phase and do cleanup.
   /// Sets `warnings`, `stats`, `profile`, timings and does the cleanup.
@@ -161,16 +165,24 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   bool isAsyncQuery() const noexcept final;
 
-  /// @brief enter a V8 context
-  void enterV8Context() final;
+  /// @brief enter a V8 executor
+  void enterV8Executor() final;
 
-  /// @brief exits a V8 context
-  void exitV8Context() final;
+  /// @brief exits a V8 executor
+  void exitV8Executor() final;
 
-  /// @brief check if the query has a V8 context ready for use
-  bool hasEnteredV8Context() const final {
-    return (_contextOwnedByExterior || _v8Context != nullptr);
+  /// @brief check if the query has a V8 executor ready for use
+  bool hasEnteredV8Executor() const final {
+#ifdef USE_V8
+    return (_executorOwnedByExterior || _v8Executor != nullptr);
+#else
+    return false;
+#endif
   }
+
+#ifdef USE_V8
+  void runInV8ExecutorContext(std::function<void(v8::Isolate*)> const& cb);
+#endif
 
   /// @brief return the final query result status code (0 = no error,
   /// > 0 = error, one of TRI_ERROR_...)
@@ -303,8 +315,10 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief shared query state
   std::shared_ptr<SharedQueryState> _sharedState;
 
-  /// @brief the currently used V8 context
-  V8Context* _v8Context;
+#ifdef USE_V8
+  /// @brief the currently used V8 executor
+  V8Executor* _v8Executor;
+#endif
 
   /// @brief bind parameters for the query
   BindParameters _bindParameters;
@@ -364,15 +378,17 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   /// @brief user that started the query
   std::string _user;
 
-  /// @brief whether or not someone else has acquired a V8 context for us
-  bool const _contextOwnedByExterior;
+#ifdef USE_V8
+  /// @brief whether or not someone else has acquired a V8 executor for us
+  bool const _executorOwnedByExterior;
 
   /// @brief set if we are inside a JS transaction
   bool const _embeddedQuery;
 
-  /// @brief whether or not the transaction context was registered
-  /// in a v8 context
-  bool _registeredInV8Context;
+  /// @brief whether or not the transaction executor was registered
+  /// in a v8 executor
+  bool _registeredInV8Executor;
+#endif
 
   /// @brief whether or not the hash was already calculated
   bool _queryHashCalculated;

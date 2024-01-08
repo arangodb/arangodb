@@ -407,6 +407,12 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 - Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
 - all platforms: `--temp.path` overrules the above system provided settings.
 
+Our testing framework uses this path in the cluster test cases to set an
+environment variable `ARANGOTEST_ROOT_DIR` which is global to the running
+cluster, but specific to the current test suite. You can access this as 
+`global.instanceManager.rootDir` in Javascript client tests and via the
+environment variable on the C++ level.
+
 ### Local Cluster Startup
 
 The scripts `scripts/startLocalCluster` helps you to quickly fire up a testing

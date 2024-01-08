@@ -49,7 +49,7 @@ const {
   continueServer,
   stopServerWait,
   continueServerWait,
-} = lh.testHelperFunctions(database);
+} = lh.testHelperFunctions(database, {replicationVersion: "2"});
 
 const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
   const config = {

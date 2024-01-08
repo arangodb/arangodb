@@ -38,7 +38,7 @@ class ReplicatedRocksDBTransactionState final : public RocksDBTransactionState {
   ~ReplicatedRocksDBTransactionState() override;
 
   /// @brief begin a transaction
-  Result beginTransaction(transaction::Hints hints) override;
+  futures::Future<Result> beginTransaction(transaction::Hints hints) override;
 
   RocksDBTransactionMethods* rocksdbMethods(
       DataSourceId collectionId) const override;

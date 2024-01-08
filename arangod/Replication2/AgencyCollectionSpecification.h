@@ -57,6 +57,8 @@ struct CollectionGroup {
       std::size_t writeConcern{};
       std::size_t replicationFactor{};
       bool waitForSync{};
+
+      bool operator==(MutableAttributes const& other) const noexcept = default;
     };
 
     MutableAttributes mutableAttributes;
@@ -105,6 +107,8 @@ struct Collection {
     // Did a short_cut here to avoid concatenated changes
     std::optional<arangodb::velocypack::Builder> schema{std::nullopt};
 
+    bool cacheEnabled{false};
+
     bool operator==(MutableProperties const& other) const noexcept;
   };
 
@@ -118,7 +122,6 @@ struct Collection {
     KeyGeneratorProperties keyOptions{};
     bool isSmart{false};
     bool isDisjoint{false};
-    bool cacheEnabled{false};
     std::string shardingStrategy{""};
     std::vector<std::string> shardKeys{};
     inspection::NonNullOptional<std::string> smartJoinAttribute{std::nullopt};

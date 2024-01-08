@@ -27,7 +27,10 @@
 #include "Basics/StaticStrings.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
+#include "Transaction/StandaloneContext.h"
+#ifdef USE_V8
 #include "Transaction/V8Context.h"
+#endif
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -297,8 +300,13 @@ auto CollectionStatusWriter::handleOperationResult(
 
 auto CollectionStatusWriter::ctx(transaction::OperationOrigin operationOrigin)
     -> std::shared_ptr<transaction::Context> const {
+#ifdef USE_V8
   return transaction::V8Context::createWhenRequired(_vocbaseGuard.database(),
                                                     operationOrigin, false);
+#else
+  return transaction::StandaloneContext::create(_vocbaseGuard.database(),
+                                                operationOrigin);
+#endif
 }
 
 }  // namespace arangodb::pregel::statuswriter

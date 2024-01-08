@@ -26,6 +26,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
 #include "Aql/QueryString.h"
+#include "Aql/SharedQueryState.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"

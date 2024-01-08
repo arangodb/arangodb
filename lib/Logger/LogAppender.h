@@ -29,6 +29,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <thread>
 #include <typeindex>
 #include <utility>
 #include <vector>
@@ -68,7 +69,7 @@ class LogAppender {
   LogAppender& operator=(LogAppender const&) = delete;
 
  public:
-  virtual void logMessage(LogMessage const&) = 0;
+  void logMessageGuarded(LogMessage const&);
 
   virtual std::string details() const = 0;
 
@@ -78,6 +79,9 @@ class LogAppender {
   static Result parseDefinition(std::string const& definition,
                                 std::string& topicName, std::string& output,
                                 LogTopic*& topic);
+
+ protected:
+  virtual void logMessage(LogMessage const& message) = 0;
 
  private:
   static arangodb::basics::ReadWriteLock _appendersLock;
@@ -90,5 +94,8 @@ class LogAppender {
                     LogGroup::Count>
       _definition2appenders;
   static bool _allowStdLogging;
+
+  basics::ReadWriteLock _logOutputMutex;
+  std::atomic<std::thread::id> _logOutputMutexOwner;
 };
 }  // namespace arangodb

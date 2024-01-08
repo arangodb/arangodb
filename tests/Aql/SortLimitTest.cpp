@@ -36,6 +36,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/VelocyPackHelper.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "Logger/LogTopic.h"

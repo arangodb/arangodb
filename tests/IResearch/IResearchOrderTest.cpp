@@ -724,6 +724,7 @@ TEST_F(IResearchOrderTest, test_FCall_bm25) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_FCallUser) {
   // function
   {
@@ -933,6 +934,7 @@ TEST_F(IResearchOrderTest, test_FCallUser) {
     assertOrderFail(server, query);
   }
 }
+#endif
 
 TEST_F(IResearchOrderTest, test_StringValue) {
   // simple field
@@ -974,6 +976,7 @@ TEST_F(IResearchOrderTest, test_StringValue) {
   }
 }
 
+#ifdef USE_V8
 TEST_F(IResearchOrderTest, test_order) {
   // test mutiple sort
   {
@@ -999,3 +1002,4 @@ TEST_F(IResearchOrderTest, test_order) {
     assertOrderFail(server, query, &ctx);
   }
 }
+#endif

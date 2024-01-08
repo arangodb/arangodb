@@ -11,5 +11,6 @@ target_sources(arango_cluster_methods PRIVATE
     ResponsibleServerList.cpp
     SatelliteDistribution.cpp
     ShardDistribution.cpp
+    ShardID.cpp
     TargetCollectionAgencyWriter.cpp
 )

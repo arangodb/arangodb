@@ -13,7 +13,6 @@ add_library(arango_cache STATIC
   PlainCache.cpp
   Rebalancer.cpp
   Table.cpp
-  Transaction.cpp
   TransactionManager.cpp
   TransactionalBucket.cpp
   TransactionalCache.cpp)

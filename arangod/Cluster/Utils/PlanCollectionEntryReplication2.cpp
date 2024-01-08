@@ -24,7 +24,6 @@
 #include "Inspection/VPack.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -41,8 +40,9 @@ auto transform(UserInputCollectionProperties col)
   // TODO Maybe we can find a better way than this for transformation.
   replication2::agency::CollectionTargetSpecification spec;
   spec.groupId = col.groupId.value();
-  spec.mutableProperties = {std::move(col.computedValues),
-                            std::move(col.schema)};
+  spec.mutableProperties = {.computedValues = std::move(col.computedValues),
+                            .schema = std::move(col.schema),
+                            .cacheEnabled = col.cacheEnabled};
   spec.immutableProperties = {col,
                               col.name,
                               col.isSystem,
@@ -50,7 +50,6 @@ auto transform(UserInputCollectionProperties col)
                               col.keyOptions,
                               col.isSmart,
                               col.isDisjoint,
-                              col.cacheEnabled,
                               col.shardingStrategy.value(),
                               col.shardKeys.value(),
                               col.smartJoinAttribute,

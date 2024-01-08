@@ -216,16 +216,16 @@ template<class Derived>
 struct LogContext::GenericVisitor : Visitor {
   void visit(std::string_view const& key,
              std::string_view const& value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, double value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, std::int64_t value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
   void visit(std::string_view const& key, std::uint64_t value) const override {
-    self().visit(key, value);
+    self().doVisit(key, value);
   }
 
  private:
@@ -240,7 +240,7 @@ struct LogContext::OverloadVisitor : GenericVisitor<OverloadVisitor<Overloads>>,
   explicit OverloadVisitor(Overloads overloads)
       : GenericVisitor<OverloadVisitor>(), Overloads(std::move(overloads)) {}
   template<class T>
-  void visit(std::string_view const& key, T&& value) const {
+  void doVisit(std::string_view const& key, T&& value) const {
     this->operator()(key, std::forward<T>(value));
   }
 };
