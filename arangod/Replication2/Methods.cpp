@@ -171,14 +171,14 @@ struct ReplicatedLogMethodsDBServer final
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
     auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
-      vocbase.getReplicatedLogLeaderById(id));
+        vocbase.getReplicatedLogLeaderById(id));
     if (!stateBase.ok()) {
       THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
     if (auto state =
-        std::dynamic_pointer_cast<replicated_state::ReplicatedState<
-          replicated_state::black_hole::BlackHoleState>>(stateBase.get());
-      state != nullptr) {
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
       if (auto leaderState = state->getLeader(); leaderState != nullptr) {
         auto idx = leaderState->insert(std::move(payload), waitForSync);
         return log->waitFor(idx).thenValue([idx](auto&& result) {
@@ -186,18 +186,18 @@ struct ReplicatedLogMethodsDBServer final
         });
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format("/insert API is only allowed on leaders; while "
-                      "trying to insert into state machine {} on {}.",
-                      id, ServerState::instance()->getId()));
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        fmt::format(
-          "/insert API is only allowed for state machines of the "
-          "`black-hole` type. The requested state {} is of type {}.",
-          id, stateBase.get()->type()));
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
     }
   }
 
@@ -207,18 +207,18 @@ struct ReplicatedLogMethodsDBServer final
                                    replicated_log::WaitForResult>> override {
     auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
-      vocbase.getReplicatedLogLeaderById(id));
+        vocbase.getReplicatedLogLeaderById(id));
     if (!stateBase.ok()) {
       THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
     if (auto state =
-        std::dynamic_pointer_cast<replicated_state::ReplicatedState<
-          replicated_state::black_hole::BlackHoleState>>(stateBase.get());
-      state != nullptr) {
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
       if (auto leaderState = state->getLeader(); leaderState != nullptr) {
         auto indexes = std::vector<LogIndex>{};
         while (auto payload = iter.next()) {
-          auto idx =  leaderState->insert(std::move(*payload), waitForSync);
+          auto idx = leaderState->insert(std::move(*payload), waitForSync);
           indexes.push_back(idx);
         }
         if (indexes.empty()) {
@@ -227,25 +227,25 @@ struct ReplicatedLogMethodsDBServer final
         }
 
         auto lastIndex = indexes.back();
-        return log->waitFor(lastIndex)
-          .thenValue([indexes = std::move(indexes)](auto&& result) mutable {
-            return std::make_pair(std::move(indexes),
-                                  std::forward<decltype(result)>(result));
-          });
+        return log->waitFor(lastIndex).thenValue(
+            [indexes = std::move(indexes)](auto&& result) mutable {
+              return std::make_pair(std::move(indexes),
+                                    std::forward<decltype(result)>(result));
+            });
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format("/insert API is only allowed on leaders; while "
-                      "trying to insert into state machine {} on {}.",
-                      id, ServerState::instance()->getId()));
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        fmt::format(
-          "/insert API is only allowed for state machines of the "
-          "`black-hole` type. The requested state {} is of type {}.",
-          id, stateBase.get()->type()));
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
     }
   }
 
@@ -256,25 +256,25 @@ struct ReplicatedLogMethodsDBServer final
       THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
     if (auto state =
-        std::dynamic_pointer_cast<replicated_state::ReplicatedState<
-          replicated_state::black_hole::BlackHoleState>>(stateBase.get());
-      state != nullptr) {
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
       if (auto leaderState = state->getLeader(); leaderState != nullptr) {
         return leaderState->insert(std::move(payload), waitForSync);
       } else {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_HTTP_FORBIDDEN,
-          fmt::format("/insert API is only allowed on leaders; while "
-                      "trying to insert into state machine {} on {}.",
-                      id, ServerState::instance()->getId()));
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
       }
     } else {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_HTTP_FORBIDDEN,
-        fmt::format(
-          "/insert API is only allowed for state machines of the "
-          "`black-hole` type. The requested state {} is of type {}.",
-          id, stateBase.get()->type()));
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
     }
   }
 

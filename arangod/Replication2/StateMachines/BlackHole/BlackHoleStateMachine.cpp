@@ -59,7 +59,8 @@ auto BlackHoleLeaderState::release(LogIndex idx) const
   });
 }
 
-auto BlackHoleLeaderState::insert(LogPayload payload, bool waitForSync) -> LogIndex {
+auto BlackHoleLeaderState::insert(LogPayload payload, bool waitForSync)
+    -> LogIndex {
   auto const& stream = getStream();
   return stream->insert({std::move(payload)}, waitForSync);
 }

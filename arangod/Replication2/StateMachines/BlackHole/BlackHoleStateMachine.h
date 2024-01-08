@@ -54,11 +54,13 @@ struct BlackHoleState {
 };
 
 struct BlackHoleLogEntry {
-  [[nodiscard]] static auto createFromString(std::string_view payload) -> BlackHoleLogEntry {
+  [[nodiscard]] static auto createFromString(std::string_view payload)
+      -> BlackHoleLogEntry {
     return BlackHoleLogEntry{.value = LogPayload::createFromString(payload)};
   }
 
-  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice) -> BlackHoleLogEntry {
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
+      -> BlackHoleLogEntry {
     return BlackHoleLogEntry{.value = LogPayload::createFromSlice(slice)};
   }
   LogPayload value;
