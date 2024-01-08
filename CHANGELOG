@@ -1,6 +1,8 @@
 devel
 -----
 
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
 * Only schedule a single compaction per RocksDB column family at any given
   time. Scheduling mutliple concurrent compactions on the same column family
   can lead to scheduler threads being stalled under some adverse conditions
