@@ -526,7 +526,7 @@ Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
   uint64_t myNumber = Thread::currentThreadNumber();
   auto it = std::find_if(
       _workerStates.begin(), _workerStates.end(),
-      [&](auto& v) { return v._thread->threadNumber() == myNumber; });
+      [&](auto const& v) { return v->_thread->threadNumber() == myNumber; });
   if (it == _workerStates.end()) {
     return Result(TRI_ERROR_INTERNAL,
                   "scheduler thread for detaching not found");
