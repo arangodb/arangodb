@@ -4,11 +4,11 @@ import {
   FIELDS,
   INITIAL_VALUES,
   SCHEMA,
-  useCreateZKDIndex
-} from "./useCreateZKDIndex";
+  useCreateMDIIndex
+} from "./useCreateMDIIndex";
 
-export const ZKDIndexForm = ({ onClose }: { onClose: () => void }) => {
-  const { onCreate } = useCreateZKDIndex();
+export const MDIIndexForm = ({ onClose }: { onClose: () => void }) => {
+  const { onCreate } = useCreateMDIIndex();
 
   return (
     <IndexFormInner<typeof INITIAL_VALUES, typeof FIELDS, typeof SCHEMA>

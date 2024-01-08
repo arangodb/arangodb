@@ -53,8 +53,8 @@ const indexTypeOptions: {
     value: "ttl"
   },
   {
-    label: "ZKD Index (EXPERIMENTAL)",
-    value: "zkd"
+    label: "Multi-dimensional Index (MDI)",
+    value: "mdi"
   },
   {
     label: "Inverted Index",

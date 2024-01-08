@@ -3,9 +3,9 @@ export const TYPE_TO_LABEL_MAP = {
   geo: "Geo",
   fulltext: "Fulltext",
   ttl: "TTL",
-  zkd: "ZKD (Experimental)",
+  mdi: "MDI",
+  "mdi-prefixed": "MDI",
   inverted: "Inverted",
-  tier: "Tier",
   primary: "Primary",
   edge: "Edge",
 }
