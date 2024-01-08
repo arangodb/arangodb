@@ -105,10 +105,11 @@ T getMetric(IResearchLink const& link) {
 }
 
 std::string getLabels(IResearchLink const& link) {
-  return "db=\"" + link.getDbName() +                     //
-         "\",view=\"" + link.getViewId() +                //
-         "\",collection=\"" + link.getCollectionName() +  //
-         "\",shard=\"" + link.getShardName() + "\"";
+  return absl::StrCat("db=\"", link.getDbName(),                     //
+                      "\",view=\"", link.getViewId(),                //
+                      "\",collection=\"", link.getCollectionName(),  //
+                      "\",shard=\"", link.getShardName(),            //
+                      "\",indexId=\"", link.index().id().id(), "\"");
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
