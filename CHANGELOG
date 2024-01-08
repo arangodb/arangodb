@@ -1,6 +1,11 @@
 devel
 -----
 
+* FRB-252: Added startup option `--server.robots-file` to allow responding to
+  requests to /robots.txt with a custom response. If the option is provided,
+  the server will answer all HTTP GET requests to robots.txt with the contents
+  from that file.
+
 * Only schedule a single compaction per RocksDB column family at any given
   time. Scheduling mutliple concurrent compactions on the same column family
   can lead to scheduler threads being stalled under some adverse conditions
