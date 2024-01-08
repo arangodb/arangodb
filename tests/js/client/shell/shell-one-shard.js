@@ -124,7 +124,7 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
-        if (replication2Enabled) {
+        if (props.replicationVersion === "2") {
           try {
             // With Replication2 the writeConcern is defined by the CollectionGroup
             // it cannot be individual by collection anymore.
