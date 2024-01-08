@@ -99,6 +99,8 @@
 #include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
+#include "RestHandler/RestOptionsDescriptionHandler.h"
+#include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
@@ -186,6 +188,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _compressResponseThreshold(0),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
+      _optionsApiPolicy("jwt"),
       _numIoThreads(0),
       _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_http1{})),
@@ -276,6 +279,15 @@ batch processing.)");
                       std::unordered_set<std::string>{"disabled", "jwt",
                                                       "admin", "public"}))
       .setIntroducedIn(30900);
+
+  options
+      ->addOption("--server.options-api",
+                  "The policy for exposing the options API.",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_optionsApiPolicy,
+                      std::unordered_set<std::string>{"disabled", "jwt",
+                                                      "admin", "public"}))
+      .setIntroducedIn(31200);
 
   options->addSection("http", "HTTP server features");
 
@@ -403,7 +415,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         // "none" means no origins are allowed
         _accessControlAllowOrigins.clear();
         break;
-      } else if (!it.empty() && it.back() == '/') {
+      } else if (it.ends_with('/')) {
         // strip trailing slash
         it = it.substr(0, it.size() - 1);
       }
@@ -573,6 +585,10 @@ std::string GeneralServerFeature::redirectRootTo() const {
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
+}
+
+std::string const& GeneralServerFeature::optionsApiPolicy() const noexcept {
+  return _optionsApiPolicy;
 }
 
 uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
@@ -877,6 +893,14 @@ void GeneralServerFeature::defineRemainingHandlers(
 
     f.addHandler("/_admin/telemetrics",
                  RestHandlerCreator<RestTelemetricsHandler>::createNoData);
+  }
+
+  if (_optionsApiPolicy != "disabled") {
+    f.addHandler("/_admin/options",
+                 RestHandlerCreator<RestOptionsHandler>::createNoData);
+    f.addHandler(
+        "/_admin/options-description",
+        RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData);
   }
 
   f.addHandler("/_admin/system-report",
