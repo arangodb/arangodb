@@ -112,7 +112,7 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
       "db=\"", getDbName(), "\","
       "view=\"", getViewId(), "\","
       "collection=\"", getCollectionName(), "\","
-      "indexId=\"", id().id(), "\"");  // clang-format on
+      "indexId=\"", static_cast<Index const&>(*this).id().id(), "\"");  // clang-format on
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
