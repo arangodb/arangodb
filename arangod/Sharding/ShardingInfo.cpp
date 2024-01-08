@@ -322,7 +322,8 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool ignoreCollectionGroupAttributes,
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool ignoreCollectionGroupAttributes,
                                 bool translateCids,
                                 bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));

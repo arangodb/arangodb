@@ -30,9 +30,10 @@
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
-#include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterCollectionMethods.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -840,10 +841,11 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
                             includeShardsEntry);
   } else {
-    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
+    _sharding->toVelocyPack(build, isReplicationTWO,
+                            ctx != Serialization::List);
   }
 #else
-  _sharding->toVelocyPack(build,  isReplicationTWO, ctx != Serialization::List);
+  _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
 #endif
   if (group) {
     build.add("groupId", VPackValue(_groupId.value()));
