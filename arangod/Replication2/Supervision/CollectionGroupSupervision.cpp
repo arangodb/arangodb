@@ -939,7 +939,7 @@ struct TransactionBuilder {
                                      "/attributes/mutable"),
         [&](VPackBuilder& builder) {
           velocypack::serialize(builder, action.spec);
-        });
+        }).inc("/arango/Plan/Version");
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))

@@ -60,8 +60,10 @@ class ShardingInfo {
   std::string shardingStrategyName() const;
 
   LogicalCollection* collection() const noexcept;
-  void toVelocyPack(arangodb::velocypack::Builder& result, bool translateCids,
-                    bool includeShardsEntry = true) const;
+
+  void toVelocyPack(arangodb::velocypack::Builder& result,
+                    bool ignoreCollectionGroupAttributes,
+                    bool translateCids, bool includeShardsEntry = true) const;
 
   std::string const& distributeShardsLike() const noexcept;
 

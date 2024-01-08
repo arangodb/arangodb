@@ -27,12 +27,10 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/QueryCache.h"
 #include "Basics/DownCast.h"
-#include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterFeature.h"
-#include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ClusterCollectionMethods.h"
 #include "Cluster/FollowerInfo.h"
@@ -57,7 +55,6 @@
 #include "VocBase/Properties/UserInputCollectionProperties.h"
 #include "VocBase/Validators.h"
 #include "velocypack/Builder.h"
-#include "VocBase/Properties/UserInputCollectionProperties.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Sharding/ShardingStrategyEE.h"
@@ -366,6 +363,20 @@ size_t LogicalCollection::replicationFactor() const noexcept {
 }
 
 size_t LogicalCollection::writeConcern() const noexcept {
+  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
+    auto const& group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+    if (group) {
+      return group->attributes.mutableAttributes.writeConcern;
+    }
+    // If we cannot find a group this means the shard is dropped
+    // while we are still in this method. Let's just take the
+    // value at creation then.
+  }
   TRI_ASSERT(_sharding != nullptr);
   return _sharding->writeConcern();
 }
@@ -804,6 +815,16 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
               VPackValue(std::to_string(planId().id())));
   }
 
+  std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
+      group;
+  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+    TRI_ASSERT(replicationVersion() == replication::Version::TWO)
+        << "Set a groupId although we are not in Replication Two";
+    auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+    group = ci.getCollectionGroupById(
+        replication2::agency::CollectionGroupId{_groupId.value()});
+  }
+  bool isReplicationTWO = group != nullptr;
 #ifdef USE_ENTERPRISE
   if (isSmart() && type() == TRI_COL_TYPE_EDGE &&
       ServerState::instance()->isRunningInCluster()) {
@@ -816,25 +837,48 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     }
     edgeCollection->shardMapToVelocyPack(build);
     bool includeShardsEntry = false;
-    _sharding->toVelocyPack(build, ctx != Serialization::List,
+    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List,
                             includeShardsEntry);
   } else {
-    _sharding->toVelocyPack(build, ctx != Serialization::List);
+    _sharding->toVelocyPack(build, isReplicationTWO, ctx != Serialization::List);
   }
 #else
-  _sharding->toVelocyPack(build, ctx != Serialization::List);
+  _sharding->toVelocyPack(build,  isReplicationTWO, ctx != Serialization::List);
 #endif
-
-  includeVelocyPackEnterprise(build);
-  TRI_ASSERT(build.isOpenObject());
-
-  if (replicationVersion() == replication::Version::TWO &&
-      _groupId.has_value()) {
+  if (group) {
     build.add("groupId", VPackValue(_groupId.value()));
     if (_replicatedStateId) {
       build.add("replicatedStateId", VPackValue(*_replicatedStateId));
     }
+    // For replication1 the _sharding is responsible.
+    // For TWO the group contains those attributes
+
+    // Future TODO: It would be nice if we could use a "serializeInPlace"
+    // method Which does serialization but not the open/close object.
+    TRI_ASSERT(!build.hasKey(StaticStrings::ReplicationFactor))
+        << "replicationFactor already serialized from _sharding";
+    if (group->attributes.mutableAttributes.replicationFactor == 0) {
+      build.add(StaticStrings::ReplicationFactor,
+                VPackValue(StaticStrings::Satellite));
+    } else {
+      build.add(
+          StaticStrings::ReplicationFactor,
+          VPackValue(group->attributes.mutableAttributes.replicationFactor));
+    }
+
+    TRI_ASSERT(!build.hasKey(StaticStrings::WriteConcern))
+        << "writeConcern already serialized from _sharding";
+    // minReplicationFactor deprecated in 3.6
+    build.add(StaticStrings::WriteConcern,
+              VPackValue(group->attributes.mutableAttributes.writeConcern));
+    TRI_ASSERT(!build.hasKey(StaticStrings::MinReplicationFactor))
+        << "minReplicationFactor already serialized from _sharding";
+    build.add(StaticStrings::MinReplicationFactor,
+              VPackValue(group->attributes.mutableAttributes.writeConcern));
   }
+
+  includeVelocyPackEnterprise(build);
+  TRI_ASSERT(build.isOpenObject());
   // We leave the object open
   return {};
 }
@@ -904,7 +948,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   }
 
   size_t replicationFactor = _sharding->replicationFactor();
-  size_t writeConcern = _sharding->writeConcern();
+  size_t writeConcern = this->writeConcern();
   VPackSlice replicationFactorSlice =
       slice.get(StaticStrings::ReplicationFactor);
 
@@ -1004,7 +1048,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
       if ((ServerState::instance()->isCoordinator() ||
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
-          writeConcern != _sharding->writeConcern()) {  // check if changed
+          writeConcern != this->writeConcern()) {  // check if changed
         if (!_sharding->distributeShardsLike().empty()) {
           CollectionNameResolver resolver(vocbase());
           std::string name = resolver.getCollectionNameCluster(DataSourceId{
