@@ -4,7 +4,8 @@ import {
   Icon,
   IconButton,
   Menu,
-  MenuButton, MenuList,
+  MenuButton,
+  MenuList,
   MenuOptionGroup
 } from "@chakra-ui/react";
 import { ColumnDef, Table as TableType } from "@tanstack/react-table";
@@ -21,7 +22,12 @@ export const TableControl = <Data extends object>({
   // list of columns with a checkbox to toggle visibility
   return (
     <Menu closeOnSelect={false}>
-      <MenuButton as={IconButton} size="sm" variant="ghost" icon={<Icon as={EllipsisH} />} />
+      <MenuButton
+        as={IconButton}
+        size="sm"
+        variant="ghost"
+        icon={<Icon as={EllipsisH} />}
+      />
       <MenuList minWidth="auto">
         <MenuOptionGroup defaultChecked type="checkbox">
           <Flex padding="2" gap="2" direction="column">
@@ -30,10 +36,9 @@ export const TableControl = <Data extends object>({
                 ? table.getColumn(column.id)
                 : undefined;
               const isVisible = tableColumn?.getIsVisible();
-              console.log({ isVisible });
               return (
                 <Checkbox
-                  defaultChecked={tableColumn?.getIsVisible()}
+                  defaultChecked={isVisible}
                   onChange={() => {
                     tableColumn?.toggleVisibility();
                   }}
