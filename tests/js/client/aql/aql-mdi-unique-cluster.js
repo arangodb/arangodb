@@ -32,9 +32,9 @@ const ERRORS = arangodb.errors;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
-const database = "ZkdUniqueClusterTestDatabase";
+const database = "MdiUniqueClusterTestDatabase";
 
-function zkdClusterUniqueShardKeys() {
+function mdiClusterUniqueShardKeys() {
 
   const checkUnsupported = function (c, index) {
     try {
@@ -61,15 +61,15 @@ function zkdClusterUniqueShardKeys() {
     },
     tearDown: function () { db.c.drop(); },
 
-    testZkdClusterUnique: function () {
+    testMdiClusterUnique: function () {
       // This should work as expected
-      db.c.ensureIndex({type: 'zkd', fields: ["x", "y"], fieldValueTypes: 'double', unique: true});
-      db.c.ensureIndex({type: 'zkd', fields: ["y", "x", "z"], fieldValueTypes: 'double', unique: true});
+      db.c.ensureIndex({type: 'mdi', fields: ["x", "y"], fieldValueTypes: 'double', unique: true});
+      db.c.ensureIndex({type: 'mdi', fields: ["y", "x", "z"], fieldValueTypes: 'double', unique: true});
 
       // This should not work
-      checkUnsupported(db.c, {type: 'zkd', fields: ["z", "y"], fieldValueTypes: 'double', unique: true});
-      checkUnsupported(db.c, {type: 'zkd', fields: ["z"], fieldValueTypes: 'double', unique: true});
-      checkUnsupported(db.c, {type: 'zkd', fields: ["y"], fieldValueTypes: 'double', unique: true});
+      checkUnsupported(db.c, {type: 'mdi', fields: ["z", "y"], fieldValueTypes: 'double', unique: true});
+      checkUnsupported(db.c, {type: 'mdi', fields: ["z"], fieldValueTypes: 'double', unique: true});
+      checkUnsupported(db.c, {type: 'mdi', fields: ["y"], fieldValueTypes: 'double', unique: true});
     },
 
     testMdiPrefixClusterUnique: function () {
@@ -109,6 +109,6 @@ function zkdClusterUniqueShardKeys() {
   };
 }
 
-jsunity.run(zkdClusterUniqueShardKeys);
+jsunity.run(mdiClusterUniqueShardKeys);
 
 return jsunity.done();

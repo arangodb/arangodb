@@ -327,7 +327,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _partitionFilesForPrimaryIndexCf(false),
       _partitionFilesForEdgeIndexCf(false),
       _partitionFilesForVPackIndexCf(false),
-      _partitionFilesForZkdIndexCf(false),
+      _partitionFilesForMdiIndexCf(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
   // setting the number of background jobs to
   _maxBackgroundJobs = static_cast<int32_t>(
@@ -1502,10 +1502,10 @@ can open. Thus the option should only be enabled on deployments with a
 limited number of edge collections/shards/indexes.)");
 
   options
-      ->addOption("--rocksdb.partition-files-for-zkd-index",
-                  "If enabled, the index data for different zkd "
+      ->addOption("--rocksdb.partition-files-for-mdi-index",
+                  "If enabled, the index data for different mdi "
                   "indexes will end up in different .sst files.",
-                  new BooleanParameter(&_partitionFilesForZkdIndexCf),
+                  new BooleanParameter(&_partitionFilesForMdiIndexCf),
                   arangodb::options::makeFlags(
                       arangodb::options::Flags::Uncommon,
                       arangodb::options::Flags::Experimental,
@@ -1515,7 +1515,7 @@ limited number of edge collections/shards/indexes.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31200)
       .setLongDescription(R"(Enabling this option will make RocksDB's
-  compaction write the persistent index data for different zkd
+  compaction write the persistent index data for different mdi
   indexes (also indexes from different collections/shards) into different
   .sst files. Otherwise the persistent index data from different
   collections/shards/indexes can be mixed and written into the same .sst files.
@@ -1558,8 +1558,8 @@ limited number of edge collections/shards/indexes.)");
       RocksDBColumnFamilyManager::Family::GeoIndex,
       RocksDBColumnFamilyManager::Family::FulltextIndex,
       RocksDBColumnFamilyManager::Family::ReplicatedLogs,
-      RocksDBColumnFamilyManager::Family::ZkdIndex,
-      RocksDBColumnFamilyManager::Family::ZkdVPackIndex};
+      RocksDBColumnFamilyManager::Family::MdiIndex,
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex};
 
   auto addMaxWriteBufferNumberCf =
       [this, &options](RocksDBColumnFamilyManager::Family family) {
@@ -2164,10 +2164,10 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     }
   }
 
-  if (family == RocksDBColumnFamilyManager::Family::ZkdIndex ||
-      family == RocksDBColumnFamilyManager::Family::ZkdVPackIndex) {
+  if (family == RocksDBColumnFamilyManager::Family::MdiIndex ||
+      family == RocksDBColumnFamilyManager::Family::MdiVPackIndex) {
     // partition .sst files by object id prefix
-    if (_partitionFilesForZkdIndexCf) {
+    if (_partitionFilesForMdiIndexCf) {
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
     }
