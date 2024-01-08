@@ -89,8 +89,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
               _inputRegister.value() == RegisterId::maxRegisterId));
 
   /*
-   * In the refactored variant we need to parse the correct enumerator type
-   * here, before we're allowed to use it.
+   * We need to parse the correct enumerator type here, before we're allowed to
+   * use it.
    */
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
@@ -134,8 +134,8 @@ TraversalExecutorInfos::TraversalExecutorInfos(
 
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   /*
-   * In the refactored variant we need to parse the correct enumerator type
-   * here, before we're allowed to use it.
+   * We need to parse the correct enumerator type here, before we're allowed to
+   * use it.
    */
   TRI_ASSERT(_traversalEnumerator == nullptr);
 
@@ -384,7 +384,6 @@ TraversalExecutor::~TraversalExecutor() {
 }
 
 auto TraversalExecutor::doOutput(OutputAqlItemRow& output) -> void {
-  // Refactored variant
   auto currentPath = traversalEnumerator()->getNextPath();
   if (currentPath != nullptr) {
     TRI_ASSERT(_inputRow.isInitialized());
@@ -479,14 +478,12 @@ auto TraversalExecutor::skipRowsRange(AqlItemBlockInputRange& input,
   TRI_ASSERT(false);
 }
 
-//
 // Set a new start vertex for traversal, for this fetch inputs
 // from input until we are either successful or input is unwilling
 // to give us more.
 //
 // TODO: this is quite a big function, refactor
 bool TraversalExecutor::initTraverser(AqlItemBlockInputRange& input) {
-  // refactored variant
   TRI_ASSERT(traversalEnumerator()->isDone());
 
   while (input.hasDataRow()) {
