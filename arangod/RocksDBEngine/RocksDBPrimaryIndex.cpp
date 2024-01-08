@@ -1423,7 +1423,9 @@ struct RocksDBPrimaryIndexStreamIterator final : AqlIndexStreamIterator {
     cache[0] = _cache;
   }
 
-  bool reset(std::span<VPackSlice> span) override {
+  bool reset(std::span<VPackSlice> span,
+             std::span<VPackSlice> constants) override {
+    TRI_ASSERT(constants.empty());
     seekInternal({});
     return position(span);
   }
@@ -1454,6 +1456,10 @@ bool RocksDBPrimaryIndex::checkSupportsStreamInterface(
   TRI_ASSERT(coveredFields.size() == 2);
   TRI_ASSERT(coveredFields[0][0].name == StaticStrings::KeyString &&
              coveredFields[1][0].name == StaticStrings::IdString);
+
+  if (!streamOpts.constantFields.empty()) {
+    return false;
+  }
 
   for (auto idx : streamOpts.projectedFields) {
     if (idx != 0) {

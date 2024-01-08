@@ -818,7 +818,6 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
     VPackBufferUInt8 data;
     VPackBuilder builder(data);
     auto envelope = arangodb::agency::envelope::into_builder(builder);
-    auto properties = col.getCollectionProperties();
     // NOTE: We could do this better with partial updates.
     // e.g. we do not need to update the group if only the schema of the
     // collection is modified
@@ -845,6 +844,11 @@ ClusterCollectionMethods::createCollectionsOnCoordinator(
       writes = std::move(writes).emplace_object(
           colBase->schema()->str(),
           [&](VPackBuilder& builder) { col.schemaToVelocyPack(builder); });
+
+      writes = std::move(writes).emplace_object(
+          colBase->cacheEnabled()->str(), [&](VPackBuilder& builder) {
+            builder.add(VPackValue(col.cacheEnabled()));
+          });
 
       writes = std::move(writes).emplace_object(
           colBase->computedValues()->str(), [&](VPackBuilder& builder) {

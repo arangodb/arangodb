@@ -43,14 +43,13 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
   using StreamIteratorType = IndexStreamIterator<SliceType, DocIdType>;
   using Descriptor = IndexDescriptor<SliceType, DocIdType>;
 
-  TwoIndicesMergeJoin(std::vector<Descriptor> descs,
-                      std::size_t numKeyComponents);
+  TwoIndicesMergeJoin(std::vector<Descriptor> descs);
 
   std::pair<bool, size_t> next(
       std::function<bool(std::span<DocIdType>, std::span<SliceType>)> const& cb)
       override;
 
-  void reset() override;
+  void reset(std::span<SliceType> constants) override;
 
  private:
   struct IndexStreamData {
@@ -58,14 +57,16 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
     std::span<SliceType> _position;
     std::span<SliceType> _projections;
     DocIdType& _docId;
+    size_t _constantSize{0};
     bool exhausted{false};
 
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId);
+                    std::span<SliceType> projections, DocIdType& docId,
+                    size_t constantSize);
     void seekTo(std::span<SliceType> target);
     bool next();
-    void reset();
+    void reset(std::span<SliceType> constants);
   };
 
   struct IndexStreamCompare {
@@ -112,9 +113,35 @@ struct TwoIndicesMergeJoin : IndexJoinStrategy<SliceType, DocIdType> {
 #define LOG_IDX_TWO_NONU_MERGER LOG_DEVEL_IF(false)
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset() {
+void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::reset(
+    std::span<SliceType> constants) {
+  size_t constOffset = 0;
   for (auto& idx : indexes) {
-    idx.reset();
+    idx.reset(constants.subspan(constOffset, idx._constantSize));
+    constOffset += idx._constantSize;
+  }
+
+  maxIter = nullptr;
+  minIter = nullptr;
+  for (auto& idx : indexes) {
+    if (maxIter == nullptr ||
+        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
+      if (maxIter != nullptr) {
+        minIter = maxIter;
+      }
+      maxIter = &idx;
+    } else {
+      minIter = &idx;
+    }
+  }
+  TRI_ASSERT(minIter != nullptr);
+  TRI_ASSERT(maxIter != nullptr);
+  TRI_ASSERT(minIter != maxIter);
+  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minIter) ==
+                   std::weak_ordering::equivalent;
+  if (!maxIter->exhausted && isAligned) {
+    fillInitialMatch();
+    positionAligned = true;
   }
 }
 
@@ -155,11 +182,13 @@ template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
     IndexStreamData(std::unique_ptr<StreamIteratorType> iter,
                     std::span<SliceType> position,
-                    std::span<SliceType> projections, DocIdType& docId)
+                    std::span<SliceType> projections, DocIdType& docId,
+                    std::size_t constantSize)
     : _iter(std::move(iter)),
       _position(position),
       _projections(projections),
-      _docId(docId) {
+      _docId(docId),
+      _constantSize(constantSize) {
   exhausted = !_iter->position(_position);
   LOG_IDX_TWO_NONU_MERGER << "iter at " << _position[0];
 }
@@ -176,9 +205,9 @@ void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
-void TwoIndicesMergeJoin<SliceType, DocIdType,
-                         KeyCompare>::IndexStreamData::reset() {
-  exhausted = !_iter->reset(_position);
+void TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::IndexStreamData::
+    reset(std::span<SliceType> constants) {
+  exhausted = !_iter->reset(_position, constants);
 }
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
@@ -189,50 +218,37 @@ bool TwoIndicesMergeJoin<SliceType, DocIdType,
 
 template<typename SliceType, typename DocIdType, typename KeyCompare>
 TwoIndicesMergeJoin<SliceType, DocIdType, KeyCompare>::TwoIndicesMergeJoin(
-    std::vector<Descriptor> descs, std::size_t numKeyComponents) {
+    std::vector<Descriptor> descs) {
   TRI_ASSERT(descs.size() == FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
   indexes.reserve(FIXED_NON_UNIQUE_INDEX_SIZE_VAR);
-  currentKeySet.resize(numKeyComponents);
+  currentKeySet.resize(descs[0].numKeyComponents);
 
   std::size_t bufferSize = 0;
   for (auto const& desc : descs) {
-    bufferSize += desc.numProjections + numKeyComponents;
+    bufferSize += desc.numProjections + desc.numKeyComponents;
   }
 
   sliceBuffer.resize(bufferSize);
 
   auto keySliceIter = sliceBuffer.begin();
-  auto projectionsIter = sliceBuffer.begin() + numKeyComponents * descs.size();
+  auto projectionsIter =
+      sliceBuffer.begin() + descs[0].numKeyComponents * descs.size();
+  // Note: Access to descs[0] is safe because we have asserted that descs.size()
+  // == 2 and right now we only do support joins on exact one join-key. As soon
+  // as we extend this to support joins on multiple keys, we need to change this
+  // code here.
+
   projectionsSpan = {projectionsIter, sliceBuffer.end()};
   auto docIdIter = documentIds.begin();
   for (auto& desc : descs) {
     auto projections = projectionsIter;
     projectionsIter += desc.numProjections;
     auto keyBuffer = keySliceIter;
-    keySliceIter += numKeyComponents;
-    auto& idx = indexes.emplace_back(
-        std::move(desc.iter), std::span<SliceType>{keyBuffer, keySliceIter},
-        std::span<SliceType>{projections, projectionsIter}, *(docIdIter++));
-
-    if (maxIter == nullptr ||
-        IndexStreamCompare{}.cmp(*maxIter, idx) == std::weak_ordering::less) {
-      if (maxIter != nullptr) {
-        minIter = maxIter;
-      }
-      maxIter = &idx;
-    } else {
-      minIter = &idx;
-    }
-  }
-
-  TRI_ASSERT(minIter != nullptr);
-  TRI_ASSERT(maxIter != nullptr);
-  TRI_ASSERT(minIter != maxIter);
-  auto isAligned = IndexStreamCompare{}.cmp(*maxIter, *minIter) ==
-                   std::weak_ordering::equivalent;
-  if (!maxIter->exhausted && isAligned) {
-    fillInitialMatch();
-    positionAligned = true;
+    keySliceIter += desc.numKeyComponents;
+    indexes.emplace_back(std::move(desc.iter),
+                         std::span<SliceType>{keyBuffer, keySliceIter},
+                         std::span<SliceType>{projections, projectionsIter},
+                         *(docIdIter++), desc.numConstants);
   }
 }
 

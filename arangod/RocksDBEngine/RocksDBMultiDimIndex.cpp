@@ -22,7 +22,7 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "RocksDBZkdIndex.h"
+#include "RocksDBMultiDimIndex.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Variable.h"
@@ -45,18 +45,18 @@ using namespace arangodb;
 namespace arangodb {
 
 template<bool isUnique = false, bool hasPrefix = false>
-class RocksDBZkdIndexIterator final : public IndexIterator {
+class RocksDBMdiIndexIterator final : public IndexIterator {
  public:
-  RocksDBZkdIndexIterator(ResourceMonitor& monitor,
+  RocksDBMdiIndexIterator(ResourceMonitor& monitor,
                           LogicalCollection* collection,
-                          RocksDBZkdIndexBase* index, transaction::Methods* trx,
+                          RocksDBMdiIndexBase* index, transaction::Methods* trx,
                           zkd::byte_string min, zkd::byte_string max,
                           transaction::BuilderLeaser prefix, std::size_t dim,
                           ReadOwnWrites readOwnWrites, size_t lookahead)
       : IndexIterator(collection, trx, readOwnWrites),
         _min(std::move(min)),
         _max(std::move(max)),
-        _bound(RocksDBKeyBounds::ZkdIndex(index->objectId())),
+        _bound(RocksDBKeyBounds::MdiIndex(index->objectId())),
         _dim(dim),
         _prefix(std::move(prefix)),
         _index(index),
@@ -73,7 +73,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
         builder.add(VPackSlice::maxKeySlice());
       }
 
-      _upperBoundKey.constructZkdIndexValue(index->objectId(), builder.slice(),
+      _upperBoundKey.constructMdiIndexValue(index->objectId(), builder.slice(),
                                             {});
       _upperBound = _upperBoundKey.string();
     } else {
@@ -91,7 +91,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   }
 
   std::string_view typeName() const noexcept final {
-    return "rocksdb-zkd-index-iterator";
+    return "rocksdb-mdi-index-iterator";
   }
 
  protected:
@@ -104,25 +104,25 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   static auto getCurveValue(rocksdb::Slice key) {
     if constexpr (hasPrefix) {
       if constexpr (isUnique) {
-        return RocksDBKey::zkdUniqueVPackIndexCurveValue(key);
+        return RocksDBKey::mdiUniqueVPackIndexCurveValue(key);
       } else {
-        return RocksDBKey::zkdVPackIndexCurveValue(key);
+        return RocksDBKey::mdiVPackIndexCurveValue(key);
       }
     } else {
       if constexpr (isUnique) {
-        return RocksDBKey::zkdUniqueIndexCurveValue(key);
+        return RocksDBKey::mdiUniqueIndexCurveValue(key);
       } else {
-        return RocksDBKey::zkdIndexCurveValue(key);
+        return RocksDBKey::mdiIndexCurveValue(key);
       }
     }
   }
 
   auto loadKey(zkd::byte_string_view key) {
     if constexpr (hasPrefix) {
-      _rocksdbKey.constructZkdIndexValue(_index->objectId(), _prefix->slice(),
+      _rocksdbKey.constructMdiIndexValue(_index->objectId(), _prefix->slice(),
                                          _cur);
     } else {
-      _rocksdbKey.constructZkdIndexValue(_index->objectId(), _cur);
+      _rocksdbKey.constructMdiIndexValue(_index->objectId(), _cur);
     }
   }
 
@@ -287,7 +287,7 @@ class RocksDBZkdIndexIterator final : public IndexIterator {
   IterState _iterState = IterState::SEEK_ITER_TO_CUR;
 
   std::unique_ptr<rocksdb::Iterator> _iter;
-  RocksDBZkdIndexBase* _index = nullptr;
+  RocksDBMdiIndexBase* _index = nullptr;
 
   size_t const _lookahead;
 
@@ -328,17 +328,16 @@ auto accessDocumentPath(VPackSlice doc,
   return doc;
 }
 
-auto readDocumentKey(
+ResultT<zkd::byte_string> readDocumentKey(
     VPackSlice doc,
-    std::vector<std::vector<basics::AttributeName>> const& fields)
-    -> zkd::byte_string {
+    std::vector<std::vector<basics::AttributeName>> const& fields) {
   std::vector<zkd::byte_string> v;
   v.reserve(fields.size());
 
   for (auto const& path : fields) {
     VPackSlice value = accessDocumentPath(doc, path);
     if (!value.isNumber<double>()) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE);
+      return {TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE};
     }
     auto dv = value.getNumericValue<double>();
     if (std::isnan(dv)) {
@@ -351,14 +350,14 @@ auto readDocumentKey(
   return zkd::interleave(v);
 }
 
-auto boundsForIterator(RocksDBZkdIndexBase const* index,
+auto boundsForIterator(RocksDBMdiIndexBase const* index,
                        aql::AstNode const* node, aql::Variable const* reference,
                        IndexIteratorOptions const& opts,
                        velocypack::Builder& prefixValuesBuilder)
     -> std::pair<zkd::byte_string, zkd::byte_string> {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
-  std::unordered_map<size_t, zkd::ExpressionBounds> extractedBounds;
+  std::unordered_map<size_t, mdi::ExpressionBounds> extractedBounds;
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(index, node, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
@@ -411,7 +410,7 @@ auto boundsForIterator(RocksDBZkdIndexBase const* index,
 
 std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
     Index const* index) {
-  if (auto ptr = dynamic_cast<RocksDBZkdIndexBase const*>(index);
+  if (auto ptr = dynamic_cast<RocksDBMdiIndexBase const*>(index);
       ptr != nullptr) {
     return ptr->prefixFields();
   }
@@ -423,7 +422,7 @@ std::vector<std::vector<basics::AttributeName>> const& getSortedPrefixFields(
 
 }  // namespace
 
-void zkd::extractBoundsFromCondition(
+void mdi::extractBoundsFromCondition(
     Index const* index, aql::AstNode const* condition,
     aql::Variable const* reference,
     std::unordered_map<size_t, aql::AstNode const*>& extractedPrefix,
@@ -560,7 +559,7 @@ void zkd::extractBoundsFromCondition(
   }
 }
 
-auto zkd::supportsFilterCondition(
+auto mdi::supportsFilterCondition(
     Index const* index, std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) -> Index::FilterCosts {
@@ -570,7 +569,6 @@ auto zkd::supportsFilterCondition(
   std::unordered_set<aql::AstNode const*> unusedExpressions;
   extractBoundsFromCondition(index, node, reference, extractedPrefix,
                              extractedBounds, unusedExpressions);
-
   if (extractedBounds.empty()) {
     return {};
   }
@@ -579,14 +577,47 @@ auto zkd::supportsFilterCondition(
     return {};  // all prefix values have to be assigned
   }
 
-  // TODO -- actually return costs
-  auto costs = Index::FilterCosts::defaultCosts(itemsInIndex);
-  costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
+  Index::FilterCosts costs;
   costs.supportsCondition = true;
+  costs.coveredAttributes = extractedBounds.size() + extractedPrefix.size();
+
+  // we look up a single point using the prefix values
+  auto const estimatedElementsOnCurve = [&]() -> double {
+    if (index->hasSelectivityEstimate()) {
+      auto estimate = index->selectivityEstimate();
+      if (estimate > 0) {
+        return 1. / estimate;
+      }
+    }
+
+    return static_cast<double>(itemsInIndex);
+  }();
+
+  // each additional bound reduces the volume
+  const double volumeReductionFactor = 1.4;  // guessed, 2 might be too much
+  const double searchBoxVolume =
+      1. /
+      pow(volumeReductionFactor, static_cast<double>(extractedBounds.size()));
+
+  costs.estimatedItems =
+      static_cast<size_t>(estimatedElementsOnCurve * searchBoxVolume);
+
+  const size_t unusedDimensions =
+      index->fields().size() - extractedBounds.size();
+
+  double const unusedDimensionCost =
+      0.5 * static_cast<double>(unusedDimensions * costs.estimatedItems);
+  auto const unusedExpressionCost =
+      static_cast<double>(costs.estimatedItems * unusedExpressions.size());
+
+  // account for post filtering
+  costs.estimatedCosts = static_cast<double>(costs.estimatedItems) +
+                         unusedDimensionCost + unusedExpressionCost;
+
   return costs;
 }
 
-auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
+auto mdi::specializeCondition(Index const* index, aql::AstNode* condition,
                               aql::Variable const* reference) -> aql::AstNode* {
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
@@ -634,10 +665,10 @@ auto zkd::specializeCondition(Index const* index, aql::AstNode* condition,
 }
 
 namespace {
-auto extractAttributeValues(
+ResultT<transaction::BuilderLeaser> extractAttributeValues(
     transaction::Methods& trx,
     std::vector<std::vector<basics::AttributeName>> const& storedValues,
-    velocypack::Slice doc) {
+    velocypack::Slice doc, bool nullAllowed) {
   transaction::BuilderLeaser leased(&trx);
   leased->openArray(true);
   for (auto const& it : storedValues) {
@@ -650,6 +681,10 @@ auto extractAttributeValues(
     } else {
       s = doc;
       for (auto const& part : it) {
+        if (!s.isObject()) {
+          s = VPackSlice ::noneSlice();
+          break;
+        }
         s = s.get(part.name);
         if (s.isNone()) {
           break;
@@ -659,6 +694,11 @@ auto extractAttributeValues(
     if (s.isNone()) {
       s = VPackSlice::nullSlice();
     }
+
+    if (s.isNull() && !nullAllowed) {
+      return {TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING};
+    }
+
     leased->add(s);
   }
   leased->close();
@@ -667,58 +707,130 @@ auto extractAttributeValues(
 }
 }  // namespace
 
-Result RocksDBZkdIndexBase::insert(transaction::Methods& trx,
-                                   RocksDBMethods* methods,
-                                   LocalDocumentId documentId,
-                                   velocypack::Slice doc,
-                                   OperationOptions const& options,
-                                   bool performChecks) {
+Result RocksDBMdiIndex::insert(transaction::Methods& trx,
+                               RocksDBMethods* methods,
+                               LocalDocumentId documentId,
+                               velocypack::Slice doc,
+                               OperationOptions const& options,
+                               bool performChecks) {
   TRI_ASSERT(_unique == false);
-  TRI_ASSERT(_sparse == false);
 
-  auto keyValue = readDocumentKey(doc, _fields);
-
-  RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
-    rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
-  } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
-    rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
-                                      keyValue, documentId);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
   }
 
-  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
-  auto value = RocksDBValue::ZkdIndexValue(storedValues->slice());
+  RocksDBKey rocksdbKey;
+  uint64_t hash = 0;
+  if (!isPrefixed()) {
+    rocksdbKey.constructMdiIndexValue(objectId(), keyValue, documentId);
+  } else {
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
+    rocksdbKey.constructMdiIndexValue(objectId(), prefixValues->slice(),
+                                      keyValue, documentId);
+    hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
+  }
+
+  auto storedValues =
+      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
+  auto value = RocksDBValue::MdiIndexValue(storedValues->slice());
   auto s = methods->PutUntracked(_cf, rocksdbKey, value.string());
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
   }
 
+  if (_estimates) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(
+        state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    trxc->trackIndexInsert(id(), hash);
+  }
+
   return {};
 }
 
-Result RocksDBZkdIndexBase::remove(transaction::Methods& trx,
-                                   RocksDBMethods* methods,
-                                   LocalDocumentId documentId,
-                                   velocypack::Slice doc,
-                                   OperationOptions const& /*options*/) {
-  TRI_ASSERT(_unique == false);
-  TRI_ASSERT(_sparse == false);
+void RocksDBMdiIndex::truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                                     transaction::Methods* trx) {
+  if (_estimator != nullptr) {
+    _estimator->bufferTruncate(tick);
+  }
+  RocksDBIndex::truncateCommit(std::move(guard), tick, trx);
+}
 
-  auto keyValue = readDocumentKey(doc, _fields);
+Result RocksDBMdiIndex::drop() {
+  Result res = RocksDBIndex::drop();
+
+  if (res.ok() && _estimator != nullptr) {
+    _estimator->drain();
+  }
+
+  return res;
+}
+
+Result RocksDBMdiIndex::remove(transaction::Methods& trx,
+                               RocksDBMethods* methods,
+                               LocalDocumentId documentId,
+                               velocypack::Slice doc,
+                               OperationOptions const& /*options*/) {
+  TRI_ASSERT(_unique == false);
+
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
-    rocksdbKey.constructZkdIndexValue(objectId(), keyValue, documentId);
+  uint64_t hash = 0;
+  if (!isPrefixed()) {
+    rocksdbKey.constructMdiIndexValue(objectId(), keyValue, documentId);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
-    rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
+    rocksdbKey.constructMdiIndexValue(objectId(), prefixValues->slice(),
                                       keyValue, documentId);
+    hash = _estimates ? prefixValues->slice().normalizedHash() : 0;
   }
 
   auto s = methods->SingleDelete(_cf, rocksdbKey);
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
+  }
+
+  if (_estimates) {
+    auto* state = RocksDBTransactionState::toState(&trx);
+    auto* trxc = static_cast<RocksDBTransactionCollection*>(
+        state->findCollection(_collection.id()));
+    TRI_ASSERT(trxc != nullptr);
+    // The estimator is only useful if we are in a non-unique index
+    trxc->trackIndexRemove(id(), hash);
   }
 
   return {};
@@ -729,16 +841,23 @@ auto columnFamilyForInfo(velocypack::Slice info) {
   if (auto prefix = info.get(StaticStrings::IndexPrefixFields);
       prefix.isArray() && !prefix.isEmptyArray()) {
     return RocksDBColumnFamilyManager::get(
-        RocksDBColumnFamilyManager::Family::ZkdVPackIndex);
+        RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   }
 
   return RocksDBColumnFamilyManager::get(
-      RocksDBColumnFamilyManager::Family::ZkdIndex);
+      RocksDBColumnFamilyManager::Family::MdiIndex);
+}
+
+uint64_t hashForKey(rocksdb::Slice key) {
+  // NOTE: This function needs to use the same hashing on the
+  // indexed VPack as the initial inserter does
+  VPackSlice tmp = RocksDBKey::indexedVPack(key);
+  return tmp.normalizedHash();
 }
 
 }  // namespace
 
-RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
+RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                                          velocypack::Slice info)
     : RocksDBIndex(iid, coll, info, columnFamilyForInfo(info),
                    /*useCache*/ false,
@@ -757,12 +876,14 @@ RocksDBZkdIndexBase::RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
                              /*allowExpansion*/ false)),
       _coveredFields(Index::mergeFields(_prefixFields, _storedValues)) {}
 
-void RocksDBZkdIndexBase::toVelocyPack(
+void RocksDBMdiIndexBase::toVelocyPack(
     velocypack::Builder& builder,
     std::underlying_type<Index::Serialize>::type type) const {
   VPackObjectBuilder ob(&builder);
   RocksDBIndex::toVelocyPack(builder, type);
-
+  builder.add("fieldValueTypes", VPackValue("double"));
+  builder.add(StaticStrings::IndexEstimates,
+              VPackValue(hasSelectivityEstimate()));
   if (!_storedValues.empty()) {
     builder.add(velocypack::Value(StaticStrings::IndexStoredValues));
     builder.openArray();
@@ -789,75 +910,225 @@ void RocksDBZkdIndexBase::toVelocyPack(
   }
 }
 
-Index::FilterCosts RocksDBZkdIndexBase::supportsFilterCondition(
+/// @brief Test if this index matches the definition
+bool RocksDBMdiIndexBase::matchesDefinition(VPackSlice const& info) const {
+  // call compare method of parent first
+  if (!RocksDBIndex::matchesDefinition(info)) {
+    return false;
+  }
+  // compare prefix values
+  auto value = info.get(arangodb::StaticStrings::IndexPrefixFields);
+
+  if (value.isNone()) {
+    return _prefixFields.empty();
+  }
+
+  if (!value.isArray()) {
+    return false;
+  }
+
+  size_t const n = static_cast<size_t>(value.length());
+  if (n != _prefixFields.size()) {
+    return false;
+  }
+
+  std::vector<arangodb::basics::AttributeName> translate;
+  for (size_t i = 0; i < n; ++i) {
+    translate.clear();
+    VPackSlice f = value.at(i);
+    if (!f.isString()) {
+      // Invalid field definition!
+      return false;
+    }
+    TRI_ParseAttributeString(f.stringView(), translate, true);
+    if (!arangodb::basics::AttributeName::isIdentical(_prefixFields[i],
+                                                      translate, false)) {
+      return false;
+    }
+  }
+  return true;
+}
+
+bool RocksDBMdiIndex::hasSelectivityEstimate() const {
+  TRI_ASSERT(!_unique);
+  return _estimates && isPrefixed();
+}
+
+double RocksDBMdiIndex::selectivityEstimate(std::string_view) const {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  TRI_ASSERT(!_unique);
+  if (_estimator == nullptr || !_estimates) {
+    // we turn off the estimates for some system collections to avoid updating
+    // them too often. we also turn off estimates for stub collections on
+    // coordinator and DB servers
+    return 0.0;
+  }
+  TRI_ASSERT(_estimator != nullptr);
+  return _estimator->computeEstimate();
+}
+
+RocksDBCuckooIndexEstimatorType* RocksDBMdiIndex::estimator() {
+  return _estimator.get();
+}
+
+void RocksDBMdiIndex::setEstimator(
+    std::unique_ptr<RocksDBCuckooIndexEstimatorType> est) {
+  TRI_ASSERT(!_unique);
+  TRI_ASSERT(_estimator == nullptr ||
+             _estimator->appliedSeq() <= est->appliedSeq());
+  _estimator = std::move(est);
+}
+
+void RocksDBMdiIndex::recalculateEstimates() {
+  if (unique() || _estimator == nullptr) {
+    return;
+  }
+  TRI_ASSERT(_estimator != nullptr);
+  _estimator->clear();
+
+  auto& selector =
+      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
+  auto& engine = selector.engine<RocksDBEngine>();
+  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
+
+  auto bounds = getBounds();
+  rocksdb::Slice const end = bounds.end();
+  rocksdb::ReadOptions options;
+  options.iterate_upper_bound = &end;  // safe to use on rocksb::DB directly
+  options.prefix_same_as_start = true;
+  options.verify_checksums = false;
+  options.fill_cache = false;
+  std::unique_ptr<rocksdb::Iterator> it(db->NewIterator(options, _cf));
+  for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
+    uint64_t hash = hashForKey(it->key());
+    // cppcheck-suppress uninitvar ; doesn't understand above call
+    _estimator->insert(hash);
+  }
+  _estimator->setAppliedSeq(seq);
+}
+
+Index::FilterCosts RocksDBMdiIndexBase::supportsFilterCondition(
     transaction::Methods& /*trx*/,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
-  return zkd::supportsFilterCondition(this, allIndexes, node, reference,
+  return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                       itemsInIndex);
 }
 
-aql::AstNode* RocksDBZkdIndexBase::specializeCondition(
+aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
     transaction::Methods& /*trx*/, aql::AstNode* condition,
     aql::Variable const* reference) const {
-  return zkd::specializeCondition(this, condition, reference);
+  return mdi::specializeCondition(this, condition, reference);
 }
 
-std::unique_ptr<IndexIterator> RocksDBZkdIndexBase::iteratorForCondition(
+Index::IndexType RocksDBMdiIndexBase::type() const {
+  return isPrefixed() ? TRI_IDX_TYPE_MDI_PREFIXED_INDEX
+                      : TRI_IDX_TYPE_MDI_INDEX;
+}
+
+char const* RocksDBMdiIndexBase::typeName() const {
+  return Index::oldtypeName(type());
+}
+
+std::unique_ptr<IndexIterator> RocksDBMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_prefixFields.empty()) {
-    return std::make_unique<RocksDBZkdIndexIterator<false, false>>(
+  if (!isPrefixed()) {
+    return std::make_unique<RocksDBMdiIndexIterator<false, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
   } else {
-    return std::make_unique<RocksDBZkdIndexIterator<false, true>>(
+    return std::make_unique<RocksDBMdiIndexIterator<false, true>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
   }
 }
 
-std::unique_ptr<IndexIterator> RocksDBUniqueZkdIndex::iteratorForCondition(
+RocksDBMdiIndex::RocksDBMdiIndex(IndexId iid, LogicalCollection& coll,
+                                 velocypack::Slice info)
+    : RocksDBMdiIndexBase(iid, coll, info), _estimates(true) {
+  TRI_ASSERT(!_unique);
+  if (VPackSlice s = info.get(StaticStrings::IndexEstimates); s.isBoolean()) {
+    // read "estimates" flag from velocypack if it is present.
+    // if it's not present, we go with the default (estimates = true)
+    _estimates = s.getBoolean();
+  }
+
+  if (!isPrefixed()) {
+    _estimates = false;
+  }
+
+  if (_estimates && !ServerState::instance()->isCoordinator() &&
+      !coll.isAStub()) {
+    // We activate the estimator for all non unique-indexes.
+    // And only on single servers and DBServers
+    _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
+        &coll.vocbase()
+             .server()
+             .getFeature<EngineSelectorFeature>()
+             .engine<RocksDBEngine>()
+             .indexEstimatorMemoryUsageMetric(),
+        RocksDBIndex::ESTIMATOR_SIZE);
+  }
+}
+
+std::unique_ptr<IndexIterator> RocksDBUniqueMdiIndex::iteratorForCondition(
     ResourceMonitor& monitor, transaction::Methods* trx,
     aql::AstNode const* node, aql::Variable const* reference,
     IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites, int) {
   transaction::BuilderLeaser leaser(trx);
   auto&& [min, max] = boundsForIterator(this, node, reference, opts, *leaser);
 
-  if (_prefixFields.empty()) {
-    return std::make_unique<RocksDBZkdIndexIterator<true, false>>(
+  if (!isPrefixed()) {
+    return std::make_unique<RocksDBMdiIndexIterator<true, false>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
   } else {
-    return std::make_unique<RocksDBZkdIndexIterator<true, true>>(
+    return std::make_unique<RocksDBMdiIndexIterator<true, true>>(
         monitor, &_collection, this, trx, std::move(min), std::move(max),
         std::move(leaser), fields().size(), readOwnWrites, opts.lookahead);
   }
 }
 
-Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
+Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
                                      RocksDBMethods* methods,
                                      LocalDocumentId documentId,
                                      velocypack::Slice doc,
                                      OperationOptions const& options,
                                      bool performChecks) {
   TRI_ASSERT(_unique == true);
-  TRI_ASSERT(_sparse == false);
 
-  // TODO what about performChecks
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
-    rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
+  if (!isPrefixed()) {
+    rocksdbKey.constructMdiIndexValue(objectId(), keyValue);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
-    rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
+    rocksdbKey.constructMdiIndexValue(objectId(), prefixValues->slice(),
                                       keyValue);
   }
 
@@ -872,9 +1143,10 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
     }
   }
 
-  auto storedValues = extractAttributeValues(trx, _storedValues, doc);
+  auto storedValues =
+      std::move(extractAttributeValues(trx, _storedValues, doc, true).get());
   auto value =
-      RocksDBValue::UniqueZkdIndexValue(documentId, storedValues->slice());
+      RocksDBValue::UniqueMdiIndexValue(documentId, storedValues->slice());
 
   if (auto s = methods->PutUntracked(_cf, rocksdbKey, value.string());
       !s.ok()) {
@@ -884,22 +1156,38 @@ Result RocksDBUniqueZkdIndex::insert(transaction::Methods& trx,
   return {};
 }
 
-Result RocksDBUniqueZkdIndex::remove(transaction::Methods& trx,
+Result RocksDBUniqueMdiIndex::remove(transaction::Methods& trx,
                                      RocksDBMethods* methods,
                                      LocalDocumentId documentId,
                                      velocypack::Slice doc,
                                      OperationOptions const& /*options*/) {
   TRI_ASSERT(_unique == true);
-  TRI_ASSERT(_sparse == false);
 
-  auto keyValue = readDocumentKey(doc, _fields);
+  zkd::byte_string keyValue;
+  {
+    auto result = readDocumentKey(doc, _fields);
+    if (result.fail()) {
+      if (result.errorNumber() == TRI_ERROR_QUERY_INVALID_ARITHMETIC_VALUE &&
+          _sparse) {
+        return {};
+      }
+      THROW_ARANGO_EXCEPTION(result.result());
+    }
+    keyValue = std::move(result.get());
+  }
 
   RocksDBKey rocksdbKey;
-  if (_prefixFields.empty()) {
-    rocksdbKey.constructZkdIndexValue(objectId(), keyValue);
+  if (!isPrefixed()) {
+    rocksdbKey.constructMdiIndexValue(objectId(), keyValue);
   } else {
-    auto prefixValues = extractAttributeValues(trx, _prefixFields, doc);
-    rocksdbKey.constructZkdIndexValue(objectId(), prefixValues->slice(),
+    auto result = extractAttributeValues(trx, _prefixFields, doc, !_sparse);
+    if (result.fail()) {
+      TRI_ASSERT(_sparse);
+      TRI_ASSERT(result.errorNumber() == TRI_ERROR_ARANGO_DOCUMENT_KEY_MISSING);
+      return TRI_ERROR_NO_ERROR;
+    }
+    auto& prefixValues = result.get();
+    rocksdbKey.constructMdiIndexValue(objectId(), prefixValues->slice(),
                                       keyValue);
   }
 

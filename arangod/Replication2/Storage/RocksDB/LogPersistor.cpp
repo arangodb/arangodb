@@ -31,6 +31,7 @@
 #include "Replication2/Storage/RocksDB/AsyncLogWriteBatcherMetrics.h"
 #include "Replication2/Storage/RocksDB/IAsyncLogWriteBatcher.h"
 #include "Replication2/Storage/RocksDB/LogIterator.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 
 namespace arangodb::replication2::storage::rocksdb {
 
@@ -38,13 +39,15 @@ LogPersistor::LogPersistor(LogId logId, uint64_t objectId,
                            std::uint64_t vocbaseId, ::rocksdb::DB* const db,
                            ::rocksdb::ColumnFamilyHandle* const logCf,
                            std::shared_ptr<IAsyncLogWriteBatcher> batcher,
-                           std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics)
+                           std::shared_ptr<AsyncLogWriteBatcherMetrics> metrics,
+                           arangodb::ICompactKeyRange* keyrangeCompactor)
     : logId(logId),
       ctx(vocbaseId, objectId),
       batcher(std::move(batcher)),
       _metrics(std::move(metrics)),
       db(db),
-      logCf(logCf) {}
+      logCf(logCf),
+      _keyrangeCompactor(keyrangeCompactor) {}
 
 std::unique_ptr<replication2::PersistedLogIterator> LogPersistor::getIterator(
     IteratorPosition position) {
@@ -110,13 +113,11 @@ auto LogPersistor::drop() -> Result {
 
 auto LogPersistor::compact() -> Result {
   auto range = RocksDBKeyBounds::LogRange(ctx.objectId);
-  auto start = range.start();
-  auto end = range.end();
-  auto res = db->CompactRange(
-      ::rocksdb::CompactRangeOptions{.exclusive_manual_compaction = false,
-                                     .allow_write_stall = false},
-      logCf, &start, &end);
-  return rocksutils::convertStatus(res);
+  _keyrangeCompactor->compactRange(range);
+  // The CompactRange does not have
+  // a return value and is asynchronous. So we
+  // can only return Success here.
+  return TRI_ERROR_NO_ERROR;
 }
 
 }  // namespace arangodb::replication2::storage::rocksdb

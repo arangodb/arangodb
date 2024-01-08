@@ -329,7 +329,12 @@ UserInputCollectionProperties LogicalCollection::getCollectionProperties()
   props.shardKeys = shardKeys();
   props.shardingStrategy = shardingInfo()->shardingStrategyName();
   props.waitForSync = waitForSync();
+  props.cacheEnabled = cacheEnabled();
   return props;
+}
+
+bool LogicalCollection::cacheEnabled() const noexcept {
+  return _physical->cacheEnabled();
 }
 
 bool LogicalCollection::waitForSync() const noexcept {

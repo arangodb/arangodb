@@ -32,7 +32,6 @@ const {debugCanUseFailAt, debugSetFailAt, debugClearFailAt, getDBServers} = requ
 const cluster = require("internal").isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const internal = require("internal");
-const isServer = typeof internal.arango === 'undefined';
 
 let graphs = require("@arangodb/general-graph");
 if (isEnterprise) {
@@ -46,43 +45,20 @@ const cn = "UnitTestsKeyGen";
 
 // in single server case, this is the single server.
 // in cluster case, this is the coordinator.
-let endpoints;
-
-if (isServer) {
-  // e.g. shell server environment (v8)
-  if (typeof arango === "undefined") {
-    // eslint-disable-next-line no-native-reassign
-    arango = internal.arango;
-  }
-  const instanceInfo = JSON.parse(internal.env.INSTANCEINFO);
-  endpoints = instanceInfo.endpoints;
-} else {
-  // e.g. shell client environment (http)
-  endpoints = [arango.getEndpoint()];
-  if (cluster) {
-    endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
-  }
+let endpoints = [arango.getEndpoint()];
+if (cluster) {
+  endpoints = endpoints.concat(getDBServers().map((s) => s.endpoint));
 }
 
 let debugSetFailAtAll = (fp) => {
   endpoints.forEach((ep) => {
-    if (isServer) {
-      internal.debugSetFailAt(fp);
-    } else {
-      debugSetFailAt(ep, fp);
-    }
+    debugSetFailAt(ep, fp);
   });
 };
 
 let debugClearFailAtAll = () => {
   endpoints.forEach((ep) => {
-    if (isServer) {
-      // in server mode this call actually does not support the clear of a single failure
-      // point. In comparison to the client module, it removes all failure points at once.
-      internal.debugClearFailAt();
-    } else {
-      debugClearFailAt(ep);
-    }
+    debugClearFailAt(ep);
   });
 };
 
@@ -273,6 +249,25 @@ const insertInvalidSmartEdges = (en) => {
   } catch (ignore) {
   }
 };
+
+function KeyGeneratorsSuite() {
+  'use strict';
+
+  return {
+    testAvailableKeyGenerators: function () {
+      let result = arango.GET("/_api/key-generators");
+
+      assertTrue(result.hasOwnProperty("keyGenerators"), result);
+      let gens = result.keyGenerators;
+      assertTrue(Array.isArray(gens), result);
+      assertTrue(gens.includes("uuid"), result);
+      assertTrue(gens.includes("traditional"), result);
+      assertTrue(gens.includes("padded"), result);
+      assertTrue(gens.includes("autoincrement"), result);
+    },
+
+  };
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: traditional key gen
@@ -1534,25 +1529,17 @@ function KeyGenerationLocationSmartGraphSuite() {
   };
 }
 
+jsunity.run(KeyGeneratorsSuite);
 jsunity.run(TraditionalSuite);
 jsunity.run(AutoIncrementSuite);
 jsunity.run(AllowUserKeysSuite);
 jsunity.run(PersistedLastValueSuite);
 
-if (isServer) {
-  if (internal.debugCanUseFailAt()) {
-    jsunity.run(KeyGenerationLocationSuite);
-  }
-  if (isEnterprise && internal.debugCanUseFailAt()) {
-    jsunity.run(KeyGenerationLocationSmartGraphSuite);
-  }
-} else {
-  if (debugCanUseFailAt(arango.getEndpoint())) {
-    jsunity.run(KeyGenerationLocationSuite);
-  }
-  if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
-    jsunity.run(KeyGenerationLocationSmartGraphSuite);
-  }
+if (debugCanUseFailAt(arango.getEndpoint())) {
+  jsunity.run(KeyGenerationLocationSuite);
+}
+if (isEnterprise && debugCanUseFailAt(arango.getEndpoint())) {
+  jsunity.run(KeyGenerationLocationSmartGraphSuite);
 }
 
 return jsunity.done();

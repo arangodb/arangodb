@@ -148,7 +148,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  bool cacheEnabled() const noexcept;
+  bool cacheEnabled() const noexcept override;
 
   bool hasDocuments() override;
 
