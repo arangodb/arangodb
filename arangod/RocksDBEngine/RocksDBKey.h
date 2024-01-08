@@ -180,15 +180,15 @@ class RocksDBKey {
   void constructRevisionTreeValue(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for zkd index
+  /// @brief Create a fully-specified key for mdi
   //////////////////////////////////////////////////////////////////////////////
-  void constructZkdIndexValue(uint64_t objectId, velocypack::Slice prefix,
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
                               const zkd::byte_string& value);
-  void constructZkdIndexValue(uint64_t objectId, velocypack::Slice prefix,
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
                               const zkd::byte_string& value,
                               LocalDocumentId documentId);
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value,
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -298,16 +298,16 @@ class RocksDBKey {
   static uint64_t geoValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the zkd index value
+  /// @brief Extracts the mdi value
   ///
-  /// May be called only on zkd index values
+  /// May be called only on mdi values
   //////////////////////////////////////////////////////////////////////////////
-  static zkd::byte_string_view zkdVPackIndexCurveValue(
+  static zkd::byte_string_view mdiVPackIndexCurveValue(
       rocksdb::Slice const& slice);
-  static zkd::byte_string_view zkdUniqueVPackIndexCurveValue(
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
       rocksdb::Slice const& slice);
-  static zkd::byte_string_view zkdIndexCurveValue(rocksdb::Slice const& slice);
-  static zkd::byte_string_view zkdUniqueIndexCurveValue(
+  static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(
       rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -371,13 +371,13 @@ class RocksDBKey {
   static std::string_view primaryKey(char const* data, size_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
-  static zkd::byte_string_view zkdIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiIndexCurveValue(char const* data,
                                                   size_t size);
-  static zkd::byte_string_view zkdUniqueIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(char const* data,
                                                         size_t size);
-  static zkd::byte_string_view zkdVPackIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiVPackIndexCurveValue(char const* data,
                                                        size_t size);
-  static zkd::byte_string_view zkdUniqueVPackIndexCurveValue(char const* data,
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
                                                              size_t size);
 
  private:

@@ -27,6 +27,7 @@
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/application-exit.h"
+#include "Basics/exitcodes.h"
 #include "Cluster/ServerState.h"
 #ifdef USE_ENTERPRISE
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
@@ -131,7 +132,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "
            "'--database.upgrade-check false'";
-    FATAL_ERROR_EXIT();
+    FATAL_ERROR_EXIT_CODE(TRI_EXIT_INVALID_OPTION_VALUE);
   }
 
   if (!_upgrade) {
@@ -299,16 +300,26 @@ void UpgradeFeature::upgradeLocalDatabase() {
         methods::Upgrade::startup(*vocbase, _upgrade, ignoreDatafileErrors);
 
     if (res.fail()) {
-      char const* typeName = "initialization";
+      std::string_view typeName = "initialization";
+      int exitCode = TRI_EXIT_FAILED;
 
       if (res.type == methods::VersionResult::UPGRADE_NEEDED) {
         typeName = "upgrade";  // an upgrade failed or is required
 
         if (!_upgrade) {
+          exitCode = TRI_EXIT_UPGRADE_REQUIRED;
           LOG_TOPIC("1c156", ERR, arangodb::Logger::FIXME)
               << "Database '" << vocbase->name() << "' needs upgrade. "
               << "Please start the server with --database.auto-upgrade";
+        } else {
+          exitCode = TRI_EXIT_UPGRADE_FAILED;
         }
+      } else if (res.type == methods::VersionResult::DOWNGRADE_NEEDED) {
+        exitCode = TRI_EXIT_DOWNGRADE_REQUIRED;
+      } else if (res.type ==
+                     methods::VersionResult::CANNOT_PARSE_VERSION_FILE ||
+                 res.type == methods::VersionResult::CANNOT_READ_VERSION_FILE) {
+        exitCode = TRI_EXIT_VERSION_CHECK_FAILED;
       }
 
       LOG_TOPIC("2eb08", FATAL, arangodb::Logger::FIXME)
@@ -317,7 +328,7 @@ void UpgradeFeature::upgradeLocalDatabase() {
           << "Please inspect the logs from the " << typeName << " procedure"
           << " and try starting the server again.";
 
-      FATAL_ERROR_EXIT();
+      FATAL_ERROR_EXIT_CODE(exitCode);
     }
   }
 

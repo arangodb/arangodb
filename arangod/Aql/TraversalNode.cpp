@@ -780,8 +780,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(!isSmart);
     auto singleServerBaseProviderOptions =
         getSingleServerBaseProviderOptions(opts, filterConditionVariables);
-    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
-                                                  // SingleServer, Cluster...
+    auto executorInfos = TraversalExecutorInfos(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->query(),
@@ -1003,7 +1002,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * SmartGraph Traverser
      */
     if (isSmart() && !isDisjoint()) {
-      // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
@@ -1014,7 +1012,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       /*
        * Default Cluster Traverser
        */
-      // Note: Using refactored cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
