@@ -13,7 +13,7 @@ import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
-import momentMin from "../../../../../frontend/js/lib/moment.min";
+import momentMin from "moment";
 import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { FiltersList } from "../../../components/table/FiltersList";
