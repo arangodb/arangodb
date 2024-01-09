@@ -42,14 +42,13 @@
 #include "Utils/ExecContext.h"
 
 #include <velocypack/Collection.h>
-#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-constexpr double SETUP_TIMEOUT = 60.0;
+constexpr double kSetupTimeout = 60.0;
 
 constexpr std::string_view finishUrl("/_api/aql/finish/");
 constexpr std::string_view traverserUrl("/_internal/traverser/");
@@ -356,7 +355,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
-  options.timeout = network::Timeout(SETUP_TIMEOUT);
+  options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
   if (!ExecContext::current().user().empty()) {
     // send name of current user, if set. note that we cannot send
