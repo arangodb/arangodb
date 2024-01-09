@@ -1,6 +1,19 @@
 devel
 -----
 
+* FE-377: remove broken link from JSON editor.
+
+* Fix: we cannot update a link, but have to drop and recreate it. Until now,
+  this new index had the same set of labels as the old one. However, on followers
+  (and with replication2 also on the leader), the DropIndex and EnsureIndex
+  actions could run concurrently. I.e., we could try to create the new index
+  before the old one was fully removed. In this case we could get a duplicate
+  metric exception, preventing the index from being created. Such errors are not
+  really handled ATM - they are simply logged and otherwise ignored. That means
+  the index will simply not be available on the affected server, since we will
+  also not retry to create it at a later time.
+  To avoid this, we add a new `indexId` label to the metric to make it unique.
+
 * Expose REST API endpoints for server options discovery:
   - GET `/_admin/options-description`: returns a JSON description of all
     available server options.

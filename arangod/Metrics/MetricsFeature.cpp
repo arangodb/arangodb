@@ -94,7 +94,8 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   if (!_registry.try_emplace(key, metric).second) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        absl::StrCat(builder.type(), " ", builder.name(), " already exists"));
+        absl::StrCat(builder.type(), " ", metric->name(), ":", metric->labels(),
+                     " already exists"));
   }
   return metric;
 }
