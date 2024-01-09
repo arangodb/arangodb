@@ -875,7 +875,11 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                              /*allowEmpty*/ true,
                              /*allowExpansion*/ false)),
       _coveredFields(Index::mergeFields(_prefixFields, _storedValues)),
-      _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {}
+      _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {
+  TRI_ASSERT(_type == TRI_IDX_TYPE_ZKD_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_PREFIXED_INDEX);
+}
 
 void RocksDBMdiIndexBase::toVelocyPack(
     velocypack::Builder& builder,
