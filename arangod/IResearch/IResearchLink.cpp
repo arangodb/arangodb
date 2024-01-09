@@ -95,7 +95,7 @@ T getMetric(IResearchLink const& link) {
   metric.addLabel("db", link.getDbName());
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
-  metric.addLabel("indexId", std::to_string(link.index().id().id()));
+  metric.addLabel("index_id", std::to_string(link.index().id().id()));
   metric.addLabel("shard", link.getShardName());
   return metric;
 }
@@ -104,7 +104,7 @@ std::string getLabels(IResearchLink const& link) {
   return absl::StrCat("db=\"", link.getDbName(),                     //
                       "\",view=\"", link.getViewId(),                //
                       "\",collection=\"", link.getCollectionName(),  //
-                      "\",indexId=\"", link.index().id().id(),       //
+                      "\",index_id=\"", link.index().id().id(),      //
                       "\",shard=\"", link.getShardName(), "\"");
 }
 
