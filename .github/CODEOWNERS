@@ -52,5 +52,8 @@
 /lib/Logger/ @arangodb/team-orco
 /lib/Utilities/ @arangodb/team-orco
 
+# `team-frontend` ownership
+/js/apps/system/_admin/aardvark/APP/ @arangodb/team-frontend
+
 # ownership by individuals
 /lib/Inspection/ @mpoeter
