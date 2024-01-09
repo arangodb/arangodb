@@ -33,11 +33,11 @@
 #include "RocksDBEngine/RocksDBFulltextIndex.h"
 #include "RocksDBEngine/RocksDBGeoIndex.h"
 #include "RocksDBEngine/RocksDBHashIndex.h"
+#include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPersistentIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBSkiplistIndex.h"
 #include "RocksDBEngine/RocksDBTtlIndex.h"
-#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "RocksDBIndexFactory.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -254,9 +254,9 @@ struct SecondaryIndexFactory : public DefaultIndexFactory {
   }
 };
 
-struct ZkdIndexFactory : public DefaultIndexFactory {
-  explicit ZkdIndexFactory(ArangodServer& server)
-      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_ZKD_INDEX) {}
+struct MdiIndexFactory : public DefaultIndexFactory {
+  explicit MdiIndexFactory(ArangodServer& server)
+      : DefaultIndexFactory(server, Index::TRI_IDX_TYPE_MDI_INDEX) {}
 
   std::shared_ptr<arangodb::Index> instantiate(
       arangodb::LogicalCollection& collection,
@@ -264,11 +264,11 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
       bool /*isClusterConstructor*/) const override {
     if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
         isUnique) {
-      return std::make_shared<RocksDBUniqueZkdIndex>(id, collection,
+      return std::make_shared<RocksDBUniqueMdiIndex>(id, collection,
                                                      definition);
     }
 
-    return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
+    return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
   }
 
   virtual arangodb::Result normalize(
@@ -277,7 +277,7 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
     TRI_ASSERT(normalized.isOpenObject());
     normalized.add(arangodb::StaticStrings::IndexType,
                    arangodb::velocypack::Value(arangodb::Index::oldtypeName(
-                       Index::TRI_IDX_TYPE_ZKD_INDEX)));
+                       Index::TRI_IDX_TYPE_MDI_INDEX)));
 
     if (isCreation && !ServerState::instance()->isCoordinator() &&
         !definition.hasKey(StaticStrings::ObjectId)) {
@@ -291,10 +291,10 @@ struct ZkdIndexFactory : public DefaultIndexFactory {
                     "`mdi` index does not support prefixed fields. use "
                     "`mdi-prefixed` as type instead.");
     }
-    // a zkd index never uses index estimates
+    // a mdi never uses index estimates
     normalized.add(StaticStrings::IndexEstimates, velocypack::Value(false));
 
-    return IndexFactory::enhanceJsonIndexZkd(definition, normalized,
+    return IndexFactory::enhanceJsonIndexMdi(definition, normalized,
                                              isCreation);
   }
 };
@@ -309,11 +309,11 @@ struct MdiPrefixedIndexFactory : public DefaultIndexFactory {
       bool /*isClusterConstructor*/) const override {
     if (auto isUnique = definition.get(StaticStrings::IndexUnique).isTrue();
         isUnique) {
-      return std::make_shared<RocksDBUniqueZkdIndex>(id, collection,
+      return std::make_shared<RocksDBUniqueMdiIndex>(id, collection,
                                                      definition);
     }
 
-    return std::make_shared<RocksDBZkdIndex>(id, collection, definition);
+    return std::make_shared<RocksDBMdiIndex>(id, collection, definition);
   }
 
   virtual arangodb::Result normalize(
@@ -426,7 +426,7 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   static const TtlIndexFactory ttlIndexFactory(server,
                                                Index::TRI_IDX_TYPE_TTL_INDEX);
   static const PrimaryIndexFactory primaryIndexFactory(server);
-  static const ZkdIndexFactory zkdIndexFactory(server);
+  static const MdiIndexFactory mdiIndexFactory(server);
   static const iresearch::IResearchRocksDBInvertedIndexFactory
       iresearchInvertedIndexFactory(server);
   static const MdiPrefixedIndexFactory mdiPrefixedIndexFactory(server);
@@ -442,7 +442,8 @@ RocksDBIndexFactory::RocksDBIndexFactory(ArangodServer& server)
   emplace("rocksdb", persistentIndexFactory);
   emplace("skiplist", skiplistIndexFactory);
   emplace("ttl", ttlIndexFactory);
-  emplace("zkd", zkdIndexFactory);
+  emplace("zkd", mdiIndexFactory);
+  emplace("mdi", mdiIndexFactory);
   emplace("mdi-prefixed", mdiPrefixedIndexFactory);
   emplace(arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data(),
           iresearchInvertedIndexFactory);
@@ -455,7 +456,7 @@ RocksDBIndexFactory::indexAliases() const {
   return {
       {"hash", "persistent"},
       {"skiplist", "persistent"},
-      {"mdi", "zkd"},
+      {"zkd", "mdi"},
   };
 }
 

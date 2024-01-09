@@ -158,14 +158,14 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
         // we do not perform upgrades without being told so during startup
         LOG_TOPIC("3bc7f", ERR, Logger::STARTUP)
             << "Database directory version (" << vinfo.databaseVersion
-            << ") is lower than current version (" << vinfo.serverVersion
-            << ").";
+            << ") is lower than current executable version ("
+            << vinfo.serverVersion << ").";
 
         LOG_TOPIC("ebca0", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
                "-------";
         LOG_TOPIC("24e3c", ERR, Logger::STARTUP)
-            << "It seems like you have upgraded the ArangoDB binary.";
+            << "It seems like you have upgraded the ArangoDB executable.";
         LOG_TOPIC("8bcec", ERR, Logger::STARTUP)
             << "If this is what you wanted to do, please restart with the";
         LOG_TOPIC("b0360", ERR, Logger::STARTUP)
@@ -174,7 +174,7 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
             << "option to upgrade the data in the database directory.";
         LOG_TOPIC("24bd1", ERR, Logger::STARTUP)
             << "---------------------------------------------------------------"
-               "-------'";
+               "-------";
         return UpgradeResult(TRI_ERROR_BAD_PARAMETER, vinfo.status);
       }
       // do perform the upgrade
@@ -185,8 +185,8 @@ UpgradeResult Upgrade::startup(TRI_vocbase_t& vocbase, bool isUpgrade,
       // we do not support downgrades, just error out
       LOG_TOPIC("fdbd9", ERR, Logger::STARTUP)
           << "Database directory version (" << vinfo.databaseVersion
-          << ") is higher than current version (" << vinfo.serverVersion
-          << ").";
+          << ") is higher than current executable version ("
+          << vinfo.serverVersion << ").";
       LOG_TOPIC("b99ca", ERR, Logger::STARTUP)
           << "It seems like you are running ArangoDB on a database directory"
           << " that was created with a newer version of ArangoDB. Maybe this"
