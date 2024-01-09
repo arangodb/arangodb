@@ -44,6 +44,16 @@
 
 using namespace arangodb::options;
 
+/*static*/ std::function<bool(std::string const&)> const
+    ProgramOptions::defaultOptionsFilter = [](std::string const& name) {
+      if (name.find("passwd") != std::string::npos ||
+          name.find("password") != std::string::npos ||
+          name.find("secret") != std::string::npos) {
+        return false;
+      }
+      return true;
+    };
+
 ProgramOptions::ProcessingResult::ProcessingResult()
     : _positionals(), _touched(), _frozen(), _exitCode(0) {}
 

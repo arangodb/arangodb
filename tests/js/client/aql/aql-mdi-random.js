@@ -31,8 +31,8 @@ const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
 const _ = require("lodash");
 
-function optimizerRuleZkd2dIndexTestSuite(unique) {
-  const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite(unique) {
+  const colName = 'UnitTestMdiIndexCollection';
   let col;
   let docs = [];
   const prefixValues = ["foo", "bar", "baz"];
@@ -68,8 +68,8 @@ function optimizerRuleZkd2dIndexTestSuite(unique) {
     setUpAll: function () {
       col = db._create(colName);
       col.ensureIndex({
-        type: 'zkd',
-        name: 'zkdIndex',
+        type: 'mdi-prefixed',
+        name: 'mdiIndex',
         fields: ['x', 'y'],
         storedValues: ['k'],
         unique: unique,
@@ -154,7 +154,7 @@ function optimizerRuleZkd2dIndexTestSuite(unique) {
 
 function makeTestSuite(unique) {
   return function () {
-    return optimizerRuleZkd2dIndexTestSuite(unique);
+    return optimizerRuleMdi2dIndexTestSuite(unique);
   };
 }
 
