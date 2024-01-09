@@ -48,7 +48,6 @@ function runSetup () {
   db._view('UnitTestsRecoveryView').properties(meta);
 
   c.save({ name: 'crashme' }, { waitForSync: true });
-  //internal.debugTerminate('crashing server');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

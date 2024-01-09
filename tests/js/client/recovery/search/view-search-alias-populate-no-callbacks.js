@@ -65,7 +65,6 @@ function runSetup () {
       throw ex;
     }
   }
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

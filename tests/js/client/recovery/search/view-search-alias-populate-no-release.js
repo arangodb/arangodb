@@ -66,7 +66,6 @@ function runSetup () {
     }
   }
 
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

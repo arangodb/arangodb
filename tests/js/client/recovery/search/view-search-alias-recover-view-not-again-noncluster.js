@@ -65,7 +65,6 @@ function runSetup () {
   lastTick = replication.logger.state().state.lastLogTick;
   c.insert({ _key: "lastLogTick3", tick: lastTick }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

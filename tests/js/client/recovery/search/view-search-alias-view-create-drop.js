@@ -36,7 +36,6 @@ function runSetup () {
   v = db._createView('UnitTestsRecovery', 'search-alias', {});
   db._dropView('UnitTestsRecovery');
 
-  //internal.debugTerminate('crashing server');
 }
 function recoverySuite () {
   'use strict';

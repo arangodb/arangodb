@@ -89,7 +89,6 @@ function runSetup() {
     db._query("FOR d IN UnitTestsRecoveryDummy LIMIT 1 RETURN d");
   }
   // kill it for sure in case of it does not die itself
-  //internal.debugTerminate('crashing server');
 }
 
 ////////////////////////////////////////////////////////////////////////////////

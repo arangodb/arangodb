@@ -55,7 +55,6 @@ function runSetup () {
   c = db._create('UnitTestsRecoveryDummy2');
   c.save({ name: 'crashme' }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

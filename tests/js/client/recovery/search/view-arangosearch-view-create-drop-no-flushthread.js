@@ -42,7 +42,6 @@ function runSetup () {
 
   db._dropView('UnitTestsRecovery');
 
-  //internal.debugTerminate('crashing server');
 }
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite

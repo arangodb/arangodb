@@ -59,7 +59,6 @@ function runSetup () {
 
   c.insert({ _key: "lastLogTick", tick: lastTickBeforeLink }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

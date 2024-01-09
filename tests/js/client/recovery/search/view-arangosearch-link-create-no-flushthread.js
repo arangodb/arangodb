@@ -53,7 +53,6 @@ function runSetup () {
 
   c.save({ name: 'crashme' }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
