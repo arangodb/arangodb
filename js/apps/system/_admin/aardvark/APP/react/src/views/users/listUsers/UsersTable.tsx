@@ -1,8 +1,9 @@
-import { Stack } from "@chakra-ui/react";
+import { Flex, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { DatabaseUserValues } from "../addUser/CreateUser.types";
 import { useUsersContext } from "../UsersContext";
@@ -64,10 +65,16 @@ export const UsersTable = () => {
   return (
     <>
       <Stack>
-        <FiltersList<DatabaseUserValues>
-          columns={TABLE_COLUMNS}
-          table={tableInstance}
-        />
+        <Flex gap="4">
+          <FiltersList<DatabaseUserValues>
+            columns={TABLE_COLUMNS}
+            table={tableInstance}
+          />
+          <TableControl<DatabaseUserValues>
+            table={tableInstance}
+            columns={TABLE_COLUMNS}
+          />
+        </Flex>
         <ReactTable<DatabaseUserValues>
           table={tableInstance}
           emptyStateMessage="No users found"

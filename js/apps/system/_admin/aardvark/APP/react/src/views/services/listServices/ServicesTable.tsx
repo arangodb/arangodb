@@ -1,4 +1,4 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Flex, Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { Link as RouterLink } from "react-router-dom";
@@ -8,6 +8,7 @@ import { useSortableReactTable } from "../../../components/table/useSortableReac
 import { ServiceDescription } from "../Service.types";
 import { useServicesContext } from "../ServicesContext";
 import { some } from "lodash";
+import { TableControl } from "../../../components/table/TableControl";
 const columnHelper = createColumnHelper<ServiceDescription>();
 
 const needsConfiguration = (config: { [key: string]: any }) => {
@@ -119,10 +120,16 @@ export const ServicesTable = () => {
   });
   return (
     <Stack>
-      <FiltersList<ServiceDescription>
-        columns={TABLE_COLUMNS}
-        table={tableInstance}
-      />
+      <Flex gap="4">
+        <FiltersList<ServiceDescription>
+          columns={TABLE_COLUMNS}
+          table={tableInstance}
+        />
+        <TableControl<ServiceDescription>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
+      </Flex>
       <ReactTable<ServiceDescription>
         table={tableInstance}
         emptyStateMessage="No services found"

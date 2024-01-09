@@ -5,8 +5,8 @@ import { Link as RouterLink, useHistory } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { useDatabasesContext } from "../DatabasesContext";
 import { DatabaseDescription } from "../Database.types";
+import { useDatabasesContext } from "../DatabasesContext";
 
 const columnHelper = createColumnHelper<DatabaseDescription>();
 

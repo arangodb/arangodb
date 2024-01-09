@@ -1,9 +1,10 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Flex, Link, Stack } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { Index } from "arangojs/indexes";
 import React from "react";
 import { FiltersList } from "../../../../components/table/FiltersList";
 import { ReactTable } from "../../../../components/table/ReactTable";
+import { TableControl } from "../../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../../components/table/useSortableReactTable";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
@@ -71,7 +72,7 @@ const TABLE_COLUMNS = [
       return `${info.cell.getValue()}`;
     },
     meta: {
-      filterType: "single-select",
+      filterType: "single-select"
     }
   }),
   columnHelper.accessor(
@@ -118,7 +119,10 @@ export const CollectionIndicesTable = () => {
   });
   return (
     <Stack>
-      <FiltersList<Index> columns={TABLE_COLUMNS} table={tableInstance} />
+      <Flex gap="4">
+        <FiltersList<Index> columns={TABLE_COLUMNS} table={tableInstance} />
+        <TableControl<Index> table={tableInstance} columns={TABLE_COLUMNS} />
+      </Flex>
       <ReactTable<Index>
         table={tableInstance}
         emptyStateMessage="No indexes found"
