@@ -485,7 +485,7 @@ jobs:
 
   run-linux-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: arangodb/test-ubuntu:22.04-ff9d37a202c
     parameters:
       suiteName:
         type: string
