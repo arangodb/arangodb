@@ -1,7 +1,9 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
-* Removal artificial upper bound value of `128` for the startup option 
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
+* Removal artificial upper bound value of `128` for the startup option
   `--rocksdb.max-background-jobs`.
 
 * Added stored values support for ZKD indexes.
