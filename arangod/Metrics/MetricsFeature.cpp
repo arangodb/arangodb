@@ -50,7 +50,10 @@ MetricsFeature::MetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _export{true},
       _exportReadWriteMetrics{false},
-      _ensureWhitespace{true} {
+      _ensureWhitespace{true},
+      _usageTrackingModeString{"disabled"},
+      _usageTrackingMode{UsageTrackingMode::kDisabled},
+      _usageTrackingIncludeSystemCollections{false} {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -85,19 +88,56 @@ void MetricsFeature::collectOptions(
       .setLongDescription(R"(Using the whitespace characters in the output may
 be required to make the metrics output compatible with some processing tools,
 although Prometheus itself doesn't need it.)");
+
+  std::unordered_set<std::string> modes = {"disabled", "enabled-per-shard",
+                                           "enabled-per-shard-per-user"};
+  options
+      ->addOption(
+          "--server.export-shard-usage-metrics",
+          "Whether or not to export shard usage metrics.",
+          new options::DiscreteValuesParameter<options::StringParameter>(
+              &_usageTrackingModeString, modes),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(This option can be used to make DB servers export
+detailed shard usage metrics. By default, this option is set to 'disabled' so
+that no shard usage metrics are exported. 
+Setting the option to 'enabled-per-shard' will make DB-Servers collect per-shard
+usage metrics whenever a shard is accessed.
+Setting the option to 'enabled-per-shard-per-user' will make DB-Servers collect
+usage metrics per shard and per user whenever a shard is accessed. 
+Note that enabling shard usage metrics can produce a lot of metrics if there 
+are many shards and/or users in the system.)");
+
+  options
+      ->addOption("--server.usage-tracking-include-system-collections",
+                  "Set to `true` to include system collections in usage "
+                  "tracking metrics.",
+                  new options::BooleanParameter(
+                      &_usageTrackingIncludeSystemCollections),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(This option only has effect if shard usage
+metrics are exported.)");
 }
 
-std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
+std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder,
+                                              bool failIfExists) {
   auto metric = builder.build();
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
-  if (!_registry.try_emplace(key, metric).second) {
+  auto [it, inserted] = _registry.try_emplace(key, metric);
+  if (!inserted && failIfExists) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
         absl::StrCat(builder.type(), " ", metric->name(), ":", metric->labels(),
                      " already exists"));
   }
-  return metric;
+  return (*it).second;
 }
 
 Metric* MetricsFeature::get(MetricKeyView const& key) const {
@@ -121,9 +161,27 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
   return _ensureWhitespace;
 }
 
+bool MetricsFeature::usageTrackingIncludeSystemCollections() const noexcept {
+  return _usageTrackingIncludeSystemCollections;
+}
+
+MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
+    const noexcept {
+  return _usageTrackingMode;
+}
+
 void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_exportReadWriteMetrics) {
     serverStatistics().setupDocumentMetrics();
+  }
+
+  // translate usage tracking mode string to enum value
+  if (_usageTrackingModeString == "enabled-per-shard") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShard;
+  } else if (_usageTrackingModeString == "enabled-per-shard-per-user") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShardPerUser;
+  } else {
+    _usageTrackingMode = UsageTrackingMode::kDisabled;
   }
 }
 

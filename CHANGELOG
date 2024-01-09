@@ -1,6 +1,50 @@
 devel
 -----
 
+* APM-828: Per collection/database/user monitoring.
+
+  This adds optional metrics for tracking per-shard requests on DB-Servers.
+  The exported counters are:
+  - `arangodb_collection_leader_reads_total`: number of read requests on 
+    leaders, per shard, and optionally also split by user.
+  - `arangodb_collection_leader_writes_total`: number of write requests on
+    leaders, per shard, and optionally also split by user.
+          
+  The new startup option `--server.export-shard-usage-metrics` can be used to
+  opt in to these metrics. It can be set to one of the following values on
+  DB-Servers:
+  - `disabled`: no shard usage metrics are recorded nor exported. This is the
+    default value.
+  - `enabled-per-shard`: this will make DB-Servers collect per-shard usage
+    metrics.
+  - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
+    and per-user metrics. This is more granular than `enabled-per-shard` but
+    can produce a lot of metrics.
+
+  Whenever a shard is accessed in read or write mode by one of the following 
+  operations, the metrics are populated dynamically, either with a per-user
+  label or not.
+
+  The following operations increase the counters:
+  - AQL queries: an AQL query will increase the read or write counters exactly
+    once for each involved shard. For shards that are accessed in read/write 
+    mode, only the write counter will be increased.
+  - Single-document insert, update, replace, and remove operations: for each
+    such operation, the write counter will be increased once for the affected
+    shard.
+  - Multi-document insert, update, replace, and remove operations: for each
+    such operation, the write counter will be increased once for each shard
+    that is affected by the operation. Note that this includes collection
+    truncate operations.
+  - Single- and multi-document read operations: for each such operation, the
+    read counter will be increased once for each shard that is affected by the
+    operation.
+
+  If DB-Servers are configured to collect these usage metrics, the startup
+  option `--server.usage-tracking-include-system-collections` can be used to
+  include/exclude system collections from the usage metrics. They are excluded
+  by default.
+
 * FE-377: remove broken link from JSON editor.
 
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,

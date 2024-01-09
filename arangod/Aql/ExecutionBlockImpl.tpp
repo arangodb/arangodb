@@ -370,8 +370,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::executor() noexcept -> Executor& {
+auto ExecutionBlockImpl<Executor>::executor() -> Executor& {
   TRI_ASSERT(_executor.has_value());
+  if (!_executor.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no executor available in query");
+  }
   return *_executor;
 }
 

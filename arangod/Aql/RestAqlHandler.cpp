@@ -334,8 +334,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     co_return;
   }
   q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
-                         snippetsSlice, traverserSlice, answerBuilder,
-                         analyzersRevision, fastPath);
+                         snippetsSlice, traverserSlice, _request->value("user"),
+                         answerBuilder, analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();
