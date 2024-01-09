@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-377: remove broken link from JSON editor.
+
 * FE-406: update docs links on web UI. 
 
 * BTS-1714: Within writing AQL queries the lock timeout was accidentally
