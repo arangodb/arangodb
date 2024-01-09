@@ -36,12 +36,14 @@ RUN `
     && %windir%\Microsoft.NET\Framework64\v4.0.30319\ngen uninstall "Microsoft.Tpm.Commands, Version=10.0.0.0, Culture=Neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=amd64" `
     && %windir%\Microsoft.NET\Framework64\v4.0.30319\ngen update `
     # clean out the package cache to reduce image size
-    && @powershell Remove-Item 'C:/ProgramData/Package Cache/*' -Recurse -Force; `
-    Set-ExecutionPolicy Bypass -Scope Process -Force; `
+    && @powershell Remove-Item 'C:/ProgramData/Package Cache/*' -Recurse -Force
+
+RUN @powershell Set-ExecutionPolicy Bypass -Scope Process -Force; `
     [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]'Tls,Tls11,Tls12'; `
     iex ((New-Object System.Net.WebClient).DownloadString("$env:CHOCO_URL")); `
-    choco install git winflexbison strawberryperl nasm python3 ccache -y
-    
+    choco install git winflexbison strawberryperl nasm python3 ccache yarn -y; `
+    choco install nodejs --version 18.13.0 -y
+
 RUN @powershell git config --global --add safe.directory *; `
     $env:PATH += ';C:\Program Files\NASM'; `
     "C:/tools/install-openssl.ps1" -branch "3.1" -revision ".4"; `

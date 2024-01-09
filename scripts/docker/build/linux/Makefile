@@ -4,7 +4,7 @@ TAG = $(shell ./latest-tag.sh)
 all: amd64 arm64v8 manifest
 
 tag:
-	@if [ -z "$$TAG" ]; then \
+	@if [ -z "$TAG" ]; then \
 		echo "A new TAG was not provided explicitly or wasn't able to be guessed"\
     "from arangodb/ubuntubuildarangodb-devel!"; exit 1; \
 	fi
