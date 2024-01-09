@@ -10,6 +10,9 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:2"
+  test-docker-image:
+    type: string
+    default: "arangodb/test-ubuntu:22.04-ff9d37a202c"
   build-windows-image:
     type: string
     default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-4c65c2ae530"
@@ -485,7 +488,7 @@ jobs:
 
   run-linux-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-ff9d37a202c
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -535,7 +538,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       size:
         type: string
