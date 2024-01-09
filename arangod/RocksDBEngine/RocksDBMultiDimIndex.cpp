@@ -874,7 +874,12 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
           Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
                              /*allowEmpty*/ true,
                              /*allowExpansion*/ false)),
-      _coveredFields(Index::mergeFields(_prefixFields, _storedValues)) {}
+      _coveredFields(Index::mergeFields(_prefixFields, _storedValues)),
+      _type(Index::type(info.get(StaticStrings::IndexType).stringView())) {
+  TRI_ASSERT(_type == TRI_IDX_TYPE_ZKD_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_INDEX ||
+             _type == TRI_IDX_TYPE_MDI_PREFIXED_INDEX);
+}
 
 void RocksDBMdiIndexBase::toVelocyPack(
     velocypack::Builder& builder,
@@ -1023,10 +1028,7 @@ aql::AstNode* RocksDBMdiIndexBase::specializeCondition(
   return mdi::specializeCondition(this, condition, reference);
 }
 
-Index::IndexType RocksDBMdiIndexBase::type() const {
-  return isPrefixed() ? TRI_IDX_TYPE_MDI_PREFIXED_INDEX
-                      : TRI_IDX_TYPE_MDI_INDEX;
-}
+Index::IndexType RocksDBMdiIndexBase::type() const { return _type; }
 
 char const* RocksDBMdiIndexBase::typeName() const {
   return Index::oldtypeName(type());
