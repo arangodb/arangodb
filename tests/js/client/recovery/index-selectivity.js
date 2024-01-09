@@ -44,7 +44,6 @@ function runSetup () {
 
   c1.insert({ _key: 'crashme' }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

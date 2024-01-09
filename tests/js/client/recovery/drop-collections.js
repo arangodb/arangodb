@@ -48,7 +48,6 @@ function runSetup () {
 
   db.UnitTestsRecovery4.save({ _key: 'crashme' }, true); // wait for sync
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

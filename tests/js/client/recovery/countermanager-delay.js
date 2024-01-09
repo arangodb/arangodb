@@ -55,7 +55,6 @@ function runSetup () {
     internal.wal.flush(true, true);
   }
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

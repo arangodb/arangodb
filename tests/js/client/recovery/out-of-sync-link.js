@@ -68,7 +68,6 @@ function runSetup () {
   db['UnitTestsRecovery3'].insert({});
   db._query("FOR doc IN UnitTestsRecoveryView3 OPTIONS {waitForSync: true} RETURN doc");
 
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

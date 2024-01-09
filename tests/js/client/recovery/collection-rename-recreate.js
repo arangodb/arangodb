@@ -55,7 +55,6 @@ function runSetup () {
 
   db.UnitTestsRecovery1.save({ _key: 'foo' }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

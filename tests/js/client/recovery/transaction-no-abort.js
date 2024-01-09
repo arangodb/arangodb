@@ -63,7 +63,6 @@ function runSetup () {
     // suppress error we're intentionally creating
   }
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -56,7 +56,6 @@ function runSetup () {
   c = db._create('test');
   c.save({ _key: 'crashme' }, true); // wait for sync
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

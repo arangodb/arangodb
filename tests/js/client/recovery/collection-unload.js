@@ -41,7 +41,6 @@ function runSetup () {
 
   c.save({ _key: 'foo', value1: 1, value2: 'test' }, true);
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

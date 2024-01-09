@@ -7,7 +7,7 @@
 ///
 /// DISCLAIMER
 ///
-/// Copyright 2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2022 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -23,8 +23,8 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrei Lobov
-/// @author Copyright 2020, ArangoDB GmbH, Cologne, Germany
+/// @author Andrey Abramov
+/// @author Copyright 2022, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const arangodb = require('@arangodb');
@@ -33,7 +33,6 @@ const internal = require('internal');
 const jsunity = require('jsunity');
 const cn = 'UnitTestsTruncateDummy';
 const vn = cn + 'View';
-var truncateFailure = require('@arangodb/test-helper-common').truncateFailure;
 
 function runSetup () {
   'use strict';
@@ -41,12 +40,11 @@ function runSetup () {
 
   db._drop(cn);
   var c = db._create(cn);
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
 
+  var meta = { indexes: [ { index: i1.name, collection: c.name() } ] };
   db._dropView(vn);
-  db._createView(vn, 'arangosearch', {});
-
-  var meta = { links: { [cn]: { includeAllFields: true } } };
-  db._view(vn).properties(meta);
+  db._createView(vn, 'search-alias', meta);
 
   // 35k to overcome RocksDB optimization and force use truncate
   for (let i = 0; i < 35000; i++) {
@@ -55,12 +53,10 @@ function runSetup () {
 
   c.save({ name: "crashme" }, { waitForSync: true });
   internal.debugSetFailAt("ArangoSearchTruncateFailure");
-  return truncateFailure(c);
+  try {
+    c.truncate();
+  } catch (ex) {}
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 function recoverySuite () {
   'use strict';
@@ -70,26 +66,24 @@ function recoverySuite () {
     setUp: function () {},
     tearDown: function () {},
 
-    // //////////////////////////////////////////////////////////////////////////////
-    // / @brief test whether we can restore the trx data
-    // //////////////////////////////////////////////////////////////////////////////
-
     testIResearchLinkPopulateTruncate: function () {
-      var v = db._view(vn);
-      assertEqual(v.name(), vn);
-      assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
-      assertTrue(p.hasOwnProperty(cn));
-      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      let checkView = function(viewName, indexName) {
+        let v = db._view(viewName);
+        assertEqual(v.name(), viewName);
+        assertEqual(v.type(), 'search-alias');
+        let indexes = v.properties().indexes;
+        assertEqual(1, indexes.length);
+        assertEqual(indexName, indexes[0].index);
+        assertEqual(cn, indexes[0].collection);
+      };
+      checkView(vn, "i1");
+
+      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
+      assertEqual(expectedResult[0], result[0]);
     }
  };
 }
-
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief executes the test suite
-// //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
   'use strict';

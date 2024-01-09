@@ -32,7 +32,6 @@ function runSetup () {
   'use strict';
 
   db._createView(extendedName, "arangosearch", {});
-  //internal.debugTerminate('crashing server');
 }
 
 function recoverySuite () {

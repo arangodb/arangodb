@@ -49,7 +49,6 @@ function runSetup () {
     c.save({ value1: 'test' + i, value2: i });
   }
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

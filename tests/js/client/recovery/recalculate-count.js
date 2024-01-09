@@ -52,7 +52,6 @@ function runSetup () {
   // this is our marker that we got past the "recalculateCount()" call
   c.insert({ _key: "done" }, { waitForSync: true });
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

@@ -68,7 +68,6 @@ function runSetup () {
 
   db._useDatabase('_system');
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////

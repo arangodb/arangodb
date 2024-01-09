@@ -43,7 +43,6 @@ function runSetup () {
   {}, {intermediateCommitCount: 1000});
   // the above should commit two times
 
-  //internal.debugTerminate('crashing server');
 }
 
 // //////////////////////////////////////////////////////////////////////////////
