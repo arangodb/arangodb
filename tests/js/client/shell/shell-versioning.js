@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false, maxlen:1000*/
-/*global assertEqual, fail */
+/*global assertEqual, assertUndefined, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -26,7 +26,6 @@
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
 const db = arangodb.db;
-const ERRORS = arangodb.errors;
 
 const cn = "UnitTestsVersioning";
 
@@ -165,8 +164,125 @@ function VersioningSuite () {
         assertEqual(doc, state[v._key]);
       });
     },
+    
+    testAQLUpdateWithVersionAttribute : function () {
+      db[cn].insert([
+        { _key: "test1", version: 2 },
+        { _key: "test2", version: 1 },
+        { _key: "test3" },
+      ]);
+
+      const values = [
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      db._query("FOR doc IN " + JSON.stringify(values) + " UPDATE doc IN " + cn + " OPTIONS {versionAttribute: 'version'}");
+
+      let doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+      
+      doc = db[cn].document("test2");
+      assertEqual(42, doc.version);
+      
+      doc = db[cn].document("test3");
+      assertEqual(5, doc.version);
+      assertEqual(2, doc.value);
+    },
   
-    // assertEqual(ERRORS.ERROR_CURSOR_NOT_FOUND.code, e.errorNum);
+    testAQLInsertWithOverwriteModeUpdateWithVersionAttribute : function () {
+      const values = [
+        { _key: "test1", version: 2 },
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3" },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      db._query("FOR doc IN " + JSON.stringify(values) + " INSERT doc IN " + cn + " OPTIONS {overwriteMode: 'update', versionAttribute: 'version'}");
+
+      let doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+      
+      doc = db[cn].document("test2");
+      assertEqual(42, doc.version);
+      
+      doc = db[cn].document("test3");
+      assertEqual(5, doc.version);
+      assertEqual(2, doc.value);
+    },
+    
+    testAQLReplaceWithVersionAttribute : function () {
+      db[cn].insert([
+        { _key: "test1", version: 2 },
+        { _key: "test2", version: 1 },
+        { _key: "test3" },
+      ]);
+
+      const values = [
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      db._query("FOR doc IN " + JSON.stringify(values) + " REPLACE doc IN " + cn + " OPTIONS {versionAttribute: 'version'}");
+
+      let doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+      
+      doc = db[cn].document("test2");
+      assertEqual(42, doc.version);
+      
+      doc = db[cn].document("test3");
+      assertUndefined(doc.version);
+      assertEqual(2, doc.value);
+    },
+  
+    testAQLInsertWithOverwriteModeReplaceWithVersionAttribute : function () {
+      const values = [
+        { _key: "test1", version: 2 },
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3" },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      db._query("FOR doc IN " + JSON.stringify(values) + " INSERT doc IN " + cn + " OPTIONS {overwriteMode: 'replace', versionAttribute: 'version'}");
+
+      let doc = db[cn].document("test1");
+      assertEqual(3, doc.version);
+      
+      doc = db[cn].document("test2");
+      assertEqual(42, doc.version);
+      
+      doc = db[cn].document("test3");
+      assertUndefined(doc.version);
+      assertEqual(2, doc.value);
+    },
+
   };
 }
 
