@@ -2,15 +2,28 @@ v3.10.13 (XXXX-XX-XX)
 ---------------------
 
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
-  this new index had the same set of labels as the old one. However, on followers
-  (and with replication2 also on the leader), the DropIndex and EnsureIndex
-  actions could run concurrently. I.e., we could try to create the new index
-  before the old one was fully removed. In this case we could get a duplicate
-  metric exception, preventing the index from being created. Such errors are not
-  really handled ATM - they are simply logged and otherwise ignored. That means
-  the index will simply not be available on the affected server, since we will
-  also do not retry to create it at a later time.
+  this new index had the same set of labels as the old one. However, on
+  followers (and with replication2 also on the leader), the DropIndex and
+  EnsureIndex actions could run concurrently. I.e., we could try to create the
+  new index before the old one was fully removed. In this case we could get a
+  duplicate metric exception, preventing the index from being created. Such
+  errors are not really handled ATM - they are simply logged and otherwise
+  ignored. That means the index will simply not be available on the affected
+  server, since we will also do not retry to create it at a later time.
   To avoid this, we add a new `indexId` label to the metric to make it unique.
+
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
+* Removal artificial upper bound value of `128` for the startup option
+  `--rocksdb.max-background-jobs`.
+
+* Allow a scheduler thread to detach itself from the scheduler if it sees that
+  it has to perform a potentially long running task like waiting for a lock.
+  This allows a new scheduler thread to be started and avoids that it can happen
+  that all threads are blocked waiting for a lock, which has in the past led to
+  deadlock situations. The number of detached threads is limited by a
+  configurable option. Currently, only threads waiting for more than 1 second on
+  a collection lock will detach themselves.
 
 * Fixed a crash during recursive AstNode creation when an exception was thrown.
   This can happen on DB servers when a query plan snippet is created from
