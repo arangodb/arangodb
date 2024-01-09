@@ -60,8 +60,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we can restore the data

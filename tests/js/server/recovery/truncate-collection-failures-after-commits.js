@@ -68,8 +68,7 @@ const recoverySuite = function () {
   const c = db._collection(colName);
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // Test that count of collection remains unmodified.
     // We crashed after all commits, before return

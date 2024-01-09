@@ -51,8 +51,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testViewDrop: function () {
       var v1 = db._view('UnitTestsRecovery1');

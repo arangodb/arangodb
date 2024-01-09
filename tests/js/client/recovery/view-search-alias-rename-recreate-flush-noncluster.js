@@ -62,8 +62,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testViewRenameRecreateWithFlush: function () {
       let checkView = function(viewName, indexName) {

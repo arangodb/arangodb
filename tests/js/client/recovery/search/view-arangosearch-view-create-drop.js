@@ -47,8 +47,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     ////////////////////////////////////////////////////////////////////////////////
     /// @brief test whether create-drop recovery works

@@ -67,8 +67,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testNosyncRangeDeleteCollectionDrop: function () {
       assertNull(db._collection('UnitTestsRecovery1'));

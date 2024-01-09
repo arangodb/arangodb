@@ -65,8 +65,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testIResearchLinkPopulateDropCollectionNoFlushThread: function () {
       let checkView = function(viewName) {

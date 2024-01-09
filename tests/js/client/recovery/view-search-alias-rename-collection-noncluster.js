@@ -57,8 +57,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testIResearchLinkRenameCollection: function () {
       let checkView = function(viewName, indexName) {

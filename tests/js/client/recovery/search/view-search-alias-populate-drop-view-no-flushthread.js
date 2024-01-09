@@ -59,8 +59,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testIResearchLinkPopulateDropViewNoFlushThread: function () {
       var v = db._view('UnitTestsRecoveryView');

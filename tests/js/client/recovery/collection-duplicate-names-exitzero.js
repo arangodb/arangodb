@@ -57,8 +57,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testCollectionDuplicateName: function () {
       var c = db._collection('UnitTestsRecovery');

@@ -69,8 +69,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we the data are correct after restart

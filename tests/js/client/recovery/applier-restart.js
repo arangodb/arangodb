@@ -52,8 +52,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testReplicationRestarted: function () {
       var replication = require("@arangodb/replication");

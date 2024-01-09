@@ -44,8 +44,6 @@ function runSetup () {
 
   internal.wal.flush(true, true);
   internal.wal.flush(true, false);
-
-  internal.wait(2);
 }
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -57,8 +55,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we can restore the trx data
