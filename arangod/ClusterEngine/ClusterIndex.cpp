@@ -89,7 +89,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
-    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
@@ -115,7 +116,8 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
         _estimates = s.getBoolean();
       }
     } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX ||
-               _indexType == TRI_IDX_TYPE_MDI_INDEX) {
+               _indexType == TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == TRI_IDX_TYPE_ZKD_INDEX) {
       _estimates = false;
     }
   }
@@ -141,8 +143,11 @@ void ClusterIndex::toVelocyPack(
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX) {
-    TRI_ASSERT(_indexType != TRI_IDX_TYPE_MDI_INDEX || !_estimates || _unique)
+      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) {
+    TRI_ASSERT((_indexType != TRI_IDX_TYPE_MDI_INDEX &&
+                _indexType != TRI_IDX_TYPE_ZKD_INDEX) ||
+               !_estimates || _unique)
         << oldtypeName(_indexType) << std::boolalpha
         << " estimates = " << _estimates << " unique = " << _unique;
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
@@ -251,7 +256,9 @@ bool ClusterIndex::hasSelectivityEstimate() const {
              _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
              _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
-             (_indexType == Index::TRI_IDX_TYPE_MDI_INDEX && _unique)));
+             ((_indexType == Index::TRI_IDX_TYPE_MDI_INDEX ||
+               _indexType == Index::TRI_IDX_TYPE_ZKD_INDEX) &&
+              _unique)));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -388,6 +395,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
                                             itemsInIndex);
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
@@ -435,6 +443,7 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
       break;
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       // Sorting not supported
@@ -490,6 +499,7 @@ aql::AstNode* ClusterIndex::specializeCondition(
                                                               reference);
     }
 
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::specializeCondition(this, node, reference);
@@ -520,6 +530,7 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
