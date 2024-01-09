@@ -30,18 +30,19 @@
 
 namespace arangodb {
 
+// `Zkd` is the old designation for an unprefix mdi
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",    "Documents",    "PrimaryIndex",  "EdgeIndex",
-        "VPackIndex", "GeoIndex",     "FulltextIndex", "ReplicatedLogs",
-        "ZkdIndex",   "ZkdVPackIndex"};
+        "default",    "Documents",  "PrimaryIndex",  "EdgeIndex",
+        "VPackIndex", "GeoIndex",   "FulltextIndex", "ReplicatedLogs",
+        "ZkdIndex",   "MdiPrefixed"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
         "definitions", "documents", "primary",         "edge", "vpack",
-        "geo",         "fulltext",  "replicated-logs", "zkd",  "zkd-vpack"};
+        "geo",         "fulltext",  "replicated-logs", "zkd",  "mdi-prefixed"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>

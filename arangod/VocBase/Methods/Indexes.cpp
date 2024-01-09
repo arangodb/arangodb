@@ -441,6 +441,30 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
+namespace {
+std::unordered_set<std::string_view> extractRelevantKeysForSharding(
+    VPackSlice indexDef) {
+  std::unordered_set<std::string_view> indexKeys;
+
+  auto const fieldsIntoSet = [](VPackSlice slice,
+                                std::unordered_set<std::string_view>& result) {
+    for (auto f : VPackArrayIterator(slice)) {
+      TRI_ASSERT(f.isString());  // after index validation
+      result.emplace(f.stringView());
+    }
+  };
+
+  fieldsIntoSet(indexDef.get(arangodb::StaticStrings::IndexFields), indexKeys);
+  if (auto prefixFields = indexDef.get(StaticStrings::IndexPrefixFields);
+      prefixFields.isArray()) {
+    fieldsIntoSet(prefixFields, indexKeys);
+  }
+
+  return indexKeys;
+}
+
+}  // namespace
+
 futures::Future<arangodb::Result> Indexes::ensureIndex(
     LogicalCollection& collection, VPackSlice input, bool create,
     VPackBuilder& output, std::shared_ptr<ProgressTracker> progress) {
@@ -504,7 +528,8 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     // check if there is an attempt to create a unique index on non-shard keys
     if (create) {
       Index::validateFields(indexDef);
-      auto v = indexDef.get(arangodb::StaticStrings::IndexUnique);
+      auto isUnique =
+          indexDef.get(arangodb::StaticStrings::IndexUnique).isTrue();
 
       /* the following combinations of shardKeys and indexKeys are allowed/not
        allowed:
@@ -521,34 +546,20 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
        a b c         a b c        ok
        */
 
-      if (v.isBoolean() && v.getBoolean()) {
+      if (isUnique && collection.numberOfShards() > 1) {
         // unique index, now check if fields and shard keys match
-        auto flds = indexDef.get(arangodb::StaticStrings::IndexFields);
 
-        if (flds.isArray() && collection.numberOfShards() > 1) {
-          std::vector<std::string> const& shardKeys = collection.shardKeys();
-          std::unordered_set<std::string> indexKeys;
-          size_t n = static_cast<size_t>(flds.length());
+        std::vector<std::string> const& shardKeys = collection.shardKeys();
+        std::unordered_set<std::string_view> indexKeys =
+            extractRelevantKeysForSharding(indexDef);
 
-          for (size_t i = 0; i < n; ++i) {
-            VPackSlice f = flds.at(i);
-            if (!f.isString()) {
-              // index attributes must be strings
-              ensureIndexResult = TRI_ERROR_INTERNAL;
-              co_return Result(TRI_ERROR_INTERNAL,
-                               "index field names should be strings");
-            }
-            indexKeys.emplace(f.copyString());
-          }
-
-          // all shard-keys must be covered by the index
-          for (auto& it : shardKeys) {
-            if (indexKeys.find(it) == indexKeys.end()) {
-              ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
-              co_return Result(
-                  TRI_ERROR_CLUSTER_UNSUPPORTED,
-                  "shard key '" + it + "' must be present in unique index");
-            }
+        // all shard-keys must be covered by the index
+        for (auto& it : shardKeys) {
+          if (indexKeys.find(it) == indexKeys.end()) {
+            ensureIndexResult = TRI_ERROR_CLUSTER_UNSUPPORTED;
+            co_return Result(
+                TRI_ERROR_CLUSTER_UNSUPPORTED,
+                "shard key '" + it + "' must be present in unique index");
           }
         }
       }

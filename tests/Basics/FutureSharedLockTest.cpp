@@ -49,9 +49,12 @@ struct MockScheduler {
     funcs.push_back({std::move(func)});
   }
 
+  using WorkHandle = int;
+
   template<class Fn>
-  void queueDelayed(Fn func, std::chrono::milliseconds delay) {
+  WorkHandle queueDelayed(Fn func, std::chrono::milliseconds delay) {
     delayedFuncs.emplace_back(std::move(func), delay);
+    return 0;
   }
 
   void executeScheduled() {
@@ -68,10 +71,10 @@ struct MockScheduler {
     ASSERT_FALSE(delayedFuncs.empty());
     auto f = std::move(delayedFuncs.front());
     delayedFuncs.pop_front();
-    f.first();
+    f.first(false);
   }
   std::vector<fu2::unique_function<void()>> funcs;
-  std::deque<std::pair<std::function<void()>, std::chrono::milliseconds>>
+  std::deque<std::pair<std::function<void(bool)>, std::chrono::milliseconds>>
       delayedFuncs;
 };
 
@@ -360,7 +363,13 @@ TEST_F(
     lockGuard = std::move(guard);
     lock.asyncTryLockExclusiveFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
-      resolvedWithTimeout = true;
+      try {
+        result.throwIfFailed();
+      } catch (::arangodb::basics::Exception const& e) {
+        EXPECT_EQ(e.code(), TRI_ERROR_LOCK_TIMEOUT);
+        resolvedWithTimeout = true;
+      } catch (...) {
+      }
     });
   });
   ASSERT_EQ(1, scheduler.delayedFuncs.size());
@@ -440,7 +449,13 @@ TEST_F(
     lockGuard = std::move(guard);
     lock.asyncTryLockSharedFor(10ms).thenFinal([&](auto result) {
       EXPECT_TRUE(result.hasException());
-      resolvedWithTimeout = true;
+      try {
+        result.throwIfFailed();
+      } catch (::arangodb::basics::Exception const& e) {
+        EXPECT_EQ(e.code(), TRI_ERROR_LOCK_TIMEOUT);
+        resolvedWithTimeout = true;
+      } catch (...) {
+      }
     });
   });
   ASSERT_EQ(1, scheduler.delayedFuncs.size());
@@ -507,12 +522,13 @@ struct StressScheduler {
   void queue(Fn&& func) {
     scheduled.push(new Func{std::forward<Fn>(func)});
   }
-
+  using WorkHandle = int;
   template<class Fn>
-  void queueDelayed(Fn&& func, std::chrono::milliseconds delay) {
+  WorkHandle queueDelayed(Fn&& func, std::chrono::milliseconds delay) {
     auto when = std::chrono::steady_clock::now() + delay;
     std::lock_guard lock(mutex);
     delayedFuncs.emplace(when, std::forward<Fn>(func));
+    return 0;
   }
 
   void executeScheduled() {
@@ -540,7 +556,7 @@ struct StressScheduler {
       if (it->first > now) {
         break;
       }
-      funcs.emplace_back(std::move(it->second));
+      funcs.emplace_back([func = std::move(it->second)]() { func(false); });
       it = delayedFuncs.erase(it);
     }
     lock.unlock();
@@ -553,7 +569,8 @@ struct StressScheduler {
   boost::lockfree::queue<Func*> scheduled;
 
   std::mutex mutex;
-  std::multimap<std::chrono::steady_clock::time_point, std::function<void()>>
+  std::multimap<std::chrono::steady_clock::time_point,
+                std::function<void(bool)>>
       delayedFuncs;
 };
 

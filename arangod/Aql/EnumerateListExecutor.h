@@ -79,14 +79,14 @@ class EnumerateListExpressionContext final : public QueryExpressionContext {
   std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
   std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
   VariableId _outputVariableId;
-  std::optional<std::reference_wrapper<AqlValue const>> _currentValue;
+  AqlValue _currentValue;
 };
 
 class EnumerateListExecutorInfos {
  public:
   EnumerateListExecutorInfos(
       RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
-      Expression* filter,
+      Expression* filter, VariableId outputVariableId,
       std::vector<std::pair<VariableId, RegisterId>>&& varsToRegs);
 
   EnumerateListExecutorInfos() = delete;
@@ -108,9 +108,9 @@ class EnumerateListExecutorInfos {
   // These two are exactly the values in the parent members
   // ExecutorInfo::_inRegs and ExecutorInfo::_outRegs, respectively
   // getInputRegisters() and getOutputRegisters().
-  RegisterId _inputRegister;
-  RegisterId _outputRegister;
-  VariableId _outputVariableId;
+  RegisterId const _inputRegister;
+  RegisterId const _outputRegister;
+  VariableId const _outputVariableId;
   Expression* _filter;
   // Input variable and register pairs required for the filter
   std::vector<std::pair<VariableId, RegisterId>> _varsToRegs;
@@ -172,7 +172,6 @@ class EnumerateListExecutor {
  private:
   AqlValue getAqlValue(AqlValue const& inVarReg, size_t const& pos,
                        bool& mustDestroy);
-  void initialize();
 
   bool checkFilter(AqlValue const& currentValue);
 

@@ -780,8 +780,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(!isSmart);
     auto singleServerBaseProviderOptions =
         getSingleServerBaseProviderOptions(opts, filterConditionVariables);
-    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
-                                                  // SingleServer, Cluster...
+    auto executorInfos = TraversalExecutorInfos(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->query(),
@@ -1003,7 +1002,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * SmartGraph Traverser
      */
     if (isSmart() && !isDisjoint()) {
-      // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
@@ -1014,7 +1012,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       /*
        * Default Cluster Traverser
        */
-      // Note: Using refactored cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
@@ -1176,11 +1173,6 @@ void TraversalNode::prepareOptions() {
 
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
-  /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
-   * wrong results.
-   */
-  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of
@@ -1197,16 +1189,14 @@ void TraversalNode::prepareOptions() {
       // made non-overlapping.
       switch (dir) {
         case TRI_EDGE_IN:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
+              builder->getInboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_OUT:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
+              builder->getOutboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);
