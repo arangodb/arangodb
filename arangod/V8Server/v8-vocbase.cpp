@@ -794,7 +794,7 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
                              variables, snippetBuilder.slice(),
                              VPackSlice::noneSlice(), ignoreResponse,
-                             analyzersRevision);
+                             analyzersRevision, false /* fastPath */);
 
   aql::QueryResult queryResult = query->executeSync();
 

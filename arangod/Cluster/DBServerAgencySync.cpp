@@ -24,6 +24,7 @@
 #include "DBServerAgencySync.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/GlobalSerialization.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
@@ -281,6 +282,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
     // get a snapshot of the locks (copy!) and ignore the shards which have been
     // locked *now*. Then `getLocalCollections`.
     currentShardLocks = mfeature.getShardLocks();
+
+    TRI_IF_FAILURE("Maintenance::BeforePhaseTwo") {
+      observeGlobalEvent("Maintenance::BeforePhaseTwo",
+                         ServerState::instance()->getShortName());
+    }
 
     local.clear();
     glc = getLocalCollections(dirty, local);

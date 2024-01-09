@@ -121,9 +121,11 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
                       std::unique_ptr<GeneralResponse> response,
                       ServerState::Mode mode);
 
-  RequestStatistics::Item const& acquireStatistics(uint64_t id);
-  RequestStatistics::Item const& statistics(uint64_t id);
-  RequestStatistics::Item stealStatistics(uint64_t id);
+  [[nodiscard]] ConnectionStatistics::Item acquireConnectionStatistics();
+  [[nodiscard]] RequestStatistics::Item const& acquireRequestStatistics(
+      uint64_t id);
+  [[nodiscard]] RequestStatistics::Item const& requestStatistics(uint64_t id);
+  [[nodiscard]] RequestStatistics::Item stealRequestStatistics(uint64_t id);
 
   /// @brief send response including error response body
   void sendErrorResponse(rest::ResponseCode, rest::ContentType,

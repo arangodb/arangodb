@@ -937,15 +937,6 @@ License Id: -
 * License Name: BSD 2-clause "Simplified" License
 * License Id: BSD-2-Clause
 
-#### Stamen
-
-* Name: stamen
-* Version: 1.3.0
-* GitHub: https://github.com/stamen/maps.stamen.com
-* License: https://raw.githubusercontent.com/stamen/maps.stamen.com/master/LICENSE
-* License Name: BSD 3-clause "New" or "Revised" License
-* License Id: BSD-3-Clause
-
 #### randomColor
 
 * Name: randomColor

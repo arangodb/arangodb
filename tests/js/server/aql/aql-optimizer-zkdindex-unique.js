@@ -29,6 +29,7 @@ const internal = require("internal");
 const db = arangodb.db;
 const aql = arangodb.aql;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
+const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
@@ -36,79 +37,105 @@ const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
 const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
 function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexCollection';
-    let col;
+  const colName = 'UnitTestZkdIndexCollection';
+  let col;
 
-    return {
-        setUpAll: function () {
-            col = db._create(colName);
-            col.ensureIndex({
-                type: 'zkd',
-                name: 'zkdIndex',
-                fields: ['x', 'y'],
-                unique: true,
-                fieldValueTypes: 'double'
-            });
-            // Insert 1001 points
-            // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
-            db._query(aql`
+  return {
+    setUpAll: function () {
+      col = db._create(colName);
+      col.ensureIndex({
+        type: 'zkd',
+        name: 'zkdIndex',
+        fields: ['x', 'y'],
+        storedValues: ['i'],
+        unique: true,
+        fieldValueTypes: 'double'
+      });
+      // Insert 1001 points
+      // (-500, -499.5), (-499.1, -499.4), ..., (0, 0.5), ..., (499.9, 500.4), (500, 500.5)
+      db._query(aql`
         FOR i IN 0..1000
           LET x = (i - 500) / 10
           LET y = x + 0.5
           INSERT {x, y, i} INTO ${col}
       `);
-        },
+    },
 
-        tearDownAll: function () {
-            col.drop();
-        },
+    tearDownAll: function () {
+      col.drop();
+    },
 
-        testIndexAccess: function () {
-            const query = aql`
+    testIndexAccess: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 <= d.x && d.x <= 1
           RETURN d.x
       `;
-            const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = AQL_EXECUTE(query.query, query.bindVars);
-            const res = executeRes.json;
-            res.sort();
-            assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
-        },
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
+    },
 
-        testIndexAccess2: function () {
-            const query = aql`
+    testIndexAccess2: function () {
+      const query = aql`
         FOR d IN ${col}
           FILTER 0 <= d.x && d.y <= 1
           RETURN d.x
       `;
-            const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
-            const appliedRules = explainRes.plan.rules;
-            const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
-            assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
-            assertTrue(appliedRules.includes(useIndexes));
-            assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
-            const executeRes = AQL_EXECUTE(query.query, query.bindVars);
-            const res = executeRes.json;
-            res.sort();
-            assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
-        },
 
-        testUniqueConstraint: function () {
-            col.save({x: 0, y: 0.50001});
-            try {
-                col.save({x: 0, y: 0.5});
-                fail();
-            } catch (e) {
-                assertEqual(e.errorNum, internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
-            }
-        }
-    };
+      const explainRes = AQL_EXPLAIN(query.query, query.bindVars);
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const executeRes = AQL_EXECUTE(query.query, query.bindVars);
+      const res = executeRes.json;
+      res.sort();
+      assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5], res);
+    },
+
+
+    testIndexAccessStoredValues: function () {
+      const query = aql`
+        FOR d IN ${col}
+          FILTER 0 <= d.x && d.y <= 1
+          RETURN d.i
+      `;
+      const explainRes = db._createStatement({query: query.query, bindVars: query.bindVars}).explain();
+      const appliedRules = explainRes.plan.rules;
+      const nodeTypes = explainRes.plan.nodes.map(n => n.type).filter(n => !["GatherNode", "RemoteNode"].includes(n));
+      assertEqual(["SingletonNode", "IndexNode", "CalculationNode", "ReturnNode"], nodeTypes);
+      assertTrue(appliedRules.includes(useIndexes));
+      assertTrue(appliedRules.includes(removeFilterCoveredByIndex));
+      const indexNodes = explainRes.plan.nodes.filter(n => n.type === "IndexNode");
+      assertEqual(indexNodes.length, 1);
+      const index = indexNodes[0];
+      assertTrue(index.indexCoversProjections, true);
+      assertEqual(index.projections,["i"]);
+      const executeRes = db._query(query.query, query.bindVars);
+      const res = executeRes.toArray();
+      res.sort();
+      assertEqual([500, 501, 502, 503, 504, 505], res);
+    },
+
+    testUniqueConstraint: function () {
+      col.save({x: 0, y: 0.50001});
+      try {
+        col.save({x: 0, y: 0.5});
+        fail();
+      } catch (e) {
+        assertEqual(e.errorNum, internal.errors.ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED.code);
+      }
+    }
+  };
 }
 
 jsunity.run(optimizerRuleZkd2dIndexTestSuite);

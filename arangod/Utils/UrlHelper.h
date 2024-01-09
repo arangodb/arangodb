@@ -23,11 +23,11 @@
 
 #pragma once
 
+#include <cstdint>
 #include <optional>
-#include <variant>
-
 #include <string>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace arangodb {

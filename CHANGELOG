@@ -1,5 +1,116 @@
-v3.10.11 (XXXX-XX-XX)
+v3.10.13 (XXXX-XX-XX)
 ---------------------
+
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
+* Removal artificial upper bound value of `128` for the startup option
+  `--rocksdb.max-background-jobs`.
+
+* Allow a scheduler thread to detach itself from the scheduler if it sees that
+  it has to perform a potentially long running task like waiting for a lock.
+  This allows a new scheduler thread to be started and avoids that it can happen
+  that all threads are blocked waiting for a lock, which has in the past led to
+  deadlock situations. The number of detached threads is limited by a
+  configurable option. Currently, only threads waiting for more than 1 second on
+  a collection lock will detach themselves.
+
+* Fixed a crash during recursive AstNode creation when an exception was thrown.
+  This can happen on DB servers when a query plan snippet is created from
+  VelocyPack, and the query plan snippet would use more memory than is allowed
+  by the query memory limit.
+
+* Added stored values support for ZKD indexes.
+
+
+v3.10.12 (2023-12-18)
+---------------------
+
+* BTS-1714: Within writing AQL queries the lock timeout was accidentally set to
+  2 seconds for all write operations on followers. This could lead to dropped
+  followers when an index of a large shard was finalized on an follower.
+
+* Updated OpenSSL to 3.0.12.
+
+* Fixed a problem in ReadWriteLock which could prevent waiting readers from
+  being woken up, when a write lock acquire timed out.
+
+* Fixed MDS-1170: Significant performance degradation when queries are executed
+  within transactions that involve edits.
+
+* Solve a potential blockage during hotbackup by not stopping read-only
+  transactions from committing during hotbackup. Furthermore, improve behavior
+  of authentication in the case that the user cache is outdated.
+
+* FE-395: Fix query editor map not loading.
+
+* Rebuilt included rclone v1.59.0 with go1.21.4.
+
+* Updated ArangoDB Starter to v0.17.2 and arangosync to v2.19.5.
+
+* Track memory usage of internal connection statistics and request statistics:
+  - `arangodb_connection_statistics_memory_usage`
+  - `arangodb_requests_statistics_memory_usage`
+  These metrics will remain at 0 if the server is started with the option
+  `--server.statistics false`. Otherwise they will contain the memory usage used
+  by connection and request statistics. Memory usage should remain pretty
+  constant over time, unless there are bursts of new connections and/or
+  requests.
+
+* Avoid memory leak in case an arangod instance is started with the option
+  `--server.statistics false`. Previously, with that setting the request and
+  connection statistics were built up in memory, but were never released because
+  the statistics background thread was not running.
+
+* Remove version check on startup of arangosh. This can speed up the startup of
+  the arangosh considerably because it won't do a network request to
+  www.arangodb.com.
+
+* MDS-1164: Added Publisher and Company to the Windows binaries.
+
+* Fixed a race in controlled leader change which could lead to a situation in
+  which a shard follower is dropped when the first write operation happens. This
+  fixes BTS-1647.
+
+* Fixed BTS-1273: While queueing an async server log message, we could be
+  blocked by IO on the log-writer thread. This could slow down the main
+  path. In case the log-writer is configured to use slow device
+  (e.g. using syslog) this could have significant impact.
+
+* Introduced an upper bound of queued async log messages. If we would log
+  more messages then the background logger thread can actually process, we
+  start to write log messages synchronously. This is to prevent the queue
+  to grow indefinitely. The upper bound is configurable via the startup
+  option `--log.max-queued-entries`. The default value is 10000.
+
+* Fixed an unnecessary follower drop in controlled leader change, which will
+  speed up leader changes. This fixes BTS-1658.
+
+* Fixed BTS-1669 Transaction Manager returns Error if we Abort an Expired
+  Transaction.
+  There was a small time window of around 2 seconds in which aborting expired
+  transactions would return "transaction aborted" instead of returning success.
+  The time window was between when a transaction expired (according to its TTL
+  value) and when the transaction manager's garbage collection aborted the
+  transaction. The issue only happened for transactions which outlived their TTL
+  value and for which an abort operation was attempted in that time window.
+
+
+v3.10.11 (2023-10-19)
+---------------------
+
+* Fix a race in failure oracle feature on server shutdown.
+
+* Updated OpenSSL to 3.0.11.
+
+* Make AQL query cursor garbage-collection clean up more expired cursors in a
+  single run than before. This change can help to reclaim memory of expired
+  cursors quicker than in previous versions.
+
+* Reduce number of atomic shared_ptr copies in in-memory cache subsystem.
+
+* Fixed BTS-1610: In certain situations with at least three levels of nested
+  subqueries, of which some of the outer iterations don't return any results,
+  results of later iterations could be lost.
 
 * Updated arangosync to v2.19.4.
 

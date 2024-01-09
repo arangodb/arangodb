@@ -1,7 +1,11 @@
 
   <a class="info default-icon">User: 
     <span class="toggle"> 
+      <% if (name) { %>
+        <%=_.escape(name)%>
+      <% } else { %>
       <%=_.escape(username)%>
+      <% } %>
     </span>
     <% if (!autoLoginEnabled) {%>
       <i id="userLogoutIcon" class="fa fa-power-off" aria-hidden="true"></i>
@@ -12,8 +16,8 @@
     <li class="dropdown-header">
       <div style="height: 1px; background: rgb(119, 203, 153)"></div>
       <img class="user-img" src="<%=img%>"/>
-        <p><% if (name) {%><%=_.escape(username)%><small> <%=_.escape(name)%> </small>
-        <% } else {%>
+        <p><% if (name) { %><small> <%=_.escape(name)%> </small>
+        <% } else { %>
           <%=_.escape(username)%>
         <% } %>
         </p>
