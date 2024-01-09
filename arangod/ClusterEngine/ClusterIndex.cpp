@@ -34,9 +34,9 @@
 #include "Indexes/SortedIndexAttributeMatcher.h"
 #include "Logger/LogMacros.h"
 #include "Network/NetworkFeature.h"
+#include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
-#include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -89,10 +89,18 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
           _fields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
-    } else if (_indexType == TRI_IDX_TYPE_ZKD_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX) {
       _coveredFields =
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false);
+    } else if (_indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+      _prefixFields =
+          Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+      _coveredFields = Index::mergeFields(
+          _prefixFields,
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
 
     // check for "estimates" attribute
@@ -100,12 +108,14 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _estimates = true;
     } else if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
                _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+               _indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
       if (VPackSlice s = info.get(StaticStrings::IndexEstimates);
           s.isBoolean()) {
         _estimates = s.getBoolean();
       }
-    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX ||
+               _indexType == TRI_IDX_TYPE_MDI_INDEX) {
       _estimates = false;
     }
   }
@@ -129,11 +139,29 @@ void ClusterIndex::toVelocyPack(
 
   if (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX) {
+    TRI_ASSERT(_indexType != TRI_IDX_TYPE_MDI_INDEX || !_estimates || _unique)
+        << oldtypeName(_indexType) << std::boolalpha
+        << " estimates = " << _estimates << " unique = " << _unique;
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
+  }
+
+  if (_indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+    builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
+    builder.openArray();
+
+    for (auto const& field : _prefixFields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
   }
 
   if (inProgress()) {
@@ -218,9 +246,12 @@ bool ClusterIndex::hasSelectivityEstimate() const {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           (_estimates && (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
+           (_estimates &&
+            (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
+             (_indexType == Index::TRI_IDX_TYPE_MDI_INDEX && _unique)));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -357,8 +388,9 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
                                             itemsInIndex);
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
-      return zkd::supportsFilterCondition(this, allIndexes, node, reference,
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -403,7 +435,8 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
       break;
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -457,8 +490,9 @@ aql::AstNode* ClusterIndex::specializeCondition(
                                                               reference);
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
-      return zkd::specializeCondition(this, node, reference);
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return mdi::specializeCondition(this, node, reference);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -485,8 +519,9 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
-    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::emptyCoveredFields;
     }

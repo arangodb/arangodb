@@ -55,7 +55,7 @@ function conditionForVariable(op, name) {
     }
 }
 
-function resultSetForConditoin(op) {
+function resultSetForCondition(op) {
     const all = [...Array(11).keys()];
     if (op === "none") {
         return all;
@@ -80,10 +80,10 @@ function resultSetForConditoin(op) {
 
 function productSet(x, y, z, w) {
     let result = [];
-    for (let dx of resultSetForConditoin(x)) {
-        for (let dy of resultSetForConditoin(y)) {
-            for (let dz of resultSetForConditoin(z)) {
-                for (let dw of resultSetForConditoin(w)) {
+    for (let dx of resultSetForCondition(x)) {
+        for (let dy of resultSetForCondition(y)) {
+            for (let dz of resultSetForCondition(z)) {
+                for (let dw of resultSetForCondition(w)) {
                     result.unshift([dx, dy, dz, dw]);
                 }
             }
@@ -92,14 +92,14 @@ function productSet(x, y, z, w) {
     return result;
 }
 
-function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexMultiCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+    const colName = 'UnitTestMdiIndexMultiCollection';
     let col;
 
     let testObject = {
         setUpAll: function () {
             col = db._create(colName);
-            col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y', 'z', 'a.w'], fieldValueTypes: 'double'});
+            col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x', 'y', 'z', 'a.w'], fieldValueTypes: 'double'});
             db._query(aql`
                 FOR x IN 0..10
                 FOR y IN 0..10
@@ -157,6 +157,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
     return testObject;
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();

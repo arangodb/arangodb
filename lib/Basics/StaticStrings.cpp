@@ -144,10 +144,12 @@ std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexStoredValues("storedValues");
+std::string const StaticStrings::IndexPrefixFields("prefixFields");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
 std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
+std::string const StaticStrings::IndexCreationError("creationError");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");

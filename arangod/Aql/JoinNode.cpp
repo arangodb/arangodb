@@ -57,6 +57,11 @@
 using namespace arangodb;
 using namespace arangodb::aql;
 
+constexpr const char expressionKey[] = "expression";
+constexpr const char expressionsKey[] = "expressions";
+constexpr const char usedKeyFieldsKey[] = "usedKeyFields";
+constexpr const char constantFieldsKey[] = "constantFields";
+
 JoinNode::JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
                    std::vector<JoinNode::IndexInfo> indexInfos,
                    IndexIteratorOptions const& opts)
@@ -66,7 +71,8 @@ JoinNode::JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
 
 JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
     : ExecutionNode(plan, base) {
-  // TODO: this code is the same in IndexNode. move into a sharable function
+  // TODO: this code is almost the same in IndexNode. move into a sharable
+  // function
   _options.sorted =
       basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
   _options.ascending =
@@ -127,6 +133,42 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
         Projections::fromVelocyPack(plan->getAst(), it, "filterProjections",
                                     plan->getAst()->query().resourceMonitor());
 
+    std::vector<std::unique_ptr<Expression>> expressions{};
+    if (it.get(expressionsKey).isArray()) {
+      auto expressionsSlice = it.get(expressionsKey);
+      for (auto const& expr : VPackArrayIterator(expressionsSlice)) {
+        expressions.push_back(
+            std::make_unique<Expression>(plan->getAst(), expr));
+      }
+    }
+
+    std::vector<size_t> usedKeyFields{};
+    std::vector<size_t> constantFields{};
+
+    VPackSlice usedKeyFieldsSlice = it.get(usedKeyFieldsKey);
+    if (!usedKeyFieldsSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"usedKeyFields\" attribute should be an array");
+    } else {
+      for (VPackSlice key : VPackArrayIterator(usedKeyFieldsSlice)) {
+        TRI_ASSERT(key.isNumber());
+        usedKeyFields.emplace_back(key.getNumber<size_t>());
+      }
+    }
+
+    VPackSlice constantFieldsSlice = it.get(constantFieldsKey);
+    if (!constantFieldsSlice.isArray()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_BAD_PARAMETER,
+          "\"constantFields\" attribute should be an array");
+    } else {
+      for (VPackSlice constant : VPackArrayIterator(constantFieldsSlice)) {
+        TRI_ASSERT(constant.isNumber());
+        constantFields.emplace_back(constant.getNumber<size_t>());
+      }
+    }
+
     bool const usedAsSatellite = it.get("usedAsSatellite").isTrue();
     bool const producesOutput = it.get("producesOutput").isTrue();
 
@@ -145,7 +187,10 @@ JoinNode::JoinNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base)
                   .projections = std::move(projections),
                   .filterProjections = filterProjections,
                   .usedAsSatellite = usedAsSatellite,
-                  .producesOutput = producesOutput});
+                  .producesOutput = producesOutput,
+                  .expressions = std::move(expressions),
+                  .usedKeyFields = std::move(usedKeyFields),
+                  .constantFields = std::move(constantFields)});
 
     idx.isLateMaterialized = it.get("isLateMaterialized").isTrue();
     if (idx.isLateMaterialized) {
@@ -222,6 +267,34 @@ void JoinNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
       builder.add("indexCoversFilterProjections",
                   VPackValue(it.filterProjections.usesCoveringIndex(it.index)));
     }
+    if (!it.expressions.empty()) {
+      builder.add(VPackValue(expressionsKey));
+      {
+        VPackArrayBuilder expressionsArray(&builder);
+        for (auto const& expr : it.expressions) {
+          VPackObjectBuilder expressionObject(&builder);
+          builder.add(VPackValue(expressionKey));
+          expr->toVelocyPack(builder, true);
+        }
+      }
+    }
+
+    builder.add(VPackValue(usedKeyFieldsKey));
+    {
+      VPackArrayBuilder usedKeyFieldsArray(&builder);
+      for (auto const& key : it.usedKeyFields) {
+        builder.add(VPackValue(key));
+      }
+    }
+
+    builder.add(VPackValue(constantFieldsKey));
+    {
+      VPackArrayBuilder constantFieldsArray(&builder);
+      for (auto const& constant : it.constantFields) {
+        builder.add(VPackValue(constant));
+      }
+    }
+
     // index
     builder.add(VPackValue("index"));
     it.index->toVelocyPack(builder,
@@ -251,7 +324,6 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
-
   RegIdSet writableOutputRegisters;
   containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
 
@@ -279,7 +351,7 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
       documentOutputRegister = variableToRegisterId(idx.outVariable);
-      if (idx.producesOutput) {
+      if (idx.producesOutput && !idx.isLateMaterialized) {
         writableOutputRegisters.emplace(documentOutputRegister);
       }
     }
@@ -295,6 +367,28 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
     if (data.isLateMaterialized) {
       data.docIdOutputRegister = variableToRegisterId(idx.outDocIdVariable);
       writableOutputRegisters.emplace(data.docIdOutputRegister);
+    }
+
+    if (!idx.expressions.empty()) {
+      VarSet varsUsed;
+
+      for (auto& expr : idx.expressions) {
+        TRI_ASSERT(expr != nullptr);
+        TRI_ASSERT(expr->isDeterministic());
+        expr->variables(varsUsed);
+        data.constantExpressions.push_back(
+            expr->clone(engine.getQuery().ast(), true));
+        data.usedKeyFields = idx.usedKeyFields;
+        data.constantFields = idx.constantFields;
+      }
+
+      for (auto const& var : varsUsed) {
+        auto regId = variableToRegisterId(var);
+        data.expressionVarsToRegs.emplace_back(var->id, regId);
+      }
+    } else {
+      data.usedKeyFields = {0};
+      data.constantFields = {};
     }
 
     if (idx.filter) {
@@ -331,45 +425,46 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
   }
 
   infos.varsToRegister = std::move(varsToRegs);
-
+  // TODO: Check the use of first paramter for createRegisterInfos (currently
+  // not tracked)
   auto registerInfos = createRegisterInfos({}, writableOutputRegisters);
-
   return std::make_unique<ExecutionBlockImpl<JoinExecutor>>(
       &engine, this, registerInfos, std::move(infos));
 }
 
-ExecutionNode* JoinNode::clone(ExecutionPlan* plan, bool withDependencies,
-                               bool withProperties) const {
+ExecutionNode* JoinNode::clone(ExecutionPlan* plan,
+                               bool withDependencies) const {
   std::vector<IndexInfo> indexInfos;
   indexInfos.reserve(_indexInfos.size());
 
   for (auto const& it : _indexInfos) {
-    auto outVariable = it.outVariable;
-    auto outDocIdVariable = it.outDocIdVariable;
-    if (withProperties) {
-      outVariable = plan->getAst()->variables()->createVariable(outVariable);
-      if (outDocIdVariable) {
-        outDocIdVariable =
-            plan->getAst()->variables()->createVariable(outDocIdVariable);
-      }
+    std::vector<std::unique_ptr<Expression>> clonedExpressions{};
+    for (auto const& expr : it.expressions) {
+      clonedExpressions.emplace_back(expr->clone(plan->getAst(), true));
     }
-    indexInfos.emplace_back(
-        IndexInfo{.collection = it.collection,
-                  .usedShard = it.usedShard,
-                  .outVariable = outVariable,
-                  .condition = it.condition->clone(),
-                  .index = it.index,
-                  .projections = it.projections,
-                  .usedAsSatellite = it.usedAsSatellite,
-                  .producesOutput = it.producesOutput,
-                  .isLateMaterialized = it.isLateMaterialized,
-                  .outDocIdVariable = outDocIdVariable});
+
+    indexInfos.emplace_back(IndexInfo{
+        .collection = it.collection,
+        .usedShard = it.usedShard,
+        .outVariable = it.outVariable,
+        .condition = it.condition->clone(),
+        .filter = it.filter != nullptr ? it.filter->clone(plan->getAst(), true)
+                                       : nullptr,
+        .index = it.index,
+        .projections = it.projections,
+        .usedAsSatellite = it.usedAsSatellite,
+        .producesOutput = it.producesOutput,
+        .isLateMaterialized = it.isLateMaterialized,
+        .outDocIdVariable = it.outDocIdVariable,
+        .expressions = std::move(clonedExpressions),
+        .usedKeyFields = it.usedKeyFields,
+        .constantFields = it.constantFields});
   }
 
   auto c =
       std::make_unique<JoinNode>(plan, _id, std::move(indexInfos), _options);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node
@@ -382,6 +477,9 @@ void JoinNode::replaceVariables(
     }
     if (it.filter != nullptr) {
       it.filter->replaceVariables(replacements);
+    }
+    for (auto const& expr : it.expressions) {
+      expr->replaceVariables(replacements);
     }
   }
 }
@@ -400,6 +498,12 @@ void JoinNode::replaceAttributeAccess(ExecutionNode const* self,
     if (it.filter && (self != this || i > index)) {
       it.filter->replaceAttributeAccess(searchVariable, attribute,
                                         replaceVariable);
+    }
+    if (!it.expressions.empty() && (self != this || i > index)) {
+      for (auto const& expr : it.expressions) {
+        expr->replaceAttributeAccess(searchVariable, attribute,
+                                     replaceVariable);
+      }
     }
     ++i;
   }
@@ -469,6 +573,9 @@ void JoinNode::getVariablesUsedHere(VarSet& vars) const {
       // lookup condition
       Ast::getReferencedVariables(it.filter->node(), vars);
     }
+    for (auto& expr : it.expressions) {
+      expr->variables(vars);
+    }
   }
   for (auto const& it : _indexInfos) {
     vars.erase(it.outVariable);
@@ -502,9 +609,7 @@ std::vector<Variable const*> JoinNode::getVariablesSetHere() const {
 
     if (it.isLateMaterialized) {
       vars.emplace_back(it.outDocIdVariable);
-    }
-
-    if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
+    } else if (!it.projections.hasOutputRegisters() || it.filter != nullptr) {
       vars.emplace_back(it.outVariable);
     }
   }

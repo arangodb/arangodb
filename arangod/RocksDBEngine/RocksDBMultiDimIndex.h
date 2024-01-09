@@ -28,57 +28,82 @@
 
 namespace arangodb {
 
-class RocksDBZkdIndexBase : public RocksDBIndex {
+class RocksDBMdiIndexBase : public RocksDBIndex {
  public:
-  RocksDBZkdIndexBase(IndexId iid, LogicalCollection& coll,
+  RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                       velocypack::Slice info);
   void toVelocyPack(
       velocypack::Builder& builder,
       std::underlying_type<Index::Serialize>::type type) const override;
-  const char* typeName() const override { return "zkd"; };
-  IndexType type() const override { return TRI_IDX_TYPE_ZKD_INDEX; };
+  char const* typeName() const override;
+  IndexType type() const override;
   bool canBeDropped() const override { return true; }
   bool isSorted() const override { return false; }
-  bool hasSelectivityEstimate() const override { return false; /* TODO */ }
+
+  bool isPrefixed() const noexcept { return !_prefixFields.empty(); }
+
+  bool matchesDefinition(VPackSlice const& info) const override;
 
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
-    // index does not cover the index attributes!
-    return _storedValues;
+    return _coveredFields;
   }
-
-  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId documentId, velocypack::Slice doc,
-                OperationOptions const& options, bool performChecks) override;
-  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
-                LocalDocumentId documentId, velocypack::Slice doc,
-                OperationOptions const& /*options*/) override;
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
+      const noexcept {
+    return _prefixFields;
+  }
 
   FilterCosts supportsFilterCondition(
       transaction::Methods& /*trx*/,
-      const std::vector<std::shared_ptr<Index>>& allIndexes,
-      const aql::AstNode* node, const aql::Variable* reference,
+      std::vector<std::shared_ptr<Index>> const& allIndexes,
+      aql::AstNode const* node, aql::Variable const* reference,
       size_t itemsInIndex) const override;
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* condition,
-      const aql::Variable* reference) const override;
+      aql::Variable const* reference) const override;
+
+  std::vector<std::vector<basics::AttributeName>> const _storedValues;
+  std::vector<std::vector<basics::AttributeName>> const _prefixFields;
+  std::vector<std::vector<basics::AttributeName>> const _coveredFields;
+};
+
+class RocksDBMdiIndex final : public RocksDBMdiIndexBase {
+ public:
+  RocksDBMdiIndex(IndexId iid, LogicalCollection& coll, velocypack::Slice info);
+  bool hasSelectivityEstimate() const override;
+
+  double selectivityEstimate(std::string_view) const override;
+
+  RocksDBCuckooIndexEstimatorType* estimator() override;
+  void setEstimator(std::unique_ptr<RocksDBCuckooIndexEstimatorType>) override;
+  void recalculateEstimates() override;
+
+  Result insert(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& options, bool performChecks) override;
+  Result remove(transaction::Methods& trx, RocksDBMethods* methods,
+                LocalDocumentId documentId, velocypack::Slice doc,
+                OperationOptions const& /*options*/) override;
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) override;
+
+  Result drop() override;
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, transaction::Methods* trx,
-      const aql::AstNode* node, const aql::Variable* reference,
-      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
 
-  std::vector<std::vector<basics::AttributeName>> const _storedValues;
+ private:
+  bool _estimates;
+  std::unique_ptr<RocksDBCuckooIndexEstimatorType> _estimator;
 };
 
-class RocksDBZkdIndex final : public RocksDBZkdIndexBase {
-  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
-};
-
-class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
-  using RocksDBZkdIndexBase::RocksDBZkdIndexBase;
+class RocksDBUniqueMdiIndex final : public RocksDBMdiIndexBase {
+  using RocksDBMdiIndexBase::RocksDBMdiIndexBase;
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
                 LocalDocumentId documentId, velocypack::Slice doc,
@@ -89,12 +114,16 @@ class RocksDBUniqueZkdIndex final : public RocksDBZkdIndexBase {
 
   std::unique_ptr<IndexIterator> iteratorForCondition(
       ResourceMonitor& monitor, transaction::Methods* trx,
-      const aql::AstNode* node, const aql::Variable* reference,
-      const IndexIteratorOptions& opts, ReadOwnWrites readOwnWrites,
+      aql::AstNode const* node, aql::Variable const* reference,
+      IndexIteratorOptions const& opts, ReadOwnWrites readOwnWrites,
       int) override;
+
+  bool hasSelectivityEstimate() const override { return true; }
+
+  double selectivityEstimate(std::string_view) const override { return 1; }
 };
 
-namespace zkd {
+namespace mdi {
 
 struct ExpressionBounds {
   struct Bound {
@@ -109,18 +138,19 @@ struct ExpressionBounds {
 };
 
 void extractBoundsFromCondition(
-    Index const* index, const aql::AstNode* condition,
-    const aql::Variable* reference,
+    Index const* index, aql::AstNode const* condition,
+    aql::Variable const* reference,
+    std::unordered_map<size_t, aql::AstNode const*>& extractedPrefix,
     std::unordered_map<size_t, ExpressionBounds>& extractedBounds,
     std::unordered_set<aql::AstNode const*>& unusedExpressions);
 
 auto supportsFilterCondition(
-    Index const* index, const std::vector<std::shared_ptr<Index>>& allIndexes,
-    const aql::AstNode* node, const aql::Variable* reference,
+    Index const* index, std::vector<std::shared_ptr<Index>> const& allIndexes,
+    aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) -> Index::FilterCosts;
 
 auto specializeCondition(Index const* index, aql::AstNode* condition,
-                         const aql::Variable* reference) -> aql::AstNode*;
-}  // namespace zkd
+                         aql::Variable const* reference) -> aql::AstNode*;
+}  // namespace mdi
 
 }  // namespace arangodb

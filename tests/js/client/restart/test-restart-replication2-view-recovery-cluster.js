@@ -49,7 +49,7 @@ const waitForServersToBeInCurrent = () => {
     }
   });
   // Sleep a bit, to let AgencyCache see the update
-  require("internal").wait(0.2);
+  require("internal").wait(1);
 };
 
 const testSuite = (config) => {
@@ -312,7 +312,7 @@ function recoveryViewOnCollection() {
   "use strict";
   const namePostfix = "collection";
   const setupCollection = () => {
-    const collection = db._create("UnitTestCollection", {replicationFactor: 3, waitForSync: true});
+    const collection = db._create("UnitTestCollection", {replicationFactor: 2, waitForSync: true});
     const shards = collection.shards();
     const shardsToLogs = lh.getShardsToLogsMapping(dbn, collection._id);
     const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));

@@ -87,10 +87,10 @@ class ExecutionPlan {
   /// @brief whether or not the exclusive flag is set in the write options
   static bool hasExclusiveAccessOption(AstNode const* node);
 
-  ExecutionPlan* clone(Ast*);
+  std::unique_ptr<ExecutionPlan> clone(Ast*);
 
   /// @brief clone the plan by recursively cloning starting from the root
-  ExecutionPlan* clone();
+  std::unique_ptr<ExecutionPlan> clone();
 
   // build flags for plan serialization
   static unsigned buildSerializationFlags(bool verbose, bool includeInternals,

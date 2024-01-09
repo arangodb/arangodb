@@ -135,8 +135,8 @@ class IndexNode : public ExecutionNode,
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief replaces variables in the internals of the execution node
   /// replacements are { old variable id => new variable }
@@ -167,9 +167,12 @@ class IndexNode : public ExecutionNode,
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
                 _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr ||
-                 _outNonMaterializedIndVars.second.empty()));
-    return !_outNonMaterializedIndVars.second.empty();
+               _outNonMaterializedDocId != nullptr)
+        << std::boolalpha << "_outNonMaterializedDocId == nullptr = "
+        << (_outNonMaterializedDocId == nullptr)
+        << " _outNonMaterializedIndVars.second.empty() = "
+        << _outNonMaterializedIndVars.second.empty();
+    return _outNonMaterializedDocId != nullptr;
   }
 
   bool canApplyLateDocumentMaterializationRule() const {

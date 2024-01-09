@@ -63,6 +63,9 @@ class JoinNode : public ExecutionNode {
     bool producesOutput{true};
     bool isLateMaterialized{false};
     Variable const* outDocIdVariable = nullptr;
+    std::vector<std::unique_ptr<Expression>> expressions;
+    std::vector<size_t> usedKeyFields;
+    std::vector<size_t> constantFields;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,
@@ -86,8 +89,8 @@ class JoinNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief replaces variables in the internals of the execution node
   /// replacements are { old variable id => new variable }

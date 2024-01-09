@@ -128,9 +128,9 @@ class CalculationExecutor {
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
  private:
+  CalculationExecutorInfos& _infos;
   transaction::Methods _trx;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-  CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;
 

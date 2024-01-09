@@ -35,7 +35,7 @@ using namespace arangodb::aql;
 TraverserEngineShardLists::TraverserEngineShardLists(
     GraphNode const* node, ServerID const& server,
     containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-    QueryContext& query)
+    QueryContext const& query)
     : _node(node), _hasShard(false) {
   auto const& edges = _node->edgeColls();
   TRI_ASSERT(!edges.empty());

@@ -28,8 +28,8 @@ const internal = require("internal");
 const db = arangodb.db;
 const {assertEqual} = jsunity.jsUnity.assertions;
 
-function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+    const colName = 'UnitTestMdiIndexCollection';
     let col;
 
     return {
@@ -43,7 +43,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testNoFieldValueTypes: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y']});
+                col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x', 'y']});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }
@@ -51,7 +51,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testSparseProperty: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x', 'y'], fieldValueTypes: 'double', sparse: true});
+                col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x', 'y'], fieldValueTypes: 'double', sparse: true});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }
@@ -59,7 +59,7 @@ function optimizerRuleZkd2dIndexTestSuite() {
 
         testArrayExpansions: function () {
             try {
-                col.ensureIndex({type: 'zkd', name: 'zkdIndex', fields: ['x[*]', 'y'], fieldValueTypes: 'double'});
+                col.ensureIndex({type: 'mdi', name: 'mdiIndex', fields: ['x[*]', 'y'], fieldValueTypes: 'double'});
             } catch (e) {
                 assertEqual(e.errorNum, internal.errors.ERROR_BAD_PARAMETER.code);
             }
@@ -68,6 +68,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
     };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();
