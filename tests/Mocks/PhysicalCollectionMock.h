@@ -131,6 +131,8 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                           arangodb::OperationOptions const& options) override;
   arangodb::Result updateProperties(arangodb::velocypack::Slice slice) override;
 
+  bool cacheEnabled() const noexcept override { return false; }
+
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);
 

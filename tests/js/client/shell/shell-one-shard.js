@@ -124,7 +124,30 @@ function OneShardPropertiesSuite () {
         assertEqual(props.sharding, "single");
         assertEqual(props.replicationFactor, 2);
         assertEqual(props.writeConcern, 2);
-        let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+        if (props.replicationVersion === "2") {
+          try {
+            // With Replication2 the writeConcern is defined by the CollectionGroup
+            // it cannot be individual by collection anymore.
+            db._create("test", {writeConcern: 1});
+            fail();
+          } catch (err) {
+            assertEqual(ERRORS.ERROR_BAD_PARAMETER.code, err.errorNum);
+          }
+          // for compatibility, the other parameters should still be ignored - this behavior is now deprecated, though.
+          let c = db._create("test", { replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+          props = c.properties();
+          assertEqual(2, props.writeConcern);
+          assertEqual(2, props.replicationFactor);
+          assertEqual(1, props.numberOfShards);
+        } else {
+          let c = db._create("test", { writeConcern: 1, replicationFactor: 1, numberOfShards: 2, distributeShardsLike: "" });
+          props = c.properties();
+          assertEqual(1, props.writeConcern);
+          assertEqual(2, props.replicationFactor);
+          assertEqual(1, props.numberOfShards);
+        }
+
+
         /* Expected implementation, if we can drop backwards compatibility with 3.11
         try {
           // Disallow using a different distributeShardsLike
@@ -171,11 +194,11 @@ function OneShardPropertiesSuite () {
 
         // Allow creation where all values match
         let c = db._create("test", {writeConcern: 2, replicationFactor: 2, numberOfShards: 1});
-        */
         props = c.properties();
         assertEqual(1, props.writeConcern);
         assertEqual(2, props.replicationFactor);
         assertEqual(1, props.numberOfShards);
+        */
 
         checkDBServerSharding(dn, "single");
       } else {

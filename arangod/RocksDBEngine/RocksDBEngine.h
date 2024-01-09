@@ -37,13 +37,14 @@
 
 #include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
+#include "Containers/FlatHashSet.h"
+#include "Metrics/Fwd.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "Metrics/Fwd.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/RocksDBEngine/RocksDBEngineEE.h"
@@ -725,6 +726,12 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   std::deque<RocksDBKeyBounds> _pendingCompactions;
   /// @brief number of currently running compaction jobs
   size_t _runningCompactions;
+  /// @brief column families for which we are currently running a compaction.
+  /// we track this because we want to avoid running multiple compactions on
+  /// the same column family concurrently. this can help to avoid a shutdown
+  /// hanger in rocksdb.
+  containers::FlatHashSet<rocksdb::ColumnFamilyHandle*>
+      _runningCompactionsColumnFamilies;
 
   // frequency for throttle in milliseconds between iterations
   uint64_t _throttleFrequency = 1000;

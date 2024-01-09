@@ -57,5 +57,6 @@ bool Collection::MutableProperties::operator==(
     }
   }
   return VelocyPackHelper::equal(computedValues.slice(),
-                                 other.computedValues.slice(), true);
+                                 other.computedValues.slice(), true) &&
+         other.cacheEnabled == cacheEnabled;
 }

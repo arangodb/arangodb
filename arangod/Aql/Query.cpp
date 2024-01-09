@@ -1625,20 +1625,23 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
   auto& server = query.vocbase().server();
 
-  // used by hotbackup to prevent commits
-  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
-      commitGuard;
-  // If the query is not read-only, we want to acquire the transaction
-  // commit lock as read lock, read-only queries can just proceed:
-  if (query.isModificationQuery()) {
-    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
-    commitGuard.emplace(manager->getTransactionCommitGuard());
-  }
-
   NetworkFeature const& nf = server.getFeature<NetworkFeature>();
   network::ConnectionPool* pool = nf.pool();
   if (pool == nullptr) {
     return futures::makeFuture(Result{TRI_ERROR_SHUTTING_DOWN});
+  }
+
+  // used by hotbackup to prevent commits
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the query is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only queries can just proceed.
+  // note that we only need to acquire the commit lock if the transaction
+  // is actually about to commit (i.e. no error happened) and not about
+  // to abort:
+  if (query.isModificationQuery() && errorCode == TRI_ERROR_NO_ERROR) {
+    auto* manager = server.getFeature<transaction::ManagerFeature>().manager();
+    commitGuard.emplace(manager->getTransactionCommitGuard());
   }
 
   network::RequestOptions options;
@@ -1669,8 +1672,8 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
 
     auto f =
         network::sendRequest(pool, "server:" + server, fuerte::RestVerb::Delete,
-                             "/_api/aql/finish/" + std::to_string(queryId),
-                             body, options)
+                             absl::StrCat("/_api/aql/finish/", queryId), body,
+                             options)
             .thenValue([ss, &query](network::Response&& res) mutable -> Result {
               // simon: checked until 3.5, shutdown result is always ignored
               if (res.fail()) {
@@ -1680,8 +1683,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                               "shutdown response of DBServer is malformed");
               }
 
-              VPackSlice val = res.slice().get("stats");
-              if (val.isObject()) {
+              if (VPackSlice val = res.slice().get("stats"); val.isObject()) {
                 ss->executeLocked([&] {
                   query.executionStats().add(ExecutionStats(val));
                   if (auto s = val.get("intermediateCommits");
@@ -1692,8 +1694,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
               }
               // read "warnings" attribute if present and add it to our
               // query
-              val = res.slice().get("warnings");
-              if (val.isArray()) {
+              if (VPackSlice val = res.slice().get("warnings"); val.isArray()) {
                 for (VPackSlice it : VPackArrayIterator(val)) {
                   if (it.isObject()) {
                     VPackSlice code = it.get("code");
@@ -1707,8 +1708,7 @@ futures::Future<Result> finishDBServerParts(Query& query, ErrorCode errorCode) {
                 }
               }
 
-              val = res.slice().get("code");
-              if (val.isNumber()) {
+              if (VPackSlice val = res.slice().get("code"); val.isNumber()) {
                 return Result{ErrorCode{val.getNumericValue<int>()}};
               }
               return Result();

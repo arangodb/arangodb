@@ -510,9 +510,7 @@ RegisterId RegisterPlanT<T>::registerVariable(
   }
   TRI_ASSERT(regId.isConstRegister() == (v->type() == Variable::Type::Const));
 
-  bool inserted;
-  std::tie(std::ignore, inserted) =
-      varInfo.try_emplace(v->id, VarInfo(depth, regId));
+  auto [_, inserted] = varInfo.try_emplace(v->id, VarInfo(depth, regId));
   TRI_ASSERT(inserted);
   if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(

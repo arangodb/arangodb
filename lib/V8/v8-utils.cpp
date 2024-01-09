@@ -101,6 +101,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
@@ -356,13 +357,9 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
-  auto filter = [&v8security, isolate](std::string const& name) {
-    if (name.find("passwd") != std::string::npos ||
-        name.find("password") != std::string::npos ||
-        name.find("secret") != std::string::npos) {
-      return false;
-    }
-    return v8security.shouldExposeStartupOption(isolate, name);
+  auto filter = [&v8security, isolate](std::string const& name) -> bool {
+    return options::ProgramOptions::defaultOptionsFilter(name) &&
+           v8security.shouldExposeStartupOption(isolate, name);
   };
 
   VPackBuilder builder = v8g->_server.options(filter);

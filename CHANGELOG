@@ -1,6 +1,47 @@
 devel
 -----
 
+* FE-377: remove broken link from JSON editor.
+
+* Fix: we cannot update a link, but have to drop and recreate it. Until now,
+  this new index had the same set of labels as the old one. However, on followers
+  (and with replication2 also on the leader), the DropIndex and EnsureIndex
+  actions could run concurrently. I.e., we could try to create the new index
+  before the old one was fully removed. In this case we could get a duplicate
+  metric exception, preventing the index from being created. Such errors are not
+  really handled ATM - they are simply logged and otherwise ignored. That means
+  the index will simply not be available on the affected server, since we will
+  also not retry to create it at a later time.
+  To avoid this, we add a new `indexId` label to the metric to make it unique.
+
+* Expose REST API endpoints for server options discovery:
+  - GET `/_admin/options-description`: returns a JSON description of all
+    available server options.
+  - GET `/_admin/options`: returns a JSON object with the currently set server
+    options.
+
+  As these API may reveal sensitive data about the deployment, they can only
+  be accessed from inside the `_system` database. In addition, there is a
+  policy control startup option `--server.options-api` that determines if and
+  to whom the APIs are made available. This option can have the following 
+  values:
+  - `disabled`: options APIs is disabled.
+  - `jwt`: options APIs can only be accessed via superuser JWT.
+  - `admin`: options APIs can be accessed by admin users in the `_system`
+    database only.
+  - `public`: everyone with access to `_system` database can access the
+    options APIs.
+
+* BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
+
+* Only schedule a single compaction per RocksDB column family at any given
+  time. Scheduling mutliple concurrent compactions on the same column family
+  can lead to scheduler threads being stalled under some adverse conditions
+  that lead to a stall inside RocksDB.
+
+* Added REST API `/_api/key-generators` to query the available key generators
+  for collections.
+
 * Make AQL optimizer rule `move-filters-into-enumerate` also move filters into
   EnumerateListNodes for early pruning. Previously it could only pull filters 
   into IndexNodes and EnumerateCollectionNodes.
@@ -21,9 +62,6 @@ devel
   turned off when there are performance concerns.
 
 * Fixed BTS-1703: Cannot chain multiple UPSERTS.
-
-* Fixed issue #17673: Adds timezone conversion as an optional parameter in
-  all relevant date functions.
 
 * Added AQL function `TO_CHAR(number)`, which produces a character from the
   given character number.

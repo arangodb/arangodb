@@ -58,8 +58,8 @@ class RocksDBValue {
   static RocksDBValue EdgeIndexValue(std::string_view vertexId);
   static RocksDBValue VPackIndexValue();
   static RocksDBValue VPackIndexValue(VPackSlice data);
-  static RocksDBValue ZkdIndexValue(VPackSlice data);
-  static RocksDBValue UniqueZkdIndexValue(LocalDocumentId docId,
+  static RocksDBValue MdiIndexValue(VPackSlice data);
+  static RocksDBValue UniqueMdiIndexValue(LocalDocumentId docId,
                                           VPackSlice data);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId);
   static RocksDBValue UniqueVPackIndexValue(LocalDocumentId docId,

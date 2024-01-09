@@ -34,18 +34,17 @@ const _ = require("lodash");
 
 const useIndexes = 'use-indexes';
 const removeFilterCoveredByIndex = "remove-filter-covered-by-index";
-const moveFiltersIntoEnumerate = "move-filters-into-enumerate";
 
-function optimizerRuleZkd2dIndexTestSuite() {
-    const colName = 'UnitTestZkdIndexCollection';
+function optimizerRuleMdi2dIndexTestSuite() {
+    const colName = 'UnitTestMdiIndexCollection';
     let col;
 
     return {
         setUpAll: function () {
-            col = db._create(colName);
+            col = db._create(colName, {numberOfShards: 2, shardKeys: ["x"]});
             col.ensureIndex({
-                type: 'zkd',
-                name: 'zkdIndex',
+                type: 'mdi',
+                name: 'mdiIndex',
                 fields: ['x', 'y'],
                 storedValues: ['i'],
                 unique: true,
@@ -82,6 +81,12 @@ function optimizerRuleZkd2dIndexTestSuite() {
             res.sort();
             assertEqual([0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1], res);
         },
+
+      testEstimates: function () {
+          const index = col.index("mdiIndex");
+          assertTrue(index.estimates);
+          assertEqual(index.selectivityEstimate, 1);
+      },
 
       testIndexAccess2: function () {
         const query = aql`
@@ -136,6 +141,6 @@ function optimizerRuleZkd2dIndexTestSuite() {
     };
 }
 
-jsunity.run(optimizerRuleZkd2dIndexTestSuite);
+jsunity.run(optimizerRuleMdi2dIndexTestSuite);
 
 return jsunity.done();
