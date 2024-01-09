@@ -153,10 +153,11 @@ struct EMPTY_BASE BasicField : InvariantMixin<Inspector, DerivedField>,
 
 template<class Inspector, typename T>
 struct EMPTY_BASE RawField : BasicField<Inspector, RawField<Inspector, T>> {
-  RawField(std::string_view name, T& value)
-      : BasicField<Inspector, RawField>(name), value(value) {}
-  using value_type = T;
-  T& value;
+  template<class TT>
+  RawField(std::string_view name, TT&& value)
+      : BasicField<Inspector, RawField>(name), value(std::forward<TT>(value)) {}
+  using value_type = std::remove_reference_t<T>;
+  T value;
 };
 
 struct IgnoreField {

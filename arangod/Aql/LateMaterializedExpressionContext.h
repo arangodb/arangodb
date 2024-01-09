@@ -48,7 +48,8 @@ class LateMaterializedExpressionContext final
       std::vector<std::pair<VariableId, RegisterId>> const&
           filterVarsToRegister,
       InputAqlItemRow const& inputRow,
-      IndexNode::IndexValuesVars const& outNonMaterializedIndVars) noexcept;
+      IndexNode::IndexFilterCoveringVars const&
+          outNonMaterializedIndVars) noexcept;
 
   ~LateMaterializedExpressionContext() = default;
 
@@ -66,7 +67,7 @@ class LateMaterializedExpressionContext final
   }
 
  private:
-  IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
+  IndexNode::IndexFilterCoveringVars const& _outNonMaterializedIndVars;
 
   // pointer to current expression data context (changing for
   // every input row)

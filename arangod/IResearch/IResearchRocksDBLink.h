@@ -43,8 +43,18 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   IResearchRocksDBLink(IndexId iid, LogicalCollection& collection,
                        uint64_t objectId);
 
-  void afterTruncate(TRI_voc_tick_t tick, transaction::Methods* trx) final {
-    IResearchDataStore::afterTruncate(tick, trx);
+  ResultT<TruncateGuard> truncateBegin(rocksdb::WriteBatch& batch) final {
+    auto r = RocksDBIndex::truncateBegin(batch);
+    if (!r.ok()) {
+      return r;
+    }
+    return IResearchDataStore::truncateBegin();
+  }
+
+  void truncateCommit(TruncateGuard&& guard, TRI_voc_tick_t tick,
+                      transaction::Methods* trx) final {
+    IResearchDataStore::truncateCommit(std::move(guard), tick, trx);
+    guard = {};
   }
 
   bool canBeDropped() const final { return IResearchDataStore::canBeDropped(); }
@@ -63,7 +73,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId, VPackSlice doc,
+                LocalDocumentId documentId, VPackSlice doc,
                 OperationOptions const& /*options*/,
                 bool /*performChecks*/) final {
     return IResearchDataStore::insert<FieldIterator<FieldMeta>,
@@ -72,7 +82,7 @@ class IResearchRocksDBLink final : public RocksDBIndex, public IResearchLink {
   }
 
   Result remove(transaction::Methods& trx, RocksDBMethods* /*methods*/,
-                LocalDocumentId const& documentId, VPackSlice /*doc*/,
+                LocalDocumentId documentId, VPackSlice /*doc*/,
                 OperationOptions const& /*options*/) final {
     return IResearchDataStore::remove(trx, documentId);
   }

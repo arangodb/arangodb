@@ -153,7 +153,7 @@ ArangoQueryCursor.prototype.toString = function () {
 // //////////////////////////////////////////////////////////////////////////////
 
 ArangoQueryCursor.prototype.toArray = function () {
-  var result = [];
+  let result = [];
 
   while (this.hasNext()) {
     result.push(this.next());
@@ -186,6 +186,18 @@ var helpArangoQueryCursor = arangosh.createHelpHeadline('ArangoQueryCursor help'
 
 ArangoQueryCursor.prototype._help = function () {
   internal.print(helpArangoQueryCursor);
+};
+
+ArangoQueryCursor.prototype.cached = function () {
+  return this._cached;
+};
+
+ArangoQueryCursor.prototype.stream = function () {
+  return this._stream;
+};
+
+ArangoQueryCursor.prototype.retriable = function () {
+  return this._retriable;
 };
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -294,7 +306,7 @@ ArangoQueryCursor.prototype.dispose = function () {
     return;
   }
 
-  var requestResult = this._database._connection.DELETE(this._baseurl());
+  let requestResult = this._database._connection.DELETE(this._baseurl());
   arangosh.checkRequestResult(requestResult);
   this.data.id = undefined;
 };

@@ -82,9 +82,6 @@ function javaDriver (options) {
       if (this.options.cluster) {
         topology = 'CLUSTER';
         matchTopology = /^CLUSTER/;
-      } else if (this.options.activefailover) {
-        topology = 'ACTIVE_FAILOVER';
-        matchTopology = /^ACTIVE_FAILOVER/;
       } else {
         topology = 'SINGLE_SERVER';
         matchTopology = /^SINGLE_SERVER/;

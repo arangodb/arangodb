@@ -23,8 +23,6 @@
 
 #include "AgencyCallbackRegistry.h"
 
-#include <velocypack/Slice.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
@@ -39,10 +37,13 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+
+#include <absl/strings/str_cat.h>
+#include <velocypack/Slice.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -174,9 +175,6 @@ bool AgencyCallbackRegistry::unregisterCallback(
 }
 
 std::string AgencyCallbackRegistry::getEndpointUrl(uint64_t id) const {
-  std::stringstream url;
-  url << Endpoint::uriForm(ServerState::instance()->getEndpoint())
-      << _callbackBasePath << "/" << id;
-
-  return url.str();
+  return absl::StrCat(Endpoint::uriForm(ServerState::instance()->getEndpoint()),
+                      _callbackBasePath, "/", id);
 }

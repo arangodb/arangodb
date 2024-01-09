@@ -214,7 +214,6 @@ You can use this feature to roll out new JWT secrets throughout a cluster.)");
           new StringParameter(&_jwtSecretFolderProgramOption),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30700)
       .setLongDescription(R"(Files are sorted alphabetically, the first secret
 is used for signing + verifying JWT tokens (_active_ secret), and all other
 secrets are only used to validate incoming JWT tokens (_passive_ secrets).
@@ -296,7 +295,7 @@ void AuthenticationFeature::prepare() {
     }
   }
 
-#if USE_ENTERPRISE
+#ifdef USE_ENTERPRISE
   _authCache->setJwtSecrets(_jwtSecretProgramOption, _jwtPassiveSecrets);
 #else
   _authCache->setJwtSecret(_jwtSecretProgramOption);
@@ -386,8 +385,7 @@ Result AuthenticationFeature::loadJwtSecretFolder() try {
                               if (file.empty() || file[0] == '.') {
                                 return true;
                               }
-                              if (file.size() >= 4 &&
-                                  file.substr(file.size() - 4, 4) == ".tmp") {
+                              if (file.ends_with(".tmp")) {
                                 return true;
                               }
                               auto p = basics::FileUtils::buildFilename(

@@ -57,6 +57,9 @@ class ClusterIndex : public Index {
     return false;  // do not generally hide indexes
   }
 
+  /// @brief if true this index should not be shown externally
+  virtual bool inProgress() const override;
+
   IndexType type() const override { return _indexType; }
 
   char const* typeName() const override {
@@ -107,6 +110,14 @@ class ClusterIndex : public Index {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override;
 
+  bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept override;
+
+  std::vector<std::vector<basics::AttributeName>> const& prefixFields()
+      const noexcept {
+    return _prefixFields;
+  }
+
  protected:
   ClusterEngineType _engineType;
   Index::IndexType _indexType;
@@ -116,5 +127,7 @@ class ClusterIndex : public Index {
 
   // Only used in RocksDB edge index.
   std::vector<std::vector<basics::AttributeName>> _coveredFields;
+  // Only used in TRI_IDX_TYPE_MDI_PREFIXED_INDEX
+  std::vector<std::vector<basics::AttributeName>> _prefixFields;
 };
 }  // namespace arangodb

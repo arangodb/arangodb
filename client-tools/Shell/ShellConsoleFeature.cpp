@@ -133,11 +133,9 @@ void ShellConsoleFeature::collectOptions(
                      "The audit log file to save commands and results to.",
                      new StringParameter(&_auditFile));
 
-  options
-      ->addOption("--console.history",
-                  "Whether to load and persist command-line history.",
-                  new BooleanParameter(&_useHistory))
-      .setIntroducedIn(30405);
+  options->addOption("--console.history",
+                     "Whether to load and persist command-line history.",
+                     new BooleanParameter(&_useHistory));
 
   options->addOption("--console.pager", "Enable paging.",
                      new BooleanParameter(&_pager));
@@ -326,10 +324,10 @@ std::string ShellConsoleFeature::readPassword(std::string const& message) {
 }
 
 std::string ShellConsoleFeature::readPassword() {
-  TRI_SetStdinVisibility(false);
+  terminal_utils::setStdinVisibility(false);
 
-  auto sg =
-      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
 
   std::string password;
 

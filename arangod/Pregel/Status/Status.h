@@ -29,7 +29,6 @@
 #include <optional>
 #include <string>
 
-#include <Inspection/VPackWithErrorT.h>
 #include <Inspection/Transformers.h>
 
 #include <Pregel/Common.h>

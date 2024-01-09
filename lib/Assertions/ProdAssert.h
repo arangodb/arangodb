@@ -51,14 +51,19 @@
 #else  // Production
 
 #include "AssertionLogger.h"
+#include "Basics/system-compiler.h"
 
 #include "Basics/system-compiler.h"
 
-#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                             \
-  (ADB_LIKELY(expr))                                                          \
-      ? (void)nullptr                                                         \
-      : ::arangodb::debug::AssertionLogger{__FILE__, __LINE__,                \
-                                           ARANGODB_PRETTY_FUNCTION, #expr} & \
+#define ADB_PROD_ASSERT(expr) /*GCOVR_EXCL_LINE*/                              \
+  (ADB_LIKELY(expr))                                                           \
+      ? (void)nullptr                                                          \
+      : ::arangodb::debug::AssertionLogger{ADB_HERE, ARANGODB_PRETTY_FUNCTION, \
+                                           #expr} &                            \
             ::arangodb::debug::AssertionLogger::assertionStringStream
 
 #endif
+
+#define ADB_PROD_CRASH()                                                       \
+  ::arangodb::debug::AssertionLogger{ADB_HERE, ARANGODB_PRETTY_FUNCTION, ""} & \
+      ::arangodb::debug::AssertionLogger::assertionStringStream

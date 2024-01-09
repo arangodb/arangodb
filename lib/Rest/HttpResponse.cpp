@@ -44,11 +44,13 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
-bool HttpResponse::HIDE_PRODUCT_HEADER = false;
-
 HttpResponse::HttpResponse(ResponseCode code, uint64_t mid,
-                           std::unique_ptr<basics::StringBuffer> buffer)
-    : GeneralResponse(code, mid), _body(std::move(buffer)), _bodySize(0) {
+                           std::unique_ptr<basics::StringBuffer> buffer,
+                           rest::ResponseCompressionType rct)
+    : GeneralResponse(code, mid),
+      _body(std::move(buffer)),
+      _bodySize(0),
+      _allowCompression(rct) {
   _contentType = ContentType::TEXT;
 
   if (!_body) {
@@ -140,6 +142,18 @@ size_t HttpResponse::bodySize() const {
   return _body->length();
 }
 
+void HttpResponse::setAllowCompression(
+    rest::ResponseCompressionType rct) noexcept {
+  if (_allowCompression == rest::ResponseCompressionType::kUnset) {
+    _allowCompression = rct;
+  }
+}
+
+rest::ResponseCompressionType HttpResponse::compressionAllowed()
+    const noexcept {
+  return _allowCompression;
+}
+
 void HttpResponse::writeHeader(StringBuffer* output) {
   output->appendText(std::string_view("HTTP/1.1 "));
   output->appendText(responseString(_responseCode));
@@ -210,7 +224,7 @@ void HttpResponse::writeHeader(StringBuffer* output) {
   }
 
   // add "Server" response header
-  if (!seenServerHeader && !HIDE_PRODUCT_HEADER) {
+  if (!seenServerHeader) {
     output->appendText(std::string_view("Server: ArangoDB\r\n"));
   }
 
@@ -414,4 +428,12 @@ void HttpResponse::addPayloadInternal(uint8_t const* data, size_t length,
 
     headResponse(static_cast<size_t>(sink.length()));
   }
+}
+
+ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
+  return _body->zlibDeflate(onlyIfSmaller);
+}
+
+ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
+  return _body->gzipCompress(onlyIfSmaller);
 }

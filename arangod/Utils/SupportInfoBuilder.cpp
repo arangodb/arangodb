@@ -49,6 +49,7 @@
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/DatabaseGuard.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -298,7 +299,8 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                      VPackValue(arangodb::basics::StringUtils::tolower(
                          ServerState::instance()->getPersistedId())));
         } else {
-          result.add("persisted_id", VPackValue(serverId));
+          result.add("persisted_id",
+                     VPackValue("id" + std::to_string(serverId)));
         }
 
         std::string envValue;
@@ -630,14 +632,16 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
           result.add("n_shards", VPackValue(numShards));
           result.add("rep_factor", VPackValue(coll->replicationFactor()));
 
-          auto ctx = transaction::StandaloneContext::Create(*vocbase);
-
           auto& collName = coll->name();
           result.add("name", VPackValue(collName));
           size_t planId = coll->planId().id();
           result.add("plan_id", VPackValue(planId));
 
-          SingleCollectionTransaction trx(ctx, collName,
+          auto origin =
+              transaction::OperationOriginInternal{"counting document(s)"};
+          auto ctx = transaction::StandaloneContext::create(*vocbase, origin);
+
+          SingleCollectionTransaction trx(std::move(ctx), collName,
                                           AccessMode::Type::READ);
 
           Result res = trx.begin();
@@ -690,10 +694,10 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
-            constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",     "fulltext",
-                "inverted", "persistent", "skiplist", "ttl",
-                "zkd",      "iresearch",  "primary",  "unknown"};
+            constexpr std::array<std::string_view, 13> idxTypes = {
+                "edge",       "geo",      "hash",   "fulltext", "inverted",
+                "persistent", "skiplist", "ttl",    "mdi",      "mdi-prefixed",
+                "iresearch",  "primary",  "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }

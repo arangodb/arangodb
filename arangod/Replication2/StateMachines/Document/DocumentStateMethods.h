@@ -22,11 +22,15 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Cluster/ClusterTypes.h"
+
 #include <memory>
 
 struct TRI_vocbase_t;
 
 namespace arangodb {
+
+struct ShardID;
 
 template<typename T>
 class ResultT;
@@ -60,6 +64,9 @@ struct DocumentStateMethods {
   [[nodiscard]] virtual auto processSnapshotRequest(
       LogId logId, replicated_state::document::SnapshotParams params) const
       -> ResultT<velocypack::SharedSlice> = 0;
+
+  [[nodiscard]] virtual auto getAssociatedShardList(LogId logId) const
+      -> std::vector<ShardID> = 0;
 };
 }  // namespace replication2
 }  // namespace arangodb

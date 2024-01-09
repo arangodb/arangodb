@@ -27,6 +27,7 @@
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Cluster/ClusterInfo.h"
 #include "Graph/Cache/RefactoredClusterTraverserCache.h"
 #include "Transaction/Methods.h"
@@ -92,8 +93,7 @@ struct SingleServerBaseProviderOptions {
       aql::FixedVarExpressionContext& expressionContext,
       std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
           filterConditionVariables,
-      std::unordered_map<std::string, std::vector<std::string>> const&
-          collectionToShardMap,
+      MonitoredCollectionToShardMap const& collectionToShardMap,
       aql::Projections const& vertexProjections,
       aql::Projections const& edgeProjections, bool produceVertices);
 
@@ -106,8 +106,7 @@ struct SingleServerBaseProviderOptions {
             std::unordered_map<uint64_t, std::vector<IndexAccessor>>>&
   indexInformations();
 
-  std::unordered_map<std::string, std::vector<std::string>> const&
-  collectionToShardMap() const;
+  MonitoredCollectionToShardMap const& collectionToShardMap() const;
 
   aql::FixedVarExpressionContext& expressionContext() const;
 
@@ -144,8 +143,7 @@ struct SingleServerBaseProviderOptions {
   // DBServer
   // Ownership of this _collectionToShardMap stays at the BaseOptions, and is
   // not transferred into this class.
-  std::unordered_map<std::string, std::vector<std::string>> const&
-      _collectionToShardMap;
+  MonitoredCollectionToShardMap const& _collectionToShardMap;
 
   // Optional callback to compute the weight of an edge.
   std::optional<WeightCallback> _weightCallback;

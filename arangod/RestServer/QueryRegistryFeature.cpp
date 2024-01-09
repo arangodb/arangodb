@@ -34,6 +34,7 @@
 #include "Basics/PhysicalMemory.h"
 #include "Basics/application-exit.h"
 #include "Cluster/ServerState.h"
+#include "FeaturePhases/ClusterFeaturePhase.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
@@ -162,6 +163,10 @@ DECLARE_COUNTER(arangodb_aql_global_query_memory_limit_reached_total,
                 "Number of global AQL query memory limit violations");
 DECLARE_COUNTER(arangodb_aql_local_query_memory_limit_reached_total,
                 "Number of local AQL query memory limit violations");
+DECLARE_GAUGE(arangodb_aql_cursors_active, uint64_t,
+              "Total amount of active AQL query results cursors");
+DECLARE_GAUGE(arangodb_aql_cursors_memory_usage, uint64_t,
+              "Total memory usage of active query result cursors");
 
 QueryRegistryFeature::QueryRegistryFeature(Server& server)
     : ArangodFeature{server, *this},
@@ -182,7 +187,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
       _logFailedQueries(false),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
-      _peakMemoryUsageThreshold(4294967296),  // 4GB
+      _peakMemoryUsageThreshold(1073741824),  // 1GB
       _queryGlobalMemoryLimit(
           defaultMemoryLimit(PhysicalMemory::getValue(), 0.1, 0.90)),
       _queryMemoryLimit(
@@ -218,12 +223,20 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
               arangodb_aql_global_query_memory_limit_reached_total{})),
       _localQueryMemoryLimitReached(
           server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_aql_local_query_memory_limit_reached_total{})) {
+              arangodb_aql_local_query_memory_limit_reached_total{})),
+      _activeCursors(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_cursors_active{})),
+      _cursorsMemoryUsage(server.getFeature<metrics::MetricsFeature>().add(
+          arangodb_aql_cursors_memory_usage{})) {
   static_assert(
       Server::isCreatedAfter<QueryRegistryFeature, metrics::MetricsFeature>());
 
   setOptional(false);
+#ifdef USE_V8
   startsAfter<V8FeaturePhase>();
+#else
+  startsAfter<application_features::ClusterFeaturePhase>();
+#endif
 
   auto properties = arangodb::aql::QueryCache::instance()->properties();
   _queryCacheMaxResultsCount = properties.maxResultsCount;
@@ -351,8 +364,6 @@ allowed memory usage but not increase it.)");
           "The runtime threshold for AQL queries (in seconds, 0 = no limit).",
           new DoubleParameter(&_queryMaxRuntime, /*base*/ 1.0,
                               /*minValue*/ 0.0))
-      .setIntroducedIn(30607)
-      .setIntroducedIn(30703)
       .setLongDescription(R"(Sets a default maximum runtime for AQL queries.
 
 The default value is `0`, meaning that the runtime of AQL queries is not
@@ -371,17 +382,13 @@ issued for administration and database-internal purposes.)");
   options->addOption("--query.tracking", "Whether to track queries.",
                      new BooleanParameter(&_trackingEnabled));
 
-  options
-      ->addOption("--query.tracking-slow-queries",
-                  "Whether to track slow queries.",
-                  new BooleanParameter(&_trackSlowQueries))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-slow-queries",
+                     "Whether to track slow queries.",
+                     new BooleanParameter(&_trackSlowQueries));
 
-  options
-      ->addOption("--query.tracking-with-querystring",
-                  "Whether to track the query string.",
-                  new BooleanParameter(&_trackQueryString))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-with-querystring",
+                     "Whether to track the query string.",
+                     new BooleanParameter(&_trackQueryString));
 
   options
       ->addOption("--query.tracking-with-bindvars",
@@ -396,11 +403,9 @@ results cache is used.
 You can disable tracking and displaying bind variable values by setting the
 option to `false`.)");
 
-  options
-      ->addOption("--query.tracking-with-datasources",
-                  "Whether to track data sources of AQL queries.",
-                  new BooleanParameter(&_trackDataSources))
-      .setIntroducedIn(30704);
+  options->addOption("--query.tracking-with-datasources",
+                     "Whether to track data sources of AQL queries.",
+                     new BooleanParameter(&_trackDataSources));
 
   options
       ->addOption("--query.fail-on-warning",
@@ -553,37 +558,31 @@ The value can still be adjusted on a per-query basis by setting the
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
 #ifdef USE_ENTERPRISE
-  options
-      ->addOption("--query.smart-joins",
-                  "Whether to enable the SmartJoins query optimization.",
-                  new BooleanParameter(&_smartJoins),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30405);
+  options->addOption("--query.smart-joins",
+                     "Whether to enable the SmartJoins query optimization.",
+                     new BooleanParameter(&_smartJoins),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
-  options
-      ->addOption("--query.parallelize-traversals",
-                  "Whether to enable traversal parallelization.",
-                  new BooleanParameter(&_parallelizeTraversals),
-                  arangodb::options::makeDefaultFlags(
-                      arangodb::options::Flags::Uncommon,
-                      arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+  options->addOption("--query.parallelize-traversals",
+                     "Whether to enable traversal parallelization.",
+                     new BooleanParameter(&_parallelizeTraversals),
+                     arangodb::options::makeDefaultFlags(
+                         arangodb::options::Flags::Uncommon,
+                         arangodb::options::Flags::Enterprise));
 
   // this is an Enterprise-only option
   // in Community Edition, _maxParallelism will stay at its default value
   // (currently 4), but will not be used.
-  options
-      ->addOption(
-          "--query.max-parallelism",
-          "The maximum number of threads to use for a single query; the "
-          "actual query execution may use less depending on various factors.",
-          new UInt64Parameter(&_maxParallelism),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon,
-              arangodb::options::Flags::Enterprise))
-      .setIntroducedIn(30701);
+  options->addOption(
+      "--query.max-parallelism",
+      "The maximum number of threads to use for a single query; the "
+      "actual query execution may use less depending on various factors.",
+      new UInt64Parameter(&_maxParallelism),
+      arangodb::options::makeDefaultFlags(
+          arangodb::options::Flags::Uncommon,
+          arangodb::options::Flags::Enterprise));
 #endif
 
   options

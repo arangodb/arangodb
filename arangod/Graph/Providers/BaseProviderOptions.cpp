@@ -83,8 +83,7 @@ SingleServerBaseProviderOptions::SingleServerBaseProviderOptions(
     aql::FixedVarExpressionContext& expressionContext,
     std::vector<std::pair<aql::Variable const*, aql::RegisterId>>
         filterConditionVariables,
-    std::unordered_map<std::string, std::vector<std::string>> const&
-        collectionToShardMap,
+    MonitoredCollectionToShardMap const& collectionToShardMap,
     aql::Projections const& vertexProjections,
     aql::Projections const& edgeProjections, bool produceVertices)
     : _temporaryVariable(tmpVar),
@@ -108,7 +107,7 @@ SingleServerBaseProviderOptions::indexInformations() {
   return _indexInformation;
 }
 
-std::unordered_map<std::string, std::vector<std::string>> const&
+MonitoredCollectionToShardMap const&
 SingleServerBaseProviderOptions::collectionToShardMap() const {
   return _collectionToShardMap;
 }

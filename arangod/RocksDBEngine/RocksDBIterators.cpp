@@ -125,7 +125,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     TRI_ASSERT(limit > 0);
 
     do {
-      cb(RocksDBKey::documentId(_iterator->key()),
+      // TODO(MBkkt) optimize it, extract value from rocksdb
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
       _iterator->Next();
@@ -208,8 +209,26 @@ class RocksDBAllIndexIterator final : public IndexIterator {
             TRI_ASSERT(ro.snapshot != nullptr);
             TRI_ASSERT(ro.prefix_same_as_start);
             ro.verify_checksums = false;  // TODO evaluate
-            ro.iterate_upper_bound = &_upperBound;
-            ro.readOwnWrites = canReadOwnWrites() == ReadOwnWrites::yes;
+            // note: iterate_lower_bound/iterate_upper_bound should only be
+            // set if the iterator is not supposed to check the bounds
+            // for every operation.
+            // when the iterator is a db snapshot-based iterator, it is ok
+            // to set iterate_lower_bound/iterate_upper_bound, because this
+            // is well supported by RocksDB.
+            // if the iterator is a multi-level iterator that merges data from
+            // the db snapshot with data from an ongoing in-memory transaction
+            // (contained in a WriteBatchWithIndex, WBWI), then RocksDB does
+            // not properly support the bounds checking using
+            // iterate_lower_bound/ iterate_upper_bound. in this case we must
+            // avoid setting the bounds here and rely on our own bounds checking
+            // using the comparator. at least one underlying issue was fixed in
+            // RocksDB in version 8.8.0 via
+            // https://github.com/facebook/rocksdb/pull/11680. we can revisit
+            // the issue once we have upgraded to RocksDB >= 8.8.0.
+            if constexpr (!mustCheckBounds) {
+              ro.iterate_upper_bound = &_upperBound;
+            }
+            ro.readOwnWrites = static_cast<bool>(canReadOwnWrites());
             // ro.readahead_size = 4 * 1024 * 1024;
           });
     }
@@ -276,7 +295,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return doNext(limit, [&]() {
-      cb(RocksDBKey::documentId(_iterator->key()),
+      cb(RocksDBKey::documentId(_iterator->key()), nullptr,
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
     });

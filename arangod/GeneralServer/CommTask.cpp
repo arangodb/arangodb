@@ -42,14 +42,15 @@
 #include "Rest/GeneralResponse.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/VocbaseContext.h"
-#include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Statistics/ConnectionStatistics.h"
 #include "Statistics/RequestStatistics.h"
 #include "Utils/Events.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
+#ifdef USE_V8
 #include "V8Server/FoxxFeature.h"
+#endif
 
 #include <string_view>
 
@@ -147,7 +148,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
       _connectionInfo(std::move(info)),
-      _connectionStatistics(ConnectionStatistics::acquire()),
+      _connectionStatistics(acquireConnectionStatistics()),
       _auth(AuthenticationFeature::instance()) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics.SET_START();
@@ -261,11 +262,22 @@ CommTask::Flow CommTask::prepareExecution(
     }
       [[fallthrough]];
     case ServerState::Mode::TRYAGAIN: {
+      bool allowReconnect = false;
+      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
+        // allow special requests that are necessary to reconnect to an endpoint
+        // from inside tests. these are currently:
+        // - GET /_api/version
+        // - GET /_api/database/current
+        // we need to allow such requests from a specific test even in TRYAGAIN
+        // mode. these are normally disallowed even in TRYAGAIN mode.
+        allowReconnect = true;
+      }
       // the following paths are allowed on followers in active failover
       if (!path.starts_with("/_admin/shutdown") &&
           !path.starts_with("/_admin/cluster/health") &&
           !path.starts_with("/_admin/cluster/maintenance") &&
           path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
+          !path.starts_with("/_admin/debug/") &&
           !path.starts_with("/_admin/log") &&
           !path.starts_with("/_admin/metrics") &&
           !path.starts_with("/_admin/server/") &&
@@ -277,12 +289,16 @@ CommTask::Flow CommTask::prepareExecution(
           !(req.requestType() == RequestType::GET &&
             path.starts_with("/_api/collection")) &&
           !path.starts_with("/_api/cluster/") &&
+          path != "/_api/database/current" &&
           !path.starts_with("/_api/engine/stats") &&
           !path.starts_with("/_api/replication") &&
           !path.starts_with("/_api/ttl/statistics") &&
+          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
           (mode == ServerState::Mode::TRYAGAIN ||
            !path.starts_with("/_api/version")) &&
-          !path.starts_with("/_api/wal")) {
+          !path.starts_with("/_api/wal") &&
+          !(allowReconnect && (path.starts_with("/_api/version") ||
+                               path.starts_with("/_api/database/current")))) {
         LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
             << "Redirect/Try-again: refused path: " << path;
         std::unique_ptr<GeneralResponse> res =
@@ -344,11 +360,15 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   if (ServerState::instance()->isSingleServerOrCoordinator()) {
+#ifdef USE_V8
     auto& ff = _server.server().getFeature<FoxxFeature>();
-    if (!ff.foxxEnabled() &&
-        !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
-          path.starts_with(::pathPrefixApi) ||
-          path.starts_with(::pathPrefixOpen))) {
+    bool foxxEnabled = ff.foxxEnabled();
+#else
+    constexpr bool foxxEnabled = false;
+#endif
+    if (!foxxEnabled && !(path == "/" || path.starts_with(::pathPrefixAdmin) ||
+                          path.starts_with(::pathPrefixApi) ||
+                          path.starts_with(::pathPrefixOpen))) {
       sendErrorResponse(rest::ResponseCode::FORBIDDEN,
                         req.contentTypeResponse(), req.messageId(),
                         TRI_ERROR_FORBIDDEN,
@@ -491,7 +511,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   if (mode == ServerState::Mode::STARTUP) {
     // request during startup phase
-    handler->setStatistics(stealStatistics(messageId));
+    handler->setRequestStatistics(stealRequestStatistics(messageId));
     handleRequestStartup(std::move(handler));
     return;
   }
@@ -500,12 +520,13 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
   bool forwarded;
   auto res = handler->forwardRequest(forwarded);
   if (forwarded) {
-    statistics(messageId).SET_SUPERUSER();
-    std::move(res).thenFinal([self(shared_from_this()), h(std::move(handler)),
-                              messageId](
-                                 futures::Try<Result>&& /*ignored*/) -> void {
-      self->sendResponse(h->stealResponse(), self->stealStatistics(messageId));
-    });
+    requestStatistics(messageId).SET_SUPERUSER();
+    std::move(res).thenFinal(
+        [self(shared_from_this()), h(std::move(handler)),
+         messageId](futures::Try<Result>&& /*ignored*/) -> void {
+          self->sendResponse(h->stealResponse(),
+                             self->stealRequestStatistics(messageId));
+        });
     return;
   }
 
@@ -521,9 +542,9 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // asynchronous request
   if (found && (asyncExec == "true" || asyncExec == "store")) {
-    RequestStatistics::Item stats = stealStatistics(messageId);
+    RequestStatistics::Item stats = stealRequestStatistics(messageId);
     stats.SET_ASYNC();
-    handler->setStatistics(std::move(stats));
+    handler->setRequestStatistics(std::move(stats));
     handler->setIsAsyncRequest();
 
     uint64_t jobId = 0;
@@ -556,7 +577,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
     }
   } else {
     // synchronous request
-    handler->setStatistics(stealStatistics(messageId));
+    handler->setRequestStatistics(stealRequestStatistics(messageId));
     // handleRequestSync adds an error response
     handleRequestSync(std::move(handler));
   }
@@ -571,19 +592,32 @@ void CommTask::setStatistics(uint64_t id, RequestStatistics::Item&& stat) {
   _statisticsMap.insert_or_assign(id, std::move(stat));
 }
 
-RequestStatistics::Item const& CommTask::acquireStatistics(uint64_t id) {
-  RequestStatistics::Item stat = RequestStatistics::acquire();
+ConnectionStatistics::Item CommTask::acquireConnectionStatistics() {
+  ConnectionStatistics::Item stat;
+  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
+    // only acquire a new item if the statistics are enabled.
+    stat = ConnectionStatistics::acquire();
+  }
+  return stat;
+}
+
+RequestStatistics::Item const& CommTask::acquireRequestStatistics(uint64_t id) {
+  RequestStatistics::Item stat;
+  if (_server.server().getFeature<StatisticsFeature>().isEnabled()) {
+    // only acquire a new item if the statistics are enabled.
+    stat = RequestStatistics::acquire();
+  }
 
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap.insert_or_assign(id, std::move(stat)).first->second;
 }
 
-RequestStatistics::Item const& CommTask::statistics(uint64_t id) {
+RequestStatistics::Item const& CommTask::requestStatistics(uint64_t id) {
   std::lock_guard<std::mutex> guard(_statisticsMutex);
   return _statisticsMap[id];
 }
 
-RequestStatistics::Item CommTask::stealStatistics(uint64_t id) {
+RequestStatistics::Item CommTask::stealRequestStatistics(uint64_t id) {
   RequestStatistics::Item result;
   std::lock_guard<std::mutex> guard(_statisticsMutex);
 
@@ -606,7 +640,7 @@ void CommTask::sendSimpleResponse(rest::ResponseCode code,
     if (!buffer.empty()) {
       resp->setPayload(std::move(buffer), VPackOptions::Defaults);
     }
-    sendResponse(std::move(resp), this->stealStatistics(mid));
+    sendResponse(std::move(resp), this->stealRequestStatistics(mid));
   } catch (...) {
     LOG_TOPIC("fc831", WARN, Logger::REQUESTS)
         << "addSimpleResponse received an exception, closing connection";
@@ -676,7 +710,8 @@ void CommTask::handleRequestStartup(std::shared_ptr<RestHandler> handler) {
     handler->trackTaskEnd();
     try {
       // Pass the response to the io context
-      self->sendResponse(handler->stealResponse(), handler->stealStatistics());
+      self->sendResponse(handler->stealResponse(),
+                         handler->stealRequestStatistics());
     } catch (...) {
       LOG_TOPIC("e1322", WARN, Logger::REQUESTS)
           << "got an exception while sending response, closing connection";
@@ -712,7 +747,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
       try {
         // Pass the response to the io context
         self->sendResponse(handler->stealResponse(),
-                           handler->stealStatistics());
+                           handler->stealRequestStatistics());
       } catch (...) {
         LOG_TOPIC("fc834", WARN, Logger::REQUESTS)
             << "got an exception while sending response, closing connection";
@@ -858,7 +893,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
                  path.starts_with(std::string{::pathPrefixApiUser} + username +
                                   '/')) {
         // simon: unauthorized users should be able to call
-        // `/_api/users/<name>` to check their passwords
+        // `/_api/user/<name>` to check their passwords
         result = Flow::Continue;
         vc->forceReadOnly();
       } else if (userAuthenticated && path.starts_with(::pathPrefixApiUser)) {
@@ -944,7 +979,7 @@ void CommTask::processCorsOptions(std::unique_ptr<GeneralRequest> req,
   }
 
   // discard request and send response
-  sendResponse(std::move(resp), stealStatistics(req->messageId()));
+  sendResponse(std::move(resp), stealRequestStatistics(req->messageId()));
 }
 
 auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
@@ -1017,41 +1052,65 @@ auth::TokenCache::Entry CommTask::checkAuthHeader(GeneralRequest& req,
 }
 
 /// decompress content
-bool CommTask::handleContentEncoding(GeneralRequest& req) {
+Result CommTask::handleContentEncoding(GeneralRequest& req) {
   // TODO consider doing the decoding on the fly
-  auto encode = [&](std::string const& encoding) {
+  auto decode = [&](std::string const& header,
+                    std::string const& encoding) -> Result {
+    if (this->_auth->isActive() && !req.authenticated() &&
+        !_server.server()
+             .getFeature<GeneralServerFeature>()
+             .handleContentEncodingForUnauthenticatedRequests()) {
+      return {TRI_ERROR_FORBIDDEN,
+              "support for handling Content-Encoding headers is turned off for "
+              "unauthenticated requests"};
+    }
+
     std::string_view raw = req.rawPayload();
     uint8_t* src = reinterpret_cast<uint8_t*>(const_cast<char*>(raw.data()));
     size_t len = raw.size();
+
     if (encoding == StaticStrings::EncodingGzip) {
       VPackBuffer<uint8_t> dst;
-      if (arangodb::encoding::gzipUncompress(src, len, dst) !=
-          TRI_ERROR_NO_ERROR) {
-        return false;
+      if (ErrorCode r = arangodb::encoding::gzipUncompress(src, len, dst);
+          r != TRI_ERROR_NO_ERROR) {
+        return {
+            r,
+            "a decoding error occurred while handling Content-Encoding: gzip"};
       }
       req.setPayload(std::move(dst));
-      return true;
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
+      return {};
     } else if (encoding == StaticStrings::EncodingDeflate) {
       VPackBuffer<uint8_t> dst;
-      if (arangodb::encoding::gzipInflate(src, len, dst) !=
-          TRI_ERROR_NO_ERROR) {
-        return false;
+      if (ErrorCode r = arangodb::encoding::zlibInflate(src, len, dst);
+          r != TRI_ERROR_NO_ERROR) {
+        return {r,
+                "a decoding error occurred while handling Content-Encoding: "
+                "deflate"};
       }
       req.setPayload(std::move(dst));
-      return true;
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
+      return {};
     }
-    return false;
+    // unknown encoding. let it through without modifying the request body.
+    return {};
   };
 
   bool found;
-  std::string const& val1 = req.header(StaticStrings::TransferEncoding, found);
-  if (found) {
-    return encode(val1);
+  if (std::string const& val =
+          req.header(StaticStrings::TransferEncoding, found);
+      found) {
+    return decode(StaticStrings::TransferEncoding, val);
   }
 
-  std::string const& val2 = req.header(StaticStrings::ContentEncoding, found);
-  if (found) {
-    return encode(val2);
+  if (std::string const& val =
+          req.header(StaticStrings::ContentEncoding, found);
+      found) {
+    return decode(StaticStrings::ContentEncoding, val);
   }
-  return true;
+  return {};
 }

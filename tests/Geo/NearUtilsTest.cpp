@@ -333,7 +333,7 @@ class QueryPointAroundTest : public ::testing::Test {
   void checkResult(S2Point const& origin,
                    std::vector<LocalDocumentId> const& result) {
     double lastRad = 0;
-    for (LocalDocumentId const& rev : result) {
+    for (LocalDocumentId rev : result) {
       // check sort order
       S2LatLng const& cords = docs.at(rev);
       double rad = origin.Angle(cords.ToPoint());
@@ -420,7 +420,7 @@ class QueryPointsContainedInTest : public ::testing::Test {
     ASSERT_EQ(result.size(), expected.size());
 
     std::vector<std::pair<double, double>> latLngResult;
-    for (LocalDocumentId const& rev : result) {
+    for (LocalDocumentId rev : result) {
       // check sort order
       S2LatLng const& cords = docs.at(rev);
       latLngResult.emplace_back(cords.lat().degrees(), cords.lng().degrees());

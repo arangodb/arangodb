@@ -39,8 +39,7 @@ using namespace arangodb::aql;
 SharedQueryState::SharedQueryState(ArangodServer& server)
     : SharedQueryState(server, SchedulerFeature::SCHEDULER) {}
 
-SharedQueryState::SharedQueryState(ArangodServer& server,
-                                   SharedQueryState::SchedulerT* scheduler)
+SharedQueryState::SharedQueryState(ArangodServer& server, Scheduler* scheduler)
     : _server(server),
       _scheduler(scheduler),
       _wakeupCb(nullptr),
@@ -179,5 +178,3 @@ bool SharedQueryState::queueAsyncTask(fu2::unique_function<void()> cb) {
   }
   return false;
 }
-
-bool SharedQueryState::noTasksRunning() { return _numTasks.load() == 0; }

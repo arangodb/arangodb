@@ -9,15 +9,21 @@ add_library(arango_cluster_engine STATIC
   ClusterRestWalHandler.cpp
   ClusterSelectivityEstimates.cpp
   ClusterTransactionCollection.cpp
-  ClusterTransactionState.cpp
-  ClusterV8Functions.cpp)
+  ClusterTransactionState.cpp)
+
+if (USE_V8) 
+  target_sources(arango_cluster_engine PRIVATE
+    ClusterV8Functions.cpp)
+endif()
 
 target_link_libraries(arango_cluster_engine
   arango_health
   arango_indexes
-  boost_boost
-  arango_v8
-  arango_v8_no_deadline)
+  boost_boost)
+
+if (USE_V8)
+  target_link_libraries(arango_cluster_engine arango_v8 arango_v8_no_deadline)
+endif()
 
 target_include_directories(arango_cluster_engine PUBLIC
   ${IRESEARCH_INCLUDE})

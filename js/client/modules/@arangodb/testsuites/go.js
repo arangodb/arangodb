@@ -82,8 +82,6 @@ function goDriver (options) {
       process.env['TEST_PPROF'] = '';
       if (this.options.cluster) {
         process.env['TEST_MODE'] = 'cluster';
-      } else if (this.options.activefailover) {
-        process.env['TEST_MODE'] = 'resilientsingle';
       } else {
         process.env['TEST_MODE'] = 'single';
       }

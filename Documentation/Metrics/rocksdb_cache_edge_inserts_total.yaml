@@ -1,0 +1,18 @@
+name: rocksdb_cache_edge_inserts_total
+introducedIn: "3.12.0"
+help: |
+  Total number of insertions into the in-memory edge cache.
+  in the edge cache.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of insertions into the in-memory edge cache.
+  This metric is increased whenever a value is inserted into the
+  in-memory edge cache, regardless of whether the value was
+  compressed or not.

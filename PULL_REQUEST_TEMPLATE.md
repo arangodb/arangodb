@@ -19,7 +19,6 @@
 - [ ] Backports
   - [ ] Backport for 3.11: *(Please link PR)*
   - [ ] Backport for 3.10: *(Please link PR)*
-  - [ ] Backport for 3.9: *(Please link PR)*
 
 #### Related Information
 

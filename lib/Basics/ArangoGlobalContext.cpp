@@ -21,14 +21,26 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-#include <string.h>
-
 #include "ArangoGlobalContext.h"
-
+#include "Basics/FileUtils.h"
+#include "Basics/StringUtils.h"
+#include "Basics/VelocyPackHelper.h"
+#include "Basics/application-exit.h"
 #include "Basics/debugging.h"
+#include "Basics/error.h"
+#include "Basics/files.h"
 #include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/signals.h"
+#include "Logger/LogAppender.h"
+#include "Logger/LogMacros.h"
+#include "Logger/Logger.h"
+#include "Logger/LoggerStream.h"
+#include "Random/RandomGenerator.h"
+#include "Rest/Version.h"
+
+#include <stdlib.h>
+#include <string.h>
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -37,19 +49,6 @@
 #ifdef TRI_HAVE_SIGNAL_H
 #include <signal.h>
 #endif
-
-#include "Basics/FileUtils.h"
-#include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Basics/application-exit.h"
-#include "Basics/error.h"
-#include "Basics/files.h"
-#include "Logger/LogAppender.h"
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
-#include "Random/RandomGenerator.h"
-#include "Rest/Version.h"
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"

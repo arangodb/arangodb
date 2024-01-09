@@ -1,0 +1,17 @@
+name: rocksdb_cache_edge_compression_ratio
+introducedIn: "3.11.2"
+help: |
+  Overall effective compression ratio of all edge cache entries ever stored 
+  in the edge cache.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Overall effective compression ratio of all edge cache entries ever stored
+  in the in-memory edge cache. The value should be 0 if compression is not
+  used.

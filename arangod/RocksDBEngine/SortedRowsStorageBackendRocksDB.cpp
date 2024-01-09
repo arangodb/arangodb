@@ -28,6 +28,7 @@
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/SortExecutor.h"
 #include "Aql/SortRegister.h"
@@ -48,9 +49,17 @@ namespace arangodb {
 
 SortedRowsStorageBackendRocksDB::SortedRowsStorageBackendRocksDB(
     RocksDBTempStorage& storage, aql::SortExecutorInfos& infos)
-    : _tempStorage(storage), _infos(infos), _rowNumberForInsert(0) {}
+    : _tempStorage(storage),
+      _infos(infos),
+      _rowNumberForInsert(0),
+      _memoryTracker(nullptr, nullptr,
+                     RocksDBMethodsMemoryTracker::kDefaultGranularity) {
+  _memoryTracker.beginQuery(&_infos.getQuery().resourceMonitor());
+}
 
 SortedRowsStorageBackendRocksDB::~SortedRowsStorageBackendRocksDB() {
+  _memoryTracker.endQuery();
+
   try {
     cleanup();
   } catch (...) {
@@ -61,7 +70,7 @@ aql::ExecutorState SortedRowsStorageBackendRocksDB::consumeInputRange(
     aql::AqlItemBlockInputRange& inputRange) {
   if (_context == nullptr) {
     // create context on the fly
-    _context = _tempStorage.getSortedRowsStorageContext();
+    _context = _tempStorage.getSortedRowsStorageContext(_memoryTracker);
   }
 
   TRI_ASSERT(_iterator == nullptr);

@@ -39,13 +39,15 @@ struct Options;
 class ClusterTransactionState final : public TransactionState {
  public:
   ClusterTransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
-                          transaction::Options const& options);
-  ~ClusterTransactionState() override = default;
+                          transaction::Options const& options,
+                          transaction::OperationOrigin operationOrigin);
+  ~ClusterTransactionState();
 
   [[nodiscard]] bool ensureSnapshot() override { return false; }
 
   /// @brief begin a transaction
-  [[nodiscard]] Result beginTransaction(transaction::Hints hints) override;
+  [[nodiscard]] futures::Future<Result> beginTransaction(
+      transaction::Hints hints) override;
 
   /// @brief commit a transaction
   [[nodiscard]] futures::Future<Result> commitTransaction(

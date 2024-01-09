@@ -152,9 +152,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
 #ifdef _WIN32
-  TRI_SetStdinVisibility(false);
-  auto sg =
-      arangodb::scopeGuard([&]() noexcept { TRI_SetStdinVisibility(true); });
+  terminal_utils::setStdinVisibility(false);
+  auto sg = arangodb::scopeGuard(
+      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
   std::wstring wpassword;
   _setmode(_fileno(stdin), _O_U16TEXT);
   std::getline(std::wcin, wpassword);
@@ -163,10 +163,9 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   pw.toUTF8String<std::string>(password);
 #else
 #ifdef TRI_HAVE_TERMIOS_H
-  TRI_SetStdinVisibility(false);
+  terminal_utils::setStdinVisibility(false);
   std::getline(std::cin, password);
-
-  TRI_SetStdinVisibility(true);
+  terminal_utils::setStdinVisibility(true);
 #else
   std::getline(std::cin, password);
 #endif

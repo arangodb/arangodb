@@ -1,5 +1,3 @@
-/* global window, Backbone, arangoHelper, _ */
-
 window.arangoDocumentModel = Backbone.Model.extend({
   initialize: function () {
     'use strict';

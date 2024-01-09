@@ -56,7 +56,7 @@ struct QueryProfile {
   void setStateEnd(QueryExecutionState::ValueType state, double time);
 
   /// @brief get a timer time
-  inline double timer(QueryExecutionState::ValueType t) const {
+  double timer(QueryExecutionState::ValueType t) const {
     return _timers[QueryExecutionState::toNumber(t)];
   }
 

@@ -142,6 +142,7 @@ LogTopic Logger::QUERIES("queries", LogLevel::INFO);
 LogTopic Logger::REPLICATION("replication", LogLevel::INFO);
 LogTopic Logger::REPLICATION2("replication2", LogLevel::WARN);
 LogTopic Logger::REPLICATED_STATE("rep-state", LogLevel::WARN);
+LogTopic Logger::REPLICATED_WAL("rep-wal", LogLevel::WARN);
 LogTopic Logger::REQUESTS("requests", LogLevel::FATAL);  // suppress
 LogTopic Logger::RESTORE("restore", LogLevel::INFO);
 LogTopic Logger::ROCKSDB("rocksdb", LogLevel::WARN);
@@ -157,6 +158,7 @@ LogTopic Logger::TTL("ttl", LogLevel::WARN);
 LogTopic Logger::VALIDATION("validation", LogLevel::INFO);
 LogTopic Logger::V8("v8", LogLevel::WARN);
 LogTopic Logger::VIEWS("views", LogLevel::FATAL);
+LogTopic Logger::DEPRECATION("deprecation", LogLevel::INFO);
 
 #ifdef USE_ENTERPRISE
 LogTopic LdapAuthProvider::LDAP_TOPIC("ldap", LogLevel::INFO);

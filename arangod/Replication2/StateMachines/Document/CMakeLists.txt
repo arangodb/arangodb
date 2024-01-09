@@ -2,10 +2,10 @@ target_sources(arango_replication2 PRIVATE
   ActiveTransactionsQueue.cpp
   CollectionReader.cpp
   DocumentCore.cpp
+  DocumentStateErrorHandler.cpp
   DocumentFollowerState.cpp
   DocumentLeaderState.cpp
   DocumentLogEntry.cpp
-  DocumentStateAgencyHandler.cpp
   DocumentStateHandlersFactory.cpp
   DocumentStateMachine.cpp
   DocumentStateMachineFeature.cpp
@@ -15,4 +15,8 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateSnapshot.cpp
   DocumentStateSnapshotHandler.cpp
   DocumentStateTransaction.cpp
-  DocumentStateTransactionHandler.cpp)
+  DocumentStateTransactionHandler.cpp
+  ReplicatedOperation.cpp
+  MaintenanceActionExecutor.cpp)
+
+add_subdirectory(Actor)

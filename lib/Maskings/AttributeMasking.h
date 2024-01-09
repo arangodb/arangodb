@@ -34,34 +34,38 @@
 #include "Maskings/ParseResult.h"
 #include "Maskings/Path.h"
 
+#include <memory>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+
 namespace arangodb {
 namespace maskings {
 void InstallMaskings();
 
 class AttributeMasking {
  public:
-  static ParseResult<AttributeMasking> parse(Maskings*, VPackSlice const&);
+  static ParseResult<AttributeMasking> parse(Maskings*, velocypack::Slice def);
   static void installMasking(std::string const& name,
                              ParseResult<AttributeMasking> (*func)(
-                                 Path, Maskings*, VPackSlice const&)) {
+                                 Path, Maskings*, velocypack::Slice)) {
     _maskings[name] = func;
   }
 
  public:
   AttributeMasking() = default;
 
-  AttributeMasking(Path const& path, MaskingFunction* func) : _path(path) {
-    _func.reset(func);
-  }
+  AttributeMasking(Path path, std::shared_ptr<MaskingFunction> func)
+      : _path(std::move(path)), _func(std::move(func)) {}
 
-  bool match(std::vector<std::string> const&) const;
+  bool match(std::vector<std::string_view> const&) const;
 
   MaskingFunction* func() const { return _func.get(); }
 
  private:
   static std::unordered_map<std::string,
                             ParseResult<AttributeMasking> (*)(
-                                Path, Maskings*, VPackSlice const&)>
+                                Path, Maskings*, velocypack::Slice)>
       _maskings;
 
  private:

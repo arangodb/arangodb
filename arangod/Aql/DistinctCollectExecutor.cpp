@@ -73,7 +73,7 @@ DistinctCollectExecutor::~DistinctCollectExecutor() { destroyValues(); }
 
 void DistinctCollectExecutor::initializeCursor() { destroyValues(); }
 
-[[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto DistinctCollectExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   if (input.finalState() == MainQueryState::DONE) {

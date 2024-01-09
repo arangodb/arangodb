@@ -48,7 +48,8 @@ ProducingResults<V, E, M>::ProducingResults(WorkerState<V, E, M>& worker)
 
 template<typename V, typename E, typename M>
 auto ProducingResults<V, E, M>::receive(
-    actor::ActorPID const& sender, actor::ActorPID const& self,
+    actor::DistributedActorPID const& sender,
+    actor::DistributedActorPID const& self,
     worker::message::WorkerMessages const& message, Dispatcher dispatcher)
     -> std::unique_ptr<ExecutionState> {
   if (std::holds_alternative<worker::message::ProduceResults>(message)) {

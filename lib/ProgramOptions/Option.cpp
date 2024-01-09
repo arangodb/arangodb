@@ -185,7 +185,11 @@ void Option::printHelp(std::string const& search, size_t tw, size_t ow,
       }
 
       if (!hasFlag(arangodb::options::Flags::Command)) {
-        value += " (default: " + parameter->valueString() + ")";
+        if (hasFlag(arangodb::options::Flags::Dynamic)) {
+          value += " (dynamic default: " + parameter->valueString() + ")";
+        } else {
+          value += " (default: " + parameter->valueString() + ")";
+        }
       }
       if (hasIntroducedIn()) {
         value += " (introduced in " + introducedInString() + ")";

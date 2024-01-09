@@ -80,6 +80,7 @@ Collection* Collections::add(std::string const& name,
     }
   }
 
+  TRI_ASSERT((*it).second != nullptr);
   return (*it).second.get();
 }
 

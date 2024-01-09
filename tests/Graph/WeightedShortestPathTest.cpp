@@ -76,7 +76,7 @@ class WeightedShortestPathTest
   arangodb::ResourceMonitor resourceMonitor{global};
 
   // PathValidatorOptions parts (used for API not under test here)
-  aql::Variable _tmpVar{"tmp", 0, false};
+  aql::Variable _tmpVar{"tmp", 0, false, resourceMonitor};
   arangodb::aql::AqlFunctionsInternalCache _functionsCache{};
 
   arangodb::transaction::Methods _trx{_query->newTrxContext()};
@@ -336,7 +336,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_V1_V3) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 3x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 8U);
+    EXPECT_EQ(stats.getScannedIndex(), 6U);
   }
 
   {
@@ -384,7 +384,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_V4_V9) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 16U);
+    EXPECT_EQ(stats.getScannedIndex(), 13U);
   }
 
   {
@@ -433,7 +433,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_outbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 25U);
+    EXPECT_EQ(stats.getScannedIndex(), 17U);
   }
 
   {
@@ -482,7 +482,7 @@ TEST_P(WeightedShortestPathTest, shortest_path_A_F_inbound) {
     aql::TraversalStats stats = finder.stealStats();
     // We have to lookup the vertex
     // 4x vertices, 3x edges
-    EXPECT_EQ(stats.getScannedIndex(), 25U);
+    EXPECT_EQ(stats.getScannedIndex(), 17U);
   }
 
   {

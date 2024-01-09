@@ -25,7 +25,6 @@
 
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
-#include "VPackDeserializer/deserializer.h"
 
 namespace arangodb {
 namespace iresearch {
@@ -60,34 +59,6 @@ constexpr const char ANALYZER_VALUE_TYPE_BOOL[] = "bool";
 constexpr const char ANALYZER_VALUE_TYPE_NULL[] = "null";
 constexpr const char ANALYZER_VALUE_TYPE_ARRAY[] = "array";
 constexpr const char ANALYZER_VALUE_TYPE_OBJECT[] = "object";
-
-using AnalyzerValueTypeEnumDeserializer =
-    arangodb::velocypack::deserializer::enum_deserializer<
-        AnalyzerValueType,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::String,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_STRING>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Number,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_NUMBER>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Bool,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_BOOL>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Null,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_NULL>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Array,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_ARRAY>>,
-        arangodb::velocypack::deserializer::enum_member<
-            AnalyzerValueType::Object,
-            arangodb::velocypack::deserializer::values::string_value<
-                ANALYZER_VALUE_TYPE_OBJECT>>>;
 
 }  // namespace iresearch
 }  // namespace arangodb

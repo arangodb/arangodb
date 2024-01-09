@@ -28,11 +28,15 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/AgencyCollectionSpecification.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
+#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/ClusterUtils.h"
 #include "Utils/DatabaseGuard.h"
@@ -85,6 +89,9 @@ bool UpdateCollection::first() {
   auto const& props = properties();
   Result res;
 
+  std::string from;
+  _description.get("from", from);
+
   try {
     auto& df = _feature.server().getFeature<DatabaseFeature>();
     DatabaseGuard guard(df, database);
@@ -117,8 +124,17 @@ bool UpdateCollection::first() {
           followers->remove(s);
         }
       }
-      OperationOptions options(ExecContext::current());
-      res.reset(Collections::updateProperties(*coll, props, options));
+
+      res.reset(std::invoke([&, coll = std::move(coll)]() mutable -> Result {
+        if (vocbase.replicationVersion() == replication::Version::TWO) {
+          return updateCollectionReplication2(
+              shard, collection, _description.properties()->sharedSlice(),
+              std::move(coll));
+        }
+
+        OperationOptions options(ExecContext::current());
+        return Collections::updateProperties(*coll, props, options).get();
+      }));
       result(res);
 
       if (!res.ok()) {
@@ -147,8 +163,16 @@ bool UpdateCollection::first() {
   }
 
   if (res.fail()) {
-    _feature.storeShardError(database, collection, shard,
-                             _description.get(SERVER_ID), res);
+    if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||
+        res.is(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND)) {
+      // Temporary unavailability of the replication2 leader should not stop
+      // this server from updating the shard eventually.
+      // TODO prevent busy loop and wait for log to become ready (CINFRA-831).
+      std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    } else {
+      _feature.storeShardError(database, collection, shard,
+                               _description.get(SERVER_ID), res);
+    }
   }
 
   return false;
@@ -158,4 +182,17 @@ void UpdateCollection::setState(ActionState state) {
     _feature.unlockShard(getShard());
   }
   ActionBase::setState(state);
+}
+
+auto UpdateCollection::updateCollectionReplication2(
+    ShardID const& shard, CollectionID const& collection,
+    velocypack::SharedSlice props,
+    std::shared_ptr<LogicalCollection> coll) noexcept -> Result {
+  return basics::catchToResult([coll = std::move(coll),
+                                props = std::move(props), &collection,
+                                &shard]() mutable {
+    return coll->getDocumentStateLeader()
+        ->modifyShard(shard, collection, std::move(props))
+        .get();
+  });
 }

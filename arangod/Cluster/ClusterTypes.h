@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "velocypack/Builder.h"
 #include <iosfwd>
 #include <limits>
 #include <memory>
@@ -31,6 +30,7 @@
 
 #include "Basics/Result.h"
 #include "Basics/RebootId.h"
+#include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb {
@@ -38,8 +38,6 @@ namespace arangodb {
 typedef std::string ServerID;         // ID of a server
 typedef std::string DatabaseID;       // ID/name of a database
 typedef std::string CollectionID;     // ID of a collection
-typedef std::string ViewID;           // ID of a view
-typedef std::string ShardID;          // ID of a shard
 typedef uint32_t ServerShortID;       // Short ID of a server
 typedef std::string ServerShortName;  // Short name of a server
 
@@ -55,6 +53,24 @@ struct ServerHealthState {
 std::ostream& operator<<(std::ostream& o, ServerHealthState const& r);
 
 using ServersKnown = containers::FlatHashMap<ServerID, ServerHealthState>;
+
+struct PeerState {
+  std::string serverId;
+  RebootId rebootId{0};
+
+  friend auto operator==(PeerState const&, PeerState const&) noexcept
+      -> bool = default;
+
+  template<typename Inspector>
+  friend auto inspect(Inspector& f, PeerState& x) {
+    return f.object(x).fields(f.field("serverId", x.serverId),
+                              f.field("rebootId", x.rebootId));
+  }
+};
+
+auto to_string(PeerState const& peerState) -> std::string;
+auto operator<<(std::ostream& ostream, PeerState const& peerState)
+    -> std::ostream&;
 
 namespace velocypack {
 class Builder;

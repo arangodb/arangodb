@@ -74,6 +74,8 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief returns the request timeout for replication requests
   double requestTimeout() const;
 
+  double activeFailoverLeaderGracePeriod() const;
+
   /// @brief returns the connect timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -128,6 +130,11 @@ class ReplicationFeature final : public ArangodFeature {
 
   /// @brief request timeout for replication requests
   double _requestTimeout;
+
+  /// @brief  amount of time (in seconds) for which the current leader will
+  /// continue to assume its leadership even if it lost connection to the
+  /// agency (0 = unlimited)
+  double _activeFailoverLeaderGracePeriod;
 
   /// @brief whether or not the user-defined connect timeout is forced to be
   /// used this is true only if the user set the connect timeout at startup

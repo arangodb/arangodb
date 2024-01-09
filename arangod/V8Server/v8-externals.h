@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "Basics/Common.h"
 
 #include <cstdint>
@@ -56,9 +60,3 @@ static int32_t const WRP_IRESEARCH_ANALYZER_TYPE = 4;
 /// - SLOT_CLASS_TYPE
 /// - SLOT_CLASS
 static int32_t const WRP_VOCBASE_REPLICATED_LOG_TYPE = 5;
-
-/// @brief wrapped class for PrototypeState
-/// Layout:
-/// - SLOT_CLASS_TYPE
-/// - SLOT_CLASS
-static int32_t const WRP_VOCBASE_PROTOTYPE_STATE_TYPE = 6;

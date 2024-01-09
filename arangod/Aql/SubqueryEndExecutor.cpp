@@ -155,7 +155,6 @@ void SubqueryEndExecutor::Accumulator::addValue(AqlValue const& value) {
 
   TRI_ASSERT(_builder.isOpenArray());
   value.toVelocyPack(_options, _builder,
-                     /*resolveExternals*/ false,
                      /*allowUnindexed*/ false);
   ++_numValues;
 
@@ -217,7 +216,7 @@ size_t SubqueryEndExecutor::Accumulator::numValues() const noexcept {
 // We do not write any output for inbound dataRows
 // We will only write output for shadowRows. This is accounted for in
 // ExecutionBlockImpl
-[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto SubqueryEndExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const&, AqlCall const&) const noexcept -> size_t {
   return 0;
 }

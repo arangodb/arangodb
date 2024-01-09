@@ -32,8 +32,10 @@
 
 namespace arangodb::sepp {
 
-ExecutionThread::ExecutionThread(Execution& exec, Server& server)
-    : _server(server),
+ExecutionThread::ExecutionThread(std::uint32_t id, Execution& exec,
+                                 Server& server)
+    : _id(id),
+      _server(server),
       _execution(exec),
       _thread(&ExecutionThread::threadFunc, this) {}
 

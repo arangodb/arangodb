@@ -2,10 +2,6 @@
 /*global assertEqual, assertTrue, getOptions, fail, assertFalse, assertMatch */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test the deadlock detection
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -135,8 +131,8 @@ function OptionsTestSuite () {
         if (db.UnitTestsExclusiveCollection2.exists(k)) {
           let doc = db.UnitTestsExclusiveCollection2.document(k);
           assertEqual(ERRORS.ERROR_ARANGO_CONFLICT.code, doc.errorNum);
-          assertMatch( // it is possible to get two different errors messages here (two different internal states can appear)
-            /(precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
+          assertMatch( // it is possible to get different errors messages here (different internal states can appear)
+            /(write-write conflict|precondition failed|timeout waiting to lock key.*Operation timed out)/, doc.errorMessage);
           assertMatch(/XXX/, doc.errorMessage);
           ++found;
           db.UnitTestsExclusiveCollection2.remove(k);

@@ -31,17 +31,18 @@ using namespace arangodb::pregel::conductor;
 
 Done::Done(ConductorState& conductor) : conductor{conductor} {}
 
-auto Done::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto messages =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>{};
+auto Done::messages() -> std::unordered_map<actor::DistributedActorPID,
+                                            worker::message::WorkerMessages> {
+  auto messages = std::unordered_map<actor::DistributedActorPID,
+                                     worker::message::WorkerMessages>{};
   for (auto const& worker : conductor.workers) {
     messages.emplace(worker, worker::message::Cleanup{});
   }
   return messages;
 }
 
-auto Done::receive(actor::ActorPID sender, message::ConductorMessages message)
+auto Done::receive(actor::DistributedActorPID sender,
+                   message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
       not std::holds_alternative<message::CleanupFinished>(message)) {
@@ -51,9 +52,9 @@ auto Done::receive(actor::ActorPID sender, message::ConductorMessages message)
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage = pregel::metrics::message::ConductorFinished{},
         .newState = std::move(newState)};
   }

@@ -208,6 +208,7 @@ Index::Index(
       _collection(collection),
       _name(name),
       _fields(fields),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(unique),
       _sparse(sparse) {
@@ -225,6 +226,7 @@ Index::Index(IndexId iid, arangodb::LogicalCollection& collection,
           slice.get(arangodb::StaticStrings::IndexFields), /*allowEmpty*/ true,
           Index::allowExpansion(Index::type(
               slice.get(arangodb::StaticStrings::IndexType).stringView())))),
+      _progress(-1.),
       _useExpansion(::hasExpansion(_fields)),
       _unique(arangodb::basics::VelocyPackHelper::getBooleanValue(
           slice, arangodb::StaticStrings::IndexUnique, false)),
@@ -342,8 +344,11 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "geo2") {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (type == "zkd") {
-    return TRI_IDX_TYPE_ZKD_INDEX;
+  if (type == "mdi" || type == "zkd") {
+    return TRI_IDX_TYPE_MDI_INDEX;
+  }
+  if (type == "mdi-prefixed") {
+    return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
   }
   if (type == iresearch::StaticStrings::ViewArangoSearchType) {
     return TRI_IDX_TYPE_IRESEARCH_LINK;
@@ -390,8 +395,10 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return iresearch::StaticStrings::ViewArangoSearchType.data();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
-    case TRI_IDX_TYPE_ZKD_INDEX:
-      return "zkd";
+    case TRI_IDX_TYPE_MDI_INDEX:
+      return "mdi";
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return "mdi-prefixed";
     case TRI_IDX_TYPE_INVERTED_INDEX:
       return arangodb::iresearch::IRESEARCH_INVERTED_INDEX_TYPE.data();
     case TRI_IDX_TYPE_UNKNOWN: {
@@ -474,17 +481,25 @@ bool Index::CompareIdentifiers(velocypack::Slice const& lhs,
 /// contents are the same
 bool Index::Compare(StorageEngine& engine, VPackSlice const& lhs,
                     VPackSlice const& rhs, std::string const& dbname) {
-  auto lhsType = lhs.get(arangodb::StaticStrings::IndexType);
-  TRI_ASSERT(lhsType.isString());
+  auto normalizeType = [](VPackSlice s) -> std::string_view {
+    TRI_ASSERT(s.isString());
+    // "zkd" is the old naming for "mdi", so we have to treat these
+    // two type names as identical.
+    if (s.stringView() == "zkd") {
+      return "mdi";
+    }
+    return s.stringView();
+  };
 
-  // type must be identical
-  if (!arangodb::basics::VelocyPackHelper::equal(
-          lhsType, rhs.get(arangodb::StaticStrings::IndexType), false)) {
+  auto lhsType = normalizeType(lhs.get(arangodb::StaticStrings::IndexType));
+  auto rhsType = normalizeType(rhs.get(arangodb::StaticStrings::IndexType));
+
+  if (lhsType != rhsType) {
     return false;
   }
 
   return engine.indexFactory()
-      .factory(lhsType.copyString())
+      .factory(std::string{lhsType})
       .equal(lhs, rhs, dbname);
 }
 
@@ -549,6 +564,11 @@ void Index::toVelocyPack(
   if (hasSelectivityEstimate() &&
       Index::hasFlag(flags, Index::Serialize::Estimates)) {
     builder.add("selectivityEstimate", VPackValue(selectivityEstimate()));
+  }
+
+  auto const progress = _progress.load(std::memory_order_relaxed);
+  if (progress > -1 && progress < 100) {
+    builder.add("progress", VPackValue(progress));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
@@ -1080,6 +1100,16 @@ std::vector<std::vector<basics::AttributeName>> Index::mergeFields(
   result.insert(result.end(), fields1.begin(), fields1.end());
   result.insert(result.end(), fields2.begin(), fields2.end());
   return result;
+}
+
+std::unique_ptr<AqlIndexStreamIterator> Index::streamForCondition(
+    transaction::Methods* trx, IndexStreamOptions const&) {
+  TRI_ASSERT(false);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      std::string(
+          "no default implementation for streamForCondition. index type: ") +
+          typeName());
 }
 
 }  // namespace arangodb

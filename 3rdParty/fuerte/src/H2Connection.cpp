@@ -22,6 +22,8 @@
 
 #include "H2Connection.h"
 
+#include <absl/strings/escaping.h>
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/message.h>
@@ -230,7 +232,8 @@ std::string makeAuthHeader(fu::detail::ConnectionConfiguration const& config) {
   // preemptively cache authentication
   if (config._authenticationType == AuthenticationType::Basic) {
     auth.append("Basic ");
-    auth.append(fu::encodeBase64(config._user + ":" + config._password, true));
+    auth.append(
+        absl::Base64Escape(absl::StrCat(config._user, ":", config._password)));
   } else if (config._authenticationType == AuthenticationType::Jwt) {
     if (config._jwtToken.empty()) {
       throw std::logic_error("JWT token is not set");
@@ -409,7 +412,7 @@ void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
   auto req = std::make_shared<std::string>();
   req->append("GET / HTTP/1.1\r\nConnection: Upgrade, HTTP2-Settings\r\n");
   req->append("Upgrade: h2c\r\nHTTP2-Settings: ");
-  req->append(fu::encodeBase64(packed, true));
+  req->append(absl::Base64Escape(packed));
   req->append("\r\n\r\n");
 
   asio_ns::async_write(

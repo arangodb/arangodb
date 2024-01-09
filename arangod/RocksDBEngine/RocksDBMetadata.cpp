@@ -390,7 +390,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   TRI_ASSERT(batch.Count() == 0);
 
   Result res;
-  if (coll.deleted()) {
+  if (coll.deleted() || coll.vocbase().isDropped()) {
     return res;
   }
 

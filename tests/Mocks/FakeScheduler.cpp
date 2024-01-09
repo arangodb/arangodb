@@ -46,9 +46,39 @@ Scheduler::QueueStatistics FakeScheduler::queueStatistics() const {
   return QueueStatistics();
 }
 
+void FakeScheduler::trackCreateHandlerTask() noexcept {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+void FakeScheduler::trackBeginOngoingLowPriorityTask() noexcept {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+void FakeScheduler::trackEndOngoingLowPriorityTask() noexcept {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+
+void FakeScheduler::trackQueueTimeViolation() {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+void FakeScheduler::trackQueueItemSize(std::int64_t) noexcept {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+
 uint64_t FakeScheduler::getLastLowPriorityDequeueTime() const noexcept {
   ADB_PROD_ASSERT(false) << "not implemented";
   return 0;
+}
+
+/// @brief set the time it took for the last low prio item to be dequeued
+/// (time between queuing and dequeing) [ms]
+void FakeScheduler::setLastLowPriorityDequeueTime(uint64_t time) noexcept {
+  ADB_PROD_ASSERT(false) << "not implemented";
+}
+
+/// @brief get information about low prio queue:
+std::pair<uint64_t, uint64_t> FakeScheduler::getNumberLowPrioOngoingAndQueued()
+    const {
+  ADB_PROD_ASSERT(false) << "not implemented";
+  return {};
 }
 
 double FakeScheduler::approximateQueueFillGrade() const {

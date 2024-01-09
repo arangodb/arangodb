@@ -40,6 +40,8 @@ bool isDeadly(int signal) noexcept;
 /// @brief return the name for a signal
 std::string_view name(int signal) noexcept;
 
+std::string_view subtypeName(int signal, int subCode) noexcept;
+
 void maskAllSignals();
 void maskAllSignalsServer();
 void maskAllSignalsClient();

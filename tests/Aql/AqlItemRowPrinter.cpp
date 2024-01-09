@@ -51,7 +51,7 @@ std::ostream& arangodb::aql::operator<<(std::ostream& stream,
 
   arangodb::GlobalResourceMonitor global{};
   arangodb::ResourceMonitor monitor{global};
-  auto manager = AqlItemBlockManager{monitor, SerializationFormat::SHADOWROWS};
+  auto manager = AqlItemBlockManager{monitor};
 
   struct {
     void operator()(std::ostream& stream, InputAqlItemRow const&) {

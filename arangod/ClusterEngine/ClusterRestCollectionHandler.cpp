@@ -34,7 +34,7 @@ ClusterRestCollectionHandler::ClusterRestCollectionHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestCollectionHandler(server, request, response) {}
 
-Result ClusterRestCollectionHandler::handleExtraCommandPut(
+futures::Future<Result> ClusterRestCollectionHandler::handleExtraCommandPut(
     std::shared_ptr<LogicalCollection> coll, std::string const& suffix,
     velocypack::Builder& builder) {
   if (suffix == "recalculateCount") {

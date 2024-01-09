@@ -66,6 +66,28 @@ function collectionComputedValuesClusterSuite() {
       });
       assertEqual(randValues[servers[0].id], randValues[servers[1].id]);
     },
+
+    testEmptyComputedValuesSpecialCase: function () {
+      let c = db._create(cn, {
+        numberOfShards: 1, replicationFactor: 2, computedValues: []
+      });
+
+      // create write transaction
+      let trx = db._createTransaction( {
+        collections: {
+          write: [ cn ]
+        }
+      });
+
+      let tc = trx.collection(cn);
+      tc.insert({_key: "foo"});
+
+      // now insert a document not within the transaction. it should not
+      // produce a deadlock
+      c.insert({_key: "bar"});
+
+      trx.commit();
+    },
   };
 }
 

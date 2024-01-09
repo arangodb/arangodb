@@ -31,8 +31,9 @@
 namespace arangodb::transaction {
 
 ReplicatedContext::ReplicatedContext(TransactionId globalId,
-                                     std::shared_ptr<TransactionState> state)
-    : SmartContext(state->vocbase(), globalId, state){};
+                                     std::shared_ptr<TransactionState> state,
+                                     OperationOrigin operationOrigin)
+    : SmartContext(state->vocbase(), globalId, state, operationOrigin) {}
 
 std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
     Options const& options, bool& responsibleForCommit) {
@@ -41,6 +42,6 @@ std::shared_ptr<TransactionState> ReplicatedContext::acquireState(
   return _state;
 }
 
-void ReplicatedContext::unregisterTransaction() noexcept { _state = nullptr; }
+void ReplicatedContext::unregisterTransaction() noexcept { _state.reset(); }
 
 }  // namespace arangodb::transaction

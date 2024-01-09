@@ -84,7 +84,8 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
     var shard = Object.keys(cinfo.shards)[0];
 
     if (replVersion === "2") {
-      const id = parseInt(shard.substr(1));
+      var shardsToLogs = helper.getShardsToLogsMapping(database, cinfo.id);
+      const id = shardsToLogs[shard];
       const spec = db._replicatedLog(id).status().specification.plan;
       let servers = Object.keys(spec.participantsConfig.participants);
       // make leader first server

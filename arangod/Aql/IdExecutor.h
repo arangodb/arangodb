@@ -96,7 +96,6 @@ class IdExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Enable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   // Only Supports SingleRowFetcher and ConstFetcher
   using Fetcher = UsedFetcher;

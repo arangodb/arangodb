@@ -38,7 +38,7 @@ export const useCreateTTLIndex = () => {
     return onCreateIndex({
       ...values,
       expireAfter: toNumber(values.expireAfter),
-      fields: values.fields.split(",")
+      fields: values.fields.split(",").map(field => field.trim())
     });
   };
   return { onCreate };

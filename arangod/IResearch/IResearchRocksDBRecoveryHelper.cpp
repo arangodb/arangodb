@@ -112,7 +112,11 @@ bool IResearchRocksDBRecoveryHelper::skip(Impl& impl) {
 
 template<bool Force>
 void IResearchRocksDBRecoveryHelper::clear() noexcept {
-  if constexpr (!Force) {
+  if constexpr (Force) {
+    if (_ranges.empty()) {
+      return;
+    }
+  } else {
     if (_indexes.size() < kMaxSize && _links.size() < kMaxSize &&
         _ranges.size() < kMaxSize) {
       return;
@@ -245,7 +249,7 @@ void IResearchRocksDBRecoveryHelper::LogData(rocksdb::Slice const& blob,
             continue;
           }
           if (!skip(**it)) {
-            (**it).afterTruncate(tick, nullptr);
+            (**it).truncateCommit({}, tick, nullptr);
           } else {
             (**it).setOutOfSync();
             *it = nullptr;
@@ -282,7 +286,6 @@ IResearchRocksDBRecoveryHelper::getRanges(uint64_t objectId) {
 
 IResearchRocksDBRecoveryHelper::Ranges
 IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
-  TRI_ASSERT(!_skipAllItems);
   auto collection = lookupCollection(objectId);
   if (!collection) {
     // TODO(MBkkt) it was ok in the old implementation

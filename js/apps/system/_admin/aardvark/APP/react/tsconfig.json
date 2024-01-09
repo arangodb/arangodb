@@ -17,7 +17,8 @@
     "sourceMap": true,
     "skipLibCheck": true,
     "allowJs": true,
-    "outDir": "build"
+    "outDir": "build",
+    "resolveJsonModule": true
   },
   "exclude": [
     "node_modules",

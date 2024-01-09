@@ -1,0 +1,23 @@
+name: arangodb_request_statistics_memory_usage
+introducedIn: "3.12.0"
+help: |
+  Total memory usage of request statistics.
+unit: bytes
+type: gauge
+category: Statistics
+complexity: advanced
+exposedBy:
+  - coordinator
+  - dbserver
+  - agent
+  - single
+description: |
+  Total memory usage of request statistics. 
+  If the startup option `--server.statistics` is set to `true`, then some
+  request statistics are built up in memory for incoming requests.
+  Some memory is pre-allocated at startup for higher efficiency.
+  It is expected that the memory usage reported by this metric remains
+  relatively constant over time. It should grow only when there are bursts of 
+  incoming requests.
+  No memory will be allocated for request statistics if the startup option
+  is set to `false`.

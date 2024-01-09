@@ -26,15 +26,11 @@
 #include "RestHandler/RestBaseHandler.h"
 
 namespace arangodb {
-namespace velocypack {
-class Builder;
-}
 
-class RestSupportInfoHandler : public arangodb::RestBaseHandler {
+class RestSupportInfoHandler : public RestBaseHandler {
  public:
   RestSupportInfoHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
- public:
   char const* name() const override final { return "RestSupportInfoHandler"; }
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
   RestStatus execute() override;

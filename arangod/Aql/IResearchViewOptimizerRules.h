@@ -29,38 +29,42 @@
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 
 namespace arangodb {
-
 namespace aql {
+
 class Optimizer;
 struct OptimizerRule;
 class ExecutionPlan;
-}  // namespace aql
 
+}  // namespace aql
 namespace iresearch {
+
+// Find immutable part of search condition for subqueries or inner loops
+// Regroup them to the two parts: immutable mutable
+void immutableSearchCondition(aql::Optimizer* opt,
+                              std::unique_ptr<aql::ExecutionPlan> plan,
+                              aql::OptimizerRule const& rule);
 
 // Moves document materialization from view nodes to materialize nodes.
 void lateDocumentMaterializationArangoSearchRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const& rule);
+    aql::Optimizer* opt, std::unique_ptr<aql::ExecutionPlan> plan,
+    aql::OptimizerRule const& rule);
 
-// Move search and scorers into views.
-void handleViewsRule(arangodb::aql::Optimizer* opt,
-                     std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-                     arangodb::aql::OptimizerRule const& rule);
+// Move search and scorers into views
+// Replace variables to avoid materialization document at all
+void handleViewsRule(aql::Optimizer* opt,
+                     std::unique_ptr<aql::ExecutionPlan> plan,
+                     aql::OptimizerRule const& rule);
 
 // Move constrained sort into views.
-void handleConstrainedSortInView(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const& rule);
+void handleConstrainedSortInView(aql::Optimizer* opt,
+                                 std::unique_ptr<aql::ExecutionPlan> plan,
+                                 aql::OptimizerRule const& rule);
 
 // Scatter view query in cluster this rule inserts scatter, gather and
 // remote nodes so operations on sharded views.
-void scatterViewInClusterRule(
-    arangodb::aql::Optimizer* opt,
-    std::unique_ptr<arangodb::aql::ExecutionPlan> plan,
-    arangodb::aql::OptimizerRule const& rule);
+void scatterViewInClusterRule(aql::Optimizer* opt,
+                              std::unique_ptr<aql::ExecutionPlan> plan,
+                              aql::OptimizerRule const& rule);
 
 }  // namespace iresearch
 }  // namespace arangodb

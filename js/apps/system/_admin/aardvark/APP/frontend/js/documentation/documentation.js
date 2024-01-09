@@ -1,5 +1,4 @@
-/*jshint browser: true */
-/*global SwaggerUi, $, hljs, arangoHelper */
+/*global SwaggerUi, hljs */
 (function() {
   "use strict";
   var query = window.location.search.substring(1);

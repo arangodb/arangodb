@@ -39,10 +39,10 @@
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
-#include "Basics/conversions.h"
 #include "Basics/error.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogAppender.h"
@@ -310,7 +310,6 @@ appropriate log topics to the `info` log level.)");
       ->addOption("--log.max-entry-length",
                   "The maximum length of a log entry (in bytes).",
                   new UInt32Parameter(&_maxEntryLength))
-      .setIntroducedIn(30709)
       .setLongDescription(R"(**Note**: This option does not include audit log
 messages. See `--audit.max-entry-length` instead.
 
@@ -350,7 +349,6 @@ Use `--log.time-format timestamp-micros` instead.)");
           "--log.time-format", "The time format to use in logs.",
           new DiscreteValuesParameter<StringParameter>(
               &_timeFormatString, LogTimeFormats::getAvailableFormatNames()))
-      .setIntroducedIn(30500)
       .setLongDescription(R"(Overview over the different options:
 
 Format                  | Example                  | Description
@@ -368,7 +366,6 @@ Format                  | Example                  | Description
   options
       ->addOption("--log.ids", "Log unique message IDs.",
                   new BooleanParameter(&_showIds))
-      .setIntroducedIn(30500)
       .setLongDescription(R"(Each log invocation in the ArangoDB source code
 contains a unique log ID, which can be used to quickly find the location in the
 source code that produced a specific log message.
@@ -391,11 +388,10 @@ contains a single character with the server's role. The roles are:
 - `P`: Primary / DB-Server
 - `A`: Agent)");
 
-  options
-      ->addOption("--log.file-mode",
-                  "mode to use for new log file, umask will be applied as well",
-                  new StringParameter(&_fileMode))
-      .setIntroducedIn(30405);
+  options->addOption(
+      "--log.file-mode",
+      "mode to use for new log file, umask will be applied as well",
+      new StringParameter(&_fileMode));
 
   if (_threaded) {
     // this option only makes sense for arangod, not for arangosh etc.
@@ -404,9 +400,6 @@ contains a single character with the server's role. The roles are:
                     "Whether the log API is enabled (true) or not (false), or "
                     "only enabled for superuser JWT (jwt).",
                     new StringParameter(&_apiSwitch))
-        .setIntroducedIn(30411)
-        .setIntroducedIn(30506)
-        .setIntroducedIn(30605)
         .setLongDescription(R"(Credentials are not written to log files.
 Nevertheless, some logged data might be sensitive depending on the context of
 the deployment. For example, if request logging is switched on, user requests
@@ -455,12 +448,10 @@ The object attributes produced for each log message are:
 | `message`  | the actual log message payload)");
 
 #ifdef ARANGODB_HAVE_SETGID
-  options
-      ->addOption(
-          "--log.file-group",
-          "group to use for new log file, user must be a member of this group",
-          new StringParameter(&_fileGroup))
-      .setIntroducedIn(30405);
+  options->addOption(
+      "--log.file-group",
+      "group to use for new log file, user must be a member of this group",
+      new StringParameter(&_fileGroup));
 #endif
 
   options
@@ -556,6 +547,23 @@ printed in the thread that triggered the log message. This is non-optimal for
 performance but can aid debugging. If set to `false`, log messages are handed
 off to an extra logging thread, which asynchronously writes the log messages.)");
 
+  options
+      ->addOption(
+          "--log.max-queued-entries",
+          "Upper limit of log entries that are queued in a background thread.",
+          new UInt32Parameter(&_maxQueuedLogMessages),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31012)
+      .setIntroducedIn(31105)
+      .setIntroducedIn(31200)
+      .setLongDescription(R"(Log entries are pushed on a queue for asynchronous
+writing unless you enable the `--log.force-direct` startup option. If you use a
+slow log output (e.g. syslog), the queue might grow and eventually overflow.
+
+You can configure the upper bound of the queue with this option. If the queue is
+full, log entries are written synchronously until the queue has space again.)");
+
   options->addOption(
       "--log.request-parameters",
       "include full URLs and HTTP request parameters in trace logs",
@@ -630,7 +638,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
   if (!_fileMode.empty()) {
     try {
       int result = std::stoi(_fileMode, nullptr, 8);
-      LogAppenderFile::setFileMode(result);
+      LogAppenderFileFactory::setFileMode(result);
     } catch (...) {
       LOG_TOPIC("797c2", FATAL, arangodb::Logger::FIXME)
           << "expecting an octal number for log.file-mode, got '" << _fileMode
@@ -641,9 +649,11 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
 #ifdef ARANGODB_HAVE_SETGID
   if (!_fileGroup.empty()) {
-    int gidNumber = TRI_Int32String(_fileGroup.c_str());
+    bool valid = false;
+    int gidNumber = NumberUtils::atoi_positive<int>(
+        _fileGroup.data(), _fileGroup.data() + _fileGroup.size(), valid);
 
-    if (TRI_errno() == TRI_ERROR_NO_ERROR && gidNumber >= 0) {
+    if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
       group* g = getgrgid(gidNumber);
 
@@ -655,8 +665,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      std::string name = _fileGroup;
-      group* g = getgrnam(name.c_str());
+      group* g = getgrnam(_fileGroup.c_str());
 
       if (g != nullptr) {
         gidNumber = g->gr_gid;
@@ -674,7 +683,7 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     }
 
-    LogAppenderFile::setFileGroup(gidNumber);
+    LogAppenderFileFactory::setFileGroup(gidNumber);
   }
 #endif
 
@@ -731,9 +740,9 @@ void LoggerFeature::prepare() {
   }
 
   if (_forceDirect || _supervisor) {
-    Logger::initialize(server(), false);
+    Logger::initialize(server(), false, _maxQueuedLogMessages);
   } else {
-    Logger::initialize(server(), _threaded);
+    Logger::initialize(server(), _threaded, _maxQueuedLogMessages);
   }
 }
 

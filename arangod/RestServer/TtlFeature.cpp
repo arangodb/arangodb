@@ -41,6 +41,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -337,8 +338,10 @@ class TtlThread final : public ServerThread<ArangodServer> {
               VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
+          auto origin =
+              transaction::OperationOriginInternal{"ttl index cleanup"};
           auto query = aql::Query::create(
-              transaction::StandaloneContext::Create(*vocbase),
+              transaction::StandaloneContext::create(*vocbase, origin),
               aql::QueryString(::removeQuery), std::move(bindVars));
           query->collections().add(collection->name(), AccessMode::Type::WRITE,
                                    aql::Collection::Hint::Shard);

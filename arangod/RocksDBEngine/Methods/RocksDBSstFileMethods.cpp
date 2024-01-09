@@ -41,8 +41,9 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
     bool isForeground, rocksdb::DB* rootDB,
     RocksDBTransactionCollection* trxColl, RocksDBIndex& ridx,
     rocksdb::Options const& dbOptions, std::string const& idxPath,
-    StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(isForeground),
       _rootDB(rootDB),
       _trxColl(trxColl),
@@ -54,12 +55,12 @@ RocksDBSstFileMethods::RocksDBSstFileMethods(
       _usageTracker(usageTracker),
       _bytesWrittenToDir(0) {}
 
-RocksDBSstFileMethods::RocksDBSstFileMethods(rocksdb::DB* rootDB,
-                                             rocksdb::ColumnFamilyHandle* cf,
-                                             rocksdb::Options const& dbOptions,
-                                             std::string const& idxPath,
-                                             StorageUsageTracker& usageTracker)
-    : RocksDBMethods(),
+RocksDBSstFileMethods::RocksDBSstFileMethods(
+    rocksdb::DB* rootDB, rocksdb::ColumnFamilyHandle* cf,
+    rocksdb::Options const& dbOptions, std::string const& idxPath,
+    StorageUsageTracker& usageTracker,
+    RocksDBMethodsMemoryTracker& memoryTracker)
+    : RocksDBBatchedBaseMethods(memoryTracker),
       _isForeground(false),
       _rootDB(rootDB),
       _trxColl(nullptr),
@@ -223,4 +224,8 @@ rocksdb::Status RocksDBSstFileMethods::SingleDelete(
 
 void RocksDBSstFileMethods::PutLogData(rocksdb::Slice const& blob) {
   TRI_ASSERT(false);
+}
+
+size_t RocksDBSstFileMethods::currentWriteBatchSize() const noexcept {
+  return _bytesToWriteCount;
 }

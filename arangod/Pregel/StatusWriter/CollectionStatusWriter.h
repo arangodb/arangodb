@@ -27,6 +27,8 @@
 
 #include "Inspection/Format.h"
 #include "Inspection/Types.h"
+#include "Transaction/Hints.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 #include "Utils/DatabaseGuard.h"
@@ -50,7 +52,7 @@ namespace arangodb::pregel::statuswriter {
 struct CollectionStatusWriter : StatusWriterInterface {
   CollectionStatusWriter(TRI_vocbase_t& vocbase,
                          ExecutionNumber& executionNumber);
-  CollectionStatusWriter(TRI_vocbase_t& vocbase);
+  explicit CollectionStatusWriter(TRI_vocbase_t& vocbase);
 
   [[nodiscard]] auto createResult(VPackSlice data) -> OperationResult override;
   [[nodiscard]] auto readResult() -> OperationResult override;
@@ -81,7 +83,8 @@ struct CollectionStatusWriter : StatusWriterInterface {
                                            Result& transactionResult,
                                            OperationResult&& opRes) const
       -> OperationResult;
-  [[nodiscard]] auto ctx() -> std::shared_ptr<transaction::Context> const;
+  [[nodiscard]] auto ctx(transaction::OperationOrigin)
+      -> std::shared_ptr<transaction::Context> const;
 
  private:
   DatabaseGuard _vocbaseGuard;

@@ -576,6 +576,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
     case EN::REMOTE:
     case EN::SUBQUERY:
     case EN::INDEX:
+    case EN::JOIN:
     case EN::RETURN:
     case EN::SORT:
     case EN::ENUMERATE_COLLECTION:

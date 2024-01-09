@@ -236,8 +236,10 @@ bool FieldMeta::init(
           // For cluster only check cache to avoid ClusterInfo locking issues
           // analyzer should have been populated via 'analyzerDefinitions'
           // above.
-          analyzer = analyzers.get(name, QueryAnalyzerRevisions::QUERY_LATEST,
-                                   ServerState::instance()->isClusterRole());
+          analyzer = analyzers.get(
+              name, QueryAnalyzerRevisions::QUERY_LATEST,
+              transaction::OperationOriginInternal{"fetching analyzer"},
+              ServerState::instance()->isClusterRole());
 
           if (!analyzer) {
             errorField = absl::StrCat(kFieldName, ".", value.stringView());
@@ -479,7 +481,7 @@ bool FieldMeta::init(
   _hasNested = !_nested.empty();
   if (!_hasNested) {
     for (auto const& f : _fields) {
-      if (!f.second._nested.empty()) {
+      if (f.second._hasNested) {
         _hasNested = true;
         break;
       }

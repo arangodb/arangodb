@@ -1,6 +1,4 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global _, Backbone, templateEngine, $, window, randomColor, arangoHelper, nv, d3 */
+/* global templateEngine, randomColor, nv */
 (function () {
   'use strict';
 
@@ -73,7 +71,10 @@
       this.$el.html(this.template.render({
         mode: this.mode,
         info: this.info,
-        nodes: this.nodes
+        nodes: this.nodes,
+        parsedVersion: window.versionHelper.toDocuVersion(
+          window.frontendConfig.version.version
+        )
       }));
 
       this.getStateData();

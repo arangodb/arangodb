@@ -1,6 +1,3 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global window, _, arangoHelper, $ */
 (function () {
   'use strict';
 
@@ -420,6 +417,25 @@
 
       return queryObj;
     },
+
+    recalculateCount: function (callback) {
+      $.ajax({
+        type: "PUT",
+        url: arangoHelper.databaseUrl(
+          "/_api/collection/" +
+            encodeURIComponent(this.collectionID) +
+            "/recalculateCount"
+        ),
+        processData: false,
+        success: function (data) {
+          callback(false, data);
+        },
+        error: function (data) {
+          callback(true, data);
+        },
+      });
+    },
+
 
     uploadDocuments: function (file, callback) {
       var analyzeResponse = function (data) {

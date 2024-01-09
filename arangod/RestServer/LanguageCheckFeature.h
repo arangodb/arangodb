@@ -24,6 +24,7 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+
 namespace arangodb {
 class LanguageCheckFeature final : public ArangodFeature {
  public:

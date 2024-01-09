@@ -37,12 +37,15 @@
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 
 namespace arangodb {
 class IndexIterator;
 class LogicalCollection;
 struct IndexIteratorOptions;
 struct ResourceMonitor;
+struct AqlIndexStreamIterator;
+struct IndexStreamOptions;
 
 namespace velocypack {
 class Builder;
@@ -50,7 +53,6 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
-struct AttributeNamePath;
 class Projections;
 class SortCondition;
 struct Variable;
@@ -102,7 +104,8 @@ class Index {
     TRI_IDX_TYPE_PERSISTENT_INDEX,
     TRI_IDX_TYPE_IRESEARCH_LINK,
     TRI_IDX_TYPE_NO_ACCESS_INDEX,
-    TRI_IDX_TYPE_ZKD_INDEX,
+    TRI_IDX_TYPE_MDI_INDEX,
+    TRI_IDX_TYPE_MDI_PREFIXED_INDEX,
     TRI_IDX_TYPE_INVERTED_INDEX
   };
 
@@ -188,7 +191,7 @@ class Index {
   }
 
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  inline bool isAttributeExpanded(size_t i) const {
+  bool isAttributeExpanded(size_t i) const {
     if (i >= _fields.size()) {
       return false;
     }
@@ -196,7 +199,7 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool isAttributeExpanded(
+  bool isAttributeExpanded(
       std::vector<basics::AttributeName> const& attribute) const {
     for (auto const& it : _fields) {
       if (!basics::AttributeName::namesMatch(attribute, it)) {
@@ -208,9 +211,8 @@ class Index {
   }
 
   /// @brief whether or not any attribute is expanded
-  inline bool attributeMatches(
-      std::vector<basics::AttributeName> const& attribute,
-      bool isPrimary = false) const {
+  bool attributeMatches(std::vector<basics::AttributeName> const& attribute,
+                        bool isPrimary = false) const {
     for (auto const& it : _fields) {
       if (basics::AttributeName::isIdentical(attribute, it, true)) {
         return true;
@@ -224,8 +226,30 @@ class Index {
     return false;
   }
 
+  /// @brief whether or not the given attribute vector matches any of the index
+  /// fields In case it does, the position will be returned as well.
+  std::pair<bool, size_t> attributeMatchesWithPos(
+      std::vector<basics::AttributeName> const& attribute,
+      bool isPrimary = false) const {
+    size_t pos = 0;
+    for (auto const& it : _fields) {
+      if (basics::AttributeName::isIdentical(attribute, it, true)) {
+        return {true, pos};
+      }
+      pos++;
+    }
+    if (isPrimary) {
+      static std::vector<basics::AttributeName> const vec_id{
+          {StaticStrings::IdString, false}};
+      return basics::AttributeName::isIdentical(attribute, vec_id, true)
+                 ? std::pair<bool, size_t>(true, pos)
+                 : std::pair<bool, size_t>(false, -1);
+    }
+    return {false, -1};
+  }
+
   /// @brief whether or not any attribute is expanded
-  inline bool hasExpansion() const { return _useExpansion; }
+  bool hasExpansion() const { return _useExpansion; }
 
   /// @brief if index needs explicit reversal and wouldn`t be reverted by
   /// storage rollback
@@ -241,16 +265,16 @@ class Index {
   }
 
   /// @brief return the underlying collection
-  inline LogicalCollection& collection() const { return _collection; }
+  LogicalCollection& collection() const { return _collection; }
 
   /// @brief return a contextual string for logging
   std::string context() const;
 
   /// @brief whether or not the index is sparse
-  inline bool sparse() const { return _sparse; }
+  bool sparse() const { return _sparse; }
 
   /// @brief whether or not the index is unique
-  inline bool unique() const { return _unique; }
+  bool unique() const { return _unique; }
 
   /// @brief validates that field names don't start or end with ":"
   static void validateFieldsWithSpecialCase(velocypack::Slice fields);
@@ -395,10 +419,6 @@ class Index {
   // called when the index is dropped
   virtual Result drop();
 
-  /// @brief called after the collection was truncated
-  /// @param tick at which truncate was applied
-  virtual void afterTruncate(TRI_voc_tick_t, transaction::Methods*) {}
-
   /// @brief whether or not the filter condition is supported by the index
   /// returns detailed information about the costs associated with using this
   /// index
@@ -438,6 +458,14 @@ class Index {
       aql::AstNode const* op, aql::Variable const* reference,
       containers::FlatHashSet<std::string>& nonNullAttributes, bool) const;
 
+  virtual bool supportsStreamInterface(
+      IndexStreamOptions const&) const noexcept {
+    return false;
+  }
+
+  virtual std::unique_ptr<AqlIndexStreamIterator> streamForCondition(
+      transaction::Methods* trx, IndexStreamOptions const&);
+
   virtual bool canWarmup() const noexcept;
   virtual Result warmup();
 
@@ -458,6 +486,13 @@ class Index {
   /// @brief generate error result
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, std::string_view key = {}) const;
+
+  void progress(double p) noexcept {
+    _progress.store(p, std::memory_order_relaxed);
+  }
+  double progress() const noexcept {
+    return _progress.load(std::memory_order_relaxed);
+  }
 
  protected:
   static std::vector<std::vector<basics::AttributeName>> parseFields(
@@ -485,6 +520,7 @@ class Index {
   LogicalCollection& _collection;
   std::string _name;
   std::vector<std::vector<basics::AttributeName>> const _fields;
+  std::atomic<double> _progress;
   bool const _useExpansion;
 
   mutable bool _unique;

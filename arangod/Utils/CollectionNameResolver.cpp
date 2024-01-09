@@ -29,9 +29,9 @@
 #include "Basics/ReadLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
-#include "Logger/LogMacros.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Logger/LogMacros.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
@@ -42,6 +42,9 @@ constexpr std::string_view kUnknown = "_unknown";
 
 }  // namespace
 namespace arangodb {
+
+CollectionNameResolver::CollectionNameResolver(TRI_vocbase_t& vocbase)
+    : _vocbase(vocbase), _serverRole(ServerState::instance()->getRole()) {}
 
 #if defined(__GNUC__)
 #pragma GCC diagnostic push

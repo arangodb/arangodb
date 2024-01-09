@@ -27,18 +27,22 @@
 
 #include <sys/ioctl.h>
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief returns the columns width
-////////////////////////////////////////////////////////////////////////////////
+namespace arangodb::terminal_utils {
 
-TRI_TerminalSize TRI_DefaultTerminalSize() {
+/// @brief returns the terminal size
+TerminalSize defaultTerminalSize() {
+  TerminalSize result;
+
   unsigned short values[4];
-
   int ret = ioctl(0, TIOCGWINSZ, &values);
   if (ret == -1) {
-    return TRI_DEFAULT_TERMINAL_SIZE;
+    return result;
   }
-  return TRI_TerminalSize{values[0], values[1]};
+  result.rows = values[0];
+  result.columns = values[1];
+  return result;
 }
+
+}  // namespace arangodb::terminal_utils
 
 #endif

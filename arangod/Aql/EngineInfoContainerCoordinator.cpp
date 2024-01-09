@@ -23,14 +23,12 @@
 
 #include "EngineInfoContainerCoordinator.h"
 
-#include "Aql/AqlItemBlockSerializationFormat.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/Query.h"
-#include "Aql/QueryRegistry.h"
-#include "Basics/ScopeGuard.h"
+#include "Aql/SharedQueryState.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "VocBase/ticks.h"
@@ -59,28 +57,29 @@ void EngineInfoContainerCoordinator::EngineInfo::addNode(ExecutionNode* en) {
 }
 
 Result EngineInfoContainerCoordinator::EngineInfo::buildEngine(
-    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isfirst,
+    Query& query, MapRemoteToSnippet const& dbServerQueryIds, bool isFirst,
     std::unique_ptr<ExecutionEngine>& engine) const {
   TRI_ASSERT(!_nodes.empty());
 
-  std::shared_ptr<SharedQueryState> sqs;
-  if (isfirst) {
-    sqs = query.sharedState();
+  if (isFirst) {
+    // use shared state of Query
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(), query.sharedState());
+  } else {
+    // create a separate shared state
+    engine = std::make_unique<ExecutionEngine>(
+        _id, query, query.itemBlockManager(),
+        std::make_shared<SharedQueryState>(query.vocbase().server()));
   }
-
-  engine =
-      std::make_unique<ExecutionEngine>(_id, query, query.itemBlockManager(),
-                                        SerializationFormat::SHADOWROWS, sqs);
 
   auto res = engine->createBlocks(_nodes, dbServerQueryIds);
   if (!res.ok()) {
     engine.reset();
-    return res;
+  } else {
+    TRI_ASSERT(engine->root() != nullptr);
   }
 
-  TRI_ASSERT(engine->root() != nullptr);
-
-  return {TRI_ERROR_NO_ERROR};
+  return res;
 }
 
 EngineId EngineInfoContainerCoordinator::EngineInfo::engineId() const {
@@ -97,7 +96,8 @@ EngineInfoContainerCoordinator::~EngineInfoContainerCoordinator() = default;
 
 void EngineInfoContainerCoordinator::addNode(ExecutionNode* node) {
   TRI_ASSERT(node->getType() != ExecutionNode::INDEX &&
-             node->getType() != ExecutionNode::ENUMERATE_COLLECTION);
+             node->getType() != ExecutionNode::ENUMERATE_COLLECTION &&
+             node->getType() != ExecutionNode::JOIN);
 
   TRI_ASSERT(!_engines.empty());
   TRI_ASSERT(!_engineStack.empty());
@@ -145,15 +145,12 @@ Result EngineInfoContainerCoordinator::buildEngines(
       coordSnippets.emplace_back(std::move(engine));
     }
   } catch (basics::Exception const& ex) {
-    return Result(ex.code(), ex.message());
+    return {ex.code(), ex.message()};
   } catch (std::exception const& ex) {
-    return Result(TRI_ERROR_INTERNAL, ex.what());
+    return {TRI_ERROR_INTERNAL, ex.what()};
   } catch (...) {
-    return Result(TRI_ERROR_INTERNAL);
+    return {TRI_ERROR_INTERNAL};
   }
 
-  // This deactivates the defered cleanup.
-  // From here on we rely on the AQL shutdown mechanism.
-  //  guard.cancel();
-  return Result();
+  return {};
 }

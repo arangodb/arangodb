@@ -116,16 +116,6 @@ class TokenTranslator : public TraverserCache {
     return it->second.get(StaticStrings::IdString).stringView();
   }
 
-  bool appendVertex(std::string_view idString, VPackBuilder& builder) override {
-    builder.add(translateVertex(idString));
-    return true;
-  }
-
-  bool appendVertex(std::string_view idString, AqlValue& result) override {
-    result = AqlValue(translateVertex(idString));
-    return true;
-  }
-
   AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
     auto it = _edges.find(VPackSlice(edgeTkn.vpack()));
     TRI_ASSERT(it != _edges.end());
@@ -431,7 +421,7 @@ class ShortestPathExecutorTest : public ::testing::Test {
   ShortestPathExecutorTest(ShortestPathTestParameters parameters_)
       : parameters(std::move(parameters_)),
         server{},
-        itemBlockManager(monitor, SerializationFormat::SHADOWROWS),
+        itemBlockManager(monitor),
         fakedQuery(server.createFakeQuery()),
         options(fakedQuery.get()),
         defaultOptions(*fakedQuery.get()),

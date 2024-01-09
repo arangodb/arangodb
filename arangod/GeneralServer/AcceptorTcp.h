@@ -26,10 +26,7 @@
 #include "GeneralServer/Acceptor.h"
 #include "GeneralServer/AsioSocket.h"
 
-#include <mutex>
-
-namespace arangodb {
-namespace rest {
+namespace arangodb::rest {
 
 template<SocketType T>
 class AcceptorTcp final : public Acceptor {
@@ -45,10 +42,9 @@ class AcceptorTcp final : public Acceptor {
   void asyncAccept() override;
 
  private:
-  void performHandshake(std::unique_ptr<AsioSocket<T>>);
+  void performHandshake(std::shared_ptr<AsioSocket<T>>);
 
  private:
   asio_ns::ip::tcp::acceptor _acceptor;
 };
-}  // namespace rest
-}  // namespace arangodb
+}  // namespace arangodb::rest

@@ -50,8 +50,7 @@ void DistributeConsumerNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   TRI_ASSERT(hasDependency());
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
@@ -66,14 +65,17 @@ std::unique_ptr<ExecutionBlock> DistributeConsumerNode::createBlock(
 }
 
 ExecutionNode* DistributeConsumerNode::clone(ExecutionPlan* plan,
-                                             bool withDependencies,
-                                             bool withProperties) const {
+                                             bool withDependencies) const {
   auto clone = cloneHelper(
       std::make_unique<DistributeConsumerNode>(plan, _id, getDistributeId()),
-      withDependencies, withProperties);
+      withDependencies);
 
   static_cast<DistributeConsumerNode*>(clone)->isResponsibleForInitializeCursor(
       _isResponsibleForInitializeCursor);
 
   return clone;
+}
+
+size_t DistributeConsumerNode::getMemoryUsedBytes() const {
+  return sizeof(*this);
 }

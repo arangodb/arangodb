@@ -55,13 +55,17 @@
 #include "RestServer/FileDescriptorsFeature.h"
 #include "RestServer/IOHeartbeatThread.h"
 #include "RestServer/QueryRegistryFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "Transaction/OperationOrigin.h"
 #include "Utilities/NameValidator.h"
 #include "Utils/CollectionNameResolver.h"
 #include "Utils/CursorRepository.h"
 #include "Utils/Events.h"
+#ifdef USE_V8
 #include "V8Server/V8DealerFeature.h"
+#endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -109,7 +113,9 @@ DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
   auto& feature = server().getFeature<DatabaseFeature>();
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
+#endif
   int cleanupCycles = 0;
 
   auto& engine = server().getFeature<EngineSelectorFeature>().engine();
@@ -153,7 +159,11 @@ void DatabaseManagerThread::run() {
         iresearch::cleanupDatabase(*database);
 
         auto* queryRegistry = QueryRegistryFeature::registry();
+#ifdef USE_V8
         if (dealer.isEnabled() || queryRegistry != nullptr) {
+#else
+        if (queryRegistry != nullptr) {
+#endif
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
           std::lock_guard lockCreate{feature._databaseCreateLock};
@@ -161,9 +171,11 @@ void DatabaseManagerThread::run() {
           auto* same = feature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
+#ifdef USE_V8
             if (dealer.isEnabled()) {
               dealer.cleanupDatabase(*database);
             }
+#endif
             if (queryRegistry != nullptr) {
               queryRegistry->destroy(database->name());
             }
@@ -260,15 +272,23 @@ void DatabaseFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
   options->addSection("database", "database options");
 
+  auto static const allowedReplicationVersions = [] {
+    auto result = std::unordered_set<std::string>();
+    for (auto const& version : replication::allowedVersions) {
+      result.emplace(replication::versionToString(version));
+    }
+    return result;
+  }();
+
   options
       ->addOption("--database.default-replication-version",
-                  "default replication version, can be overwritten "
+                  "The default replication version, can be overwritten "
                   "when creating a new database, possible values: 1, 2",
-                  new replication::ReplicationVersionParameter(
-                      &_defaultReplicationVersion),
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_defaultReplicationVersion, allowedReplicationVersions),
                   options::makeDefaultFlags(options::Flags::Uncommon,
                                             options::Flags::Experimental))
-      .setIntroducedIn(31100);
+      .setIntroducedIn(31200);
 
   options->addOption(
       "--database.wait-for-sync",
@@ -310,6 +330,15 @@ void DatabaseFeature::collectOptions(
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30807)
       .setIntroducedIn(30902);
+
+  options
+      ->addOption("--database.max-databases",
+                  "The maximum number of databases that can exist in parallel.",
+                  new options::SizeTParameter(&_maxDatabases))
+      .setLongDescription(R"(If the maximum number of databases is reached, no
+additional databases can be created in the deployment. In order to create additional
+databases, other databases need to be removed first.")")
+      .setIntroducedIn(31200);
 
   // the following option was obsoleted in 3.9
   options->addObsoleteOption(
@@ -366,19 +395,12 @@ void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
 }
 
 void DatabaseFeature::start() {
-  if (_extendedNames) {
-    LOG_TOPIC("2c0c6", WARN, arangodb::Logger::FIXME)
-        << "Enabling extended names for databases, collections, view, and "
-           "indexes "
-        << " is an experimental feature which can "
-           "cause incompatibility issues with not-yet-prepared drivers and "
-           "applications - do not use in production!";
-  }
-
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
   if (dealer.isEnabled()) {
     dealer.verifyAppPaths();
   }
+#endif
 
   // scan all databases
   velocypack::Builder builder;
@@ -422,11 +444,6 @@ void DatabaseFeature::start() {
           << "could not start IO check thread";
       FATAL_ERROR_EXIT();
     }
-  }
-
-  // activate deadlock detection in case we're not running in cluster mode
-  if (!ServerState::instance()->isRunningInCluster()) {
-    enableDeadlockDetection();
   }
 
   _started.store(true);
@@ -506,6 +523,14 @@ void DatabaseFeature::stop() {
         << ", cursors: " << currentCursorCount
         << ", queries: " << currentQueriesCount;
 #endif
+
+    // Replicated logs are being processed in the vocbase->stop() method.
+    // Note that it is necessary for replicated logs to be cleaned up only after
+    // the maintenance thread has been stopped. Otherwise, the maintenance
+    // thread may try to access the logs after they have been deleted. The
+    // maintenance thread is stopped during ClusterFeature::stop().
+    // The DatabaseFeature is stopped only after the ClusterFeature. Make sure
+    // that we keep things in that order.
     vocbase->stop();
 
     vocbase->processCollectionsOnShutdown([](LogicalCollection* collection) {
@@ -587,9 +612,19 @@ void DatabaseFeature::recoveryDone() {
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
+  // It's single active thread before recovery done,
+  // so we could use general purpose thread pool for this
+  std::vector<futures::Future<Result>> futures;
+  futures.reserve(_pendingRecoveryCallbacks.size());
   for (auto& entry : _pendingRecoveryCallbacks) {
-    auto result = entry();
-
+    futures.emplace_back(SchedulerFeature::SCHEDULER->queueWithFuture(
+        RequestLane::CLIENT_SLOW, std::move(entry)));
+  }
+  _pendingRecoveryCallbacks.clear();
+  // TODO(MBkkt) use single wait with early termination
+  // when it would be available
+  for (auto& future : futures) {
+    auto result = std::move(future).get();
     if (!result.ok()) {
       LOG_TOPIC("772a7", ERR, Logger::FIXME)
           << "recovery failure due to error from callback, error '"
@@ -599,8 +634,6 @@ void DatabaseFeature::recoveryDone() {
       THROW_ARANGO_EXCEPTION(result);
     }
   }
-
-  _pendingRecoveryCallbacks.clear();
 
   if (ServerState::instance()->isCoordinator()) {
     return;
@@ -658,13 +691,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   }
   result = nullptr;
 
-  bool extendedNames = this->extendedNames();
-  if (auto res = DatabaseNameValidator::validateName(/*allowSystem*/ false,
-                                                     extendedNames, name);
-      res.fail()) {
-    return res;
-  }
-
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
   // create database in storage engine
@@ -681,6 +707,18 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         // name already in use
         return Result(TRI_ERROR_ARANGO_DUPLICATE_NAME,
                       std::string("duplicate database name '") + name + "'");
+      }
+
+      if (ServerState::instance()->isSingleServerOrCoordinator() &&
+          databases->size() >= maxDatabases()) {
+        // intentionally do not validate number of databases on DB servers,
+        // because they only carry out operations that are initiated by
+        // coordinators
+        return {TRI_ERROR_RESOURCE_LIMIT,
+                absl::StrCat(
+                    "unable to create additional database because it would "
+                    "exceed the configured maximum number of databases (",
+                    maxDatabases(), ")")};
       }
     }
 
@@ -703,10 +741,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
         return Result(TRI_ERROR_INTERNAL, std::move(msg));
       }
 
-      // enable deadlock detection
-      vocbase->_deadlockDetector.enabled(
-          !ServerState::instance()->isRunningInCluster());
-
+#ifdef USE_V8
       auto& dealer = server().getFeature<V8DealerFeature>();
       if (dealer.isEnabled()) {
         auto r = dealer.createDatabase(name, std::to_string(dbId), true);
@@ -714,6 +749,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
           THROW_ARANGO_EXCEPTION(r);
         }
       }
+#endif
     }
 
     if (!engine.inRecovery()) {
@@ -774,6 +810,14 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
 
     TRI_vocbase_t* vocbase = it->second;
 
+    // Shutdown and clear replicated logs here, while they still have access to
+    // the vocbase. This also drops all shards and resources associated with
+    // these replicated logs, so essentially there should be no collections left
+    // in this vocbase after this method gets executed. Note that the remains of
+    // the replicated logs will still be present on disk. They will be erased in
+    // bulk while executing the `dropDatabase` method of the storage engine.
+    vocbase->dropReplicatedLogs();
+
     auto next = _databases.make(prev);
     next->erase(name);
 
@@ -794,14 +838,27 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     bool result = vocbase->markAsDropped();
     TRI_ASSERT(result);
 
+    // mark all collections in this database as deleted, too.
+    try {
+      auto collections = vocbase->collections(/*includeDeleted*/ false);
+      for (auto& c : collections) {
+        c->setDeleted();
+        c->deferDropCollection(TRI_vocbase_t::dropCollectionCallback);
+      }
+    } catch (std::exception const& ex) {
+      LOG_TOPIC("1f096", WARN, Logger::FIXME)
+          << "error while dropping collections in database '" << vocbase->name()
+          << "': " << ex.what();
+    }
+
     // invalidate all entries for the database
     aql::QueryCache::instance()->invalidate(vocbase);
 
     if (server().hasFeature<iresearch::IResearchAnalyzerFeature>()) {
       server().getFeature<iresearch::IResearchAnalyzerFeature>().invalidate(
-          *vocbase);
+          *vocbase,
+          transaction::OperationOriginInternal{"invalidating analyzers"});
     }
-
     auto queryRegistry = QueryRegistryFeature::registry();
     if (queryRegistry != nullptr) {
       queryRegistry->destroy(vocbase->name());
@@ -1102,7 +1159,9 @@ void DatabaseFeature::closeOpenDatabases() {
 }
 
 ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
+#ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
+#endif
 
   StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
@@ -1122,12 +1181,13 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         << "processing database: " << it.toJson();
 
     velocypack::Slice deleted = it.get("deleted");
-    if (deleted.isBoolean() && deleted.getBoolean()) {
+    if (deleted.isTrue()) {
       // ignore deleted databases here
       continue;
     }
 
     auto name = it.get("name").stringView();
+#ifdef USE_V8
     if (dealer.isEnabled()) {
       auto id = basics::VelocyPackHelper::getStringView(it.get("id"), {});
       r = dealer.createDatabase(name, id, false);
@@ -1135,6 +1195,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
         break;
       }
     }
+#endif
 
     // open the database and scan collections in it
 
@@ -1144,14 +1205,22 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
     // we don't want the server start to fail here in case some
     // invalid settings are present
     info.strictValidation(false);
+
+    // do not validate database names for existing databases.
+    // the rationale is that if a database was already created with
+    // an extended name, we should not declare it invalid and abort
+    // the startup once the extended names option is turned off.
+    info.validateNames(false);
+
     auto res = info.load(it, velocypack::Slice::emptyArraySlice());
 
     if (res.fail()) {
       std::string errorMsg;
       // note: TRI_ERROR_ARANGO_DATABASE_NAME_INVALID should not be
       // used anymore in 3.11 and higher.
-      if (res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
-          res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME)) {
+      bool isNameError = res.is(TRI_ERROR_ARANGO_DATABASE_NAME_INVALID) ||
+                         res.is(TRI_ERROR_ARANGO_ILLEGAL_NAME);
+      if (isNameError) {
         // special case: if we find an invalid database name during startup,
         // we will give the user some hint how to fix it
         absl::StrAppend(&errorMsg, res.errorMessage(), ": '", name, "'");
@@ -1171,8 +1240,15 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
                         "': ", res.errorMessage());
       }
 
-      res.reset(res.errorNumber(), std::move(errorMsg));
-      THROW_ARANGO_EXCEPTION(res);
+      if (!isNameError) {
+        // rethrow all errors but "illegal name" errors.
+        // the "illegal name" errors will be silenced during startup,
+        // so that it will be possible to start a database server
+        // with existing databases with extended database names even
+        // if the extended names feature was turned off later.
+        res.reset(res.errorNumber(), std::move(errorMsg));
+        THROW_ARANGO_EXCEPTION(res);
+      }
     }
 
     auto database = engine.openDatabase(std::move(info), _upgrade);
@@ -1216,17 +1292,6 @@ void DatabaseFeature::closeDroppedDatabases() {
 
   for (auto p : dropped) {
     p->shutdown();
-  }
-}
-
-void DatabaseFeature::enableDeadlockDetection() {
-  auto databases = _databases.load();
-
-  for (auto& p : *databases) {
-    TRI_vocbase_t* vocbase = p.second;
-    TRI_ASSERT(vocbase != nullptr);
-
-    vocbase->_deadlockDetector.enabled(true);
   }
 }
 

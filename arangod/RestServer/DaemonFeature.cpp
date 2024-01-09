@@ -47,7 +47,6 @@
 #include "Logger/LogAppender.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
-#include "Logger/LoggerFeature.h"
 #include "Logger/LoggerStream.h"
 #include "ProgramOptions/Option.h"
 #include "ProgramOptions/Parameters.h"
@@ -120,9 +119,6 @@ void DaemonFeature::validateOptions(
         << "need --pid-file in --daemon mode";
     FATAL_ERROR_EXIT();
   }
-
-  LoggerFeature& logger = server().getFeature<LoggerFeature>();
-  logger.setBackgrounded(true);
 
   // make the pid filename absolute
   std::string currentDir = FileUtils::currentDirectory().result();
@@ -207,7 +203,7 @@ void DaemonFeature::checkPidFile() {
 
         try {
           oldPid = std::stol(oldPidS);
-        } catch (std::invalid_argument const& ex) {
+        } catch (std::invalid_argument const&) {
           LOG_TOPIC("bd20c", FATAL, arangodb::Logger::FIXME)
               << "pid-file '" << _pidFile << "' doesn't contain a number.";
           FATAL_ERROR_EXIT();

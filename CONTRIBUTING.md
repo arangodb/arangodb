@@ -30,7 +30,7 @@ yet.
 
 - If the modifications change any documented behavior or add new features,
   document the changes. It should be written in American English.
-  The documentation can be found in [docs repository](https://github.com/arangodb/docs#readme).
+  The documentation can be found in [`docs-hugo` repository](https://github.com/arangodb/docs-hugo#readme).
 
 - When done, run the complete test suite and make sure all tests pass.
 
@@ -93,22 +93,17 @@ during CI runs. The script will fail with a non-zero status if id collisions are
 found. You can use `openssl rand -hex 3 | sed 's/.//;s/\(.*\)/"\1"/'` or
 anything that suits you to generate a **5 hex digit log** id.
 
-### JSLint
-
-We switched to eslint a while back, but it is still named jslint for historical
-reasons.
-
-#### Checker Script
+### ESLint
 
 Use:
 
-    ./utils/gitjslint.sh
+    ./utils/giteslint.sh
 
 to lint your modified files.
 
-    ./utils/jslint.sh
+    ./utils/eslint.sh
 
-to find out whether all of your files comply to jslint. This is required to
+to find out whether all of your files comply to eslint. This is required to
 make continuous integration work smoothly.
 
 If you want to add new files / patterns to this make target, edit the respective
@@ -116,14 +111,7 @@ shell scripts.
 
 To be safe from committing non-linted stuff add **.git/hooks/pre-commit** with:
 
-    ./utils/jslint.sh
-
-#### Use jslint standalone for your js file
-
-If you want to search errors in your js file, jslint is very handy - like a
-compiler is for C/C++. You can invoke it like this:
-
-    bin/arangosh --jslint js/client/modules/@arangodb/testing.js
+    ./utils/eslint.sh
 
 ### Adding startup options
 
@@ -151,8 +139,6 @@ The _text_ is interpreted as **Markdown**, allowing formatting like
 `inline code`, fenced code blocks, and even tables.)");
 ```
 
-
-
 See [`lib/ProgramOptions/Option.h`](lib/ProgramOptions/Option.h) for details.
 
 For a feature that is added to v3.9.6, v3.10.2, and devel, you only need to set
@@ -176,6 +162,12 @@ In 3.10 and later:
     .setIntroducedIn(30906)
     .setIntroducedIn(31002)
 ```
+
+These version remarks can be removed again when all of the listed versions for
+an option are obsolete (and removed from the online documentation).
+
+Note that `.setDeprecatedIn()` should not be removed until the startup option is
+obsoleted or fully removed.
 
 ### Adding metrics
 
@@ -287,10 +279,15 @@ favorite browser and open the web interface.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
-### Cross Origin Policy (CORS) ERROR
+#### Cross Origin Policy (CORS) ERROR
 
-Our front-end development server currently runs on port:`3000`, while the backend runs on port:`8529` respectively. This implies that when the front-end sends a request to the backend would result in Cross-Origin-Policy security checks which recently got enforced by some browsers for security reasons. Until recently, we never had reports of CORS errors when running both the backend and front-end dev servers independently, however,
-we recently confirmed that this error occurs in ( Chrome v: 98.0.4758.102 and Firefox v: 96.0.1 ).
+Our front-end development server currently runs on port:`3000`, while the backend
+runs on port:`8529` respectively. This implies that when the front-end sends a
+request to the backend would result in Cross-Origin-Policy security checks which
+recently got enforced by some browsers for security reasons. Until recently, we
+never had reports of CORS errors when running both the backend and front-end dev
+servers independently, however, we recently confirmed that this error occurs in
+(Chrome version 98.0.4758.102 and Firefox version 96.0.1).
 
 In case you run into CORS errors while running the development server, here is a quick fix:
 
@@ -346,6 +343,58 @@ For example to commit a patch for the transitive dependency `is-wsl` of the depe
 and then run `npx patch-package node-netstat/is-wsl` in `js/node` and commit the resulting
 patch file in `js/node/patches`.
 
+#### Build the HTTP API documentation for Swagger-UI
+
+The REST HTTP API of the ArangoDB server is described using the OpenAPI
+specification (formerly Swagger). The source code is in documentation repository
+at <https://github.com/arangodb/docs-hugo>.
+
+To build the `api-docs.json` file for viewing the API documentation in the
+Swagger-UI of the web interface (**SUPPORT** section, **Rest API** tab), run
+the following commands in a terminal:
+
+1. Get a working copy of the documentation content with Git:
+
+   `git clone https://github.com/arangodb/docs-hugo`
+
+2. Enter the `docs-hugo` folder:
+
+   `cd docs-hugo`
+
+3. Optional: Switch to a tag, branch, or commit if you want to build the
+   API documentation for a specific version of the docs:
+   
+   `git checkout <reference>`
+
+4. Enter the folder of the Docker toolchain, `amd64` on the x86-64 architecture
+   and `arm64` on ARM CPUs:
+
+   ```shell
+   cd toolchain/docker/amd64 # x86-64
+   cd toolchain/docker/arm64 # ARM 64-bit
+   ```
+
+5. Set the environment variable `ENV` to any value other than `local` to make
+   the documentation tooling not start a live server in watch mode but rather
+   create and static build and exit:
+
+   ```shell
+   export ENV=static  # Bash
+   set -xg ENV static # Fish
+   $Env:ENV='static'  # PowerShell
+   ```
+
+6. Run Docker Compose using the plain build configuration for the documentation:
+
+   `docker compose -f docker-compose.plain-build.yml up --abort-on-container-exit`
+
+7. When the docs building finishes successfully, you can find the `api-docs.json`
+   files in `site/data/<version>/`.
+
+8. Copy the respective `api-docs.json` file into the ArangoDB working copy or
+   installation folder under `js/apps/system/_admin/aardvark/APP/api-docs.json`
+   and refresh the web interface.
+
 ---
 
 ## Running
@@ -357,6 +406,12 @@ Depending on the platform, ArangoDB tries to locate the temporary directory:
 - Linux/Mac: the environment variable `TMPDIR` is evaluated.
 - Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
 - all platforms: `--temp.path` overrules the above system provided settings.
+
+Our testing framework uses this path in the cluster test cases to set an
+environment variable `ARANGOTEST_ROOT_DIR` which is global to the running
+cluster, but specific to the current test suite. You can access this as 
+`global.instanceManager.rootDir` in Javascript client tests and via the
+environment variable on the C++ level.
 
 ### Local Cluster Startup
 

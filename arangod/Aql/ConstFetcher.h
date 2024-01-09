@@ -71,7 +71,7 @@ class ConstFetcher {
    *   size_t => Amount of documents skipped
    *   DataRange => Resulting data
    */
-  auto execute(AqlCallStack& stack)
+  auto execute(AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, DataRange>;
 
   void injectBlock(SharedAqlItemBlockPtr block, SkipResult skipped);

@@ -40,6 +40,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/BatchOptions.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
@@ -127,7 +128,8 @@ TEST_F(PhysicalCollectionTest, test_new_object_for_insert) {
 
   arangodb::transaction::BatchOptions batchOptions;
   auto trx = std::make_shared<arangodb::transaction::Methods>(
-      arangodb::transaction::StandaloneContext::Create(vocbase),
+      arangodb::transaction::StandaloneContext::create(
+          vocbase, arangodb::transaction::OperationOriginTestCase{}),
       arangodb::transaction::Options());
   Result res = transaction::helpers::newObjectForInsert(
       *trx, *collection, "dummy", doc->slice(), revisionId, builder, options,

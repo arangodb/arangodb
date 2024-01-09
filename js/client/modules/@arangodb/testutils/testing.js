@@ -86,12 +86,14 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `replicationVersion`: if set, define the default replication version. (Currently we have "1" and "2")',
   '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
   '   - `minPort`: minimum port number to use',
   '   - `maxPort`: maximum port number to use',
   '   - `forceJson`: don\'t use vpack - for better debugability',
   '   - `vst`: attempt to connect to the SUT via vst',
   '   - `http2`: attempt to connect to the SUT via http2',
+  '   - `bindBroadcast`: whether to work with loopback or 0.0.0.0',
   '   - `dbServers`: number of DB-Servers to use',
   '   - `coordinators`: number coordinators to use',
   '   - `agency`: if set to true agency tests are done',
@@ -99,6 +101,7 @@ let optionsDocumentation = [
   '   - `agencySupervision`: run supervision in agency',
   '   - `oneTestTimeout`: how long a single js testsuite  should run',
   '   - `isSan`: doubles oneTestTimeot value if set to true (for ASAN-related builds)',
+  '   - `memory`: amount of Host memory to distribute amongst the arangods',
   '   - `memprof`: take snapshots (requries memprof enabled build)',
   '   - `test`: path to single test to execute for "single" test target, ',
   '             or pattern to filter for other suites',
@@ -118,6 +121,8 @@ let optionsDocumentation = [
   '   - `buildType`: Windows build type (Debug, Release), leave empty on linux',
   '   - `configDir`: the directory containing the config files, defaults to',
   '                  etc/testing',
+  '   - `rtasource`: source directory of rta-makedata if not 3rdparty.',
+  '   - `rtaNegFilter`: inverse logic to --test.',
   '   - `writeXmlReport`:  Write junit xml report files',
   '   - `dumpAgencyOnError`: if we should create an agency dump if an error occurs',
   '   - `prefix`:    prefix for the tests in the xml reports',
@@ -133,14 +138,12 @@ let optionsDocumentation = [
   '                        filtering by asterisk is possible',
   '   - `exceptionCount`: how many exceptions should procdump be able to capture?',
   '   - `coreGen`: whether debuggers should generate a coredump after getting stacktraces',
+  '   - `coreAbort`: if we should use sigAbrt in order to terminate process instead of GDB attaching',
   '   - `coreCheck`: if set to true, we will attempt to locate a coredump to ',
   '                  produce a backtrace in the event of a crash',
   '',
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
-  '',
-  '   - `activefailover` starts active failover single server setup (active/passive)',
-  '   -  `singles` the number of servers in an active failover test, defaults to 2',
   '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
@@ -176,14 +179,17 @@ const optionsDefaults = {
   'agencySize': 3,
   'agencyWaitForSync': false,
   'agencySupervision': true,
+  'bindBroadcast': false,
   'build': '',
   'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
+  'replicationVersion': '1',
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
   'coreCheck': false,
+  'coreAbort': false,
   'coreDirectory': '/var/tmp',
   'coreGen': !isSan,
   'dbServers': 2,
@@ -200,16 +206,18 @@ const optionsDefaults = {
   'loopSleepWhen': 1,
   'minPort': 1024,
   'maxPort': 32768,
+  'memory': undefined,
   'memprof': false,
   'onlyNightly': false,
   'password': '',
   'protocol': 'tcp',
   'replication': false,
   'rr': false,
+  'rtasource': fs.makeAbsolute(fs.join('.', '3rdParty', 'rta-makedata')),
+  'rtaNegFilter': '',
   'exceptionFilter': null,
   'exceptionCount': 1,
   'sanitizer': isSan,
-  'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
@@ -228,6 +236,7 @@ const optionsDefaults = {
   'onlyGrey': false,
   'oneTestTimeout': (isInstrumented? 25 : 15) * 60,
   'isSan': isSan,
+  'sanOptions': {},
   'isCov': isCoverage,
   'isInstrumented': isInstrumented,
   'skipTimeCritical': false,
@@ -612,10 +621,26 @@ function unitTest (cases, options) {
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
   }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
+  if (options.isSan) {
+    ['ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'ASAN_OPTIONS',
+     'LSAN_OPTIONS',
+     'UBSAN_OPTIONS',
+     'TSAN_OPTIONS'].forEach(sanOpt => {
+       if (process.env.hasOwnProperty(sanOpt)) {
+         options.sanOptions[sanOpt] = {};
+         let opt = process.env[sanOpt];
+         opt.split(':').forEach(oneOpt => {
+           let pair = oneOpt.split('=');
+           if (pair.length === 2) {
+             options.sanOptions[sanOpt][pair[0]] = pair[1];
+           }
+         });
+       }
+     });
   }
-  
   try {
     pu.setupBinaries(options.build, options.buildType, options.configDir);
   }

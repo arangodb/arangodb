@@ -28,15 +28,12 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Collection.h>
-
-#include "Logger/LogMacros.h"
 
 class CollectionNameResolver;
 

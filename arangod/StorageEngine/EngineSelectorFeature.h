@@ -54,7 +54,7 @@ class EngineSelectorFeature final : public ArangodFeature {
                                    int>::type = 0>
   As& engine();
 
-  std::string_view engineName();
+  std::string_view engineName() const;
 
   static std::string_view defaultEngine();
 

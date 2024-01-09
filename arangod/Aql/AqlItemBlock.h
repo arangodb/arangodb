@@ -41,7 +41,6 @@ namespace aql {
 class AqlItemBlockManager;
 class BlockCollector;
 class SharedAqlItemBlockPtr;
-enum class SerializationFormat;
 
 // an <AqlItemBlock> is a <numRows>x<numRegisters> vector of <AqlValue>s (not
 // pointers). The size of an <AqlItemBlock> is the number of items.
@@ -77,8 +76,6 @@ class AqlItemBlock {
                RegisterCount numRegisters);
 
   void initFromSlice(arangodb::velocypack::Slice);
-
-  SerializationFormat getFormatType() const;
 
   /// @brief auxiliary struct to track how often the same AqlValue is
   /// present in an AqlItemBlock, and how much dynamic memory on instance

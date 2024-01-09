@@ -26,6 +26,7 @@
 #include "Actions/RestActionHandler.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ClusterFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/GeneralServerFeature.h"
 #include "GeneralServer/SslServerFeature.h"
@@ -36,7 +37,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/VocbaseInfo.h"
-#include "VocBase/vocbase.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -254,6 +254,9 @@ void RestAdminServerHandler::handleMode() {
 void RestAdminServerHandler::handleDatabaseDefaults() {
   auto defaults = getVocbaseOptions(server(), VPackSlice::emptyObjectSlice(),
                                     /*strictValidation*/ false);
+  if (server().getFeature<ClusterFeature>().forceOneShard()) {
+    defaults.sharding = "single";
+  }
   VPackBuilder builder;
 
   builder.openObject();

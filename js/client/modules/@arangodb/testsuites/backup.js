@@ -45,7 +45,7 @@ const log = (text) => {
   print(`${CYAN}${Date()}: Backup - ${text}${RESET}`);
 };
 const makePath = (name) => {
-  return tu.makePathUnix(tu.pathForTesting(`server/backup/${name}`));
+  return tu.makePathUnix(tu.pathForTesting(`client/backup/${name}`));
 };
 
 const asRoot = {
@@ -57,10 +57,10 @@ const syssys = 'systemsystem';
 const sysNoSys = 'systemnosystem';
 
 const testPaths = {
-  'BackupNoAuthSysTests': [tu.pathForTesting('server/backup/backup-system-incl-system.js')],
-  'BackupNoAuthNoSysTests': [tu.pathForTesting('server/backup/backup-system-excl-system.js')],
-  'BackupAuthSysTests': [tu.pathForTesting('server/backup/backup-system-incl-system.js')],
-  'BackupAuthNoSysTests': [tu.pathForTesting('server/backup/backup-system-excl-system.js')]
+  'BackupNoAuthSysTests': [tu.pathForTesting('client/backup/backup-system-incl-system.js')],
+  'BackupNoAuthNoSysTests': [tu.pathForTesting('client/backup/backup-system-excl-system.js')],
+  'BackupAuthSysTests': [tu.pathForTesting('client/backup/backup-system-incl-system.js')],
+  'BackupAuthNoSysTests': [tu.pathForTesting('client/backup/backup-system-excl-system.js')]
 };
 
 const failPreStartMessage = (msg) => {

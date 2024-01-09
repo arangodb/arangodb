@@ -146,16 +146,14 @@ class RebootTrackerTest
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(
             mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
-            128, 0.0)) {}
+            128, 0.0, 42)) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
-  static_assert(std::is_same<decltype(*SchedulerFeature::SCHEDULER),
-                             decltype(*scheduler)>::value,
-                "Use the correct scheduler in the tests");
+
   // ApplicationServer needs to be prepared in order for the scheduler to start
   // threads.
 

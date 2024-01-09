@@ -64,9 +64,9 @@ class IndexHint {
 
  private:
   HintType _type{None};
-  size_t _lookahead{1};
   bool _forced{false};
   bool _waitForSync{false};
+  size_t _lookahead{1};
 
   // actual hint is a recursive structure, with the data type determined by the
   // _type above; in the case of a nested IndexHint, the value of isForced() is

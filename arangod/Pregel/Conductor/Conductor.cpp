@@ -558,6 +558,11 @@ bool Conductor::canBeGarbageCollected() const {
   if (guard.owns_lock()) {
     if (_state == ExecutionState::CANCELED || _state == ExecutionState::DONE ||
         _state == ExecutionState::FATAL_ERROR) {
+      if (_vocbaseGuard.database().isDropped()) {
+        // if database is dropped already, we allow premature deletion before
+        // ttl.
+        return true;
+      }
       return (_expires != std::chrono::system_clock::time_point{} &&
               _expires <= std::chrono::system_clock::now());
     }

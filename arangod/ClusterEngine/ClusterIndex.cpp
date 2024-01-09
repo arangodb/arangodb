@@ -21,14 +21,22 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "ClusterIndex.h"
+#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Cluster/AgencyCache.h"
+#include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
+#include "ClusterIndex.h"
+#include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "RocksDBEngine/RocksDBZkdIndex.h"
+#include "Logger/LogMacros.h"
+#include "Network/NetworkFeature.h"
+#include "RocksDBEngine/RocksDBMultiDimIndex.h"
+#include "RocksDBEngine/RocksDBPrimaryIndex.h"
+#include "RocksDBEngine/RocksDBVPackIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -37,6 +45,7 @@
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
+using namespace arangodb::futures;
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
@@ -73,11 +82,23 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
     } else if (_indexType == TRI_IDX_TYPE_PRIMARY_INDEX) {
       // The Primary Index on RocksDB can serve _key and _id when being asked.
       _coveredFields = {
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
     } else if (_indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
       _coveredFields = Index::mergeFields(
           _fields,
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false));
+    } else if (_indexType == TRI_IDX_TYPE_MDI_INDEX) {
+      _coveredFields =
+          Index::parseFields(info.get(StaticStrings::IndexStoredValues),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+    } else if (_indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+      _prefixFields =
+          Index::parseFields(info.get(StaticStrings::IndexPrefixFields),
+                             /*allowEmpty*/ true, /*allowExpansion*/ false);
+      _coveredFields = Index::mergeFields(
+          _prefixFields,
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false));
     }
@@ -87,12 +108,14 @@ ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
       _estimates = true;
     } else if (_indexType == TRI_IDX_TYPE_HASH_INDEX ||
                _indexType == TRI_IDX_TYPE_SKIPLIST_INDEX ||
-               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX) {
+               _indexType == TRI_IDX_TYPE_PERSISTENT_INDEX ||
+               _indexType == TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
       if (VPackSlice s = info.get(StaticStrings::IndexEstimates);
           s.isBoolean()) {
         _estimates = s.getBoolean();
       }
-    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX) {
+    } else if (_indexType == TRI_IDX_TYPE_TTL_INDEX ||
+               _indexType == TRI_IDX_TYPE_MDI_INDEX) {
       _estimates = false;
     }
   }
@@ -116,11 +139,89 @@ void ClusterIndex::toVelocyPack(
 
   if (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
       _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX) {
+      _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
+      _indexType == Index::TRI_IDX_TYPE_MDI_INDEX) {
+    TRI_ASSERT(_indexType != TRI_IDX_TYPE_MDI_INDEX || !_estimates || _unique)
+        << oldtypeName(_indexType) << std::boolalpha
+        << " estimates = " << _estimates << " unique = " << _unique;
     builder.add(StaticStrings::IndexEstimates, VPackValue(_estimates));
   } else if (_indexType == Index::TRI_IDX_TYPE_TTL_INDEX) {
     // no estimates for the ttl index
     builder.add(StaticStrings::IndexEstimates, VPackValue(false));
+  }
+
+  if (_indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX) {
+    builder.add(arangodb::velocypack::Value(StaticStrings::IndexPrefixFields));
+    builder.openArray();
+
+    for (auto const& field : _prefixFields) {
+      std::string fieldString;
+      TRI_AttributeNamesToString(field, fieldString);
+      builder.add(VPackValue(fieldString));
+    }
+
+    builder.close();
+  }
+
+  if (inProgress()) {
+    double progress = 0;
+    double success = 0;
+    auto const shards = _collection.shardIds();
+    auto const body = VPackBuffer<uint8_t>();
+    auto* pool =
+        _collection.vocbase().server().getFeature<NetworkFeature>().pool();
+    std::vector<Future<network::Response>> futures;
+    futures.reserve(shards->size());
+    std::string const prefix = "/_api/index/";
+    network::RequestOptions reqOpts;
+    reqOpts.param("withHidden", "true");
+    // best effort. only displaying progress
+    reqOpts.timeout = network::Timeout(10.0);
+    for (auto const& shard : *shards) {
+      std::string const url =
+          prefix + shard.first + "/" + std::to_string(_iid.id());
+      futures.emplace_back(
+          network::sendRequestRetry(pool, "shard:" + shard.first,
+                                    fuerte::RestVerb::Get, url, body, reqOpts));
+    }
+    for (Future<network::Response>& f : futures) {
+      network::Response const& r = f.get();
+
+      // Only best effort accounting. If something breaks here, we just
+      // ignore the output. Account for what we can and move on.
+      if (r.fail()) {
+        LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+            << "Communication error while collecting figures for collection "
+            << _collection.name() << " from " << r.destination;
+        continue;
+      }
+      VPackSlice resSlice = r.slice();
+      if (!resSlice.isObject() ||
+          !resSlice.get(StaticStrings::Error).isBoolean()) {
+        LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
+            << "Result of collecting figures for collection "
+            << _collection.name() << " from " << r.destination << " is invalid";
+        continue;
+      }
+      if (resSlice.get(StaticStrings::Error).getBoolean()) {
+        LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
+            << "Failed to collect figures for collection " << _collection.name()
+            << " from " << r.destination;
+        continue;
+      }
+      if (resSlice.get("progress").isNumber()) {
+        progress += resSlice.get("progress").getNumber<double>();
+        success++;
+      } else {
+        LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
+            << "No progress entry on index " << _iid.id() << "  from "
+            << r.destination << ": " << resSlice.toJson();
+      }
+    }
+    if (success) {
+      builder.add("progress", VPackValue(progress / success));
+    }
   }
 
   for (auto pair : VPackObjectIterator(_info.slice())) {
@@ -145,9 +246,12 @@ bool ClusterIndex::hasSelectivityEstimate() const {
     return _indexType == Index::TRI_IDX_TYPE_PRIMARY_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_EDGE_INDEX ||
            _indexType == Index::TRI_IDX_TYPE_TTL_INDEX ||
-           (_estimates && (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
-                           _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX));
+           (_estimates &&
+            (_indexType == Index::TRI_IDX_TYPE_HASH_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_SKIPLIST_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_PERSISTENT_INDEX ||
+             _indexType == Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX ||
+             (_indexType == Index::TRI_IDX_TYPE_MDI_INDEX && _unique)));
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   } else if (_engineType == ClusterEngineType::MockEngine) {
     return false;
@@ -243,8 +347,8 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
       }
       // other...
       std::vector<std::vector<basics::AttributeName>> fields{
-          {basics::AttributeName(StaticStrings::IdString, false)},
-          {basics::AttributeName(StaticStrings::KeyString, false)}};
+          {basics::AttributeName(StaticStrings::KeyString, false)},
+          {basics::AttributeName(StaticStrings::IdString, false)}};
       SimpleAttributeEqualityMatcher matcher(fields);
       return matcher.matchOne(this, node, reference, itemsInIndex);
     }
@@ -284,8 +388,9 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
                                             itemsInIndex);
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
-      return zkd::supportsFilterCondition(this, allIndexes, node, reference,
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return mdi::supportsFilterCondition(this, allIndexes, node, reference,
                                           itemsInIndex);
 
     case TRI_IDX_TYPE_UNKNOWN:
@@ -330,7 +435,8 @@ Index::SortCosts ClusterIndex::supportsSortCondition(
       break;
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       // Sorting not supported
       return Index::SortCosts{};
 
@@ -384,8 +490,9 @@ aql::AstNode* ClusterIndex::specializeCondition(
                                                               reference);
     }
 
-    case TRI_IDX_TYPE_ZKD_INDEX:
-      return zkd::specializeCondition(this, node, reference);
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return mdi::specializeCondition(this, node, reference);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;
@@ -412,12 +519,65 @@ ClusterIndex::coveredFields() const {
     case TRI_IDX_TYPE_GEO2_INDEX:
     case TRI_IDX_TYPE_FULLTEXT_INDEX:
     case TRI_IDX_TYPE_TTL_INDEX:
-    case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_IRESEARCH_LINK:
+    case TRI_IDX_TYPE_MDI_INDEX:
+    case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       return Index::emptyCoveredFields;
     }
     default:
       return _fields;
   }
+}
+
+bool ClusterIndex::inProgress() const {
+  // If agency entry "isBuilding".
+  try {
+    auto const& vocbase = _collection.vocbase();
+    auto const& dbname = vocbase.name();
+    auto const cid = std::to_string(_collection.id().id());
+    auto const& agencyCache =
+        vocbase.server().getFeature<ClusterFeature>().agencyCache();
+    auto [acb, idx] =
+        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
+            "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" +
+            cid + "/indexes")});
+    auto slc = acb->slice()[0].get(std::vector<std::string>{
+        "arango", "Plan", "Collections", vocbase.name()});
+    if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
+      slc = slc.get(std::vector<std::string>{cid, "indexes"});
+      for (auto const& index : VPackArrayIterator(slc)) {
+        if (index.get("id").stringView() == std::to_string(_iid.id())) {
+          return index.hasKey(StaticStrings::IndexIsBuilding);
+        }
+      }
+    }
+  } catch (...) {
+  }
+  return false;
+}
+
+bool ClusterIndex::supportsStreamInterface(
+    IndexStreamOptions const& opts) const noexcept {
+  switch (_indexType) {
+    case Index::TRI_IDX_TYPE_PERSISTENT_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBVPackIndex::checkSupportsStreamInterface(_coveredFields,
+                                                               opts);
+      }
+      [[fallthrough]];
+    }
+
+    case Index::TRI_IDX_TYPE_PRIMARY_INDEX: {
+      if (_engineType == ClusterEngineType::RocksDBEngine) {
+        return RocksDBPrimaryIndex::checkSupportsStreamInterface(_coveredFields,
+                                                                 opts);
+      }
+      [[fallthrough]];
+    }
+
+    default:
+      break;
+  }
+  return false;
 }

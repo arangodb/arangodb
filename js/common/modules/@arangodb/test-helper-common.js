@@ -102,7 +102,7 @@ exports.truncateFailure = function (collection) {
     collection.truncate();
     return 1;
   } catch (ex) {
-    if (!ex instanceof arangodb.ArangoError ||
+    if (!(ex instanceof arangodb.ArangoError) ||
       ex.errorNum !== internal.errors.ERROR_DEBUG.code) {
       throw ex;
     }

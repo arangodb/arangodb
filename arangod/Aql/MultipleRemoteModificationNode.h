@@ -72,20 +72,21 @@ class MultipleRemoteModificationNode final : public ExecutionNode,
   /// @brief return the type of the node
   NodeType getType() const override final { return REMOTE_MULTIPLE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     auto n = std::make_unique<MultipleRemoteModificationNode>(
         plan, _id, collection(), _options, _inVariable, _outVariable,
         _outVariableOld, _outVariableNew);
     CollectionAccessingNode::cloneInto(*n);
-    return cloneHelper(std::move(n), withDependencies, withProperties);
+    return cloneHelper(std::move(n), withDependencies);
   }
 
   /// @brief getVariablesUsedHere, modifying the set in-place

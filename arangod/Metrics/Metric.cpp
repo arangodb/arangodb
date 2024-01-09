@@ -23,26 +23,23 @@
 
 #include "Metrics/Metric.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <ostream>
 
 namespace arangodb::metrics {
 
 void Metric::addInfo(std::string& result, std::string_view name,
                      std::string_view help, std::string_view type) {
-  (result.append("# HELP ").append(name) += ' ').append(help) += '\n';
-  (result.append("# TYPE ").append(name) += ' ').append(type) += '\n';
+  absl::StrAppend(&result, "# HELP ", name, " ", help, "\n", "# TYPE ", name,
+                  " ", type, "\n");
 }
 
 void Metric::addMark(std::string& result, std::string_view name,
                      std::string_view globals, std::string_view labels) {
-  (result.append(name) += '{').append(globals);
-  if (!labels.empty()) {
-    if (!globals.empty()) {
-      result += ',';
-    }
-    result += labels;
-  }
-  result += '}';
+  absl::StrAppend(&result, name, "{", globals,
+                  ((labels.empty() || globals.empty()) ? "" : ","), labels,
+                  "}");
 }
 
 Metric::Metric(std::string_view name, std::string_view help,

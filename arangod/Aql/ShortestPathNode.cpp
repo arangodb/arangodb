@@ -254,6 +254,16 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add("targetVertexId", VPackValue(_targetVertexId));
   }
 
+  // Out variables
+  if (isVertexOutVariableUsedLater()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
+  }
+
   // Filter Conditions
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));
@@ -349,8 +359,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::_makeExecutionBlockImpl(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
   auto inputRegisters = _buildVariableInformation();
@@ -553,8 +562,7 @@ std::unique_ptr<ExecutionBlock> ShortestPathNode::createBlock(
 }
 
 ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
-                                       bool withDependencies,
-                                       bool withProperties) const {
+                                       bool withDependencies) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
@@ -563,33 +571,22 @@ ExecutionNode* ShortestPathNode::clone(ExecutionPlan* plan,
       plan, _id, _vocbase, _edgeColls, _vertexColls, _defaultDirection,
       _directions, _inStartVariable, _startVertexId, _inTargetVariable,
       _targetVertexId, std::move(tmp), _graphObj, _distributeVariable);
-  shortestPathCloneHelper(*plan, *c, withProperties);
+  shortestPathCloneHelper(*plan, *c);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 void ShortestPathNode::shortestPathCloneHelper(ExecutionPlan& plan,
-                                               ShortestPathNode& c,
-                                               bool withProperties) const {
-  graphCloneHelper(plan, c, withProperties);
+                                               ShortestPathNode& c) const {
+  graphCloneHelper(plan, c);
   if (isVertexOutVariableUsedLater()) {
-    auto vertexOutVariable = _vertexOutVariable;
-    if (withProperties) {
-      vertexOutVariable =
-          plan.getAst()->variables()->createVariable(vertexOutVariable);
-    }
-    TRI_ASSERT(vertexOutVariable != nullptr);
-    c.setVertexOutput(vertexOutVariable);
+    TRI_ASSERT(_vertexOutVariable != nullptr);
+    c.setVertexOutput(_vertexOutVariable);
   }
 
   if (isEdgeOutVariableUsedLater()) {
-    auto edgeOutVariable = _edgeOutVariable;
-    if (withProperties) {
-      edgeOutVariable =
-          plan.getAst()->variables()->createVariable(edgeOutVariable);
-    }
-    TRI_ASSERT(edgeOutVariable != nullptr);
-    c.setEdgeOutput(edgeOutVariable);
+    TRI_ASSERT(_edgeOutVariable != nullptr);
+    c.setEdgeOutput(_edgeOutVariable);
   }
 
   // Temporary Filter Objects
@@ -693,7 +690,8 @@ std::vector<arangodb::graph::IndexAccessor> ShortestPathNode::buildIndexes(
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -773,6 +771,8 @@ auto ShortestPathNode::options() const -> ShortestPathOptions* {
   return opts;
 }
 
+size_t ShortestPathNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
 // This constructor is only used from LocalTraversalNode, and GraphNode
 // is virtually inherited; thus its constructor is never called from here.
 ShortestPathNode::ShortestPathNode(ExecutionPlan& plan,
@@ -785,5 +785,5 @@ ShortestPathNode::ShortestPathNode(ExecutionPlan& plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _distributeVariable(other._distributeVariable) {
-  other.shortestPathCloneHelper(plan, *this, false);
+  other.shortestPathCloneHelper(plan, *this);
 }

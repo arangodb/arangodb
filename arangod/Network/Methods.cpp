@@ -32,6 +32,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/Utils/ShardID.h"
 #include "Futures/Utilities.h"
 #include "Logger/LogMacros.h"
 #include "Network/ConnectionPool.h"
@@ -146,11 +147,11 @@ Result Response::combinedResult() const {
 }
 
 /// @brief shardId or empty
-std::string Response::destinationShard() const {
+ResultT<ShardID> Response::destinationShard() const {
   if (this->destination.size() > 6 && this->destination.starts_with("shard:")) {
-    return this->destination.substr(6);
+    return ShardID::shardIdFromString(this->destination.substr(6));
   }
-  return StaticStrings::Empty;
+  return Result{TRI_ERROR_BAD_PARAMETER, "destination not a shard"};
 }
 
 std::string Response::serverId() const {
@@ -234,8 +235,12 @@ struct Pack {
   fuerte::Error tmp_err;
   RequestLane continuationLane;
   bool skipScheduler;
-  Pack(DestinationId&& dest, RequestLane lane, bool skip)
-      : dest(std::move(dest)), continuationLane(lane), skipScheduler(skip) {}
+  bool handleContentEncoding;
+  Pack(DestinationId&& dest, RequestLane lane, bool skip, bool handle)
+      : dest(std::move(dest)),
+        continuationLane(lane),
+        skipScheduler(skip),
+        handleContentEncoding(handle) {}
 };
 
 void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
@@ -245,7 +250,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
   NetworkFeature& nf = server.getFeature<NetworkFeature>();
   nf.sendRequest(
       *pool, options, endpoint, std::move(req),
-      [pack(std::move(p)), pool, &options, endpoint](
+      [pack(std::move(p)), pool, options, endpoint](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res, bool isFromPool) mutable {
         TRI_ASSERT(req != nullptr || err == fuerte::Error::ConnectionCanceled);
@@ -254,12 +259,24 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
                            err == fuerte::Error::WriteError)) {
           // retry under certain conditions
           // cppcheck-suppress accessMoved
-          actuallySendRequest(std::move(pack), pool, options, endpoint,
-                              std::move(req));
+          actuallySendRequest(std::move(pack), pool, std::move(options),
+                              std::move(endpoint), std::move(req));
           return;
         }
 
-        auto* sch = SchedulerFeature::SCHEDULER;
+        // We access the global SCHEDULER pointer here via an atomic
+        // reference. This is to silence TSAN, which often detects a data
+        // race on this pointer, which is actually totally harmless.
+        // What happens is that this access here occurs earlier in time
+        // than the write in SchedulerFeature::unprepare, which
+        // invalidates the pointer. TSAN does not see an official "happens
+        // before" relation between the two threads and complains.
+        // However, this is totally fine (and to some extent expected),
+        // since potentially network responses might come in later than
+        // the time when the scheduler has been shut down. Even in that
+        // case, all is fine, since we check for nullptr below.
+        std::atomic_ref<Scheduler*> schedulerRef{SchedulerFeature::SCHEDULER};
+        auto* sch = schedulerRef.load(std::memory_order_relaxed);
         // cppcheck-suppress accessMoved
         if (pack->skipScheduler || sch == nullptr) {
           pack->promise.setValue(network::Response{
@@ -305,12 +322,25 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
           std::move(dest), Error::ConnectionCanceled, std::move(req), nullptr});
     }
 
+    // resolve destination.
+    // it is at least temporarily possible for the destination to be an empty
+    // string. this can happen if a server is in shutdown and has unregistered
+    // itself from the cluster. if this happens, the dest value can be empty,
+    // and trying to resolve it via resolveDestination() will produce error
+    // message 77a84. we are trying to suppress this error message here, and
+    // simply return "backend unavailable" (as we did before) and do not log the
+    // error.
     arangodb::network::EndpointSpec spec;
-    auto res =
-        options.overrideDestination.empty()
-            ? resolveDestination(*pool->config().clusterInfo, dest, spec)
-            : resolveDestination(*pool->config().clusterInfo,
-                                 "server:" + options.overrideDestination, spec);
+    ErrorCode res = TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
+    if (options.overrideDestination.empty()) {
+      if (!dest.empty()) {
+        res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+      }
+    } else {
+      res = resolveDestination(*pool->config().clusterInfo,
+                               "server:" + options.overrideDestination, spec);
+    }
+
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
@@ -324,7 +354,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     static_assert(sizeof(std::shared_ptr<Pack>) <= 2 * sizeof(void*), "");
 
     auto p = std::make_shared<Pack>(std::move(dest), options.continuationLane,
-                                    options.skipScheduler);
+                                    options.skipScheduler,
+                                    options.handleContentEncoding);
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
@@ -360,23 +391,24 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
                 options.timeout)) {
     _tmp_req = prepareRequest(pool, type, std::move(path), std::move(payload),
                               _options, std::move(headers));
+
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
   }
 
   ~RequestsState() = default;
 
   FutureRes future() { return _promise.getFuture(); }
 
-  // scheduler requests that are due
+  // schedule requests that are due
   void startRequest() {
     TRI_ASSERT(_tmp_req != nullptr);
-    if (ADB_UNLIKELY(!_pool)) {
-      LOG_TOPIC("5949f", ERR, Logger::COMMUNICATION)
-          << "connection pool unavailable";
-      _tmp_err = Error::ConnectionCanceled;
-      _tmp_res = nullptr;
-      resolvePromise();
-      return;
-    }
+    // the following assertions hold true because we are already checking
+    // these values in the constructor. furthermore, all users or RequestsState
+    // make sure that _pool and _pool->config().clusterInfo are always
+    // non-nullptrs.
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
 
     auto now = std::chrono::steady_clock::now();
     if (now > _endTime) {
@@ -586,6 +618,9 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
       return;
     }
 
+    TRI_ASSERT(_pool != nullptr);
+    TRI_ASSERT(_pool->config().clusterInfo != nullptr);
+
     auto& server = _pool->config().clusterInfo->server();
     NetworkFeature& nf = server.getFeature<NetworkFeature>();
     nf.retryRequest(shared_from_this(), _options.continuationLane,
@@ -604,7 +639,6 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
   RequestOptions const _options;
   ConnectionPool* _pool;
 
-  std::shared_ptr<arangodb::Scheduler::DelayedWorkItem> _workItem;
   std::unique_ptr<fuerte::Request> _tmp_req;
   std::unique_ptr<fuerte::Response> _tmp_res;  /// temporary response
 

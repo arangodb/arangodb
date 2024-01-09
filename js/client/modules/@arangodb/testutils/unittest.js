@@ -19,6 +19,11 @@ const inspect = internal.inspect;
 // //////////////////////////////////////////////////////////////////////////////
 
 function main (argv) {
+  // set deterministic locale value for all tests. 
+  // otherwise tests that depend on sort order/collation may
+  // behave differently on different platforms
+  internal.env.LC_ALL = "en_US.UTF-8";
+
   if (argv.length >= 1 && argv[0] === '--dump-completions') {
     return testing.dumpCompletions();
   }

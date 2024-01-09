@@ -90,6 +90,7 @@ ReplicationFeature::ReplicationFeature(Server& server)
     : ArangodFeature{server, *this},
       _connectTimeout(10.0),
       _requestTimeout(600.0),
+      _activeFailoverLeaderGracePeriod(120.0),
       _forceConnectTimeout(false),
       _forceRequestTimeout(false),
       _replicationApplierAutoStart(true),
@@ -144,47 +145,33 @@ void ReplicationFeature::collectOptions(
   options->addOldOption("--replication.automatic-failover",
                         "--replication.active-failover");
 
-  options
-      ->addOption(
-          "--replication.max-parallel-tailing-invocations",
-          "The maximum number of concurrently allowed WAL tailing invocations "
-          "(0 = unlimited).",
-          new UInt64Parameter(&_maxParallelTailingInvocations),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30500);
+  options->addOption(
+      "--replication.max-parallel-tailing-invocations",
+      "The maximum number of concurrently allowed WAL tailing invocations "
+      "(0 = unlimited).",
+      new UInt64Parameter(&_maxParallelTailingInvocations),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption("--replication.connect-timeout",
-                  "The default timeout value for replication connection "
-                  "attempts (in seconds).",
-                  new DoubleParameter(&_connectTimeout))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30504);
-  options
-      ->addOption("--replication.request-timeout",
-                  "The default timeout value for replication requests "
-                  "(in seconds).",
-                  new DoubleParameter(&_requestTimeout))
-      .setIntroducedIn(30409)
-      .setIntroducedIn(30504);
+  options->addOption("--replication.connect-timeout",
+                     "The default timeout value for replication connection "
+                     "attempts (in seconds).",
+                     new DoubleParameter(&_connectTimeout));
+  options->addOption("--replication.request-timeout",
+                     "The default timeout value for replication requests "
+                     "(in seconds).",
+                     new DoubleParameter(&_requestTimeout));
 
-  options
-      ->addOption(
-          "--replication.quick-keys-limit",
-          "Limit at which 'quick' calls to the replication keys API return "
-          "only the document count for the second run.",
-          new UInt64Parameter(&_quickKeysLimit),
-          arangodb::options::makeDefaultFlags(
-              arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709);
+  options->addOption(
+      "--replication.quick-keys-limit",
+      "Limit at which 'quick' calls to the replication keys API return "
+      "only the document count for the second run.",
+      new UInt64Parameter(&_quickKeysLimit),
+      arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 
-  options
-      ->addOption(
-          "--replication.sync-by-revision",
-          "Whether to use the newer revision-based replication protocol.",
-          new BooleanParameter(&_syncByRevision))
-      .setIntroducedIn(30700);
+  options->addOption(
+      "--replication.sync-by-revision",
+      "Whether to use the newer revision-based replication protocol.",
+      new BooleanParameter(&_syncByRevision));
 
   options
       ->addOption("--replication.auto-repair-revision-trees",
@@ -195,6 +182,17 @@ void ReplicationFeature::collectOptions(
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31006);
+
+  options
+      ->addOption(
+          "--replication.active-failover-leader-grace-period",
+          "The amount of time (in seconds) for which the current leader will "
+          "continue to assume its leadership even if it lost connection to the "
+          "agency (0 = unlimited)",
+          new DoubleParameter(&_activeFailoverLeaderGracePeriod),
+          arangodb::options::makeDefaultFlags(
+              arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008);
 }
 
 void ReplicationFeature::validateOptions(
@@ -392,6 +390,10 @@ double ReplicationFeature::connectTimeout() const { return _connectTimeout; }
 
 /// @brief returns the request timeout for replication requests
 double ReplicationFeature::requestTimeout() const { return _requestTimeout; }
+
+double ReplicationFeature::activeFailoverLeaderGracePeriod() const {
+  return _activeFailoverLeaderGracePeriod;
+}
 
 /// @brief set the x-arango-endpoint header
 void ReplicationFeature::setEndpointHeader(GeneralResponse* res,

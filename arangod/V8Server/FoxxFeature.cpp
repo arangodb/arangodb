@@ -21,6 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "FoxxFeature.h"
 
 #include "Agency/AgencyComm.h"
@@ -92,8 +96,6 @@ queues thread wake up less.)");
                       arangodb::options::Flags::DefaultNoComponents,
                       arangodb::options::Flags::OnCoordinator,
                       arangodb::options::Flags::OnSingle))
-      .setIntroducedIn(30610)
-      .setIntroducedIn(30706)
       .setLongDescription(R"(If set to `true`, all Foxx services in all
 databases are synchronized between multiple Coordinators during the startup
 sequence. This ensures that all Foxx services are up-to-date when a Coordinator

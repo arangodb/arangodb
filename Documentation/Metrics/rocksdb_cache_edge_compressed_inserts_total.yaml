@@ -1,0 +1,16 @@
+name: rocksdb_cache_edge_compressed_inserts_total
+introducedIn: "3.12.0"
+help: |
+  Total number of compressed inserts into the in-memory edge cache.
+unit: number
+type: counter
+category: Statistics
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Total number of compressed inserts into the in-memory edge cache. This
+  metric is increased whenever a payload value for the edge cache was
+  compressed and then inserted. 

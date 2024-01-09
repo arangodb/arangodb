@@ -23,15 +23,18 @@
 
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
+#include "Inspection/VPack.h"
 #include "Replication2/StateMachines/Document/DocumentCore.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
+#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Transaction/Manager.h"
 
 #include <Basics/voc-errors.h>
 #include <Futures/Future.h>
-#include <Logger/LogContextKeys.h>
 
 using namespace arangodb::replication2::replicated_state::document;
 
@@ -47,10 +50,11 @@ DocumentFactory::DocumentFactory(
     : _handlersFactory(std::move(handlersFactory)),
       _transactionManager(transactionManager){};
 
-auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core)
+auto DocumentFactory::constructFollower(std::unique_ptr<DocumentCore> core,
+                                        std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<DocumentFollowerState> {
   return std::make_shared<DocumentFollowerState>(std::move(core),
-                                                 _handlersFactory);
+                                                 _handlersFactory, scheduler);
 }
 
 auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
@@ -59,17 +63,13 @@ auto DocumentFactory::constructLeader(std::unique_ptr<DocumentCore> core)
       std::move(core), _handlersFactory, _transactionManager);
 }
 
-auto DocumentFactory::constructCore(GlobalLogIdentifier gid,
+auto DocumentFactory::constructCore(TRI_vocbase_t& vocbase,
+                                    GlobalLogIdentifier gid,
                                     DocumentCoreParameters coreParameters)
     -> std::unique_ptr<DocumentCore> {
-  LoggerContext logContext =
-      LoggerContext(Logger::REPLICATED_STATE)
-          .with<logContextKeyStateImpl>(DocumentState::NAME)
-          .with<logContextKeyDatabaseName>(gid.database)
-          .with<logContextKeyCollectionId>(coreParameters.collectionId)
-          .with<logContextKeyLogId>(gid.id);
+  LoggerContext logContext = _handlersFactory->createLogger(gid);
   return std::make_unique<DocumentCore>(
-      std::move(gid), std::move(coreParameters), _handlersFactory,
+      vocbase, std::move(gid), std::move(coreParameters), _handlersFactory,
       std::move(logContext));
 }
 
@@ -78,7 +78,7 @@ auto DocumentFactory::constructCleanupHandler()
   return std::make_shared<DocumentCleanupHandler>();
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct arangodb::replication2::replicated_state::ReplicatedState<
     DocumentState>;

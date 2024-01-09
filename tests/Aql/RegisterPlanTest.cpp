@@ -31,10 +31,11 @@
 #include "Aql/VarUsageFinder.cpp"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/types.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/StringUtils.h"
 
 #include <optional>
-#include <unordered_set>
 #include <vector>
 
 using namespace arangodb;
@@ -209,6 +210,8 @@ auto ExecutionNodeMock::getVarsValidStack() const -> VarSetStack const& {
 class RegisterPlanTest : public ::testing::Test {
  protected:
   RegisterPlanTest() {}
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
   auto walk(std::vector<ExecutionNodeMock>& nodes)
       -> std::shared_ptr<RegisterPlanT<ExecutionNodeMock>> {
@@ -232,7 +235,7 @@ class RegisterPlanTest : public ::testing::Test {
     std::array<Variable*, amount> ptrs{};
     for (size_t i = 0; i < amount; ++i) {
       vars.emplace_back("var" + arangodb::basics::StringUtils::itoa(i),
-                        static_cast<VariableId>(i), false);
+                        static_cast<VariableId>(i), false, resourceMonitor);
       ptrs[i] = &vars[i];
     }
 

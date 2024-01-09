@@ -95,6 +95,7 @@ T getMetric(IResearchLink const& link) {
   metric.addLabel("db", link.getDbName());
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
+  metric.addLabel("indexId", std::to_string(link.index().id().id()));
   metric.addLabel("shard", link.getShardName());
   return metric;
 }
@@ -103,6 +104,7 @@ std::string getLabels(IResearchLink const& link) {
   return absl::StrCat("db=\"", link.getDbName(),                     //
                       "\",view=\"", link.getViewId(),                //
                       "\",collection=\"", link.getCollectionName(),  //
+                      "\",indexId=\"", link.index().id().id(),       //
                       "\",shard=\"", link.getShardName(), "\"");
 }
 
@@ -118,7 +120,8 @@ Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
     return {};
   }
   for (auto& entry : *shardIds) {  // per-shard collection is always in vocbase
-    auto collection = logical.vocbase().lookupCollection(entry.first);
+    auto collection =
+        logical.vocbase().lookupCollection(std::string{entry.first});
     if (!collection) {
       // missing collection should be created after Plan becomes Current
       continue;
@@ -454,6 +457,15 @@ void IResearchLink::insertMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  _writersMemory =
+      &metric.add(getMetric<arangodb_search_writers_memory_usage>(*this));
+  _readersMemory =
+      &metric.add(getMetric<arangodb_search_readers_memory_usage>(*this));
+  _consolidationsMemory = &metric.add(
+      getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  _fileDescriptorsCount =
+      &metric.add(getMetric<arangodb_search_file_descriptors>(*this));
+  _mappedMemory = &metric.add(getMetric<arangodb_search_mapped_memory>(*this));
   _numFailedCommits =
       &metric.add(getMetric<arangodb_search_num_failed_commits>(*this));
   _numFailedCleanups =
@@ -474,6 +486,27 @@ void IResearchLink::removeMetrics() {
                      .vocbase()
                      .server()
                      .getFeature<metrics::MetricsFeature>();
+  if (_writersMemory != &irs::IResourceManager::kNoop) {
+    _writersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_writers_memory_usage>(*this));
+  }
+  if (_readersMemory != &irs::IResourceManager::kNoop) {
+    _readersMemory = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_readers_memory_usage>(*this));
+  }
+  if (_consolidationsMemory != &irs::IResourceManager::kNoop) {
+    _consolidationsMemory = &irs::IResourceManager::kNoop;
+    metric.remove(
+        getMetric<arangodb_search_consolidations_memory_usage>(*this));
+  }
+  if (_fileDescriptorsCount != &irs::IResourceManager::kNoop) {
+    _fileDescriptorsCount = &irs::IResourceManager::kNoop;
+    metric.remove(getMetric<arangodb_search_file_descriptors>(*this));
+  }
+  if (_mappedMemory) {
+    _mappedMemory = nullptr;
+    metric.remove(getMetric<arangodb_search_mapped_memory>(*this));
+  }
   if (_numFailedCommits) {
     _numFailedCommits = nullptr;
     metric.remove(getMetric<arangodb_search_num_failed_commits>(*this));

@@ -351,8 +351,8 @@ void ReplicationApplier::startReplication() {
   doStart(
       [&]() {
         std::shared_ptr<InitialSyncer> syncer = buildInitialSyncer();
-        _thread.reset(new FullApplierThread(_configuration._server, this,
-                                            std::move(syncer)));
+        _thread = std::make_unique<FullApplierThread>(_configuration._server,
+                                                      this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::INITIAL);
 }
@@ -370,8 +370,8 @@ void ReplicationApplier::startTailing(TRI_voc_tick_t initialTick,
             << ". initialTick: " << initialTick << ", useTick: " << useTick;
         std::shared_ptr<TailingSyncer> syncer =
             buildTailingSyncer(initialTick, useTick);
-        _thread.reset(new TailingApplierThread(_configuration._server, this,
-                                               std::move(syncer)));
+        _thread = std::make_unique<TailingApplierThread>(
+            _configuration._server, this, std::move(syncer));
       },
       ReplicationApplierState::ActivityPhase::TAILING);
 

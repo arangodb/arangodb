@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail */
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief recovery tests for views
 ///

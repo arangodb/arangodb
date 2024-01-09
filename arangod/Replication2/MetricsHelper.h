@@ -29,8 +29,7 @@ namespace arangodb::replication2 {
 
 struct MeasureTimeGuard {
   explicit MeasureTimeGuard(
-      std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
-          histogram) noexcept;
+      metrics::Histogram<metrics::LogScale<std::uint64_t>>& histogram) noexcept;
   MeasureTimeGuard(MeasureTimeGuard const&) = delete;
   MeasureTimeGuard(MeasureTimeGuard&&) = default;
   ~MeasureTimeGuard();
@@ -39,23 +38,41 @@ struct MeasureTimeGuard {
 
  private:
   std::chrono::steady_clock::time_point const _start;
-  std::shared_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>>
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
+
+  std::unique_ptr<metrics::Histogram<metrics::LogScale<std::uint64_t>>, noop>
       _histogram;
 };
 
+template<typename N>
 struct GaugeScopedCounter {
-  explicit GaugeScopedCounter(
-      std::shared_ptr<metrics::Gauge<std::uint64_t>>) noexcept;
+  explicit GaugeScopedCounter(metrics::Gauge<N>& metric) noexcept
+      : _metric(&metric) {
+    _metric->fetch_add(1);
+  }
+
   GaugeScopedCounter(GaugeScopedCounter const&) = delete;
   GaugeScopedCounter(GaugeScopedCounter&&) noexcept = default;
   GaugeScopedCounter& operator=(GaugeScopedCounter const&) = delete;
   GaugeScopedCounter& operator=(GaugeScopedCounter&&) noexcept = default;
-  ~GaugeScopedCounter();
+  ~GaugeScopedCounter() { fire(); }
 
-  void fire() noexcept;
+  void fire() noexcept {
+    if (_metric != nullptr) {
+      _metric->fetch_sub(1);
+      _metric.reset();
+    }
+  }
 
  private:
-  std::shared_ptr<metrics::Gauge<std::uint64_t>> _metric;
+  struct noop {
+    template<typename T>
+    void operator()(T*) {}
+  };
+  std::unique_ptr<metrics::Gauge<N>, noop> _metric;
 };
 
 }  // namespace arangodb::replication2

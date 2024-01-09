@@ -26,6 +26,7 @@
 #include "Basics/Result.h"
 #include "Basics/ErrorT.h"
 #include "Graph/GraphManager.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb::pregel {
@@ -56,7 +57,9 @@ auto resolveGraphSourceToGraphByCollections(TRI_vocbase_t& vocbase,
           Result{TRI_ERROR_BAD_PARAMETER, "expecting graphName as string"});
     }
 
-    graph::GraphManager gmngr{vocbase};
+    graph::GraphManager gmngr{vocbase,
+                              transaction::OperationOriginInternal{
+                                  "resolving collection names in Pregel"}};
     auto maybeGraph = gmngr.lookupGraphByName(graphName.graph);
     if (maybeGraph.fail()) {
       return errors::ErrorT<Result, GraphByCollections>::error(

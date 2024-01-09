@@ -25,6 +25,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <random>
 #include <thread>
 
@@ -39,7 +40,7 @@ enum class ThreadState { kStarting, kRunning, kReady, kFinished };
 struct Execution;
 
 struct ExecutionThread {
-  ExecutionThread(Execution& exec, Server& server);
+  ExecutionThread(std::uint32_t id, Execution& exec, Server& server);
   virtual ~ExecutionThread() = default;
   virtual void setup() {}
   virtual void run() = 0;
@@ -51,8 +52,10 @@ struct ExecutionThread {
   // at the end
   virtual bool failed() const noexcept { return _failed; }
   Execution const& execution() const { return _execution; }
+  std::uint32_t id() const noexcept { return _id; }
 
  protected:
+  std::uint32_t const _id;
   Server& _server;
 
  private:

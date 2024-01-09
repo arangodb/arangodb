@@ -69,10 +69,7 @@ TEST_F(SubqueryEndExecutorTest, check_properties) {
             ::arangodb::aql::BlockPassthrough::Disable)
       << "The block cannot be passThrough, as it increases the number of "
          "rows.";
-  EXPECT_TRUE(SubqueryEndExecutor::Properties::inputSizeRestrictsOutputSize)
-      << "The block produces one output row per input row plus potentially a "
-         "shadow rows which is bounded by the structure of the query";
-};
+}
 
 TEST_F(SubqueryEndExecutorTest, count_shadow_rows_test) {
   // NOTE: This is a regression test for BTS-673

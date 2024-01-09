@@ -32,6 +32,7 @@
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
+#include "Transaction/Hints.h"
 #include "Transaction/Methods.h"
 
 #include "Graph/Providers/BaseStep.h"

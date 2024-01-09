@@ -31,7 +31,8 @@ ClusterRestReplicationHandler::ClusterRestReplicationHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestReplicationHandler(server, request, response) {}
 
-void ClusterRestReplicationHandler::handleCommandBatch() {
+futures::Future<futures::Unit>
+ClusterRestReplicationHandler::handleCommandBatch() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -52,7 +53,8 @@ void ClusterRestReplicationHandler::handleCommandInventory() {
 }
 
 /// @brief produce list of keys for a specific collection
-void ClusterRestReplicationHandler::handleCommandCreateKeys() {
+futures::Future<futures::Unit>
+ClusterRestReplicationHandler::handleCommandCreateKeys() {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

@@ -35,7 +35,7 @@ const handleSuccess = ({
     collection: collectionId
   });
   window.arangoHelper.arangoNotification(
-    `Index deletion in progress (ID: ${id}`
+    `Index deletion in progress (ID: ${id})`
   );
   onSuccess();
 };
@@ -49,7 +49,7 @@ const postDeleteIndex = async ({
   onSuccess: () => void;
 }) => {
   window.arangoHelper.checkDatabasePermissions(
-    function() {
+    function () {
       window.arangoHelper.arangoError(
         "You do not have the permissions to delete indexes in this database."
       );
@@ -74,7 +74,6 @@ const postDeleteIndex = async ({
       } catch {
         handleError();
       }
-    
     }
   );
 };

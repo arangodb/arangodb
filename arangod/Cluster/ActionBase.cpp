@@ -47,7 +47,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
     : _feature(feature),
       _description(desc),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -56,7 +56,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
     : _feature(feature),
       _description(std::move(desc)),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -170,7 +170,9 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  ++_progress;
+  auto progress = _progress.load();
+  progress += 1.;
+  _progress.store(progress);
   _actionLastStat = secs_since_epoch();
 
 }  // ActionBase::incStats
@@ -275,6 +277,8 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   const std::lock_guard<std::mutex> lock(resLock);
   _result.reset(errorNumber, errorString);
 }
+
+arangodb::Result ActionBase::setProgress(double d) { return {}; }
 
 /**
  * progress() operation is an expected future feature.  Not supported in the

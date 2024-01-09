@@ -24,23 +24,17 @@
 
 #pragma once
 
-#include "index/directory_reader.hpp"
-#include "index/index_writer.hpp"
-#include "store/directory.hpp"
-
+#include "Basics/Result.h"
 #include "IResearch/IResearchDataStore.h"
-#include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchVPackComparer.h"
-#include "IResearch/IResearchViewMeta.h"
-#include "Indexes/Index.h"
-#include "Metrics/Fwd.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "Transaction/Status.h"
-#include "Utils/OperationOptions.h"
-#include "VocBase/Identifiers/IndexId.h"
+
+#include <velocypack/Builder.h>
+#include <velocypack/Slice.h>
 
 #include <atomic>
-#include <filesystem>
+#include <memory>
+#include <string>
+#include <string_view>
 
 namespace arangodb::iresearch {
 

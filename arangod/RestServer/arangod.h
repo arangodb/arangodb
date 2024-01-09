@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Basics/TypeList.h"
+#include "Basics/operating-system.h"
 
 namespace arangodb {
 namespace application_features {
@@ -51,17 +52,15 @@ class MetricsFeature;
 class ClusterMetricsFeature;
 
 }  // namespace metrics
-namespace cluster {
 
-class FailureOracleFeature;
-
-}  // namespace cluster
 class AqlFeature;
 class AgencyFeature;
 class ActionFeature;
 class AuthenticationFeature;
 class BootstrapFeature;
+class BumpFileDescriptorsFeature;
 class CacheManagerFeature;
+class CacheOptionsFeature;
 class CheckVersionFeature;
 class ClusterFeature;
 class ClusterUpgradeFeature;
@@ -70,6 +69,7 @@ class ConsoleFeature;
 class CpuUsageFeature;
 class DatabaseFeature;
 class DatabasePathFeature;
+class DumpLimitsFeature;
 class HttpEndpointProvider;
 class EngineSelectorFeature;
 class EnvironmentFeature;
@@ -171,10 +171,6 @@ struct BlackHoleStateMachineFeature;
 
 }  // namespace black_hole
 
-namespace prototype {
-struct PrototypeStateMachineFeature;
-}
-
 namespace document {
 struct DocumentStateMachineFeature;
 }
@@ -192,10 +188,14 @@ using ArangodFeaturesList = TypeList<
     ClusterFeaturePhase,
     DatabaseFeaturePhase,
     FinalFeaturePhase,
+#ifdef USE_V8
     FoxxFeaturePhase,
+#endif
     GreetingsFeaturePhase,
     ServerFeaturePhase,
+#ifdef USE_V8
     V8FeaturePhase,
+#endif
     // Adding the features
     metrics::MetricsFeature, // metrics::MetricsFeature must go first
     metrics::ClusterMetricsFeature,
@@ -205,23 +205,32 @@ using ArangodFeaturesList = TypeList<
     AqlFeature,
     AuthenticationFeature,
     BootstrapFeature,
+#ifdef TRI_HAVE_GETRLIMIT
+    BumpFileDescriptorsFeature,
+#endif
+    CacheOptionsFeature,
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
+#ifdef USE_V8
     ConsoleFeature,
+#endif
     CpuUsageFeature,
     DatabaseFeature,
     DatabasePathFeature,
+    DumpLimitsFeature,
     HttpEndpointProvider,
     EngineSelectorFeature,
     EnvironmentFeature,
     FileSystemFeature,
     FlushFeature,
     FortuneFeature,
+#ifdef USE_V8
     FoxxFeature,
     FrontendFeature,
+#endif
     GeneralServerFeature,
     GreetingsFeature,
     InitDatabaseFeature,
@@ -244,7 +253,9 @@ using ArangodFeaturesList = TypeList<
     ReplicationMetricsFeature,
     ReplicationTimeoutFeature,
     SchedulerFeature,
+#ifdef USE_V8
     ScriptFeature,
+#endif
     ServerFeature,
     ServerIdFeature,
     ServerSecurityFeature,
@@ -261,9 +272,11 @@ using ArangodFeaturesList = TypeList<
     TemporaryStorageFeature,
     TtlFeature,
     UpgradeFeature,
+#ifdef USE_V8
     V8DealerFeature,
     V8PlatformFeature,
     V8SecurityFeature,
+#endif
     transaction::ManagerFeature,
     ViewTypesFeature,
     aql::AqlFunctionFeature,
@@ -295,10 +308,8 @@ using ArangodFeaturesList = TypeList<
     iresearch::IResearchFeature,
     ClusterEngine,
     RocksDBEngine,
-    cluster::FailureOracleFeature,
     replication2::replicated_state::ReplicatedStateAppFeature,
     replication2::replicated_state::black_hole::BlackHoleStateMachineFeature,
-    replication2::replicated_state::prototype::PrototypeStateMachineFeature,
     replication2::replicated_state::document::DocumentStateMachineFeature
 >;  // clang-format on
 struct ArangodFeatures : ArangodFeaturesList {};

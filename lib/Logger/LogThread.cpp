@@ -29,8 +29,10 @@
 using namespace arangodb;
 
 LogThread::LogThread(application_features::ApplicationServer& server,
-                     std::string const& name)
-    : Thread(server, name), _messages(64) {}
+                     std::string const& name, uint32_t maxQueuedLogMessages)
+    : Thread(server, name),
+      _messages(64),
+      _maxQueuedLogMessages(maxQueuedLogMessages) {}
 
 LogThread::~LogThread() {
   Logger::_active = false;
@@ -50,7 +52,12 @@ bool LogThread::log(LogGroup& group, std::unique_ptr<LogMessage>& message) {
       (message->_level == LogLevel::FATAL || message->_level == LogLevel::ERR ||
        message->_level == LogLevel::WARN);
 
-  if (!_messages.push({&group, message.get()})) {
+  auto numMessages =
+      _pendingMessages.fetch_add(1, std::memory_order_relaxed) + 1;
+  if (numMessages >= _maxQueuedLogMessages ||
+      !_messages.push({&group, message.get()})) {
+    /* roll back the update */
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     return false;
   }
 
@@ -105,6 +112,7 @@ bool LogThread::processPendingMessages() {
   MessageEnvelope env{nullptr, nullptr};
 
   while (_messages.pop(env)) {
+    _pendingMessages.fetch_sub(1, std::memory_order_relaxed);
     worked = true;
     TRI_ASSERT(env.group != nullptr);
     TRI_ASSERT(env.msg != nullptr);

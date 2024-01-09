@@ -89,7 +89,7 @@ class AttributeAccessorTo final : public AttributeAccessor {
 class AttributeAccessorSingle final : public AttributeAccessor {
  public:
   explicit AttributeAccessorSingle(Variable const* variable,
-                                   std::string const& attributeName)
+                                   std::string_view attributeName)
       : AttributeAccessor(variable), _attributeName(attributeName) {}
 
   AqlValue get(CollectionNameResolver const& resolver,

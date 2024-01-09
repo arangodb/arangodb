@@ -30,6 +30,7 @@
 
 #include <memory>
 #include <string>
+#include <string_view>
 
 struct TRI_vocbase_t;
 
@@ -107,6 +108,10 @@ class DatabaseTailingSyncer : public TailingSyncer {
   bool skipMarker(velocypack::Slice slice) override;
 
  private:
+  void fetchWalChunk(std::shared_ptr<Syncer::JobSynchronizer> sharedStatus,
+                     std::string_view baseUrl, std::string_view collectionName,
+                     TRI_voc_tick_t fromTick, TRI_voc_tick_t lastScannedTick);
+
   /// @brief vocbase to use for this run
   TRI_vocbase_t* _vocbase;
 

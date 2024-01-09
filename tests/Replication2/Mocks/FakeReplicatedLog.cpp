@@ -21,7 +21,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "FakeReplicatedLog.h"
-#include "FakeFailureOracle.h"
 
 using namespace arangodb;
 using namespace arangodb::replication2;

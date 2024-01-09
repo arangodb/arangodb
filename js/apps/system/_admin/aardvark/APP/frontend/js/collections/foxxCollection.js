@@ -1,6 +1,3 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global window, Backbone, $, arangoHelper */
 (function () {
   'use strict';
   window.FoxxCollection = Backbone.Collection.extend({

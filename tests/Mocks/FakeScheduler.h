@@ -32,7 +32,17 @@ struct FakeScheduler : Scheduler {
                  bool bounded) override;
   void toVelocyPack(velocypack::Builder& builder) const override;
   QueueStatistics queueStatistics() const override;
+
+  void trackCreateHandlerTask() noexcept override;
+  void trackBeginOngoingLowPriorityTask() noexcept override;
+  void trackEndOngoingLowPriorityTask() noexcept override;
+  void trackQueueTimeViolation() override;
+  void trackQueueItemSize(std::int64_t) noexcept override;
   uint64_t getLastLowPriorityDequeueTime() const noexcept override;
+  void setLastLowPriorityDequeueTime(uint64_t time) noexcept override;
+  std::pair<uint64_t, uint64_t> getNumberLowPrioOngoingAndQueued()
+      const override;
+
   double approximateQueueFillGrade() const override;
   double unavailabilityQueueFillGrade() const override;
   bool isStopping() override;

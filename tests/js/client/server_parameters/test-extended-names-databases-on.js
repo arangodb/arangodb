@@ -91,7 +91,7 @@ function testSuite() {
           db._dropDatabase(name);
           fail();
         } catch (err) {
-          assertEqual(errors.ERROR_ARANGO_ILLEGAL_NAME.code, err.errorNum);
+          assertEqual(errors.ERROR_ARANGO_DATABASE_NOT_FOUND.code, err.errorNum);
         }
       });
     },

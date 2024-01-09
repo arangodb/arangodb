@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/Exceptions.tpp"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Logger/LogContextKeys.h"
@@ -40,7 +41,7 @@ using namespace arangodb::replication2;
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     std::string_view name, std::string_view database, LogId logId,
     std::shared_ptr<replicated_log::ReplicatedLog> log,
-    LoggerContext const& loggerContext)
+    LoggerContext const& loggerContext, std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<ReplicatedStateBase> {
   auto name_str = std::string{name};
   if (auto iter = implementations.find(name_str);
@@ -51,18 +52,23 @@ auto replicated_state::ReplicatedStateFeature::createReplicatedState(
         << "Creating replicated state of type `" << name << "`.";
     auto gid = GlobalLogIdentifier(std::string(database), logId);
     return iter->second.factory->createReplicatedState(
-        std::move(gid), std::move(log), std::move(lc), iter->second.metrics);
+        std::move(gid), std::move(log), std::move(lc), iter->second.metrics,
+        std::move(scheduler));
   }
-  THROW_ARANGO_EXCEPTION(
-      TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);  // TODO fix error code
+  using namespace fmt::literals;
+  throw basics::Exception::fmt(
+      ADB_HERE, TRI_ERROR_REPLICATION_REPLICATED_STATE_IMPLEMENTATION_NOT_FOUND,
+      "type"_a = name);
 }
 
 auto replicated_state::ReplicatedStateFeature::createReplicatedState(
     std::string_view name, std::string_view database, LogId logId,
-    std::shared_ptr<replicated_log::ReplicatedLog> log)
+    std::shared_ptr<replicated_log::ReplicatedLog> log,
+    std::shared_ptr<IScheduler> scheduler)
     -> std::shared_ptr<ReplicatedStateBase> {
   return createReplicatedState(name, database, logId, std::move(log),
-                               LoggerContext(Logger::REPLICATED_STATE));
+                               LoggerContext(Logger::REPLICATED_STATE),
+                               std::move(scheduler));
 }
 
 void replicated_state::ReplicatedStateFeature::assertWasInserted(

@@ -26,10 +26,14 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ClusterTypes.h"
 
+struct TRI_vocbase_t;
 namespace arangodb {
-namespace maintenance {
+class LogicalCollection;
+}
 
+namespace arangodb::maintenance {
 class DropCollection : public ActionBase, ShardDefinition {
  public:
   DropCollection(MaintenanceFeature&, ActionDescription const&);
@@ -38,7 +42,9 @@ class DropCollection : public ActionBase, ShardDefinition {
 
   virtual bool first() override final;
   void setState(ActionState state) override final;
-};
 
-}  // namespace maintenance
-}  // namespace arangodb
+ private:
+  static Result dropCollectionReplication2(
+      ShardID const& shard, std::shared_ptr<LogicalCollection>& coll);
+};
+}  // namespace arangodb::maintenance

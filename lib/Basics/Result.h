@@ -150,6 +150,8 @@ class Result final {
   auto reset(Result const& other) -> Result&;
   auto reset(Result&& other) noexcept -> Result&;
 
+  auto error() && noexcept -> result::Error;
+
   /**
    * @brief  Get error message
    * @return Our error message

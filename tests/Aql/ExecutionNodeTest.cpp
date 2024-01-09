@@ -28,6 +28,8 @@
 #include "Aql/Query.h"
 #include "Aql/SubqueryEndExecutionNode.h"
 #include "Aql/SubqueryStartExecutionNode.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
 
 #include "Logger/LogMacros.h"
 
@@ -45,6 +47,8 @@ class ExecutionNodeTest : public ::testing::Test {
   std::shared_ptr<arangodb::aql::Query> fakedQuery;
   Ast ast;
   ExecutionPlan plan;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
 
  public:
   ExecutionNodeTest()
@@ -122,7 +126,7 @@ TEST_F(ExecutionNodeTest, start_node_not_equal_different_id) {
 TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
   VPackBuilder builder;
 
-  Variable outvar("name", 1, false);
+  Variable outvar("name", 1, false, resourceMonitor);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
 
@@ -142,8 +146,8 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_no_invariable) {
 TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
   VPackBuilder builder;
 
-  Variable outvar("name", 1, false);
-  Variable invar("otherName", 2, false);
+  Variable outvar("name", 1, false, resourceMonitor);
+  Variable invar("otherName", 2, false, resourceMonitor);
 
   std::unique_ptr<SubqueryEndNode> node, nodeFromVPack;
 
@@ -163,7 +167,7 @@ TEST_F(ExecutionNodeTest, end_node_velocypack_roundtrip_invariable) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1, false);
+  Variable outvar("name", 1, false, resourceMonitor);
 
   node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr,
                                             &outvar);
@@ -176,8 +180,8 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_different_id) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_null_vs_non_null) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1, false);
-  Variable invar("otherName", 2, false);
+  Variable outvar("name", 1, false, resourceMonitor);
+  Variable invar("otherName", 2, false, resourceMonitor);
 
   node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar,
                                             &outvar);
@@ -192,9 +196,9 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_null_vs_non_null) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_differ) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1, false);
-  Variable invar("otherName", 2, false);
-  Variable otherInvar("invalidName", 3, false);
+  Variable outvar("name", 1, false, resourceMonitor);
+  Variable invar("otherName", 2, false, resourceMonitor);
+  Variable otherInvar("invalidName", 3, false, resourceMonitor);
 
   node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, &invar,
                                             &outvar);
@@ -209,8 +213,8 @@ TEST_F(ExecutionNodeTest, end_node_not_equal_invariable_differ) {
 TEST_F(ExecutionNodeTest, end_node_not_equal_outvariable_differ) {
   std::unique_ptr<SubqueryEndNode> node1, node2;
 
-  Variable outvar("name", 1, false);
-  Variable otherOutvar("otherName", 2, false);
+  Variable outvar("name", 1, false, resourceMonitor);
+  Variable otherOutvar("otherName", 2, false, resourceMonitor);
 
   node1 = std::make_unique<SubqueryEndNode>(&plan, ExecutionNodeId{0}, nullptr,
                                             &outvar);

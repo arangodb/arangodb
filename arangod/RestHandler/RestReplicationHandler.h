@@ -130,7 +130,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief handle a restore command for a specific collection
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandRestoreCollection();
+  [[nodiscard]] futures::Future<futures::Unit> handleCommandRestoreCollection();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore command for a specific collection
@@ -142,7 +142,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief handle a restore command for a specific collection
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandRestoreData();
+  [[nodiscard]] futures::Future<futures::Unit> handleCommandRestoreData();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief handle a restore of all views for this collection
@@ -208,7 +208,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief add a follower of a shard to the list of followers
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandAddFollower();
+  [[nodiscard]] futures::Future<futures::Unit> handleCommandAddFollower();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief remove a follower of a shard from the list of followers
@@ -226,7 +226,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief hold a read lock on a collection to stop writes temporarily
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandHoldReadLockCollection();
+  futures::Future<futures::Unit> handleCommandHoldReadLockCollection();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief cancel holding a read lock on a collection
@@ -278,7 +278,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @response 204 No Content if all goes well
   //////////////////////////////////////////////////////////////////////////////
 
-  void handleCommandRebuildRevisionTree();
+  [[nodiscard]] futures::Future<futures::Unit>
+  handleCommandRebuildRevisionTree();
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   /// @brief intentionally corrupt the revision of a collection
@@ -334,35 +335,41 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the structure of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCollection(VPackSlice const&, bool overwrite, bool force,
-                                  bool ignoreDistributeShardsLikeErrors);
+  futures::Future<Result> processRestoreCollection(
+      VPackSlice const&, bool overwrite, bool force,
+      bool ignoreDistributeShardsLikeErrors);
 
   /// @brief helper function for processRestoreCoordinatorAnalyzersBatch() and
   /// processRestoreUsersBatch().
-  Result parseBatchForSystemCollection(
+  futures::Future<Result> parseBatchForSystemCollection(
       std::string const& collectionName, VPackBuilder& documentsToInsert,
-      std::unordered_set<std::string>& documentsToRemove,
-      bool generateNewRevisionIds);
+      std::unordered_set<std::string>& documentsToRemove);
+
+  Result parseBatchForSystemCollectionDump(
+      std::string const& collectionName, VPackBuilder& documentsToInsert,
+      std::unordered_set<std::string>& documentsToRemove);
+
+  Result parseBatchForSystemCollectionVPack(std::string const& collectionName,
+                                            VPackBuilder& documentsToInsert);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _analyzers collection in cluster
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreCoordinatorAnalyzersBatch(bool generateNewRevisionIds);
+  futures::Future<Result> processRestoreCoordinatorAnalyzersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of the _users collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreUsersBatch(bool generateNewRevisionIds);
+  futures::Future<Result> processRestoreUsersBatch();
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
   Result processRestoreDataBatch(transaction::Methods& trx,
-                                 std::string const& colName,
-                                 bool generateNewRevisionIds);
+                                 std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief restores the indexes of a collection
@@ -380,7 +387,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief restores the data of a collection
   //////////////////////////////////////////////////////////////////////////////
 
-  Result processRestoreData(std::string const& colName);
+  futures::Future<Result> processRestoreData(std::string const& colName);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief parse an input batch
@@ -389,14 +396,16 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   Result parseBatch(transaction::Methods& trx,
                     std::string const& collectionName,
                     VPackBuilder& documentToInsert,
-                    std::unordered_set<std::string>& documentsToRemove,
-                    bool generateNewRevisionIds);
+                    std::unordered_set<std::string>& documentsToRemove);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief creates a collection, based on the VelocyPack provided
-  //////////////////////////////////////////////////////////////////////////////
+  Result parseBatchDump(transaction::Methods& trx,
+                        std::string const& collectionName,
+                        VPackBuilder& documentToInsert,
+                        std::unordered_set<std::string>& documentsToRemove);
 
-  ErrorCode createCollection(VPackSlice slice);
+  Result parseBatchVPack(transaction::Methods& trx,
+                         std::string const& collectionName,
+                         VPackBuilder& documentToInsert);
 
  private:
   //////////////////////////////////////////////////////////////////////////////
@@ -458,7 +467,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief handle a batch command
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void handleCommandBatch() = 0;
+  virtual futures::Future<futures::Unit> handleCommandBatch() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief return the inventory (current replication and collection state)
@@ -470,7 +479,7 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   /// @brief produce list of keys for a specific collection
   //////////////////////////////////////////////////////////////////////////////
 
-  virtual void handleCommandCreateKeys() = 0;
+  virtual futures::Future<futures::Unit> handleCommandCreateKeys() = 0;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief returns a key range
@@ -517,10 +526,10 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        It will be registered with the given id, and it will have
   ///        the given time to live.
   //////////////////////////////////////////////////////////////////////////////
-  Result createBlockingTransaction(TransactionId tid, LogicalCollection& col,
-                                   double ttl, AccessMode::Type access,
-                                   RebootId const& rebootId,
-                                   std::string const& serverId);
+  futures::Future<Result> createBlockingTransaction(
+      TransactionId tid, LogicalCollection& col, double ttl,
+      AccessMode::Type access, RebootId const& rebootId,
+      std::string const& serverId);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Test if we already have the read-lock
@@ -554,5 +563,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error code otherwise.
   //////////////////////////////////////////////////////////////////////////////
   Result testPermissions();
+
+  static constexpr uint64_t defaultChunkSize = 128 * 1024;
+  static constexpr uint64_t maxChunkSize = 64 * 1024 * 1024;
 };
 }  // namespace arangodb

@@ -11,6 +11,9 @@
     background-image: none;
     border: 1px solid $c-white;
     float: right;
+    &:hover {
+      color: white !important;
+    }
   }
 
   .btn-warning { /* noty */
@@ -31,4 +34,13 @@
     background-color: $c-bluegrey-dark !important;
     opacity: 0.5 !important;
   }
+}
+
+.noty_theme__sunset.noty_type__error {
+  background-color: var(--red-700) !important;
+}
+
+
+.noty_bar {
+  border-radius: 4px;
 }

@@ -36,7 +36,7 @@ namespace iresearch {
 namespace {
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // store nulls verbatim
   if (irs::IsNull(value)) {
     builder.add(                                        // add value
@@ -51,16 +51,15 @@ velocypack::Builder& addRef(velocypack::Builder& builder,
 
 template<typename T>
 velocypack::Builder& addRef(velocypack::Builder& builder, std::string_view key,
-                            std::basic_string_view<T> value) {
+                            irs::basic_string_view<T> value) {
   // Builder uses memcpy(...) which cannot handle nullptr
   TRI_ASSERT(!irs::IsNull(key));
 
   // store nulls verbatim
   if (irs::IsNull(value)) {
-    builder.add(key.data(), key.size(),
-                velocypack::Value(velocypack::ValueType::Null));
+    builder.add(key, velocypack::Value(velocypack::ValueType::Null));
   } else {
-    builder.add(key.data(), key.size(), toValuePair(value));
+    builder.add(key, toValuePair(value));
   }
 
   return builder;
@@ -180,7 +179,7 @@ bool mergeSliceSkipKeys(
     auto attr = key.stringView();
 
     if (acceptor(attr)) {
-      builder.add(attr.data(), attr.size(), value);
+      builder.add(attr, value);
     }
   }
 
