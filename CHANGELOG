@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-377: remove broken link from JSON editor.
+
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
   this new index had the same set of labels as the old one. However, on followers
   (and with replication2 also on the leader), the DropIndex and EnsureIndex
