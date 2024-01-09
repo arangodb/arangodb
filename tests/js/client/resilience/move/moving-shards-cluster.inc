@@ -48,6 +48,7 @@ const {
   debugClearFailAt, 
   arangoClusterInfoFlush,
   getDBServers,
+  getAgents,
   getEndpointById,
   getCoordinators
 } = require('@arangodb/test-helper');
@@ -58,8 +59,7 @@ const numDocuments = 1000;
 const dbservers = getDBServers().map(arangod => arangod.id);
 
 function delaySupervisionFailoverActions(value) {
-  let agents = getDBServers().filter(
-    arangod => arangod.instanceRole === "agent").map(
+  let agents = getAgents().map(
     arangod => arangod.url);
   for (let a of agents) {
     const res = request({url: a + "/_api/agency/config",
@@ -1185,7 +1185,7 @@ exports.MovingShardsSuite = function({useData, replVersion}) {
         var shard = Object.keys(cinfo.shards)[0];
         assertTrue(moveShard(dbn, c[1]._id, shard, fromServer, toServer, false, "Finished"));
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
-        // wait(5);   // After 5 seconds the situation should be unchanged!
+        wait(5);   // After 5 seconds the situation should be unchanged!
         assertTrue(waitForIncompleteMoveShard(dbn, c[1].name(), 3));
         // Now we know that the old follower is not in the plan but is in
         // failoverCandidates (and indeed in Current/servers). Let's now
