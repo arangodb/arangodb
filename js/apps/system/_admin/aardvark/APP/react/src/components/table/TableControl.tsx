@@ -1,8 +1,7 @@
 import {
+  Button,
   Checkbox,
   Flex,
-  Icon,
-  IconButton,
   Menu,
   MenuButton,
   MenuList,
@@ -10,7 +9,6 @@ import {
 } from "@chakra-ui/react";
 import { ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
-import { EllipsisH } from "styled-icons/fa-solid";
 
 export const TableControl = <Data extends object>({
   table,
@@ -23,11 +21,13 @@ export const TableControl = <Data extends object>({
   return (
     <Menu closeOnSelect={false}>
       <MenuButton
-        as={IconButton}
+        as={Button}
+        borderColor="gray.900"
+        variant="outline"
         size="sm"
-        variant="ghost"
-        icon={<Icon as={EllipsisH} />}
-      />
+      >
+        Columns
+      </MenuButton>
       <MenuList minWidth="auto">
         <MenuOptionGroup defaultChecked type="checkbox">
           <Flex padding="2" gap="2" direction="column">
