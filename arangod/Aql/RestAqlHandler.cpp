@@ -48,6 +48,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "Rest/GeneralRequest.h"
 #include "Transaction/Context.h"
 
 #include <absl/strings/str_cat.h>
@@ -519,8 +520,11 @@ RestStatus RestAqlHandler::continueExecute() {
     return RestStatus::DONE;  // uses futures
   }
 
-  generateError(rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
-                "continued non-continuable method for /_api/aql");
+  generateError(
+      rest::ResponseCode::SERVER_ERROR, TRI_ERROR_INTERNAL,
+      absl::StrCat("continued non-continuable method for ",
+                   GeneralRequest::translateMethod(type), " /_api/aql/",
+                   basics::StringUtils::join(suffixes, "/")));
 
   return RestStatus::DONE;
 }
