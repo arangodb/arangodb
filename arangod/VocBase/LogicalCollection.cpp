@@ -818,7 +818,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
 
   std::shared_ptr<replication2::agency::CollectionGroupPlanSpecification const>
       group;
-  if (_groupId.has_value() && ServerState::instance()->isDBServer()) {
+  if (_groupId.has_value()) {
     TRI_ASSERT(replicationVersion() == replication::Version::TWO)
         << "Set a groupId although we are not in Replication Two";
     auto& ci = vocbase().server().getFeature<ClusterFeature>().clusterInfo();
@@ -859,24 +859,29 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     // method Which does serialization but not the open/close object.
     TRI_ASSERT(!build.hasKey(StaticStrings::ReplicationFactor))
         << "replicationFactor already serialized from _sharding";
+    TRI_ASSERT(!build.hasKey(StaticStrings::WriteConcern))
+        << "writeConcern already serialized from _sharding";
+    TRI_ASSERT(!build.hasKey(StaticStrings::MinReplicationFactor))
+        << "minReplicationFactor already serialized from _sharding";
     if (group->attributes.mutableAttributes.replicationFactor == 0) {
       build.add(StaticStrings::ReplicationFactor,
                 VPackValue(StaticStrings::Satellite));
+      // For Backwards Compatibility, WriteConcern should return 0 here for
+      // satellites
+      build.add(StaticStrings::WriteConcern, VPackValue(0));
+      // minReplicationFactor deprecated in 3.6
+      build.add(StaticStrings::MinReplicationFactor, VPackValue(0));
+
     } else {
       build.add(
           StaticStrings::ReplicationFactor,
           VPackValue(group->attributes.mutableAttributes.replicationFactor));
+      build.add(StaticStrings::WriteConcern,
+                VPackValue(group->attributes.mutableAttributes.writeConcern));
+      // minReplicationFactor deprecated in 3.6
+      build.add(StaticStrings::MinReplicationFactor,
+                VPackValue(group->attributes.mutableAttributes.writeConcern));
     }
-
-    TRI_ASSERT(!build.hasKey(StaticStrings::WriteConcern))
-        << "writeConcern already serialized from _sharding";
-    // minReplicationFactor deprecated in 3.6
-    build.add(StaticStrings::WriteConcern,
-              VPackValue(group->attributes.mutableAttributes.writeConcern));
-    TRI_ASSERT(!build.hasKey(StaticStrings::MinReplicationFactor))
-        << "minReplicationFactor already serialized from _sharding";
-    build.add(StaticStrings::MinReplicationFactor,
-              VPackValue(group->attributes.mutableAttributes.writeConcern));
   }
 
   includeVelocyPackEnterprise(build);
