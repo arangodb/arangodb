@@ -759,7 +759,7 @@ void makePathAbsolute(std::string& path) {
 namespace {
 
 std::string slurpProgramInternal(std::string const& program,
-                                 std::vector<std::string>& moreArgs) {
+                                 std::vector<std::string> const& moreArgs) {
   ExternalProcess const* process;
   ExternalId external;
   ExternalProcessStatus res;
@@ -827,7 +827,7 @@ std::optional<uid_t> findUser(std::string const& nameOrId) noexcept {
     if (valid) {
       return {uidNumber};
     }
-  } catch (std::exception const& exc) {
+  } catch (std::exception const&) {
   }
   return {std::nullopt};
 }
@@ -851,7 +851,7 @@ std::optional<std::string> findUserName(uid_t id) noexcept {
     if (parts.size() >= 1) {
       return {std::move(parts[0])};
     }
-  } catch (std::exception const& exc) {
+  } catch (std::exception const&) {
   }
 #endif
   return {std::nullopt};
@@ -894,7 +894,7 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
         return {gidNumber};
       }
     }
-  } catch (std::exception const& exc) {
+  } catch (std::exception const&) {
   }
 #endif
   return {std::nullopt};

@@ -164,10 +164,6 @@ std::string dirname(std::string const&);
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
 
-// returns the output of a program
-std::string slurpProgramWithArgs(std::string const& program,
-                                 std::vector<std::string> args);
-
 #ifdef ARANGODB_HAVE_GETPWUID
 std::optional<uid_t> findUser(std::string const& nameOrId) noexcept;
 std::optional<std::string> findUserName(uid_t id) noexcept;
