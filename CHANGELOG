@@ -53,6 +53,9 @@ devel
   operations are always carried out normally without checking the version 
   attribute, even if it is specified.
 
+* Escape control characters (e.g. newlines) in the query strings that are
+  logged in an instance's audit log.
+
 * FE-377: remove broken link from JSON editor.
 
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
