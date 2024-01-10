@@ -1,6 +1,6 @@
 devel
 -----
-
+ 
 * No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
   avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
 
