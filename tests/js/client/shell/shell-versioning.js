@@ -25,16 +25,25 @@
 
 const jsunity = require("jsunity");
 const arangodb = require("@arangodb");
+const { waitForShardsInSync } = require("@arangodb/test-helper");
+const isCluster = require("internal").isCluster();
 const db = arangodb.db;
 
 const cn = "UnitTestsVersioning";
+
+const waitUntilInSync = () => {
+  if (!isCluster) {
+    return;
+  }
+  waitForShardsInSync(cn, 30, 1);
+};
 
 function VersioningSuite () {
   'use strict';
 
   return {
     setUp: function () {
-      db._create(cn);
+      db._create(cn, {replicationFactor: 2});
     },
 
     tearDown : function () {
@@ -67,6 +76,8 @@ function VersioningSuite () {
         let doc = db[cn].document(v._key);
         assertEqual(doc, state[v._key]);
       });
+
+      waitUntilInSync();
     },
     
     testUpdateWithVersionAttribute : function () {
@@ -101,6 +112,8 @@ function VersioningSuite () {
         let doc = db[cn].document(v._key);
         assertEqual(doc, state[v._key]);
       });
+      
+      waitUntilInSync();
     },
     
     testReplaceNoVersionAttributeProvided : function () {
@@ -129,6 +142,8 @@ function VersioningSuite () {
         let doc = db[cn].document(v._key);
         assertEqual(doc, state[v._key]);
       });
+      
+      waitUntilInSync();
     },
     
     testReplaceWithVersionAttribute : function () {
@@ -163,6 +178,8 @@ function VersioningSuite () {
         let doc = db[cn].document(v._key);
         assertEqual(doc, state[v._key]);
       });
+      
+      waitUntilInSync();
     },
     
     testAQLUpdateWithVersionAttribute : function () {
@@ -194,6 +211,8 @@ function VersioningSuite () {
       doc = db[cn].document("test3");
       assertEqual(5, doc.version);
       assertEqual(2, doc.value);
+      
+      waitUntilInSync();
     },
   
     testAQLInsertWithOverwriteModeUpdateWithVersionAttribute : function () {
@@ -222,6 +241,8 @@ function VersioningSuite () {
       doc = db[cn].document("test3");
       assertEqual(5, doc.version);
       assertEqual(2, doc.value);
+      
+      waitUntilInSync();
     },
     
     testAQLReplaceWithVersionAttribute : function () {
@@ -253,6 +274,8 @@ function VersioningSuite () {
       doc = db[cn].document("test3");
       assertUndefined(doc.version);
       assertEqual(2, doc.value);
+      
+      waitUntilInSync();
     },
   
     testAQLInsertWithOverwriteModeReplaceWithVersionAttribute : function () {
@@ -281,6 +304,8 @@ function VersioningSuite () {
       doc = db[cn].document("test3");
       assertUndefined(doc.version);
       assertEqual(2, doc.value);
+      
+      waitUntilInSync();
     },
 
   };
