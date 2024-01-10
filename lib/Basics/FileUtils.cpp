@@ -33,7 +33,6 @@
 
 #include "FileUtils.h"
 
-#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
 #include "Basics/NumberUtils.h"
 
@@ -51,11 +50,6 @@
 
 #ifdef _WIN32
 #include "Basics/win-utils.h"
-#endif
-
-#ifdef __APPLE__
-#include <grp.h>
-#include <pwd.h>
 #endif
 
 #include "Basics/Exceptions.h"

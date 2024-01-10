@@ -33,6 +33,7 @@
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
 #include "Basics/Result.h"
+#include "Basics/operating-system.h"
 
 #ifdef ARANGODB_HAVE_GETGRGID
 #include <grp.h>
