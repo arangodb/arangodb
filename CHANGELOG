@@ -45,6 +45,9 @@ devel
   include/exclude system collections from the usage metrics. They are excluded
   by default.
 
+* Escape control characters (e.g. newlines) in the query strings that are
+  logged in an instance's audit log.
+
 * FE-377: remove broken link from JSON editor.
 
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
