@@ -20,15 +20,18 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Replication2/Helper/TestHelper.h"
+#include "Replication2/Helper/ReplicatedLogTestSetup.h"
+#include "Replication2/Mocks/FakeAbstractFollower.h"
 
 #include "Basics/voc-errors.h"
-
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
 
-#include "Replication2/Mocks/FakeAbstractFollower.h"
+// TODO Remove this conditional as soon as we've upgraded MSVC.
+#ifdef DISABLE_I_HAS_SCHEDULER
+#pragma message(                                                     \
+    "Warning: Not compiling these tests due to a compiler bug, see " \
+    "IHasScheduler.h for details.")
+#else
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -38,49 +41,49 @@ using namespace arangodb::replication2::test;
 struct LeaderAppendEntriesTest : ReplicatedLogTest {};
 
 TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createFakeFollower();
+
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
+                           {.term = 4_T, .writeConcern = 2});
+  config->installConfig(true);
 
   auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), false,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+      leaderLogContainer->insert(LogPayload::createFromString("first entry"));
+  // Note that the leader inserts an empty log entry to establish leadership
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
+  leaderLogContainer->runAll();
+
+  auto follower = followerLogContainer->fakeAbstractFollower;
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
-    // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+
+    // Note that the leader inserted an empty log entry while establishing
+    // leadership, and sent another message to update the commit index etc.
+    EXPECT_EQ(req.messageId, MessageId{3});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, 4_T);
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
   }
 
-  {
-    auto result = AppendEntriesResult{LogTerm{4},
-                                      TRI_ERROR_NO_ERROR,
-                                      {},
-                                      follower->currentRequest().messageId};
-    follower->resolveRequest(std::move(result));
-  }
+  follower->resolveWithOk();
 
-  {
-    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
-    EXPECT_EQ(stats.local.commitIndex, firstIdx);
-  }
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex, firstIdx);
+
+  leaderLogContainer->runAll();
 
   ASSERT_TRUE(follower->hasPendingRequests());
   {
     auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{2});
+    EXPECT_EQ(req.messageId, MessageId{4});
     EXPECT_EQ(req.entries.size(), 0U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, firstIdx);
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -89,123 +92,149 @@ TEST_F(LeaderAppendEntriesTest, simple_append_entries) {
 }
 
 TEST_F(LeaderAppendEntriesTest, response_exception) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createFakeFollower();
+  auto fakeFollower = followerLogContainer->fakeAbstractFollower;
+
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
+                           {.term = 4_T, .writeConcern = 2});
+  config->installConfig(true);
+
+  // Note that the leader inserts an empty log entry when establishing
+  // leadership
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex,
+            LogIndex{1});
 
   auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), false,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+      leaderLogContainer->insert(LogPayload::createFromString("first entry"));
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
-    // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    auto req = fakeFollower->currentRequest();
+    // Note that the leader inserted an empty log entry while establishing
+    // leadership, and sent another message to update the commit index etc.
+    EXPECT_EQ(req.messageId, MessageId{3});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
   }
 
-  { follower->resolveRequestWithException(std::logic_error("logic error")); }
+  fakeFollower->resolveRequestWithException(std::logic_error("logic error"));
+
+  ASSERT_FALSE(fakeFollower->hasPendingRequests());
+
+  // We expect the leader to retry, but not commit anything
+  leaderLogContainer->runAll();
+  EXPECT_EQ(leaderLogContainer->getQuickStatus().local.commitIndex,
+            LogIndex{1});
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
 
   {
-    auto stats = std::get<LeaderStatus>(leader->getStatus().getVariant());
-    EXPECT_EQ(stats.local.commitIndex, LogIndex{0});  // do not commit yet
-  }
-
-  // we expect a retry
-  ASSERT_TRUE(follower->hasPendingRequests());
-  {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{2});
-    // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    auto req = fakeFollower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{4});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
   }
 }
 
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_config) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2, true);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createFakeFollower();
+  auto fakeFollower = followerLogContainer->fakeAbstractFollower;
 
-  auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), false,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+  // waitForSync=true in the config
+  auto config = addNewTerm(
+      leaderLogContainer->serverId(), {followerLogContainer->serverId()},
+      {.term = 4_T, .writeConcern = 2, .waitForSync = true});
+  config->installConfig(true);
+
+  // waitForSync=false in the request
+  auto const firstIdx = leaderLogContainer->insert(
+      LogPayload::createFromString("first entry"), false);
+  // Note that the leader inserts an empty log entry when establishing
+  // leadership
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    auto req = fakeFollower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{3});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
     EXPECT_TRUE(req.waitForSync);
   }
 }
 
-// TODO Enable this test, it's currently known to fail, as it's not yet
-// implemented.
-TEST_F(LeaderAppendEntriesTest, DISABLED_test_wait_for_sync_flag_set_by_param) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_set_by_param) {
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createFakeFollower();
+  auto fakeFollower = followerLogContainer->fakeAbstractFollower;
 
-  auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), true,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+  // waitForSync=false in the config
+  auto config = addNewTerm(
+      leaderLogContainer->serverId(), {followerLogContainer->serverId()},
+      {.term = 4_T, .writeConcern = 2, .waitForSync = false});
+  config->installConfig(true);
+
+  // waitForSync=true in the request
+  auto const firstIdx = leaderLogContainer->insert(
+      LogPayload::createFromString("first entry"), true);
+  // Note that the leader inserts an empty log entry while establishing
+  // leadership
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{1});
+    auto req = fakeFollower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{3});
     // Note that the leader inserts an empty log entry in becomeLeader already
-    EXPECT_EQ(req.entries.size(), 2U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
-    EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
-    EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
+    EXPECT_EQ(req.entries.size(), 1U);
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
+    EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
+    EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
-    EXPECT_EQ(req.leaderCommit, LogIndex{0});
+    EXPECT_EQ(req.leaderCommit, LogIndex{1});
     EXPECT_TRUE(req.waitForSync);
   }
 }
 
 TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower = std::make_shared<FakeAbstractFollower>("follower");
-  auto leader = leaderLog->becomeLeader("leader", LogTerm{4}, {follower}, 2);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer = createFakeFollower();
+  auto fakeFollower = followerLogContainer->fakeAbstractFollower;
+
+  auto config = addNewTerm(leaderLogContainer->serverId(),
+                           {followerLogContainer->serverId()},
+                           {.term = 4_T, .writeConcern = 2});
+  config->installConfig(false);
 
   // The first entry written by the leader has always set the waitForSync flag
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
+    auto req = fakeFollower->currentRequest();
     EXPECT_EQ(req.messageId, MessageId{1});
-    // Note that the leader inserts an empty log entry in becomeLeader already
+    // Note that the leader inserts an empty log entry to establish leadership
     EXPECT_EQ(req.entries.size(), 1U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{0});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{0});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -213,22 +242,20 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
     EXPECT_TRUE(req.waitForSync);
   }
 
-  follower->handleAllRequestsWithOk();
+  IHasScheduler::runAll(leaderLogContainer, followerLogContainer);
 
-  auto const firstIdx =
-      leader->insert(LogPayload::createFromString("first entry"), false,
-                     LogLeader::doNotTriggerAsyncReplication);
-  // Note that the leader inserts an empty log entry in becomeLeader already
+  auto const firstIdx = leaderLogContainer->insert(
+      LogPayload::createFromString("first entry"), false);
   ASSERT_EQ(firstIdx, LogIndex{2});
 
-  leader->triggerAsyncReplication();
-  ASSERT_TRUE(follower->hasPendingRequests());
+  leaderLogContainer->runAll();
+  ASSERT_TRUE(fakeFollower->hasPendingRequests());
   {
-    auto req = follower->currentRequest();
-    EXPECT_EQ(req.messageId, MessageId{4});
+    auto req = fakeFollower->currentRequest();
+    EXPECT_EQ(req.messageId, MessageId{3});
     // Note that the leader inserts an empty log entry in becomeLeader already
     EXPECT_EQ(req.entries.size(), 1U);
-    EXPECT_EQ(req.leaderId, ParticipantId{"leader"});
+    EXPECT_EQ(req.leaderId, leaderLogContainer->serverId());
     EXPECT_EQ(req.prevLogEntry.term, LogTerm{4});
     EXPECT_EQ(req.prevLogEntry.index, LogIndex{1});
     EXPECT_EQ(req.leaderTerm, LogTerm{4});
@@ -238,100 +265,106 @@ TEST_F(LeaderAppendEntriesTest, test_wait_for_sync_flag_unset) {
 }
 
 TEST_F(LeaderAppendEntriesTest, propagate_largest_common_index) {
-  auto leaderLog = makeReplicatedLog(LogId{1});
-  auto follower1 = std::make_shared<FakeAbstractFollower>("follower1");
-  auto follower2 = std::make_shared<FakeAbstractFollower>("follower2");
-  auto leader =
-      leaderLog->becomeLeader("leader", LogTerm{4}, {follower1, follower2}, 2);
+  auto leaderLogContainer = createParticipant({});
+  auto followerLogContainer1 = createFakeFollower();
+  auto followerLogContainer2 = createFakeFollower();
+  auto fakeFollower1 = followerLogContainer1->fakeAbstractFollower;
+  auto fakeFollower2 = followerLogContainer2->fakeAbstractFollower;
+
+  auto config = addNewTerm(
+      leaderLogContainer->serverId(),
+      {followerLogContainer1->serverId(), followerLogContainer2->serverId()},
+      {.term = 4_T, .writeConcern = 2});
+  config->installConfig(false);
 
   /*
    * Three participants with writeConcern two. The commitIndex is updated as
-   * soon as two servers have acknowledged the index, the lci is updated as soon
-   * as all the servers have acknowledged the new commit index.
+   * soon as two servers have acknowledged the index, the litk is updated as
+   * soon as the servers acknowledged the new sync index.
    */
-  leader->triggerAsyncReplication();
+  leaderLogContainer->runAll();
   // the leader has written one entry
-  ASSERT_TRUE(follower1->hasPendingRequests());
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{0});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{0});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{0});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
   // let follower1 run and raise the commit index
-  follower1->resolveWithOk();
+  fakeFollower1->setSyncIndex(LogIndex{1});
+  fakeFollower1->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower1 received a message with that commitIndex is now 1
-  ASSERT_TRUE(follower1->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
-  follower1->resolveWithOk();
+  fakeFollower1->resolveWithOk();
+  leaderLogContainer->runAll();
   // there are now no more requests pending for follower1
-  ASSERT_FALSE(follower1->hasPendingRequests());
+  ASSERT_FALSE(fakeFollower1->hasPendingRequests());
 
-  // let follower2 run - this does not raise the lci because follower2 does not
-  // yet know that index 1 is committed.
-  follower2->resolveWithOk();
+  // let follower2 run - this does not raise the litk because follower2 still
+  // responds with syncIndex=0
+  fakeFollower2->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{0});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{0});
   }
 
   // follower2 is now updated with the commit index
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
   {
-    auto const& request = follower2->requests.front().request;
+    auto const& request = fakeFollower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{0});
   }
-  // let follower2 run again - this will raise the lci
-  follower2->resolveWithOk();
+  // now "sync" the log entry and respond on follower2
+  fakeFollower2->setSyncIndex(LogIndex{1});
+  fakeFollower2->resolveWithOk();
+  leaderLogContainer->runAll();
 
   {
-    auto status = leader->getStatus();
-    ASSERT_TRUE(std::holds_alternative<LeaderStatus>(status.getVariant()));
-    auto value = std::get<LeaderStatus>(status.getVariant());
-    EXPECT_EQ(value.local.commitIndex, LogIndex{1});
-    EXPECT_EQ(value.lowestIndexToKeep, LogIndex{1});
+    auto stats = leaderLogContainer->getQuickStatus();
+    EXPECT_EQ(stats.local.commitIndex, LogIndex{1});
+    EXPECT_EQ(stats.local.lowestIndexToKeep, LogIndex{1});
   }
 
-  // now follower2 received an update with lci = 1
-  ASSERT_TRUE(follower2->hasPendingRequests());
+  // now follower2 received an update with litk = 1
+  ASSERT_TRUE(fakeFollower2->hasPendingRequests());
   {
-    auto const& request = follower2->requests.front().request;
+    auto const& request = fakeFollower2->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 
-  // now follower1 received an update with lci = 1
-  ASSERT_TRUE(follower1->hasPendingRequests());
+  // now follower1 received an update with litk = 1
+  ASSERT_TRUE(fakeFollower1->hasPendingRequests());
   {
-    auto const& request = follower1->requests.front().request;
+    auto const& request = fakeFollower1->requests.front().request;
     EXPECT_EQ(request.leaderCommit, LogIndex{1});
     EXPECT_EQ(request.lowestIndexToKeep, LogIndex{1});
   }
 }
+
+#endif

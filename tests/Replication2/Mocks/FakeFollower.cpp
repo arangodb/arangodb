@@ -65,11 +65,12 @@ auto FakeFollower::getQuickStatus() const -> replicated_log::QuickLogStatus {
   return replicated_log::QuickLogStatus{
       .role = replicated_log::ParticipantRole::kFollower,
       .term = term,
-      .local = {{
-          .spearHead = guard->log.getLastTermIndexPair(),
-          .commitIndex = guard->commitIndex,
-          .firstIndex = guard->log.getFirstIndex(),
-      }},
+      .local =
+          {
+              .spearHead = guard->log.getLastTermIndexPair(),
+              .commitIndex = guard->commitIndex,
+              .firstIndex = guard->log.getFirstIndex(),
+          },
       .leadershipEstablished = guard->commitIndex > kBaseIndex,
   };
 }
