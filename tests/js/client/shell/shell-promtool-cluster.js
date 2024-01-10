@@ -41,7 +41,9 @@ let promtoolPath = internal.env[PATH];
 if (!promtoolPath) {
   promtoolPath = '.';
 }
-promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+if (fs.isDirectory(promtoolPath)) {
+  promtoolPath = fs.join(promtoolPath, 'promtool' + pu.executableExt);
+}
 
 const metricsUrlPath = "/_admin/metrics/v2";
 const serverIdPath = "/_admin/server/id";
