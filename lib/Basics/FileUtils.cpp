@@ -53,6 +53,11 @@
 #include "Basics/win-utils.h"
 #endif
 
+#ifdef __APPLE__
+#include <grp.h>
+#include <pwd.h>
+#endif
+
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
