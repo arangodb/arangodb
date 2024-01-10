@@ -22,29 +22,35 @@
 
 #pragma once
 
-#include <gmock/gmock.h>
+#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 
-#include "Cluster/CallbackGuard.h"
-#include "Replication2/ReplicatedLog/IRebootIdCache.h"
+struct TRI_vocbase_t;
 
 namespace arangodb::replication2::test {
 
-struct RebootIdCacheMock : replicated_log::IRebootIdCache {
-  MOCK_METHOD((std::unordered_map<ParticipantId, RebootId>), getRebootIdsFor,
-              (std::vector<ParticipantId> const&), (const, override));
-  MOCK_METHOD((cluster::CallbackGuard), registerCallbackOnChange,
-              (PeerState, Callback, std::string), (override));
+struct FakeFollowerFactory : replicated_log::IAbstractFollowerFactory {
+  FakeFollowerFactory() {}
 
-  RebootIdCacheMock() {
-    ON_CALL(*this, getRebootIdsFor)
-        .WillByDefault([](std::vector<ParticipantId> const& participants) {
-          auto result = std::unordered_map<ParticipantId, RebootId>{};
-          for (auto const& participant : participants) {
-            result.emplace(participant, RebootId{0});
-          }
-          return result;
-        });
+  auto constructFollower(ParticipantId const& participantId) -> std::shared_ptr<
+      replication2::replicated_log::AbstractFollower> override {
+    auto it = followerThunks.find(participantId);
+    if (it != followerThunks.end()) {
+      auto ret = it->second.operator()();
+      followerThunks.erase(it);
+      return ret;
+    }
+    return nullptr;
   }
-};
 
+  auto constructLeaderCommunicator(ParticipantId const& participantId)
+      -> std::shared_ptr<replicated_log::ILeaderCommunicator> override {
+    return leaderComm;
+  }
+
+  std::shared_ptr<replicated_log::ILeaderCommunicator> leaderComm;
+  std::unordered_map<ParticipantId,
+                     std::function<std::shared_ptr<
+                         replication2::replicated_log::AbstractFollower>()>>
+      followerThunks;
+};
 }  // namespace arangodb::replication2::test
