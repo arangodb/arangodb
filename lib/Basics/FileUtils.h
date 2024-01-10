@@ -171,5 +171,8 @@ std::optional<std::string> findUserName(uid_t id) noexcept;
 #ifdef ARANGODB_HAVE_GETGRGID
 std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept;
 #endif
+#ifdef ARANGODB_HAVE_INITGROUPS
+void initGroups(std::string const& userName, gid_t groupId) noexcept;
+#endif
 
 }  // namespace arangodb::basics::FileUtils

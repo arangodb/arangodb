@@ -214,7 +214,7 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
     std::optional<std::string> name = FileUtils::findUserName(_numericUid);
 
     if (name) {
-      initgroups(name.value().c_str(), _numericGid);
+      FileUtils::initGroups(name.value(), _numericGid);
     }
   }
 #endif
