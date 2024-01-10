@@ -920,11 +920,9 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
     auto parts = StringUtils::split(output, ' ');
     std::vector<gid_t> groupIds{groupId};
     for (auto const& part : parts) {
-      bool valid = false;
-      gid_t gidNumber = NumberUtils::atoi_positive<int>(
-          part.data(), part.data() + part.size(), valid);
-      if (valid && gidNumber != groupId) {
-        groupIds.push_back(gidNumber);
+      std::optional<gid_t> gidNumber = findGroup(part);
+      if (gidNumber && gidNumber.value() != groupId) {
+        groupIds.push_back(gidNumber.value());
       }
     }
     setgroups(groupIds.size(), groupIds.data());
