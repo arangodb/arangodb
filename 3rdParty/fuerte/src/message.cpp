@@ -43,9 +43,11 @@ inline int hex2int(char ch, int errorCode) {
 
   return errorCode;
 }
-} // namespace
+}  // namespace
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 
 ///////////////////////////////////////////////
 // class MessageHeader
@@ -113,7 +115,8 @@ void RequestHeader::parseArangoPath(std::string_view p) {
           int h = ::hex2int(p[1], 256) << 4;
           h += ::hex2int(p[2], 256);
           if (h >= 256) {
-            throw std::invalid_argument("invalid encoding value in request URL");
+            throw std::invalid_argument(
+                "invalid encoding value in request URL");
           }
           this->database.push_back(static_cast<char>(h & 0xFF));
           p += 2;
@@ -231,10 +234,19 @@ std::vector<VPackSlice> Request::slices() const {
 
 // get payload as binary
 asio_ns::const_buffer Request::payload() const {
-  return asio_ns::const_buffer(_payload.data(), _payload.byteSize());
+  return asio_ns::const_buffer(_payload.data(), payloadSize());
 }
 
-size_t Request::payloadSize() const { return _payload.byteSize(); }
+size_t Request::payloadSize() const {
+  if (header.contentEncoding() == ContentEncoding::Deflate ||
+      header.contentEncoding() == ContentEncoding::Gzip) {
+    // when the request body is deflate- or gzip-encoded,
+    // it is not ok to call byteSize() because the request
+    // body is not velocypack anymore.
+    return _payload.size();
+  }
+  return _payload.byteSize();
+}
 
 ///////////////////////////////////////////////
 // class Response
@@ -298,4 +310,6 @@ std::shared_ptr<velocypack::Buffer<uint8_t>> Response::stealPayload() {
   _payloadOffset = 0;
   return buffer;
 }
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb

@@ -50,6 +50,8 @@ RestBatchHandler::RestBatchHandler(ArangodServer& server,
 RestBatchHandler::~RestBatchHandler() = default;
 
 RestStatus RestBatchHandler::execute() {
+  _response->setAllowCompression(rest::ResponseCompressionType::kNoCompression);
+
   switch (_response->transportType()) {
     case Endpoint::TransportType::HTTP: {
       return executeHttp();
@@ -198,7 +200,7 @@ bool RestBatchHandler::executeNextHandler() {
 
   if (bodyLength > 0) {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
-        << "part body is '" << std::string(bodyStart, bodyLength) << "'";
+        << "part body is '" << std::string_view(bodyStart, bodyLength) << "'";
     request->clearBody();
     request->appendBody(bodyStart, bodyLength);
     request->appendNullTerminator();
@@ -212,9 +214,11 @@ bool RestBatchHandler::executeNextHandler() {
   std::shared_ptr<RestHandler> handler;
 
   {
+    // batch responses do not support response compression
     auto response =
         std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
-                                       std::make_unique<StringBuffer>(false));
+                                       std::make_unique<StringBuffer>(false),
+                                       ResponseCompressionType::kNoCompression);
     auto factory = server().getFeature<GeneralServerFeature>().handlerFactory();
     handler = factory->createHandler(server(), std::move(request),
                                      std::move(response));

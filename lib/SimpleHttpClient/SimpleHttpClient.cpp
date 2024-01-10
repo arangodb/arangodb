@@ -23,23 +23,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <exception>
-#include <string>
-#include <string_view>
-#include <thread>
-#include <utility>
-
-#include <velocypack/Builder.h>
-#include <velocypack/Parser.h>
-#include <velocypack/Slice.h>
-
 #include "SimpleHttpClient.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/CommunicationFeaturePhase.h"
+#include "Basics/EncodingUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -54,16 +42,34 @@
 #include "SimpleHttpClient/GeneralClientConnection.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 
+#include <absl/strings/str_cat.h>
+#include <absl/strings/escaping.h>
+
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+#include <velocypack/Slice.h>
+
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <cstring>
+#include <exception>
+#include <string>
+#include <string_view>
+#include <thread>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 
-namespace {
-/// @brief empty map, used for headers
-std::unordered_map<std::string, std::string> const noHeaders{};
-}  // namespace
+namespace arangodb::httpclient {
 
-namespace arangodb {
-namespace httpclient {
+void SimpleHttpClientParams::setUserNamePassword(std::string_view prefix,
+                                                 std::string_view username,
+                                                 std::string_view password) {
+  TRI_ASSERT(prefix == "/");
+  _basicAuth = absl::Base64Escape(absl::StrCat(username, ":", password));
+}
 
 /// @brief default value for max packet size
 size_t SimpleHttpClientParams::MaxPacketSize = 512 * 1024 * 1024;
@@ -169,7 +175,7 @@ SimpleHttpResult* SimpleHttpClient::retryRequest(rest::RequestType method,
                                                  std::string const& location,
                                                  char const* body,
                                                  size_t bodyLength) {
-  return retryRequest(method, location, body, bodyLength, ::noHeaders);
+  return retryRequest(method, location, body, bodyLength, {});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -241,7 +247,7 @@ SimpleHttpResult* SimpleHttpClient::request(rest::RequestType method,
                                             std::string const& location,
                                             char const* body,
                                             size_t bodyLength) {
-  return doRequest(method, location, body, bodyLength, ::noHeaders);
+  return doRequest(method, location, body, bodyLength, {});
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -286,7 +292,14 @@ SimpleHttpResult* SimpleHttpClient::doRequest(
   _errorMessage.clear();
 
   // set body
-  setRequest(method, rewriteLocation(location), body, bodyLength, headers);
+  auto res =
+      setRequest(method, rewriteLocation(location), body, bodyLength, headers);
+  if (res != TRI_ERROR_NO_ERROR) {
+    this->close();
+    _state = DEAD;
+    setErrorMessage("Got unexpected error while setting up request");
+    return nullptr;
+  }
 
   // ensure state
   TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
@@ -509,26 +522,25 @@ void SimpleHttpClient::clearReadBuffer() {
 ////////////////////////////////////////////////////////////////////////////////
 
 void SimpleHttpClient::setResultType(bool haveSentRequest) {
-  _result->setHaveSentRequestFully(haveSentRequest);
   switch (_state) {
     case IN_WRITE:
-      _result->setResultType(SimpleHttpResult::WRITE_ERROR);
+      _result->setResultType(SimpleHttpResult::ResultType::WRITE_ERROR);
       break;
 
     case IN_READ_HEADER:
     case IN_READ_BODY:
     case IN_READ_CHUNKED_HEADER:
     case IN_READ_CHUNKED_BODY:
-      _result->setResultType(SimpleHttpResult::READ_ERROR);
+      _result->setResultType(SimpleHttpResult::ResultType::READ_ERROR);
       break;
 
     case FINISHED:
-      _result->setResultType(SimpleHttpResult::COMPLETE);
+      _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
       break;
 
     case IN_CONNECT:
     default: {
-      _result->setResultType(SimpleHttpResult::COULD_NOT_CONNECT);
+      _result->setResultType(SimpleHttpResult::ResultType::COULD_NOT_CONNECT);
       if (!haveErrorMessage()) {
         setErrorMessage("Could not connect");
       }
@@ -545,7 +557,7 @@ void SimpleHttpClient::setResultType(bool haveSentRequest) {
 /// @brief prepare a request
 ////////////////////////////////////////////////////////////////////////////////
 
-void SimpleHttpClient::setRequest(
+ErrorCode SimpleHttpClient::setRequest(
     rest::RequestType method, std::string const& location, char const* body,
     size_t bodyLength,
     std::unordered_map<std::string, std::string> const& headers) {
@@ -568,7 +580,7 @@ void SimpleHttpClient::setRequest(
   std::string const* l = &location;
 
   std::string appended;
-  if (location.empty() || location[0] != '/') {
+  if (!location.starts_with('/')) {
     appended.reserve(1 + location.size());
     appended = '/' + location;
     l = &appended;
@@ -598,11 +610,6 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(std::string_view("User-Agent: ArangoDB\r\n"));
   }
 
-  // do not automatically advertise deflate support
-  if (_params._supportDeflate) {
-    _writeBuffer.appendText(std::string_view("Accept-Encoding: deflate\r\n"));
-  }
-
   // basic authorization
   using ExclusionType = std::pair<size_t, size_t>;
   containers::SmallVector<ExclusionType, 4> exclusions;
@@ -621,6 +628,8 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(std::string_view("\r\n"));
   }
 
+  bool foundAcceptEncoding = false;
+  bool foundContentEncoding = false;
   bool foundContentLength = false;
   for (auto const& header : headers) {
     if (!foundContentLength &&
@@ -628,6 +637,16 @@ void SimpleHttpClient::setRequest(
             StaticStrings::ContentLength, header.first)) {
       foundContentLength = true;
       continue;  // skip content-length header
+    }
+    if (!foundContentEncoding &&
+        basics::StringUtils::equalStringsCaseInsensitive(
+            StaticStrings::ContentEncoding, header.first)) {
+      foundContentEncoding = true;
+    }
+    if (!foundAcceptEncoding && _params._allowCompressedResponses &&
+        basics::StringUtils::equalStringsCaseInsensitive(
+            StaticStrings::AcceptEncoding, header.first)) {
+      foundAcceptEncoding = true;
     }
     _writeBuffer.appendText(header.first);
     _writeBuffer.appendText(std::string_view(": "));
@@ -642,20 +661,54 @@ void SimpleHttpClient::setRequest(
     _writeBuffer.appendText(std::string_view("\r\n"));
   }
 
-  if (method != rest::RequestType::GET) {
-    if (_params._addContentLength) {
-      _writeBuffer.appendText(std::string_view("Content-Length: "));
-      _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
-      _writeBuffer.appendText(std::string_view("\r\n"));
+  if (!foundAcceptEncoding && _params._allowCompressedResponses) {
+    _writeBuffer.appendText(std::string_view("Accept-Encoding: deflate\r\n"));
+  }
+
+  // compress request body if we are asked for it, but only if
+  // no explicit "content-encoding" header was already set
+  bool compressBody = !foundContentEncoding &&
+                      _params._compressRequestThreshold > 0 &&
+                      _params._compressRequestThreshold <= bodyLength;
+  std::string compressed;
+  if (compressBody) {
+    auto res = encoding::zlibDeflate(reinterpret_cast<uint8_t const*>(body),
+                                     bodyLength, compressed);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
+    if (compressed.size() >= bodyLength) {
+      // bad: compressed request body is larger than uncompressed body.
+      // in this case we give up on the compression
+      compressBody = false;
+    } else {
+      // good: compression resulted in some smaller request body
+      bodyLength = compressed.size();
+      _writeBuffer.appendText(
+          std::string_view("Content-Encoding: deflate\r\n"));
     }
   }
+
+  if (method != rest::RequestType::GET && _params._addContentLength) {
+    _writeBuffer.appendText(std::string_view("Content-Length: "));
+    _writeBuffer.appendInteger(static_cast<uint64_t>(bodyLength));
+    _writeBuffer.appendText(std::string_view("\r\n"));
+  }
+
+  // end of headers
   _writeBuffer.appendText(std::string_view("\r\n"));
 
   if (body != nullptr) {
-    _writeBuffer.appendText(body, bodyLength);
+    if (compressBody) {
+      TRI_ASSERT(bodyLength == compressed.size());
+      _writeBuffer.appendText(compressed.data(), compressed.size());
+    } else {
+      // don't write compressed body
+      _writeBuffer.appendText(body, bodyLength);
+    }
   }
-
   _writeBuffer.ensureNullTerminated();
+
   if (exclusions.empty()) {
     LOG_TOPIC("12c4c", TRACE, arangodb::Logger::HTTPCLIENT)
         << "request: " << _writeBuffer;
@@ -694,6 +747,7 @@ void SimpleHttpClient::setRequest(
   }
 
   TRI_ASSERT(_state == IN_CONNECT || _state == IN_WRITE);
+  return TRI_ERROR_NO_ERROR;
 }
 
 // -----------------------------------------------------------------------------
@@ -748,7 +802,7 @@ void SimpleHttpClient::processHeader() {
       else if (_result->getHttpReturnCode() == 204 &&
                _result->hasContentLength() &&
                _result->getContentLength() != 0) {
-        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
         _state = FINISHED;
         // always disconnect - some servers include a response body
         _connection->disconnect();
@@ -765,7 +819,7 @@ void SimpleHttpClient::processHeader() {
       // no body
       else if (_result->hasContentLength() &&
                _result->getContentLength() == 0) {
-        _result->setResultType(SimpleHttpResult::COMPLETE);
+        _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
         _state = FINISHED;
 
         if (!_params._keepAlive) {
@@ -830,7 +884,7 @@ void SimpleHttpClient::processHeader() {
 void SimpleHttpClient::processBody() {
   // HEAD requests may be responded to without a body...
   if (_method == rest::RequestType::HEAD) {
-    _result->setResultType(SimpleHttpResult::COMPLETE);
+    _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
     _state = FINISHED;
 
     if (!_params._keepAlive) {
@@ -851,23 +905,23 @@ void SimpleHttpClient::processBody() {
   }
 
   // body is compressed using deflate. inflate it
-  if (_result->isDeflated()) {
-    _readBuffer.inflate(_result->getBody(), _readBufferOffset);
-  }
-
-  // body is not compressed
-  else {
+  if (_result->getEncodingType() == rest::EncodingType::DEFLATE) {
+    _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
+  } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
+    _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
+  } else {
+    // body is not compressed
     // Note that if we are here, then
     // _result->getContentLength() <= _readBuffer.length()-_readBufferOffset
     _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                   _result->getContentLength());
-    _result->getBody().ensureNullTerminated();
   }
+  _result->getBody().ensureNullTerminated();
 
   _readBufferOffset += _result->getContentLength();
   TRI_ASSERT(_readBufferOffset <= _readBuffer.length());
 
-  _result->setResultType(SimpleHttpResult::COMPLETE);
+  _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
   _state = FINISHED;
 
   if (!_params._keepAlive) {
@@ -927,11 +981,10 @@ void SimpleHttpClient::processChunkedHeader() {
 
   // failed: too many bytes
   if (contentLength > _params._maxPacketSize) {
-    std::string errorMessage(
+    std::string errorMessage = absl::StrCat(
         "ignoring HTTP response with 'Content-Length' bigger than max packet "
-        "size (");
-    errorMessage += std::to_string(contentLength) + " > " +
-                    std::to_string(_params._maxPacketSize) + ")";
+        "size (",
+        contentLength, " > ", _params._maxPacketSize, ")");
     setErrorMessage(errorMessage, true);
     // reset connection
     this->close();
@@ -949,7 +1002,7 @@ void SimpleHttpClient::processChunkedHeader() {
 void SimpleHttpClient::processChunkedBody() {
   // HEAD requests may be responded to without a body...
   if (_method == rest::RequestType::HEAD) {
-    _result->setResultType(SimpleHttpResult::COMPLETE);
+    _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
     _state = FINISHED;
 
     if (!_params._keepAlive) {
@@ -962,7 +1015,7 @@ void SimpleHttpClient::processChunkedBody() {
   if (_readBuffer.length() - _readBufferOffset >= _nextChunkedSize + 2) {
     // last chunk length was 0, therefore we are finished
     if (_nextChunkedSize == 0) {
-      _result->setResultType(SimpleHttpResult::COMPLETE);
+      _result->setResultType(SimpleHttpResult::ResultType::COMPLETE);
 
       _state = FINISHED;
 
@@ -973,14 +1026,15 @@ void SimpleHttpClient::processChunkedBody() {
       return;
     }
 
-    if (_result->isDeflated()) {
-      _readBuffer.inflate(_result->getBody(), _readBufferOffset);
-      _result->getBody().ensureNullTerminated();
+    if (_result->getEncodingType() == rest::EncodingType::DEFLATE) {
+      _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
+    } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
+      _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
     } else {
       _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
-                                    (size_t)_nextChunkedSize);
-      _result->getBody().ensureNullTerminated();
+                                    static_cast<size_t>(_nextChunkedSize));
     }
+    _result->getBody().ensureNullTerminated();
 
     _readBufferOffset += (size_t)_nextChunkedSize + 2;
 
@@ -1015,17 +1069,26 @@ std::string SimpleHttpClient::getHttpErrorMessage(
         if (errorCode != nullptr) {
           *errorCode = ErrorCode{errorNum};
         }
-        details = ": ArangoError " + std::to_string(errorNum) + ": " +
-                  msg.copyString();
+        details =
+            absl::StrCat(": ArangoError ", errorNum, ": ", msg.stringView());
       }
     }
   } catch (...) {
     // don't rethrow here. we'll respond with an error message anyway
   }
 
-  return "got error from server: HTTP " +
-         std::to_string(result->getHttpReturnCode()) + " (" +
-         result->getHttpReturnMessage() + ")" + details;
+  return absl::StrCat("got error from server: HTTP ",
+                      result->getHttpReturnCode(), " (",
+                      result->getHttpReturnMessage(), ")", details);
+}
+
+void SimpleHttpClient::setErrorMessage(std::string_view message,
+                                       ErrorCode error) {
+  if (error != TRI_ERROR_NO_ERROR) {
+    _errorMessage = absl::StrCat(message, ": ", TRI_errno_string(error));
+  } else {
+    setErrorMessage(message);
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1049,15 +1112,13 @@ std::string SimpleHttpClient::getServerVersion(ErrorCode* errorCode) {
     // default value
     std::string version = "arango";
 
-    arangodb::basics::StringBuffer const& body = response->getBody();
     try {
-      std::shared_ptr<VPackBuilder> builder =
-          VPackParser::fromJson(body.c_str(), body.length());
+      std::shared_ptr<VPackBuilder> builder = response->getBodyVelocyPack();
 
       VPackSlice slice = builder->slice();
       if (slice.isObject()) {
-        VPackSlice server = slice.get("server");
-        if (server.isString() && server.copyString() == "arango") {
+        if (auto server = slice.get("server");
+            server.isString() && server.stringView() == "arango") {
           // "server" value is a string and its content is "arango"
           VPackSlice v = slice.get("version");
           if (v.isString()) {
@@ -1087,5 +1148,4 @@ std::string SimpleHttpClient::getServerVersion(ErrorCode* errorCode) {
 
   return "";
 }
-}  // namespace httpclient
-}  // namespace arangodb
+}  // namespace arangodb::httpclient

@@ -33,10 +33,16 @@ const analyzers = require("@arangodb/analyzers");
 
 function indexHintSuite () {
   const getIndexNames = function (query) {
-    return db._createStatement(query).explain()
-      .plan.nodes.filter(node => (node.type === 'IndexNode' ||
+    const explain = db._createStatement(query).explain();
+    const usedIndicesInJoin = explain.plan.nodes.filter(node => (node.type === 'JoinNode'))
+      .map(node => node.indexInfos.map(indexInfo => indexInfo.index.name))
+      .map(subArray => subArray.map(item => [item]))[0];
+
+    const usedIndices =  explain.plan.nodes.filter(node => (node.type === 'IndexNode' ||
         node.type === 'SingleRemoteOperationNode'))
       .map(node => node.indexes.map(index => index.name));
+
+    return usedIndicesInJoin === undefined ? usedIndices : usedIndices.concat(usedIndicesInJoin);
   };
 
   const cn = 'UnitTestsIndexHints';

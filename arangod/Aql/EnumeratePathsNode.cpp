@@ -185,6 +185,8 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
       _inTargetVariable(nullptr),
       _fromCondition(nullptr),
       _toCondition(nullptr),
+      _globalVertexConditions(),
+      _globalEdgeConditions(),
       _distributeVariable(nullptr) {
   if (base.hasKey(StaticStrings::GraphQueryShortestPathType)) {
     _pathType = arangodb::graph::PathType::fromString(
@@ -245,6 +247,24 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan* plan,
   // safe cppcheck-suppress *
   _toCondition = plan->getAst()->createNode(base.get("toCondition"));
 
+  {
+    auto list = base.get("globalEdgeConditions");
+    if (list.isArray()) {
+      for (auto const& cond : VPackArrayIterator(list)) {
+        _globalEdgeConditions.emplace_back(plan->getAst()->createNode(cond));
+      }
+    }
+  }
+
+  {
+    auto list = base.get("globalVertexConditions");
+    if (list.isArray()) {
+      for (auto const& cond : VPackArrayIterator(list)) {
+        _globalVertexConditions.emplace_back(plan->getAst()->createNode(cond));
+      }
+    }
+  }
+
   if (base.hasKey("distributeVariable")) {
     _distributeVariable =
         Variable::varFromVPack(plan->getAst(), base, "distributeVariable");
@@ -265,7 +285,7 @@ EnumeratePathsNode::EnumeratePathsNode(ExecutionPlan& plan,
       _fromCondition(nullptr),
       _toCondition(nullptr),
       _distributeVariable(nullptr) {
-  other.enumeratePathsCloneHelper(plan, *this, false);
+  other.enumeratePathsCloneHelper(plan, *this);
 }
 
 void EnumeratePathsNode::setStartInVariable(Variable const* inVariable) {
@@ -295,6 +315,14 @@ void EnumeratePathsNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add(VPackValue("pathOutVariable"));
     pathOutVariable().toVelocyPack(nodes);
   }
+  if (isVertexOutVariableUsedLater()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
+  }
 
   // In variables
   if (usesStartInVariable()) {
@@ -319,6 +347,24 @@ void EnumeratePathsNode::doToVelocyPack(VPackBuilder& nodes,
   TRI_ASSERT(_toCondition != nullptr);
   nodes.add(VPackValue("toCondition"));
   _toCondition->toVelocyPack(nodes, flags);
+
+  if (!_globalEdgeConditions.empty()) {
+    nodes.add(VPackValue("globalEdgeConditions"));
+    nodes.openArray();
+    for (auto const& it : _globalEdgeConditions) {
+      it->toVelocyPack(nodes, flags);
+    }
+    nodes.close();
+  }
+
+  if (!_globalVertexConditions.empty()) {
+    nodes.add(VPackValue("globalVertexConditions"));
+    nodes.openArray();
+    for (auto const& it : _globalVertexConditions) {
+      it->toVelocyPack(nodes, flags);
+    }
+    nodes.close();
+  }
 
   if (_distributeVariable != nullptr) {
     nodes.add(VPackValue("distributeVariable"));
@@ -387,6 +433,27 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
       opts->getMinDepth(), opts->getMaxDepth(), pathType()};
   PathValidatorOptions validatorOptions(opts->tmpVar(),
                                         opts->getExpressionCtx());
+
+  Ast* ast = _plan->getAst();
+  if (!_globalVertexConditions.empty()) {
+    auto cond =
+        _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    for (auto const& it : _globalVertexConditions) {
+      cond->addMember(it);
+    }
+    validatorOptions.setAllVerticesExpression(
+        std::make_unique<Expression>(ast, cond));
+  }
+
+  if (!_globalEdgeConditions.empty()) {
+    auto cond =
+        _plan->getAst()->createNodeNaryOperator(NODE_TYPE_OPERATOR_NARY_AND);
+    for (auto const& it : _globalEdgeConditions) {
+      cond->addMember(it);
+    }
+    validatorOptions.setAllEdgesExpression(
+        std::make_unique<Expression>(ast, cond));
+  }
 
   if (!ServerState::instance()->isCoordinator()) {
     // Create IndexAccessor for BaseProviderOptions (TODO: Location need to
@@ -660,8 +727,7 @@ std::unique_ptr<ExecutionBlock> EnumeratePathsNode::createBlock(
 }
 
 ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
-                                         bool withDependencies,
-                                         bool withProperties) const {
+                                         bool withDependencies) const {
   TRI_ASSERT(!_optionsBuilt);
   auto oldOpts = static_cast<ShortestPathOptions*>(options());
   std::unique_ptr<BaseOptions> tmp =
@@ -672,23 +738,17 @@ ExecutionNode* EnumeratePathsNode::clone(ExecutionPlan* plan,
       _inTargetVariable, _targetVertexId, std::move(tmp), _graphObj,
       _distributeVariable);
 
-  enumeratePathsCloneHelper(*plan, *c, withProperties);
+  enumeratePathsCloneHelper(*plan, *c);
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
-void EnumeratePathsNode::enumeratePathsCloneHelper(ExecutionPlan& plan,
-                                                   EnumeratePathsNode& c,
-                                                   bool withProperties) const {
-  graphCloneHelper(plan, c, withProperties);
+void EnumeratePathsNode::enumeratePathsCloneHelper(
+    ExecutionPlan& plan, EnumeratePathsNode& c) const {
+  graphCloneHelper(plan, c);
   if (usesPathOutVariable()) {
-    auto pathOutVariable = _pathOutVariable;
-    if (withProperties) {
-      pathOutVariable =
-          plan.getAst()->variables()->createVariable(pathOutVariable);
-    }
-    TRI_ASSERT(pathOutVariable != nullptr);
-    c.setPathOutput(pathOutVariable);
+    TRI_ASSERT(_pathOutVariable != nullptr);
+    c.setPathOutput(_pathOutVariable);
   }
 
   // Temporary Filter Objects
@@ -699,6 +759,14 @@ void EnumeratePathsNode::enumeratePathsCloneHelper(ExecutionPlan& plan,
   // Filter Condition Parts
   c._fromCondition = _fromCondition->clone(_plan->getAst());
   c._toCondition = _toCondition->clone(_plan->getAst());
+
+  // Global Vertex/Edge conditions
+  c._globalEdgeConditions.insert(c._globalEdgeConditions.end(),
+                                 _globalEdgeConditions.begin(),
+                                 _globalEdgeConditions.end());
+  c._globalVertexConditions.insert(c._globalVertexConditions.end(),
+                                   _globalVertexConditions.begin(),
+                                   _globalVertexConditions.end());
 }
 
 void EnumeratePathsNode::replaceVariables(
@@ -779,7 +847,8 @@ std::vector<arangodb::graph::IndexAccessor> EnumeratePathsNode::buildIndexes(
     auto& trx = plan()->getAst()->query().trxForOptimization();
     bool res = aql::utils::getBestIndexHandleForFilterCondition(
         trx, *_edgeColls[i], clonedCondition, options()->tmpVar(),
-        itemsInCollection, aql::IndexHint(), indexToUse, onlyEdgeIndexes);
+        itemsInCollection, aql::IndexHint(), indexToUse, ReadOwnWrites::no,
+        onlyEdgeIndexes);
     if (!res) {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                      "expected edge index not found");
@@ -841,12 +910,23 @@ void EnumeratePathsNode::prepareOptions() {
         break;
     }
   }
+
   // If we use the path output the cache should activate document
   // caching otherwise it is not worth it.
   if (!ServerState::instance()->isCoordinator()) {
     _options->activateCache(false, nullptr);
   }
   _optionsBuilt = true;
+}
+
+auto EnumeratePathsNode::registerGlobalVertexCondition(AstNode const* condition)
+    -> void {
+  _globalVertexConditions.emplace_back(condition);
+}
+
+auto EnumeratePathsNode::registerGlobalEdgeCondition(AstNode const* condition)
+    -> void {
+  _globalEdgeConditions.emplace_back(condition);
 }
 
 auto EnumeratePathsNode::options() const -> graph::ShortestPathOptions* {

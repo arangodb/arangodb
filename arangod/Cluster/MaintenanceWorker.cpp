@@ -109,6 +109,7 @@ void MaintenanceWorker::run() {
             try {
               _curAction->endStats();
               _curAction->setState(FAILED);
+              nextState(false);
             } catch (...) {
               // even setState() can fail, e.g. with OOM
               // there is not much we can do in this case

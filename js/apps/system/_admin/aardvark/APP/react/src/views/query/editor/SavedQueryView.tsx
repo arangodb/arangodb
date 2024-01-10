@@ -6,13 +6,14 @@ import {
   IconButton,
   Spinner,
   Stack,
+  Text,
   useDisclosure
 } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import React, { useMemo } from "react";
 import { InfoCircle } from "styled-icons/boxicons-solid";
 import { PlayArrow } from "styled-icons/material";
-import momentMin from "../../../../../frontend/js/lib/moment.min";
+import momentMin from "moment";
 import aqlTemplates from "../../../../public/assets/aqltemplates.json";
 import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJSONEditor";
 import { FiltersList } from "../../../components/table/FiltersList";
@@ -227,6 +228,12 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
         </Box>
         <ReactTable<QueryType>
           table={tableInstance}
+          layout="fixed"
+          getCellProps={() => {
+            return {
+              verticalAlign: "top"
+            };
+          }}
           onRowSelect={row => {
             if (!row.getIsSelected()) {
               row.toggleSelected();
@@ -245,8 +252,11 @@ const QueryPreview = ({ query }: { query: QueryType | null }) => {
   }
   return (
     <Stack height="full">
-      <Box fontWeight="medium" fontSize="md">
-        Preview: {query.name}
+      <Box fontWeight="medium" fontSize="sm">
+        Preview:{" "}
+        <Text isTruncated title={query.name} maxWidth="500px">
+          {query.name}
+        </Text>
       </Box>
       <Grid gridTemplateColumns="1fr 1fr" height="full">
         <Stack>

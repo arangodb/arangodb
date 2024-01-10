@@ -74,7 +74,7 @@ void DBServerAgencySync::work() {
 Result DBServerAgencySync::getLocalCollections(
     containers::FlatHashSet<std::string> const& dirty,
     AgencyCache::databases_t& databases, LocalLogsMap& replLogs,
-    LocalShardsToLogsMap& shardIdToLogId) {
+    LocalShardsToLogsMap& localShardIdToLogId) {
   TRI_ASSERT(ServerState::instance()->isDBServer());
 
   using namespace arangodb::basics;
@@ -118,8 +118,8 @@ Result DBServerAgencySync::getLocalCollections(
     if (vocbase.replicationVersion() == replication::Version::TWO) {
       // Create a mapping from db to [shard -> log id]
       // This will indicate the responsible logs for each shard on this system
-      auto [it, created] =
-          shardIdToLogId.try_emplace(dbname, maintenance::ShardIdToLogIdMap{});
+      auto [it, created] = localShardIdToLogId.try_emplace(
+          dbname, maintenance::ShardIdToLogIdMap{});
       if (!created) {
         LOG_TOPIC("76d1a", WARN, Logger::MAINTENANCE)
             << "Failed to emplace new database entry in local ShardId-to-LogId "
@@ -136,8 +136,15 @@ Result DBServerAgencySync::getLocalCollections(
 
     if (vocbase.replicationVersion() == replication::Version::TWO) {
       for (auto const& collection : cols) {
-        auto [it, created] = shardIdToLogId[dbname].try_emplace(
-            collection->name(), collection->replicatedStateId());
+        auto maybeShardID = ShardID::shardIdFromString(collection->name());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          TRI_ASSERT(false) << "Try to add a Shard->LogID entry for a "
+                               "collection that is not a shard: "
+                            << collection->name();
+          return maybeShardID.result();
+        }
+        auto [it, created] = localShardIdToLogId[dbname].try_emplace(
+            maybeShardID.get(), collection->replicatedStateId());
         if (!created) {
           LOG_TOPIC("0aacc", WARN, Logger::MAINTENANCE)
               << "Failed to emplace new shard entry in local ShardId-to-LogId "
@@ -270,10 +277,11 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
   AgencyCache::databases_t local;
   LocalLogsMap localLogs;
-  maintenance::ShardIdToLogIdMapByDatabase shardIdToLogId;
+  maintenance::ShardIdToLogIdMapByDatabase localShardIdToLogId;
   LOG_TOPIC("54261", TRACE, Logger::MAINTENANCE)
       << "Before getLocalCollections for phaseOne";
-  Result glc = getLocalCollections(dirty, local, localLogs, shardIdToLogId);
+  Result glc =
+      getLocalCollections(dirty, local, localLogs, localShardIdToLogId);
 
   LOG_TOPIC("54262", TRACE, Logger::MAINTENANCE)
       << "After getLocalCollections for phaseOne";
@@ -302,7 +310,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     tmp = arangodb::maintenance::phaseOne(
         plan, planIndex, current, currentIndex, dirty, moreDirt, local,
-        serverId, mfeature, rb, currentShardLocks, localLogs, shardIdToLogId);
+        serverId, mfeature, rb, currentShardLocks, localLogs,
+        localShardIdToLogId);
 
     auto endTimePhaseOne = std::chrono::steady_clock::now();
     LOG_TOPIC("93f83", TRACE, Logger::MAINTENANCE)
@@ -339,8 +348,8 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     local.clear();
     localLogs.clear();
-    shardIdToLogId.clear();
-    glc = getLocalCollections(dirty, local, localLogs, shardIdToLogId);
+    localShardIdToLogId.clear();
+    glc = getLocalCollections(dirty, local, localLogs, localShardIdToLogId);
     // We intentionally refetch local collections here, such that phase 2
     // can already see potential changes introduced by phase 1. The two
     // phases are sufficiently independent that this is OK.
@@ -358,7 +367,7 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
 
     tmp = arangodb::maintenance::phaseTwo(
         plan, current, currentIndex, dirty, local, serverId, mfeature, rb,
-        currentShardLocks, localLogs, shardIdToLogId);
+        currentShardLocks, localLogs, localShardIdToLogId);
 
     LOG_TOPIC("dfc54", TRACE, Logger::MAINTENANCE)
         << "DBServerAgencySync::phaseTwo done";
@@ -385,12 +394,13 @@ DBServerAgencySyncResult DBServerAgencySync::execute() {
             auto const key = ao.key.copyString();
             auto const op = ao.value.get("op").copyString();
 
-            auto const precondition = ao.value.get("precondition");
-            if (!precondition.isNone()) {
-              // have a precondition
-              preconditions.push_back(AgencyPrecondition(
-                  precondition.keyAt(0).copyString(),
-                  AgencyPrecondition::Type::VALUE, precondition.valueAt(0)));
+            auto const precs = ao.value.get("preconditions");
+            if (precs.isObject()) {
+              for (auto const& p : VPackObjectIterator(precs)) {
+                preconditions.emplace_back(p.key.copyString(),
+                                           AgencyPrecondition::Type::VALUE,
+                                           p.value);
+              }
             }
 
             if (op == "set") {

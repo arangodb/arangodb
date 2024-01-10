@@ -89,6 +89,27 @@ if [ -z "${BUILD_DIR_PARAM}" ]; then
   fi
 fi
 
+# fiddle in suppressions for sanitizers if not already set from an
+# outside script. this can populate the environment variables
+# - ASAN_OPTIONS
+# - UBSAN_OPTIONS
+# - LSAN_OPTIONS
+# - TSAN_OPTIONS
+if [ "$(uname -s)" != "Darwin" ]; then
+  for v in ASAN UBSAN LSAN TSAN; 
+    do
+      # check if environment variable ${v}_OPTIONS is set or not
+      NAME="${v}_OPTIONS";
+      if [[ ! -v "${NAME}" ]]; then
+        # variable is not yet set
+        SUPPRESSIONS_PATH="$(realpath $(dirname ..))"
+        SUPPRESSIONS_FILE="${SUPPRESSIONS_PATH}${PS}$(echo "${v}" | tr "[:upper:]" "[:lower:]")_arangodb_suppressions.txt"
+        # echo ${NAME}="suppressions=${SUPPRESSIONS_FILE}"
+        export ${NAME}="suppressions=${SUPPRESSIONS_FILE}"
+      fi
+    done
+fi
+
 (
   cd "${EXEC_PATH}"
   exec $NUMA $ARANGOSH \

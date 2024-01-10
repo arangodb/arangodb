@@ -80,7 +80,7 @@ struct WorkerState {
   std::chrono::seconds messageTimeout;
   std::unique_ptr<MessageFormat<M>> messageFormat;
   std::unique_ptr<MessageCombiner<M>> messageCombiner;
-  std::unordered_map<ShardID, actor::DistributedActorPID>
+  std::unordered_map<PregelShardID, actor::DistributedActorPID>
       responsibleActorPerShard;
 
   std::unique_ptr<ExecutionState> executionState;

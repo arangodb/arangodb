@@ -287,16 +287,16 @@ static Result checkPlanLeaderDirect(
   return Result{TRI_ERROR_FORBIDDEN};
 }
 
-static Result restoreDataParser(char const* ptr, char const* pos,
+static Result restoreDataParser(std::string_view currentLine,
                                 std::string const& collectionName, int line,
                                 VPackBuilder& builder, VPackSlice& doc,
                                 TRI_replication_operation_e& type) {
+  TRI_ASSERT(!currentLine.empty());
   builder.clear();
 
   try {
-    TRI_ASSERT(pos >= ptr);
     VPackParser parser(builder, builder.options);
-    parser.parse(ptr, static_cast<size_t>(pos - ptr));
+    parser.parse(currentLine.data(), currentLine.size());
   } catch (std::exception const& ex) {
     // Could not even build the string
     return Result{
@@ -789,9 +789,16 @@ Result RestReplicationHandler::testPermissions() {
         std::string collectionName = _request->value("collection");
 
         if (ServerState::instance()->isCoordinator()) {
-          // We have a shard id, need to translate
+          // We have a shard id, need to translate.
+          // This API is explicitly called with Shards not with Collections.
           ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-          collectionName = ci.getCollectionNameForShard(collectionName);
+          auto maybeShardID = ShardID::shardIdFromString(collectionName);
+          if (maybeShardID.fail()) {
+            // Compatibility with old API, which would return
+            // an empty collection name if we were not handing in a shard.
+            return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+          }
+          collectionName = ci.getCollectionNameForShard(maybeShardID.get());
         }
 
         if (!collectionName.empty()) {
@@ -1007,7 +1014,7 @@ void RestReplicationHandler::handleCommandClusterInventory() {
     bool isReady = true;
     bool allInSync = true;
     for (auto const& p : *shardMap) {
-      auto currentServerList = cic->servers(p.first /* shardId */);
+      auto currentServerList = cic->servers(p.first);
       if (c->isSmart() && c->type() == TRI_COL_TYPE_EDGE && c->isAStub()) {
         // Means we do have a Virtual SmartEdge Collection.
         // A Virtual SmartEdge Collection does not include any shards.
@@ -1370,32 +1377,32 @@ Result RestReplicationHandler::parseBatchDump(
   documentsToInsert.clear();
   documentsToInsert.openArray();
 
+  // no more content-encoding should be present
+  TRI_ASSERT(_request->header(StaticStrings::ContentEncoding).empty());
+
   int line = 0;
   while (ptr < end) {
-    char const* pos = strchr(ptr, '\n');
-
-    if (pos == nullptr) {
-      pos = end;
-    } else {
-      *(const_cast<char*>(pos)) = '\0';
+    size_t remain = end - ptr;
+    std::string_view currentLine(ptr, remain);
+    auto nlPos = currentLine.find('\n');
+    if (nlPos != std::string_view::npos) {
       ++line;
+      currentLine = std::string_view(ptr, nlPos);
     }
 
-    TRI_ASSERT(ptr <= pos);
-    TRI_ASSERT(pos <= end);
-    if (pos - ptr > 1) {
+    if (currentLine.size() > 1) {
       // found something
       VPackSlice doc;
       TRI_replication_operation_e type = REPLICATION_INVALID;
 
-      Result res =
-          restoreDataParser(ptr, pos, collectionName, line, builder, doc, type);
+      Result res = restoreDataParser(currentLine, collectionName, line, builder,
+                                     doc, type);
       if (res.fail()) {
         if (res.is(TRI_ERROR_HTTP_CORRUPTED_JSON)) {
           using namespace std::literals::string_literals;
-          auto data = std::string(ptr, pos);
           res.withError([&](result::Error& err) {
-            err.appendErrorMessage(" in message '"s + data + "'");
+            err.appendErrorMessage(
+                absl::StrCat(" in message '", currentLine, "'"));
           });
         }
         return res;
@@ -1470,7 +1477,7 @@ Result RestReplicationHandler::parseBatchDump(
       }
     }
 
-    ptr = pos + 1;
+    ptr += currentLine.size() + 1;
   }
 
   // close array
@@ -2049,7 +2056,7 @@ void RestReplicationHandler::handleCommandRestoreView() {
   }
 
   LOG_TOPIC("f874e", TRACE, Logger::REPLICATION)
-      << "restoring view: " << nameSlice.copyString();
+      << "restoring view: " << nameSlice.stringView();
 
   try {
     CollectionNameResolver resolver(_vocbase);
@@ -2390,7 +2397,7 @@ RestReplicationHandler::handleCommandAddFollower() {
         uint64_t nr = nrSlice.getNumber<uint64_t>();
         LOG_TOPIC("533c3", DEBUG, Logger::REPLICATION)
             << "Compare with shortcut Leader: " << nr
-            << " == Follower: " << checksumSlice.copyString();
+            << " == Follower: " << checksumSlice.stringView();
         if (nr == 0 && checksumSlice.isEqualString("0")) {
           res = col->followers()->add(followerId);
 

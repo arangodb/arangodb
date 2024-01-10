@@ -42,6 +42,7 @@ class LogicalCollection;
 struct CollectionCreationInfo;
 class CollectionNameResolver;
 struct CreateCollectionBody;
+struct ShardID;
 
 namespace transaction {
 class Methods;
@@ -109,7 +110,7 @@ struct Collections {
   [[nodiscard]] static arangodb::Result createShard(
       TRI_vocbase_t& vocbase,  // shard database
       OperationOptions const& options,
-      std::string const& name,                 // shard name
+      ShardID const& name,                     // shard name
       TRI_col_type_e collectionType,           // shard type
       velocypack::Slice properties,            // shard properties
       std::shared_ptr<LogicalCollection>& ret  // ReturnValue: created Shard

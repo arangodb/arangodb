@@ -82,15 +82,6 @@ class TraverserCache {
   //////////////////////////////////////////////////////////////////////////////
   virtual aql::AqlValue fetchEdgeAqlResult(graph::EdgeDocumentToken const&);
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief Append the vertex for the given id
-  ///        The document will be looked up in the StorageEngine
-  //////////////////////////////////////////////////////////////////////////////
-  virtual bool appendVertex(std::string_view idString,
-                            arangodb::velocypack::Builder& result);
-  virtual bool appendVertex(std::string_view idString,
-                            arangodb::aql::AqlValue& result);
-
   [[nodiscard]] std::uint64_t getAndResetInsertedDocuments() {
     return std::exchange(_insertedDocuments, 0);
   }

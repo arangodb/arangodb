@@ -228,8 +228,11 @@ class Ast {
                              AstNode const*);
 
   /// @brief create an AST upsert node
-  AstNode* createNodeUpsert(AstNodeType, AstNode const*, AstNode const*,
-                            AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeUpsert(AstNodeType type, AstNode const* docVariable,
+                            AstNode const* insertExpression,
+                            AstNode const* updateExpression,
+                            AstNode const* collection, AstNode const* options,
+                            bool canReadOwnWrites);
 
   /// @brief create an AST distinct node
   AstNode* createNodeDistinct(AstNode const*);

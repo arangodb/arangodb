@@ -26,7 +26,6 @@
 
 #include "gtest/gtest.h"
 
-#include "Aql/AqlCall.h"
 #include "AqlExecutorTestCase.h"
 #include "AqlItemBlockHelper.h"
 #include "IResearch/common.h"
@@ -34,6 +33,7 @@
 #include "QueryHelper.h"
 #include "RowFetcherHelper.h"
 
+#include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Collection.h"
 #include "Aql/EnumerateCollectionExecutor.h"

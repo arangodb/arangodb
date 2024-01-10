@@ -149,7 +149,7 @@ void ReplicatedStateManager<S>::becomeFollower(
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
 
-  auto followerState = _factory->constructFollower(std::move(core));
+  auto followerState = _factory->constructFollower(std::move(core), _scheduler);
   auto stream = std::make_shared<typename FollowerStateManager<S>::StreamImpl>(
       std::move(methods));
   followerState->setStream(stream);

@@ -34,6 +34,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/DatabaseGuard.h"
@@ -243,10 +244,17 @@ auto EnsureIndex::ensureIndexReplication2(
     std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
     -> Result {
-  return basics::catchToResult(
-      [&coll, indexInfo, progress = std::move(progress)]() mutable {
-        return coll->getDocumentStateLeader()
-            ->createIndex(coll->name(), indexInfo, std::move(progress))
-            .get();
-      });
+  auto maybeShardID = ShardID::shardIdFromString(coll->name());
+  if (ADB_UNLIKELY(maybeShardID.fail())) {
+    // This will only throw if we take a real collection here and not a shard.
+    TRI_ASSERT(false) << "Tried to ensure index on Collection " << coll->name()
+                      << " which is not considered a shard.";
+    return maybeShardID.result();
+  }
+  return basics::catchToResult([&coll, shard = maybeShardID.get(), indexInfo,
+                                progress = std::move(progress)]() mutable {
+    return coll->getDocumentStateLeader()
+        ->createIndex(shard, indexInfo, std::move(progress))
+        .get();
+  });
 }

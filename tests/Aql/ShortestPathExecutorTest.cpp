@@ -116,16 +116,6 @@ class TokenTranslator : public TraverserCache {
     return it->second.get(StaticStrings::IdString).stringView();
   }
 
-  bool appendVertex(std::string_view idString, VPackBuilder& builder) override {
-    builder.add(translateVertex(idString));
-    return true;
-  }
-
-  bool appendVertex(std::string_view idString, AqlValue& result) override {
-    result = AqlValue(translateVertex(idString));
-    return true;
-  }
-
   AqlValue fetchEdgeAqlResult(EdgeDocumentToken const& edgeTkn) override {
     auto it = _edges.find(VPackSlice(edgeTkn.vpack()));
     TRI_ASSERT(it != _edges.end());

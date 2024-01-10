@@ -358,10 +358,18 @@ void clusterCollectionName(LogicalCollection const& collection, ClusterInfo* ci,
   // or added to the server. New links already has collection name set,
   // but here we must get this name on our own.
   if (name.empty()) {
-    name = ci ? ci->getCollectionNameForShard(collection.name())
-              : collection.name();
+    if (ci) {
+      // Non ShardIDs will be handled because the name stays empty.
+      if (auto maybeShardID = ShardID::shardIdFromString(collection.name());
+          maybeShardID.ok()) {
+        name = ci->getCollectionNameForShard(maybeShardID.get());
+      }
+    } else {
+      name = collection.name();
+    }
     LOG_TOPIC("86ece", TRACE, TOPIC) << "Setting collection name '" << name
                                      << "' for new index '" << id << "'";
+
     if (ADB_UNLIKELY(name.empty())) {
       LOG_TOPIC_IF("67da6", WARN, TOPIC, indexIdAttribute)
           << "Failed to init collection name for the index '" << id
@@ -646,9 +654,16 @@ IResearchDataStore::IResearchDataStore(
 #ifdef USE_ENTERPRISE
   if (!collection.isAStub() && _asyncFeature->columnsCacheOnlyLeaders()) {
     auto& ci = server.getFeature<ClusterFeature>().clusterInfo();
-    auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                   collection.name());
-    _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+    auto maybeShardID = ShardID::shardIdFromString(collection.name());
+    if (maybeShardID.fail()) {
+      // Illegal shard name, could be collection name
+      _useSearchCache = false;
+    } else {
+      TRI_ASSERT(maybeShardID.ok());
+      auto r = ci.getShardLeadership(ServerState::instance()->getId(),
+                                     maybeShardID.get());
+      _useSearchCache = r == ClusterInfo::ShardLeadership::kLeader;
+    }
   }
 #endif
   _beforeCommitCallback = [this](TransactionState& state) {
@@ -889,8 +904,15 @@ Result IResearchDataStore::commitUnsafeImpl(
                      .server()
                      .getFeature<ClusterFeature>()
                      .clusterInfo();
+      auto maybeShardID = ShardID::shardIdFromString(collection.name());
+      if (maybeShardID.fail()) {
+        // Could not parse shardID, could be collection name
+        // Make this equivalent to Unclear.
+        return false;
+      }
+      TRI_ASSERT(maybeShardID.ok());
       auto r = ci.getShardLeadership(ServerState::instance()->getId(),
-                                     collection.name());
+                                     maybeShardID.get());
       if (r == ClusterInfo::ShardLeadership::kUnclear) {
         return false;
       }
@@ -1172,6 +1194,7 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
+  // TODO(MBkkt) we probably want to disable encryption for geo and norm columns
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =

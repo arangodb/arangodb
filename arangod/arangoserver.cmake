@@ -92,7 +92,11 @@ add_library(arangoserver STATIC
   RestHandler/RestImportHandler.cpp
   RestHandler/RestIndexHandler.cpp
   RestHandler/RestJobHandler.cpp
+  RestHandler/RestKeyGeneratorsHandler.cpp
   RestHandler/RestLicenseHandler.cpp
+  RestHandler/RestOptionsBaseHandler.cpp
+  RestHandler/RestOptionsDescriptionHandler.cpp
+  RestHandler/RestOptionsHandler.cpp
   RestHandler/RestQueryCacheHandler.cpp
   RestHandler/RestQueryHandler.cpp
   RestHandler/RestShutdownHandler.cpp

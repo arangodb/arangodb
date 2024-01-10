@@ -28,7 +28,7 @@
 
 #include "Mocks/Servers.h"  // this must be first because windows
 
-#include "src/objects/objects.h"
+#include <v8.h>
 
 #include "gtest/gtest.h"
 
@@ -63,32 +63,7 @@
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
-// The following v8 headers must be included late, or MSVC fails to compile
-// (error in mswsockdef.h), because V8's win32-headers.h #undef some macros like
-// CONST and VOID. If, e.g., "Cluster/ClusterInfo.h" (which is in turn included
-// here by "Sharding/ShardingFeature.h") is included after these, compilation
-// fails. Another option than to include the following headers late is to
-// include ClusterInfo.h before them.
-// I have not dug into which header included by ClusterInfo.h will finally
-// include mwsockdef.h. Nor did I check whether all of the following headers
-// will include V8's "src/base/win32-headers.h".
-#include "src/api/api.h"
-// #include "src/objects-inl.h"
-#include "src/objects/scope-info.h"
-
 namespace {
-class ArrayBufferAllocator : public v8::ArrayBuffer::Allocator {
- public:
-  virtual void* Allocate(size_t length) override {
-    void* data = AllocateUninitialized(length);
-    return data == nullptr ? data : memset(data, 0, length);
-  }
-  virtual void* AllocateUninitialized(size_t length) override {
-    return malloc(length);
-  }
-  virtual void Free(void* data, size_t) override { free(data); }
-};
-
 struct TestView : public arangodb::LogicalView {
   arangodb::Result _appendVelocyPackResult;
   arangodb::velocypack::Builder _properties;
@@ -176,8 +151,9 @@ TEST_F(V8UsersTest, test_collection_auth) {
       databaseFeature.createDatabase(testDBInfo(server.server()), vocbase)
           .ok());
   v8::Isolate::CreateParams isolateParams;
-  ArrayBufferAllocator arrayBufferAllocator;
-  isolateParams.array_buffer_allocator = &arrayBufferAllocator;
+  auto arrayBufferAllocator = std::unique_ptr<v8::ArrayBuffer::Allocator>(
+      v8::ArrayBuffer::Allocator::NewDefaultAllocator());
+  isolateParams.array_buffer_allocator = arrayBufferAllocator.get();
   auto isolate = std::shared_ptr<v8::Isolate>(
       v8::Isolate::New(isolateParams),
       [](v8::Isolate* p) -> void { p->Dispose(); });
@@ -188,7 +164,6 @@ TEST_F(V8UsersTest, test_collection_auth) {
   v8::Isolate::Scope isolateScope(isolate.get());
   // otherwise v8::Isolate::Logger() will fail (called from
   // v8::Exception::Error)
-  v8::internal::Isolate::Current()->InitializeLoggingAndCounters();
   // required for v8::Context::New(...), v8::ObjectTemplate::New(...) and
   // TRI_AddMethodVocbase(...)
   v8::HandleScope handleScope(isolate.get());

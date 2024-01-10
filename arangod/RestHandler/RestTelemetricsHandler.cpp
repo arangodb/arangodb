@@ -188,7 +188,8 @@ RestStatus RestTelemetricsHandler::execute() {
                                        _server, isLocal, true);
   generateResult(rest::ResponseCode::OK, result.slice());
   // allow sending compressed responses out
-  response()->setAllowCompression(true);
+  response()->setAllowCompression(
+      rest::ResponseCompressionType::kAllowCompression);
 
   return RestStatus::DONE;
 }

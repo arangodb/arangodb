@@ -2,10 +2,6 @@
 /*global assertEqual, assertNotEqual, assertTrue */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for optimizer rules
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -28,23 +24,19 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var helper = require("@arangodb/aql-helper");
-var isEqual = helper.isEqual;
-var getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
+const jsunity = require("jsunity");
+const helper = require("@arangodb/aql-helper");
+const isEqual = helper.isEqual;
+const getQueryMultiplePlansAndExecutions = helper.getQueryMultiplePlansAndExecutions;
 const db = require('internal').db;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
-
 function optimizerRuleTestSuite () {
-  var ruleName = "sort-in-values";
+  const ruleName = "sort-in-values";
 
   // various choices to control the optimizer: 
-  var paramNone     = { optimizer: { rules: [ "-all" ] } };
-  var paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
-  var paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
+  const paramNone     = { optimizer: { rules: [ "-all" ] } };
+  const paramEnabled  = { optimizer: { rules: [ "-all", "+" + ruleName ] } };
+  const paramDisabled = { optimizer: { rules: [ "+all", "-" + ruleName ] } };
 
   return {
 
@@ -53,7 +45,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleDisabled : function () {
-      var queries = [
+      const queries = [
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER LENGTH(i.a) >= 3 FILTER i.a IN values RETURN i",
@@ -62,7 +54,7 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  paramNone}).explain();
+        let result = db._createStatement({query, options: paramNone}).explain();
         assertEqual([ ], result.plan.rules);
       });
     },
@@ -72,7 +64,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleNoEffect : function () {
-      var queryList = [ 
+      const queryList = [ 
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a == 'foobar' && i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a == 'foobar' || i.a IN values RETURN i",
         "FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN SPLIT('foo,bar,foobar,qux', ',') RETURN i",
@@ -88,10 +80,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queryList.forEach(function(query) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+        let result = db._createStatement({query, options: paramEnabled}).explain();
         assertEqual([ ], result.plan.rules, query);
-        var allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (var j = 1; j < allresults.results.length; j++) {
+        let allresults = getQueryMultiplePlansAndExecutions(query, {});
+        for (let j = 1; j < allresults.results.length; j++) {
           assertTrue(isEqual(allresults.results[0],
                              allresults.results[j]),
                      "whether the execution of '" + query +
@@ -108,7 +100,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testRuleHasEffect : function () {
-      var queries = [ 
+      const queries = [ 
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a NOT IN values RETURN i",
         "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER LENGTH(i.a) >= 3 FILTER i.a IN values RETURN i",
@@ -119,17 +111,17 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var result = db._createStatement({query: query, bindVars:  { }, options:  paramEnabled}).explain();
+        let result = db._createStatement({query, options: paramEnabled}).explain();
         assertEqual([ ruleName ], result.plan.rules, query);
-        var allresults = getQueryMultiplePlansAndExecutions(query, {});
-        for (var j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+        let allresults = getQueryMultiplePlansAndExecutions(query, {});
+        for (let j = 1; j < allresults.results.length; j++) {
+          assertTrue(isEqual(allresults.results[0],
+            allresults.results[j]),
+            "whether the execution of '" + query +
+            "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+            " Should be: '" + JSON.stringify(allresults.results[0]) +
+            "' but is: " + JSON.stringify(allresults.results[j]) + "'"
+          );
         }
       });
     },
@@ -139,9 +131,9 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testPlans : function () {
-      var query = "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i";
-      var actual = db._createStatement({query: query, bindVars:  null, options:  paramEnabled}).explain();
-      var nodes = helper.getLinearizedPlan(actual).reverse();
+      const query = "LET values = NOOPT(SPLIT('foo,bar,foobar,qux', ',')) FOR i IN [ { a: 'foo' }, { a: 'bar' }, { a: 'baz' } ] FILTER i.a IN values RETURN i";
+      let actual = db._createStatement({query, options: paramEnabled}).explain();
+      let nodes = helper.getLinearizedPlan(actual).reverse();
 
       assertEqual("ReturnNode", nodes[0].type);
       assertEqual("FilterNode", nodes[1].type);
@@ -154,7 +146,7 @@ function optimizerRuleTestSuite () {
       assertTrue(nodes[2].expression.sorted);
       assertEqual("reference", nodes[2].expression.subNodes[1].type);
       assertEqual("simple", nodes[2].expressionType);
-      var varId = nodes[2].expression.subNodes[1].id;
+      let varId = nodes[2].expression.subNodes[1].id;
 
       assertEqual("EnumerateListNode", nodes[3].type);
       assertEqual("CalculationNode", nodes[4].type);
@@ -173,8 +165,8 @@ function optimizerRuleTestSuite () {
 
       assertEqual("SingletonNode", nodes[7].type);
       
-      var allresults = getQueryMultiplePlansAndExecutions(query, {});
-      for (var j = 1; j < allresults.results.length; j++) {
+      let allresults = getQueryMultiplePlansAndExecutions(query, {});
+      for (let j = 1; j < allresults.results.length; j++) {
         assertTrue(isEqual(allresults.results[0],
                            allresults.results[j]),
                    "whether the execution of '" + query +
@@ -190,7 +182,7 @@ function optimizerRuleTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 
     testResults : function () {
-      var groups = [ ], numbers = [ ], strings = [ ], reversed = [ ], i;
+      let groups = [ ], numbers = [ ], strings = [ ], reversed = [ ], i;
       for (i = 1; i <= 100; ++i) {
         numbers.push(i);
         strings.push("test" + i);
@@ -200,7 +192,7 @@ function optimizerRuleTestSuite () {
         groups.push(i);
       }
 
-      var queries = [
+      let queries = [
         [ "LET values = NOOPT(RANGE(1, 100)) FOR i IN 1..100 FILTER i IN values RETURN i", numbers ], 
         [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i IN values RETURN i", numbers ], 
         [ "LET values = NOOPT(" + JSON.stringify(numbers) + ") FOR i IN 1..100 FILTER i NOT IN values RETURN i", [ ] ], 
@@ -218,10 +210,10 @@ function optimizerRuleTestSuite () {
       ];
 
       queries.forEach(function(query) {
-        var planDisabled   = db._createStatement({query: query[0], bindVars:  { }, options:  paramDisabled}).explain();
-        var planEnabled    = db._createStatement({query: query[0], bindVars:  { }, options:  paramEnabled}).explain();
-        var resultDisabled = db._query(query[0], { }, paramDisabled).toArray();
-        var resultEnabled  = db._query(query[0], { }, paramEnabled).toArray();
+        let planDisabled   = db._createStatement({query: query[0], options: paramDisabled}).explain();
+        let planEnabled    = db._createStatement({query: query[0], options: paramEnabled}).explain();
+        let resultDisabled = db._query(query[0], {}, paramDisabled).toArray();
+        let resultEnabled  = db._query(query[0], {}, paramEnabled).toArray();
 
         assertTrue(isEqual(resultDisabled, resultEnabled), query[0]);
 
@@ -230,15 +222,15 @@ function optimizerRuleTestSuite () {
 
         assertEqual(resultDisabled, query[1], query[0]);
         assertEqual(resultEnabled, query[1], query[0]);
-        var allresults = getQueryMultiplePlansAndExecutions(query[0], {});
-        for (var j = 1; j < allresults.results.length; j++) {
-            assertTrue(isEqual(allresults.results[0],
-                               allresults.results[j]),
-                       "whether the execution of '" + query[0] +
-                       "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
-                       " Should be: '" + JSON.stringify(allresults.results[0]) +
-                       "' but is: " + JSON.stringify(allresults.results[j]) + "'"
-                      );
+        let allresults = getQueryMultiplePlansAndExecutions(query[0], {});
+        for (let j = 1; j < allresults.results.length; j++) {
+          assertTrue(isEqual(allresults.results[0],
+            allresults.results[j]),
+            "whether the execution of '" + query[0] +
+            "' this plan gave the wrong results: " + JSON.stringify(allresults.plans[j]) +
+            " Should be: '" + JSON.stringify(allresults.results[0]) +
+            "' but is: " + JSON.stringify(allresults.results[j]) + "'"
+          );
         }
       });
     },
@@ -246,7 +238,7 @@ function optimizerRuleTestSuite () {
     testAvoidDuplicateSortWithSorted : function () {
       let query = "LET values = SORTED(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
 
-      let plan = db._createStatement(query).explain().plan;
+      let plan = db._createStatement({query, options: {optimizer: {rules: ["-move-filters-into-enumerate"] } } }).explain().plan;
       // rule should not kick in, as input is already sorted
       assertEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
 
@@ -274,7 +266,7 @@ function optimizerRuleTestSuite () {
     testAvoidDuplicateSortWithSortedUnique : function () {
       let query = "LET values = SORTED_UNIQUE(1..100) FOR j IN 1..100 FILTER j IN values RETURN j";
 
-      let plan = db._createStatement(query).explain().plan;
+      let plan = db._createStatement({query, options: {optimizer: {rules: ["-move-filters-into-enumerate"] } } }).explain().plan;
       // rule should not kick in, as input is already sorted
       assertEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
 
@@ -301,7 +293,7 @@ function optimizerRuleTestSuite () {
     testMovingOutOfLoops : function () {
       let query = "LET values = (FOR i IN 1..10000 RETURN i) FOR j IN 1..100 FILTER j IN values RETURN j";
 
-      let plan = db._createStatement(query).explain().plan;
+      let plan = db._createStatement({query, options: {optimizer: {rules: ["-move-filters-into-enumerate"] } } }).explain().plan;
       // rule should kick in, but the SORTED_UNIQUE calculation is expensive
       // and should not be moved into the loop
       assertNotEqual(-1, plan.rules.indexOf(ruleName), plan.rules);
@@ -331,11 +323,6 @@ function optimizerRuleTestSuite () {
   };
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suite
-////////////////////////////////////////////////////////////////////////////////
-
 jsunity.run(optimizerRuleTestSuite);
 
 return jsunity.done();
-

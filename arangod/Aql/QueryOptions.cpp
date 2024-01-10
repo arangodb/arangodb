@@ -26,6 +26,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+#include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
@@ -247,10 +248,13 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
       }
     }
   }
-  if (VPackSlice value = slice.get("shardIds"); value.isArray()) {
-    for (auto id : VPackArrayIterator(value)) {
-      if (id.isString()) {
-        restrictToShards.emplace(id.copyString());
+  // On single server we cannot restrict to shards.
+  if (!ServerState::instance()->isSingleServer()) {
+    if (VPackSlice value = slice.get("shardIds"); value.isArray()) {
+      for (auto id : VPackArrayIterator(value)) {
+        if (id.isString()) {
+          restrictToShards.emplace(id.copyString());
+        }
       }
     }
   }

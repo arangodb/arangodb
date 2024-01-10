@@ -401,6 +401,19 @@ TYPED_TEST(RuntimeTest,
   ASSERT_EQ(runtime->actors.size(), 0);
 }
 
+TYPED_TEST(RuntimeTest, shutdown_blocks_until_all_actors_have_finished) {
+  auto runtime = this->makeRuntime();
+  constexpr unsigned numActors = 1000;
+  for (unsigned i = 0; i < numActors; ++i) {
+    runtime->template spawn<TrivialActor>(std::make_unique<TrivialState>(),
+                                          test::message::TrivialStart{});
+  }
+  ASSERT_EQ(numActors, runtime->actors.size());
+  runtime->shutdown();
+  this->scheduler->stop();
+  ASSERT_EQ(runtime->actors.size(), 0);
+}
+
 TYPED_TEST(RuntimeTest, sends_down_message_to_monitoring_actors) {
   auto runtime = this->makeRuntime();
   auto monitor1 = runtime->template spawn<MonitoringActor>(

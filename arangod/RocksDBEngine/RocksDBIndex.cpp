@@ -238,8 +238,7 @@ Result RocksDBIndex::drop() {
 
 ResultT<TruncateGuard> RocksDBIndex::truncateBegin(rocksdb::WriteBatch& batch) {
   auto bounds = getBounds();
-  auto s =
-      batch.DeleteRange(bounds.columnFamily(), bounds.start(), bounds.end());
+  auto s = batch.DeleteRange(_cf, bounds.start(), bounds.end());
   auto r = rocksutils::convertStatus(s);
   if (!r.ok()) {
     return r;
@@ -400,8 +399,11 @@ RocksDBKeyBounds RocksDBIndex::getBounds(Index::IndexType type,
       return RocksDBKeyBounds::GeoIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_IRESEARCH_LINK:
       return RocksDBKeyBounds::DatabaseViews(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_MDI_INDEX:
     case RocksDBIndex::TRI_IDX_TYPE_ZKD_INDEX:
-      return RocksDBKeyBounds::ZkdIndex(objectId);
+      return RocksDBKeyBounds::MdiIndex(objectId);
+    case RocksDBIndex::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+      return RocksDBKeyBounds::MdiVPackIndex(objectId);
     case RocksDBIndex::TRI_IDX_TYPE_UNKNOWN:
     default:
       THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);

@@ -36,8 +36,6 @@ namespace arangodb::pregel {
 
 using VertexCollectionID = CollectionID;
 using EdgeCollectionID = CollectionID;
-using VertexShardID = ShardID;
-using EdgeShardID = ShardID;
 
 struct GraphCollectionNames {
   std::vector<std::string> vertexCollections;

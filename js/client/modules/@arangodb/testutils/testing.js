@@ -86,6 +86,7 @@ let optionsDocumentation = [
   '                   conjunction with `server`.',
   '   - `cluster`: if set to true the tests are run with the coordinator',
   '     of a small local cluster',
+  '   - `replicationVersion`: if set, define the default replication version. (Currently we have "1" and "2")',
   '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
   '   - `minPort`: minimum port number to use',
   '   - `maxPort`: maximum port number to use',
@@ -144,9 +145,6 @@ let optionsDocumentation = [
   '   - `sanitizer`: if set the programs are run with enabled sanitizer',
   '     and need longer timeouts',
   '',
-  '   - `activefailover` starts active failover single server setup (active/passive)',
-  '   -  `singles` the number of servers in an active failover test, defaults to 2',
-  '',
   '   - `valgrind`: if set the programs are run with the valgrind',
   '     memory checker; should point to the valgrind executable',
   '   - `valgrindFileBase`: string to prepend to the report filename',
@@ -186,6 +184,7 @@ const optionsDefaults = {
   'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
+  'replicationVersion': '1',
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
@@ -219,7 +218,6 @@ const optionsDefaults = {
   'exceptionFilter': null,
   'exceptionCount': 1,
   'sanitizer': isSan,
-  'activefailover': false,
   'singles': 1,
   'setInterruptable': ! internal.isATTy(),
   'sniff': false,
@@ -622,9 +620,6 @@ function unitTest (cases, options) {
   }
   if (options.setInterruptable) {
     internal.SetSignalToImmediateDeadline();
-  }
-  if (options.activefailover && (options.singles === 1)) {
-    options.singles =  2;
   }
   if (options.isSan) {
     ['ASAN_OPTIONS',

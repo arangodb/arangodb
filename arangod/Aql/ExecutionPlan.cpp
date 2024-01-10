@@ -341,13 +341,13 @@ std::unique_ptr<graph::BaseOptions> createTraversalOptions(
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           } else {
             options->setMaxProjections(maxProjections.get());
           }
         } else {
-          ExecutionPlan::invalidOptionAttribute(
-              ast->query(), "unknown", "TRAVERSAL", name.data(), name.size());
+          ExecutionPlan::invalidOptionAttribute(ast->query(), "unknown",
+                                                "TRAVERSAL", name);
         }
       }
     }
@@ -400,8 +400,7 @@ std::unique_ptr<graph::BaseOptions> createShortestPathOptions(
         } else {
           ExecutionPlan::invalidOptionAttribute(
               ast->query(), "unknown",
-              arangodb::graph::PathType::toString(type), name.data(),
-              name.size());
+              arangodb::graph::PathType::toString(type), name);
         }
       }
     }
@@ -428,7 +427,7 @@ void setForOptions(QueryContext& query, AstNode const* node,
           if (maxProjections.fail()) {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           } else {
             dn->setMaxProjections(maxProjections.get());
           }
@@ -440,7 +439,7 @@ void setForOptions(QueryContext& query, AstNode const* node,
           } else {
             // will raise a warning, which can optionally abort the query
             ExecutionPlan::invalidOptionAttribute(query, "invalid", "FOR",
-                                                  name.data(), name.size());
+                                                  name);
           }
         }
       }
@@ -460,8 +459,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
-    : _ids(),
-      _root(nullptr),
+    : _root(nullptr),
       _trackMemoryUsage(trackMemoryUsage),
       _planValid(true),
       _varUsageComputed(false),
@@ -543,21 +541,15 @@ ExecutionPlan::~ExecutionPlan() {
 }
 
 void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
-                                           char const* errorReason,
-                                           char const* operationName,
-                                           char const* name, size_t length) {
-  std::string msg("usage of ");
-  msg.append(errorReason);
-  msg.append(" OPTIONS attribute '");
-  msg.append(name, length);
-  msg.append("' in ");
-  msg.append(operationName);
-  msg.append(" statement");
-
+                                           std::string_view errorReason,
+                                           std::string_view operationName,
+                                           std::string_view name) {
   // if warnings are converted into errors, adding this warning will
   // abort the query
-  query.warnings().registerWarning(TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
-                                   msg.c_str());
+  query.warnings().registerWarning(
+      TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+      absl::StrCat("usage of ", errorReason, " OPTIONS attribute '", name,
+                   "' in ", operationName, " statement"));
 }
 
 bool ExecutionPlan::contains(ExecutionNode::NodeType type) const {
@@ -621,19 +613,19 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone(Ast* ast) {
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
   auto plan = std::make_unique<ExecutionPlan>(ast, _trackMemoryUsage);
   plan->_nextId = _nextId;
-  plan->_root = _root->clone(plan.get(), true, false);
+  plan->_root = _root->clone(plan.get(), true);
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
 
-  return plan.release();
+  return plan;
 }
 
 /// @brief clone an existing execution plan
-ExecutionPlan* ExecutionPlan::clone() { return clone(_ast); }
+std::unique_ptr<ExecutionPlan> ExecutionPlan::clone() { return clone(_ast); }
 
 // build flags for plan serialization
 unsigned ExecutionPlan::buildSerializationFlags(
@@ -725,10 +717,9 @@ ExecutionNode* ExecutionPlan::getNodeById(ExecutionNodeId id) const {
     return (*it).second;
   }
 
-  std::string msg = std::string("node [") + std::to_string(id.id()) +
-                    std::string("] wasn't found");
   // node unknown
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, absl::StrCat("node [", id.id(), "] wasn't found"));
 }
 
 std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
@@ -878,9 +869,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   }
 
   CalculationNode* en =
-      new CalculationNode(this, nextId(), std::move(expr), out);
-
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+      createNode<CalculationNode>(this, nextId(), std::move(expr), out);
 
   if (previous != nullptr) {
     en->addDependency(previous);
@@ -969,12 +958,11 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
       GroupVarInfo{out, previous->outVariable()}};
   std::vector<AggregateVarInfo> const aggregateVariables{};
 
-  auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables,
-                            aggregateVariables, nullptr, nullptr,
-                            std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), true);
+  auto en = createNode<CollectNode>(this, nextId(), CollectOptions(),
+                                    groupVariables, aggregateVariables, nullptr,
+                                    nullptr, std::vector<Variable const*>(),
+                                    _ast->variables()->variables(false), true);
 
-  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -1008,7 +996,7 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::parseModificationOptions(
-    QueryContext& query, char const* operationName, AstNode const* node,
+    QueryContext& query, std::string_view operationName, AstNode const* node,
     bool addWarnings) {
   ModificationOptions options;
 
@@ -1057,10 +1045,15 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           options.exclusive = value->isTrue();
         } else if (name == "ignoreErrors") {
           options.ignoreErrors = value->isTrue();
+        } else if (name == StaticStrings::ReadOwnWrites &&
+                   operationName == "UPSERT") {
+          // UPSERT supports "readOwnWrites" attribute, but other
+          // modification options don't.
+          // the value of readOwnWrites is already picked up during AST creation
+          // and does not need to be handled here anymore.
         } else {
           if (addWarnings) {
-            invalidOptionAttribute(query, "unknown", operationName, name.data(),
-                                   name.size());
+            invalidOptionAttribute(query, "unknown", operationName, name);
           }
         }
       }
@@ -1072,7 +1065,7 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
 
 /// @brief create modification options from an AST node
 ModificationOptions ExecutionPlan::createModificationOptions(
-    char const* operationName, AstNode const* node) {
+    std::string_view operationName, AstNode const* node) {
   ModificationOptions options = parseModificationOptions(
       _ast->query(), operationName, node, /*addWarnings*/ true);
   return options;
@@ -1103,8 +1096,7 @@ CollectOptions ExecutionPlan::createCollectOptions(AstNode const* node) {
           }
         }
         if (!handled) {
-          invalidOptionAttribute(_ast->query(), "unknown", "COLLECT",
-                                 name.data(), name.size());
+          invalidOptionAttribute(_ast->query(), "unknown", "COLLECT", name);
         }
       }
     }
@@ -1255,8 +1247,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(
-        new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v);
     previous = calc;
   }
 
@@ -1808,12 +1799,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     CollectNode::calculateAccessibleUserVariables(*previous, keepVariables);
   }
 
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
-                      expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false);
-
-  auto en = registerNode(collectNode);
+  auto en = createNode<CollectNode>(this, nextId(), options, groupVariables,
+                                    aggregateVars, expressionVariable,
+                                    outVariable, keepVariables,
+                                    _ast->variables()->variables(false), false);
 
   return addDependency(previous, en);
 }
@@ -1928,8 +1917,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(
-        new RemoveNode(this, nextId(), collection, options, v, outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options, v,
+                                outVariableOld);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
@@ -2148,6 +2137,43 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
     collection->setExclusiveAccess();
   }
 
+  if (node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES) &&
+      ServerState::instance()->isCoordinator()) {
+    // we are in the cluster, and the UPSERT node has the
+    // "readOwnWrites" option not set or set to true.
+    if (collection->numberOfShards() > 1) {
+      // collection with multiple shards. the query will use
+      // a DistributeNode, and the UPSERT cannot guarantee that
+      // its lookup part has observed all previous writes.
+      _ast->query().warnings().registerWarning(
+          TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+          absl::StrCat("UPSERT operation on sharded collection '",
+                       collection->name(),
+                       "' cannot guarantee that own writes can be fully "
+                       "observed. To opt out of this warning, set the "
+                       "`readOwnWrites` option to `false` for the UPSERT"));
+    } else {
+#ifdef USE_ENTERPRISE
+      bool warnAboutSingleShardCollections = false;
+#else
+      bool warnAboutSingleShardCollections =
+          !_ast->query().vocbase().isOneShard();
+#endif
+      if (warnAboutSingleShardCollections) {
+        // single-shard collection. if we are not in a OneShard
+        // database, the query will also use a DistributeNode, and
+        // the UPSERT cannot guarantee that its lookup part has
+        // observed all previous writes.
+        _ast->query().warnings().registerWarning(
+            TRI_ERROR_QUERY_INVALID_OPTIONS_ATTRIBUTE,
+            absl::StrCat("UPSERT operation on collection '", collection->name(),
+                         "' cannot guarantee that own writes can be fully "
+                         "observed. To opt out of this warning, set the "
+                         "`readOwnWrites` option to `false` for the UPSERT"));
+      }
+    }
+  }
+
   auto docExpression = node->getMember(2);
   auto insertExpression = node->getMember(3);
   auto updateExpression = node->getMember(4);
@@ -2183,9 +2209,10 @@ ExecutionNode* ExecutionPlan::fromNodeUpsert(ExecutionNode* previous,
 
   bool isReplace =
       (node->getIntValue(true) == static_cast<int64_t>(NODE_TYPE_REPLACE));
-  ExecutionNode* en = registerNode(
-      new UpsertNode(this, nextId(), collection, options, docVariable,
-                     insertVar, updateVar, outVariableNew, isReplace));
+  bool canReadOwnWrites = node->hasFlag(AstNodeFlagType::FLAG_READ_OWN_WRITES);
+  ExecutionNode* en = createNode<UpsertNode>(
+      this, nextId(), collection, options, docVariable, insertVar, updateVar,
+      outVariableNew, isReplace, canReadOwnWrites);
 
   return addDependency(previous, en);
 }

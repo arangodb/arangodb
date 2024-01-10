@@ -97,9 +97,11 @@ TEST_F(CollectionGroupsSupervisionTest, check_add_server) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(3, 3, true);
   auto const expectedConfig = ag::LogTargetConfig(3, 4, true);
@@ -215,9 +217,11 @@ TEST_F(CollectionGroupsSupervisionTest, check_remove_server) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(3, 3, true);
   auto const expectedConfig = ag::LogTargetConfig(1, 2, true);
@@ -335,9 +339,11 @@ TEST_F(CollectionGroupsSupervisionTest, add_collection) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["A"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
   group.planCollections["B"].groupId = group.target.id;
-  group.planCollections["B"].shardList.assign({"s1", "s2", "s3"});
+  group.planCollections["B"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
 
   auto const currentConfig = ag::LogTargetConfig(2, 3, true);
   auto const availableServers = std::to_array({"DB1", "DB2", "DB3"});
@@ -430,13 +436,17 @@ TEST_F(CollectionGroupsSupervisionTest, modify_wait_for_sync) {
   group.plan->shardSheaves[2].replicatedLog = LogId{3};
 
   group.planCollections["A"].groupId = group.target.id;
-  group.planCollections["A"].shardList.assign({"s1", "s2", "s3"});
-  group.planCollections["A"].deprecatedShardMap.shards["s1"].servers.assign(
-      {"DB1", "DB2", "DB3"});
-  group.planCollections["A"].deprecatedShardMap.shards["s2"].servers.assign(
-      {"DB2", "DB3", "DB1"});
-  group.planCollections["A"].deprecatedShardMap.shards["s3"].servers.assign(
-      {"DB3", "DB1", "DB2"});
+  group.planCollections["A"].shardList.assign(
+      {ShardID{1}, ShardID{2}, ShardID{3}});
+  group.planCollections["A"]
+      .deprecatedShardMap.shards[ShardID{1}]
+      .servers.assign({"DB1", "DB2", "DB3"});
+  group.planCollections["A"]
+      .deprecatedShardMap.shards[ShardID{2}]
+      .servers.assign({"DB2", "DB3", "DB1"});
+  group.planCollections["A"]
+      .deprecatedShardMap.shards[ShardID{3}]
+      .servers.assign({"DB3", "DB1", "DB2"});
 
   // Pretend that this group has converged.
   // NOTE: The internals are not actually corret, we just implemented the quick

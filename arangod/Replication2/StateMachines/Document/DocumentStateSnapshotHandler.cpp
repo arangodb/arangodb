@@ -27,7 +27,6 @@
 #include "Cluster/ClusterTypes.h"
 #include "Logger/LogContextKeys.h"
 #include "Replication2/StateMachines/Document/CollectionReader.h"
-#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 namespace arangodb::replication2::replicated_state::document {
 DocumentStateSnapshotHandler::DocumentStateSnapshotHandler(

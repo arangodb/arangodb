@@ -32,7 +32,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AstNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/StaticStrings.h"
