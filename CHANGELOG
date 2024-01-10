@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-367: ability to hide columns in table UI.
+
 * Escape control characters (e.g. newlines) in the query strings that are
   logged in an instance's audit log.
 
