@@ -45,6 +45,9 @@ devel
   include/exclude system collections from the usage metrics. They are excluded
   by default.
 
+* No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
+  avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
+
 * Escape control characters (e.g. newlines) in the query strings that are
   logged in an instance's audit log.
 

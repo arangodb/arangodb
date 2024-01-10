@@ -1,9 +1,9 @@
 set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Helper/WaitForQueue.cpp
-  #Mocks/AsyncFollower.cpp
-  #Mocks/AsyncFollower.h
+  #Mocks/AsyncFollower.cpp Mocks/AsyncFollower.h
   #Mocks/AsyncLeader.cpp
-  #Mocks/FakeAbstractFollower.h
+  Mocks/DelayedLogFollower.h
+  Mocks/FakeAbstractFollower.h
   Mocks/FakeFollower.cpp
   Mocks/FakeFollower.h
   #Mocks/FakeLeader.cpp
@@ -11,10 +11,8 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   #Mocks/FakeReplicatedLog.cpp
   #Mocks/FakeReplicatedLog.h
   #Mocks/PersistedLog.cpp
-  #Mocks/PersistedLog.cpp
-  #Mocks/PersistedLog.h
-  #Mocks/PersistedLog.h
   #ReplicatedLog/TestHelper.cpp
+  Helper/ReplicatedLogTestSetup.h
 
   Mocks/ParticipantsFactoryMock.h
   Mocks/FakeReplicatedState.cpp Mocks/FakeReplicatedState.h
@@ -27,7 +25,13 @@ set(ARANGODB_REPLICATION2_TEST_HELPER_SOURCES
   Mocks/RebootIdCacheMock.h
   Mocks/StorageManagerMock.h
   Mocks/StateHandleManagerMock.h
-  )
+  Mocks/LogLeaderMock.h
+  Mocks/LogFollowerMock.h
+  Mocks/ReplicatedStateHandleMock.h
+  Mocks/FakeFollowerFactory.h
+  Mocks/IHasScheduler.h
+  Helper/ReplicatedLogTestSetup.cpp
+  Mocks/DelayedLogFollower.cpp)
 
 
 set(ARANGODB_REPLICATION2_TEST_SOURCES
@@ -110,6 +114,11 @@ add_library(arango_tests_replication2_pure OBJECT
   ReplicatedLog/Supervision/SupervisionSimulationTest.cpp
   ReplicatedLog/Supervision/SupervisionTest.cpp
   ReplicatedLog/Components/SnapshotManagerTest.cpp
+
+  ReplicatedLog/AppendEntriesBatchTest.cpp
+  ReplicatedLog/LeaderAppendEntriesTest.cpp
+  ReplicatedLog/MultiTermTest.cpp
+  ReplicatedLog/RewriteLogTest.cpp
   )
 
 
@@ -138,6 +147,8 @@ target_link_libraries(arango_tests_replication2_pure PUBLIC
 
 target_include_directories(arango_tests_replication2_pure PRIVATE "${PROJECT_SOURCE_DIR}/tests")
 
+# This binary currently can't be linked (and couldn't be for a while). We should
+# decide whether to fix it or remove it. [tobias, 2023-08-10]
 add_executable(arangodbtests_replication2_pure
   EXCLUDE_FROM_ALL main-replication2.cpp)
 

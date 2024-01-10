@@ -840,7 +840,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   }
 
   bool success;
-  VPackSlice const search = this->parseVPackBody(success);
+  VPackSlice search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
     co_return;
   }
