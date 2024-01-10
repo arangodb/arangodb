@@ -156,6 +156,12 @@ function CollectionPropertiesPropagationSuite() {
         internal.sleep(1);
       }
       assertEqual(2, servers.length);
+
+      // For ReplicationVersion 2 shards and followerCollections
+      // all report the change in ReplicationFactor.
+      // For ReplicationVersion 1 only the Leading collection
+      // knows about the change.
+      const expectedRF = db._properties().replicationVersion === "2" ? 2 : 3;
      
       // shards do not see the replicationFactor update
       let keys;
@@ -168,7 +174,7 @@ function CollectionPropertiesPropagationSuite() {
         assertTrue(keys.length > 0);
         let found = 0;
         keys.forEach((s) => {
-          if (p[s].replicationFactor === 3) {
+          if (p[s].replicationFactor === expectedRF) {
             ++found;
           }
         });
@@ -179,28 +185,18 @@ function CollectionPropertiesPropagationSuite() {
       }
           
       keys.forEach((s) => {
-        assertEqual(3, p[s].replicationFactor, {s, p});
+        assertEqual(expectedRF, p[s].replicationFactor, {s, p});
       });
 
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      let expectedRF;
-      if (db._properties().replicationVersion === "2") {
-        // with replication 2, the collection's replicationFactor is tied to the replicationFactor
-        // of the collection group, so it will report the correct value#
-        assertEqual(2, p.replicationFactor, p);
-      } else {
-        // with replication1, dependent collection won't see the replicationFactor update
-        assertEqual(3, p.replicationFactor, p);
-      }
+      assertEqual(expectedRF, p.replicationFactor, p);
       
-      // the individual shards currently do not report the updated replicationFactor,
-      // neither for replication 1 nor 2
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);
       keys.forEach((s) => {
-        assertEqual(3, p[s].replicationFactor, {s, p});
+        assertEqual(expectedRF, p[s].replicationFactor, {s, p});
       });
     },
     
@@ -210,7 +206,7 @@ function CollectionPropertiesPropagationSuite() {
       db[proto].properties({ writeConcern: 1 });
       
       let p = db[proto].properties();
-      assertEqual(1, p.writeConcern);
+      assertEqual(1, p.writeConcern, p);
       
       // shards will see the writeConcern update
       let keys;
@@ -238,16 +234,24 @@ function CollectionPropertiesPropagationSuite() {
       });
 
       // dependent collection won't see the writeConcern update
+      const isReplicationTwo = db._properties().replicationVersion === "2";
+      // In Replication1 the followers won't see the writeConcern update
+      // as they are not changed
+      // In Replication2 the followers share the replicated log with the
+      // leader, and the log holds the writeConcern, hence all are updated.
+      // The above holds true for the collection as well as the corresponding
+      // shards.
+      const expectedFollowerWriteConcern = isReplicationTwo ? 1 : 2;
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      assertEqual(2, p.writeConcern);
 
-      // nor do its shards
+      assertEqual(expectedFollowerWriteConcern, p.writeConcern);
+
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);
       keys.forEach((s) => {
-        assertEqual(2, p[s].writeConcern, {s, p});
+        assertEqual(expectedFollowerWriteConcern, p[s].writeConcern, {s, p});
       });
     },
     
