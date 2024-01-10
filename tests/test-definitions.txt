@@ -24,7 +24,14 @@ http_replication priority=500 parallelity=3 size=small single
 agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
-recovery priority=2000 buckets=6 parallelity=5 size=small single
+
+recovery priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery_cluster priority=2000 size=small cluster buckets=5
+
+recovery_server priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery_cluster_server priority=2000 buckets=1 parallelity=1 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
@@ -80,8 +87,6 @@ resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOn
 resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 size=small cluster buckets=8
-
 shell_api priority=500 cluster -- $EncryptionAtRest
 
 shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
@@ -131,7 +136,6 @@ audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
 shell_fuzzer full !mac cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
 shell_fuzzer full !mac single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
-authentication_server single full priority=1000
 config single full priority=1000
 foxx_manager single full priority=500
 queryCacheAuthorization single full priority=500

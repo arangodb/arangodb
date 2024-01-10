@@ -33,6 +33,7 @@ const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require('@arangodb/test-helper-common');
 const clientHelper = require('@arangodb/test-helper');
+const isServer = arangodb.isServer;
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
@@ -120,7 +121,7 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return clientHelper.getServersByType('dbserver').map((x) => x.id);
+  return clientHelper.getDBServers().map((x) => x.id);
 }());
 const coordinators = (function () {
   return clientHelper.getServersByType('coordinator').map((x) => x.id);
@@ -303,10 +304,15 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let arangods = [];
+  try {
+    arangods = global.instanceManager.arangods;
+  } catch(_) {
+    arangods = helper.getServersByType("dbserver");
+  }
+  let pos = _.findIndex(arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
