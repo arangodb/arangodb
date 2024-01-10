@@ -171,7 +171,7 @@ void BindParameters::process() {
                                     key.c_str());
     }
 
-    if (!key.empty() && key[0] == '@' && !value.isString()) {
+    if (key.starts_with('@') && !value.isString()) {
       // collection bind parameter
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                     key.c_str());
@@ -179,7 +179,9 @@ void BindParameters::process() {
 
     ResourceUsageScope guard(_resourceMonitor, memoryUsage(key, value));
 
-    _parameters.try_emplace(std::move(key), value, nullptr);
+    bool inserted =
+        _parameters.try_emplace(std::move(key), value, nullptr).second;
+    TRI_ASSERT(inserted);
 
     // now we are responsible for tracking the memory usage
     guard.steal();
