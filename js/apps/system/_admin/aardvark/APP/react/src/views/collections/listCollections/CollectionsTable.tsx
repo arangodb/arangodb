@@ -2,7 +2,6 @@ import { AddIcon } from "@chakra-ui/icons";
 import { Button, Flex, Heading, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
@@ -100,16 +99,10 @@ export const CollectionsTable = ({
     <Flex direction="column" gap="2">
       <Flex direction="column" gap="4">
         <CollectionTableHeader onAddCollectionClick={onAddCollectionClick} />
-        <Flex gap="4">
-          <FiltersList<LockableCollectionDescription>
-            columns={TABLE_COLUMNS}
-            table={tableInstance}
-          />
-          <TableControl<LockableCollectionDescription>
-            table={tableInstance}
-            columns={TABLE_COLUMNS}
-          />
-        </Flex>
+        <TableControl<LockableCollectionDescription>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
       </Flex>
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}

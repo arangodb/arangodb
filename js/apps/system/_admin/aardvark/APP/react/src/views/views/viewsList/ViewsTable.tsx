@@ -1,8 +1,7 @@
-import { Flex, Link, Spinner, Stack } from "@chakra-ui/react";
+import { Link, Spinner, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { useHistory } from "react-router-dom";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
@@ -64,16 +63,10 @@ export const ViewsTable = () => {
   const history = useHistory();
   return (
     <Stack>
-      <Flex gap="4">
-        <FiltersList<LockableViewDescription>
-          columns={TABLE_COLUMNS}
-          table={tableInstance}
-        />
-        <TableControl<LockableViewDescription>
-          table={tableInstance}
-          columns={TABLE_COLUMNS}
-        />
-      </Flex>
+      <TableControl<LockableViewDescription>
+        table={tableInstance}
+        columns={TABLE_COLUMNS}
+      />
       <ReactTable<LockableViewDescription>
         table={tableInstance}
         emptyStateMessage="No views found"
