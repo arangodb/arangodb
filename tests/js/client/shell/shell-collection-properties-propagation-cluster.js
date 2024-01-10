@@ -210,7 +210,7 @@ function CollectionPropertiesPropagationSuite() {
       db[proto].properties({ writeConcern: 1 });
       
       let p = db[proto].properties();
-      assertEqual(1, p.writeConcern);
+      assertEqual(1, p.writeConcern, p);
       
       // shards will see the writeConcern update
       let keys;
@@ -238,16 +238,24 @@ function CollectionPropertiesPropagationSuite() {
       });
 
       // dependent collection won't see the writeConcern update
+      const isReplicationTwo = db._properties().replicationVersion === "2";
+      // In Replication1 the followers won't see the writeConcern update
+      // as they are not changed
+      // In Replication2 the followers share the replicated log with the
+      // leader, and the log holds the writeConcern, hence all are updated.
+      // The above holds true for the collection as well as the corresponding
+      // shards.
+      const expectedFollowerWriteConcern = isReplicationTwo ? 1 : 2;
       p = c.properties();
       assertEqual(proto, p.distributeShardsLike);
-      assertEqual(2, p.writeConcern);
 
-      // nor do its shards
+      assertEqual(expectedFollowerWriteConcern, p.writeConcern);
+
       p = propertiesOnDBServers(c);
       keys = Object.keys(p);
       assertTrue(keys.length > 0);
       keys.forEach((s) => {
-        assertEqual(2, p[s].writeConcern, {s, p});
+        assertEqual(expectedFollowerWriteConcern, p[s].writeConcern, {s, p});
       });
     },
     
