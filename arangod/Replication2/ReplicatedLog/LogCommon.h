@@ -85,6 +85,7 @@ struct LogIndex {
 
   [[nodiscard]] auto operator+(std::uint64_t delta) const -> LogIndex;
   auto operator+=(std::uint64_t delta) -> LogIndex&;
+  auto operator++() -> LogIndex&;
 
   friend auto operator<<(std::ostream&, LogIndex) -> std::ostream&;
 
@@ -115,6 +116,7 @@ struct LogTerm {
   friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+  auto succ() const noexcept -> LogTerm;
 };
 
 auto operator<<(std::ostream&, LogTerm) -> std::ostream&;

@@ -48,6 +48,11 @@ auto LogIndex::operator+=(std::uint64_t delta) -> LogIndex& {
   return *this;
 }
 
+auto LogIndex::operator++() -> LogIndex& {
+  ++value;
+  return *this;
+}
+
 LogIndex::operator velocypack::Value() const noexcept {
   return velocypack::Value(value);
 }
@@ -71,6 +76,8 @@ LogTerm::operator velocypack::Value() const noexcept {
 auto operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
   return os << term.value;
 }
+
+auto LogTerm::succ() const noexcept -> LogTerm { return LogTerm(value + 1); }
 
 auto LogId::fromString(std::string_view name) noexcept -> std::optional<LogId> {
   if (std::all_of(name.begin(), name.end(),

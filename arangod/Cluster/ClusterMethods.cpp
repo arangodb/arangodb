@@ -1137,8 +1137,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/figures", VPackBuffer<uint8_t>(),
-        reqOpts);
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/figures"),
+        VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1228,8 +1228,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/count", VPackBuffer<uint8_t>(),
-        reqOpts, std::move(headers)));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/count"),
+        VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
@@ -1904,8 +1904,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
-        std::move(headers));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/truncate"),
+        std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
@@ -2121,8 +2121,8 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
-          "/_api/document/" + shard + "/" +
-              StringUtils::urlEncode(key.data(), key.size()),
+          absl::StrCat("/_api/document/", std::string{shard}, "/",
+                       StringUtils::urlEncode(key.data(), key.size())),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
     }
   } else {
@@ -2140,7 +2140,8 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb, "/_api/document/" + shard,
+          pool, "shard:" + shard, restVerb,
+          absl::StrCat("/_api/document/", std::string{shard}),
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
   }
@@ -2202,8 +2203,7 @@ Result fetchEdgesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2300,8 +2300,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2395,7 +2394,7 @@ void fetchVerticesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::vertexUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
+        absl::StrCat(::vertexUrl, engine.second), leased->bufferRef(),
         reqOpts));
   }
 
