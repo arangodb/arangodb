@@ -910,7 +910,7 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
   // ourselves using the groups command. Then we can use setgroups to
   // achieve the desired result.
   try {
-    std::vector<std::string> args{"groups", userName};
+    std::vector<std::string> args{userName};
     std::string output = slurpProgramInternal("/usr/bin/groups", args);
     StringUtils::trimInPlace(output);
     auto pos = output.find(':');
