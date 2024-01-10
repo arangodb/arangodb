@@ -459,8 +459,7 @@ std::unique_ptr<Expression> createPruneExpression(ExecutionPlan* plan, Ast* ast,
 
 /// @brief create the plan
 ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
-    : _ids(),
-      _root(nullptr),
+    : _root(nullptr),
       _trackMemoryUsage(trackMemoryUsage),
       _planValid(true),
       _varUsageComputed(false),
@@ -718,10 +717,9 @@ ExecutionNode* ExecutionPlan::getNodeById(ExecutionNodeId id) const {
     return (*it).second;
   }
 
-  std::string msg = std::string("node [") + std::to_string(id.id()) +
-                    std::string("] wasn't found");
   // node unknown
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, msg);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL, absl::StrCat("node [", id.id(), "] wasn't found"));
 }
 
 std::unordered_map<ExecutionNodeId, ExecutionNode*> const&
@@ -871,9 +869,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   }
 
   CalculationNode* en =
-      new CalculationNode(this, nextId(), std::move(expr), out);
-
-  registerNode(reinterpret_cast<ExecutionNode*>(en));
+      createNode<CalculationNode>(this, nextId(), std::move(expr), out);
 
   if (previous != nullptr) {
     en->addDependency(previous);
@@ -962,12 +958,11 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
       GroupVarInfo{out, previous->outVariable()}};
   std::vector<AggregateVarInfo> const aggregateVariables{};
 
-  auto en = new CollectNode(this, nextId(), CollectOptions(), groupVariables,
-                            aggregateVariables, nullptr, nullptr,
-                            std::vector<Variable const*>(),
-                            _ast->variables()->variables(false), true);
+  auto en = createNode<CollectNode>(this, nextId(), CollectOptions(),
+                                    groupVariables, aggregateVariables, nullptr,
+                                    nullptr, std::vector<Variable const*>(),
+                                    _ast->variables()->variables(false), true);
 
-  registerNode(en);
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
 
@@ -1252,8 +1247,7 @@ ExecutionNode* ExecutionPlan::fromNodeFor(ExecutionNode* previous,
   } else {
     // second operand is some misc. expression
     auto calc = createTemporaryCalculation(expression, previous);
-    en = registerNode(
-        new EnumerateListNode(this, nextId(), getOutVariable(calc), v));
+    en = createNode<EnumerateListNode>(this, nextId(), getOutVariable(calc), v);
     previous = calc;
   }
 
@@ -1805,12 +1799,10 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     CollectNode::calculateAccessibleUserVariables(*previous, keepVariables);
   }
 
-  auto collectNode =
-      new CollectNode(this, nextId(), options, groupVariables, aggregateVars,
-                      expressionVariable, outVariable, keepVariables,
-                      _ast->variables()->variables(false), false);
-
-  auto en = registerNode(collectNode);
+  auto en = createNode<CollectNode>(this, nextId(), options, groupVariables,
+                                    aggregateVars, expressionVariable,
+                                    outVariable, keepVariables,
+                                    _ast->variables()->variables(false), false);
 
   return addDependency(previous, en);
 }
@@ -1925,8 +1917,8 @@ ExecutionNode* ExecutionPlan::fromNodeRemove(ExecutionNode* previous,
     auto v = static_cast<Variable*>(expression->getData());
 
     TRI_ASSERT(v != nullptr);
-    en = registerNode(
-        new RemoveNode(this, nextId(), collection, options, v, outVariableOld));
+    en = createNode<RemoveNode>(this, nextId(), collection, options, v,
+                                outVariableOld);
   } else {
     // operand is some misc expression
     auto calc = createTemporaryCalculation(expression, previous);
