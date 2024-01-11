@@ -17,7 +17,6 @@
         "CMAKE_EXE_LINKER_FLAGS": "-Wl,--build-id=sha1",
         "USE_IPO": "Off",
         "USE_STRICT_OPENSSL_VERSION": "On",
-        "USE_MINIMAL_DEBUGINFO": "On",
         "STATIC_EXECUTABLES": "On"
       }
     },
