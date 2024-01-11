@@ -109,7 +109,7 @@ exports.debugCanUseFailAt = function (endpoint) {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -124,7 +124,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -138,7 +138,7 @@ exports.debugResetRaceControl = function (endpoint) {
     }
     return false;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -153,7 +153,7 @@ exports.debugRemoveFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -167,7 +167,7 @@ exports.debugClearFailAt = function (endpoint) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -184,7 +184,7 @@ exports.debugGetFailurePoints = function (endpoint) {
       return res.parsedBody;
     }
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
   return [];
 };
@@ -199,7 +199,7 @@ exports.getChecksum = function (endpoint, name) {
     }
     return res.parsedBody.checksum;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -635,7 +635,6 @@ exports.activateFailure = function (name) {
     roles.push("single");
   }
   
-  print(roles);
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
   });
@@ -823,6 +822,31 @@ exports.agency = {
 
 exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
+};
+
+exports.arangoClusterInfoFlush = function () {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
+};
+
+exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
+};
+
+exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
+      ${JSON.stringify(dbName)}, 
+      ${JSON.stringify(collName)}, 
+      ${JSON.stringify(shard)})`);
+};
+
+exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
+};
+
+exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
 };
 
 exports.AQL_EXPLAIN = function(query, bindVars, options) {

@@ -309,10 +309,16 @@ function optimizerRuleMdi2dIndexTestSuite() {
       let col = db._create(colName + "5");
       const idx = col.ensureIndex({
         type: 'zkd',
+        name: "myIndex",
         fields: ['x', 'y'],
         fieldValueTypes: 'double',
       });
-      assertEqual('mdi', idx.type);
+      assertEqual('zkd', idx.type);
+
+      const idx2 = col.index("myIndex");
+      assertEqual(idx2.id, idx.id);
+      assertEqual(idx2.type, 'zkd');
+
       col.drop();
     }
   };

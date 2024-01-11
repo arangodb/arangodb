@@ -44,15 +44,15 @@ const tu = require('@arangodb/testutils/test-utils');
 const _ = require('lodash');
 
 const testPaths = {
-  'resilience_move': [tu.pathForTesting('server/resilience/move')],
-  'resilience_move_view': [tu.pathForTesting('server/resilience/move-view')],
-  'resilience_repair': [tu.pathForTesting('server/resilience/repair')],
-  'resilience_failover': [tu.pathForTesting('server/resilience/failover')],
-  'resilience_failover_failure': [tu.pathForTesting('server/resilience/failover-failure')],
-  'resilience_failover_view': [tu.pathForTesting('server/resilience/failover-view')],
-  'resilience_transactions': [tu.pathForTesting('server/resilience/transactions')],
-  'resilience_sharddist': [tu.pathForTesting('server/resilience/sharddist')],
-  'resilience_analyzers': [tu.pathForTesting('server/resilience/analyzers')],
+  'resilience_move': [tu.pathForTesting('client/resilience/move')],
+  'resilience_move_view': [tu.pathForTesting('client/resilience/move-view')],
+  'resilience_repair': [tu.pathForTesting('client/resilience/repair')],
+  'resilience_failover': [tu.pathForTesting('client/resilience/failover')],
+  'resilience_failover_failure': [tu.pathForTesting('client/resilience/failover-failure')],
+  'resilience_failover_view': [tu.pathForTesting('client/resilience/failover-view')],
+  'resilience_transactions': [tu.pathForTesting('client/resilience/transactions')],
+  'resilience_sharddist': [tu.pathForTesting('client/resilience/sharddist')],
+  'resilience_analyzers': [tu.pathForTesting('client/resilience/analyzers')],
   'client_resilience': [tu.pathForTesting('client/resilience')],
 };
 
@@ -79,7 +79,7 @@ var _resilience = function(path, enableAliveMonitor) {
     }
     let testCases = tu.scanTestPaths(testPaths[path], localOptions);
     testCases = tu.splitBuckets(options, testCases);
-    let rc = new tu.runOnArangodRunner(localOptions, suiteName, {
+    let rc = new tu.runInArangoshRunner(localOptions, suiteName, {
       'javascript.allow-external-process-control': 'true',
       'javascript.allow-port-testing': 'true',
       'javascript.allow-admin-execute': 'true',

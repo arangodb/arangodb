@@ -41,17 +41,16 @@
 #include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Collection.h>
-#include <set>
 
 using namespace arangodb;
 using namespace arangodb::aql;
 using namespace arangodb::basics;
 
 namespace {
-const double SETUP_TIMEOUT = 60.0;
+constexpr double kSetupTimeout = 60.0;
 
-std::string const finishUrl("/_api/aql/finish/");
-std::string const traverserUrl("/_internal/traverser/");
+constexpr std::string_view finishUrl("/_api/aql/finish/");
+constexpr std::string_view traverserUrl("/_internal/traverser/");
 
 Result extractRemoteAndShard(VPackSlice keySlice, ExecutionNodeId& remoteId,
                              std::string& shardId) {
@@ -142,6 +141,8 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
 
   infoBuilder.clear();
   infoBuilder.openObject();
+
+  // query id
   infoBuilder.add("clusterQueryId", VPackValue(clusterQueryId));
 
   addLockingPart(infoBuilder, server);
@@ -353,7 +354,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
 
   network::RequestOptions options;
   options.database = _query.vocbase().name();
-  options.timeout = network::Timeout(SETUP_TIMEOUT);
+  options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
 
   TRI_IF_FAILURE("Query::setupTimeout") {
@@ -715,7 +716,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
     TRI_ASSERT(!server.starts_with("server:"));
     requests.emplace_back(network::sendRequestRetry(
         pool, "server:" + server, fuerte::RestVerb::Delete,
-        ::finishUrl + std::to_string(queryId),
+        absl::StrCat(::finishUrl, queryId),
         /*copy*/ body, options));
   }
   _query.incHttpRequests(static_cast<unsigned>(serverQueryIds.size()));
@@ -729,8 +730,7 @@ EngineInfoContainerDBServerServerBased::cleanupEngines(
       TRI_ASSERT(!engine.first.starts_with("server:"));
       requests.emplace_back(network::sendRequestRetry(
           pool, "server:" + engine.first, fuerte::RestVerb::Delete,
-          ::traverserUrl + basics::StringUtils::itoa(engine.second), noBody,
-          options));
+          absl::StrCat(::traverserUrl, engine.second), noBody, options));
     }
     _query.incHttpRequests(static_cast<unsigned>(allEngines->size()));
     gn->clearEngines();

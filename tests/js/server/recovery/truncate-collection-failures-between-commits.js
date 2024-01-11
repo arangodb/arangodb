@@ -70,8 +70,7 @@ const recoverySuite = function () {
   const docsWithEqSkip = 20000 / 100;
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // Test that count of collection remains unmodified.
     // We crashed after one remove commit. But before the other
