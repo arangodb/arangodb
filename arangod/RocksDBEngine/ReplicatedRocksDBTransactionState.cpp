@@ -22,12 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ReplicatedRocksDBTransactionState.h"
-#include <rocksdb/types.h>
 
-#include <algorithm>
-#include <limits>
-#include <numeric>
-
+#include "Basics/application-exit.h"
 #include "Futures/Utilities.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
@@ -36,7 +32,11 @@
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
-#include <Basics/application-exit.h>
+#include <rocksdb/types.h>
+
+#include <algorithm>
+#include <limits>
+#include <numeric>
 
 using namespace arangodb;
 

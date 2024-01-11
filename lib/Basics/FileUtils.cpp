@@ -33,8 +33,8 @@
 
 #include "FileUtils.h"
 
-#include "Basics/operating-system.h"
 #include "Basics/process-utils.h"
+#include "Basics/NumberUtils.h"
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>
@@ -756,16 +756,16 @@ void makePathAbsolute(std::string& path) {
   }
 }
 
-std::string slurpProgram(std::string const& program) {
+namespace {
+
+std::string slurpProgramInternal(std::string const& program,
+                                 std::vector<std::string> const& moreArgs) {
   ExternalProcess const* process;
   ExternalId external;
   ExternalProcessStatus res;
   std::string output;
-  std::vector<std::string> moreArgs;
   std::vector<std::string> additionalEnv;
   char buf[1024];
-
-  moreArgs.push_back(std::string("version"));
 
   TRI_CreateExternalProcess(program.c_str(), moreArgs, additionalEnv, true,
                             &external);
@@ -804,4 +804,100 @@ std::string slurpProgram(std::string const& program) {
   return output;
 }
 
+}  // namespace
+
+std::string slurpProgram(std::string const& program) {
+  std::vector<std::string> moreArgs{std::string("version")};
+  return slurpProgramInternal(program, moreArgs);
+}
+
+#ifdef ARANGODB_HAVE_GETPWUID
+std::optional<uid_t> findUser(std::string const& nameOrId) noexcept {
+  // We avoid getpwuid and getpwnam because they pose problems when
+  // we build static binaries with glibc (because of /etc/nsswitch.conf).
+  // However, we know that `id` exists for basically all Linux variants
+  // and for Mac.
+  try {
+    std::vector<std::string> args{"-u", nameOrId};
+    std::string output = slurpProgramInternal("/usr/bin/id", args);
+    StringUtils::trimInPlace(output);
+    bool valid = false;
+    uid_t uidNumber = NumberUtils::atoi_positive<int>(
+        output.data(), output.data() + output.size(), valid);
+    if (valid) {
+      return {uidNumber};
+    }
+  } catch (std::exception const&) {
+  }
+  return {std::nullopt};
+}
+
+std::optional<std::string> findUserName(uid_t id) noexcept {
+#ifdef __APPLE__
+  // For Mac we use the getpwuid function.
+  struct passwd* pwent = getpwuid(id);
+  if (pwent != nullptr) {
+    return {std::string(pwent->pw_name)};
+  }
+#else
+  // For Linux (and other Unixes), we avoid this function because it
+  // poses problems when we build static binaries with glibc (because of
+  // /etc/nsswitch.conf).
+  try {
+    std::vector<std::string> args{"passwd", std::to_string(id)};
+    std::string output = slurpProgramInternal("/usr/bin/getent", args);
+    StringUtils::trimInPlace(output);
+    auto parts = StringUtils::split(output, ':');
+    if (parts.size() >= 1) {
+      return {std::move(parts[0])};
+    }
+  } catch (std::exception const&) {
+  }
+#endif
+  return {std::nullopt};
+}
+#endif
+
+#ifdef ARANGODB_HAVE_GETGRGID
+std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
+#ifdef __APPLE__
+  // For Mac we use the getgrgid and getgrnam functions.
+  bool valid = false;
+  int gidNumber = NumberUtils::atoi_positive<int>(
+      nameOrId.data(), nameOrId.data() + nameOrId.size(), valid);
+
+  if (valid && gidNumber >= 0) {
+    group* g = getgrgid(gidNumber);
+    if (g != nullptr) {
+      return {gidNumber};
+    }
+  } else {
+    group* g = getgrnam(nameOrId.c_str());
+    if (g != nullptr) {
+      return {g->gr_gid};
+    }
+  }
+#else
+  // For Linux (and other Unixes), we avoid these functions because they
+  // pose problems when we build static binaries with glibc (because of
+  // /etc/nsswitch.conf).
+  try {
+    std::vector<std::string> args{"group", nameOrId};
+    std::string output = slurpProgramInternal("/usr/bin/getent", args);
+    StringUtils::trimInPlace(output);
+    auto parts = StringUtils::split(output, ':');
+    if (parts.size() >= 3) {
+      bool valid = false;
+      uid_t gidNumber = NumberUtils::atoi_positive<int>(
+          parts[2].data(), parts[2].data() + parts[2].size(), valid);
+      if (valid) {
+        return {gidNumber};
+      }
+    }
+  } catch (std::exception const&) {
+  }
+#endif
+  return {std::nullopt};
+}
+#endif
 }  // namespace arangodb::basics::FileUtils

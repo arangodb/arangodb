@@ -28,6 +28,7 @@
 
 #include "Basics/application-exit.h"
 #include "Basics/error.h"
+#include "Basics/FileUtils.h"
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -136,9 +137,8 @@ void PrivilegeFeature::extractPrivileges() {
 
     if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
-      group* g = getgrgid(gidNumber);
-
-      if (g == nullptr) {
+      std::optional<gid_t> gid = FileUtils::findGroup(_gid);
+      if (!gid) {
         LOG_TOPIC("3d53b", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric gid '" << _gid << "'";
         FATAL_ERROR_EXIT();
@@ -146,11 +146,9 @@ void PrivilegeFeature::extractPrivileges() {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      std::string name = _gid;
-      group* g = getgrnam(name.c_str());
-
-      if (g != nullptr) {
-        gidNumber = g->gr_gid;
+      std::optional<gid_t> gid = FileUtils::findGroup(_gid);
+      if (gid) {
+        gidNumber = gid.value();
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("20096", FATAL, arangodb::Logger::FIXME)
@@ -179,9 +177,8 @@ void PrivilegeFeature::extractPrivileges() {
 
     if (valid) {
 #ifdef ARANGODB_HAVE_GETPWUID
-      passwd* p = getpwuid(uidNumber);
-
-      if (p == nullptr) {
+      std::optional<uid_t> uid = FileUtils::findUser(_uid);
+      if (!uid) {
         LOG_TOPIC("09f8d", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric uid '" << _uid << "'";
         FATAL_ERROR_EXIT();
@@ -189,10 +186,9 @@ void PrivilegeFeature::extractPrivileges() {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETPWNAM
-      passwd* p = getpwnam(_uid.c_str());
-
-      if (p != nullptr) {
-        uidNumber = p->pw_uid;
+      std::optional<uid_t> uid = FileUtils::findUser(_uid);
+      if (uid) {
+        uidNumber = uid.value();
       } else {
         LOG_TOPIC("d54b7", FATAL, arangodb::Logger::FIXME)
             << "cannot convert username '" << _uid << "' to numeric uid";
@@ -215,10 +211,10 @@ void PrivilegeFeature::dropPrivilegesPermanently() {
     defined(ARANGODB_HAVE_SETUID)
   // clear all supplementary groups
   if (!_gid.empty() && !_uid.empty()) {
-    struct passwd* pwent = getpwuid(_numericUid);
+    std::optional<std::string> name = FileUtils::findUserName(_numericUid);
 
-    if (pwent != nullptr) {
-      initgroups(pwent->pw_name, _numericGid);
+    if (name) {
+      initgroups(name.value().c_str(), _numericGid);
     }
   }
 #endif

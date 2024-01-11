@@ -321,7 +321,8 @@ VPackBuilder ProgramOptions::toVelocyPack(
           builder.close();
 
           // component support
-          if (_progname.ends_with("arangod")) {
+          if (_progname.ends_with("arangod") ||
+              _progname.ends_with("arangod.exe")) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));

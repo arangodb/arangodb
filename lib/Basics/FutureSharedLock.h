@@ -115,7 +115,7 @@ struct FutureSharedLock {
     explicit Node(bool exclusive) : exclusive(exclusive) {}
 
     Promise<LockGuard> promise;
-    Scheduler::WorkHandle _workItem;
+    typename Scheduler::WorkHandle _workItem;
     bool exclusive;
   };
 
