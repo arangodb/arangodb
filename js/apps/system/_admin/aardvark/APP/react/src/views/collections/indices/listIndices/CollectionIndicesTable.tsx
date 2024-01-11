@@ -108,13 +108,14 @@ export const CollectionIndicesTable = () => {
   const tableInstance = useSortableReactTable<Index>({
     data: collectionIndices || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "collection-indices"
   });
   return (
     <Stack>

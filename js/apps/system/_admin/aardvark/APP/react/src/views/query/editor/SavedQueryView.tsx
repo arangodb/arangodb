@@ -198,7 +198,7 @@ const SavedQueryTable = ({ savedQueries }: { savedQueries?: QueryType[] }) => {
   const tableInstance = useSortableReactTable<QueryType>({
     columns: TABLE_COLUMNS,
     data: finalData,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "created_at",
         desc: true

@@ -53,12 +53,14 @@ export const UsersTable = () => {
   const tableInstance = useSortableReactTable<DatabaseUserValues>({
     data: users || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "user",
         desc: false
       }
-    ]
+    ],
+    defaultFilters: [],
+    storageKey: "users"
   });
 
   return (

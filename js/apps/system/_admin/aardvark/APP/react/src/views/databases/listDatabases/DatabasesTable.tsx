@@ -41,13 +41,14 @@ export const DatabasesTable = () => {
   const tableInstance = useSortableReactTable<DatabaseDescription>({
     data: databases || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "databases"
   });
   const history = useHistory();
   return (

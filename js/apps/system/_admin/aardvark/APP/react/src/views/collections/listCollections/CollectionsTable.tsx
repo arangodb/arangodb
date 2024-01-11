@@ -82,18 +82,19 @@ export const CollectionsTable = ({
   const tableInstance = useSortableReactTable<LockableCollectionDescription>({
     data: collections || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: [
+    defaultFilters: [
       {
         id: "source",
         value: "Custom"
       }
-    ]
+    ],
+    storageKey: "collections"
   });
   return (
     <Flex direction="column" gap="2">

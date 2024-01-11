@@ -1,4 +1,5 @@
 import {
+  Badge,
   Button,
   Checkbox,
   Flex,
@@ -17,7 +18,11 @@ export const TableColumnSelector = <Data extends object>({
   table: TableType<Data>;
   columns: ColumnDef<Data, any>[];
 }) => {
-  // list of columns with a checkbox to toggle visibility
+  const isAnyColumnInvisible = columns.some(column => {
+    const isVisible = table.getColumn(column.id || "")?.getIsVisible();
+    return !isVisible;
+  });
+
   return (
     <Menu closeOnSelect={false}>
       <MenuButton
@@ -27,10 +32,11 @@ export const TableColumnSelector = <Data extends object>({
         size="sm"
       >
         Columns
+        {isAnyColumnInvisible && <ColumnInvisibleIndicator />}
       </MenuButton>
-      <MenuList minWidth="auto">
+      <MenuList minWidth="200px">
         <MenuOptionGroup defaultChecked type="checkbox">
-          <Flex padding="2" gap="2" direction="column">
+          <Flex paddingX="4" gap="2" direction="column">
             {columns.map(column => {
               const tableColumn = column.id
                 ? table.getColumn(column.id)
@@ -38,7 +44,7 @@ export const TableColumnSelector = <Data extends object>({
               const isVisible = tableColumn?.getIsVisible();
               return (
                 <Checkbox
-                  defaultChecked={isVisible}
+                  isChecked={isVisible}
                   onChange={() => {
                     tableColumn?.toggleVisibility();
                   }}
@@ -50,7 +56,41 @@ export const TableColumnSelector = <Data extends object>({
             })}
           </Flex>
         </MenuOptionGroup>
+        {isAnyColumnInvisible && (
+          <Flex justifyContent="flex-end" paddingX="4">
+            <Button
+              size="xs"
+              variant="ghost"
+              textTransform="uppercase"
+              colorScheme="blue"
+              onClick={() => {
+                table.toggleAllColumnsVisible(true);
+              }}
+            >
+              Clear
+            </Button>
+          </Flex>
+        )}
       </MenuList>
     </Menu>
+  );
+};
+
+const ColumnInvisibleIndicator = () => {
+  return (
+    <Badge
+      fontSize="xs"
+      width="4"
+      height="4"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      position="absolute"
+      right="-8px"
+      top="-8px"
+      backgroundColor="gray.900"
+      color="white"
+      borderRadius="20px"
+    />
   );
 };

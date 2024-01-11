@@ -104,18 +104,19 @@ export const ServicesTable = () => {
   const tableInstance = useSortableReactTable<ServiceDescription>({
     data: services || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: [
+    defaultFilters: [
       {
         id: "system",
         value: false
       }
-    ]
+    ],
+    storageKey: "services"
   });
   return (
     <Stack>

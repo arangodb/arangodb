@@ -81,12 +81,13 @@ export const GraphsTable = () => {
   const tableInstance = useSortableReactTable<GraphInfo>({
     data: graphs || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
-    ]
+    ],
+    storageKey: "graphs"
   });
 
   return (

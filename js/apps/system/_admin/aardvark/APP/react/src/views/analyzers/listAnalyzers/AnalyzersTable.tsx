@@ -79,13 +79,14 @@ export const AnalyzersTable = () => {
   const tableInstance = useSortableReactTable<AnalyzerDataType>({
     data: analyzers || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    storageKey: "analyzers",
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: [
+    defaultFilters: [
       {
         id: "source",
         value: "Custom"

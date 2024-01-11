@@ -52,13 +52,14 @@ export const ViewsTable = () => {
   const tableInstance = useSortableReactTable<LockableViewDescription>({
     data: views || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "views"
   });
   const history = useHistory();
   return (
