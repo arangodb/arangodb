@@ -138,12 +138,17 @@
         case 'Zkd':
           fields = $('#newZkdFields').val();
           const fieldValueTypes = $('#newZkdFieldValueTypes').val();
+          storedValues = self.stringToArray($('#newZkdStoredValues').val());
+          if (!storedValues.length) {
+            storedValues = undefined;
+          }
           background = self.checkboxToValue('#newZkdBackground');
           name = $('#newZkdName').val();
           postParameter = {
             type: 'zkd',
             fields: self.stringToArray(fields),
             fieldValueTypes,
+            storedValues: storedValues,
             inBackground: background,
             name
           };
