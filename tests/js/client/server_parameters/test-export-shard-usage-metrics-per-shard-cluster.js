@@ -454,7 +454,7 @@ function testSuite() {
       }
     },
 
-    testHasMetricsReadOnlyMultiCollectionsAQL : function () {
+    testHasMetricsReadOnlyAQLMultiCollections : function () {
       const cn = baseName + "17";
 
       let c1 = db._create(cn);
@@ -474,9 +474,90 @@ function testSuite() {
         db._drop(c1.name());
       }
     },
-        // multiple shards
-        // follower metrics?
-        // AQL
+    
+    testHasMetricsReadWriteAQLMultiCollections : function () {
+      const cn = baseName + "18";
+
+      let c1 = db._create(cn, { numberOfShards: 5 });
+      let c2 = db._create(cn + "_2", { numberOfShards: 3 });
+      try {
+        db._query("FOR doc IN " + c1.name() + " INSERT {} INTO " + c2.name());
+        
+        let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
+        
+        let expected = { "reads": {}, "writes": {} };
+        c1.shards().forEach((s) => { expected["reads"][s] = 1; });
+        c2.shards().forEach((s) => { expected["writes"][s] = 1; });
+
+        assertEqual(expected, parsed);
+      } finally {
+        db._drop(c2.name());
+        db._drop(c1.name());
+      }
+    },
+    
+    testHasMetricsExclusiveAQLMultiCollections : function () {
+      const cn = baseName + "19";
+
+      let c1 = db._create(cn, { numberOfShards: 5 });
+      let c2 = db._create(cn + "_2", { numberOfShards: 3 });
+      try {
+        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        
+        let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
+        
+        let expected = { "writes": {} };
+        c1.shards().forEach((s) => { expected["writes"][s] = 1; });
+        c2.shards().forEach((s) => { expected["writes"][s] = 1; });
+
+        assertEqual(expected, parsed);
+      } finally {
+        db._drop(c2.name());
+        db._drop(c1.name());
+      }
+    },
+    
+    testHasMetricsWhenWritingIntoCollectionSingleInsertsFollowerShards : function () {
+      const cn = baseName + "20";
+
+      let c = db._create(cn, { replicationFactor: 2 });
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        for (let i = 0; i < 10; ++i) {
+          c.insert({ value: i });
+        }
+       
+        // follower shards should not count here
+        let parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 10 } }, parsed);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsAQLFollowerShards : function () {
+      const cn = baseName + "21";
+
+      let c1 = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
+      let c2 = db._create(cn + "_2", { numberOfShards: 3, replicationFactor: 2 });
+      try {
+        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        
+        let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
+        
+        // follower shards should not count here
+        let expected = { "writes": {} };
+        c1.shards().forEach((s) => { expected["writes"][s] = 1; });
+        c2.shards().forEach((s) => { expected["writes"][s] = 1; });
+
+        assertEqual(expected, parsed);
+      } finally {
+        db._drop(c2.name());
+        db._drop(c1.name());
+      }
+    },
 
   };
 }
