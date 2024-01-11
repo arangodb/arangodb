@@ -452,7 +452,13 @@ static void handlePlanShard(
             // Note however, that new index jobs are intentionally not
             // discovered when the shard is locked for maintenance.
             auto indexTypeName = index.get(StaticStrings::IndexType).copyString();
-            bool doLockShard = isViewIndex(indexTypeName);
+            // For replication2 there is a race on modify link, the DBServer can witness
+            // drop and create of the index at the same time.
+            // With this flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be created in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(indexTypeName);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
@@ -601,7 +607,13 @@ static void handleLocalShard(
             // want that they can run in parallel.
             // Exception are SearchIndexes, as they can conflict on attached
             // views during update.
-            bool doLockShard = isViewIndex(type);
+            // For replication2 there is a race on modify link, the DBServer can witness
+            // drop and create of the index at the same time.
+            // With this flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be dropped in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(type);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
