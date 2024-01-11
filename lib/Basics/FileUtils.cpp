@@ -900,4 +900,38 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
   return {std::nullopt};
 }
 #endif
+
+#ifdef ARANGODB_HAVE_INITGROUPS
+void initGroups(std::string const& userName, gid_t groupId) noexcept {
+#ifdef __linux__
+  // For Linux, calling initgroups poses problems with statically linked
+  // binaries, since /etc/nsswitch.conf can then lead to crashes on
+  // older Linux distributions. Therefore, we need to do the groups lookup
+  // ourselves using the groups command. Then we can use setgroups to
+  // achieve the desired result.
+  try {
+    std::vector<std::string> args{userName};
+    std::string output = slurpProgramInternal("/usr/bin/groups", args);
+    StringUtils::trimInPlace(output);
+    auto pos = output.find(':');
+    if (pos != std::string::npos) {
+      output = output.substr(pos + 1);
+    }
+    auto parts = StringUtils::split(output, ' ');
+    std::vector<gid_t> groupIds{groupId};
+    for (auto const& part : parts) {
+      std::optional<gid_t> gidNumber = findGroup(part);
+      if (gidNumber && gidNumber.value() != groupId) {
+        groupIds.push_back(gidNumber.value());
+      }
+    }
+    setgroups(groupIds.size(), groupIds.data());
+  } catch (std::exception const&) {
+  }
+#else
+  // For other unixes (including Mac), we can use the OS call.
+  initgroups(userName.c_str(), groupId);
+#endif
+}
+#endif
 }  // namespace arangodb::basics::FileUtils
