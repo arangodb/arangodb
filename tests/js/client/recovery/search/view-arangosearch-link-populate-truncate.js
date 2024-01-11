@@ -73,14 +73,17 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testIResearchLinkPopulateTruncate: function () {
-      var v = db._view(vn);
+      const v = db._view(vn);
       assertEqual(v.name(), vn);
       assertEqual(v.type(), 'arangosearch');
-      var p = v.properties().links;
+      const p = v.properties().links;
       assertTrue(p.hasOwnProperty(cn));
-      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
-      var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
+      // For the search query we do not use COLLECT WITH COUNT, because we have
+      // need late materialization to ensure proper counting. COLLECT WITH COUNT
+      // can return wrong results if the truncate used normal removes.
+      const result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
+      const expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      assertEqual(result.length, expectedResult[0]);
     }
  };
 }
