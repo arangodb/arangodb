@@ -40,11 +40,6 @@ devel
     read counter will be increased once for each shard that is affected by the
     operation.
 
-  If DB-Servers are configured to collect these usage metrics, the startup
-  option `--server.usage-tracking-include-system-collections` can be used to
-  include/exclude system collections from the usage metrics. They are excluded
-  by default.
-
 * No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
   avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
 

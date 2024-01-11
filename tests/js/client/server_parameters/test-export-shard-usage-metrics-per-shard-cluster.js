@@ -27,7 +27,6 @@
 if (getOptions === true) {
   return {
     'server.export-shard-usage-metrics': "enabled-per-shard",
-    'server.usage-tracking-include-system-collections': "false",
   };
 }
 
@@ -556,6 +555,288 @@ function testSuite() {
       } finally {
         db._drop(c2.name());
         db._drop(c1.name());
+      }
+    },
+    
+    testHasMetricsMultipleDatabases : function () {
+      const cn = baseName + "22";
+
+      const databases = [baseName + "1", baseName + "2", baseName + "3"];
+
+      try {
+        databases.forEach((name) => {
+          db._createDatabase(name);
+        });
+
+        databases.forEach((name) => {
+          db._useDatabase(name);
+      
+          let c = db._create(cn);
+          let shards = c.shards();
+          assertEqual(1, shards.length);
+
+          for (let i = 0; i < 10; ++i) {
+            c.insert({ value: i });
+          }
+        
+          let parsed = getParsedMetrics(db._name(), cn);
+          assertEqual({ "writes": { [shards[0]] : 10 } }, parsed);
+        });
+      } finally {
+        db._useDatabase("_system");
+        databases.forEach((name) => {
+          try {
+            db._dropDatabase(name);
+          } catch (err) {
+          }
+        });
+      }
+    },
+    
+    testHasMetricsWhenTruncating : function () {
+      const cn = baseName + "23";
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        c.truncate();
+        
+        let parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 1 } }, parsed);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsWhenPerformingMixedOperations : function () {
+      const cn = baseName + "24";
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        for (let i = 0; i < 10; ++i) {
+          c.insert({ _key: "test" + i });
+        }
+        
+        let parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 10 } }, parsed);
+        
+        for (let i = 0; i < 5; ++i) {
+          c.document("test" + i);
+        }
+        
+        for (let i = 1000; i < 1002; ++i) {
+          c.exists("test" + i);
+        }
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 10 }, "reads": { [shards[0]] : 7 } }, parsed);
+        
+        for (let i = 6; i < 10; ++i) {
+          c.update("test" + i, { value: i + 1 });
+        }
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 14 }, "reads": { [shards[0]] : 7 } }, parsed);
+
+        db._query("FOR doc IN " + cn + " INSERT {} INTO " + cn);
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 15 }, "reads": { [shards[0]] : 7 } }, parsed);
+        
+        db._query("FOR doc IN " + cn + " RETURN doc");
+
+        parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 15 }, "reads": { [shards[0]] : 8 } }, parsed);
+
+        c.truncate();
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        assertEqual({ "writes": { [shards[0]] : 16 }, "reads": { [shards[0]] : 8 } }, parsed);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsWhenUsingCustomShardKey : function () {
+      const cn = baseName + "25";
+
+      let c = db._create(cn, {shardKeys: ["qux"], numberOfShards: 3});
+      try {
+        let docs = [];
+        for (let i = 0; i < 10; ++i) {
+          docs.push({ qux: "test" + i });
+        }
+        let keys = c.insert(docs).map((d) => d._key);
+        
+        let parsed = getParsedMetrics(db._name(), cn);
+        let expected = {};
+        c.shards().forEach((s) => {
+          expected[s] = 1;
+        });
+        assertEqual({ "writes": expected }, parsed);
+        
+        keys.forEach((k, i) => {
+          c.update(k, { value: i });
+        });
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        expected = {};
+        c.shards().forEach((s) => {
+          expected[s] = 11;
+        });
+        assertEqual({ "writes": expected }, parsed);
+        
+        keys.forEach((k, i) => {
+          c.document(k);
+        });
+        
+        parsed = getParsedMetrics(db._name(), cn);
+        expected = {"reads": {}, "writes": {}};
+        c.shards().forEach((s) => {
+          expected["writes"][s] = 11;
+          expected["reads"][s] = 10;
+        });
+        assertEqual(expected, parsed);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsWhenInsertIntoSmartGraph : function () {
+      const isEnterprise = require("internal").isEnterprise();
+      if (!isEnterprise) {
+        return;
+      }
+
+      const vn = baseName + "Vertices26";
+      const en = baseName + "Edges26";
+      const gn = "UnitTestsGraph";
+      const graphs = require("@arangodb/smart-graph");
+
+      let cleanup = function () {
+        try {
+          graphs._drop(gn, true);
+        } catch (err) {}
+        db._drop(vn);
+        db._drop(en);
+      };
+      
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
+      try {
+        for (let i = 0; i < 25; ++i) {
+          db[vn].insert({ _key: "test" + (i % 10) + ":test" + i, testi: "test" + (i % 10) });
+        }
+
+        let counts = db[vn].count(true);
+        let parsed = getParsedMetrics(db._name(), vn);
+        assertEqual({ "writes": counts }, parsed);
+
+        let keys = [];
+        for (let i = 0; i < 20; ++i) {
+          keys.push(db[en].insert({ _from: vn + "/test" + i + ":test" + (i % 10), _to: vn + "/test" + ((i + 1) % 100) + ":test" + (i % 10), testi: (i % 10) })._key);
+        }
+        keys.push(db[en].insert({ _from: vn + "/test0:test0", _to: vn + "/testmann-does-not-exist:test0", testi: "test0" })._key);
+        
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+
+        let expected = { "writes": {} };
+        counts = db["_from_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = counts[k];
+        });
+        counts = db["_to_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = counts[k];
+        });
+
+        assertEqual(expected, parsed);
+
+        keys.forEach((key) => {
+          db[en].document(key);
+        });
+
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+
+        assertEqual(expected.writes, parsed.writes);
+        // reads should sum up to 21 in total
+        let sum = 0;
+        Object.keys(parsed.reads).forEach((s) => {
+          sum += parsed.reads[s];
+        });
+        assertEqual(21, sum);
+      } finally {
+        cleanup();
+      }
+    },
+    
+    testHasMetricsWhenAQLingSmartGraph : function () {
+      const isEnterprise = require("internal").isEnterprise();
+      if (!isEnterprise) {
+        return;
+      }
+  
+      const vn = baseName + "Vertices27";
+      const en = baseName + "Edges27";
+      const gn = "UnitTestsGraph";
+      const graphs = require("@arangodb/smart-graph");
+
+      let cleanup = function () {
+        try {
+          graphs._drop(gn, true);
+        } catch (err) {}
+        db._drop(vn);
+        db._drop(en);
+      };
+      
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
+      try {
+        db._query("FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO " + vn);
+        
+        let parsed = getParsedMetrics(db._name(), vn);
+        let expected = { "writes": {} };
+        db[vn].shards().forEach((s) => {
+          expected["writes"][s] = 1;
+        });
+        assertEqual(expected, parsed);
+
+        let keys = db._query("FOR i IN 0..19 INSERT {_from: CONCAT('" + vn + "/test', i, ':test', (i % 10)), _to: CONCAT('" + vn + "/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO " + en + " RETURN NEW._key").toArray();
+        
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+
+        expected = { "writes": {} };
+        let counts = db["_from_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = 1;
+        });
+        counts = db["_to_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = 1;
+        });
+        counts = db["_local_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = 1;
+        });
+
+        assertEqual(expected, parsed);
+
+        db._query("FOR doc IN " + en + " FILTER doc._key IN @keys RETURN doc", { keys });
+
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+
+        assertEqual(expected.writes, parsed.writes);
+        // reads should sum up to 20 in total
+        let sum = 0;
+        Object.keys(parsed.reads).forEach((s) => {
+          sum += parsed.reads[s];
+        });
+        assertEqual(db["_from_" + en].shards().length + db["_to_" + en].shards().length, sum);
+      } finally {
+        cleanup();
       }
     },
 

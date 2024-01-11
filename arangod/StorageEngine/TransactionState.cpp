@@ -188,11 +188,6 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
 
   DataSourceId cid = resolver.getCollectionIdLocal(shard);
   std::string collection = resolver.getCollectionNameCluster(cid);
-  if (collection.starts_with('_') &&
-      !mf.usageTrackingIncludeSystemCollections()) {
-    // tracking is turned off for system collections
-    return;
-  }
 
   if (AccessMode::isRead(accessMode)) {
     // build metric for reads and increase it

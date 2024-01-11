@@ -56,7 +56,6 @@ class MetricsFeature final : public ArangodFeature {
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
-  bool usageTrackingIncludeSystemCollections() const noexcept;
   UsageTrackingMode usageTrackingMode() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
@@ -134,7 +133,6 @@ class MetricsFeature final : public ArangodFeature {
 
   std::string _usageTrackingModeString;
   UsageTrackingMode _usageTrackingMode;
-  bool _usageTrackingIncludeSystemCollections;
 };
 
 }  // namespace arangodb::metrics

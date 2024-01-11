@@ -52,8 +52,7 @@ MetricsFeature::MetricsFeature(Server& server)
       _exportReadWriteMetrics{false},
       _ensureWhitespace{true},
       _usageTrackingModeString{"disabled"},
-      _usageTrackingMode{UsageTrackingMode::kDisabled},
-      _usageTrackingIncludeSystemCollections{false} {
+      _usageTrackingMode{UsageTrackingMode::kDisabled} {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -110,19 +109,6 @@ Setting the option to 'enabled-per-shard-per-user' will make DB-Servers collect
 usage metrics per shard and per user whenever a shard is accessed. 
 Note that enabling shard usage metrics can produce a lot of metrics if there 
 are many shards and/or users in the system.)");
-
-  options
-      ->addOption("--server.usage-tracking-include-system-collections",
-                  "Set to `true` to include system collections in usage "
-                  "tracking metrics.",
-                  new options::BooleanParameter(
-                      &_usageTrackingIncludeSystemCollections),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer))
-      .setIntroducedIn(31200)
-      .setLongDescription(R"(This option only has effect if shard usage
-metrics are exported.)");
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder,
@@ -159,10 +145,6 @@ bool MetricsFeature::exportAPI() const noexcept { return _export; }
 
 bool MetricsFeature::ensureWhitespace() const noexcept {
   return _ensureWhitespace;
-}
-
-bool MetricsFeature::usageTrackingIncludeSystemCollections() const noexcept {
-  return _usageTrackingIncludeSystemCollections;
 }
 
 MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
