@@ -3,6 +3,9 @@ devel
 
 * FE-367: ability to hide columns in table UI.
 
+* No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
+  avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
+
 * Escape control characters (e.g. newlines) in the query strings that are
   logged in an instance's audit log.
 

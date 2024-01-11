@@ -73,8 +73,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     testNosyncRangeDeleteTruncateMulti1: function () {
       let c = db._collection('UnitTestsRecovery1');

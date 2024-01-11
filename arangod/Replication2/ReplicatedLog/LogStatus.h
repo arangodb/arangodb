@@ -46,7 +46,7 @@ struct QuickLogStatus {
   ParticipantRole role{ParticipantRole::kUnconfigured};
   LocalStateMachineStatus localState{LocalStateMachineStatus::kUnconfigured};
   std::optional<LogTerm> term{};
-  std::optional<LogStatistics> local{};
+  LogStatistics local{};
   bool leadershipEstablished{false};
   bool snapshotAvailable{false};
   std::optional<CommitFailReason> commitFailReason{};
