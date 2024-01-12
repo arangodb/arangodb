@@ -10,8 +10,7 @@ set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/AP
 add_custom_target(frontend ALL
   COMMENT "create frontend build"
   WORKING_DIRECTORY ${FRONTEND_DESTINATION}
-  COMMAND yarn install
-  COMMAND yarn build
+  COMMAND cmd /c "yarn install && yarn build"
 )
 
 add_custom_target(frontend_clean
