@@ -749,10 +749,6 @@ function testSuite() {
         Object.keys(counts).forEach((k) => {
           expected["writes"][k] = counts[k];
         });
-        counts = db["_to_" + en].count(true);
-        Object.keys(counts).forEach((k) => {
-          expected["writes"][k] = counts[k];
-        });
 
         assertEqual(expected, parsed);
 
