@@ -29,14 +29,15 @@
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
+#include "Metrics/ClusterMetricsFeature.h"
+#include "Metrics/MetricsFeature.h"
+#include "Metrics/MetricsParts.h"
+#include "Metrics/Types.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Rest/Version.h"
 #include "RestServer/ServerFeature.h"
-#include "Metrics/ClusterMetricsFeature.h"
-#include "Metrics/MetricsFeature.h"
-#include "Metrics/Types.h"
 
 #include <frozen/string.h>
 #include <frozen/unordered_map.h>
@@ -61,7 +62,7 @@ network::Headers buildHeaders(
     headers.try_emplace(StaticStrings::Authorization,
                         "bearer " + auth->tokenCache().jwtToken());
   }
-  for (auto& header : originalHeaders) {
+  for (auto const& header : originalHeaders) {
     headers.try_emplace(header.first, header.second);
   }
   return headers;
@@ -223,9 +224,12 @@ RestStatus RestMetricsHandler::execute() {
     return RestStatus::DONE;
   }
 
+  // only export standard metrics
+  metrics::MetricsParts metricsParts(metrics::MetricsSection::Standard);
+
   if (type == metrics::kDBJson) {
     VPackBuilder builder;
-    metrics.toVPack(builder);
+    metrics.toVPack(builder, metricsParts);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::VPACK);
     _response->addPayload(builder.slice());
@@ -248,7 +252,7 @@ RestStatus RestMetricsHandler::execute() {
 
   if (!leader) {
     std::string result;
-    metrics.toPrometheus(result, mode);
+    metrics.toPrometheus(result, metricsParts, mode);
     _response->setResponseCode(rest::ResponseCode::OK);
     _response->setContentType(rest::ContentType::TEXT);
     _response->addRawPayload(result);

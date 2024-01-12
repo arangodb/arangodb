@@ -115,18 +115,39 @@ Note that enabling shard usage metrics can produce a lot of metrics if there
 are many shards and/or users in the system.)");
 }
 
-std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder,
-                                              bool failIfExists) {
+std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   auto metric = builder.build();
+  TRI_ASSERT(metric != nullptr);
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
   auto [it, inserted] = _registry.try_emplace(key, metric);
-  if (!inserted && failIfExists) {
+  if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    std::string{builder.type()} + " " +
                                        std::string{builder.name()} +
                                        " already exists");
   }
+  return (*it).second;
+}
+
+std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
+  auto metric = builder.build();
+  metric->setDynamic();
+  TRI_ASSERT(metric != nullptr);
+  MetricKeyView key{metric->name(), metric->labels()};
+  {
+    // happy path: check if metric already exists and if so, return it
+    std::shared_lock lock{_mutex};
+    if (auto it = _registry.find(key); it != _registry.end()) {
+      return (*it).second;
+    }
+  }
+  // slow path: create new metric under exclusive lock
+  std::lock_guard lock{_mutex};
+  // insertion can fail here because someone else concurrently inserted the
+  // metric. this is fine, because in that case we simply return that
+  // version.
+  auto [it, inserted] = _registry.try_emplace(key, metric);
   return (*it).second;
 }
 
@@ -171,13 +192,20 @@ void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   }
 }
 
-void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
+void MetricsFeature::toPrometheus(std::string& result,
+                                  MetricsParts metricsParts,
+                                  CollectMode mode) const {
   // minimize reallocs
   result.reserve(32768);
 
-  // QueryRegistryFeature
-  auto& q = server().getFeature<QueryRegistryFeature>();
-  q.updateMetrics();
+  if (metricsParts.includeStandardMetrics()) {
+    // QueryRegistryFeature only provides standard metrics.
+    // update only necessary if these metrics should be included
+    // in the output
+    auto& q = server().getFeature<QueryRegistryFeature>();
+    q.updateMetrics();
+  }
+
   bool hasGlobals = false;
   {
     auto lock = initGlobalLabels();
@@ -186,6 +214,15 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
     std::string_view curr;
     for (auto const& i : _registry) {
       TRI_ASSERT(i.second);
+      if (i.second->isDynamic()) {
+        if (!metricsParts.includeDynamicMetrics()) {
+          continue;
+        }
+      } else {
+        if (!metricsParts.includeStandardMetrics()) {
+          continue;
+        }
+      }
       curr = i.second->name();
       if (last != curr) {
         last = curr;
@@ -199,17 +236,24 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
       batch->toPrometheus(result, _globals, _ensureWhitespace);
     }
   }
-  auto& sf = server().getFeature<StatisticsFeature>();
-  auto time = std::chrono::duration<double, std::milli>(
-      std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count(), _ensureWhitespace);
-  auto& es = server().getFeature<EngineSelectorFeature>().engine();
-  if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
+
+  if (metricsParts.includeStandardMetrics()) {
+    auto& sf = server().getFeature<StatisticsFeature>();
+    auto time = std::chrono::duration<double, std::milli>(
+        std::chrono::system_clock::now().time_since_epoch());
+    sf.toPrometheus(result, time.count(), _ensureWhitespace);
   }
-  auto& cm = server().getFeature<ClusterMetricsFeature>();
-  if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-    cm.toPrometheus(result, _globals, _ensureWhitespace);
+  if (metricsParts.includeStandardMetrics()) {
+    auto& es = server().getFeature<EngineSelectorFeature>().engine();
+    if (es.typeName() == RocksDBEngine::kEngineName) {
+      es.getStatistics(result);
+    }
+  }
+  if (metricsParts.includeStandardMetrics()) {
+    auto& cm = server().getFeature<ClusterMetricsFeature>();
+    if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
+      cm.toPrometheus(result, _globals, _ensureWhitespace);
+    }
   }
 }
 
@@ -230,7 +274,8 @@ constexpr auto kCoordinatorMetrics =
         "arangodb_search_consolidation_time",
     });
 
-void MetricsFeature::toVPack(velocypack::Builder& builder) const {
+void MetricsFeature::toVPack(velocypack::Builder& builder,
+                             MetricsParts metricsParts) const {
   builder.openArray(true);
   std::shared_lock lock{_mutex};
   for (auto const& i : _registry) {
