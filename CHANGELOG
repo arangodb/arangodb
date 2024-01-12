@@ -4,7 +4,7 @@ devel
 * APM-828: Per collection/database/user monitoring.
 
   This adds optional metrics for tracking per-shard requests on DB-Servers.
-  The exported counters are:
+  The exported metrics are:
   - `arangodb_collection_leader_reads_total`: number of read requests on 
     leaders, per shard, and optionally also split by user.
   - `arangodb_collection_leader_writes_total`: number of write requests on
@@ -23,9 +23,13 @@ devel
 
   Whenever a shard is accessed in read or write mode by one of the following 
   operations, the metrics are populated dynamically, either with a per-user
-  label or not.
+  label or not, depending on the above setting.
+  The metrics are retained in memory on DB-Servers. Removing databases, 
+  collections or users that are already included in the metrics won't remove
+  the metrics for these databases, collections or users until the DB-Server
+  is restarted.
 
-  The following operations increase the counters:
+  The following operations increase the metrics:
   - AQL queries: an AQL query will increase the read or write counters exactly
     once for each involved shard. For shards that are accessed in read/write 
     mode, only the write counter will be increased.

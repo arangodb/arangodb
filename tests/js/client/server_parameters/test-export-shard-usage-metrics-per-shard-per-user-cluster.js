@@ -1153,12 +1153,9 @@ function testSuite() {
         
         parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en], ["foo", "bar"]);
 
+        // edges are only counted for the _from_ shard here
         let expected = { "bar": { "writes": {} } };
         counts = db["_from_" + en].count(true);
-        Object.keys(counts).forEach((k) => {
-          expected["bar"]["writes"][k] = counts[k];
-        });
-        counts = db["_to_" + en].count(true);
         Object.keys(counts).forEach((k) => {
           expected["bar"]["writes"][k] = counts[k];
         });
@@ -1177,8 +1174,8 @@ function testSuite() {
         assertEqual(expected.writes, parsed.writes);
         // reads should sum up to 21 in total
         let sum = 0;
-        Object.keys(parsed.reads).forEach((s) => {
-          sum += parsed.reads["foo"][s];
+        Object.keys(parsed["foo"]["reads"]).forEach((s) => {
+          sum += parsed["foo"]["reads"][s];
         });
         assertEqual(21, sum);
       } finally {
@@ -1187,7 +1184,6 @@ function testSuite() {
       }
     },
     
-    /*
     testHasMetricsWhenAQLingSmartGraph : function () {
       const isEnterprise = require("internal").isEnterprise();
       if (!isEnterprise) {
@@ -1198,6 +1194,10 @@ function testSuite() {
       const en = baseName + "Edges27";
       const gn = "UnitTestsGraph";
       const graphs = require("@arangodb/smart-graph");
+      
+      addUser("foo", db._name(), "rw");
+      addUser("bar", db._name(), "rw");
+      connectWith("tcp", "bar", "");
 
       let cleanup = function () {
         try {
@@ -1211,49 +1211,52 @@ function testSuite() {
       try {
         db._query("FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO " + vn);
         
-        let parsed = getParsedMetrics(db._name(), vn);
-        let expected = { "writes": {} };
+        let parsed = getParsedMetrics(db._name(), vn, ["foo", "bar"]);
+        let expected = { "bar": { "writes": {} } };
         db[vn].shards().forEach((s) => {
-          expected["writes"][s] = 1;
+          expected["bar"]["writes"][s] = 1;
         });
         assertEqual(expected, parsed);
 
         let keys = db._query("FOR i IN 0..19 INSERT {_from: CONCAT('" + vn + "/test', i, ':test', (i % 10)), _to: CONCAT('" + vn + "/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO " + en + " RETURN NEW._key").toArray();
         
-        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en], ["foo", "bar"]);
 
-        expected = { "writes": {} };
+        expected = { "bar": { "writes": {} } };
         let counts = db["_from_" + en].count(true);
         Object.keys(counts).forEach((k) => {
-          expected["writes"][k] = 1;
+          expected["bar"]["writes"][k] = 1;
         });
         counts = db["_to_" + en].count(true);
         Object.keys(counts).forEach((k) => {
-          expected["writes"][k] = 1;
+          expected["bar"]["writes"][k] = 1;
         });
         counts = db["_local_" + en].count(true);
         Object.keys(counts).forEach((k) => {
-          expected["writes"][k] = 1;
+          expected["bar"]["writes"][k] = 1;
         });
 
         assertEqual(expected, parsed);
+        
+        connectWith("tcp", "foo", "");
+        assertEqual("foo", arango.connectedUser());
 
         db._query("FOR doc IN " + en + " FILTER doc._key IN @keys RETURN doc", { keys });
 
-        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
+        parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en], ["foo", "bar"]);
 
-        assertEqual(expected.writes, parsed.writes);
+        assertEqual(expected["bar"], parsed["bar"]);
         // reads should sum up to 20 in total
         let sum = 0;
-        Object.keys(parsed.reads).forEach((s) => {
-          sum += parsed.reads[s];
+        Object.keys(parsed["foo"]["reads"]).forEach((s) => {
+          sum += parsed["foo"]["reads"][s];
         });
         assertEqual(db["_from_" + en].shards().length + db["_to_" + en].shards().length, sum);
       } finally {
+        connectWith("tcp", "root", "");
         cleanup();
       }
     },
-    */
 
   };
 }

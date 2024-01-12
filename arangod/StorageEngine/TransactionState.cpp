@@ -173,12 +173,20 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
                                     std::string_view context) {
   // no tracking performed on coordinators or single servers
   TRI_ASSERT(isDBServer());
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
 
   auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
   auto mode = mf.usageTrackingMode();
   if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
     // tracking is turned off
+    return;
+  }
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
     return;
   }
 
@@ -202,12 +210,12 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
             database, collection, shard, user, includeUser));
     metric.count();
   }
-#if 0
-  LOG_DEVEL << "RECEIVING REQUEST TO DB " << database << ", COLLECTION "
-            << collection << ", SHARD " << shard << ", USER " << user
-            << ", MODE " << AccessMode::typeString(accessMode)
-            << ", CONTEXT: " << context;
-#endif
+
+  LOG_TOPIC("665e6", TRACE, Logger::FIXME)
+      << "tracking request for database '" << database << "', collection '"
+      << collection << "', shard '" << shard << "', user '" << user
+      << "', mode " << AccessMode::typeString(accessMode)
+      << ", context: " << context;
 }
 
 /// @brief add a collection to a transaction
