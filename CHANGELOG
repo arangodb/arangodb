@@ -52,6 +52,12 @@ devel
   are not decreased should an operation abort or if an operation does not
   lead to any actual reads or writes.
 
+  As there can be many of these dynamic metrics based on the number of shards
+  and/or users in the deployment, these metrics are turned off by default
+  (see above), and if turned on, are only exposed only via a new HTTP REST API
+  endpoint GET `/_admin/usage-metrics`. They are not exposed via the existing
+  metrics API endpoint GET `/_admin/metrics`.
+
 * BTS-1731: protect streaming transaction garbage-collection from deletion of
   the transaction's underlying database.
 
