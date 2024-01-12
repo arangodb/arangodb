@@ -58,6 +58,8 @@ devel
   endpoint GET `/_admin/usage-metrics`. They are not exposed via the existing
   metrics API endpoint GET `/_admin/metrics`.
 
+* Fixed the frontend build in Windows environments.
+
 * BTS-1731: protect streaming transaction garbage-collection from deletion of
   the transaction's underlying database.
 
