@@ -70,6 +70,11 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
+
+  // increase the reference counter for the underyling database, so that the
+  // database is protected against deletion while the TransactionState object
+  // is around.
+  _vocbase.forceUse();
 }
 
 /// @brief free a transaction container
@@ -82,6 +87,10 @@ TransactionState::~TransactionState() {
     (*it)->releaseUsage();
     delete (*it);
   }
+
+  // decrease the reference counter for the database (reverting the increase
+  // we did in the constructor)
+  _vocbase.release();
 }
 
 /// @brief return the collection from a transaction
