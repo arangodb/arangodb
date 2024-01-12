@@ -43,6 +43,10 @@ devel
   - Single- and multi-document read operations: for each such operation, the
     read counter will be increased once for each shard that is affected by the
     operation.
+    
+  Note: if an AQL query for a single collection gets optimized into a single
+  or multi-document operation, then the description for single or multi-
+  document operations apply.
 
   The metrics are increased when any of the above operations start, and they
   are not decreased should an operation abort or if an operation does not

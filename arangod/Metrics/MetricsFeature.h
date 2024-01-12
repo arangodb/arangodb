@@ -20,19 +20,21 @@
 ///
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/DownCast.h"
+#include "Containers/FlatHashMap.h"
 #include "Metrics/Batch.h"
 #include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
-#include "Metrics/IBatch.h"
-#include "Metrics/MetricKey.h"
 #include "Metrics/CollectMode.h"
+#include "Metrics/IBatch.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricKey.h"
+#include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
-#include "Containers/FlatHashMap.h"
 
 #include <map>
 #include <shared_mutex>
@@ -64,34 +66,34 @@ class MetricsFeature final : public ArangodFeature {
   // tries to add metric. throws if such metric already exists
   template<typename MetricBuilder>
   auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(
-        *doAdd(builder, /*failIfExists*/ true));
+    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
   }
 
   template<typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
       -> std::shared_ptr<typename MetricBuilder::MetricT> {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder, /*failIfExists*/ true));
+        doAdd(builder));
   }
 
-  // tries to add metric. does not fail if such metric already exists
+  // tries to add dynamic metric. does not fail if such metric already exists
   template<typename MetricBuilder>
-  auto addOrUse(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
+  auto addDynamic(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
     return static_cast<typename MetricBuilder::MetricT&>(
-        *doAdd(builder, /*failIfExists*/ false));
+        *doAddDynamic(builder));
   }
 
   Metric* get(MetricKeyView const& key) const;
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result, CollectMode mode) const;
+  void toPrometheus(std::string& result, MetricsParts metricsParts,
+                    CollectMode mode) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief That used for collect some metrics
   /// to array for ClusterMetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  void toVPack(velocypack::Builder& builder) const;
+  void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
   ServerStatistics& serverStatistics() noexcept;
 
@@ -109,7 +111,8 @@ class MetricsFeature final : public ArangodFeature {
   void batchRemove(std::string_view name, std::string_view labels);
 
  private:
-  std::shared_ptr<Metric> doAdd(Builder& builder, bool failIfExists);
+  std::shared_ptr<Metric> doAdd(Builder& builder);
+  std::shared_ptr<Metric> doAddDynamic(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
   mutable std::shared_mutex _mutex;

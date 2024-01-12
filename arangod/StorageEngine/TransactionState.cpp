@@ -200,13 +200,13 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
   if (AccessMode::isRead(accessMode)) {
     // build metric for reads and increase it
     auto& metric =
-        mf.addOrUse(getMetric<arangodb_collection_leader_reads_total>(
+        mf.addDynamic(getMetric<arangodb_collection_leader_reads_total>(
             database, collection, shard, user, includeUser));
     metric.count();
   } else {
     // build metric for writes and increase it
     auto& metric =
-        mf.addOrUse(getMetric<arangodb_collection_leader_writes_total>(
+        mf.addDynamic(getMetric<arangodb_collection_leader_writes_total>(
             database, collection, shard, user, includeUser));
     metric.count();
   }
