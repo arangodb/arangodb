@@ -58,6 +58,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 
 namespace transaction {
 class Methods;
@@ -346,6 +347,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// fashion after a fast-path locking detected a dead-lock situation.
   /// Only allowed on coordinators.
   void coordinatorRerollTransactionId();
+
+  virtual void trackRequest(CollectionNameResolver const& resolver,
+                            std::string_view database, std::string_view shard,
+                            std::string_view user, AccessMode::Type accessMode,
+                            std::string_view context);
 
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(

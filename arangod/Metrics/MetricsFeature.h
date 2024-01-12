@@ -41,26 +41,46 @@ namespace arangodb::metrics {
 
 class MetricsFeature final : public ArangodFeature {
  public:
+  enum class UsageTrackingMode {
+    // no tracking
+    kDisabled,
+    // tracking per shard (one-dimensional)
+    kEnabledPerShard,
+    // tracking per shard and per user (two-dimensional)
+    kEnabledPerShardPerUser,
+  };
+
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
   explicit MetricsFeature(Server& server);
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
+  UsageTrackingMode usageTrackingMode() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
+  // tries to add metric. throws if such metric already exists
   template<typename MetricBuilder>
   auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
-    return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
+    return static_cast<typename MetricBuilder::MetricT&>(
+        *doAdd(builder, /*failIfExists*/ true));
   }
   template<typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
       -> std::shared_ptr<typename MetricBuilder::MetricT> {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
-        doAdd(builder));
+        doAdd(builder, /*failIfExists*/ true));
   }
+
+  // tries to add metric. does not fail if such metric already exists
+  template<typename MetricBuilder>
+  auto addOrUse(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
+    return static_cast<typename MetricBuilder::MetricT&>(
+        *doAdd(builder, /*failIfExists*/ false));
+  }
+
   Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
@@ -88,7 +108,7 @@ class MetricsFeature final : public ArangodFeature {
   void batchRemove(std::string_view name, std::string_view labels);
 
  private:
-  std::shared_ptr<Metric> doAdd(Builder& builder);
+  std::shared_ptr<Metric> doAdd(Builder& builder, bool failIfExists);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
   mutable std::shared_mutex _mutex;
@@ -109,6 +129,9 @@ class MetricsFeature final : public ArangodFeature {
   // ensure that there is whitespace before the reported value, regardless
   // of whether it is preceeded by labels or not.
   bool _ensureWhitespace;
+
+  std::string _usageTrackingModeString;
+  UsageTrackingMode _usageTrackingMode;
 };
 
 }  // namespace arangodb::metrics
