@@ -451,10 +451,11 @@ static void handlePlanShard(
             // these actions to run in parallel to others and to similar ones.
             // Note however, that new index jobs are intentionally not
             // discovered when the shard is locked for maintenance.
-            auto indexTypeName = index.get(StaticStrings::IndexType).copyString();
-            // For replication2 there is a race on modify link, the DBServer can witness
-            // drop and create of the index at the same time.
-            // With this flag we serialize ViewIndex drop, and create on the same shard.
+            auto indexTypeName =
+                index.get(StaticStrings::IndexType).copyString();
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
             // All other indexes can still be created in parallel.
             bool doLockShard =
                 replicationVersion == replication::Version::TWO &&
@@ -467,11 +468,11 @@ static void handlePlanShard(
                     {DATABASE, dbname},
                     {COLLECTION, colname},
                     {SHARD, shname},
-                    {StaticStrings::IndexType,
-                     std::move(indexTypeName)},
+                    {StaticStrings::IndexType, std::move(indexTypeName)},
                     {FIELDS, index.get(FIELDS).toJson()},
                     {ID, index.get(ID).copyString()}},
-                INDEX_PRIORITY, doLockShard, std::make_shared<VPackBuilder>(index)));
+                INDEX_PRIORITY, doLockShard,
+                std::make_shared<VPackBuilder>(index)));
           }
         }
       }
@@ -607,9 +608,9 @@ static void handleLocalShard(
             // want that they can run in parallel.
             // Exception are SearchIndexes, as they can conflict on attached
             // views during update.
-            // For replication2 there is a race on modify link, the DBServer can witness
-            // drop and create of the index at the same time.
-            // With this flag we serialize ViewIndex drop, and create on the same shard.
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
             // All other indexes can still be dropped in parallel.
             bool doLockShard =
                 replicationVersion == replication::Version::TWO &&
