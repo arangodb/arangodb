@@ -556,6 +556,13 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       return RestStatus::DONE;
     }
 
+    if (opts.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
+      _activeTrx->state()->trackRequest(
+          *_activeTrx->resolver(), _vocbase.name(), coll->name(),
+          _request->value("user"), AccessMode::Type::WRITE, "truncate");
+    }
+
     return waitForFuture(
         _activeTrx->truncateAsync(coll->name(), opts)
             .thenValue([this, coll, opts](OperationResult&& opres) {
