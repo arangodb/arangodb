@@ -2,7 +2,7 @@
 ## web interface build
 ################################################################################
 
-find_package(Nodejs 16 REQUIRED)
+find_package(Nodejs 18 REQUIRED)
 find_package(Yarn REQUIRED)
 
 set(FRONTEND_DESTINATION ${PROJECT_SOURCE_DIR}/js/apps/system/_admin/aardvark/APP/react)
