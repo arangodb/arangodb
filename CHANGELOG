@@ -1,6 +1,8 @@
 devel
 -----
 
+* Fixed the frontend build in Windows environments.
+
 * BTS-1731: protect streaming transaction garbage-collection from deletion of
   the transaction's underlying database.
 
