@@ -44,6 +44,10 @@ devel
     read counter will be increased once for each shard that is affected by the
     operation.
 
+  The metrics are increased when any of the above operations start, and they
+  are not decreased should an operation abort or if an operation does not
+  lead to any actual reads or writes.
+
 * No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
   avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
 
