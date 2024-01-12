@@ -4,7 +4,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
+/// Copyright 2024, ArangoDB Inc, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 /// Copyright holder is ArangoDB Inc, Cologne, Germany
 ///
 /// @author Jan Steemann
-/// @author Copyright 2019, ArangoDB Inc, Cologne, Germany
+/// Copyright 2024, ArangoDB Inc, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
 const jwtSecret = 'abc123';
@@ -79,7 +79,7 @@ function testSuite() {
   let getRawMetrics = function() {
     let lines = [];
     getDBServers().forEach((server) => {
-      let res = request({ method: "GET", url: server.url + "/_admin/metrics", auth: { bearer: jwt } });
+      let res = request({ method: "GET", url: server.url + "/_admin/usage-metrics", auth: { bearer: jwt } });
       lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
     });
     return lines;
@@ -151,6 +151,33 @@ function testSuite() {
       connectWith("tcp", "root", "");
       dropAddedUsers();
       usersAdded = [];
+    },
+    
+    testDoesNotPoluteNormalMetricsAPI : function () {
+      const cn = baseName + "0";
+
+      let c = db._create(cn);
+      try {
+        // must insert first to read something back
+        let docs = [];
+        for (let i = 0; i < 10; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        for (let i = 0; i < 10; ++i) {
+          c.document("test" + i);
+        }
+        
+        let lines = [];
+        getDBServers().forEach((server) => {
+          let res = request({ method: "GET", url: server.url + "/_admin/metrics" });
+          lines = lines.concat(res.body.split(/\n/).filter((l) => l.match(/^arangodb_collection_leader_(reads|writes)_total/)));
+        });
+        assertEqual([], lines);
+      } finally {
+        db._drop(cn);
+      }
     },
     
     testNoMetricsJustForCreatingCollection : function () {
@@ -587,7 +614,7 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(3, shards.length);
 
-        for (let i = 0; i < 20; ++i) {
+        for (let i = 0; i < 25; ++i) {
           c.insert({ value: i });
         }
         
@@ -596,7 +623,7 @@ function testSuite() {
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
-        for (let i = 0; i < 10; ++i) {
+        for (let i = 0; i < 30; ++i) {
           c.insert({ value: i });
         }
        
