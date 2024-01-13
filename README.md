@@ -1,4 +1,4 @@
-# ArangoDB_ersp
+# arangodb_ersp
 
 <!-- TABLE OF CONTENTS -->
 <details open="open">
@@ -37,7 +37,7 @@ FOR researcher IN ‘academics’
 ## Instructions
 ### For members of the team:
 1. Upon pull requesting, verify that the base fork is set to `wrcorcoran/arangodb_ersp`.
-2. Comment incredibly delicately (in order to distinguish code from ArangoDB codebase).
+2. Comment delicately (in order to distinguish code from ArangoDB codebase).
 3. Verify that your origin is set to ```git remote set-url origin https://github.com/wrcorcoran/arangodb_ersp.git```.
 
 ### For reproducibility:
