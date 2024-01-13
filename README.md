@@ -38,7 +38,7 @@ FOR researcher IN ‘academics’
 ### For members of the team:
 1. Upon pull requesting, verify that the base fork is set to `wrcorcoran/arangodb_ersp`.
 2. Comment delicately (in order to distinguish code from ArangoDB codebase).
-3. Verify that your origin is set to ```git remote set-url origin https://github.com/wrcorcoran/arangodb_ersp.git```.
+3. Verify that your origin is set to proper branch using: ```git remote set-url origin https://github.com/wrcorcoran/arangodb_ersp.git```.
 
 ### For reproducibility:
 > Soon to come.
