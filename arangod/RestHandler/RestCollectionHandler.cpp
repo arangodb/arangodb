@@ -536,6 +536,13 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
       co_return RestStatus::DONE;
     }
 
+    if (opts.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
+      _activeTrx->state()->trackRequest(
+          *_activeTrx->resolver(), _vocbase.name(), coll->name(),
+          _request->value("user"), AccessMode::Type::WRITE, "truncate");
+    }
+
     OperationResult opres =
         co_await _activeTrx->truncateAsync(coll->name(), opts);
     // Will commit if no error occured.
