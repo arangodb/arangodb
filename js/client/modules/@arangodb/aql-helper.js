@@ -88,8 +88,8 @@ function executeQuery(query, bindVars = null, options = {}) {
 function executeJson (plan, options = {}) {
   let command = `
         let data = ${JSON.stringify(plan)};
-        let opts = ${JSON.stringify(options)}
-        return AQL_EXECUTEJSON(data);
+        let opts = ${JSON.stringify(options)};
+        return AQL_EXECUTEJSON(data, opts);
       `;
   return arango.POST("/_admin/execute", command);
 };
@@ -99,12 +99,6 @@ function executeJson (plan, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getParseResults (query) {
-
-  // let command = `
-  //   let query = ${JSON.stringify(query)};
-  //   return AQL_PARSE(query);
-  // `;
-  // return arango.POST("/_admin/execute", command);
   return db._parse(query);
 }
 
@@ -161,7 +155,7 @@ function getRawQueryResults (query, bindVars, options = {}) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function getQueryResults (query, bindVars, recursive, options = {}) {
-  var result = getRawQueryResults(query, bindVars, options);
+  let result = getRawQueryResults(query, bindVars, options);
 
   if (Array.isArray(result)) {
     result = result.map(function (row) {
@@ -288,7 +282,7 @@ function findExecutionNodes (plan, nodeType) {
 }
 
 function findReferencedNodes (plan, testNode) {
-  var matches = [];
+  let matches = [];
   if (testNode.elements) {
     testNode.elements.forEach(function (element) {
       plan.plan.nodes.forEach(function (node) {
@@ -310,19 +304,15 @@ function findReferencedNodes (plan, testNode) {
   return matches;
 }
 
-
 function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug) {
-  var printYaml = function (plan) {
+  const printYaml = function (plan) {
     require('internal').print(require('js-yaml').safeDump(plan));
   };
 
-  var i;
-  var plans = [];
-  var allPlans = [];
-  var results = [];
-  var resetTest = false;
-  var paramNone = { optimizer: { rules: [ '-all' ]},  verbosePlans: true};
-  var paramAllPlans = { allPlans: true, verbosePlans: true};
+  const paramNone = { optimizer: { rules: [ '-all' ]},  verbosePlans: true};
+  const paramAllPlans = { allPlans: true, verbosePlans: true };
+  
+  let resetTest = false;
 
   if (testObject !== undefined) {
     resetTest = true;
@@ -336,15 +326,18 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
   if (debug) {
     require('internal').print('Analyzing Query unoptimized: ' + query);
   }
-  plans[0] = db._createStatement({query: query, bindVars: bindVars, options: paramNone}).explain();
+  
+  let plans = [ db._createStatement({query, bindVars, options: paramNone}).explain() ];
   // then all of the ones permuted by by the optimizer.
   if (debug) {
     require('internal').print('Unoptimized Plan (0):');
     printYaml(plans[0]);
   }
-  allPlans = db._createStatement({query: query, bindVars: bindVars, options: paramAllPlans}).explain();
+  
+  let allPlans = db._createStatement({query, bindVars, options: paramAllPlans}).explain();
 
-  for (i = 0; i < allPlans.plans.length; i++) {
+  let results = [];
+  for (let i = 0; i < allPlans.plans.length; i++) {
     if (debug) {
       require('internal').print('Optimized Plan [' + (i + 1) + ']:');
       printYaml(allPlans.plans[i]);
@@ -352,7 +345,7 @@ function getQueryMultiplePlansAndExecutions (query, bindVars, testObject, debug)
     plans[i + 1] = { plan: allPlans.plans[i]};
   }
   // Now execute each of these variations.
-  for (i = 0; i < plans.length; i++) {
+  for (let i = 0; i < plans.length; i++) {
     if (debug) {
       require('internal').print('Executing Plan No: ' + i + '\n');
     }
@@ -408,7 +401,7 @@ function removeCost (obj) {
     return obj.map(removeCost);
   } else if (typeof obj === 'object') {
     let result = {};
-    for (var key in obj) {
+    for (let key in obj) {
       if (obj.hasOwnProperty(key) &&
           key !== "estimatedCost" && key !== "selectivityEstimate") {
         result[key] = removeCost(obj[key]);

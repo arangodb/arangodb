@@ -78,8 +78,8 @@ RETURN MERGE({}, q1, q2)
         let vars = { "@cn": ${JSON.stringify(cn)}};
         return AQL_EXECUTE(query, vars);
       `;
-      var actual = arango.POST("/_admin/execute", command);
-      assertMatch(/no v8 context available to enter for current transaction context/, actual);
+      let actual = arango.POST("/_admin/execute", command);
+      assertMatch(/no v8 executor available to enter for current transaction context/, actual);
     },
     
     testMultipleCoordinatorSnippetsNoJavaScriptNeededExceptForOutermostSnippet: function () {

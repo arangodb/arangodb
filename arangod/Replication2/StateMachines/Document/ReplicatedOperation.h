@@ -24,9 +24,6 @@
 
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/ShardID.h"
-#include "Inspection/Format.h"
-#include "Inspection/Status.h"
-#include "Inspection/Types.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/Methods/Indexes.h"
 
@@ -46,12 +43,21 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice payload;
 
+    struct Options {
+      // Automatically refill in-memory cache entries after
+      // inserts/updates/replaces for all indexes that have an in-memory cache
+      // attached
+      bool refillIndexCaches;
+    };
+    std::optional<Options> options;
+
     // TODO: This somehow seems to be needed for Inspection.
     // Would like to remove it again though.
     DocumentOperation() {}
 
     explicit DocumentOperation(TransactionId tid, ShardID shard,
-                               velocypack::SharedSlice payload);
+                               velocypack::SharedSlice payload,
+                               std::optional<Options> options);
 
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
@@ -195,9 +201,10 @@ struct ReplicatedOperation {
   static auto buildDropIndexOperation(ShardID shard,
                                       velocypack::SharedSlice index) noexcept
       -> ReplicatedOperation;
-  static auto buildDocumentOperation(TRI_voc_document_operation_e const& op,
-                                     TransactionId tid, ShardID shard,
-                                     velocypack::SharedSlice payload) noexcept
+  static auto buildDocumentOperation(
+      TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
+      velocypack::SharedSlice payload,
+      std::optional<DocumentOperation::Options> options = std::nullopt) noexcept
       -> ReplicatedOperation;
 
   friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)
@@ -212,30 +219,50 @@ template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 
 template<class T>
-concept FinishesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Commit> ||
-    std::is_same_v<T, ReplicatedOperation::Abort>;
+concept ModifiesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,         //
+                                          ReplicatedOperation::Truncate,  //
+                                          ReplicatedOperation::Insert,    //
+                                          ReplicatedOperation::Update,    //
+                                          ReplicatedOperation::Replace,   //
+                                          ReplicatedOperation::Remove>;
+
+template<class T>
+concept FinishesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,       //
+                                          ReplicatedOperation::Commit,  //
+                                          ReplicatedOperation::Abort>;
 
 template<class T>
 concept FinishesUserTransactionOrIntermediate = FinishesUserTransaction<T> ||
-    std::is_same_v<T, ReplicatedOperation::IntermediateCommit>;
+    std::is_same_v<std::remove_cvref_t<T>,
+                   ReplicatedOperation::IntermediateCommit>;
 
 template<class T>
-concept InsertsDocuments =
-    IsAnyOf<T, ReplicatedOperation::Insert, ReplicatedOperation::Update,
-            ReplicatedOperation::Replace>;
-
-template<class T>
-concept ModifiesUserTransaction =
-    std::is_same_v<T, ReplicatedOperation::Truncate> ||
-    std::is_same_v<T, ReplicatedOperation::Insert> ||
-    std::is_same_v<T, ReplicatedOperation::Update> ||
-    std::is_same_v<T, ReplicatedOperation::Replace> ||
-    std::is_same_v<T, ReplicatedOperation::Remove>;
+concept InsertsDocuments = IsAnyOf<std::remove_cvref_t<T>,       //
+                                   ReplicatedOperation::Insert,  //
+                                   ReplicatedOperation::Update,  //
+                                   ReplicatedOperation::Replace>;
 
 template<class T>
 concept UserTransaction =
     ModifiesUserTransaction<T> || FinishesUserTransactionOrIntermediate<T>;
+
+using UserTransactionOperation =
+    std::variant<ReplicatedOperation::Truncate,            //
+                 ReplicatedOperation::Insert,              //
+                 ReplicatedOperation::Update,              //
+                 ReplicatedOperation::Replace,             //
+                 ReplicatedOperation::Remove,              //
+                 ReplicatedOperation::IntermediateCommit,  //
+                 ReplicatedOperation::Commit,              //
+                 ReplicatedOperation::Abort>;
+
+template<class T>
+concept DataDefinition = IsAnyOf<std::remove_cvref_t<T>,            //
+                                 ReplicatedOperation::CreateShard,  //
+                                 ReplicatedOperation::ModifyShard,  //
+                                 ReplicatedOperation::DropShard,    //
+                                 ReplicatedOperation::CreateIndex,  //
+                                 ReplicatedOperation::DropIndex>;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 auto operator<<(std::ostream&, ReplicatedOperation::OperationType const&)

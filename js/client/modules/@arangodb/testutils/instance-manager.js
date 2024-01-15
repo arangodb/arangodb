@@ -614,6 +614,33 @@ class instanceManager {
     return ret;
   }
 
+  getFromPlan(path) {
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    if (req.code !== 200) {
+      throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
+    }
+    return JSON.parse(req["body"])[0];
+  }
+
+  removeServerFromAgency(serverId) {
+    // Make sure we remove the server
+    for (let i = 0; i < 10; ++i) {
+      const res = arango.POST_RAW("/_admin/cluster/removeServer", JSON.stringify(serverId));
+      if (res.code === 404 || res.code === 200) {
+        // Server is removed
+        return;
+      }
+      // Server could not be removed, give supervision some more time
+      // and then try again.
+      print("Wait for supervision to clear responsibilty of server");
+      require("internal").wait(0.2);
+    }
+    // If we reach this place the server could not be removed
+    // it is still responsible for shards, so a failover
+    // did not work out.
+    throw "Could not remove shutdown server";
+  }
+
   _checkServersGOOD() {
     let name = '';
     try {

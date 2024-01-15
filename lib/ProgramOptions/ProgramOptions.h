@@ -45,6 +45,13 @@ struct Parameter;
 // typically an application will have a single instance of this
 class ProgramOptions {
  public:
+  // filter function to hide certain options in the outputs of
+  // - JavaScript options api: require("internal").options()
+  // - HTTP REST API: GET /_admin/options
+  // filter function returns false for any option to be filtered out,
+  // and true for all options to include in the output.
+  static std::function<bool(std::string const&)> const defaultOptionsFilter;
+
   // struct containing the option processing result
   class ProcessingResult {
    public:

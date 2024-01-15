@@ -83,7 +83,8 @@ template<class Inspector>
 auto inspect(Inspector& f, Collection::MutableProperties& props) {
   return f.object(props).fields(
       f.field(StaticStrings::Schema, props.schema),
-      f.field(StaticStrings::ComputedValues, props.computedValues));
+      f.field(StaticStrings::ComputedValues, props.computedValues),
+      f.field(StaticStrings::CacheEnabled, props.cacheEnabled));
 }
 
 template<class Inspector>
@@ -94,7 +95,6 @@ auto inspect(Inspector& f, Collection::ImmutableProperties& props) {
       f.field(StaticStrings::DataSourceSystem, props.isSystem),
       f.field(StaticStrings::IsSmart, props.isSmart),
       f.field(StaticStrings::IsDisjoint, props.isDisjoint),
-      f.field(StaticStrings::CacheEnabled, props.cacheEnabled),
       f.field(StaticStrings::ShardingStrategy, props.shardingStrategy),
       f.field(StaticStrings::ShardKeys, props.shardKeys),
       f.field(StaticStrings::GraphSmartGraphAttribute,

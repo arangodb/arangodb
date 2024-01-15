@@ -406,54 +406,19 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                  bool withProperties) const {
-  auto outVariable = _outVariable;
-  auto expressionVariable = _expressionVariable;
-  auto groupVariables = _groupVariables;
-  auto aggregateVariables = _aggregateVariables;
-
-  if (withProperties) {
-    if (expressionVariable != nullptr) {
-      expressionVariable =
-          plan->getAst()->variables()->createVariable(expressionVariable);
-    }
-
-    if (outVariable != nullptr) {
-      outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    }
-
-    // need to re-create all variables
-    groupVariables.clear();
-
-    for (auto& it : _groupVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = plan->getAst()->variables()->createVariable(it.inVar);
-      groupVariables.emplace_back(GroupVarInfo{out, in});
-    }
-
-    aggregateVariables.clear();
-
-    for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = it.inVar == nullptr
-                    ? nullptr
-                    : plan->getAst()->variables()->createVariable(it.inVar);
-      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
-    }
-  }
-
-  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
-                                         aggregateVariables, expressionVariable,
-                                         outVariable, _keepVariables,
-                                         _variableMap, _isDistinctCommand);
+ExecutionNode* CollectNode::clone(ExecutionPlan* plan,
+                                  bool withDependencies) const {
+  auto c = std::make_unique<CollectNode>(
+      plan, _id, _options, _groupVariables, _aggregateVariables,
+      _expressionVariable, _outVariable, _keepVariables, _variableMap,
+      _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
     c->specialized();
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 auto isStartNode(ExecutionNode const& node) -> bool {

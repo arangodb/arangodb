@@ -56,6 +56,7 @@
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Replication2/ReplicatedLog/AgencySpecificationInspectors.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardDistributionReporter.h"
 #include "Utils/ExecContext.h"
@@ -76,36 +77,90 @@ struct agentConfigHealthResult {
   futures::Try<network::Response> response;
 };
 
-void removePlanServers(std::unordered_set<std::string>& servers,
-                       VPackSlice plan) {
-  for (auto const& database : VPackObjectIterator(plan.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      VPackSlice shards = collection.value.get("shards");
-      for (auto const& shard : VPackObjectIterator(shards)) {
-        for (auto const& server : VPackArrayIterator(shard.value)) {
-          servers.erase(server.copyString());
-          if (servers.empty()) {
-            return;
-          }
+void removePlanServersReplicationOne(std::unordered_set<std::string>& servers,
+                                     VPackSlice planCollections) {
+  for (auto const& collection : VPackObjectIterator(planCollections)) {
+    // In ReplicationOne we need to ignore servers that is either leader or
+    // follower of a shard.
+    VPackSlice shards = collection.value.get("shards");
+    for (auto const& shard : VPackObjectIterator(shards)) {
+      for (auto const& server : VPackArrayIterator(shard.value)) {
+        servers.erase(server.copyString());
+        if (servers.empty()) {
+          return;
         }
       }
     }
   }
 }
 
-void removeCurrentServers(std::unordered_set<std::string>& servers,
-                          VPackSlice current) {
-  for (auto const& database : VPackObjectIterator(current.get("Collections"))) {
-    for (auto const& collection : VPackObjectIterator(database.value)) {
-      for (auto const& shard : VPackObjectIterator(collection.value)) {
-        for (auto const& server :
-             VPackArrayIterator(shard.value.get("servers"))) {
-          servers.erase(server.copyString());
-          if (servers.empty()) {
-            return;
-          }
+void removeCurrentServersReplicationOne(
+    std::unordered_set<std::string>& servers, VPackSlice currentCollections) {
+  for (auto const& collection : VPackObjectIterator(currentCollections)) {
+    for (auto const& shard : VPackObjectIterator(collection.value)) {
+      for (auto const& server :
+           VPackArrayIterator(shard.value.get("servers"))) {
+        servers.erase(server.copyString());
+        if (servers.empty()) {
+          return;
         }
       }
+    }
+  }
+}
+
+void removePlanServersReplicationTwo(std::unordered_set<std::string>& servers,
+                                     VPackSlice planReplicatedLogs) {
+  for (auto const& logSlice : VPackObjectIterator(planReplicatedLogs)) {
+    auto log = velocypack::deserialize<
+        arangodb::replication2::agency::LogPlanSpecification>(logSlice.value);
+    // In ReplicationTwo we need to ignore servers that are still leading the
+    // logs
+    if (log.currentTerm.has_value() &&
+        log.currentTerm.value().leader.has_value()) {
+      // If we have selected a leader, let's avoid to remove it
+      // Should be cleaned out first
+      servers.erase(log.currentTerm.value().leader.value().serverId);
+    } else {
+      // If we don't have a leader, let's not remove any server that is still a
+      // participant
+      for (auto const& [server, flags] : log.participantsConfig.participants) {
+        servers.erase(server);
+      }
+    }
+  }
+}
+
+void removeCurrentServersReplicationTwo(
+    std::unordered_set<std::string>& servers,
+    VPackSlice currentReplicatedLogs) {
+  for (auto const& logSlice : VPackObjectIterator(currentReplicatedLogs)) {
+    auto log =
+        velocypack::deserialize<arangodb::replication2::agency::LogCurrent>(
+            logSlice.value);
+    if (log.leader.has_value()) {
+      servers.erase(log.leader.value().serverId);
+    }
+  }
+}
+
+void removePlanOrCurrentServers(std::unordered_set<std::string>& servers,
+                                VPackSlice plan, VPackSlice current) {
+  for (auto const& database : VPackObjectIterator(plan.get("Databases"))) {
+    if (database.value.get(StaticStrings::ReplicationVersion)
+            .isEqualString("2")) {
+      auto planLogs = plan.get("ReplicatedLogs").get(database.key.stringView());
+      auto currentLogs =
+          current.get("ReplicatedLogs").get(database.key.stringView());
+      removePlanServersReplicationTwo(servers, planLogs);
+      removeCurrentServersReplicationTwo(servers, currentLogs);
+    } else {
+      auto planCollections =
+          plan.get("Collections").get(database.key.stringView());
+      auto currentCollections =
+          current.get("Collections").get(database.key.stringView());
+      removePlanServersReplicationOne(servers, planCollections);
+      removeCurrentServersReplicationOne(servers, currentCollections);
     }
   }
 }
@@ -113,8 +168,7 @@ void removeCurrentServers(std::unordered_set<std::string>& servers,
 bool isServerResponsibleForSomething(std::string const& server, VPackSlice plan,
                                      VPackSlice current) {
   std::unordered_set<std::string> servers = {server};
-  removePlanServers(servers, plan);
-  removeCurrentServers(servers, current);
+  removePlanOrCurrentServers(servers, plan, current);
   return servers.size() == 1;
 }
 
@@ -160,8 +214,8 @@ void buildHealthResult(
       }
     }
 
-    removePlanServers(set, store.get(rootPath->plan()->vec()));
-    removeCurrentServers(set, store.get(rootPath->current()->vec()));
+    removePlanOrCurrentServers(set, store.get(rootPath->plan()->vec()),
+                               store.get(rootPath->current()->vec()));
     return set;
   };
   delayedCalculator canBeDeleted(canBeDeletedConstructor);

@@ -801,8 +801,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
   VPackBuilder ignoreResponse;
   query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
                              variables, snippetBuilder.slice(),
-                             VPackSlice::noneSlice(), ignoreResponse,
-                             analyzersRevision);
+                             VPackSlice::noneSlice(),
+                             ExecContext::current().user(), ignoreResponse,
+                             analyzersRevision, false /* fastPath */);
 
   aql::QueryResult queryResult = query->executeSync();
 
@@ -2133,8 +2134,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   ArangoNS->SetInternalFieldCount(2);
 
   ArangoNS->SetHandler(v8::NamedPropertyHandlerConfiguration(MapGetVocBase));
-
-  //  ArangoNS->SetNamedPropertyHandler(MapGetVocBase);
 
   // for any database function added here, be sure to add it to in function
   // JS_CompletionsVocbase, too for the auto-completion

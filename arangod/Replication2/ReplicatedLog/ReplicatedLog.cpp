@@ -53,9 +53,12 @@ replicated_log::ReplicatedLog::ReplicatedLog(
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::shared_ptr<IParticipantsFactory> participantsFactory,
     LoggerContext const& logContext, agency::ServerInstanceReference myself)
-    :  // TODO is it possible to add myself to the
-       //      logger context? even if it is changed later?
-      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())),
+    :  // TODO `logContextKeyMyself` should contain `myself`, including the
+       //      RebootId; however, that can change during updateConfig. It would
+       //      be nice to add that, but the update has to be implemented as
+       //      well. For now, the serverId is better than nothing.
+      _logContext(logContext.with<logContextKeyLogId>(storage->getLogId())
+                      .with<logContextKeyMyself>(myself.serverId)),
       _metrics(std::move(metrics)),
       _options(std::move(options)),
       _participantsFactory(std::move(participantsFactory)),

@@ -63,6 +63,9 @@
       this.$el.html(this.template.render({
         mode: this.mode,
         info: this.info,
+        parsedVersion: window.versionHelper.toDocuVersion(
+          window.frontendConfig.version.version
+        )
       }));
 
       this.getStateData();

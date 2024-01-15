@@ -225,7 +225,7 @@ bool CloneWorker::before(ExecutionNode* node) {
   if (node->getType() == ExecutionNode::DISTRIBUTE_CONSUMER) {
     if (node->hasDependency() &&
         node->getFirstDependency()->getType() == ExecutionNode::MUTEX) {
-      auto clone = node->clone(plan, false, false);
+      auto clone = node->clone(plan, false);
 
       // set the used shards on the clone just created. We have
       // to handle graph nodes specially as they have multiple
@@ -252,7 +252,7 @@ bool CloneWorker::before(ExecutionNode* node) {
     // Never clone these nodes. We should never run into this case.
     TRI_ASSERT(false);
   } else {
-    auto clone = node->clone(plan, false, false);
+    auto clone = node->clone(plan, false);
 
     // set the used shards on the clone just created. We have
     // to handle graph nodes specially as they have multiple
@@ -456,8 +456,8 @@ void QuerySnippet::serializeIntoBuilder(
     TRI_ASSERT(plan == _sinkNode->plan());
     // Clone the sink node, we do not need dependencies (second bool)
     // And we do not need variables
-    auto* internalGather = ExecutionNode::castTo<GatherNode*>(
-        _sinkNode->clone(plan, false, false));
+    auto* internalGather =
+        ExecutionNode::castTo<GatherNode*>(_sinkNode->clone(plan, false));
     // Use the same elements for sorting
     internalGather->elements(_sinkNode->elements());
     // We need to modify the registerPlanning.
@@ -474,7 +474,7 @@ void QuerySnippet::serializeIntoBuilder(
       TRI_ASSERT(_globalScatter != nullptr);
       TRI_ASSERT(plan == _globalScatter->plan());
       internalScatter = ExecutionNode::castTo<ScatterNode*>(
-          _globalScatter->clone(plan, false, false));
+          _globalScatter->clone(plan, false));
       internalScatter->clearClients();
 
       TRI_ASSERT(_remoteNode->getDependencies().size() == 0);

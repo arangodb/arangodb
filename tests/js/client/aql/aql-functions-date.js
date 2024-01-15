@@ -247,7 +247,9 @@ function ahuacatlDateFunctionsTestSuite () {
 
     testDateFormat () {
       const date = "6789-12-31T23:59:58.990Z";
+      const dateTimezoned = "6790-01-01T00:59:58.990Z";
       assertEqual([ date ], getQueryResults("RETURN DATE_FORMAT(@value, '%z')", { value: date }));
+      assertEqual([ dateTimezoned ], getQueryResults("RETURN DATE_FORMAT(@value, '%z', 'Europe/Berlin')", { value: date }));
 
       const values = [
         ["7200-04-29", "7200", "7200", "00", "+007200", "04", "29"],
@@ -263,6 +265,19 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@value, '%yyyyyy')", { value: value[0] }), "%yyyyyyy");
         assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@value, '%mm')", { value: value[0] }), "%mm");
         assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@value, '%dd')", { value: value[0] }), "%dd");
+      });
+      const timezonedValues = [
+        ["2023-03-25T23:00:00.000Z", "Europe/Berlin", "2023", "2023", "23", "+002023", "03", "26"],
+        ["7199-12-31T23:59:59.000Z", "Europe/Berlin", "7200", "7200", "00", "+007200", "01", "01"],
+        ["199-12-31T23:59:59.000Z", "Europe/Berlin", "200", "0200", "00", "+000200", "01", "01"]
+      ];
+      timezonedValues.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%y', @timezone)", { date: value[0], timezone: value[1] }), "%y");
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyy', @timezone)", { date: value[0], timezone: value[1] }), "%yyyy");
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yy', @timezone)", { date: value[0], timezone: value[1] }), "%yy");
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyyyy', @timezone)", { date: value[0], timezone: value[1] }), "%yyyyyyy");
+        assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mm', @timezone)", { date: value[0], timezone: value[1] }), "%mm");
+        assertEqual([ value[7] ], getQueryResults("RETURN DATE_FORMAT(@date, '%dd', @timezone)", { date: value[0], timezone: value[1] }), "%dd");
       });
       const tvalues = [
         ["2012-01-01T17:17:17.177Z", "17", "17", "17", "177", "001", "52"],
@@ -280,7 +295,21 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@value, '%xxx')", { value: value[0] }), "xxx");
         assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@value, '%kk')", { value: value[0] }), "kk"); // TODO: WTF?
       });
-
+      const timezonedTValues = [
+        ["2023-03-25T23:00:00.000Z", "Europe/Berlin", "00", "00", "00", "000", "085", "12"],
+        ["7199-12-31T23:59:59.000Z", "Europe/Berlin", "00", "59", "59", "000", "001", "52"],
+        // this is very different and will parse to 0200-01-01T00:53:27.000+00:53 + 27 seconds
+        ["199-12-31T23:59:59.000Z", "Europe/Berlin", "00", "53", "27", "000", "001", "01"],
+        ["2023-12-31T23:00:00.000Z", "Asia/Kathmandu", "04", "45", "00", "000", "001", "01"]
+      ];
+      timezonedTValues.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%hh', @timezone)", { date: value[0], timezone: value[1] }), "hh " + value[0] + " " + value[1]);
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%ii', @timezone)", { date: value[0], timezone: value[1] }), "ii " + value[0] + " " + value[1]);
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%ss', @timezone)", { date: value[0], timezone: value[1] }), "ss " + value[0] + " " + value[1]);
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%fff', @timezone)", { date: value[0], timezone: value[1] }), "fff " + value[0] + " " + value[1]);
+        assertEqual([ value[6] ], getQueryResults("RETURN DATE_FORMAT(@date, '%xxx', @timezone)", { date: value[0], timezone: value[1] }), "xxx " + value[0] + " " + value[1]);
+        assertEqual([ value[7] ], getQueryResults("RETURN DATE_FORMAT(@date, '%kk', @timezone)", { date: value[0], timezone: value[1] }), "kk " + value[0] + " " + value[1]);
+      });
       const dates = [
         ["2012-01-01", "Jan", "January", "Sun", "Sunday"],
         ["2012-02-06", "Feb", "February", "Mon", "Monday"],
@@ -300,6 +329,15 @@ function ahuacatlDateFunctionsTestSuite () {
         assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@value, '%mmmm')", { value: value[0] }), "mmmm " + value[0]);
         assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@value, '%www')", { value: value[0] }), "www " + value[0]);
         assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@value, '%wwww')", { value: value[0] }), "wwww " + value[0]);
+      });
+      const timezonedDates = [
+        ["1985-01-02T23:00:00.000Z", "Europe/Berlin", "Jan", "January", "Thu", "Thursday"]
+      ];
+      timezonedDates.forEach(function (value) {
+        assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmm', @timezone)", { date: value[0],timezone: value[1] }), "mmm " + value[0]);
+        assertEqual([ value[3] ], getQueryResults("RETURN DATE_FORMAT(@date, '%mmmm', @timezone)", { date: value[0],timezone: value[1] }), "mmmm " + value[0]);
+        assertEqual([ value[4] ], getQueryResults("RETURN DATE_FORMAT(@date, '%www', @timezone)", { date: value[0],timezone: value[1] }), "www " + value[0]);
+        assertEqual([ value[5] ], getQueryResults("RETURN DATE_FORMAT(@date, '%wwww', @timezone)", { date: value[0],timezone: value[1] }), "wwww " + value[0]);
       });
       assertEqual([ " - %  " ], getQueryResults("RETURN DATE_FORMAT(@value, '%& - %% % ')", { value: "2012-01-01" }), "format ");
     },
@@ -430,19 +468,44 @@ function ahuacatlDateFunctionsTestSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test date_dayofweek function
 // //////////////////////////////////////////////////////////////////////////////
+    testDateRoundInvalid () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ROUND()");
 
-    testDateDayOfWeekInvalid () {
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK()");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ROUND(1, 1, 1, 1, 1)");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK(1, 1)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, 1)");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, null)");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, false)");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK([])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, [])");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK({})");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, {})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, null, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, false, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, [], 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, {}, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(null, 1, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(false, 1, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND([], 1, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND({}, 1, 'day')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, 'day', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, 'day', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, 'day', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ROUND(0, 1, 'day', {})");
     },
 
     testDateBucket: function () {
@@ -496,17 +559,55 @@ function ahuacatlDateFunctionsTestSuite () {
         [ "2000-04-10T11:39:29.123Z", 15, "pork", null ],
         [ "", 15, "day", null ],
         [ "foobar", 15, "day", null ],
+        [ 1679788555555, 1, "day", "2023-03-25T00:00:00.000Z" ],
+        [ "2023-03-25T23:55:55.555Z", 1, "day", "2023-03-25T00:00:00.000Z" ],
+        [ 1679788555555, 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ],
+        [ "2023-03-25T23:55:55.555Z", 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ],
+        [ "2023-03-26T00:55:55.555+01:00", 1, "day", "Europe/Berlin", "2023-03-25T23:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit)", { value: value[0], mult: value[1], unit: value[2] });
-        assertEqual([ value[3] ], actual);
+        if (value.length === 4) {
+          assertEqual([value[3]], getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit)", {
+            value: value[0],
+            mult: value[1],
+            unit: value[2]
+          }));
+        } else {
+          assertEqual([value[4]], getQueryResults("RETURN DATE_ROUND(@value, @mult, @unit, @timezone)", {
+            value: value[0],
+            mult: value[1],
+            unit: value[2],
+            timezone: value[3]
+          }));
+        }
       });
     },
 
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief test date_dayofweek function
 // //////////////////////////////////////////////////////////////////////////////
+    testDateDayOfWeekInvalid () {
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK()");
+
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFWEEK(1, 1, 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK([])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFWEEK(0, {})");
+    },
 
     testDateDayOfWeek: function () {
       var values = [
@@ -555,14 +656,21 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 2 ],
         [ 60123, 4 ],
         [ 1, 4 ],
-        [ 0, 4 ]
+        [ 0, 4 ],
+        [ "2023-03-25T23:00:00.000Z", 6 ],
+        [ 1679785200000, 6 ],
+        [ "2023-03-25T23:00:00.000Z", "Europe/Berlin", 0 ],
+        [ 1679785200000, "Europe/Berlin", 0 ]
       ];
 
       values.forEach(function (value) {
-        var actual = getQueryResults("RETURN DATE_DAYOFWEEK(@value)", { value: value[0] });
-        assertEqual([ value[1] ], actual);
-        actual = getQueryResults("RETURN DATE_FORMAT(@value, '%w')", { value: value[0] });
-        assertEqual([ value[1] ], actual);
+        if (value.length === 2) {
+          assertEqual([value[1]], getQueryResults("RETURN DATE_DAYOFWEEK(@value)", {value: value[0]}));
+          assertEqual([value[1]], getQueryResults("RETURN DATE_FORMAT(@value, '%w')", {value: value[0]}));
+        } else {
+          assertEqual([value[2]], getQueryResults("RETURN DATE_DAYOFWEEK(@date,@timezone)", {date: value[0], timezone: value[1]}));
+          assertEqual([value[2]], getQueryResults("RETURN DATE_FORMAT(@date, '%w',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -573,13 +681,23 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_YEAR(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(null)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(false)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR([])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_YEAR(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -627,12 +745,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 2014 ],
         [ 60123, 1970 ],
         [ 1, 1970 ],
-        [ 0, 1970 ]
+        [ 0, 1970 ],
+        [ "2023-12-31T23:00:00.000Z", 2023 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 2024 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_YEAR(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%yyyy')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_YEAR(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%yyyy')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_YEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([value[2]], getQueryResults("RETURN DATE_FORMAT(@date, '%yyyy',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -643,7 +768,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateMonthInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MONTH()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MONTH(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MONTH(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(null)");
 
@@ -652,6 +777,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MONTH(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -700,12 +833,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 5 ],
         [ 60123, 1 ],
         [ 1, 1 ],
-        [ 0, 1 ]
+        [ 0, 1 ],
+        [ "2023-12-31T23:00:00.000Z", 12 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_MONTH(@value)', { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%m")', { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_MONTH(@value)', { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%m")', { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_MONTH(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%m',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -716,7 +856,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDayInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAY()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAY(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAY(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(null)");
 
@@ -725,6 +865,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAY(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -775,12 +923,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 6 ],
         [ 60123, 1 ],
         [ 1, 1 ],
-        [ 0, 1 ]
+        [ 0, 1 ],
+        [ "2023-12-31T23:00:00.000Z", 31 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_DAY(@value)', { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%d")', { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_DAY(@value)', { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%d")', { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAY(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%d',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -791,9 +946,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateHourInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR(1, 1)");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(null)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_HOUR(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(null)");
 
@@ -802,6 +955,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_HOUR(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -863,12 +1024,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 8200000, 2 ],
         [ 60123, 0 ],
         [ 1, 0 ],
-        [ 0, 0 ]
+        [ 0, 0 ],
+        [ "2023-12-31T23:00:00.000Z", 23 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 0 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_HOUR(@value)', { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%h")', { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_HOUR(@value)', { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults('RETURN DATE_FORMAT(@value, "%h")', { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_HOUR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%h',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -879,7 +1047,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateMinuteInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MINUTE()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MINUTE(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_MINUTE(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(null)");
 
@@ -888,6 +1056,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_MINUTE(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -943,12 +1119,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 8200000, 16 ],
         [ 60123, 1 ],
         [ 1, 0 ],
-        [ 0, 0 ]
+        [ 0, 0 ],
+        [ "2023-12-31T23:00:00.000Z", 0 ],
+        [ "2023-12-31T23:00:00.000Z", "Asia/Kathmandu", 45 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_MINUTE(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%i')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_MINUTE(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%i')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_MINUTE(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%i',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1136,7 +1319,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDayOfYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFYEAR()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFYEAR(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYOFYEAR(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR(null)");
 
@@ -1145,6 +1328,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYOFYEAR(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1205,12 +1396,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 126 ],
         [ 60123, 1 ],
         [ 1, 1 ],
-        [ 0, 1 ]
+        [ 0, 1 ],
+        [ "2023-12-31T23:00:00.000Z", 365 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_DAYOFYEAR(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%x')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_DAYOFYEAR(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%x')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAYOFYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%x',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1221,7 +1419,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateISOWeekInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEK()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEK(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEK(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK(null)");
 
@@ -1230,6 +1428,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEK(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1239,7 +1445,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateISOWeekYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(null)");
 
@@ -1248,6 +1454,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ISOWEEKYEAR(0, {})");
     },
 
 
@@ -1302,12 +1516,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 19 ],
         [ 60123, 1 ],
         [ 1, 1 ],
-        [ 0, 1 ]
+        [ 0, 1 ],
+        [ "2023-12-31T23:00:00.000Z", 52 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISOWEEK(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_ISOWEEK(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_ISOWEEK(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%k',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1362,12 +1583,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 19, 2014],
         [ 60123, 1, 1970],
         [ 1, 1, 1970 ],
-        [ 0, 1, 1970 ]
+        [ 0, 1, 1970 ],
+        [ "2023-12-31T23:00:00.000Z", 52, 2023],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1, 2024]
       ];
 
       values.forEach(function (value) {
-        assertEqual([{week: value[1], year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
+        if (value.length === 3) {
+          assertEqual([{week: value[1], year: value[2]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%k')", { value: value[0] }));
+        } else {
+          assertEqual([{week: value[2], year: value[3]}], getQueryResults("RETURN DATE_ISOWEEKYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%k',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1378,7 +1606,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateLeapYearInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_LEAPYEAR()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_LEAPYEAR(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_LEAPYEAR(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR(null)");
 
@@ -1387,6 +1615,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_LEAPYEAR(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1440,12 +1676,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, false ],
         [ 60123, false ],
         [ 1, false ],
-        [ 0, false ]
+        [ 0, false ],
+        [ "2016-12-31T23:00:00.000Z", true ],
+        [ "2016-12-31T23:00:00.000Z", "Europe/Berlin", false ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_LEAPYEAR(@value)", { value: value[0] }));
-        assertEqual([ value[1] ? 1 : 0 ], getQueryResults("RETURN DATE_FORMAT(@value, '%l')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_LEAPYEAR(@value)", { value: value[0] }));
+          assertEqual([ value[1] ? 1 : 0 ], getQueryResults("RETURN DATE_FORMAT(@value, '%l')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_LEAPYEAR(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ? 1 : 0  ], getQueryResults("RETURN DATE_FORMAT(@date, '%l',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1456,7 +1699,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateQuarterInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_QUARTER()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_QUARTER(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_QUARTER(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER(null)");
 
@@ -1465,6 +1708,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_QUARTER(0, {})");
     },
 
 // //////////////////////////////////////////////////////////////////////////////
@@ -1473,7 +1724,7 @@ function ahuacatlDateFunctionsTestSuite () {
 
     testDateTruncInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC()");
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC(1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_TRUNC(1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, 1)");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(false, 'year')");
@@ -1485,6 +1736,10 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, [])");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC({}, 'year')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(1, {})");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', null)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', false)");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', [])");
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_TRUNC(DATE_NOW(), 'year', {})");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TRUNC(DATE_NOW(), 'sugar')");
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_TRUNC(DATE_NOW(), '')");
     },
@@ -1515,12 +1770,17 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2000-04-29 12:34:56.789", "s"], "2000-04-29T12:34:56.000Z" ],
         [ ["2000-04-29 12:34:56.789", "milliseconds"], "2000-04-29T12:34:56.789Z" ],
         [ ["2000-04-29 12:34:56.789", "millisecond"], "2000-04-29T12:34:56.789Z" ],
-        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ]
+        [ ["2000-04-29 12:34:56.789", "f"], "2000-04-29T12:34:56.789Z" ],
+        [ [1679785200000, "day"], "2023-03-25T00:00:00.000Z" ],
+        [ [1679785200000, "day", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
-        let actual = getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1])`, {val: value[0]});
-        assertEqual([ value[1] ], actual);
+        if (value[0].length === 2) {
+          assertEqual([ value[1] ], getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1])`, {val: value[0]}));
+        } else {
+          assertEqual([ value[1] ], getQueryResults(`RETURN DATE_TRUNC(@val[0], @val[1], @val[2])`, {val: value[0]}));
+        }
       });
     },
 
@@ -1577,12 +1837,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 2 ],
         [ 60123, 1 ],
         [ 1, 1 ],
-        [ 0, 1 ]
+        [ 0, 1 ],
+        [ "2023-12-31T23:00:00.000Z", 4 ],
+        [ "2023-12-31T23:00:00.000Z", "Europe/Berlin", 1 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_QUARTER(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%q')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_QUARTER(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%q')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_QUARTER(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%q', @timezone)", { date: value[0], timezone: value[1] }));
+        }
       });
     },
 
@@ -1593,7 +1860,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDaysInMonthInvalid () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(null)");
 
@@ -1602,6 +1869,14 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH([])");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH({})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(0, null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(0, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(0, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DAYS_IN_MONTH(0, {})");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1657,12 +1932,19 @@ function ahuacatlDateFunctionsTestSuite () {
         [ 1399395674000, 31 ],
         [ 60123, 31 ],
         [ 1, 31 ],
-        [ 0, 31 ]
+        [ 0, 31 ],
+        [ "2023-11-30T23:00:00.000Z", 30 ],
+        [ "2023-11-30T23:00:00.000Z", "Europe/Berlin", 31 ]
       ];
 
       values.forEach(function (value) {
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_DAYS_IN_MONTH(@value)", { value: value[0] }));
-        assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%a')", { value: value[0] }));
+        if (value.length === 2) {
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_DAYS_IN_MONTH(@value)", { value: value[0] }));
+          assertEqual([ value[1] ], getQueryResults("RETURN DATE_FORMAT(@value, '%a')", { value: value[0] }));
+        } else {
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_DAYS_IN_MONTH(@date,@timezone)", { date: value[0], timezone: value[1] }));
+          assertEqual([ value[2] ], getQueryResults("RETURN DATE_FORMAT(@date, '%a',@timezone)", {date: value[0], timezone: value[1]}));
+        }
       });
     },
 
@@ -1674,7 +1956,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateAddInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_ADD(1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(1, 1)");
 
@@ -1694,12 +1976,6 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_ADD(DATE_NOW(), 1, '')");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), '1', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 'one', 'year')");
-
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), null, 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), false, 'year')");
@@ -1707,6 +1983,16 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), [], 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), {}, 'year')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_ADD(DATE_NOW(), 1, 'year', {})");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1780,7 +2066,11 @@ function ahuacatlDateFunctionsTestSuite () {
         [ [1430931674000, 365, "days"], "2016-05-05T17:01:14.000Z" ], /* leap year */
         [ [60123, 7, "days"], "1970-01-08T00:01:00.123Z" ],
         [ [1, -1, "f"], "1970-01-01T00:00:00.000Z" ],
-        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ],
+        [ ["2023-03-25T23:00:00.000Z", 1, "d", "Europe/Berlin"], "2023-03-26T22:00:00.000Z" ],
+        [ [1679785200000, 1, "d", "Europe/Berlin"], "2023-03-26T22:00:00.000Z" ],
+        [ ["2023-03-25T23:00:00.000Z", "P1D", "Europe/Berlin"], "2023-03-26T22:00:00.000Z" ],
+        [ [1679785200000, "P1D", "Europe/Berlin"], "2023-03-26T22:00:00.000Z" ]
       ];
 
       values.forEach(function (value) {
@@ -1799,7 +2089,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateSubtractInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(1, 1)");
 
@@ -1819,12 +2109,6 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, '')");
 
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), '', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), '1', 'year')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 'one', 'year')");
-
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), null, 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), false, 'year')");
@@ -1832,6 +2116,16 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), [], 'year')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), {}, 'year')");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', 1)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_SUBTRACT(DATE_NOW(), 1, 'year', {})");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -1906,7 +2200,11 @@ function ahuacatlDateFunctionsTestSuite () {
         [ [1430931674000, 365, "days"], "2014-05-06T17:01:14.000Z" ], /* leap year */
         [ [60123, 7, "days"], "1969-12-25T00:01:00.123Z" ],
         [ [1, -1, "f"], "1970-01-01T00:00:00.002Z" ],
-        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ]
+        [ [0, 0, "f"], "1970-01-01T00:00:00.000Z" ],
+        [ ["2023-03-26T22:00:00.000Z", 1, "d", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ], // timezoned
+        [ [1679868000000, 1, "d", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ], // timezoned
+        [ ["2023-03-26T22:00:00.000Z", "P1D", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ], // timezoned
+        [ [1679868000000, "P1D", "Europe/Berlin"], "2023-03-25T23:00:00.000Z" ] // timezoned
       ];
 
       values.forEach(function (value) {
@@ -1919,7 +2217,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateDiffInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(null, 1, 'y')");
 
@@ -1927,7 +2225,17 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, null)");
 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, {})");
+
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_DIFF(1, 1, 'y', {})");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(1, 1, 'yo')");
 
@@ -1946,6 +2254,12 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF('', 1, 'y')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_DIFF(1, '', 'y')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', 'Wrong Timezone' )");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', false, 'Wrong Timezone' )");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_DIFF(1, 1, 'y', false, 'Europe/Berlin','Wrong Timezone' )");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2013,7 +2327,38 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2000-05-01", "2400-05-01 00:00:00.000", "year", true], 400 ],
         [ ["2000-05-01", "2400-05-01 00:00:00.000", "y", true], 400 ],
         [ ["2000-05-01", "2000-04-30 00:00:00.000", "days", true], -1 ],
-        [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ]
+        [ ["2000-05-01", "2000-04-30 18:00:00.000", "days", true], -0.25 ],
+
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true], 1/24 ], // #60
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true], 1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false], 1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours"], 1 ],// #65
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin"], 0 ],// #70
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "UTC", "Europe/Berlin"], 2/24 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "UTC", "Europe/Berlin"], 2 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "UTC", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "UTC", "Europe/Berlin"], 2 ],// #75
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "UTC", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "UTC", "Europe/Berlin"], 2 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin", "UTC"], -1/24 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin", "UTC"], 0 ],// #80
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin", "UTC"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin", "UTC"], -1 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", true, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", true, "Europe/Berlin", "Europe/Berlin"], 0 ],// #85
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", false, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", false, "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin", "Europe/Berlin"], 0 ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "hours", "Europe/Berlin", "Europe/Berlin"], 0 ]
       ];
 
       values.forEach(function (value) {
@@ -2030,7 +2375,7 @@ function ahuacatlDateFunctionsTestSuite () {
     testDateCompareInvalid: function () {
       assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE()");
 
-      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 1, 1, 1)");
+      assertQueryError(errors.ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 1, 1, 1, 1, 1)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(null, 1, 'y')");
 
@@ -2041,8 +2386,6 @@ function ahuacatlDateFunctionsTestSuite () {
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', null)");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'yo')");
-
-      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'yo')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(false, 1, 'y')");
 
@@ -2056,9 +2399,39 @@ function ahuacatlDateFunctionsTestSuite () {
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, {}, 'y')");
 
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', {})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', {})");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  null)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  false)");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  [])");
+
+      assertQueryWarningAndNull(errors.ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin',  {})");
+
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_COMPARE('', 1, 'y')");
 
       assertQueryWarningAndNull(errors.ERROR_QUERY_INVALID_DATE_VALUE.code, "RETURN DATE_COMPARE(1, '', 'y')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'Wrong Timezone')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Wrong Timezone')");
+
+      assertQueryError(errors.ERROR_INTERNAL.code, "RETURN DATE_COMPARE(1, 1, 'y', 'y', 'Europe/Berlin', 'Wrong Timezone')");
     },
 
     // //////////////////////////////////////////////////////////////////////////////
@@ -2192,7 +2565,17 @@ function ahuacatlDateFunctionsTestSuite () {
         [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "months", "milliseconds"], true ],
         [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "months", "milliseconds"], false ],
         [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156", "years", "milliseconds"], true ],
-        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ]
+        [ ["2010-06-25T12:13:14.156", "2011-07-26T13:14:15.157", "years", "milliseconds"], false ],
+
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156+02:00", "days", "milliseconds", "UTC", "Europe/Berlin"], true ],
+        [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "milliseconds", "Europe/Berlin", "UTC"], true ],
+        [ ["2010-06-25T12:13:14.156", "2010-06-25T12:13:14.156+02:00", "days", "UTC", "Europe/Berlin"], true ],
+        [ ["2010-06-25T12:13:14.156+02:00", "2010-06-25T12:13:14.156", "days", "Europe/Berlin", "UTC"], true ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds"], false ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds", "UTC"], false ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "milliseconds", "Europe/Berlin"], true ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "Europe/Berlin"], true ],
+        [ ["2023-10-29T00:00:00.000Z", "2023-10-29T01:00:00.000Z", "days", "UTC"], true ]
       ];
 
       values.forEach(function (value) {

@@ -450,28 +450,12 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto aggregateVariables = _aggregateVariables;
-
-  if (withProperties) {
-    // need to re-create all variables
-
-    aggregateVariables.clear();
-
-    for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = it.inVar == nullptr
-                    ? nullptr
-                    : plan->getAst()->variables()->createVariable(it.inVar);
-      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
-    }
-  }
-
-  auto c = std::make_unique<WindowNode>(plan, _id, WindowBounds(_bounds),
-                                        _rangeVariable, aggregateVariables);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+ExecutionNode* WindowNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  return cloneHelper(
+      std::make_unique<WindowNode>(plan, _id, WindowBounds(_bounds),
+                                   _rangeVariable, _aggregateVariables),
+      withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node

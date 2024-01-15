@@ -28,6 +28,7 @@
 #endif
 
 #include "Basics/Common.h"
+#include "Transaction/V8Context.h"
 #include "V8/v8-utils.h"
 #include "V8Server/v8-vocbase.h"
 #include "VocBase/voc-types.h"

@@ -1194,6 +1194,7 @@ irs::IndexWriterOptions IResearchDataStore::getWriterOptions(
     }
   }
   // setup columnstore compression/encryption if requested by storage engine
+  // TODO(MBkkt) we probably want to disable encryption for geo and norm columns
   auto const encrypt =
       (nullptr != _dataStore._directory->attributes().encryption());
   options.column_info =

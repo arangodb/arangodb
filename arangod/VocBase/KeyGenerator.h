@@ -30,6 +30,7 @@
 #include <memory>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace arangodb {
 class KeyGenerator;
@@ -50,8 +51,10 @@ struct KeyGeneratorHelper {
   // greatest possible key
   static std::string const highestKey;
 
-  static std::string encodePadded(uint64_t value);
+  static std::vector<std::string> generatorNames();
+
   static uint64_t decodePadded(char const* p, size_t length) noexcept;
+  static std::string encodePadded(uint64_t value);
 
   /// @brief validate a key
   static bool validateKey(char const* key, size_t len) noexcept;

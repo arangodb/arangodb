@@ -149,7 +149,7 @@ window.d3 = d3;
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');
 window.Dygraph = require('../../frontend/js/lib/dygraph-combined.min.js');
 require('../../frontend/js/config/dygraphConfig.js');
-window.moment = require('../../frontend/js/lib/moment.min.js');
+window.moment = require('moment');
 
 // sigma
 window.sigma = Sigma;

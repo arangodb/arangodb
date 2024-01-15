@@ -25,7 +25,6 @@
 #include "V8ClientConnection.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "V8/V8SecurityFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/StringBuffer.h"
@@ -45,6 +44,7 @@
 #include "SimpleHttpClient/SimpleHttpClient.h"
 #include "SimpleHttpClient/SimpleHttpResult.h"
 #include "Utilities/NameValidator.h"
+#include "V8/V8SecurityFeature.h"
 #include "V8/v8-buffer.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-deadline.h"
@@ -535,7 +535,7 @@ static v8::Local<v8::Value> WrapV8ClientConnection(
   Connections[v8connection].Reset(isolate, myConnection);
   Connections[v8connection].SetWeak(&Connections[v8connection],
                                     ClientConnection_DestructorCallback,
-                                    v8::WeakCallbackType::kFinalizer);
+                                    v8::WeakCallbackType::kParameter);
   return scope.Escape<v8::Value>(result);
 }
 
@@ -702,10 +702,8 @@ static void ClientConnection_reconnect(
     TRI_V8_THROW_EXCEPTION_PARAMETER(errorMessage);
   }
 
-  TRI_ExecuteJavaScriptString(
-      isolate, isolate->GetCurrentContext(),
-      TRI_V8_STRING(isolate, "require('internal').db._flushCache();"),
-      TRI_V8_ASCII_STRING(isolate, "reload db object"), false);
+  TRI_ExecuteJavaScriptString(isolate, "require('internal').db._flushCache();",
+                              "reload db object", false);
 
   TRI_V8_RETURN_TRUE();
   TRI_V8_TRY_CATCH_END

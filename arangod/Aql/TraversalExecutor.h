@@ -183,7 +183,7 @@ class TraversalExecutorInfos {
 };
 
 /**
- * @brief Implementation of Traversal Node
+ * @brief Implementation of traversal executor
  */
 class TraversalExecutor {
  public:
@@ -215,7 +215,6 @@ class TraversalExecutor {
 
   [[nodiscard]] auto stats() -> Stats;
 
-  // NEW (refactor)
   auto traversalEnumerator() -> arangodb::graph::TraversalEnumerator*;
 
  private:
@@ -226,7 +225,7 @@ class TraversalExecutor {
   Ast _ast;
   InputAqlItemRow _inputRow;
 
-  /// @brief the refactored finder variant.
+  /// @brief the finder variant.
   arangodb::graph::TraversalEnumerator* _traversalEnumerator;
 };
 

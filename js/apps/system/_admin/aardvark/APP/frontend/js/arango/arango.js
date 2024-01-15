@@ -49,6 +49,13 @@
         version = v.replace(/^(\d+\.\d+).*$/, '$1');
       }
       return version;
+    },
+    getDocuVersion: function () {
+      var version =
+        window.frontendConfig &&
+        window.frontendConfig.version &&
+        window.frontendConfig.version.version;
+      return this.toDocuVersion(version || "");
     }
   };
 

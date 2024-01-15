@@ -53,7 +53,7 @@ const queryOptions = {
   optimizer: {
     rules: ["-late-document-materialization"], // turn off late materialization
   },
-  maxNumberOfPlans: 1
+  maxNumberOfPlans: 1,
 };
 
 const documentsA = Array.from({length: numDocuments})
