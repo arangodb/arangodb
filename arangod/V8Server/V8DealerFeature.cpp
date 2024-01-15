@@ -692,8 +692,9 @@ void V8DealerFeature::copyInstallationFiles() {
     // needed in release builds
     std::string const versionAppendix = std::regex_replace(
         rest::Version::getServerVersion(), std::regex("-.*$"), "");
-    std::string const eslintPath =
-        FileUtils::buildFilename("js", "node", "node_modules", "eslint");
+    std::string const uiNodeModulesPath =
+        FileUtils::buildFilename("js", "apps", "system", "_admin", "aardvark",
+                                 "APP", "react", "node_modules");
 
     // .bin directories could be harmful, and .map files are large and
     // unnecessary
@@ -702,7 +703,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
     size_t copied = 0;
 
-    auto filter = [&eslintPath, &binDirectory,
+    auto filter = [&uiNodeModulesPath, &binDirectory,
                    &copied](std::string const& filename) -> bool {
       if (filename.ends_with(".map")) {
         // filename ends with ".map". filter it out!
@@ -715,9 +716,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
-      if ((normalized.size() >= eslintPath.size() &&
-           normalized.compare(normalized.size() - eslintPath.size(),
-                              eslintPath.size(), eslintPath) == 0)) {
+      if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;
       }
