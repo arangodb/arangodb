@@ -97,7 +97,7 @@ const allPathsDiffer = (paths) => {
 const allPathsAreSorted = (paths) => {
   let last = paths[0].weight;
   for (const p of paths) {
-    assertTrue(last <= p.weight);
+    assertTrue(last <= p.weight, `${last} <= ${p.weight} (${JSON.stringify(paths.map((x) => x.weight))})`);
     last = p.weight;
   }
 };
@@ -431,7 +431,7 @@ function kAttributeWeightShortestPathTestSuite() {
       `;
       const result = db._query(query).toArray();
       allPathsDiffer(result);
-      assertEqual(result.length, 9);
+      assertEqual(result.length, 9, JSON.stringify(result));
       allPathsAreSorted(result);
       isPathValid(result[0], 4, 4);
       isPathValid(result[1], 4, 7);

@@ -318,7 +318,7 @@ TraversalNode::TraversalNode(ExecutionPlan& plan, TraversalNode const& other,
   if (!allowAlreadyBuiltCopy) {
     TRI_ASSERT(!other._optionsBuilt);
   }
-  other.traversalCloneHelper(plan, *this, false);
+  other.traversalCloneHelper(plan, *this);
   validateCollections();
 }
 
@@ -780,8 +780,7 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
     TRI_ASSERT(!isSmart);
     auto singleServerBaseProviderOptions =
         getSingleServerBaseProviderOptions(opts, filterConditionVariables);
-    auto executorInfos = TraversalExecutorInfos(  // todo add a parameter:
-                                                  // SingleServer, Cluster...
+    auto executorInfos = TraversalExecutorInfos(
         outputRegisterMapping, getStartVertex(), inputRegister,
         plan()->getAst(), opts->uniqueVertices, opts->uniqueEdges, opts->mode,
         opts->defaultWeight, opts->weightAttribute, opts->query(),
@@ -1003,7 +1002,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
      * SmartGraph Traverser
      */
     if (isSmart() && !isDisjoint()) {
-      // Note: Using refactored smart graph cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
@@ -1014,7 +1012,6 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
       /*
        * Default Cluster Traverser
        */
-      // Note: Using refactored cluster engine.
       return createBlock(engine, std::move(filterConditionVariables),
                          checkPruneAvailability, checkPostFilterAvailability,
                          outputRegisterMapping, inputRegister, registerInfos,
@@ -1043,8 +1040,8 @@ std::unique_ptr<ExecutionBlock> TraversalNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
+ExecutionNode* TraversalNode::clone(ExecutionPlan* plan,
+                                    bool withDependencies) const {
   auto* oldOpts = options();
   std::unique_ptr<BaseOptions> tmp = std::make_unique<TraverserOptions>(
       *oldOpts, /*allowAlreadyBuiltCopy*/ true);
@@ -1052,66 +1049,43 @@ ExecutionNode* TraversalNode::clone(ExecutionPlan* plan, bool withDependencies,
       plan, _id, _vocbase, _edgeColls, _vertexColls, _inVariable, _vertexId,
       _defaultDirection, _directions, std::move(tmp), _graphObj);
 
-  traversalCloneHelper(*plan, *c, withProperties);
+  traversalCloneHelper(*plan, *c);
 
   if (_optionsBuilt) {
     c->prepareOptions();
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
-void TraversalNode::traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
-                                         bool const withProperties) const {
-  graphCloneHelper(plan, c, withProperties);
+void TraversalNode::traversalCloneHelper(ExecutionPlan& plan,
+                                         TraversalNode& c) const {
+  graphCloneHelper(plan, c);
   if (isVertexOutVariableAccessed()) {
-    auto vertexOutVariable = _vertexOutVariable;
-    if (withProperties) {
-      vertexOutVariable =
-          plan.getAst()->variables()->createVariable(vertexOutVariable);
-    }
-    TRI_ASSERT(vertexOutVariable != nullptr);
-    c.setVertexOutput(vertexOutVariable);
+    TRI_ASSERT(_vertexOutVariable != nullptr);
+    c.setVertexOutput(_vertexOutVariable);
   }
 
   if (isEdgeOutVariableAccessed()) {
-    auto edgeOutVariable = _edgeOutVariable;
-    if (withProperties) {
-      edgeOutVariable =
-          plan.getAst()->variables()->createVariable(edgeOutVariable);
-    }
-    TRI_ASSERT(edgeOutVariable != nullptr);
-    c.setEdgeOutput(edgeOutVariable);
+    TRI_ASSERT(_edgeOutVariable != nullptr);
+    c.setEdgeOutput(_edgeOutVariable);
   }
 
   if (isPathOutVariableAccessed()) {
-    auto pathOutVariable = _pathOutVariable;
-    if (withProperties) {
-      pathOutVariable =
-          plan.getAst()->variables()->createVariable(pathOutVariable);
-    }
-    TRI_ASSERT(pathOutVariable != nullptr);
-    c.setPathOutput(pathOutVariable);
+    TRI_ASSERT(_pathOutVariable != nullptr);
+    c.setPathOutput(_pathOutVariable);
   }
 
   c._conditionVariables.reserve(_conditionVariables.size());
   for (auto const& it : _conditionVariables) {
-    if (withProperties) {
-      c._conditionVariables.emplace(it->clone());
-    } else {
-      c._conditionVariables.emplace(it);
-    }
+    c._conditionVariables.emplace(it);
   }
 
   if (_pruneExpression) {
     c._pruneExpression = _pruneExpression->clone(plan.getAst(), true);
     c._pruneVariables.reserve(_pruneVariables.size());
     for (auto const& it : _pruneVariables) {
-      if (withProperties) {
-        c._pruneVariables.emplace(it->clone());
-      } else {
-        c._pruneVariables.emplace(it);
-      }
+      c._pruneVariables.emplace(it);
     }
   }
 
@@ -1199,11 +1173,6 @@ void TraversalNode::prepareOptions() {
 
   TraverserOptions* opts = this->TraversalNode::options();
   TRI_ASSERT(opts != nullptr);
-  /*
-   * HACK: DO NOT use other indexes for smart BFS. Otherwise, this will produce
-   * wrong results.
-   */
-  bool onlyEdgeIndexes = this->isSmart() && opts->isUseBreadthFirst();
   for (auto& it : _edgeConditions) {
     uint64_t depth = it.first;
     // We probably have to adopt minDepth. We cannot fulfill a condition of
@@ -1220,16 +1189,14 @@ void TraversalNode::prepareOptions() {
       // made non-overlapping.
       switch (dir) {
         case TRI_EDGE_IN:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::ToString,
-                                   builder->getInboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::ToString,
+              builder->getInboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_OUT:
-          opts->addDepthLookupInfo(_plan, _edgeColls[i]->name(),
-                                   StaticStrings::FromString,
-                                   builder->getOutboundCondition()->clone(ast),
-                                   depth, onlyEdgeIndexes, dir);
+          opts->addDepthLookupInfo(
+              _plan, _edgeColls[i]->name(), StaticStrings::FromString,
+              builder->getOutboundCondition()->clone(ast), depth, dir);
           break;
         case TRI_EDGE_ANY:
           TRI_ASSERT(false);

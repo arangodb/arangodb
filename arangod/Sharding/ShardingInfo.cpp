@@ -273,9 +273,9 @@ Result ShardingInfo::extractShardKeys(velocypack::Slice info,
           // remove : char at the beginning or end (for enterprise)
           std::string_view stripped;
           if (!key.empty()) {
-            if (key.front() == ':') {
+            if (key.starts_with(':')) {
               stripped = key.substr(1);
-            } else if (key.back() == ':') {
+            } else if (key.ends_with(':')) {
               stripped = key.substr(0, key.size() - 1);
             } else {
               stripped = key;
@@ -322,7 +322,9 @@ LogicalCollection* ShardingInfo::collection() const noexcept {
   return _collection;
 }
 
-void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
+void ShardingInfo::toVelocyPack(VPackBuilder& result,
+                                bool ignoreCollectionGroupAttributes,
+                                bool translateCids,
                                 bool includeShardsEntry) const {
   result.add(StaticStrings::NumberOfShards, VPackValue(_numberOfShards));
 
@@ -345,17 +347,20 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result, bool translateCids,
     result.close();  // shards
   }
 
-  if (isSatellite()) {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(StaticStrings::Satellite));
-  } else {
-    result.add(StaticStrings::ReplicationFactor,
-               VPackValue(_replicationFactor));
+  if (!ignoreCollectionGroupAttributes) {
+    // For replication Two this class is not responsible for the following
+    // attributes.
+    if (isSatellite()) {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(StaticStrings::Satellite));
+    } else {
+      result.add(StaticStrings::ReplicationFactor,
+                 VPackValue(_replicationFactor));
+    }
+    // minReplicationFactor deprecated in 3.6
+    result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
+    result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
   }
-
-  // minReplicationFactor deprecated in 3.6
-  result.add(StaticStrings::WriteConcern, VPackValue(_writeConcern));
-  result.add(StaticStrings::MinReplicationFactor, VPackValue(_writeConcern));
 
   if (!_distributeShardsLike.empty()) {
     if (ServerState::instance()->isCoordinator()) {

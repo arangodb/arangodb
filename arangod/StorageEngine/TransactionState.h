@@ -69,10 +69,6 @@ struct TRI_vocbase_t;
 namespace arangodb {
 struct ResourceMonitor;
 
-namespace aql {
-class QueryContext;
-}
-
 namespace transaction {
 class CounterGuard;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

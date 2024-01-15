@@ -24,9 +24,14 @@ http_replication priority=500 parallelity=3 size=small single
 agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgencyOnError true
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
-recovery priority=2000 buckets=6 parallelity=5 size=small single
 
-shell_server_v8,shell_v8 priority=500 name=v8 single -- $EncryptionAtRest
+recovery priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery_cluster priority=2000 size=small cluster buckets=5
+
+recovery_server priority=2000 buckets=3 parallelity=3 size=small single
+# cluster
+recovery_cluster_server priority=2000 buckets=1 parallelity=1 size=small
 
 shell_api priority=500 single -- $EncryptionAtRest
 
@@ -55,10 +60,6 @@ shell_client_aql buckets=17 !mac priority=500  single suffix=http2 -- --http2 tr
 shell_client_aql buckets=17 !mac priority=750  single suffix=vst -- --vst true
 shell_client_aql buckets=17 !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
-# shell_server_aql priority=750 single buckets=5
-# execute without buckets in single server, but use 5 buckets in cluster
-shell_server priority=1000 single buckets=3
-
 # C++ unit tests are executed in single env
 gtest_iresearch priority=1000 parallelity=3 size=medium single
 gtest_arangodb priority=1000 parallelity=3 size=large single
@@ -67,7 +68,6 @@ gtest_arangodb priority=1000 parallelity=3 size=large single
 fuerte priority=500 single
 
 rta_makedata single
-rta_makedata single suffix=afo -- --activeFailover true
 
 
 # Cluster Tests
@@ -87,8 +87,6 @@ resilience_failover priority=1200 size=small buckets=2 cluster -- --dumpAgencyOn
 resilience_move priority=600 size=medium buckets=3 cluster -- --dumpAgencyOnError true
 resilience_sharddist size=small cluster -- --dumpAgencyOnError true
 
-recovery_cluster priority=2000 size=small cluster buckets=8
-
 shell_api priority=500 cluster -- $EncryptionAtRest
 
 shell_api_multi priority=500 cluster suffix=http -- $EncryptionAtRest
@@ -100,10 +98,9 @@ shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
 shell_client_aql !mac priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
-shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
+shell_client priority=500 cluster size=medium+ buckets=6 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_client_replication2_recovery priority=500 size=small cluster -- --dumpAgencyOnError true
-shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
 rta_makedata sniff cluster 
 
@@ -139,7 +136,6 @@ audit_client,audit_server enterprise name=audit -- --dumpAgencyOnError true
 shell_fuzzer full !mac cluster priority=500 parallelity=6 -- --dumpAgencyOnError true
 shell_fuzzer full !mac single priority=500 -- --dumpAgencyOnError true
 authentication_parameters single full priority=1000
-authentication_server single full priority=1000
 config single full priority=1000
 foxx_manager single full priority=500
 queryCacheAuthorization single full priority=500

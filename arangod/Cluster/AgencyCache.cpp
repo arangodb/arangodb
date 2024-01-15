@@ -799,7 +799,7 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   if (get_rest) {  // All the rest, i.e. All keys excluding the usual suspects
     static std::vector<std::string> const exc{
         "Analyzers", "Collections",    "Databases",
-        "Views",     "ReplicatedLogs", "ReplicatedStates"};
+        "Views",     "ReplicatedLogs", "CollectionGroups"};
     auto keys = _readDB.nodePtr(AgencyCommHelper::path(what))->keys();
     keys.erase(std::remove_if(std::begin(keys), std::end(keys),
                               [&](auto const& x) {

@@ -2,10 +2,6 @@
 /*global fail, assertEqual */
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief test failure scenarios
-///
-/// @file
-///
 /// DISCLAIMER
 ///
 /// Copyright 2010-2012 triagens GmbH, Cologne, Germany
@@ -29,25 +25,21 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var arangodb = require("@arangodb");
-var db = arangodb.db;
-var internal = require("internal");
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test suite
-////////////////////////////////////////////////////////////////////////////////
+const jsunity = require("jsunity");
+const arangodb = require("@arangodb");
+const db = arangodb.db;
+const internal = require("internal");
 
 function ahuacatlFailureSuite () {
   'use strict';
-  var cn = "UnitTestsAhuacatlFailures";
-  var en = "UnitTestsAhuacatlEdgeFailures";
-  var c;
-  var e;
-  var count = 5000;
-  var idx = null;
+  const cn = "UnitTestsAhuacatlFailures";
+  const en = "UnitTestsAhuacatlEdgeFailures";
+  const count = 5000;
+  let idx = null;
+  let c;
+  let e;
         
-  var assertFailingQuery = function (query, rulesToExclude) {
+  const assertFailingQuery = function (query, rulesToExclude) {
     if (!rulesToExclude) {
       rulesToExclude = [];
     }
@@ -60,7 +52,6 @@ function ahuacatlFailureSuite () {
   };
 
   return {
-
     setUpAll: function () {
       internal.debugClearFailAt();
       db._drop(cn);
@@ -242,7 +233,7 @@ function ahuacatlFailureSuite () {
 
     testFilterBlock3 : function () {
       internal.debugSetFailAt("FilterExecutor::produceRows");
-      assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN [1,2,3,4] RETURN i");
+      assertFailingQuery("FOR i IN [1,2,3,4] FILTER i IN NOOPT([1,2,3,4]) RETURN i");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -260,7 +251,7 @@ function ahuacatlFailureSuite () {
 
     testCalculationBlock2 : function () {
       internal.debugSetFailAt("CalculationBlock::executeExpression");
-      assertFailingQuery("FOR i IN " + c.name() + " LET v = CONCAT(i._key, 'foo') RETURN v");
+      assertFailingQuery("FOR i IN " + c.name() + " LET v = NOOPT(CONCAT(i._key, 'foo')) RETURN v");
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -588,15 +579,9 @@ function ahuacatlFailureModifySuite () {
   };
 }
 
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief executes the test suites
-////////////////////////////////////////////////////////////////////////////////
-
 if (internal.debugCanUseFailAt()) {
   jsunity.run(ahuacatlFailureModifySuite);
   jsunity.run(ahuacatlFailureSuite);
 }
 
 return jsunity.done();
-

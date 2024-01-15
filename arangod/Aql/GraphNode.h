@@ -224,8 +224,7 @@ class GraphNode : public ExecutionNode {
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override;
 
-  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone,
-                        bool withProperties) const;
+  void graphCloneHelper(ExecutionPlan& plan, GraphNode& clone) const;
 
  private:
   void addEdgeCollection(aql::Collections const& collections,

@@ -30,24 +30,25 @@
 
 namespace arangodb {
 
+// `Zkd` is the old designation for an unprefix mdi
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_internalNames = {
-        "default",       "Documents",      "PrimaryIndex",
-        "EdgeIndex",     "VPackIndex",     "GeoIndex",
-        "FulltextIndex", "ReplicatedLogs", "ZkdIndex"};
+        "default",    "Documents",  "PrimaryIndex",  "EdgeIndex",
+        "VPackIndex", "GeoIndex",   "FulltextIndex", "ReplicatedLogs",
+        "ZkdIndex",   "MdiPrefixed"};
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
         "definitions", "documents", "primary",         "edge", "vpack",
-        "geo",         "fulltext",  "replicated-logs", "zkd"};
+        "geo",         "fulltext",  "replicated-logs", "zkd",  "mdi-prefixed"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>
-    RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr,
-                                            nullptr, nullptr, nullptr};
+    RocksDBColumnFamilyManager::_handles = {nullptr, nullptr, nullptr, nullptr,
+                                            nullptr, nullptr, nullptr, nullptr,
+                                            nullptr, nullptr};
 
 rocksdb::ColumnFamilyHandle* RocksDBColumnFamilyManager::_defaultHandle =
     nullptr;

@@ -100,26 +100,6 @@ list(APPEND V8_GYP_ARGS
   -DV8_SRC_ROOT=${GYP_FILES_DIR}/
 )
 
-if (CROSS_COMPILING)
-  list(APPEND V8_GYP_ARGS
-  -Dhost_arch=${V8_PROC_ARCH}
-  -DGYP_CROSSCOMPILE=1
-  -DEXECUTABLE_PREFIX=${V8_PROC_ARCH}.
-  )
-  configure_file (
-    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mkpeephole.in"
-    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mkpeephole"
-    NEWLINE_STYLE UNIX
-    @ONLY
-  )
-  configure_file (
-    "${CMAKE_SOURCE_DIR}/lib/V8/v8-mksnapshot.in"
-    "${V8_TARGET_DIR}/${V8_PROC_ARCH}.release/${V8_PROC_ARCH}.mksnapshot"
-    NEWLINE_STYLE UNIX
-    @ONLY
-  )
-endif()
-
 option(USE_DEBUG_V8 "compile V8 in DEBUG mode" OFF)
   
 ################################################################################

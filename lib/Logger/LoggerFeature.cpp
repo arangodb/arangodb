@@ -39,6 +39,7 @@
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/FileUtils.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
@@ -655,9 +656,8 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 
     if (valid && gidNumber >= 0) {
 #ifdef ARANGODB_HAVE_GETGRGID
-      group* g = getgrgid(gidNumber);
-
-      if (g == nullptr) {
+      std::optional<gid_t> gid = FileUtils::findGroup(_fileGroup);
+      if (!gid) {
         LOG_TOPIC("174c2", FATAL, arangodb::Logger::FIXME)
             << "unknown numeric gid '" << _fileGroup << "'";
         FATAL_ERROR_EXIT();
@@ -665,10 +665,9 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 #endif
     } else {
 #ifdef ARANGODB_HAVE_GETGRNAM
-      group* g = getgrnam(_fileGroup.c_str());
-
-      if (g != nullptr) {
-        gidNumber = g->gr_gid;
+      std::optional<gid_t> gid = FileUtils::findGroup(_fileGroup);
+      if (gid) {
+        gidNumber = gid.value();
       } else {
         TRI_set_errno(TRI_ERROR_SYS_ERROR);
         LOG_TOPIC("11a2c", FATAL, arangodb::Logger::FIXME)

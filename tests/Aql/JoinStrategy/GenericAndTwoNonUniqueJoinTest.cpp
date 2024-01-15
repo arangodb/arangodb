@@ -51,7 +51,8 @@ struct MyVectorIterator : MyIndexStreamIterator {
     cache[0] = *current;
   }
 
-  bool reset(std::span<MyKeyValue> span) override {
+  bool reset(std::span<MyKeyValue> span,
+             std::span<MyKeyValue> constants) override {
     current = begin;
     if (current != end) {
       span[0] = *current;
@@ -108,14 +109,21 @@ class GenericAndTwoNonUniqueIndexMerger
   [[nodiscard]] static std::unique_ptr<
       arangodb::aql::IndexJoinStrategy<MyKeyValue, MyDocumentId>>
   buildStrategy(std::vector<Desc>&& iters) {
+    for (auto& desc : iters) {
+      desc.numKeyComponents = {1};
+      desc.numConstants = {0};
+    }
+
     if (getStrategyName() == "GenericJoin") {
-      LOG_DEVEL << "Using generic";
-      return std::make_unique<GenericJoinStrategy>(std::move(iters), 1);
+      auto strategy = std::make_unique<GenericJoinStrategy>(std::move(iters));
+      strategy.get()->reset({});
+      return strategy;
     } else {
       TRI_ASSERT(getStrategyName() == "TwoIndicesMergeJoin");
-      LOG_DEVEL << "Using two index";
-      return std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters),
-                                                             1);
+      auto strategy =
+          std::make_unique<TwoIndexNonUniqueJoinStrategy>(std::move(iters));
+      strategy.get()->reset({});
+      return strategy;
     }
   }
 };
@@ -411,10 +419,15 @@ TEST_P(GenericIndexMerger, one_iterator_corner_case) {
 
   std::vector<Desc> iters;
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
   // cannot be executed with the two indices join strategy (checked and
   // asserted). Therefore, only tested in the generic case.
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -450,8 +463,13 @@ TEST_P(GenericIndexMerger, three_iterators) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;
@@ -487,8 +505,13 @@ TEST_P(GenericIndexMerger, three_iterators_2) {
   iters.emplace_back(std::make_unique<MyVectorIterator>(a), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(b), 0, isUnique);
   iters.emplace_back(std::make_unique<MyVectorIterator>(c), 0, isUnique);
+  for (auto& desc : iters) {
+    desc.numKeyComponents = 1;
+    desc.numConstants = 0;
+  }
 
-  GenericJoinStrategy merger{std::move(iters), 1};
+  GenericJoinStrategy merger{std::move(iters)};
+  merger.reset({});
 
   bool hasMore = true;
   std::size_t count = 0;

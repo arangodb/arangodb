@@ -298,6 +298,8 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                                            ResolvedPromiseSet> {
                           auto guarded = self->acquireMutex();
                           if (!guarded->_didResign) {
+                            // TODO: This can throw when we register the
+                            // Callback
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
                                 currentLITK, currentTerm, std::move(res),
@@ -336,7 +338,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-    ParticipantId id, LogTerm term, LoggerContext const& logContext,
+    ParticipantId const id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
@@ -425,14 +427,21 @@ auto replicated_log::LogLeader::construct(
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), options, std::move(id), term,
-      firstIndexOfCurrentTerm, std::move(stateHandle), followerFactory,
-      scheduler, rebootIdCache);
+      std::move(logMetrics), options, id, term, firstIndexOfCurrentTerm,
+      std::move(stateHandle), followerFactory, scheduler, rebootIdCache);
 
   auto compactionManager = std::make_shared<CompactionManager>(
       *storageManager, options,
       commonLogContext.with<logContextKeyLogComponent>(
           "local-compaction-manager"));
+  if (!participants.contains(id)) [[unlikely]] {
+    LOG_CTX("aa777", ERR, logContext)
+        << "Leader not in participants list. Please report this error to "
+           "arangodb.com! Leader is "
+        << id << ", Log participants configuration is: " << *participantsConfig;
+    basics::abortOrThrow(TRI_ERROR_INTERNAL, "Leader not in participants list",
+                         ADB_HERE);
+  }
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -970,16 +979,22 @@ void replicated_log::LogLeader::GuardedLeaderData::
     registerSafeRebootIdUpdateCallbackFor(
         std::shared_ptr<replicated_log::LogLeader::FollowerInfo> follower,
         PeerState peerState) {
-  auto ss = std::stringstream{};
-  ss << follower->logContext;
-  ss << " ";
-  auto description =
-      fmt::format("{} Trigger update of safe reboot id", ss.str());
+  // TODO this may fail if server is removed from the cluster
+  try {
+    auto ss = std::stringstream{};
+    ss << follower->logContext;
+    ss << " ";
+    auto description =
+        fmt::format("{} Trigger update of safe reboot id", ss.str());
 
-  auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
-  follower->rebootIdCallbackGuard =
-      _self._rebootIdCache->registerCallbackOnChange(
-          std::move(peerState), std::move(callback), std::move(description));
+    auto callback = createSafeRebootIdUpdateCallback(follower->logContext);
+    follower->rebootIdCallbackGuard =
+        _self._rebootIdCache->registerCallbackOnChange(
+            std::move(peerState), std::move(callback), std::move(description));
+  } catch (...) {
+    LOG_CTX("2b8c6", INFO, follower->logContext)
+        << "Failed to register callback - follower is gone from Health.";
+  }
 }
 
 void replicated_log::LogLeader::GuardedLeaderData::
@@ -1222,6 +1237,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
   result.syncIndex = _self._storageManager->getSyncIndex();
+  result.lowestIndexToKeep = lowestIndexToKeep;
   return result;
 }
 

@@ -35,10 +35,10 @@ MockTypedNode::MockTypedNode(ExecutionPlan* plan, ExecutionNodeId id,
                              NodeType type)
     : ExecutionNode(plan, id), _mockedType(type) {}
 
-ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                    bool withProperties) const {
+ExecutionNode* MockTypedNode::clone(ExecutionPlan* plan,
+                                    bool withDependencies) const {
   return cloneHelper(std::make_unique<MockTypedNode>(plan, _id, _mockedType),
-                     withDependencies, withProperties);
+                     withDependencies);
 }
 
 ::arangodb::aql::CostEstimate MockTypedNode::estimateCost() const {
