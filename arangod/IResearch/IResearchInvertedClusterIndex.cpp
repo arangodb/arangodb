@@ -106,7 +106,7 @@ IResearchDataStore::Stats IResearchInvertedClusterIndex::stats() const {
       "db=\"", getDbName(), "\","
       "index=\"", name(), "\","
       "collection=\"", getCollectionName(), "\",",
-      "indexId=\"", id().id(), "\"");  // clang-format on
+      "index_id=\"", id().id(), "\"");  // clang-format on
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),
