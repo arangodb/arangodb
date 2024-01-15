@@ -681,7 +681,6 @@ exports.getResponsibleServersFromClusterInfo = function (arg) {
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
-  
   const isCluster = require("internal").isCluster();
   
   let res = [];
@@ -869,8 +868,10 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     warnings: extra.warnings,
     profile: extra.profile,
     plan: extra.plan,
-    cached: cursor.cached};
+    cached: cursor.cached
+  };
 };
+
 exports.insertManyDocumentsIntoCollection 
   = function(db, coll, maker, limit, batchSize) {
   // This function uses the asynchronous API of `arangod` to quickly
@@ -924,7 +925,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];

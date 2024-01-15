@@ -36,6 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
+#include "Metrics/CounterBuilder.h"
 #include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
@@ -47,6 +48,7 @@
 #endif
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -56,6 +58,27 @@
 #include <any>
 
 using namespace arangodb;
+
+DECLARE_COUNTER(arangodb_collection_leader_reads_total,
+                "Number of per-collection read requests on leaders");
+DECLARE_COUNTER(arangodb_collection_leader_writes_total,
+                "Number of per-collection write requests on leaders");
+
+namespace {
+template<typename T>
+T getMetric(std::string_view database, std::string_view collection,
+            std::string_view shard, std::string_view user, bool includeUser) {
+  T metric;
+  metric.addLabel("db", database);
+  metric.addLabel("collection", collection);
+  metric.addLabel("shard", shard);
+  if (includeUser) {
+    metric.addLabel("user", user);
+  }
+  return metric;
+}
+
+}  // namespace
 
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
@@ -149,6 +172,59 @@ TransactionState::Cookie::ptr TransactionState::cookie(
 
 std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
   return _counterGuard;
+}
+
+void TransactionState::trackRequest(CollectionNameResolver const& resolver,
+                                    std::string_view database,
+                                    std::string_view shard,
+                                    std::string_view user,
+                                    AccessMode::Type accessMode,
+                                    std::string_view context) {
+  // no tracking performed on coordinators or single servers
+  TRI_ASSERT(isDBServer());
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  auto mode = mf.usageTrackingMode();
+  if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // tracking is turned off
+    return;
+  }
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
+    return;
+  }
+
+  bool includeUser =
+      (mode ==
+       metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser);
+
+  DataSourceId cid = resolver.getCollectionIdLocal(shard);
+  std::string collection = resolver.getCollectionNameCluster(cid);
+
+  if (AccessMode::isRead(accessMode)) {
+    // build metric for reads and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_leader_reads_total>(
+            database, collection, shard, user, includeUser));
+    metric.count();
+  } else {
+    // build metric for writes and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_leader_writes_total>(
+            database, collection, shard, user, includeUser));
+    metric.count();
+  }
+
+  LOG_TOPIC("665e6", TRACE, Logger::FIXME)
+      << "tracking request for database '" << database << "', collection '"
+      << collection << "', shard '" << shard << "', user '" << user
+      << "', mode " << AccessMode::typeString(accessMode)
+      << ", context: " << context;
 }
 
 /// @brief add a collection to a transaction

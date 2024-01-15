@@ -36,9 +36,10 @@
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "RestServer/QueryRegistryFeature.h"
+#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
@@ -96,7 +97,8 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
+    VPackSlice snippets, VPackSlice traverserSlice, std::string_view user,
+    VPackBuilder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
@@ -169,6 +171,15 @@ void ClusterQuery::prepareClusterQuery(
         RandomGenerator::interval(uint32_t(100)) >= 95) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    _collections.visit(
+        [&](std::string const&, aql::Collection const& c) -> bool {
+          _trx->state()->trackRequest(*_trx->resolver(), _vocbase.name(),
+                                      c.name(), user, c.accessType(), "aql");
+          return true;
+        });
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);

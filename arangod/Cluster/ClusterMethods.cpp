@@ -1558,6 +1558,12 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
+    if (!ExecContext::current().user().empty()) {
+      // send name of current user, if set. note that we cannot send
+      // empty URL parameters with our networking tools right now.
+      reqOpts.param("user", ExecContext::current().user());
+    }
+
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
@@ -1702,6 +1708,12 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                   (options.refillIndexCaches == RefillIndexCaches::kRefill)
                       ? "true"
                       : "false");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   bool const isManaged =
@@ -1880,6 +1892,11 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
+  }
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1973,6 +1990,12 @@ Future<OperationResult> getDocumentOnCoordinator(
     reqOpts.param(StaticStrings::SilentString,
                   options.silent ? "true" : "false");
     reqOpts.param("onlyget", "true");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   if (canUseFastPath) {
@@ -2548,6 +2571,12 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   }
   if (options.returnOld) {
     reqOpts.param(StaticStrings::ReturnOldString, "true");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   bool isManaged =
