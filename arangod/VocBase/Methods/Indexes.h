@@ -41,6 +41,7 @@ class Future;
 }
 class LogicalCollection;
 class CollectionNameResolver;
+class SingleCollectionTransaction;
 namespace methods {
 
 /// Common code for ensureIndexes and api-index.js
@@ -68,6 +69,13 @@ struct Indexes {
 
   static futures::Future<arangodb::Result> drop(LogicalCollection& collection,
                                                 velocypack::Slice indexArg);
+
+  static futures::Future<
+      ResultT<std::pair<std::unique_ptr<SingleCollectionTransaction>, IndexId>>>
+  acquireLockForDropAndCheckPreconditions(LogicalCollection& collection,
+                                          velocypack::Slice indexArg);
+  static arangodb::Result dropUncheckedWithoutLock(
+      LogicalCollection& collection, IndexId indexId);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,
