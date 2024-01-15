@@ -30,6 +30,7 @@
 #include "Containers/MerkleTree.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
+#include "Scheduler/FutureLock.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -195,16 +196,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
 
-  struct SchedulerWrapper {
-    using WorkHandle = Scheduler::WorkHandle;
-    template<typename F>
-    void queue(F&&);
-    template<typename F>
-    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
-  };
-
   SchedulerWrapper _schedulerWrapper;
-  using FutureLock = arangodb::futures::FutureSharedLock<SchedulerWrapper>;
   mutable FutureLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;

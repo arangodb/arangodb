@@ -93,19 +93,6 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
   _engine.addCollectionMapping(_objectId, _logicalCollection.vocbase().id(),
                                _logicalCollection.id());
 }
-template<typename F>
-void RocksDBMetaCollection::SchedulerWrapper::queue(F&& fn) {
-  SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
-                                     std::forward<F>(fn));
-}
-template<typename F>
-RocksDBMetaCollection::SchedulerWrapper::WorkHandle
-RocksDBMetaCollection::SchedulerWrapper::queueDelayed(
-    F&& fn, std::chrono::milliseconds timeout) {
-  return SchedulerFeature::SCHEDULER->queueDelayed(
-      "rocksdb-meta-collection-lock-timeout", RequestLane::CLUSTER_INTERNAL,
-      timeout, std::forward<F>(fn));
-}
 
 RocksDBMetaCollection::~RocksDBMetaCollection() { freeMemory(); }
 
