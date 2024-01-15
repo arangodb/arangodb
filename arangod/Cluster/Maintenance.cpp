@@ -87,8 +87,7 @@ static std::string_view const EDGE("edge");
 
 namespace {
 bool isViewIndex(std::string_view indexType) noexcept {
-  return indexType == iresearch::StaticStrings::ViewArangoSearchType ||
-         indexType == iresearch::IRESEARCH_INVERTED_INDEX_TYPE;
+  return indexType == iresearch::StaticStrings::ViewArangoSearchType;
 }
 };  // namespace
 
