@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.18.0-preview-2.
+
 * APM-828: Per collection/database/user monitoring.
 
   This adds optional metrics for tracking per-shard requests on DB-Servers.
