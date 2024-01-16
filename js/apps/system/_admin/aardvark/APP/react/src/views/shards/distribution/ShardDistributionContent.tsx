@@ -1,6 +1,7 @@
 import {
   Box,
   Flex,
+  Grid,
   Heading,
   Spinner,
   Stack,
@@ -81,16 +82,12 @@ const renderCustomizedLabel = ({
   midAngle,
   innerRadius,
   outerRadius,
-  percent,
-  name, ...rest
+  percent
 }: any) => {
   const RADIAN = Math.PI / 180;
   const radius = 25 + innerRadius + (outerRadius - innerRadius);
   const x = cx + radius * Math.cos(-midAngle * RADIAN);
   const y = cy + radius * Math.sin(-midAngle * RADIAN);
-  console.log({
-    percent, name, rest
-  })
   return (
     <text
       x={x}
@@ -116,36 +113,46 @@ const ShardDistributionCharts = ({
 
   return (
     <Stack gap="4">
-      <Stack direction="row" alignItems="center" justifyContent="space-around">
-        <Stat>
+      <Grid gap="2" templateColumns="1fr 1fr 1fr 1fr">
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
+            {statistics.total.databases}
+          </StatNumber>
           <StatLabel>Databases</StatLabel>
-          <StatNumber>{statistics.total.databases}</StatNumber>
         </Stat>
-        <Stat>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
+            {statistics.total.collections}
+          </StatNumber>
           <StatLabel>Collections</StatLabel>
-          <StatNumber>{statistics.total.collections}</StatNumber>
         </Stat>
-        <Stat>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">{statistics.total.shards}</StatNumber>
           <StatLabel>Total Shards</StatLabel>
-          <StatNumber>{statistics.total.shards}</StatNumber>
         </Stat>
-        <Stat>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">{statistics.total.servers}</StatNumber>
           <StatLabel>DB Servers with Shards</StatLabel>
-          <StatNumber>{statistics.total.servers}</StatNumber>
         </Stat>
-        <Stat>
+      </Grid>
+      <Grid gap="2" templateColumns="1fr 1fr 1fr 1fr">
+        <Stat gap="2">
+          <StatNumber lineHeight="base">{statistics.total.leaders}</StatNumber>
           <StatLabel>Leader Shards</StatLabel>
-          <StatNumber>{statistics.total.leaders}</StatNumber>
         </Stat>
-        <Stat>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
+            {statistics.total.realLeaders}
+          </StatNumber>
           <StatLabel>Shard Group Leader Shards</StatLabel>
-          <StatNumber>{statistics.total.realLeaders}</StatNumber>
         </Stat>
-        <Stat>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
+            {statistics.total.followers}
+          </StatNumber>
           <StatLabel>Follower Shards</StatLabel>
-          <StatNumber>{statistics.total.followers}</StatNumber>
         </Stat>
-      </Stack>
+      </Grid>
 
       <Text fontSize={"lg"}>Shard distribution</Text>
 
@@ -182,7 +189,6 @@ const ShardDistributionCharts = ({
               dataKey="data"
               nameKey="label"
               label={renderCustomizedLabel}
-
             >
               {statistics.leaders?.map(({ label }, i) => (
                 <Cell key={label} fill={colors[i % colors.length]} />
@@ -201,7 +207,6 @@ const ShardDistributionCharts = ({
               dataKey="data"
               nameKey="label"
               label={renderCustomizedLabel}
-
             >
               {statistics.followers.map(({ label }, i) => (
                 <Cell key={label} fill={colors[i % colors.length]} />
