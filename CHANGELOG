@@ -1,6 +1,8 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* FE-385: fix query import.
+
 * BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
 
 * Removal artificial upper bound value of `128` for the startup option
