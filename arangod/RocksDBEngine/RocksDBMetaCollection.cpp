@@ -1675,6 +1675,9 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       // keep the lock and exit
       return TRI_ERROR_NO_ERROR;
     }
+
+    timeout_us -= detachThreshold;
+
     LOG_TOPIC("dd231", INFO, Logger::THREADS)
         << "Did not get lock within 1 seconds, detaching scheduler thread.";
     uint64_t currentNumberDetached = 0;
@@ -1691,8 +1694,6 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
              "blockages!";
     }
   }
-
-  timeout_us -= detachThreshold;
 
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);
