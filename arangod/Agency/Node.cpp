@@ -64,8 +64,6 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb;
 
-const Node::Children Node::dummyChildren = Node::Children();
-
 /// @brief Split strings by forward slashes, omitting empty strings,
 /// and ignoring multiple subsequent forward slashes
 std::vector<std::string> Node::split(std::string_view str) {
@@ -682,6 +680,7 @@ Node::Children const& Node::children() const {
   if (auto children = std::get_if<Children>(&_value); children) {
     return *children;
   }
+  static Node::Children dummyChildren{};
   return dummyChildren;
 }
 
