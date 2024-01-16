@@ -1,43 +1,40 @@
 import { getAdminRouteForCurrentDB } from "../../../utils/arangoClient";
 import useSWR from "swr";
 
+type CommonHealthType = {
+  CanBeDeleted: boolean;
+  Endpoint: string;
+  Engine: "rocksdb";
+  Leader: string;
+  Status: string;
+  Version: string;
+};
+
+type AgentHealthType = CommonHealthType & {
+  Host?: undefined;
+  LastAckedTime: number;
+  Leading: boolean;
+  Role: "Agent";
+  ShortName?: undefined;
+  SyncStatus?: undefined;
+  SyncTime?: undefined;
+  Timestamp?: undefined;
+};
+
+type CoordinatorOrDBServerHealthType = CommonHealthType & {
+  Host: string;
+  LastAckedTime: string;
+  Leading?: undefined;
+  Role: "Coordinator" | "DBServer";
+  ShortName: string;
+  SyncStatus: string;
+  SyncTime: string;
+  Timestamp: string;
+};
+
 export type ClusterHealth = {
   ClusterId: string;
-  Health: Record<
-    string,
-    | {
-        CanBeDeleted: boolean;
-        Endpoint: string;
-        Engine: "rocksdb";
-        Host?: undefined;
-        LastAckedTime: number;
-        Leader: string;
-        Leading: boolean;
-        Role: "Agent";
-        ShortName?: undefined;
-        Status: string;
-        SyncStatus?: undefined;
-        SyncTime?: undefined;
-        Timestamp?: undefined;
-        Version: string;
-      }
-    | {
-        CanBeDeleted: boolean;
-        Endpoint: string;
-        Engine: "rocksdb";
-        Host: string;
-        LastAckedTime: string;
-        Leader: string;
-        Leading?: undefined;
-        Role: "Coordinator" | "DBServer";
-        ShortName: string;
-        Status: string;
-        SyncStatus: string;
-        SyncTime: string;
-        Timestamp: string;
-        Version: string;
-      }
-  >;
+  Health: Record<string, AgentHealthType | CoordinatorOrDBServerHealthType>;
 };
 
 export const useFetchClusterHealth = () => {
