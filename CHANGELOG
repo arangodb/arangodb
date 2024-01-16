@@ -1,6 +1,9 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* BTS-1731: protect streaming transaction garbage-collection from deletion of
+  the transaction's underlying database.
+
 * BTS-1727: Return proper EXIT_UPGRADE_REQUIRED in cluster mode.
 
 * Removal artificial upper bound value of `128` for the startup option
