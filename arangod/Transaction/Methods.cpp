@@ -1682,7 +1682,18 @@ bool transaction::Methods::removeStatusChangeCallback(
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
+  TRI_ASSERT(_state);
   return _state->vocbase();
+}
+
+void transaction::Methods::setUsername(std::string_view name) {
+  TRI_ASSERT(_state);
+  _state->setUsername(name);
+}
+
+std::string_view transaction::Methods::username() const noexcept {
+  TRI_ASSERT(_state);
+  return _state->username();
 }
 
 // is this instance responsible for commit / abort
@@ -1697,11 +1708,13 @@ void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const noexcept {
+  TRI_ASSERT(_state);
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
 transaction::Status transaction::Methods::status() const noexcept {
+  TRI_ASSERT(_state);
   return _state->status();
 }
 
@@ -2808,6 +2821,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::Compact,
                     (options.truncateCompact ? "true" : "false"));
+      network::addUserParameter(reqOpts, username());
 
       for (auto const& f : *followers) {
         // check following term id for the follower:
@@ -2823,8 +2837,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
                         ServerState::instance()->getId());
         } else {
           reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                        ServerState::instance()->getId() + "_" +
-                            basics::StringUtils::itoa(followingTermId));
+                        absl::StrCat(ServerState::instance()->getId(), "_",
+                                     followingTermId));
         }
         // reqOpts is copied deep in sendRequestRetry, so we are OK to
         // change it in the loop!
@@ -3338,8 +3352,11 @@ Future<Result> Methods::replicateOperations(
   reqOpts.param(StaticStrings::RefillIndexCachesString,
                 refill ? "true" : "false");
 
-  std::string url = "/_api/document/";
-  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
+  network::addUserParameter(reqOpts, username());
+
+  std::string url = absl::StrCat(
+      "/_api/document/",
+      arangodb::basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3433,9 +3450,9 @@ Future<Result> Methods::replicateOperations(
       reqOpts.param(StaticStrings::IsSynchronousReplicationString,
                     ServerState::instance()->getId());
     } else {
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                    ServerState::instance()->getId() + "_" +
-                        basics::StringUtils::itoa(followingTermId));
+      reqOpts.param(
+          StaticStrings::IsSynchronousReplicationString,
+          absl::StrCat(ServerState::instance()->getId(), "_", followingTermId));
     }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!

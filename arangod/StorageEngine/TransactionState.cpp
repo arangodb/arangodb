@@ -63,8 +63,15 @@ DECLARE_COUNTER(arangodb_collection_leader_reads_total,
                 "Number of per-collection read requests on leaders");
 DECLARE_COUNTER(arangodb_collection_leader_writes_total,
                 "Number of per-collection write requests on leaders");
+DECLARE_COUNTER(arangodb_collection_requests_bytes_read_total,
+                "Number of per-collection bytes read on leaders and followers");
+DECLARE_COUNTER(
+    arangodb_collection_requests_bytes_written_total,
+    "Number of per-collection bytes written on leaders and followers");
 
 namespace {
+// build a dynamic shard-access metric with database/collection/shard,
+// and an optional user component.
 template<typename T>
 T getMetric(std::string_view database, std::string_view collection,
             std::string_view shard, std::string_view user, bool includeUser) {
@@ -174,14 +181,16 @@ std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
   return _counterGuard;
 }
 
-void TransactionState::trackRequest(CollectionNameResolver const& resolver,
-                                    std::string_view database,
-                                    std::string_view shard,
-                                    std::string_view user,
-                                    AccessMode::Type accessMode,
-                                    std::string_view context) {
+void TransactionState::trackShardRequest(CollectionNameResolver const& resolver,
+                                         std::string_view database,
+                                         std::string_view shard,
+                                         std::string_view user,
+                                         AccessMode::Type accessMode,
+                                         std::string_view context) {
   // no tracking performed on coordinators or single servers
-  TRI_ASSERT(isDBServer());
+  if (!isDBServer()) {
+    return;
+  }
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 
@@ -189,7 +198,7 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
 
   auto mode = mf.usageTrackingMode();
   if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
-    // tracking is turned off
+    // tracking is turned off. this is the default setting.
     return;
   }
 
@@ -225,6 +234,69 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
       << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
       << ", context: " << context;
+}
+
+void TransactionState::trackShardUsage(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context, size_t nBytes) {
+  // no tracking performed on coordinators or single servers
+  if (!isDBServer()) {
+    return;
+  }
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  auto mode = mf.usageTrackingMode();
+  if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // tracking is turned off. this is the default setting.
+    return;
+  }
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
+    return;
+  }
+
+  bool includeUser =
+      (mode ==
+       metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser);
+
+  DataSourceId cid = resolver.getCollectionIdLocal(shard);
+  std::string collection = resolver.getCollectionNameCluster(cid);
+
+  if (AccessMode::isRead(accessMode)) {
+    // build metric for reads and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_requests_bytes_read_total>(
+            database, collection, shard, user, includeUser));
+    metric.count(nBytes);
+  } else {
+    // build metric for writes and increase it
+    auto& metric = mf.addDynamic(
+        getMetric<arangodb_collection_requests_bytes_written_total>(
+            database, collection, shard, user, includeUser));
+    metric.count(nBytes);
+  }
+
+  LOG_TOPIC("d3599", ERR, Logger::FIXME)
+      << "tracking access for database '" << database << "', collection '"
+      << /*collection <<*/ "', shard '" << shard << "', user '" << user
+      << "', mode " << AccessMode::typeString(accessMode)
+      << ", nbytes: " << nBytes;
+}
+
+void TransactionState::setUsername(std::string_view name) {
+  if (!name.empty() && _username.empty()) {
+    _username = std::string{name};
+  }
+}
+
+std::string_view TransactionState::username() const noexcept {
+  return _username;
 }
 
 /// @brief add a collection to a transaction

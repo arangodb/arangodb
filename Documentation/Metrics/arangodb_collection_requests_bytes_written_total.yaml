@@ -1,0 +1,37 @@
+name: arangodb_collection_requests_bytes_written_total
+introducedIn: "3.12.0"
+help: |
+  Number of bytes written in write requests on leaders and followers.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  This metric exposes the per-shard number of bytes written by write operation
+  requests on DB-Servers, on both leaders and followers.
+  It is increased by AQL queries and single-/multi-document write operations.
+  The metric is first increased only the leader, but for every replication request
+  to followers it is also increased on followers.
+  
+  For every write operation, the metric will be increased by the approximate 
+  number of bytes written for the document or edge in question. 
+  If an operation writes multiple documents/edges, it will increase the counter
+  multiple times, each time with the approximate number of bytes written for the
+  particular document/edge.
+
+  An AQL query will also increase the counter for every document or edge written,
+  each time with the approximate number of bytes written for document/edge.
+  
+  The numbers reported by this metric normally relate to the cumulated sizes of
+  documents/edges written.
+  The metric is also increased for transactions that are started but later
+  aborted.
+
+  This metric is not exposed by default. It is only present if the startup option 
+  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or
+  `enabled-per-shard-per-user`. With the former setting, the metric will have
+  different labels for each shard that was read from. With the latter setting,
+  the metric will have different labels for each combination of shard and user
+  that accessed the shard.
