@@ -67,6 +67,7 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 struct ResourceMonitor;
 
 namespace transaction {
@@ -358,6 +359,11 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void coordinatorRerollTransactionId();
 
   std::shared_ptr<transaction::CounterGuard> counterGuard();
+
+  virtual void trackRequest(CollectionNameResolver const& resolver,
+                            std::string_view database, std::string_view shard,
+                            std::string_view user, AccessMode::Type accessMode,
+                            std::string_view context);
 
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(

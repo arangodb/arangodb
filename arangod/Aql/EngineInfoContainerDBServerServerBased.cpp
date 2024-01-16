@@ -39,6 +39,7 @@
 #include "Transaction/Manager.h"
 #include "Transaction/Methods.h"
 #include "Utils/CollectionNameResolver.h"
+#include "Utils/ExecContext.h"
 
 #include <velocypack/Collection.h>
 
@@ -356,6 +357,11 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    options.param("user", ExecContext::current().user());
+  }
 
   TRI_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(

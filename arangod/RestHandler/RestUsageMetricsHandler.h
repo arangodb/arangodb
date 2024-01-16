@@ -1,7 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,43 +18,29 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Kaveh Vahedipour
-/// @author Matthew Von-Maszewski
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "ActionBase.h"
-#include "ActionDescription.h"
-#include "VocBase/Methods/Indexes.h"
+#include "RestHandler/RestBaseHandler.h"
 
-#include <chrono>
-
-struct TRI_vocbase_t;
+#include <string>
 
 namespace arangodb {
-class LogicalCollection;
 
-namespace maintenance {
-
-class EnsureIndex : public ActionBase {
+class RestUsageMetricsHandler : public arangodb::RestBaseHandler {
  public:
-  EnsureIndex(MaintenanceFeature&, ActionDescription const& d);
+  RestUsageMetricsHandler(ArangodServer&, GeneralRequest*, GeneralResponse*);
 
-  virtual ~EnsureIndex();
-
-  void setState(ActionState state) override final;
-  virtual arangodb::Result setProgress(double d) override final;
-  virtual bool first() override final;
-
-  static void indexCreationLogging(VPackSlice index);
+  char const* name() const final { return "RestUsageMetricsHandler"; }
+  /// @brief must be on fast lane so that metrics can always be retrieved,
+  /// even from otherwise totally busy servers
+  RequestLane lane() const final { return RequestLane::CLIENT_FAST; }
+  RestStatus execute() final;
 
  private:
-  static auto ensureIndexReplication2(
-      std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
-      -> Result;
+  RestStatus makeRedirection(std::string const& serverId);
 };
 
-}  // namespace maintenance
 }  // namespace arangodb
