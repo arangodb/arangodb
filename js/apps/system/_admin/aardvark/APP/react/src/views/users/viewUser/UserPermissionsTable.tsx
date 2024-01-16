@@ -1,7 +1,7 @@
 import { Stack } from "@chakra-ui/react";
 import React from "react";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import {
   CollectionsPermissionsTable,
   DatabaseTableType
@@ -27,9 +27,10 @@ const UserPermissionsTableInner = () => {
   return (
     <Stack padding="4">
       <SystemDatabaseWarningModal />
-      <FiltersList<DatabaseTableType>
+      <TableControl<DatabaseTableType>
         columns={TABLE_COLUMNS}
         table={tableInstance}
+        showColumnSelector={false}
       />
       <ReactTable<DatabaseTableType>
         tableWidth="auto"
