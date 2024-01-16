@@ -317,9 +317,7 @@ void V8ShellFeature::copyInstallationFiles() {
 
   auto filterPath = [](std::string_view normalizedPath,
                        std::string_view filterPath) -> bool {
-    return (!filterPath.empty() && normalizedPath.size() >= filterPath.size() &&
-            normalizedPath.substr(normalizedPath.size() - filterPath.size(),
-                                  filterPath.size()) == filterPath);
+    return !filterPath.empty() && normalizedPath.ends_with(filterPath);
   };
 
   auto filter = [&filterPath, &nodeModulesPath, &nodeModulesPathVersioned,
