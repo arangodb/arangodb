@@ -74,7 +74,7 @@
         this.activeUser = 'root';
       }
 
-      if (response.user === self.activeUser) {
+      if (response.user === window.App.currentUser) {
         try {
           if (response.extra.queries) {
             toReturn = response.extra.queries;
@@ -83,7 +83,7 @@
       } else {
         if (response.result && response.result instanceof Array) {
           _.each(response.result, function (userobj) {
-            if (userobj.user === self.activeUser) {
+            if (userobj.user === window.App.currentUser) {
               toReturn = userobj.extra.queries;
             }
           });
@@ -123,7 +123,7 @@
         $.ajax({
           cache: false,
           type: 'PATCH',
-          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(this.activeUser)),
+          url: arangoHelper.databaseUrl('/_api/user/' + encodeURIComponent(window.App.currentUser)),
           data: JSON.stringify({
             extra: {
               queries: queries
@@ -152,8 +152,8 @@
         return false;
       }
 
+      var reader = new FileReader();
       if (frontendConfig.ldapEnabled) {
-        var reader = new FileReader();
         if (file) {
           reader.readAsText(file, 'UTF-8');
           reader.onload = function (evt) {
@@ -185,36 +185,41 @@
       } else {
         reader.readAsText(file);
         reader.onload = async () => {
-          var data = reader.result;
-          if (typeof data !== "string") {
-            return;
-          }
-          var queries = JSON.parse(data);
-          var sanitizedQueries = queries.map((query) => {
-            return {
-              name: query.name,
-              value: query.value,
-              parameter: query.parameter
-            };
-          });
-          window.progressView.show('Fetching documents...');
-          $.ajax({
-            cache: false,
-            type: 'POST',
-            url: 'query/upload/' + encodeURIComponent(this.activeUser),
-            data: JSON.stringify(sanitizedQueries),
-            contentType: 'application/json',
-            processData: false,
-            success: function () {
-              window.progressView.hide();
-              arangoHelper.arangoNotification('Queries successfully imported.');
-              callback();
-            },
-            error: function (error) {
-              window.progressView.hide();
-              arangoHelper.arangoError('Query error', 'queries could not be imported');
+          try {
+            var data = reader.result;
+            if (typeof data !== "string") {
+              return;
             }
-          });
+            var queries = JSON.parse(data);
+            var sanitizedQueries = queries.map((query) => {
+              return {
+                name: query.name,
+                value: query.value,
+                parameter: query.parameter
+              };
+            });
+            window.progressView.show('Fetching documents...');
+            $.ajax({
+              cache: false,
+              type: 'POST',
+              url: arangoHelper.databaseUrl('/_admin/aardvark/query/upload/' + encodeURIComponent(window.App.currentUser)),
+              data: JSON.stringify(sanitizedQueries),
+              contentType: 'application/json',
+              processData: false,
+              success: function () {
+                window.progressView.hide();
+                arangoHelper.arangoNotification('Queries successfully imported.');
+                callback();
+              },
+              error: function (error) {
+                window.progressView.hide();
+                arangoHelper.arangoError('Query error', 'Queries could not be imported');
+              }
+            });
+          } catch (e) {
+            arangoHelper.arangoError('Query error', 'Queries could not be imported');
+            window.progressView.hide();
+          }
         };
       }
     }
