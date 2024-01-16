@@ -1,8 +1,10 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { AddIcon } from "@chakra-ui/icons";
+import { Button, Flex, Heading, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useCollectionsContext } from "../CollectionsContext";
 import { STATUS_TO_LABEL_MAP, TYPE_TO_LABEL_MAP } from "../CollectionsHelpers";
@@ -72,7 +74,11 @@ const TABLE_COLUMNS = [
   )
 ];
 
-export const CollectionsTable = () => {
+export const CollectionsTable = ({
+  onAddCollectionClick
+}: {
+  onAddCollectionClick: () => void;
+}) => {
   const { collections } = useCollectionsContext();
   const tableInstance = useSortableReactTable<LockableCollectionDescription>({
     data: collections || [],
@@ -91,15 +97,43 @@ export const CollectionsTable = () => {
     ]
   });
   return (
-    <Stack>
-      <FiltersList<LockableCollectionDescription>
-        columns={TABLE_COLUMNS}
-        table={tableInstance}
-      />
+    <Flex direction="column" gap="2">
+      <Flex direction="column" gap="4">
+        <CollectionTableHeader onAddCollectionClick={onAddCollectionClick} />
+        <Flex gap="4">
+          <FiltersList<LockableCollectionDescription>
+            columns={TABLE_COLUMNS}
+            table={tableInstance}
+          />
+          <TableControl<LockableCollectionDescription>
+            table={tableInstance}
+            columns={TABLE_COLUMNS}
+          />
+        </Flex>
+      </Flex>
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}
         emptyStateMessage="No collections found"
       />
-    </Stack>
+    </Flex>
+  );
+};
+const CollectionTableHeader = ({
+  onAddCollectionClick
+}: {
+  onAddCollectionClick: () => void;
+}) => {
+  return (
+    <Flex direction="row" gap="2" alignItems="center">
+      <Heading size="lg">Collections</Heading>
+      <Button
+        size="sm"
+        leftIcon={<AddIcon />}
+        colorScheme="green"
+        onClick={onAddCollectionClick}
+      >
+        Add collection
+      </Button>
+    </Flex>
   );
 };

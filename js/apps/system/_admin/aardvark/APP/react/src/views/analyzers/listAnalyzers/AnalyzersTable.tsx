@@ -1,10 +1,11 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Flex, Link, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import { GenericAnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
 import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
@@ -95,10 +96,16 @@ export const AnalyzersTable = () => {
   const history = useHistory();
   return (
     <Stack>
-      <FiltersList<AnalyzerDataType>
-        columns={TABLE_COLUMNS}
-        table={tableInstance}
-      />
+      <Flex gap="4">
+        <FiltersList<AnalyzerDataType>
+          columns={TABLE_COLUMNS}
+          table={tableInstance}
+        />
+        <TableControl<AnalyzerDataType>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
+      </Flex>
       <ReactTable<AnalyzerDataType>
         table={tableInstance}
         emptyStateMessage="No analyzers found"
