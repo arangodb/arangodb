@@ -310,9 +310,8 @@ void V8ShellFeature::copyInstallationFiles() {
       FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename(
       "js", versionAppendix, "node", "node_modules");
-  std::string const uiNodeModulesPath =
-      FileUtils::buildFilename("js", "apps", "system", "_admin", "aardvark",
-                               "APP", "react", "node_modules");
+  std::string const jsAppsPath = FileUtils::buildFilename("js", "apps");
+  std::string const jsActionsPath = FileUtils::buildFilename("js", "actions");
   std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
 
   auto filterPath = [](std::string_view normalizedPath,
@@ -321,7 +320,7 @@ void V8ShellFeature::copyInstallationFiles() {
   };
 
   auto filter = [&filterPath, &nodeModulesPath, &nodeModulesPathVersioned,
-                 &uiNodeModulesPath,
+                 &jsAppsPath, &jsActionsPath,
                  &binRegex](std::string const& filename) -> bool {
     if (std::regex_search(filename, binRegex)) {
       // don't copy files in .bin
@@ -332,7 +331,8 @@ void V8ShellFeature::copyInstallationFiles() {
     FileUtils::normalizePath(normalized);
     if (filterPath(normalized, nodeModulesPath) ||
         filterPath(normalized, nodeModulesPathVersioned) ||
-        filterPath(normalized, uiNodeModulesPath)) {
+        filterPath(normalized, jsAppsPath) ||
+        filterPath(normalized, jsActionsPath)) {
       // filter it out!
       return true;
     }
