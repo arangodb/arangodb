@@ -1,11 +1,5 @@
-import React, { useEffect } from "react";
-import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
 import {
-  ServerShardStatisticsData,
-  useFetchShardStatistics
-} from "./useFetchShardStatistics";
-import d3 from "d3";
-import {
+  Box,
   Flex,
   Heading,
   Spinner,
@@ -15,9 +9,18 @@ import {
   StatNumber,
   Text
 } from "@chakra-ui/react";
-import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { createColumnHelper } from "@tanstack/react-table";
+import d3 from "d3";
+import React from "react";
+import { Cell, Legend, Pie, PieChart, Tooltip } from "recharts";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
+import { RebalanceShards } from "./RebalanceShards";
+import {
+  ServerShardStatisticsData,
+  ShardStatisticsData,
+  useFetchShardStatistics
+} from "./useFetchShardStatistics";
 
 const columnHelper = createColumnHelper<ServerShardStatisticsData>();
 
@@ -56,96 +59,91 @@ const TABLE_COLUMNS = [
 ];
 
 export const ShardDistributionContent = ({
-  refetchToken
+  readOnly
 }: {
-  refetchToken: any;
+  readOnly: boolean;
 }) => {
-  const initialRefetchToken = React.useRef(refetchToken);
-  const colors = d3.scale.category20().range();
   const { data: statistics, mutate } = useFetchShardStatistics();
+  if (!statistics) {
+    return <Spinner />;
+  }
+  return (
+    <Box width="100%" padding="5" background="white">
+      <ShardDistributionCharts statistics={statistics} />
+      {!readOnly && <RebalanceShards refetchStats={() => mutate()} />}
+    </Box>
+  );
+};
+
+const renderCustomizedLabel = ({
+  cx,
+  cy,
+  midAngle,
+  innerRadius,
+  outerRadius,
+  percent,
+  name, ...rest
+}: any) => {
+  const RADIAN = Math.PI / 180;
+  const radius = 25 + innerRadius + (outerRadius - innerRadius);
+  const x = cx + radius * Math.cos(-midAngle * RADIAN);
+  const y = cy + radius * Math.sin(-midAngle * RADIAN);
+  console.log({
+    percent, name, rest
+  })
+  return (
+    <text
+      x={x}
+      y={y}
+      fill="#000000"
+      textAnchor={x > cx ? "start" : "end"}
+      dominantBaseline="central"
+    >
+      {`${(percent * 100).toFixed(0)}%`}
+    </text>
+  );
+};
+const ShardDistributionCharts = ({
+  statistics
+}: {
+  statistics: ShardStatisticsData;
+}) => {
+  const colors = d3.scale.category20().range();
   const tableInstance = useSortableReactTable({
-    data: statistics?.table ?? [],
+    data: statistics.table ?? [],
     columns: TABLE_COLUMNS
   });
-
-  useEffect(() => {
-    if (refetchToken !== initialRefetchToken.current) {
-      mutate();
-    }
-  }, [mutate, refetchToken]);
 
   return (
     <Stack gap="4">
       <Stack direction="row" alignItems="center" justifyContent="space-around">
         <Stat>
           <StatLabel>Databases</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.databases
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.databases}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>Collections</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.collections
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.collections}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>Total Shards</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.shards
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.shards}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>DB Servers with Shards</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.servers
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.servers}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>Leader Shards</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.leaders
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.leaders}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>Shard Group Leader Shards</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.realLeaders
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.realLeaders}</StatNumber>
         </Stat>
         <Stat>
           <StatLabel>Follower Shards</StatLabel>
-          <StatNumber>
-            {statistics ? (
-              statistics.total.followers
-            ) : (
-              <Spinner size={"xs"} marginLeft={1} />
-            )}
-          </StatNumber>
+          <StatNumber>{statistics.total.followers}</StatNumber>
         </Stat>
       </Stack>
 
@@ -162,12 +160,12 @@ export const ShardDistributionContent = ({
           <PieChart width={300} height={300}>
             <Tooltip />
             <Pie
-              data={statistics?.shards ?? []}
+              data={statistics.shards ?? []}
               dataKey="data"
               nameKey="label"
-              label
+              label={renderCustomizedLabel}
             >
-              {statistics?.shards.map(({ label }, i) => (
+              {statistics.shards.map(({ label }, i) => (
                 <Cell key={label} fill={colors[i % colors.length]} />
               ))}
             </Pie>
@@ -180,12 +178,13 @@ export const ShardDistributionContent = ({
           <PieChart width={300} height={300}>
             <Tooltip />
             <Pie
-              data={statistics?.leaders ?? []}
+              data={statistics.leaders ?? []}
               dataKey="data"
               nameKey="label"
-              label
+              label={renderCustomizedLabel}
+
             >
-              {statistics?.leaders.map(({ label }, i) => (
+              {statistics.leaders?.map(({ label }, i) => (
                 <Cell key={label} fill={colors[i % colors.length]} />
               ))}
             </Pie>
@@ -198,12 +197,13 @@ export const ShardDistributionContent = ({
           <PieChart width={300} height={300}>
             <Tooltip />
             <Pie
-              data={statistics?.followers ?? []}
+              data={statistics.followers ?? []}
               dataKey="data"
               nameKey="label"
-              label
+              label={renderCustomizedLabel}
+
             >
-              {statistics?.followers.map(({ label }, i) => (
+              {statistics.followers.map(({ label }, i) => (
                 <Cell key={label} fill={colors[i % colors.length]} />
               ))}
             </Pie>

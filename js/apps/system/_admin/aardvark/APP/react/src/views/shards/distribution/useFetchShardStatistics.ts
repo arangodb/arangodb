@@ -2,7 +2,7 @@ import useSWR from "swr";
 import { getAdminRouteForCurrentDB } from "../../../utils/arangoClient";
 import { ClusterHealth, useFetchClusterHealth } from "./useFetchClusterHealth";
 
-export type ShardStatistics = {
+type ShardStatistics = {
   collections: number;
   databases: number;
   followers: number;
@@ -19,6 +19,14 @@ export type ServerShardStatisticsData = {
   leadersPct: string;
   followersPct: string;
 } & ShardStatistics;
+
+export type ShardStatisticsData = {
+  total: ShardStatistics;
+  table: ServerShardStatisticsData[];
+  shards: { data: number; label: string }[];
+  leaders: { data: number; label: string }[];
+  followers: { data: number; label: string }[];
+};
 
 export const useFetchShardStatistics = () => {
   const clusterHealth = useFetchClusterHealth();
@@ -62,11 +70,11 @@ export const useFetchShardStatistics = () => {
   };
 };
 
-function buildStats(
+const buildStats = (
   globalStatistics: ShardStatistics,
   localStatistics: Record<string, ShardStatistics>,
   clusterHealth: ClusterHealth
-) {
+): ShardStatisticsData => {
   const serverIds = Object.keys(localStatistics)
     .map(id => ({
       id,
@@ -102,7 +110,7 @@ function buildStats(
       label: name
     }))
   };
-}
+};
 
 function toPercent(value: number, total: number): string {
   return `${((value / total) * 100).toFixed(2)} %`;
