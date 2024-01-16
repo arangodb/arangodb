@@ -1,8 +1,7 @@
 import { AddIcon } from "@chakra-ui/icons";
 import {
   Button,
-  Grid,
-  IconButton,
+  Flex,
   Menu,
   MenuButton,
   MenuItem,
@@ -17,17 +16,20 @@ export const FilterBar = <Data extends object>({
   showFilters,
   columns,
   currentFilterColumns,
-  setCurrentFilterColumns
+  setCurrentFilterColumns,
+  appliedFiltersCount,
+  onClear
 }: {
   table: TableType<Data>;
   showFilters: boolean;
   columns: ColumnDef<Data>[];
   currentFilterColumns: (ColumnDef<Data> | undefined)[];
+  appliedFiltersCount: number;
+  onClear: () => void;
   setCurrentFilterColumns: (
     currentFilterColumns: (ColumnDef<Data> | undefined)[]
   ) => void;
 }) => {
-  const isAnyFilterSelected = currentFilterColumns.length > 0;
   if (!showFilters) {
     return null;
   }
@@ -52,56 +54,101 @@ export const FilterBar = <Data extends object>({
     setCurrentFilterColumns(newCurrentFilterColumns);
   };
   return (
-    <Grid
-      gridColumn="1 / span 3"
-      gridTemplateColumns="repeat(auto-fill, minmax(200px, 1fr))"
-      gap="4"
+    <Flex direction="column" gap="4" width="full">
+      <Flex gap="2" direction="column">
+        {currentFilterColumns.map(column => {
+          if (!column || !column.id) {
+            return null;
+          }
+          return (
+            <FilterComponent<Data>
+              column={column}
+              currentFilterColumns={currentFilterColumns}
+              setCurrentFilterColumns={setCurrentFilterColumns}
+              table={table}
+              key={column.id}
+            />
+          );
+        })}
+      </Flex>
+      <Flex alignItems="center" justifyContent="space-between">
+        <AddFilterButton<Data>
+          filterOptions={filterOptions}
+          table={table}
+          addFilter={addFilter}
+        />
+        <ClearButton
+          onClear={onClear}
+          appliedFiltersCount={appliedFiltersCount}
+        />
+      </Flex>
+    </Flex>
+  );
+};
+const ClearButton = ({
+  onClear,
+  appliedFiltersCount
+}: {
+  onClear: () => void;
+  appliedFiltersCount: number;
+}) => {
+  if (appliedFiltersCount === 0) {
+    return null;
+  }
+  return (
+    <Button
+      textTransform="uppercase"
+      onClick={() => {
+        onClear();
+      }}
+      variant="ghost"
+      size="xs"
+      colorScheme="blue"
     >
-      {currentFilterColumns.map(column => {
-        if (!column || !column.id) {
-          return null;
-        }
+      Clear
+    </Button>
+  );
+};
 
-        return (
-          <FilterComponent<Data>
-            column={column}
-            currentFilterColumns={currentFilterColumns}
-            setCurrentFilterColumns={setCurrentFilterColumns}
-            table={table}
-            key={column.id}
-          />
-        );
-      })}
-      {filterOptions.length > 0 && (
-        <Menu>
-          <MenuButton
-            as={isAnyFilterSelected ? IconButton : Button}
-            size="xs"
-            height="30px"
-            alignSelf={"flex-end"}
-            marginBottom="1"
-            leftIcon={isAnyFilterSelected ? undefined : <AddIcon />}
-            icon={isAnyFilterSelected ? <AddIcon /> : undefined}
-            aria-label={"Add filter"}
-            width="fit-content"
-          >
-            {isAnyFilterSelected ? "" : "Add filter"}
-          </MenuButton>
-          <MenuList>
-            {filterOptions.map(filter => {
-              const column = filter.id && table.getColumn(filter.id);
-              if (!column || !column.getCanFilter()) {
-                return null;
-              }
-              return (
-                <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
-                  {filter.header}
-                </MenuItem>
-              );
-            })}
-          </MenuList>
-        </Menu>
-      )}
-    </Grid>
+const AddFilterButton = <Data extends object>({
+  filterOptions,
+  table,
+  addFilter
+}: {
+  filterOptions: ColumnDef<Data, unknown>[];
+  table: TableType<Data>;
+  addFilter: (filter: ColumnDef<Data, unknown>) => void;
+}) => {
+  if (filterOptions.length === 0) {
+    return null;
+  }
+  return (
+    <Menu>
+      <MenuButton
+        as={Button}
+        size="xs"
+        height="30px"
+        alignSelf={"flex-end"}
+        marginBottom="1"
+        leftIcon={<AddIcon />}
+        aria-label={"Add filter"}
+        width="fit-content"
+      >
+        Add filter
+      </MenuButton>
+      <MenuList>
+        {filterOptions.map(filter => {
+          const column = filter.id && table.getColumn(filter.id);
+          if (!column || !column.getCanFilter()) {
+            return null;
+          }
+          return (
+            <MenuItem onClick={() => addFilter(filter)} key={filter.id}>
+              {filter.header}
+            </MenuItem>
+          );
+        })}
+      </MenuList>
+    </Menu>
   );
 };

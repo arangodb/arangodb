@@ -933,13 +933,15 @@ struct TransactionBuilder {
   }
 
   void operator()(UpdateCollectionGroupInPlan const& action) {
-    auto write = env.write().emplace_object(
-        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
-                                     "/", action.id.id(),
-                                     "/attributes/mutable"),
-        [&](VPackBuilder& builder) {
-          velocypack::serialize(builder, action.spec);
-        });
+    auto write =
+        env.write()
+            .emplace_object(basics::StringUtils::concatT(
+                                "/arango/Plan/CollectionGroups/", database, "/",
+                                action.id.id(), "/attributes/mutable"),
+                            [&](VPackBuilder& builder) {
+                              velocypack::serialize(builder, action.spec);
+                            })
+            .inc("/arango/Plan/Version");
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))
