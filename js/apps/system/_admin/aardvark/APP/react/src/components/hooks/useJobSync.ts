@@ -32,6 +32,10 @@ export const useJobSync = ({
 
       const onJobError = (error: any, jobId: string) => {
         const statusCode = error?.response?.body?.code;
+        const message = error.message;
+        window.arangoHelper.arangoError(
+          `Something when wrong while creating the index: ${message}`
+        );
         if (statusCode === 404 || statusCode === 400) {
           // delete non existing aardvark job
           window.arangoHelper.deleteAardvarkJob(jobId);
