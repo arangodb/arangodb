@@ -40,6 +40,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/CpuUsageFeature.h"
@@ -67,19 +68,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std::literals;
-
-namespace {
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
-}  // namespace
 
 void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                          VPackSlice infoSlice,
@@ -369,9 +357,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
         std::string reqUrl =
             isTelemetricsReq ? "/_admin/telemetrics" : "/_admin/support-info";
-        auto f = network::sendRequestRetry(
-            pool, "server:" + server.first, fuerte::RestVerb::Get, reqUrl,
-            VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+        auto f = network::sendRequestRetry(pool, "server:" + server.first,
+                                           fuerte::RestVerb::Get, reqUrl,
+                                           VPackBuffer<uint8_t>{}, options,
+                                           network::addAuthorizationHeader({}));
         futures.emplace_back(std::move(f));
       }
 

@@ -53,6 +53,82 @@ devel
   operations are always carried out normally without checking the version 
   attribute, even if it is specified.
 
+* Upgraded bundled version of V8 to 12.1.165.
+
+* Upgraded bundled version of ICU to 73.
+
+* FE-296: Update shard distribution UI.
+
+* FE-367: ability to hide columns in table web UI.
+
+* Bug-Fix: Fixes the unnecessary copy of the `node_modules` folder located
+  in the frontend directory. This will also improve the startup speed of
+  the V8 feature.
+
+* Updated ArangoDB Starter to v0.18.0-preview-2.
+
+* APM-828: Per collection/database/user monitoring.
+
+  This adds optional metrics for tracking per-shard requests on DB-Servers.
+  The exported metrics are:
+  - `arangodb_collection_leader_reads_total`: number of read requests on 
+    leaders, per shard, and optionally also split by user.
+  - `arangodb_collection_leader_writes_total`: number of write requests on
+    leaders, per shard, and optionally also split by user.
+          
+  The new startup option `--server.export-shard-usage-metrics` can be used to
+  opt in to these metrics. It can be set to one of the following values on
+  DB-Servers:
+  - `disabled`: no shard usage metrics are recorded nor exported. This is the
+    default value.
+  - `enabled-per-shard`: this will make DB-Servers collect per-shard usage
+    metrics.
+  - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
+    and per-user metrics. This is more granular than `enabled-per-shard` but
+    can produce a lot of metrics.
+
+  Whenever a shard is accessed in read or write mode by one of the following 
+  operations, the metrics are populated dynamically, either with a per-user
+  label or not, depending on the above setting.
+  The metrics are retained in memory on DB-Servers. Removing databases, 
+  collections or users that are already included in the metrics won't remove
+  the metrics for these databases, collections or users until the DB-Server
+  is restarted.
+
+  The following operations increase the metrics:
+  - AQL queries: an AQL query will increase the read or write counters exactly
+    once for each involved shard. For shards that are accessed in read/write 
+    mode, only the write counter will be increased.
+  - Single-document insert, update, replace, and remove operations: for each
+    such operation, the write counter will be increased once for the affected
+    shard.
+  - Multi-document insert, update, replace, and remove operations: for each
+    such operation, the write counter will be increased once for each shard
+    that is affected by the operation. Note that this includes collection
+    truncate operations.
+  - Single- and multi-document read operations: for each such operation, the
+    read counter will be increased once for each shard that is affected by the
+    operation.
+    
+  Note: if an AQL query for a single collection gets optimized into a single
+  or multi-document operation, then the description for single or multi-
+  document operations apply.
+
+  The metrics are increased when any of the above operations start, and they
+  are not decreased should an operation abort or if an operation does not
+  lead to any actual reads or writes.
+
+  As there can be many of these dynamic metrics based on the number of shards
+  and/or users in the deployment, these metrics are turned off by default
+  (see above), and if turned on, are only exposed only via a new HTTP REST API
+  endpoint GET `/_admin/usage-metrics`. They are not exposed via the existing
+  metrics API endpoint GET `/_admin/metrics`.
+
+* Fixed the frontend build in Windows environments.
+
+* BTS-1731: protect streaming transaction garbage-collection from deletion of
+  the transaction's underlying database.
+
 * No longer use getpwuid, getpwnam, getgrgid and getgrnam on Linux to
   avoid crashes due to /etc/nsswitch.conf on older Linux distributions.
 
