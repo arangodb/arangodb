@@ -433,8 +433,6 @@ class Node : public std::enable_shared_from_this<Node> {
   explicit Node(Args&&... args) : _value(std::forward<Args>(args)...) {}
 
   VariantType _value;
-
-  static Children const dummyChildren;
 };
 
 inline std::ostream& operator<<(std::ostream& o, Node const& n) {
