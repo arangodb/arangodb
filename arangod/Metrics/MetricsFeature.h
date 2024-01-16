@@ -20,19 +20,21 @@
 ///
 /// @author Kaveh Vahedipour
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
 #include "Basics/DownCast.h"
+#include "Containers/FlatHashMap.h"
 #include "Metrics/Batch.h"
 #include "Metrics/Builder.h"
-#include "Metrics/Metric.h"
-#include "Metrics/IBatch.h"
-#include "Metrics/MetricKey.h"
 #include "Metrics/CollectMode.h"
+#include "Metrics/IBatch.h"
+#include "Metrics/Metric.h"
+#include "Metrics/MetricKey.h"
+#include "Metrics/MetricsParts.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/arangod.h"
 #include "Statistics/ServerStatistics.h"
-#include "Containers/FlatHashMap.h"
 
 #include <map>
 #include <shared_mutex>
@@ -41,16 +43,27 @@ namespace arangodb::metrics {
 
 class MetricsFeature final : public ArangodFeature {
  public:
+  enum class UsageTrackingMode {
+    // no tracking
+    kDisabled,
+    // tracking per shard (one-dimensional)
+    kEnabledPerShard,
+    // tracking per shard and per user (two-dimensional)
+    kEnabledPerShardPerUser,
+  };
+
   static constexpr std::string_view name() noexcept { return "Metrics"; }
 
   explicit MetricsFeature(Server& server);
 
   bool exportAPI() const noexcept;
   bool ensureWhitespace() const noexcept;
+  UsageTrackingMode usageTrackingMode() const noexcept;
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;
 
+  // tries to add metric. throws if such metric already exists
   template<typename MetricBuilder>
   auto add(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
     return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
@@ -61,16 +74,25 @@ class MetricsFeature final : public ArangodFeature {
     return std::static_pointer_cast<typename MetricBuilder::MetricT>(
         doAdd(builder));
   }
+
+  // tries to add dynamic metric. does not fail if such metric already exists
+  template<typename MetricBuilder>
+  auto addDynamic(MetricBuilder&& builder) -> typename MetricBuilder::MetricT& {
+    return static_cast<typename MetricBuilder::MetricT&>(
+        *doAddDynamic(builder));
+  }
+
   Metric* get(MetricKeyView const& key);
   bool remove(Builder const& builder);
 
-  void toPrometheus(std::string& result, CollectMode mode) const;
+  void toPrometheus(std::string& result, MetricsParts metricsParts,
+                    CollectMode mode) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief That used for collect some metrics
   /// to array for ClusterMetricsFeature
   //////////////////////////////////////////////////////////////////////////////
-  void toVPack(velocypack::Builder& builder) const;
+  void toVPack(velocypack::Builder& builder, MetricsParts metricsParts) const;
 
   ServerStatistics& serverStatistics() noexcept;
 
@@ -89,6 +111,7 @@ class MetricsFeature final : public ArangodFeature {
 
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
+  std::shared_ptr<Metric> doAddDynamic(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
   mutable std::shared_mutex _mutex;
@@ -109,6 +132,9 @@ class MetricsFeature final : public ArangodFeature {
   // ensure that there is whitespace before the reported value, regardless
   // of whether it is preceeded by labels or not.
   bool _ensureWhitespace;
+
+  std::string _usageTrackingModeString;
+  UsageTrackingMode _usageTrackingMode;
 };
 
 }  // namespace arangodb::metrics
