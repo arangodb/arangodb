@@ -3,6 +3,8 @@ devel
 
 * FE-296: Update shard distribution UI.
 
+* FE-367: ability to hide columns in table web UI.
+
 * Bug-Fix: Fixes the unnecessary copy of the `node_modules` folder located
   in the frontend directory. This will also improve the startup speed of
   the V8 feature.
