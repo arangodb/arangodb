@@ -1,8 +1,7 @@
-import { Flex, Link, Stack } from "@chakra-ui/react";
+import { Link, Stack } from "@chakra-ui/react";
 import { CellContext, createColumnHelper } from "@tanstack/react-table";
 import { Index } from "arangojs/indexes";
 import React from "react";
-import { FiltersList } from "../../../../components/table/FiltersList";
 import { ReactTable } from "../../../../components/table/ReactTable";
 import { TableControl } from "../../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../../components/table/useSortableReactTable";
@@ -109,20 +108,18 @@ export const CollectionIndicesTable = () => {
   const tableInstance = useSortableReactTable<Index>({
     data: collectionIndices || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "collection-indices"
   });
   return (
     <Stack>
-      <Flex gap="4">
-        <FiltersList<Index> columns={TABLE_COLUMNS} table={tableInstance} />
-        <TableControl<Index> table={tableInstance} columns={TABLE_COLUMNS} />
-      </Flex>
+      <TableControl<Index> table={tableInstance} columns={TABLE_COLUMNS} />
       <ReactTable<Index>
         table={tableInstance}
         emptyStateMessage="No indexes found"
