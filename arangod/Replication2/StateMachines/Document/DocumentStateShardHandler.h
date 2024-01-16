@@ -64,7 +64,7 @@ struct IDocumentStateShardHandler {
       std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
       -> Result = 0;
 
-  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
+  virtual auto dropIndex(ShardID shard, IndexId indexId)
       -> Result = 0;
 
   virtual auto lookupShard(ShardID const& shard) noexcept
@@ -103,7 +103,7 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
       std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
       -> Result override;
 
-  auto dropIndex(ShardID shard, velocypack::SharedSlice index) noexcept
+  auto dropIndex(ShardID shard, IndexId indexId) noexcept
       -> Result override;
 
   auto lookupShard(ShardID const& shard) noexcept

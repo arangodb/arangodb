@@ -114,7 +114,7 @@ auto inspect(Inspector& f, ReplicatedOperation::CreateIndex& x) {
 template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DropIndex& x) {
   return f.object(x).fields(f.field("shard", x.shard),
-                            f.field("index", x.index));
+                            f.field("indexId", x.indexId));
 }
 
 template<class Inspector>
