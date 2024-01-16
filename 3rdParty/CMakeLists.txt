@@ -7,6 +7,8 @@
 include(ExternalProject)
 include(UpdateModule)
 
+set(CMAKE_CXX_STANDARD 20)
+
 remove_definitions("-DUSE_ENTERPRISE=1")
 
 # Disable IPO for 3rdParty libs. This is because they currently all use old
