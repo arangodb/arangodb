@@ -161,25 +161,44 @@ if (WIN32)
     -Ggenerator_output=${V8_TARGET_DIR}
     -DINSPECTOR_ROOT=${V8_DIR}
     --depth=.
+    # whether or not to use dynamic runtime libraries
     -Dforce_dynamic_crt=0
+    # false on Windows, otherwise sets some compiler options for RTTI etc. 
+    # when building ICU.
     -Dos_posix=0
+    # don't fail build upon compile warnings
     -Dwerror=
-    -Dembed_script=
-    -Dwarmup_script=
-    -Dv8_enable_embedded_builtins=0
+    -Dv8_embed_script=
     -Dembedded_builtins_snapshot_src=
+    # disable zapping of v8 Handles. unsure what it is exactly, but obviously
+    # we don't rely on this for any functionality.
     -Dv8_enable_handle_zapping=0
+    # we don't want to rely on zlib in the V8 build because it could cause
+    # ambiguities with our own bundled version of zlib. V8 only needs zlib
+    # for the serialization of some debug/inspector data, which we do not
+    # support anyway
     -Dv8_use_zlib=0
+    # web assembly turned off to reduce the feature scope, and because we
+    # have seen crashes inside some web assembly execution code
     -Dv8_enable_webassembly=0
+    # allow for some optimizations in debug builds (we build in release mode
+    # by default). otherwise v8 becomes unbearably slow in debug mode
     -Dv8_optimized_debug=1
+    # allow to load ICU data dynamically, so that data doesn't have to be
+    # compiled into every executable.
     -Dicu_use_data_file_flag=1
+    # don't spend time on link-time optimization
     -Denable_lto=0
+    # the following two are important so that we build static libraries
     -Dcomponent=static_library
     -Dlibrary=static_library
+    # build full ICU data file
     -Dicu_small=false
+    # version number is included in some file paths
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
     -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
+    # little endian
     -Dicu_endianness=l
     -Dpython=${PYTHON_EXECUTABLE}
   )
@@ -345,7 +364,6 @@ else ()
     set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
   endif ()
   
-  # TODO: verify if we still need those
   add_c_flags_if_supported(V8_CFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
   add_cxx_flags_if_supported(V8_CXXFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
 
@@ -377,34 +395,55 @@ else ()
 
   list(APPEND V8_GYP_ARGS
     -DINSPECTOR_ROOT=${V8_RELATIVE_SOURCE_DIR}
+    # needed to make things compile fine. c++20 did not succeed initially.
+    # may need to be revisited later
     -Dclang_cxx_language_standard=c++17
     -Dmac_deployment_target=${CMAKE_OSX_DEPLOYMENT_TARGET}
     --depth=.
-    -Dforce_dynamic_crt=0 # only used on Windows
+    # whether or not to use dynamic runtime libraries. only used on Windows
+    -Dforce_dynamic_crt=0
+    # true here, sets some compiler options for RTTI etc. when building ICU
     -Dos_posix=1
+    # build a standalone static library. used for some gyp generators (make),
+    # but not on Windows
     -Dstandalone_static_library=1
-    -Dlinux_use_bundled_gold=0
-    -Dlinux_use_gold_flags=0
+    # sets -fno-strict-aliasing. unclear if still needed
     -Dv8_no_strict_aliasing=1
+    # don't fail build upon compile warnings
     -Dwerror=
+    # unclear if this is still needed
     -Dclang=0
     -Dv8_embed_script=
-    -Dembed_script=
-    -Dwarmup_script=
-    -Dv8_enable_embedded_builtins=0
     -Dembedded_builtins_snapshot_src=
+    # disable zapping of v8 Handles. unsure what it is exactly, but obviously
+    # we don't rely on this for any functionality.
     -Dv8_enable_handle_zapping=0
+    # we don't want to rely on zlib in the V8 build because it could cause
+    # ambiguities with our own bundled version of zlib. V8 only needs zlib
+    # for the serialization of some debug/inspector data, which we do not
+    # support anyway
     -Dv8_use_zlib=0
+    # web assembly turned off to reduce the feature scope, and because we
+    # have seen crashes inside some web assembly execution code
     -Dv8_enable_webassembly=0
+    # allow for some optimizations in debug builds (we build in release mode
+    # by default). otherwise v8 becomes unbearably slow in debug mode
     -Dv8_optimized_debug=1
+    # allow to load ICU data dynamically, so that data doesn't have to be
+    # compiled into every executable.
     -Dicu_use_data_file_flag=1
+    # don't spend time on link-time optimization
     -Denable_lto=0
+    # the following two are important so that we build static libraries
     -Dcomponent=static_library
     -Dlibrary=static_library
+    # build full ICU data file
     -Dicu_small=false
+    # version number is included in some file paths
     -Dicu_ver_major=73
     -Dicu_data_in=${CMAKE_BINARY_DIR}/bin/icudt73l.dat
     -Dicu_path=${V8_RELATIVE_SOURCE_DIR}/third_party/icu/
+    # little endian
     -Dicu_endianness=l
     -Dpython=${PYTHON_EXECUTABLE}
   )
