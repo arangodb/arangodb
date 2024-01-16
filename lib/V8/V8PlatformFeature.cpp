@@ -21,19 +21,12 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <stdlib.h>
-#include <string.h>
-#include <limits>
-#include <type_traits>
-#include <utility>
-
-#include <libplatform/libplatform.h>
-
 #include "V8PlatformFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
+#include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -43,6 +36,14 @@
 #include "ProgramOptions/ProgramOptions.h"
 #include "V8/v8-globals.h"
 
+#include <libplatform/libplatform.h>
+
+#include <cstdlib>
+#include <cstring>
+#include <limits>
+#include <type_traits>
+#include <utility>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -50,10 +51,6 @@ using namespace arangodb::options;
 namespace {
 void gcPrologueCallback(v8::Isolate* isolate, v8::GCType /*type*/,
                         v8::GCCallbackFlags /*flags*/) {
-  // if (type != v8::kGCTypeMarkSweepCompact) {
-  //   return;
-  // }
-
   v8::HeapStatistics h;
   isolate->GetHeapStatistics(&h);
 
@@ -120,7 +117,6 @@ void gcEpilogueCallback(v8::Isolate* isolate, v8::GCType type,
 // this callback is executed by V8 when it runs out of memory.
 // after the callback returns, V8 will call std::abort() and
 // terminate the entire process
-#ifdef V8_UPGRADE
 void oomCallback(char const* location, v8::OOMDetails const& details) {
   LOG_TOPIC("cfa4b", FATAL, arangodb::Logger::V8)
       << "out of " << (details.is_heap_oom ? "heap " : "") << "memory in V8 ("
@@ -128,18 +124,6 @@ void oomCallback(char const* location, v8::OOMDetails const& details) {
       << (details.detail == nullptr ? "" : details.detail);
   FATAL_ERROR_EXIT();
 }
-#else
-static void oomCallback(char const* location, bool isHeapOOM) {
-  if (isHeapOOM) {
-    LOG_TOPIC("fd5c4", FATAL, arangodb::Logger::V8)
-        << "out of heap hemory in V8 (" << location << ")";
-  } else {
-    LOG_TOPIC("5d980", FATAL, arangodb::Logger::V8)
-        << "out of memory in V8 (" << location << ")";
-  }
-  FATAL_ERROR_EXIT();
-}
-#endif
 
 // this callback is executed by V8 when it encounters a fatal error.
 // after the callback returns, V8 will call std::abort() and
@@ -211,7 +195,21 @@ void V8PlatformFeature::validateOptions(
 void V8PlatformFeature::start() {
   v8::V8::InitializeICU();
 
-  _platform = v8::platform::NewDefaultPlatform();
+  auto numberOfThreads = [&]() -> int {
+    std::string basename = TRI_Basename(server().options()->progname());
+    bool isArangosh = basename == "arangosh" || basename == "arangosh.exe";
+    if (isArangosh) {
+      // arangosh is single-threaded
+      return 1;
+    }
+    // let v8 figure out the optimal number of threads
+    return -1;
+  };
+
+  // note: we must set the number of threads upon creation of the V8
+  // platform to make sure V8 does not create the threads lazily upon
+  // the first usage. doing so would create lots of TSan warnings.
+  _platform = v8::platform::NewDefaultPlatform(numberOfThreads());
   v8::V8::InitializePlatform(_platform.get());
 
   // explicit option --javascript.v8-options used
@@ -234,11 +232,7 @@ void V8PlatformFeature::start() {
 
 void V8PlatformFeature::unprepare() {
   v8::V8::Dispose();
-#ifdef V8_UPGRADE
   v8::V8::DisposePlatform();
-#else
-  v8::V8::ShutdownPlatform();
-#endif
   _platform.reset();
   _allocator.reset();
 }
