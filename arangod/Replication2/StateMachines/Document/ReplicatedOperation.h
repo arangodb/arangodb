@@ -153,7 +153,8 @@ struct ReplicatedOperation {
     ShardID shard;
     IndexId indexId;
 
-    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool = default;
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs)
+        -> bool = default;
   };
 
   struct Insert : DocumentOperation {};

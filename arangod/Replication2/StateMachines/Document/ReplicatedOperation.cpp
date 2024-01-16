@@ -98,8 +98,8 @@ auto ReplicatedOperation::buildCreateIndexOperation(
                                  CreateIndex::Parameters{std::move(progress)}}};
 }
 
-auto ReplicatedOperation::buildDropIndexOperation(
-    ShardID shard, IndexId indexId) noexcept
+auto ReplicatedOperation::buildDropIndexOperation(ShardID shard,
+                                                  IndexId indexId) noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{std::in_place, DropIndex{shard, indexId}};
 }

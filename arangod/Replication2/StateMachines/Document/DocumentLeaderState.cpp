@@ -719,29 +719,29 @@ auto DocumentLeaderState::createIndex(
                    "leader failed to replicate it, will undo: "
                 << result.result();
 
-            self->_guardedData.doUnderLock(
-                [&self, shard, indexId](auto& data) mutable {
-                  if (data.didResign()) {
-                    LOG_CTX("44bc0", ERR, self->loggerContext)
-                        << "The leader created an index locally, but then "
-                           "resigned, before it could replicate it. It is now "
-                           "unsafe to undo this operation, because this server "
-                           "might already be a follower. We'll attempt it, but "
-                           "note that it may have unwanted side effects.";
-                  }
+            self->_guardedData.doUnderLock([&self, shard,
+                                            indexId](auto& data) mutable {
+              if (data.didResign()) {
+                LOG_CTX("44bc0", ERR, self->loggerContext)
+                    << "The leader created an index locally, but then "
+                       "resigned, before it could replicate it. It is now "
+                       "unsafe to undo this operation, because this server "
+                       "might already be a follower. We'll attempt it, but "
+                       "note that it may have unwanted side effects.";
+              }
 
-                  auto op = ReplicatedOperation::buildDropIndexOperation(
-                      shard, indexId);
-                  auto undoRes = data.transactionHandler->applyEntry(op);
-                  if (self->_errorHandler->handleOpResult(op, undoRes).fail()) {
-                    LOG_CTX("6b460", FATAL, self->loggerContext)
-                        << "Failed to undo CreateIndex operation on the "
-                           "leader, after replication failure, undo result:"
-                        << undoRes;
-                    TRI_ASSERT(false) << undoRes;
-                    FATAL_ERROR_EXIT();
-                  }
-                });
+              auto op =
+                  ReplicatedOperation::buildDropIndexOperation(shard, indexId);
+              auto undoRes = data.transactionHandler->applyEntry(op);
+              if (self->_errorHandler->handleOpResult(op, undoRes).fail()) {
+                LOG_CTX("6b460", FATAL, self->loggerContext)
+                    << "Failed to undo CreateIndex operation on the "
+                       "leader, after replication failure, undo result:"
+                    << undoRes;
+                TRI_ASSERT(false) << undoRes;
+                FATAL_ERROR_EXIT();
+              }
+            });
           }
           return result.result();
         }
@@ -766,16 +766,17 @@ auto DocumentLeaderState::dropIndex(ShardID shard,
   auto&& collection = res.get();
   // First we need to acquire the exclusive collection lock, and check whether
   // the index is droppable.
-  auto res2 = co_await methods::Indexes::acquireLockForDropAndCheckPreconditions(
-      *collection, indexInfo.slice());
+  auto res2 =
+      co_await methods::Indexes::acquireLockForDropAndCheckPreconditions(
+          *collection, indexInfo.slice());
   if (!res2.ok()) {
     co_return std::move(res2).result();
   }
   auto&& [trx, indexId] = res2.get();
 
   // Second, replicate the operation, and wait for it to be committed.
-  ReplicatedOperation op = ReplicatedOperation::buildDropIndexOperation(
-      std::move(shard), indexId);
+  ReplicatedOperation op =
+      ReplicatedOperation::buildDropIndexOperation(std::move(shard), indexId);
   auto replication = co_await _guardedData.doUnderLock(
       [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
         if (data.didResign()) {

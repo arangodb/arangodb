@@ -290,8 +290,7 @@ struct MockDocumentStateShardHandler
               (ShardID, velocypack::SharedSlice properties,
                std::shared_ptr<methods::Indexes::ProgressTracker>),
               (noexcept, override));
-  MOCK_METHOD(Result, dropIndex, (ShardID, IndexId),
-              (noexcept, override));
+  MOCK_METHOD(Result, dropIndex, (ShardID, IndexId), (noexcept, override));
   MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));
   MOCK_METHOD(std::vector<std::shared_ptr<LogicalCollection>>,
               getAvailableShards, (), (noexcept, override));

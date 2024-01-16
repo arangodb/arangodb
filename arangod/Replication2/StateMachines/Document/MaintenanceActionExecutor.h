@@ -55,10 +55,8 @@ struct IMaintenanceActionExecutor {
       std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
       -> Result = 0;
 
-  virtual auto executeDropIndex(
-      std::shared_ptr<LogicalCollection> col,
-      IndexId indexId) noexcept
-      -> Result = 0;
+  virtual auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
+                                IndexId indexId) noexcept -> Result = 0;
 
   virtual auto addDirty() noexcept -> Result = 0;
 };
@@ -88,10 +86,8 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
       std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
       -> Result override;
 
-  auto executeDropIndex(
-      std::shared_ptr<LogicalCollection> col,
-      IndexId indexId) noexcept
-      -> Result override;
+  auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
+                        IndexId indexId) noexcept -> Result override;
 
   auto addDirty() noexcept -> Result override;
 
