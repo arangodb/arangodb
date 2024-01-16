@@ -12,7 +12,7 @@ description: |
   This metric exposes the number of per-shard read operation requests on DB-Servers.
   It is increased by AQL queries and single-/multi-document read operations.
 
-  An AQL query will increase the counter exactly once for shard that is involved
+  An AQL query will increase the counter exactly once for a shard that is involved
   in the query in read-only mode, regardless if and how many documents/edges the
   query actually reads from the shard. For shards that are accessed by an AQL query
   in read/write mode, only the write counter will be increased.
