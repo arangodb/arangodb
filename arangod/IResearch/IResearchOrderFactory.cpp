@@ -79,7 +79,6 @@ bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
 
       for (size_t i = 1, count = args.numMembers(); i < count; ++i) {
         auto const* argNode = args.getMemberUnchecked(i);
-
         if (!argNode) {
           return false;  // invalid arg
         }
@@ -95,7 +94,6 @@ bool makeScorer(irs::Scorer::ptr& scorer, std::string_view name,
       }
 
       builder.close();
-
       // ArangoDB, for API consistency, only supports scorers configurable via
       // jSON
       scorer = irs::scorers::get(name, irs::type<irs::text_format::json>::get(),

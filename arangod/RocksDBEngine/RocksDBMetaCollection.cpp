@@ -131,6 +131,15 @@ void RocksDBMetaCollection::unlockWrite() noexcept {
 
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    // In the test we expect that fast path locking is done with 2s timeout.
+    TRI_ASSERT(timeout < 10);
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    // In the test we expect that an lazy locking happens on the follower
+    // with the default timeout of more than 2 seconds:
+    TRI_ASSERT(timeout > 10);
+  }
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -1666,6 +1675,9 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
       // keep the lock and exit
       return TRI_ERROR_NO_ERROR;
     }
+
+    timeout_us -= detachThreshold;
+
     LOG_TOPIC("dd231", INFO, Logger::THREADS)
         << "Did not get lock within 1 seconds, detaching scheduler thread.";
     uint64_t currentNumberDetached = 0;
@@ -1682,8 +1694,6 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
              "blockages!";
     }
   }
-
-  timeout_us -= detachThreshold;
 
   if (mode == AccessMode::Type::WRITE) {
     gotLock = _exclusiveLock.tryLockWriteFor(timeout_us);

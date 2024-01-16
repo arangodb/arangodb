@@ -559,17 +559,18 @@ off to an extra logging thread, which asynchronously writes the log messages.)")
   options
       ->addOption(
           "--log.max-queued-entries",
-          "Upper limit of log entries that are queued in background thread.",
+          "Upper limit of log entries that are queued in a background thread.",
           new UInt32Parameter(&_maxQueuedLogMessages),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31012)
       .setIntroducedIn(31105)
-      .setLongDescription(
-          R"(If you are using the option `--log.force-direct` (default)
-log entries are pushed on a queue for asynchronous writing. In case you
-are using a slow log output (e.g. syslog) the queue might grow and eventually overflow.
-This option allows to configure the upper bound. If the queue is full, log entries
-will be written synchronously, until the queue has space again.)");
+      .setLongDescription(R"(Log entries are pushed on a queue for asynchronous
+writing unless you enable the `--log.force-direct` startup option. If you use a
+slow log output (e.g. syslog), the queue might grow and eventually overflow.
+
+You can configure the upper bound of the queue with this option. If the queue is
+full, log entries are written synchronously until the queue has space again.)");
 
   options->addOption(
       "--log.request-parameters",

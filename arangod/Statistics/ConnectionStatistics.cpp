@@ -25,6 +25,7 @@
 
 #include "Rest/CommonDefines.h"
 
+#include <atomic>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -38,6 +39,14 @@ using namespace arangodb;
 // -----------------------------------------------------------------------------
 
 namespace {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+// this variable is only used in maintainer mode, to check that we are
+// only acquiring memory for statistics in case they are enabled.
+bool statisticsEnabled = false;
+#endif
+
+std::atomic<uint64_t> memoryUsage = 0;
+
 // initial amount of empty statistics items to be created in statisticsItems
 constexpr size_t kInitialQueueSize = 32;
 
@@ -56,6 +65,10 @@ std::vector<std::unique_ptr<ConnectionStatistics>> statisticsItems;
 static boost::lockfree::queue<ConnectionStatistics*> freeList;
 
 bool enqueueItem(ConnectionStatistics* item) noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   int tries = 0;
 
   try {
@@ -94,7 +107,16 @@ void ConnectionStatistics::Item::SET_HTTP() {
   }
 }
 
+uint64_t ConnectionStatistics::memoryUsage() noexcept {
+  return ::memoryUsage.load(std::memory_order_relaxed);
+}
+
 void ConnectionStatistics::initialize() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(!statisticsEnabled);
+  statisticsEnabled = true;
+#endif
+
   std::lock_guard guard{::statisticsMutex};
 
   ::freeList.reserve(kInitialQueueSize * 2);
@@ -111,9 +133,18 @@ void ConnectionStatistics::initialize() {
       ::statisticsItems.pop_back();
     }
   }
+
+  ::memoryUsage.fetch_add(::statisticsItems.size() *
+                              (sizeof(decltype(::statisticsItems)::value_type) +
+                               sizeof(ConnectionStatistics)),
+                          std::memory_order_relaxed);
 }
 
 ConnectionStatistics::Item ConnectionStatistics::acquire() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   ConnectionStatistics* statistics = nullptr;
 
   // try the happy path first
@@ -125,8 +156,14 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() noexcept {
       // store pointer for just-created item
       statistics = cs.get();
 
-      std::lock_guard guard{::statisticsMutex};
-      ::statisticsItems.emplace_back(std::move(cs));
+      {
+        std::lock_guard guard{::statisticsMutex};
+        ::statisticsItems.emplace_back(std::move(cs));
+      }
+
+      ::memoryUsage.fetch_add(sizeof(decltype(::statisticsItems)::value_type) +
+                                  sizeof(ConnectionStatistics),
+                              std::memory_order_relaxed);
     } catch (...) {
       statistics = nullptr;
     }
@@ -136,6 +173,10 @@ ConnectionStatistics::Item ConnectionStatistics::acquire() noexcept {
 }
 
 void ConnectionStatistics::release() noexcept {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  TRI_ASSERT(statisticsEnabled);
+#endif
+
   if (_http) {
     statistics::HttpConnections.decCounter();
   }

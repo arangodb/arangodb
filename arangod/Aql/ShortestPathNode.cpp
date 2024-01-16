@@ -254,6 +254,16 @@ void ShortestPathNode::doToVelocyPack(VPackBuilder& nodes,
     nodes.add("targetVertexId", VPackValue(_targetVertexId));
   }
 
+  // Out variables
+  if (isVertexOutVariableUsedLater()) {
+    nodes.add(VPackValue("vertexOutVariable"));
+    vertexOutVariable()->toVelocyPack(nodes);
+  }
+  if (isEdgeOutVariableUsedLater()) {
+    nodes.add(VPackValue("edgeOutVariable"));
+    edgeOutVariable()->toVelocyPack(nodes);
+  }
+
   // Filter Conditions
   TRI_ASSERT(_fromCondition != nullptr);
   nodes.add(VPackValue("fromCondition"));

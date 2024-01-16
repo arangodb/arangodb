@@ -19,6 +19,7 @@
     render: function () {
       var self = this;
       this.breadcrumb();
+      window.arangoHelper.disableSubNavBar();
       window.arangoHelper.buildCollectionSubNav(this.collectionName, 'Info');
 
       if (frontendConfig.isCluster) {
@@ -78,6 +79,7 @@
             null, null,
             null, 'content'
           );
+          window.arangoHelper.enableSubNavBar();
         }
       }.bind(this);
 

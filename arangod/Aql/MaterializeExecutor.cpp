@@ -98,11 +98,6 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
   auto readInputDocs = [numRows, this, &block]<bool HasShadowRows>() {
     auto searchDocRegId =
         _readDocumentContext._infos->inputNonMaterializedDocRegId();
-    LogicalCollection const* lastCollection{nullptr};
-    if constexpr (isSingleCollection) {
-      lastCollection = _collection;
-    }
-    auto lastSourceId = DataSourceId::none();
     for (size_t i = 0; i < numRows; ++i) {
       if constexpr (HasShadowRows) {
         if (block->isShadowRow(i)) {
@@ -112,34 +107,7 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
       auto const buf =
           block->getValueReference(i, searchDocRegId).slice().stringView();
       auto searchDoc = iresearch::SearchDoc::decode(buf);
-      if constexpr (!isSingleCollection) {
-        auto docSourceId = std::get<0>(*searchDoc.segment());
-        if (docSourceId != lastSourceId) {
-          lastSourceId = docSourceId;
-          auto cachedCollection = _collection.find(docSourceId);
-          if (cachedCollection == _collection.end()) {
-            auto transactionCollection =
-                _trx.state()->collection(std::get<0>(*searchDoc.segment()),
-                                         arangodb::AccessMode::Type::READ);
-            if (ADB_LIKELY(transactionCollection)) {
-              lastCollection =
-                  _collection
-                      .emplace(docSourceId,
-                               transactionCollection->collection().get())
-                      .first->second;
-            } else {
-              lastCollection = nullptr;
-            }
-
-          } else {
-            lastCollection = cachedCollection->second;
-          }
-        }
-      }
-      if (ADB_LIKELY(lastCollection)) {
-        _bufferedDocs.push_back(
-            std::make_tuple(searchDoc, LocalDocumentId{}, lastCollection));
-      }
+      _bufferedDocs.push_back(std::make_tuple(searchDoc, LocalDocumentId{}));
     }
   };
 
@@ -168,7 +136,7 @@ void MaterializeExecutor<T, localDocumentId>::fillBuffer(
     TRI_ASSERT(searchDoc.isValid());
     if (lastSegment != searchDoc.segment()) {
       lastSegment = searchDoc.segment();
-      pkReader = iresearch::pkColumn(*std::get<1>(*lastSegment));
+      pkReader = iresearch::pkColumn(*lastSegment->segment);
       if (ADB_LIKELY(pkReader)) {
         docValue = irs::get<irs::payload>(*pkReader);
       } else {
@@ -253,14 +221,14 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
       if (doc != end) {
         auto const& documentId = std::get<1>(*doc);
         if (documentId.isSet()) {
-          auto collection = std::get<2>(*doc);
-          TRI_ASSERT(collection);
+          auto const& viewSegment = *std::get<0>(*doc).segment();
+          TRI_ASSERT(viewSegment.collection);
           // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-          written = collection->getPhysical()
-                        ->readFromSnapshot(
-                            &_trx, documentId, callback, ReadOwnWrites::no,
-                            std::get<2>(*std::get<0>(*doc).segment()))
-                        .ok();
+          written =
+              viewSegment.collection->getPhysical()
+                  ->readFromSnapshot(&_trx, documentId, callback,
+                                     ReadOwnWrites::no, *viewSegment.snapshot)
+                  .ok();
         }
         ++doc;
       }

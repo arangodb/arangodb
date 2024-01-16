@@ -141,7 +141,6 @@ window.aqltemplates = require('../public/assets/aqltemplates.json');
 
 window.d3 = d3;
 require('leaflet');
-require('../../frontend/js/lib/tile.stamen.js');
 require('leaflet.geodesic');
 
 window.prettyBytes = require('../../frontend/js/lib/pretty-bytes.js');

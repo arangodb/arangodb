@@ -485,8 +485,12 @@ Result RocksDBFulltextIndex::applyQueryToken(
   rocksdb::Slice end = bounds.end();
   rocksdb::Comparator const* cmp = this->comparator();
 
-  std::unique_ptr<rocksdb::Iterator> iter = mthds->NewIterator(
-      _cf, [&](rocksdb::ReadOptions& ro) { ro.iterate_upper_bound = &end; });
+  std::unique_ptr<rocksdb::Iterator> iter =
+      mthds->NewIterator(_cf, [&](rocksdb::ReadOptions& ro) {
+        if (!mthds->iteratorMustCheckBounds(ReadOwnWrites::no)) {
+          ro.iterate_upper_bound = &end;
+        }
+      });
 
   // set is used to perform an intersection with the result set
   std::set<LocalDocumentId> intersect;

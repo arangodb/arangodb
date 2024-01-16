@@ -233,6 +233,13 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
     }
   }
 
+  // TODO make queue inspectable
+  template<typename Inspector>
+  friend inline auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
+    return f.object(x).fields(f.field("pid", x.pid), f.field("state", x.state),
+                              f.field("batchsize", x.batchSize));
+  }
+
   ActorPID pid;
   std::atomic<bool> idle{true};
   std::atomic<bool> finished{false};
@@ -242,14 +249,6 @@ struct Actor : ActorBase, std::enable_shared_from_this<Actor<Runtime, Config>> {
   std::size_t batchSize{16};
   std::unique_ptr<typename Config::State> state;
 };
-
-// TODO make queue inspectable
-template<typename Runtime, typename Config, typename Inspector>
-requires Actorable<Runtime, Config>
-auto inspect(Inspector& f, Actor<Runtime, Config>& x) {
-  return f.object(x).fields(f.field("pid", x.pid), f.field("state", x.state),
-                            f.field("batchsize", x.batchSize));
-}
 
 }  // namespace arangodb::pregel::actor
 

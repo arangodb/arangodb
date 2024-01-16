@@ -175,11 +175,8 @@ struct Task {
   void schedule(std::chrono::milliseconds delay) const {
     LOG_TOPIC("eb0da", TRACE, TOPIC)
         << "scheduled a " << T::typeName() << " task for ArangoSearch index '"
-        << id << "', delay '" << delay.count() << "'";
-
-    LOG_TOPIC("eb0d2", TRACE, TOPIC)
-        << T::typeName()
-        << " pool: " << ThreadGroupStats{async->stats(T::threadGroup())};
+        << id << "', delay '" << delay.count()
+        << "' pool: " << ThreadGroupStats{async->stats(T::threadGroup())};
 
     if (!asyncLink->empty()) {
       async->queue(T::threadGroup(), delay, static_cast<T const&>(*this));
