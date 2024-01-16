@@ -49,11 +49,14 @@ class ClusterQuery : public Query {
 
   auto const& traversers() const { return _traversers; }
 
-  void prepareClusterQuery(
-      velocypack::Slice querySlice, velocypack::Slice collections,
-      velocypack::Slice variables, velocypack::Slice snippets,
-      velocypack::Slice traversals, velocypack::Builder& answer,
-      QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking);
+  void prepareClusterQuery(velocypack::Slice querySlice,
+                           velocypack::Slice collections,
+                           velocypack::Slice variables,
+                           velocypack::Slice snippets,
+                           velocypack::Slice traversals, std::string_view user,
+                           velocypack::Builder& answer,
+                           QueryAnalyzerRevisions const& analyzersRevision,
+                           bool fastPathLocking);
 
   futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
