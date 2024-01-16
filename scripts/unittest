@@ -99,13 +99,14 @@ if [ "$(uname -s)" != "Darwin" ]; then
   for v in ASAN UBSAN LSAN TSAN; 
     do
       # check if environment variable ${v}_OPTIONS is set or not
-      NAME="${v}_OPTIONS";
+      NAME="${v}_OPTIONS"
       if [[ ! -v "${NAME}" ]]; then
         # variable is not yet set
         SUPPRESSIONS_PATH="$(realpath $(dirname ..))"
         SUPPRESSIONS_FILE="${SUPPRESSIONS_PATH}${PS}$(echo "${v}" | tr "[:upper:]" "[:lower:]")_arangodb_suppressions.txt"
-        # echo ${NAME}="suppressions=${SUPPRESSIONS_FILE}"
-        export ${NAME}="suppressions=${SUPPRESSIONS_FILE}"
+        if [ -f "${SUPPRESSIONS_FILE}" ]; then
+          export ${NAME}="suppressions=${SUPPRESSIONS_FILE}"
+        fi
       fi
     done
 fi

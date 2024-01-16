@@ -3,8 +3,8 @@ import { createColumnHelper } from "@tanstack/react-table";
 import { GenericAnalyzerDescription } from "arangojs/analyzer";
 import React from "react";
 import { Link as RouterLink, useHistory } from "react-router-dom";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { AnalyzerTypes } from "../Analyzer.types";
 import { useAnalyzersContext } from "../AnalyzersContext";
@@ -79,13 +79,14 @@ export const AnalyzersTable = () => {
   const tableInstance = useSortableReactTable<AnalyzerDataType>({
     data: analyzers || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    storageKey: "analyzers",
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: [
+    defaultFilters: [
       {
         id: "source",
         value: "Custom"
@@ -95,9 +96,9 @@ export const AnalyzersTable = () => {
   const history = useHistory();
   return (
     <Stack>
-      <FiltersList<AnalyzerDataType>
-        columns={TABLE_COLUMNS}
+      <TableControl<AnalyzerDataType>
         table={tableInstance}
+        columns={TABLE_COLUMNS}
       />
       <ReactTable<AnalyzerDataType>
         table={tableInstance}

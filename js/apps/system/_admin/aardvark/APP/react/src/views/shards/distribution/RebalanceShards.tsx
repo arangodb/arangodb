@@ -1,4 +1,4 @@
-import { Box, Button, FormLabel, Grid, Text } from "@chakra-ui/react";
+import { Button, FormLabel, Grid, Text } from "@chakra-ui/react";
 import { Global } from "@emotion/react";
 import { Form, Formik } from "formik";
 import React from "react";
@@ -69,48 +69,48 @@ export const RebalanceShards = ({
               }
             }}
           />
-          <Box width="100%" padding="5" background="white">
-            <Text fontSize={"lg"}>Shard rebalancing</Text>
-            <Text marginY="4">
-              By default, rebalancing changes leaders only without moving data.
-              <br />
-              To correct data imbalance and move leader and/or follower shards,
-              use the options below.
-            </Text>
-            <Grid
-              gridTemplateColumns={"250px 1fr"}
-              rowGap="5"
-              columnGap="3"
-              marginY="4"
-              maxWidth="600px"
-              alignItems="center"
-            >
-              <FormLabel margin="0" htmlFor="moveLeaders">
-                Move Leader Shards
-              </FormLabel>
-              <SwitchControl isDisabled={isSubmitting} name="moveLeaders" />
-              <FormLabel margin="0" htmlFor="moveFollowers">
-                Move Follower Shards
-              </FormLabel>
-              <SwitchControl isDisabled={isSubmitting} name="moveFollowers" />
-              <FormLabel margin="0" htmlFor="includeSystemCollections">
-                Include System Collections
-              </FormLabel>
-              <SwitchControl
-                isDisabled={isSubmitting}
-                name="includeSystemCollections"
-              />
-            </Grid>
-            <Button
-              colorScheme="green"
-              size="sm"
-              type="submit"
-              isDisabled={!isValid}
-              isLoading={isSubmitting}
-            >
-              Rebalance
-            </Button>
-          </Box>
+          <Text fontSize={"lg"} marginY="8">
+            Shard rebalancing
+          </Text>
+          <Text>
+            By default, rebalancing changes leaders only without moving data.
+            <br />
+            To correct data imbalance and move leader and/or follower shards,
+            use the options below.
+          </Text>
+          <Grid
+            gridTemplateColumns={"250px 1fr"}
+            rowGap="5"
+            columnGap="3"
+            marginY="4"
+            maxWidth="600px"
+            alignItems="center"
+          >
+            <FormLabel margin="0" htmlFor="moveLeaders">
+              Move Leader Shards
+            </FormLabel>
+            <SwitchControl isDisabled={isSubmitting} name="moveLeaders" />
+            <FormLabel margin="0" htmlFor="moveFollowers">
+              Move Follower Shards
+            </FormLabel>
+            <SwitchControl isDisabled={isSubmitting} name="moveFollowers" />
+            <FormLabel margin="0" htmlFor="includeSystemCollections">
+              Include System Collections
+            </FormLabel>
+            <SwitchControl
+              isDisabled={isSubmitting}
+              name="includeSystemCollections"
+            />
+          </Grid>
+          <Button
+            colorScheme="green"
+            size="sm"
+            type="submit"
+            isDisabled={!isValid}
+            isLoading={isSubmitting}
+          >
+            Rebalance
+          </Button>
         </Form>
       )}
     </Formik>
