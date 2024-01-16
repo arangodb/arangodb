@@ -1,6 +1,10 @@
 devel
 -----
 
+* FE-296: Update shard distribution UI.
+
+* FE-367: ability to hide columns in table web UI.
+
 * Bug-Fix: Also fix the copy (mentioned directly below here) in the
   ArangoShell.
 
