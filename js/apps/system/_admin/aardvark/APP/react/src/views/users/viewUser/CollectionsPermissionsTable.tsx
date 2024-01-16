@@ -138,12 +138,14 @@ export const CollectionsPermissionsTable = ({
   const tableInstance = useSortableReactTable<CollectionType>({
     data: row.original.collections || [],
     columns: COLLECTION_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "collectionName",
         desc: false
       }
     ],
+    defaultFilters: [],
+    storageKey: "collection-permissions-table",
     meta: {
       databaseName,
       username: decodeURIComponent(username)
