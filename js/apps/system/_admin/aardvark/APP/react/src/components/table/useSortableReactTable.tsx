@@ -60,7 +60,6 @@ const useTableStorage = ({
 
   const [columnFiltersState, setColumnFiltersState] =
     React.useState<ColumnFiltersState>(initialColumnFilters);
-  console.log("columnVisibilityState", columnVisibilityState);
   return {
     columnFilters: columnFiltersState,
     columnVisibility: columnVisibilityState,
