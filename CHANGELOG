@@ -1,6 +1,49 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Validate that the attribute stored in the `smartGraphAttribute` of SmartGraph
+  vertex collections exists and is not changed afterwards by update or replace
+  operations. Previously the `smartGraphAttribute` value was checked only when
+  inserting documents into a SmartGraph vertex collection, but not for update or
+  replace operations, although the documentation always stated that the
+  `smartGraphAttribute` value must not be changed after the initial creation of
+  the document.
+  The missing checks on update/replace allowed users to retroactively modify the
+  value of the `smartGraphAttribute` for existing documents, which could have
+  led to problems when the data of such a SmartGraph vertex collection was
+  replicated to a new follower shard. On the new follower shard, the documents
+  went through the full validation, and led to documents with modified
+  `smartGraphAttribute` values being rejected on the follower. This could have
+  led to follower shards not getting in sync.
+  Now the value of the `smartGraphAttribute` will be fully validated with every
+  insert, update or replace operation, and every attempt to modify the value of
+  the `smartGraphAttribute` retroactively will fail with error 4003
+  (`ERROR_KEY_MUST_BE_PREFIXED_WITH_SMART_GRAPH_ATTRIBUTE`, error message "in
+  smart vertex collections _key must be a string and prefixed with the value of
+  the smart graph attribute").
+  Additionally, if upon insert the `smartGraphAttribute` is missing for a
+  SmartGraph vertex, the error code will be error 4001 (
+  `ERROR_NO_SMART_GRAPH_ATTRIBUTE`, error message "smart graph attribute not
+  given") instead of error 4003.
+  To retroactively repair the data in any of the affected collections, it is
+  possible to update every (affected) document with the correct value of the
+  `smartGraphAttribute` via an AQL query as follows:
+
+      FOR doc IN @@collection
+        LET expected = SUBSTRING(doc._key, 0, FIND_FIRST(doc._key, ':'))
+        LET actual = doc.@attr
+        FILTER expected != actual
+        UPDATE doc WITH {@attr: expected} IN @@collection
+        COLLECT WITH COUNT INTO updated
+        RETURN updated
+
+  This will update all documents with the correct (expected) value of the
+  `smartGraphAttribute` if it deviates from the expected value. The query will
+  return the number of updated documents as well.
+  The bind parameters necessary to run this query are:
+  - `@@collection`: name of a SmartGraph vertex collection to be updated
+  - `@attr`: attribute name of the `smartGraphAttribute` of the collection
+
 * FE-385: fix query import.
 
 * BTS-1731: protect streaming transaction garbage-collection from deletion of
