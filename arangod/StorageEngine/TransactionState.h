@@ -47,6 +47,8 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -502,6 +504,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// this user name is informational only and can be used for logging,
   /// metrics etc.
   /// it should not be used for permission checks.
+  std::shared_mutex mutable _usernameLock;
   std::string _username;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

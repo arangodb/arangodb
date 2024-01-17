@@ -611,7 +611,8 @@ struct GetDocumentProcessor
         }
         return true;
       };
-      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
+      res = _collection.getPhysical()->lookup(&_methods, key, cb,
+                                              {.countBytes = true});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -917,7 +918,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -1292,7 +1293,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
         res = _collection.getPhysical()->lookup(
             &_methods, oldDocumentId, cb,
-            {.fillCache = false, .readOwnWrites = true});
+            {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1502,7 +1503,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -2124,7 +2125,8 @@ futures::Future<Result> transaction::Methods::documentFastPath(
     co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   auto cb = IndexIterator::makeDocumentCallback(result);
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2158,7 +2160,8 @@ futures::Future<Result> transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 namespace {

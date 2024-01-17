@@ -396,9 +396,7 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          // for updating the documents, we need to read the old version first
-          assertTrue(parsed.reads[shards[0]] > n * 40, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50, {parsed, replicationFactor});
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
           assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
@@ -433,9 +431,7 @@ function testSuite() {
           c.update(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          // for updating the documents, we need to read the old version first
-          assertTrue(parsed.reads[shards[0]] > n * 40, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50, {parsed, replicationFactor});
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
           assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
@@ -471,9 +467,7 @@ function testSuite() {
           c.update(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          // for updating the documents, we need to read the old version first
-          assertTrue(parsed.reads[shards[0]] > n * 40, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50, {parsed, replicationFactor});
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 3100 * replicationFactor, {parsed, replicationFactor});
           assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 3150 * replicationFactor, {parsed, replicationFactor});
@@ -506,7 +500,6 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          // for replacing these documents, we do not need to read the old version first
           assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
@@ -542,7 +535,6 @@ function testSuite() {
           c.replace(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          // for replacing these documents, we do not need to read the old version first
           assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
           assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
@@ -1245,8 +1237,8 @@ function testSuite() {
           db._query(`FOR doc IN ${en} FILTER doc._key IN @keys RETURN doc`, { keys });
 
           parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
-          
-          // no reads into local part
+         
+          // no reads in local part
           shards = db["_local_" + en].shards();
           shards.forEach((shard) => {
             assertFalse(parsed.reads.hasOwnProperty(shard), {shards, parsed});
@@ -1274,7 +1266,186 @@ function testSuite() {
 
       });
     },
+    
+    testNoMetricsWhenUsingEmptyStreamingTrx : function () {
+      [1, 2].forEach((replicationFactor) => {
+        const cn = getUniqueCollectionName();
+
+        let c = db._create(cn, {numberOfShards: 3, replicationFactor});
+        try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
+
+          let trx = db._createTransaction({ collections: { write: cn } });
+
+          try {
+            let parsed = getParsedMetrics(db._name(), cn);
+            assertFalse(parsed.hasOwnProperty("reads"), parsed);
+            assertFalse(parsed.hasOwnProperty("writes"), parsed);
+          } finally {
+            trx.abort();
+          }
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
   
+    testHasMetricsWhenUsingStreamingTrx : function () {
+      [1, 2].forEach((replicationFactor) => {
+        const cn = getUniqueCollectionName();
+
+        let c = db._create(cn, {numberOfShards: 3, replicationFactor});
+        try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
+
+          const n = 50;
+          let trx = db._createTransaction({ collections: { write: cn } });
+
+          try {
+            let c = trx.collection(cn);
+
+            for (let i = 0; i < n; ++i) {
+              c.insert({ value: i });
+            }
+            
+            let parsed = getParsedMetrics(db._name(), cn);
+            assertFalse(parsed.hasOwnProperty("reads"), parsed);
+          
+            let totalWritten = 0;
+            shards.forEach((shard) => {
+              totalWritten += parsed.writes[shard];
+            });
+            assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
+
+            // issue read query inside streaming trx
+            trx.query(`FOR doc IN ${cn} RETURN doc`).toArray();
+            
+            parsed = getParsedMetrics(db._name(), cn);
+          
+            let totalRead = 0;
+            totalWritten = 0;
+            shards.forEach((shard) => {
+              totalWritten += parsed.writes[shard];
+              totalRead += parsed.reads[shard];
+            });
+            // total written should remain unchanged
+            assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            
+            assertTrue(totalRead > n * 40, {parsed, totalRead});
+            assertTrue(totalRead < n * 50, {parsed, totalRead});
+
+            // write into the collection
+            trx.query(`FOR i IN 1..5000 INSERT {} INTO ${cn}`);
+            
+            parsed = getParsedMetrics(db._name(), cn);
+          
+            totalRead = 0;
+            totalWritten = 0;
+            shards.forEach((shard) => {
+              totalWritten += parsed.writes[shard];
+              totalRead += parsed.reads[shard];
+            });
+            assertTrue(totalWritten > n * 40 * replicationFactor + 5000 * 30 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            assertTrue(totalWritten < n * 50 * replicationFactor + 5000 * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            
+            // total read should remain unchanged
+            assertTrue(totalRead > n * 40, {parsed, totalRead});
+            assertTrue(totalRead < n * 50, {parsed, totalRead});
+
+          } finally {
+            trx.abort();
+          }
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+    
+    testHasMetricsWhenUsingJavaScriptReadTrx : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn, {numberOfShards: 3, replicationFactor: 1});
+      try {
+        let shards = c.shards();
+        assertEqual(3, shards.length);
+
+        const n = 50;
+
+        db._query(`FOR i IN 0..${n - 1} INSERT {_key: CONCAT('test', i)} INTO ${cn}`);
+
+        db._executeTransaction({ 
+          collections: { write: cn }, 
+          params: { cn, n }, 
+          action: (params) => {
+            let db = require("internal").db;
+            let c = db._collection(params.cn);
+
+            for (let i = 0; i < params.n; ++i) {
+              c.document("test" + i);
+            }
+          }
+        });
+
+        let parsed = getParsedMetrics(db._name(), cn);
+          
+        let totalWritten = 0;
+        let totalRead = 0;
+        shards.forEach((shard) => {
+          totalWritten += parsed.writes[shard];
+          totalRead += parsed.reads[shard];
+        });
+        assertTrue(totalWritten > n * 20, {parsed, totalWritten});
+        assertTrue(totalWritten < n * 40, {parsed, totalWritten});
+        
+        assertTrue(totalRead > n * 20, {parsed, totalWritten});
+        assertTrue(totalRead < n * 40, {parsed, totalWritten});
+      } finally {
+        db._drop(cn);
+      } 
+    },
+    
+    testHasMetricsWhenUsingJavaScriptWriteTrx : function () {
+      [1, 2].forEach((replicationFactor) => {
+        const cn = getUniqueCollectionName();
+
+        let c = db._create(cn, {numberOfShards: 3, replicationFactor});
+        try {
+          let shards = c.shards();
+          assertEqual(3, shards.length);
+
+          const n = 50;
+          db._executeTransaction({ 
+            collections: { write: cn }, 
+            params: { cn, n }, 
+            action: (params) => {
+              let db = require("internal").db;
+              let c = db._collection(params.cn);
+
+              for (let i = 0; i < params.n; ++i) {
+                c.insert({ value: i });
+              }
+            }
+          });
+
+          let parsed = getParsedMetrics(db._name(), cn);
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
+          
+          let totalWritten = 0;
+          shards.forEach((shard) => {
+            totalWritten += parsed.writes[shard];
+          });
+          assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
+          assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
+        } finally {
+          db._drop(cn);
+        }
+      });
+    },
+
   };
 }
 

@@ -290,7 +290,7 @@ void TransactionState::trackShardUsage(
     metric.count(nBytes);
   }
 
-  LOG_TOPIC("d3599", TRACE, Logger::FIXME)
+  LOG_TOPIC("d3599", ERR, Logger::FIXME)
       << "tracking access for database '" << database << "', collection '"
       << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
@@ -300,13 +300,42 @@ void TransactionState::trackShardUsage(
 }
 
 void TransactionState::setUsername(std::string_view name) {
-  if (!name.empty() && _username.empty()) {
+  if (name.empty()) {
+    // no username to set here
+    return;
+  }
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // username already set
+      return;
+    }
+  }
+  // slow path: username not yet set. we need to protect this
+  // operation with a mutex so that other concurrent threads
+  // that try to read the username do not see any garbled
+  // value.
+  std::unique_lock lock(_usernameLock);
+  if (_username.empty()) {
+    // only set if still empty
     _username = std::string{name};
   }
 }
 
 std::string_view TransactionState::username() const noexcept {
-  return _username;
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // if username is already set, it will not change anymore,
+      // so we can return a view into the username string.
+      return _username;
+    }
+  }
+  // if the username was not yet set, some other thread may
+  // still set it concurrently. in this case it is not safe
+  // to return a view into the string, because the string may
+  // be modified later/concurrently.
+  return StaticStrings::Empty;
 }
 
 /// @brief add a collection to a transaction

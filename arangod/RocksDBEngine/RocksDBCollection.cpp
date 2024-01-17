@@ -1087,10 +1087,12 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
         static_cast<ReadOwnWrites>(options.readOwnWrites),
         RocksDBTransactionState::toState(trx));
   }
-  trx->state()->trackShardUsage(
-      *trx->resolver(), _logicalCollection.vocbase().name(),
-      _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
-      "document read", ps.size());
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document read", ps.size());
+  }
   return res;
 }
 
@@ -1168,10 +1170,12 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
     }
   }
 
-  trx->state()->trackShardUsage(
-      *trx->resolver(), _logicalCollection.vocbase().name(),
-      _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
-      "document multiget", totalSize);
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document multiget", totalSize);
+  }
 
   return {};
 }
@@ -2038,10 +2042,12 @@ Result RocksDBCollection::lookupDocumentVPack(
     return rocksutils::convertStatus(s);
   }
 
-  trx->state()->trackShardUsage(
-      *trx->resolver(), _logicalCollection.vocbase().name(),
-      _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
-      "document lookup", ps.size());
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
+  }
 
   TRI_ASSERT(ps.size() > 0);
   if (options.fillCache && cache != nullptr) {
