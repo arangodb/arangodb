@@ -487,6 +487,13 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   TRI_ASSERT(plan != nullptr);
 
+  if (_queryOptions.profile >= ProfileLevel::Basic) {
+    auto [activeRulesTime, inactiveRulesTime] =
+        opt.ruleExecutionTotals(plan->appliedRules());
+    _execStats.activeRulesTime = activeRulesTime;
+    _execStats.inactiveRulesTime = inactiveRulesTime;
+  }
+
   // return the V8 executor if we are in one
   exitV8Executor();
 
@@ -962,7 +969,9 @@ ExecutionState Query::finalize(VPackBuilder& extras) {
 
     // execution statistics
     extras.add(VPackValue("stats"));
-    _execStats.toVelocyPack(extras, _queryOptions.fullCount);
+    _execStats.toVelocyPack(
+        extras, _queryOptions.fullCount,
+        /*reportOptimizerTimes*/ _queryOptions.profile >= ProfileLevel::Basic);
 
     if (_planSliceCopy) {
       extras.add("plan", VPackSlice(_planSliceCopy->data()));

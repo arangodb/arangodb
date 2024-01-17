@@ -279,7 +279,7 @@ function printRules(rules, stats) {
   }
 
   let maxNameLength = 0;
-  let times = Object.keys(stats.rules).map(function(key) {
+  let times = Object.keys(stats.rules).map((key) => {
     maxNameLength = Math.max(maxNameLength, key.length);
     return { name: key, time: stats.rules[key] };
   });
@@ -305,6 +305,7 @@ function printRules(rules, stats) {
 
   let statsLine = value(stats.rulesExecuted) + annotation(' rule(s) executed');
   statsLine += ', ' + value(stats.plansCreated) + annotation(' plan(s) created');
+  
   if (stats.hasOwnProperty('peakMemoryUsage')) {
     statsLine += ', ' + annotation('peak mem [b]') + ': ' + value(stats.peakMemoryUsage);
   }
@@ -351,10 +352,10 @@ function printStats(stats, isCoord) {
   let maxRLen = 'Requests'.length;
   let maxMemLen = 'Peak Mem [b]'.length;
   let maxETLen = 'Exec Time [s]'.length;
-  stats.executionTime = stats.executionTime.toFixed(5);
   stringBuilder.appendLine(' ' + header('Writes Exec') + spc + header('Writes Ign') + spc + header('Doc. Lookups') + spc + header('Scan Full') + spc +
     header('Scan Index') + spc + header('Cache Hits/Misses') + spc + header('Filtered') + spc + (isCoord ? header('Requests') + spc : '') +
-    header('Peak Mem [b]') + spc + header('Exec Time [s]'));
+    header('Peak Mem [b]') + spc + 
+    header('Exec Time [s]'));
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
@@ -363,9 +364,40 @@ function printStats(stats, isCoord) {
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +
     pad(1 + maxFLen - String(stats.filtered || 0).length) + value(stats.filtered || 0) + spc +
-    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + spc : '') +
+    (isCoord ? pad(1 + maxRLen - String(stats.httpRequests).length) + value(stats.httpRequests) + spc : '') + 
     pad(1 + maxMemLen - String(stats.peakMemoryUsage).length) + value(stats.peakMemoryUsage) + spc +
-    pad(1 + maxETLen - String(stats.executionTime).length) + value(stats.executionTime));
+    pad(1 + maxETLen - String(stats.executionTime.toFixed(5)).length) + value(stats.executionTime.toFixed(5)) + spc);
+  stringBuilder.appendLine();
+
+  let maxOptLen = 'Opt. Rules [s]'.length;
+  let maxActLen = 'Active Opt. Rules [s]'.length;
+  let maxInactLen = 'Inactive Opt. Rules [s]'.length;
+  let maxSavLen = 'Savings [%]'.length;
+
+  let optRulesTime = "n/a";
+  let activeRulesTime = "n/a";
+  let inactiveRulesTime = "n/a";
+  let maxSavings = "n/a";
+  if (stats.activeRulesTime !== undefined) {
+    optRulesTime = (stats.activeRulesTime + stats.inactiveRulesTime).toFixed(5);
+    activeRulesTime = stats.activeRulesTime.toFixed(5);
+    inactiveRulesTime = stats.inactiveRulesTime.toFixed(5);
+    if (stats.executionTime > 0) {
+      maxSavings = (100 * stats.inactiveRulesTime / stats.executionTime).toFixed(5); 
+    }
+  }
+
+  stringBuilder.appendLine(' ' + header('Opt. Rules [s]') + spc +
+    header('Active Opt. Rules [s]') + spc + 
+    header('Inactive Opt. Rules [s]') + spc +
+    header('Savings [%]'));
+  
+  stringBuilder.appendLine(' ' + 
+    pad(1 + maxOptLen - String(optRulesTime).length) + value(optRulesTime) + spc +
+    pad(1 + maxActLen - String(activeRulesTime).length) + value(activeRulesTime) + spc +
+    pad(1 + maxInactLen - String(inactiveRulesTime).length) + value(inactiveRulesTime) + spc +
+    pad(1 + maxSavLen - String(maxSavings).length) + value(maxSavings));
+  
   stringBuilder.appendLine();
 }
 

@@ -89,7 +89,15 @@ class Optimizer {
 
     /// @brief map with execution times per rule, only populated in
     /// case tracing is enabled, a nullptr otherwise!
-    std::unique_ptr<std::unordered_map<int, double>> executionTimes;
+    using TimesMap = std::unordered_map<int, double>;
+    std::unique_ptr<TimesMap> times;
+
+    TimesMap& ruleExecutionTimes();
+
+    /// @brief returns time spent in applied optimizer rules and in
+    /// not-applied optimizer rules
+    std::pair<double, double> ruleExecutionTotals(
+        std::vector<int> const& appliedRules) const;
 
     void toVelocyPack(velocypack::Builder& b) const;
   };
@@ -136,6 +144,11 @@ class Optimizer {
     _plans.list.clear();
     return std::move(res.first);
   }
+
+  /// @brief returns time spent in applied optimizer rules and in
+  /// not-applied optimizer rules
+  std::pair<double, double> ruleExecutionTotals(
+      std::vector<int> const& appliedRules) const;
 
   bool runOnlyRequiredRules(size_t extraPlans) const;
 

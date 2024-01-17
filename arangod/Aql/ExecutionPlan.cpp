@@ -700,7 +700,7 @@ void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
 void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
 
 bool ExecutionPlan::isDisabledRule(int rule) const {
-  return (_disabledRules.find(rule) != _disabledRules.end());
+  return _disabledRules.contains(rule);
 }
 
 ExecutionNodeId ExecutionPlan::nextId() {

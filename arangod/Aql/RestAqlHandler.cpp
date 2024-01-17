@@ -813,8 +813,10 @@ RestStatus RestAqlHandler::handleFinishQuery(std::string const& idString) {
                   VPackBuilder answerBuilder(buffer);
                   answerBuilder.openObject(/*unindexed*/ true);
                   answerBuilder.add(VPackValue("stats"));
-                  q->executionStats().toVelocyPack(answerBuilder,
-                                                   q->queryOptions().fullCount);
+                  q->executionStats().toVelocyPack(
+                      answerBuilder,
+                      q->queryOptions().fullCount, /*reportOptimizerTimes*/
+                      q->queryOptions().profile >= ProfileLevel::Basic);
                   q->warnings().toVelocyPack(answerBuilder);
                   answerBuilder.add(StaticStrings::Error,
                                     VPackValue(res.fail()));

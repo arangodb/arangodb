@@ -120,6 +120,11 @@ class ExecutionPlan {
   /// @brief disable a specific rule
   void disableRule(int rule);
 
+  /// @brief return const reference to applied rules
+  std::vector<int> const& appliedRules() const noexcept {
+    return _appliedRules;
+  }
+
   /// @brief return the next value for a node id
   ExecutionNodeId nextId();
 

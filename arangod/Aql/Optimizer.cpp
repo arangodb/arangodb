@@ -32,8 +32,10 @@
 #include "Aql/ProfileLevel.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
+#include "Containers/FlatHashSet.h"
 #include "Logger/LogMacros.h"
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 Optimizer::Optimizer(ResourceMonitor& resourceMonitor, size_t maxNumberOfPlans)
@@ -56,6 +58,11 @@ void Optimizer::disableRules(
 bool Optimizer::runOnlyRequiredRules(size_t extraPlans) const {
   return (_runOnlyRequiredRules ||
           (_newPlans.size() + _plans.size() + extraPlans >= _maxNumberOfPlans));
+}
+
+std::pair<double, double> Optimizer::ruleExecutionTotals(
+    std::vector<int> const& appliedRules) const {
+  return _stats.ruleExecutionTotals(appliedRules);
 }
 
 // @brief add a plan to the optimizer
@@ -341,21 +348,13 @@ void Optimizer::createPlans(std::unique_ptr<ExecutionPlan> plan,
         p->setValidity(false);
 
         size_t numberOfPlansBeforeRule = _newPlans.size();
-        if (queryOptions.getProfileLevel() >= ProfileLevel::Blocks) {
+        if (queryOptions.getProfileLevel() >= ProfileLevel::Basic) {
           // run rule with tracing optimizer rule execution time
-          if (_stats.executionTimes == nullptr) {
-            // allocate the map lazily, so we can save the initial memory
-            // allocation in case tracing is disabled.
-            _stats.executionTimes =
-                std::make_unique<std::unordered_map<int, double>>();
-          }
-          TRI_ASSERT(_stats.executionTimes != nullptr);
-
           double time = TRI_microtime();
           rule.func(this, std::move(p), rule);
           time = TRI_microtime() - time;
           auto [it, inserted] =
-              _stats.executionTimes->try_emplace(rule.level, time);
+              _stats.ruleExecutionTimes().try_emplace(rule.level, time);
           if (!inserted) {
             // a rule may have been executed before already. in this case, just
             // add to the already tracked time
@@ -544,15 +543,47 @@ void Optimizer::enableRule(ExecutionPlan* plan, std::string_view name) {
   }
 }
 
+std::pair<double, double> Optimizer::Stats::ruleExecutionTotals(
+    std::vector<int> const& appliedRules) const {
+  double timeApplied = 0.0;
+  double timeNotApplied = 0.0;
+
+  if (times != nullptr) {
+    containers::FlatHashSet<int> applied;
+    std::for_each(appliedRules.begin(), appliedRules.end(),
+                  [&](int rule) { applied.emplace(rule); });
+
+    for (auto const& it : *times) {
+      if (applied.contains(it.first)) {
+        timeApplied += it.second;
+      } else {
+        timeNotApplied += it.second;
+      }
+    }
+  }
+  return std::make_pair(timeApplied, timeNotApplied);
+}
+
+Optimizer::Stats::TimesMap& Optimizer::Stats::ruleExecutionTimes() {
+  // run rule with tracing optimizer rule execution time
+  if (times == nullptr) {
+    // allocate the map lazily, so we can save the initial memory
+    // allocation in case tracing is disabled.
+    times = std::make_unique<TimesMap>();
+  }
+  TRI_ASSERT(times != nullptr);
+  return *times;
+}
+
 void Optimizer::Stats::toVelocyPack(velocypack::Builder& b) const {
   TRI_ASSERT(b.isOpenObject());
   b.add("rulesExecuted", velocypack::Value(rulesExecuted));
   b.add("rulesSkipped", velocypack::Value(rulesSkipped));
   b.add("plansCreated", velocypack::Value(plansCreated));
 
-  if (executionTimes != nullptr) {
+  if (times != nullptr) {
     b.add("rules", velocypack::Value(velocypack::ValueType::Object));
-    for (auto const& it : *executionTimes) {
+    for (auto const& it : *times) {
       b.add(OptimizerRulesFeature::translateRule(it.first),
             velocypack::Value(it.second));
     }

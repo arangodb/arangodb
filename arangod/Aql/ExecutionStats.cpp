@@ -33,8 +33,8 @@
 using namespace arangodb::aql;
 
 /// @brief convert the statistics to VelocyPack
-void ExecutionStats::toVelocyPack(VPackBuilder& builder,
-                                  bool reportFullCount) const {
+void ExecutionStats::toVelocyPack(VPackBuilder& builder, bool reportFullCount,
+                                  bool reportOptimizerTimes) const {
   builder.openObject();
   builder.add("writesExecuted", VPackValue(writesExecuted));
   builder.add("writesIgnored", VPackValue(writesIgnored));
@@ -54,6 +54,10 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
     builder.add("fullCount", VPackValue(fullCount > count ? fullCount : count));
   }
   builder.add("executionTime", VPackValue(executionTime));
+  if (reportOptimizerTimes) {
+    builder.add("activeRulesTime", VPackValue(activeRulesTime));
+    builder.add("inactiveRulesTime", VPackValue(inactiveRulesTime));
+  }
 
   builder.add("peakMemoryUsage", VPackValue(peakMemoryUsage));
   builder.add("intermediateCommits", VPackValue(intermediateCommits));
@@ -73,6 +77,7 @@ void ExecutionStats::toVelocyPack(VPackBuilder& builder,
     }
     builder.close();
   }
+
   builder.close();
 }
 

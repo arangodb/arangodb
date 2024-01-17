@@ -43,7 +43,8 @@ struct ExecutionStats {
   explicit ExecutionStats(arangodb::velocypack::Slice slice);
 
   /// @brief convert the statistics to VelocyPack
-  void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount) const;
+  void toVelocyPack(arangodb::velocypack::Builder&, bool reportFullCount,
+                    bool reportOptimizerTimes) const;
 
   /// @brief sets query execution time from the outside
   void setExecutionTime(double value);
@@ -115,6 +116,11 @@ struct ExecutionStats {
   /// @brief query execution time (wall-clock time). value will be set from
   /// the outside
   double executionTime = 0.0;
+
+  /// @brief time spent in optimizer rules that changed the plan
+  double activeRulesTime = 0.0;
+  /// @brief time spent in optimizer rules that did not change the plan
+  double inactiveRulesTime = 0.0;
 
   /// @brief peak memory usage of the query
   size_t peakMemoryUsage = 0;
