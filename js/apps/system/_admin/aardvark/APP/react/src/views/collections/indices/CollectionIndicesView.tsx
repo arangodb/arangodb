@@ -42,16 +42,22 @@ const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
     <Stack direction="row" marginBottom="4" alignItems="center" spacing="6">
       <Heading size="lg">Indexes</Heading>
       <Flex gap="2" alignItems="center">
-        <Stat>
-          <StatNumber>{stats ? stats.count : <Spinner size="sm" />}</StatNumber>
-          <StatLabel>Index count</StatLabel>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
+            {stats ? stats.count : <Spinner size="sm" />}
+          </StatNumber>
+          <StatLabel whiteSpace="nowrap" lineHeight="base">
+            Index count
+          </StatLabel>
         </Stat>
 
-        <Stat>
-          <StatNumber>
+        <Stat gap="2">
+          <StatNumber lineHeight="base">
             {stats ? window.prettyBytes(stats.size) : <Spinner size="sm" />}
           </StatNumber>
-          <StatLabel>Estimated memory used</StatLabel>
+          <StatLabel whiteSpace="nowrap" lineHeight="base">
+            Estimated memory used
+          </StatLabel>
         </Stat>
       </Flex>
 
