@@ -32,7 +32,7 @@ using namespace arangodb::aql;
 std::ostream& arangodb::aql::operator<<(std::ostream& stream,
                                         ExecutionStats const& stats) {
   VPackBuilder builder{};
-  stats.toVelocyPack(builder, true);
+  stats.toVelocyPack(builder, true, false);
   return stream << builder.toJson();
 }
 
