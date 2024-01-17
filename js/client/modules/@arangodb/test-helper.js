@@ -664,7 +664,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];
