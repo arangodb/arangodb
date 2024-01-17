@@ -961,7 +961,6 @@ this:
   - `agent`
   - `dbserver`
   - `coordinator`
-  - `activefailover`
   )
 - We set the `requests` log level to debug on all instances
 - We force the logging not to happen asynchronous
@@ -1108,7 +1107,6 @@ rather time and resource consuming and complex RTA framework.
 The `rta_makedata` testsuite can be invoked with:
 
 - `--cluster false` - to be ran on a single server setup.
-- `--activefailover true` to be ran on an active failover setup.
 - `--cluster true` to be ran on a 3 db-server node cluster; one run will check resilience with 2 remaining dbservers.
 
 These combinations are also engaged via [test-definitions.txt](tests/test-definitions.txt).
@@ -1225,7 +1223,7 @@ Statically provided options (with sample values):
 - `--username root`
 - `--password ''`
 - `--[no-]enterprise`
-- `--deployment-mode [SINGLE_SERVER|ACTIVE_FAILOVER|CLUSTER]`
+- `--deployment-mode [SINGLE_SERVER|CLUSTER]`
 
 ### Debugging Tests
 

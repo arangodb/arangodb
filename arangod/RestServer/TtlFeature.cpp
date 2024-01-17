@@ -265,8 +265,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
     auto& db = server().getFeature<DatabaseFeature>();
     for (auto const& name : db.getDatabaseNames()) {
       if (!isActive()) {
-        // feature deactivated (for example, due to running on current follower
-        // in active failover setup)
+        // feature deactivated
         return;
       }
 
@@ -284,8 +283,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
       for (auto const& collection : collections) {
         if (!isActive()) {
-          // feature deactivated (for example, due to running on current
-          // follower in active failover setup)
+          // feature deactivated
           return;
         }
 
@@ -424,7 +422,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
 }  // namespace arangodb
 
 TtlFeature::TtlFeature(Server& server)
-    : ArangodFeature{server, *this}, _allowRunning(true), _active(true) {
+    : ArangodFeature{server, *this}, _active(true) {
   startsAfter<application_features::DatabaseFeaturePhase>();
   startsAfter<application_features::ServerFeaturePhase>();
 }
@@ -549,24 +547,6 @@ void TtlFeature::beginShutdown() {
 
 void TtlFeature::stop() { shutdownThread(); }
 
-void TtlFeature::allowRunning(bool value) {
-  {
-    std::lock_guard locker{_propertiesMutex};
-
-    if (value) {
-      _allowRunning = true;
-    } else {
-      _allowRunning = false;
-    }
-  }
-
-  if (value) {
-    return;
-  }
-
-  waitForThreadWork();
-}
-
 void TtlFeature::waitForThreadWork() {
   while (true) {
     {
@@ -617,7 +597,7 @@ void TtlFeature::deactivate() {
 
 bool TtlFeature::isActive() const {
   std::lock_guard locker{_propertiesMutex};
-  return _allowRunning && _active;
+  return _active;
 }
 
 void TtlFeature::statsToVelocyPack(VPackBuilder& builder) const {

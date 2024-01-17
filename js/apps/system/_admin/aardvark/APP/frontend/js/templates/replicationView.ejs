@@ -19,9 +19,9 @@
 
         <div class="pure-u-1-2 pure-u-md-1-3">
           <div class="valueWrapper">
-            <% if (info.role === 'follower' && mode !== 3) { %>
+            <% if (info.role === 'follower') { %>
               <div id="info-role-id" class="value">Follower</div>
-            <% } else if (info.role === 'leader' && mode !== 3) { %>
+            <% } else if (info.role === 'leader') { %>
               <div id="info-role-id" class="value">Leader</div>
             <% } else { %>
               <div id="info-role-id" class="value"><%=info.role%></div>
@@ -99,11 +99,7 @@
               </tr>
               <tr>
                 <td>Role:</td>
-                <% if (mode === 3) { %>
-                  <td id="info-role-id"><%=info.role%></td>
-                <% } else { %>
-                  <td id="info-role-id">Follower</td>
-                <% } %>
+                <td id="info-role-id">Follower</td>
               </tr>
             </tbody>
         </table>
@@ -140,25 +136,6 @@
 
       </div>
 
-      <% if (mode === 3) { %>
-        <div class="repl-nodes">
-          <div class="categoryBar">
-            <h4>Nodes</h4>
-          </div>
-        </div>
-        <table class="pure-table">
-            <tbody>
-              <tr>
-                <td>Leader:</td>
-                <td id="nodes-leader-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-              </tr>
-              <tr>
-                <td>Followers:</td>
-                <td id="nodes-followers-id"><i class="fa fa-circle-o-notch fa-spin"></i></td>
-              </tr>
-            </tbody>
-        </table>
-      <% } %>
     <% } %>
 
     <% if (info.role === 'leader') { %>
