@@ -156,9 +156,7 @@ alternative endpoint if one of them becomes unavailable:
                   new StringParameter(&_myRole))
       .setLongDescription(R"(For a cluster, the possible values are `DBSERVER`
 (backend data server) and `COORDINATOR` (frontend server for external and 
-application access).
-
-For Active Failover deployments, the role needs to be `SINGLE`.)");
+application access).)");
 
   options
       ->addOption("--cluster.my-address",

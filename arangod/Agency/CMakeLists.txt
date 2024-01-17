@@ -1,5 +1,4 @@
 add_library(arango_agency STATIC
-  ActiveFailoverJob.cpp
   AddFollower.cpp
   AgencyComm.cpp
   AgencyFeature.cpp

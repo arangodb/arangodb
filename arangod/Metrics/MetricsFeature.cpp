@@ -239,23 +239,20 @@ void MetricsFeature::toPrometheus(std::string& result,
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
     sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
-  }
-  if (metricsParts.includeStandardMetrics()) {
+
     // Storage engine only provides standard metrics
     auto& es = server().getFeature<EngineSelectorFeature>().engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _ensureWhitespace);
     }
-  }
-  if (metricsParts.includeStandardMetrics()) {
+
     // ClusterMetricsFeature only provides standard metrics
     auto& cm = server().getFeature<ClusterMetricsFeature>();
     if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
       cm.toPrometheus(result, _globals, _ensureWhitespace);
     }
-  }
-  if (metricsParts.includeStandardMetrics()) {
-    // only necessary when standard metrics are returned
+
+    // agency node metrics only provide standard metrics
     consensus::Node::toPrometheus(result, _globals, _ensureWhitespace);
   }
 }
