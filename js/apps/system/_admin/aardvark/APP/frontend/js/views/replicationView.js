@@ -9,7 +9,6 @@
     //  0: No active replication found.
     //  1: Replication per Database found.
     //  2: Replication per Server found.
-    //  3: Active-Failover replication found.
     mode: null,
 
     interval: 5000, // refresh interval
@@ -30,12 +29,6 @@
       msg: 'No issues detected.'
     },
 
-    // nodes info object, valid in active failover mode (3)
-    nodes: {
-      leader: null,
-      followers: []
-    },
-
     initialize: function (options) {
       var self = this;
 
@@ -49,7 +42,6 @@
     template: templateEngine.createTemplate('replicationView.ejs'),
 
     events: {
-      'click #nodes-followers-id span': 'goToApplier',
       'click #repl-follower-table tr': 'goToApplierFromTable'
     },
 
@@ -71,7 +63,6 @@
       this.$el.html(this.template.render({
         mode: this.mode,
         info: this.info,
-        nodes: this.nodes,
         parsedVersion: window.versionHelper.toDocuVersion(
           window.frontendConfig.version.version
         )
@@ -120,44 +111,6 @@
         window.App.navigate('#replication/applier/' + endpoint + '/' + db, {trigger: true});
       } else {
         arangoHelper.arangoMessage('Replication', 'This applier is not running.');
-      }
-    },
-
-    getActiveFailoverEndpoints: function () {
-      var self = this;
-      $.ajax({
-        type: 'GET',
-        cache: false,
-        url: arangoHelper.databaseUrl('/_api/cluster/endpoints'),
-        contentType: 'application/json',
-        success: function (data) {
-          if (data.endpoints) {
-            self.renderEndpoints(data.endpoints);
-          } else {
-            self.renderEndpoints();
-          }
-        },
-        error: function () {
-          self.renderEndpoints();
-        }
-      });
-    },
-
-    renderEndpoints: function (endpoints) {
-      var self = this;
-
-      if (endpoints) {
-        var leader = endpoints[0];
-        var followers = endpoints.slice(1, endpoints.length);
-
-        $('#nodes-leader-id').html(leader.endpoint);
-        $('#nodes-followers-id').html('');
-        _.each(followers, function (follower) {
-          $('#nodes-followers-id').append('<span data="' + self.parseEndpoint(follower.endpoint) + '">' + follower.endpoint + '</span>');
-        });
-      } else {
-        $('#nodes-leader-id').html('Error');
-        $('#nodes-followers-id').html('Error');
       }
     },
 
@@ -340,11 +293,8 @@
     },
 
     getStateData: function (cb) {
-      // fetching mode 3 related information
-      if (this.mode === 3) {
-        this.getActiveFailoverEndpoints();
-        this.getLoggerState();
-      } else if (this.mode === 2) {
+      // fetching mode related information
+      if (this.mode === 2) {
         if (this.info.role === 'leader') {
           this.getLoggerState();
         } else {
@@ -598,10 +548,7 @@
             if (data.role) {
               self.info.role = data.role;
             }
-            if (self.mode === 3) {
-              self.info.mode = 'Active Failover';
-              self.info.level = 'Server';
-            } else if (self.mode === 2) {
+            if (self.mode === 2) {
               self.info.mode = 'Leader/Follower';
               self.info.level = 'Server';
             } else if (self.mode === 1) {
