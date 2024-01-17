@@ -164,7 +164,7 @@ Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t,
       rGuard(std::move(rGuard)),
       user(::currentUser()),
       db(state ? state->vocbase().name() : ""),
-      rwlock() {}
+      rwlock(_schedulerWrapper) {}
 
 bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const noexcept {
   return this->intermediateCommits;

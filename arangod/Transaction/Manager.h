@@ -32,6 +32,7 @@
 #include "Cluster/CallbackGuard.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/Fwd.h"
+#include "Scheduler/FutureLock.h"
 #include "Transaction/ManagedContext.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Status.h"
@@ -119,7 +120,8 @@ class Manager final : public IManager {
     std::string const user;  /// user owning the transaction
     std::string db;          /// database in which the transaction operates
     /// cheap usage lock for _state
-    mutable basics::ReadWriteSpinLock rwlock;
+    SchedulerWrapper _schedulerWrapper;
+    mutable FutureLock rwlock;
   };
 
  public:
