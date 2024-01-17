@@ -83,11 +83,12 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       continue;
     }
 
-    if (!indexNode->projections().empty()) {
+    if (indexNode->projections().usesCoveringIndex()) {
       LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
-               << "has projections";
+               << "uses covering projections";
       continue;
     }
+
     if (indexNode->hasFilter()) {
       LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
                << "has post filter";
@@ -120,6 +121,13 @@ void arangodb::aql::batchMaterializeDocumentsRule(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
         *indexNode->outVariable());
     plan->insertAfter(indexNode, materialized);
+    if (!indexNode->projections().empty()) {
+      TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
+      TRI_ASSERT(!indexNode->projections().hasOutputRegisters());
+      // move projections from index node into materialize node
+      materialized->projections(std::move(indexNode->projections()));
+    }
+
     modified = true;
   }
 

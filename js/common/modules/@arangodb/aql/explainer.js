@@ -2021,7 +2021,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        let annotations = '';
+        if (node.projections) {
+          annotations += projections(node, 'projections', 'projections');
+        }
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable) + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '');
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
