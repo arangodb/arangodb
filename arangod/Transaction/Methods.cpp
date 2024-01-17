@@ -1758,6 +1758,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
   // initialize the transaction. this can update _mainTransaction!
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+
+  setUsername(ExecContext::current().user());
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,

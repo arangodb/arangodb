@@ -1213,7 +1213,7 @@ futures::Future<OperationResult> countOnCoordinator(
     reqOpts.timeout = network::Timeout(10.0);
   }
 
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, trx.username());
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1560,7 +1560,7 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
-    network::addUserParameter(reqOpts, ExecContext::current().user());
+    network::addUserParameter(reqOpts, trx.username());
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -1708,7 +1708,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                       : "false");
   }
 
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, trx.username());
 
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1886,7 +1886,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, trx.username());
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1982,7 +1982,7 @@ Future<OperationResult> getDocumentOnCoordinator(
     reqOpts.param("onlyget", "true");
   }
 
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, trx.username());
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
@@ -2559,7 +2559,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     reqOpts.param(StaticStrings::ReturnOldString, "true");
   }
 
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, trx.username());
 
   bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);

@@ -374,12 +374,12 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   void trackShardRequest(CollectionNameResolver const& resolver,
                          std::string_view database, std::string_view shard,
                          std::string_view user, AccessMode::Type accessMode,
-                         std::string_view context);
+                         std::string_view context) noexcept;
 
   void trackShardUsage(CollectionNameResolver const& resolver,
                        std::string_view database, std::string_view shard,
                        std::string_view user, AccessMode::Type accessMode,
-                       std::string_view context, size_t nBytes);
+                       std::string_view context, size_t nBytes) noexcept;
 
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(

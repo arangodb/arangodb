@@ -181,18 +181,17 @@ std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
   return _counterGuard;
 }
 
-void TransactionState::trackShardRequest(CollectionNameResolver const& resolver,
-                                         std::string_view database,
-                                         std::string_view shard,
-                                         std::string_view user,
-                                         AccessMode::Type accessMode,
-                                         std::string_view context) {
+void TransactionState::trackShardRequest(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context) noexcept try {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
   // no tracking performed on coordinators or single servers
   if (!isDBServer()) {
     return;
   }
-  TRI_ASSERT(!database.empty());
-  TRI_ASSERT(!shard.empty());
 
   auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
@@ -234,18 +233,27 @@ void TransactionState::trackShardRequest(CollectionNameResolver const& resolver,
       << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
       << ", context: " << context;
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
 }
 
 void TransactionState::trackShardUsage(
     CollectionNameResolver const& resolver, std::string_view database,
     std::string_view shard, std::string_view user, AccessMode::Type accessMode,
-    std::string_view context, size_t nBytes) {
+    std::string_view context, size_t nBytes) noexcept try {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
   // no tracking performed on coordinators or single servers
   if (!isDBServer()) {
     return;
   }
-  TRI_ASSERT(!database.empty());
-  TRI_ASSERT(!shard.empty());
+
+  if (nBytes == 0) {
+    // nothing to be tracked. should normally not happen except for
+    // collection scans etc. that did not encounter any documents.
+    return;
+  }
 
   auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
@@ -282,11 +290,13 @@ void TransactionState::trackShardUsage(
     metric.count(nBytes);
   }
 
-  LOG_TOPIC("d3599", ERR, Logger::FIXME)
+  LOG_TOPIC("d3599", TRACE, Logger::FIXME)
       << "tracking access for database '" << database << "', collection '"
-      << /*collection <<*/ "', shard '" << shard << "', user '" << user
+      << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
-      << ", nbytes: " << nBytes;
+      << ", context: " << context << ", nbytes: " << nBytes;
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
 }
 
 void TransactionState::setUsername(std::string_view name) {
