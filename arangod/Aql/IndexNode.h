@@ -218,6 +218,10 @@ class IndexNode : public ExecutionNode,
 
   std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
 
+  // returns the single index pointer if the IndexNode uses a single index,
+  // nullptr otherwise
+  [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -233,10 +237,6 @@ class IndexNode : public ExecutionNode,
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(AstNode*) const;
-
-  // returns the single index pointer if the IndexNode uses a single index,
-  // nullptr otherwise
-  [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
 
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;
