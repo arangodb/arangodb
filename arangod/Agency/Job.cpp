@@ -844,8 +844,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
     return false;
   }
   std::string const& type = tmp_type.value();
-  if (type == "failedServer" || type == "failedLeader" ||
-      type == "activeFailover") {
+  if (type == "failedServer" || type == "failedLeader") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer" || type == "resignLeadership") {
