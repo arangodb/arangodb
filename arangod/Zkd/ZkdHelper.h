@@ -21,8 +21,11 @@
 /// @author Tobias Gödderz
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
+
 #include <cstddef>
+#include <cstdint>
 #include <iosfwd>
 #include <limits>
 #include <optional>

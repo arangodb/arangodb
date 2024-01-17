@@ -21,6 +21,7 @@
 /// @author Dan Larkin-York
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <bit>
 #include <cstdint>
 
 #include "Cache/TransactionalCache.h"
@@ -38,6 +39,7 @@
 #include "Cache/TransactionalBucket.h"
 #include "Cache/VPackKeyHasher.h"
 #include "Random/RandomGenerator.h"
+#include "Logger/LogMacros.h"
 
 namespace arangodb::cache {
 
@@ -124,7 +126,7 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
             TRI_ASSERT(source != nullptr);
             maybeMigrate = source->slotFilled();
           }
-          maybeMigrate |= reportInsert(eviction);
+          maybeMigrate |= reportInsert(source, eviction);
         } else {
           requestGrow();  // let function do the hard work
           status.reset(TRI_ERROR_RESOURCE_LIMIT);
@@ -139,7 +141,8 @@ Result TransactionalCache<Hasher>::insert(CachedValue* value) {
     TRI_ASSERT(source != nullptr);
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(source->idealSize());  // let function do the hard work
+    requestMigrate(source, source->idealSize(),
+                   source->logSize());  // let function do the hard work
   }
 
   return status;
@@ -183,7 +186,7 @@ Result TransactionalCache<Hasher>::remove(void const* key,
     TRI_ASSERT(source != nullptr);
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(source->idealSize());
+    requestMigrate(source, source->idealSize(), source->logSize());
   }
 
   return status;
@@ -228,7 +231,7 @@ Result TransactionalCache<Hasher>::banish(void const* key,
     TRI_ASSERT(source != nullptr);
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(source->idealSize());
+    requestMigrate(source, source->idealSize(), source->logSize());
   }
 
   return status;
@@ -281,13 +284,21 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
     return false;
   }
 
+  TRI_ASSERT(std::popcount(n) == 1);
+
+  // table size is always a power of two value
+  std::uint64_t mask = n - 1;
+
   // pick a random start bucket for scanning, so that we don't
   // prefer some buckets over others
   std::uint64_t offset = RandomGenerator::interval(uint64_t(n));
 
+  bool freedEnough = false;
   bool maybeMigrate = false;
+  std::uint64_t totalReclaimed = 0;
+  std::uint64_t totalInspected = 0;
   for (std::size_t i = 0; i < n; ++i) {
-    std::uint64_t index = (offset + i) % n;
+    std::uint64_t index = (offset + i) & mask;
 
     // we can do a lot of iterations from here. don't check for
     // shutdown in every iteration, but only in every 1000th.
@@ -295,9 +306,18 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
       break;
     }
 
+    ++totalInspected;
+
+    // use a specialized simpler implementation of getBucket() here
+    // that does not report to the manager that the cache was accessed
+    // (after all, this is only a free memory operation), and that does
+    // not update the bucket's term. updating the term is not necessary
+    // here, as we are only evicting data from the bucket. evicting data
+    // does use the term. and when doing any other operation in the
+    // bucket (find, insert, remove), the term is properly updated at
+    // the beginning.
     auto [status, guard] =
-        getBucket(table.get(), Table::BucketId{index}, Cache::triesFast,
-                  /*singleOperation*/ false);
+        getBucketSimple(table.get(), Table::BucketId{index}, Cache::triesFast);
 
     if (status != TRI_ERROR_NO_ERROR) {
       continue;
@@ -308,18 +328,26 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
     std::uint64_t reclaimed = bucket.evictCandidate(/*moveToFront*/ false);
 
     if (reclaimed > 0) {
+      totalReclaimed += reclaimed;
       maybeMigrate |= guard.source()->slotEmptied();
 
       if (!cb(reclaimed)) {
+        freedEnough = true;
         break;
       }
     }
   }
 
+  LOG_TOPIC("37e7f", TRACE, Logger::CACHE)
+      << "freeMemory task finished. table size (slots): " << n
+      << ", total reclaimed memory: " << totalReclaimed
+      << ", freed enough: " << freedEnough
+      << ", slots inspected: " << totalInspected;
+
   if (maybeMigrate) {
     // caution: calling idealSize() can have side effects
     // and trigger a table growth!
-    requestMigrate(table->idealSize());
+    requestMigrate(table.get(), table->idealSize(), table->logSize());
   }
 
   return maybeMigrate;
@@ -327,15 +355,12 @@ bool TransactionalCache<Hasher>::freeMemoryWhile(
 
 template<typename Hasher>
 void TransactionalCache<Hasher>::migrateBucket(
-    void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
+    Table* table, void* sourcePtr, std::unique_ptr<Table::Subtable> targets,
     Table& newTable) {
   std::uint64_t term = _manager->_transactions.term();
 
   // lock current bucket
-  std::shared_ptr<Table> table = this->table();
-
-  Table::BucketLocker sourceGuard(sourcePtr, table.get(),
-                                  Cache::triesGuarantee);
+  Table::BucketLocker sourceGuard(sourcePtr, table, Cache::triesGuarantee);
   TransactionalBucket& source = sourceGuard.bucket<TransactionalBucket>();
   term = std::max(term, source._banishTerm);
 
@@ -452,29 +477,32 @@ TransactionalCache<Hasher>::getBucket(Table::HashOrId bucket,
   if (ADB_UNLIKELY(isShutdown() || table == nullptr)) {
     status = TRI_ERROR_SHUTTING_DOWN;
   } else {
-    std::tie(status, guard) =
-        getBucket(table.get(), bucket, maxTries, singleOperation);
+    if (singleOperation) {
+      _manager->reportAccess(_id);
+    }
+
+    std::uint64_t term = _manager->_transactions.term();
+    guard = table->fetchAndLockBucket(bucket, maxTries);
+    if (guard.isLocked()) {
+      guard.bucket<TransactionalBucket>().updateBanishTerm(term);
+    } else {
+      status = TRI_ERROR_LOCK_TIMEOUT;
+    }
   }
 
+  TRI_ASSERT(guard.isLocked() || status != TRI_ERROR_NO_ERROR);
   return std::make_tuple(status, std::move(guard));
 }
 
 template<typename Hasher>
 std::tuple<::ErrorCode, Table::BucketLocker>
-TransactionalCache<Hasher>::getBucket(Table* table, Table::HashOrId bucket,
-                                      std::uint64_t maxTries,
-                                      bool singleOperation) {
+TransactionalCache<Hasher>::getBucketSimple(Table* table,
+                                            Table::HashOrId bucket,
+                                            std::uint64_t maxTries) {
   ::ErrorCode status = TRI_ERROR_NO_ERROR;
 
-  if (singleOperation) {
-    _manager->reportAccess(_id);
-  }
-
-  std::uint64_t term = _manager->_transactions.term();
   Table::BucketLocker guard = table->fetchAndLockBucket(bucket, maxTries);
-  if (guard.isLocked()) {
-    guard.bucket<TransactionalBucket>().updateBanishTerm(term);
-  } else {
+  if (!guard.isLocked()) {
     status = TRI_ERROR_LOCK_TIMEOUT;
   }
 

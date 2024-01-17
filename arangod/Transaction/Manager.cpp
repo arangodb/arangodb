@@ -126,6 +126,8 @@ uint64_t Manager::getActiveTransactionCount() {
 
 /*static*/ double Manager::ttlForType(ManagerFeature const& feature,
                                       Manager::MetaType type) {
+  TRI_IF_FAILURE("transaction::Manager::shortTTL") { return 0.1; }
+
   if (type == Manager::MetaType::Tombstone) {
     return tombstoneTTL;
   }
@@ -449,9 +451,13 @@ Result Manager::prepareOptions(transaction::Options& options) {
     // replicate changes to followers. replication to followers is only done
     // once the locks have been acquired on the leader(s). so if there are any
     // locking issues, they are supposed to happen first on leaders, and not
-    // affect followers. that's why we can hard-code the lock timeout here to a
-    // rather low value on followers
-    constexpr double followerLockTimeout = 15.0;
+    // affect followers.
+    // Having said that, even on a follower it can happen that for example
+    // an index is finalized on a shard. And then the collection could be
+    // locked exclusively for some period of time. Therefore, we should not
+    // set the locking timeout too low here. We choose 5 minutes as a
+    // compromise:
+    constexpr double followerLockTimeout = 300.0;
     if (options.lockTimeout == 0.0 ||
         options.lockTimeout >= followerLockTimeout) {
       options.lockTimeout = followerLockTimeout;
@@ -770,11 +776,17 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
   TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
 
   auto const role = ServerState::instance()->getRole();
+  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
   std::chrono::steady_clock::time_point endTime;
   if (!ServerState::isDBServer(role)) {  // keep end time as small as possible
-    endTime = std::chrono::steady_clock::now() +
-              std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
+    endTime =
+        now + std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
   }
+  std::chrono::steady_clock::time_point detachTime;
+  if (_streamingLockTimeout >= 1.0) {
+    detachTime = now + std::chrono::milliseconds(1000);
+  }
+  bool alreadyDetached = false;
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
   if (ServerState::isCoordinator(role)) {
@@ -862,8 +874,27 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     TRI_ASSERT(endTime.time_since_epoch().count() == 0 ||
                !ServerState::instance()->isDBServer());
 
-    if (!ServerState::isDBServer(role) &&
-        std::chrono::steady_clock::now() > endTime) {
+    auto now = std::chrono::steady_clock::now();
+    if (!alreadyDetached && detachTime.time_since_epoch().count() != 0 &&
+        now > detachTime) {
+      alreadyDetached = true;
+      LOG_TOPIC("dd234", INFO, Logger::THREADS)
+          << "Did not get lock within 1 seconds, detaching scheduler thread.";
+      uint64_t currentNumberDetached = 0;
+      uint64_t maximumNumberDetached = 0;
+      auto res = SchedulerFeature::SCHEDULER->detachThread(
+          &currentNumberDetached, &maximumNumberDetached);
+      if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
+        LOG_TOPIC("dd233", WARN, Logger::THREADS)
+            << "Could not detach scheduler thread (currently detached threads: "
+            << currentNumberDetached
+            << ", maximal number of detached threads: " << maximumNumberDetached
+            << "), will continue to acquire "
+               "lock in scheduler thread, this can potentially lead to "
+               "blockages!";
+      }
+    }
+    if (!ServerState::isDBServer(role) && now > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_LOCKED, std::string("cannot write-lock, transaction ") +
                                 std::to_string(tid.id()) +
@@ -1108,7 +1139,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
     if (mtrx.expired()) {
       // we will update the expire time of the tombstone shortly afterwards,
-      // so we need to store the fact that this transaction originally expired
+      // but we need to store the fact that this transaction originally expired
       wasExpired = true;
       status = transaction::Status::ABORTED;
     }
@@ -1181,8 +1212,6 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       // makes the leader drop us as a follower for all shards in the
       // transaction.
       res.reset(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
-    } else if (res.ok() && wasExpired) {
-      res.reset(TRI_ERROR_TRANSACTION_ABORTED);
     }
   }
   TRI_ASSERT(!trx.state()->isRunning());
@@ -1210,6 +1239,8 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
+  TRI_IF_FAILURE("transaction::Manager::noGC") { return false; }
+
   bool didWork = false;
   containers::SmallVector<TransactionId, 8> toAbort;
   containers::SmallVector<TransactionId, 8> toErase;

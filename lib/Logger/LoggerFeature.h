@@ -62,7 +62,6 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   void prepare() override final;
   void unprepare() override final;
 
-  void setBackgrounded(bool backgrounded) { _backgrounded = backgrounded; }
   void disableThreaded() { _threaded = false; }
   void setSupervisor(bool supervisor) { _supervisor = supervisor; }
 
@@ -97,12 +96,12 @@ class LoggerFeature final : public application_features::ApplicationFeature {
   bool _keepLogRotate = false;
   bool _foregroundTty = false;
   bool _forceDirect = false;
+  uint32_t _maxQueuedLogMessages = 10000;
   bool _useMicrotime = false;
   bool _showIds = true;
   bool _showRole = false;
   bool _logRequestParameters = true;
   bool _supervisor = false;
-  bool _backgrounded = false;
   bool _threaded = false;
   std::string _apiSwitch = "true";
   bool _apiEnabled = true;

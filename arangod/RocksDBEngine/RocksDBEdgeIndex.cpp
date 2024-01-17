@@ -409,6 +409,8 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
          iterator->Next()) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(iterator->key());
 
+      TRI_ASSERT(_index->objectId() == RocksDBKey::objectId(iterator->key()));
+
       // adding documentId and _from or _to value
       _builder.add(VPackValue(docId.id()));
       std::string_view vertexId = RocksDBValue::vertexId(iterator->value());

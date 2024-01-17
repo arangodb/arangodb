@@ -25,11 +25,14 @@
 #include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/StringUtils.h"
 
 #include "gtest/gtest.h"
 
 #include "Logger/LogAppenderFile.h"
 #include "Logger/Logger.h"
+#include "fmt/format.h"
 
 #include <date/date.h>
 
@@ -43,6 +46,27 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 
+namespace {
+struct Synchronizer {
+  std::mutex mutex;
+  std::condition_variable cv;
+  bool ready = false;
+
+  void waitForStart() {
+    std::unique_lock lock(mutex);
+    cv.wait(lock, [&] { return ready; });
+  }
+  void start() {
+    {
+      std::unique_lock lock(mutex);
+      ready = true;
+    }
+    cv.notify_all();
+  }
+};
+
+}  // namespace
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                        test suite
 // -----------------------------------------------------------------------------
@@ -50,26 +74,27 @@ using namespace arangodb::basics;
 class LoggerTest : public ::testing::Test {
  protected:
   // store old state as backup
-  std::vector<std::tuple<int, std::string, LogAppenderFile*>> backup;
+  std::vector<std::tuple<int, std::string, std::shared_ptr<LogAppenderFile>>>
+      backup;
   std::string const path;
   std::string const logfile1;
   std::string const logfile2;
 
   LoggerTest()
-      : backup(LogAppenderFile::getAppenders()),
+      : backup(LogAppenderFileFactory::getAppenders()),
         path(TRI_GetTempPath()),
         logfile1(path + "logfile1"),
         logfile2(path + "logfile2") {
     std::ignore = FileUtils::remove(logfile1);
     std::ignore = FileUtils::remove(logfile2);
     // remove any previous loggers
-    LogAppenderFile::closeAll();
+    LogAppenderFileFactory::closeAll();
   }
 
   ~LoggerTest() {
     // restore old state
-    LogAppenderFile::setAppenders(backup);
-    LogAppenderFile::reopenAll();
+    LogAppenderFileFactory::setAppenders(backup);
+    LogAppenderFileFactory::reopenAll();
 
     std::ignore = FileUtils::remove(logfile1);
     std::ignore = FileUtils::remove(logfile2);
@@ -77,20 +102,21 @@ class LoggerTest : public ::testing::Test {
 };
 
 TEST_F(LoggerTest, test_fds) {
-  LogAppenderFile logger1(logfile1);
-  LogAppenderFile logger2(logfile2);
+  auto logger1 = LogAppenderFileFactory::getFileAppender(logfile1);
+  auto logger2 = LogAppenderFileFactory::getFileAppender(logfile2);
 
-  auto fds = LogAppenderFile::getAppenders();
+  auto fds = LogAppenderFileFactory::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
-                                0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
-                                LogLevel::WARN, 0, "some warning message", 0,
-                                true));
+  logger1->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::ERR, 0, "some error message",
+                                        0, true));
+  logger2->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::WARN, 0,
+                                        "some warning message", 0, true));
 
   std::string content = FileUtils::slurp(logfile1);
   EXPECT_NE(content.find("some error message"), std::string::npos);
@@ -100,24 +126,25 @@ TEST_F(LoggerTest, test_fds) {
   EXPECT_EQ(content.find("some error message"), std::string::npos);
   EXPECT_NE(content.find("some warning message"), std::string::npos);
 
-  LogAppenderFile::closeAll();
+  LogAppenderFileFactory::closeAll();
 }
 
 TEST_F(LoggerTest, test_fds_after_reopen) {
-  LogAppenderFile logger1(logfile1);
-  LogAppenderFile logger2(logfile2);
+  auto logger1 = LogAppenderFileFactory::getFileAppender(logfile1);
+  auto logger2 = LogAppenderFileFactory::getFileAppender(logfile2);
 
-  auto fds = LogAppenderFile::getAppenders();
+  auto fds = LogAppenderFileFactory::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
-                                0, "some error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
-                                LogLevel::WARN, 0, "some warning message", 0,
-                                true));
+  logger1->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::ERR, 0, "some error message",
+                                        0, true));
+  logger2->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::WARN, 0,
+                                        "some warning message", 0, true));
 
   std::string content = FileUtils::slurp(logfile1);
 
@@ -128,20 +155,21 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(content.find("some error message"), std::string::npos);
   EXPECT_NE(content.find("some warning message"), std::string::npos);
 
-  LogAppenderFile::reopenAll();
+  LogAppenderFileFactory::reopenAll();
 
-  fds = LogAppenderFile::getAppenders();
+  fds = LogAppenderFileFactory::getAppenders();
   EXPECT_EQ(fds.size(), 2);
 
   EXPECT_TRUE(std::get<0>(fds[0]) > STDERR_FILENO);
   EXPECT_EQ(std::get<1>(fds[0]), logfile1);
   EXPECT_EQ(std::get<2>(fds[0])->fd(), std::get<0>(fds[0]));
 
-  logger1.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR,
-                                0, "some other error message", 0, true));
-  logger2.logMessage(LogMessage(__FUNCTION__, __FILE__, __LINE__,
-                                LogLevel::WARN, 0, "some other warning message",
-                                0, true));
+  logger1->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::ERR, 0,
+                                        "some other error message", 0, true));
+  logger2->logMessageGuarded(LogMessage(__FUNCTION__, __FILE__, __LINE__,
+                                        LogLevel::WARN, 0,
+                                        "some other warning message", 0, true));
 
   content = FileUtils::slurp(logfile1);
   EXPECT_EQ(content.find("some error message"), std::string::npos);
@@ -153,7 +181,7 @@ TEST_F(LoggerTest, test_fds_after_reopen) {
   EXPECT_EQ(content.find("some warning message"), std::string::npos);
   EXPECT_NE(content.find("some other warning message"), std::string::npos);
 
-  LogAppenderFile::closeAll();
+  LogAppenderFileFactory::closeAll();
 }
 
 TEST_F(LoggerTest, testTimeFormats) {
@@ -304,5 +332,75 @@ TEST_F(LoggerTest, testTimeFormats) {
     ASSERT_TRUE(std::regex_match(
         out,
         std::regex("^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}$")));
+  }
+}
+
+TEST_F(LoggerTest, test_many_loggers_same_file) {
+  {
+    auto logger1 = LogAppenderFileFactory::getFileAppender(logfile1);
+    auto logger2 = LogAppenderFileFactory::getFileAppender(logfile1);
+
+    // Both loggers need to have the same pointer
+    EXPECT_EQ(logger1.get(), logger2.get());
+  }
+  // Now test concurrent usage
+  constexpr size_t n = 4;
+  std::vector<std::thread> threads;
+  threads.reserve(n);
+
+  auto guard = arangodb::scopeGuard([&]() noexcept {
+    for (auto& t : threads) {
+      t.join();
+    }
+  });
+
+  Synchronizer s;
+  constexpr size_t iterations = 100;
+
+  std::vector<uint64_t> expectedValues;
+  for (size_t i = 0; i < n; ++i) {
+    expectedValues.emplace_back(0);
+    threads.emplace_back([logfile1 = this->logfile1, &s, i]() {
+      auto logger = LogAppenderFileFactory::getFileAppender(logfile1);
+
+      s.waitForStart();
+
+      for (size_t j = 0; j < iterations; ++j) {
+        logger->logMessageGuarded(
+            LogMessage(__FUNCTION__, __FILE__, __LINE__, LogLevel::ERR, 0,
+                       fmt::format("Thread {} Message {}\n", i, j), 0, true));
+      }
+    });
+  }
+
+  s.start();
+
+  guard.fire();
+
+  // All Messages are written to the same file, let's check if they are in
+  // correct ordering
+  std::string content = FileUtils::slurp(logfile1);
+  auto stream = std::stringstream{content};
+
+  // Let us read file from top to bottom.
+  // In each line we should have exactly one message from one thread
+  // For every thread the messages have to be strictly ordered
+  // The messages from different threads can be interleaved
+  // Every thread needs to have exactly iterations messages
+  for (std::string line; std::getline(stream, line, '\n');) {
+    std::vector<std::string> splits;
+    auto streamLine = std::stringstream{line};
+    for (std::string segment; std::getline(streamLine, segment, ' ');) {
+      splits.push_back(segment);
+    }
+    auto tId = StringUtils::uint64(splits.at(1));
+    auto messageId = StringUtils::uint64(splits.at(3));
+    EXPECT_EQ(expectedValues.at(tId), messageId);
+    expectedValues[tId]++;
+  }
+
+  for (size_t i = 0; i < n; ++i) {
+    EXPECT_EQ(expectedValues.at(i), iterations)
+        << "Thread " << i << " did not have enough messages";
   }
 }

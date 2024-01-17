@@ -32,7 +32,6 @@
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
@@ -46,23 +45,6 @@
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-network::Headers buildHeaders(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-}  // namespace
 
 RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
                                          GeneralRequest* request,
@@ -197,7 +179,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Get,
           _request->requestPath(), VPackBuffer<uint8_t>{}, options,
-          buildHeaders(_request->headers()));
+          network::addAuthorizationHeader(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -499,7 +481,8 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
 
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, requestType, _request->requestPath(),
-          std::move(*body), options, buildHeaders(_request->headers()));
+          std::move(*body), options,
+          network::addAuthorizationHeader(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {

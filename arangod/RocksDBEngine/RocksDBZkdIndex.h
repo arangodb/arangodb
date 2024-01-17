@@ -44,7 +44,7 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
   std::vector<std::vector<basics::AttributeName>> const& coveredFields()
       const override {
     // index does not cover the index attributes!
-    return Index::emptyCoveredFields;
+    return _storedValues;
   }
 
   Result insert(transaction::Methods& trx, RocksDBMethods* methods,
@@ -68,6 +68,8 @@ class RocksDBZkdIndexBase : public RocksDBIndex {
       transaction::Methods* trx, const aql::AstNode* node,
       const aql::Variable* reference, const IndexIteratorOptions& opts,
       ReadOwnWrites readOwnWrites, int) override;
+
+  std::vector<std::vector<basics::AttributeName>> const _storedValues;
 };
 
 class RocksDBZkdIndex final : public RocksDBZkdIndexBase {

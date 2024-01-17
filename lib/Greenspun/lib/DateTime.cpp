@@ -57,7 +57,7 @@ EvalResult DateTime_dateStringToUnix(Machine& ctx, VPackSlice const paramsList,
     return EvalError("string did not parse as date");
   }
 
-  result.add(VPackValue(tp.time_since_epoch().count()));
+  result.add(VPackValue(static_cast<uint64_t>(tp.time_since_epoch().count())));
   return {};
 }
 

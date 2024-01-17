@@ -32,16 +32,20 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "Cluster/TraverserEngine.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
@@ -88,8 +92,9 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    VPackSlice snippets, VPackSlice traverserSlice, std::string_view user,
+    VPackBuilder& answerBuilder,
+    QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
       << " this: " << (uintptr_t)this;
@@ -138,9 +143,25 @@ void ClusterQuery::prepareClusterQuery(
     }
   }
 
+  double origLockTimeout = _trx->state()->options().lockTimeout;
+  if (fastPathLocking) {
+    _trx->state()->options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
+  }
+
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
+  }
+
+  _trx->state()->options().lockTimeout = origLockTimeout;
+
+  if (ServerState::instance()->isDBServer()) {
+    _collections.visit(
+        [&](std::string const&, aql::Collection const& c) -> bool {
+          _trx->state()->trackRequest(*_trx->resolver(), _vocbase.name(),
+                                      c.name(), user, c.accessType(), "aql");
+          return true;
+        });
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);

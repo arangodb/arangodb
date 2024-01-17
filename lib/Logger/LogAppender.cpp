@@ -31,6 +31,7 @@
 
 #include "Basics/operating-system.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/RecursiveLocker.h"
 #include "Basics/StringUtils.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/voc-errors.h"
@@ -92,9 +93,9 @@ void LogAppender::addAppender(LogGroup const& group,
 
   std::shared_ptr<LogAppender> appender;
 
-  auto& definitionsMap = _definition2appenders[group.id()];
-
   WRITE_LOCKER(guard, _appendersLock);
+
+  auto& definitionsMap = _definition2appenders[group.id()];
 
   auto it = definitionsMap.find(key);
 
@@ -157,58 +158,71 @@ std::shared_ptr<LogAppender> LogAppender::buildAppender(
   } else if (output == "-") {
     result = std::make_shared<LogAppenderStdout>();
   } else if (output.starts_with(::filePrefix)) {
-    result =
-        std::make_shared<LogAppenderFile>(output.substr(::filePrefix.size()));
+    result = LogAppenderFileFactory::getFileAppender(
+        output.substr(::filePrefix.size()));
   }
 
   return result;
 }
 
 void LogAppender::logGlobal(LogGroup const& group, LogMessage const& message) {
-  WRITE_LOCKER(guard, _appendersLock);
+  READ_LOCKER(guard, _appendersLock);
 
-  auto& appenders = _globalAppenders[group.id()];
+  try {
+    auto& appenders = _globalAppenders.at(group.id());
 
-  // append to global appenders first
-  for (auto const& appender : appenders) {
-    appender->logMessage(message);
+    // append to global appenders first
+    for (auto const& appender : appenders) {
+      appender->logMessageGuarded(message);
+    }
+  } catch (std::out_of_range const&) {
+    // no global appender for this group
+    TRI_ASSERT(false) << "no global appender for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
   }
 }
 
 void LogAppender::log(LogGroup const& group, LogMessage const& message) {
   // output to appenders
-  auto& topicsMap = _topics2appenders[group.id()];
-  auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
-                             size_t n) -> bool {
+  READ_LOCKER(guard, _appendersLock);
+  try {
+    auto& topicsMap = _topics2appenders.at(group.id());
+    auto output = [&topicsMap](LogGroup const& group, LogMessage const& message,
+                               size_t n) -> bool {
+      bool shown = false;
+
+      auto const& it = topicsMap.find(n);
+      if (it != topicsMap.end() && !it->second.empty()) {
+        auto const& appenders = it->second;
+
+        for (auto const& appender : appenders) {
+          appender->logMessageGuarded(message);
+        }
+        shown = true;
+      }
+
+      return shown;
+    };
+
     bool shown = false;
 
-    auto const& it = topicsMap.find(n);
-    if (it != topicsMap.end() && !it->second.empty()) {
-      auto const& appenders = it->second;
+    // try to find a topic-specific appender
+    size_t topicId = message._topicId;
 
-      for (auto const& appender : appenders) {
-        appender->logMessage(message);
-      }
-      shown = true;
+    if (topicId < LogTopic::MAX_LOG_TOPICS) {
+      shown = output(group, message, topicId);
     }
 
-    return shown;
-  };
-
-  bool shown = false;
-
-  // try to find a topic-specific appender
-  size_t topicId = message._topicId;
-
-  WRITE_LOCKER(guard, _appendersLock);
-
-  if (topicId < LogTopic::MAX_LOG_TOPICS) {
-    shown = output(group, message, topicId);
-  }
-
-  // otherwise use the general topic appender
-  if (!shown) {
-    output(group, message, LogTopic::MAX_LOG_TOPICS);
+    // otherwise use the general topic appender
+    if (!shown) {
+      output(group, message, LogTopic::MAX_LOG_TOPICS);
+    }
+  } catch (std::out_of_range const&) {
+    // no topic 2 appenders entry for this group.
+    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
   }
 }
 
@@ -218,7 +232,7 @@ void LogAppender::shutdown() {
 #ifdef ARANGODB_ENABLE_SYSLOG
   LogAppenderSyslog::close();
 #endif
-  LogAppenderFile::closeAll();
+  LogAppenderFileFactory::closeAll();
 
   for (std::size_t i = 0; i < LogGroup::Count; ++i) {
     _globalAppenders[i].clear();
@@ -230,7 +244,16 @@ void LogAppender::shutdown() {
 void LogAppender::reopen() {
   WRITE_LOCKER(guard, _appendersLock);
 
-  LogAppenderFile::reopenAll();
+  LogAppenderFileFactory::reopenAll();
+}
+
+void LogAppender::logMessageGuarded(LogMessage const& message) {
+  // Only one thread is allowed to actually write logs to the file.
+  // We use a recusive lock here, just in case writing the log message
+  // causes a crash, in this case we may trigger another force-direct
+  // log. This is not very likely, but it is better to be safe than sorry.
+  RECURSIVE_WRITE_LOCKER(_logOutputMutex, _logOutputMutexOwner);
+  logMessage(message);
 }
 
 Result LogAppender::parseDefinition(std::string const& definition,
@@ -299,12 +322,20 @@ bool LogAppender::haveAppenders(LogGroup const& group, size_t topicId) {
   // possible. If this actually causes performance issues we have to think about
   // other solutions.
   READ_LOCKER(guard, _appendersLock);
-  auto const& appenders = _topics2appenders[group.id()];
-  auto haveTopicAppenders = [&appenders](size_t topicId) {
-    auto it = appenders.find(topicId);
-    return it != appenders.end() && !it->second.empty();
-  };
-  return haveTopicAppenders(topicId) ||
-         haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
-         !_globalAppenders[group.id()].empty();
+  try {
+    auto const& appenders = _topics2appenders.at(group.id());
+    auto haveTopicAppenders = [&appenders](size_t topicId) {
+      auto it = appenders.find(topicId);
+      return it != appenders.end() && !it->second.empty();
+    };
+    return haveTopicAppenders(topicId) ||
+           haveTopicAppenders(LogTopic::MAX_LOG_TOPICS) ||
+           !_globalAppenders.at(group.id()).empty();
+  } catch (std::out_of_range const&) {
+    // no topic 2 appenders entry for this group.
+    TRI_ASSERT(false) << "no topic 2 appender match for group " << group.id();
+    // This should never happen, however if it does we should not crash
+    // but we also cannot log anything, as we are the logger.
+    return false;
+  }
 }
