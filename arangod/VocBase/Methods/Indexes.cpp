@@ -751,92 +751,152 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    CollectionNameResolver resolver(collection.vocbase());
-    auto handleRes = co_await getHandle(collection, indexArg, &resolver);
-    if (!handleRes.ok()) {
-      co_return std::move(handleRes).result();
-    }
-    auto&& [iid, name] = handleRes.get();
-
-    // flush estimates
-    collection.getPhysical()->flushClusterIndexEstimates();
-
-#ifdef USE_ENTERPRISE
-    auto res = Indexes::dropCoordinatorEE(collection, iid);
-#else
-    auto res = ClusterIndexMethods::dropIndexCoordinator(collection, iid, 0.0);
-#endif
-    co_return std::move(res);
+    co_return co_await dropCoordinator(collection, indexArg);
   } else {
-    auto&& res =
-        co_await acquireLockForDropAndCheckPreconditions(collection, indexArg);
-    auto&& [trx, indexId] = res.get();
-    if (!res.ok()) {
-      co_return std::move(res).result();
-    }
-    LogicalCollection* col = trx->documentCollection();
-    co_return dropUncheckedWithoutLock(*col, indexId);
+    co_return co_await dropDBServer(collection, indexArg);
   }
 }
 
-futures::Future<
-    ResultT<std::pair<std::unique_ptr<SingleCollectionTransaction>, IndexId>>>
-Indexes::acquireLockForDropAndCheckPreconditions(LogicalCollection& collection,
-                                                 velocypack::Slice indexArg) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
-  auto origin = transaction::OperationOriginREST{::moduleName};
-  READ_LOCKER(readLocker, collection.vocbase()._inventoryLock);
+futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
+                                                IndexId indexId) {
+  ExecContext const& exec = ExecContext::current();
+  if (!exec.isSuperuser()) {
+    if (exec.databaseAuthLevel() != auth::Level::RW ||
+        !exec.canUseCollection(collection.name(), auth::Level::RW)) {
+      events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                        TRI_ERROR_FORBIDDEN);
+      co_return {TRI_ERROR_FORBIDDEN};
+    }
+  }
 
+  if (ServerState::instance()->isCoordinator()) {
+    co_return co_await dropCoordinator(collection, indexId);
+  } else {
+    co_return co_await dropDBServer(collection, indexId);
+  }
+}
+
+template<typename IndexSpec>
+requires std::is_same_v<IndexSpec, IndexId> or
+    std::is_same_v<IndexSpec, velocypack::Slice>
+        futures::Future<arangodb::Result> Indexes::dropCoordinator(
+            LogicalCollection& collection, IndexSpec indexSpec) {
+  CollectionNameResolver resolver(collection.vocbase());
+  auto const indexIdRes = co_await std::invoke(
+      overload{
+          [](IndexId indexId) -> futures::Future<ResultT<IndexId>> {
+            co_return indexId;
+          },
+          [&](velocypack::Slice indexArg) -> futures::Future<ResultT<IndexId>> {
+            auto handleRes =
+                co_await getHandle(collection, indexArg, &resolver);
+            if (!handleRes.ok()) {
+              co_return std::move(handleRes).result();
+            }
+            auto&& [iid, name] = handleRes.get();
+            co_return iid;
+          },
+      },
+      indexSpec);
+  if (!indexIdRes.ok()) {
+    co_return std::move(indexIdRes).result();
+  }
+  auto const indexId = indexIdRes.get();
+
+  // flush estimates
+  collection.getPhysical()->flushClusterIndexEstimates();
+
+#ifdef USE_ENTERPRISE
+  auto res = Indexes::dropCoordinatorEE(collection, indexId);
+#else
+  auto res =
+      ClusterIndexMethods::dropIndexCoordinator(collection, indexId, 0.0);
+#endif
+  co_return res;
+}
+template futures::Future<arangodb::Result> Indexes::dropCoordinator<IndexId>(
+    LogicalCollection&, IndexId);
+template futures::Future<arangodb::Result>
+Indexes::dropCoordinator<velocypack::Slice>(LogicalCollection&,
+                                            velocypack::Slice);
+
+std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
+    LogicalCollection& collection) {
+  auto origin = transaction::OperationOriginREST{::moduleName};
   transaction::Options trxOpts;
   trxOpts.requiresReplication = false;
 #ifdef USE_V8
-  auto trx = std::make_unique<SingleCollectionTransaction>(
+  return std::make_unique<SingleCollectionTransaction>(
       transaction::V8Context::createWhenRequired(collection.vocbase(), origin,
                                                  false),
       collection, AccessMode::Type::EXCLUSIVE, trxOpts);
 #else
-  auto trx = std::make_unique<SingleCollectionTransaction>(
+  return std::make_unique<SingleCollectionTransaction>(
       transaction::StandaloneContext::create(collection.vocbase(), origin),
       collection, AccessMode::Type::EXCLUSIVE, trxOpts);
 #endif
-  {
-    Result res = co_await trx->beginAsync();
+}
 
-    if (!res.ok()) {
-      events::DropIndex(collection.vocbase().name(), collection.name(), "",
-                        res.errorNumber());
-      co_return res;
-    }
+template<typename IndexSpec>
+requires std::is_same_v<IndexSpec, IndexId> or
+    std::is_same_v<IndexSpec, velocypack::Slice>
+        futures::Future<arangodb::Result> Indexes::dropDBServer(
+            LogicalCollection& col, IndexSpec indexSpec) {
+  TRI_ASSERT(!ServerState::instance()->isCoordinator());
+  READ_LOCKER(readLocker, col.vocbase()._inventoryLock);
+
+  auto trx = createTrxForDrop(col);
+
+  auto& collection = *trx->documentCollection();
+  auto beginRes = co_await trx->beginAsync();
+
+  if (!beginRes.ok()) {
+    events::DropIndex(collection.vocbase().name(), collection.name(), "",
+                      beginRes.errorNumber());
+    co_return beginRes;
   }
 
-  auto res =
-      co_await getHandle(collection, indexArg, trx->resolver(), trx.get());
-  if (!res.ok()) {
-    co_return std::move(res).result();
+  auto indexIdRes = co_await std::invoke(
+      overload{
+          [](IndexId indexId) -> futures::Future<ResultT<IndexId>> {
+            co_return indexId;
+          },
+          [&](velocypack::Slice indexArg) -> futures::Future<ResultT<IndexId>> {
+            auto res = co_await getHandle(collection, indexArg, trx->resolver(),
+                                          trx.get());
+            if (!res.ok()) {
+              co_return std::move(res).result();
+            }
+            auto&& [iid, name] = res.get();
+            co_return iid;
+          },
+      },
+      indexSpec);
+  if (!indexIdRes.ok()) {
+    co_return std::move(indexIdRes).result();
   }
-  auto&& [iid, name] = res.get();
+  auto const indexId = indexIdRes.get();
 
-  std::shared_ptr<Index> idx = collection.lookupIndex(iid);
+  std::shared_ptr<Index> idx = collection.lookupIndex(indexId);
   if (!idx || idx->id().empty() || idx->id().isPrimary()) {
     events::DropIndex(collection.vocbase().name(), collection.name(),
-                      std::to_string(iid.id()),
+                      std::to_string(indexId.id()),
                       TRI_ERROR_ARANGO_INDEX_NOT_FOUND);
     co_return {TRI_ERROR_ARANGO_INDEX_NOT_FOUND};
   }
   if (!idx->canBeDropped()) {
     events::DropIndex(collection.vocbase().name(), collection.name(),
-                      std::to_string(iid.id()), TRI_ERROR_FORBIDDEN);
+                      std::to_string(indexId.id()), TRI_ERROR_FORBIDDEN);
     co_return {TRI_ERROR_FORBIDDEN};
   }
 
-  co_return std::pair(std::move(trx), iid);
-}
-
-arangodb::Result Indexes::dropUncheckedWithoutLock(
-    LogicalCollection& collection, IndexId indexId) {
-  TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto res = collection.dropIndex(indexId);
   events::DropIndex(collection.vocbase().name(), collection.name(),
                     std::to_string(indexId.id()), res.errorNumber());
-  return res;
+  co_return res;
 }
+
+template futures::Future<arangodb::Result> Indexes::dropDBServer<IndexId>(
+    LogicalCollection&, IndexId);
+template futures::Future<arangodb::Result>
+Indexes::dropDBServer<velocypack::Slice>(LogicalCollection&, velocypack::Slice);

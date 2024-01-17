@@ -756,27 +756,24 @@ auto DocumentLeaderState::createIndex(
       });
 }
 
-auto DocumentLeaderState::dropIndex(ShardID shard,
-                                    velocypack::SharedSlice indexInfo)
+auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
     -> futures::Future<Result> {
   auto res = _shardHandler->lookupShard(shard);
   if (!res.ok()) {
     co_return std::move(res).result();
   }
-  auto&& collection = res.get();
-  // First we need to acquire the exclusive collection lock, and check whether
-  // the index is droppable.
-  auto res2 =
-      co_await methods::Indexes::acquireLockForDropAndCheckPreconditions(
-          *collection, indexInfo.slice());
-  if (!res2.ok()) {
-    co_return std::move(res2).result();
-  }
-  auto&& [trx, indexId] = res2.get();
+  auto&& col = res.get();
 
-  // Second, replicate the operation, and wait for it to be committed.
   ReplicatedOperation op =
-      ReplicatedOperation::buildDropIndexOperation(std::move(shard), indexId);
+      ReplicatedOperation::buildDropIndexOperation(shard, indexId);
+
+  auto trx = methods::Indexes::createTrxForDrop(*col);
+  // acquire an exclusive collection lock, so the DropIndex operation happens
+  // in the log while no transaction is open
+  auto beginRes = co_await trx->beginAsync();
+
+  // replicate the DropIndex operation, but don't wait for it to be committed
+  // yet
   auto replication = co_await _guardedData.doUnderLock(
       [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
         if (data.didResign()) {
@@ -784,8 +781,8 @@ auto DocumentLeaderState::dropIndex(ShardID shard,
                         "Leader resigned prior to DropIndex replication"};
         }
 
-        return replicateOperation(
-            op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+        return replicateOperation(op, ReplicationOptions{.waitForCommit = false,
+                                                         .waitForSync = true});
       });
   if (replication.fail()) {
     LOG_CTX("7c8bb", DEBUG, loggerContext)
@@ -794,12 +791,15 @@ auto DocumentLeaderState::dropIndex(ShardID shard,
         << replication.result();
     co_return replication.result();
   }
-  auto logIndex = replication.get();
+  // release the lock
+  trx.reset();
 
-  // Third, drop the index.
-  // Fourth, release the lock upon leaving the scope (~trx).
-  co_return _guardedData.doUnderLock([this, logIndex, op = std::move(op)](
-                                         auto& data) mutable -> Result {
+  auto logIndex = replication.get();
+  // wait for commit
+  co_await getStream()->waitFor(logIndex);
+
+  // Now drop the index.
+  co_return _guardedData.doUnderLock([&](auto& data) mutable -> Result {
     if (data.didResign()) {
       return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
     }
