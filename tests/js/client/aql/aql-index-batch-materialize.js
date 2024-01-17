@@ -67,6 +67,14 @@ function IndexBatchMaterializeTestSuite() {
     return plan;
   }
 
+  function checkResult(query) {
+    const expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
+
+    const actual = db._createStatement({query}).execute().toArray();
+
+    assertEqual(actual, expected);
+  }
+
   function expectOptimization(query) {
     const plan = db._createStatement({query}).explain().plan;
     assertNotEqual(plan.rules.indexOf(batchMaterializeRule), -1);
@@ -80,15 +88,9 @@ function IndexBatchMaterializeTestSuite() {
 
     const materializeNode = plan.nodes[nodes.indexOf("MaterializeNode")];
     assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
+
+    checkResult(query);
     return plan;
-  }
-
-  function checkResult(query) {
-    const expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
-
-    const actual = db._createStatement({query}).execute().toArray();
-
-    assertEqual(actual, expected);
   }
 
   return {
@@ -168,9 +170,7 @@ function IndexBatchMaterializeTestSuite() {
           FILTER doc.x > 5 or doc.x < 8
           RETURN doc
       `;
-      db._explain(query);
       expectOptimization(query);
-      checkResult(query);
     },
 
     testMaterializeMultiIndexScanMultiIndex: function () {
@@ -179,7 +179,6 @@ function IndexBatchMaterializeTestSuite() {
           FILTER doc.x > 5 or doc.y < 8
           RETURN doc
       `;
-      db._explain(query);
       expectNoOptimization(query);
     },
 
