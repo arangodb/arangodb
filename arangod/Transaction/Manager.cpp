@@ -333,14 +333,20 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
-  if (!it->second.rwlock.lockWrite(/*maxAttempts*/ 256)) {
-    LOG_TOPIC("9f7d7", WARN, Logger::TRANSACTIONS)
-        << "transaction " << tid << " is still in use";
-    TRI_ASSERT(false);
-    return;
+  /// we try for a second, before we give up in despair:
+  {
+    auto guard = it->second.rwlock
+                     .asyncTryLockExclusiveFor(std::chrono::milliseconds(1000))
+                     .get();
+    if (!guard.isLocked()) {
+      LOG_TOPIC("9f7d7", WARN, Logger::TRANSACTIONS)
+          << "transaction " << tid << " is still in use";
+      TRI_ASSERT(false);
+      return;
+    }
   }
 
-  buck._managed.erase(it);  // unlocking not necessary
+  buck._managed.erase(it);
 }
 
 futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
