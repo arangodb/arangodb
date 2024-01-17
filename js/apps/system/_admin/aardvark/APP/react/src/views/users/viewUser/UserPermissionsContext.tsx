@@ -271,12 +271,14 @@ export const UserPermissionsContextProvider = ({
   const tableInstance = useSortableReactTable<DatabaseTableType>({
     data: databaseTable || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "databaseName",
         desc: false
       }
     ],
+    defaultFilters: [],
+    storageKey: "userPermissions",
     getExpandedRowModel: getExpandedRowModel(),
     getRowCanExpand: () => true
   });

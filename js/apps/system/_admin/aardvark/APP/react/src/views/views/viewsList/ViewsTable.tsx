@@ -2,8 +2,8 @@ import { Link, Spinner, Stack } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
 import { useHistory } from "react-router-dom";
-import { FiltersList } from "../../../components/table/FiltersList";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { createEncodedUrl } from "../../../utils/urlHelper";
 import { LockableViewDescription, useFetchViews } from "../useFetchViews";
@@ -52,20 +52,21 @@ export const ViewsTable = () => {
   const tableInstance = useSortableReactTable<LockableViewDescription>({
     data: views || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: []
+    defaultFilters: [],
+    storageKey: "views"
   });
   const history = useHistory();
   return (
     <Stack>
-      <FiltersList<LockableViewDescription>
-        columns={TABLE_COLUMNS}
+      <TableControl<LockableViewDescription>
         table={tableInstance}
+        columns={TABLE_COLUMNS}
       />
       <ReactTable<LockableViewDescription>
         table={tableInstance}

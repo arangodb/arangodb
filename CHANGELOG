@@ -1,6 +1,21 @@
 devel
 -----
 
+* Upgraded bundled version of V8 to 12.1.165.
+
+* Upgraded bundled version of ICU to 73.
+
+* FE-296: Update shard distribution UI.
+
+* FE-367: ability to hide columns in table web UI.
+
+* Bug-Fix: Also fix the copy (mentioned directly below here) in the
+  ArangoShell.
+
+* Bug-Fix: Fixes the unnecessary copy of the `node_modules` folder located
+  in the frontend directory. This will also improve the startup speed of
+  the V8 feature.
+
 * Updated ArangoDB Starter to v0.18.0-preview-2.
 
 * APM-828: Per collection/database/user monitoring.

@@ -310,9 +310,19 @@ void V8ShellFeature::copyInstallationFiles() {
       FileUtils::buildFilename("js", "node", "node_modules");
   std::string const nodeModulesPathVersioned = basics::FileUtils::buildFilename(
       "js", versionAppendix, "node", "node_modules");
+  std::string const jsAppsPath = FileUtils::buildFilename("js", "apps");
+  std::string const jsActionsPath = FileUtils::buildFilename("js", "actions");
+  std::string const jsServerModulesPath =
+      FileUtils::buildFilename("js", "server");
   std::regex const binRegex("[/\\\\]\\.bin[/\\\\]", std::regex::ECMAScript);
 
-  auto filter = [&nodeModulesPath, &nodeModulesPathVersioned,
+  auto filterPath = [](std::string_view normalizedPath,
+                       std::string_view filterPath) -> bool {
+    return !filterPath.empty() && normalizedPath.ends_with(filterPath);
+  };
+
+  auto filter = [&filterPath, &nodeModulesPath, &nodeModulesPathVersioned,
+                 &jsAppsPath, &jsActionsPath, &jsServerModulesPath,
                  &binRegex](std::string const& filename) -> bool {
     if (std::regex_search(filename, binRegex)) {
       // don't copy files in .bin
@@ -321,15 +331,11 @@ void V8ShellFeature::copyInstallationFiles() {
 
     std::string normalized = filename;
     FileUtils::normalizePath(normalized);
-    if ((!nodeModulesPath.empty() &&
-         normalized.size() >= nodeModulesPath.size() &&
-         normalized.substr(normalized.size() - nodeModulesPath.size(),
-                           nodeModulesPath.size()) == nodeModulesPath) ||
-        (!nodeModulesPathVersioned.empty() &&
-         normalized.size() >= nodeModulesPathVersioned.size() &&
-         normalized.substr(normalized.size() - nodeModulesPathVersioned.size(),
-                           nodeModulesPathVersioned.size()) ==
-             nodeModulesPathVersioned)) {
+    if (filterPath(normalized, nodeModulesPath) ||
+        filterPath(normalized, nodeModulesPathVersioned) ||
+        filterPath(normalized, jsAppsPath) ||
+        filterPath(normalized, jsActionsPath) ||
+        filterPath(normalized, jsServerModulesPath)) {
       // filter it out!
       return true;
     }
