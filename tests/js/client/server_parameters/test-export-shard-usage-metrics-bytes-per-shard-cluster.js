@@ -588,7 +588,7 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(1, shards.length);
 
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
         
         let parsed = getParsedMetrics(db._name(), cn);
         assertFalse(parsed.hasOwnProperty("reads"), parsed);
@@ -602,7 +602,7 @@ function testSuite() {
         c.insert(docs);
         
         // run query again, now with documents
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
           
         parsed = getParsedMetrics(db._name(), cn);
 
@@ -632,7 +632,7 @@ function testSuite() {
         }
         c.insert(docs);
         
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
           
         let parsed = getParsedMetrics(db._name(), cn);
 
@@ -660,7 +660,7 @@ function testSuite() {
         }
         c.insert(docs);
         
-        db._query("FOR doc IN " + cn + " RETURN doc.value");
+        db._query(`FOR doc IN ${cn} RETURN doc.value`);
           
         let parsed = getParsedMetrics(db._name(), cn);
 
@@ -674,6 +674,153 @@ function testSuite() {
       }
     },
     
+    testHasMetricsReadOnlyAQLPrimaryIndexFullDocumentLookup : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        const n = 100;
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        for (let i = 0; i < 10; ++i) {
+          db._query(`FOR doc IN ${cn} FILTER doc._key == 'test${i}' RETURN doc.value`);
+        }
+          
+        let parsed = getParsedMetrics(db._name(), cn);
+
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
+        // we still assume 40-50 bytes read per document, as we still need to
+        // read it entirely from the storage engine
+        assertTrue(parsed.reads[shards[0]] > 10 * 40, {parsed});
+        assertTrue(parsed.reads[shards[0]] < 10 * 50, {parsed});
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsReadOnlyAQLPrimaryIndexKeyOnlyLookup : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        const n = 100;
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        for (let i = 0; i < 10; ++i) {
+          db._query(`FOR doc IN ${cn} FILTER doc._key == 'test${i}' RETURN doc._key`);
+        }
+          
+        let parsed = getParsedMetrics(db._name(), cn);
+
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
+        // we still assume 40-50 bytes read per document, as we still need to
+        // read it entirely from the storage engine
+        assertTrue(parsed.reads[shards[0]] > 10 * 40, {parsed});
+        assertTrue(parsed.reads[shards[0]] < 10 * 50, {parsed});
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsReadOnlyAQLLateMaterialize : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn);
+      try {
+        c.ensureIndex({ type: "persistent", fields: ["value"] });
+
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        const n = 500;
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        db._query(`FOR doc IN ${cn} FILTER doc.value >= 25 RETURN doc`);
+          
+        let parsed = getParsedMetrics(db._name(), cn);
+
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
+        // assume 40-50 bytes read per document
+        assertTrue(parsed.reads[shards[0]] > (n - 25) * 40, {parsed});
+        assertTrue(parsed.reads[shards[0]] < (n - 25) * 50, {parsed});
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsAQLSkipLimit : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        const n = 1000;
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        db._query(`FOR doc IN ${cn} LIMIT ${n - 5}, 5 RETURN doc.value`);
+          
+        let parsed = getParsedMetrics(db._name(), cn);
+
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
+        // assume 40-50 bytes read per document
+        assertTrue(parsed.reads[shards[0]] > 5 * 40, {parsed});
+        assertTrue(parsed.reads[shards[0]] < 5 * 50, {parsed});
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
+    testHasMetricsAQLScanOnly : function () {
+      const cn = getUniqueCollectionName();
+
+      let c = db._create(cn);
+      try {
+        let shards = c.shards();
+        assertEqual(1, shards.length);
+
+        const n = 1000;
+        let docs = [];
+        for (let i = 0; i < n; ++i) {
+          docs.push({ _key: "test" + i, value: i });
+        }
+        c.insert(docs);
+        
+        // do not actually read the documents
+        db._query(`FOR doc IN ${cn} RETURN 1`);
+          
+        let parsed = getParsedMetrics(db._name(), cn);
+
+        assertTrue(parsed.hasOwnProperty("writes"), parsed);
+        assertFalse(parsed.hasOwnProperty("reads"), parsed);
+      } finally {
+        db._drop(cn);
+      }
+    },
+    
     testHasMetricsReadOnlyAQLMultiShard : function () {
       const cn = getUniqueCollectionName();
 
@@ -682,7 +829,7 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(3, shards.length);
 
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
         
         let parsed = getParsedMetrics(db._name(), cn);
         assertFalse(parsed.hasOwnProperty("reads"), parsed);
@@ -696,7 +843,7 @@ function testSuite() {
         c.insert(docs);
         
         // run query again, now with documents
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
           
         parsed = getParsedMetrics(db._name(), cn);
           
@@ -943,6 +1090,86 @@ function testSuite() {
         } finally {
           db._drop(c2.name());
           db._drop(c1.name());
+        }
+      });
+    },
+    
+    testHasMetricsSecondaryIndexes : function () {
+      [1, 2].forEach((replicationFactor) => {
+        const cn = getUniqueCollectionName();
+
+        let c = db._create(cn, {replicationFactor});
+        try {
+          c.ensureIndex({ type: "persistent", fields: ["value1"] });
+          c.ensureIndex({ type: "persistent", fields: ["value2"] });
+          let shards = c.shards();
+          assertEqual(1, shards.length);
+
+          const payload = Array(1024).join("z");
+          const n = 42;
+          let docs = [];
+          for (let i = 0; i < n; ++i) {
+            docs.push({ _key: "test" + i, value1: "testmann" + i, value2: payload + i });
+          }
+          c.insert(docs);
+          
+          let parsed = getParsedMetrics(db._name(), cn);
+
+          assertFalse(parsed.hasOwnProperty("reads"), parsed);
+          // we assume 1050-1150 bytes written per document
+          assertTrue(parsed.writes[shards[0]] > n * 1050 * replicationFactor, {parsed, replicationFactor});
+          assertTrue(parsed.writes[shards[0]] < n * 1150 * replicationFactor, {parsed, replicationFactor});
+
+          // read data back via secondary indexes. note that this returns _key so does full document lookups
+          for (let i = 0; i < n; ++i) {
+            db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc._key`);
+          }
+            
+          parsed = getParsedMetrics(db._name(), cn);
+
+          assertTrue(parsed.hasOwnProperty("writes"), parsed);
+          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
+          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          
+          // read data back via secondary indexes, but only return indexed value
+          for (let i = 0; i < n; ++i) {
+            db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc.value1`);
+          }
+
+          parsed = getParsedMetrics(db._name(), cn);
+
+          // number of bytes read shouldn't have changed
+          assertTrue(parsed.hasOwnProperty("writes"), parsed);
+          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
+          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          
+          // try to read back non-existing values
+          for (let i = 0; i < n; ++i) {
+            db._query(`FOR doc IN ${cn} FILTER doc.value2 == 'fuchsbau${i}' RETURN doc`);
+          }
+
+          parsed = getParsedMetrics(db._name(), cn);
+
+          // number of bytes read shouldn't have changed
+          assertTrue(parsed.hasOwnProperty("writes"), parsed);
+          assertTrue(parsed.reads[shards[0]] > n * 1050, {parsed});
+          assertTrue(parsed.reads[shards[0]] < n * 1150, {parsed});
+          
+          // remove all docs
+          docs = [];
+          for (let i = 0; i < n; ++i) {
+            docs.push("test" + i);
+          }
+
+          c.remove(docs);
+          
+          parsed = getParsedMetrics(db._name(), cn);
+          
+          // we assume 1050-1150 bytes written per document (for the insert) plus a few bytes for each remove
+          assertTrue(parsed.writes[shards[0]] > n * 1050 * replicationFactor + n * 10 * replicationFactor, {parsed, replicationFactor});
+          assertTrue(parsed.writes[shards[0]] < n * 1150 * replicationFactor + n * 20 * replicationFactor, {parsed, replicationFactor});
+        } finally {
+          db._drop(cn);
         }
       });
     },

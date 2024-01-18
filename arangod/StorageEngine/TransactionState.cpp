@@ -290,7 +290,7 @@ void TransactionState::trackShardUsage(
     metric.count(nBytes);
   }
 
-  LOG_TOPIC("d3599", ERR, Logger::FIXME)
+  LOG_TOPIC("d3599", TRACE, Logger::FIXME)
       << "tracking access for database '" << database << "', collection '"
       << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
