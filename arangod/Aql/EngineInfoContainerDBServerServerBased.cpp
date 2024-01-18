@@ -357,7 +357,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
-  network::addUserParameter(options, ExecContext::current().user());
+  network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(

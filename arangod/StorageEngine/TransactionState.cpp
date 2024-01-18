@@ -583,7 +583,7 @@ Result TransactionState::checkCollectionPermission(
 
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec.isSuperuser()) {
-    return Result{};
+    return {};
   }
 
   auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
@@ -597,14 +597,13 @@ Result TransactionState::checkCollectionPermission(
     if (accessType == AccessMode::Type::READ &&
         _options.skipInaccessibleCollections) {
       addInaccessibleCollection(cid, std::string{cname});
-      return Result();
+      return {};
     }
 #endif
 
-    return Result(TRI_ERROR_FORBIDDEN,
-                  std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " +
-                      std::string{cname} + " [" +
-                      AccessMode::typeString(accessType) + "]");
+    return {TRI_ERROR_FORBIDDEN,
+            absl::StrCat(TRI_errno_string(TRI_ERROR_FORBIDDEN), ": ", cname,
+                         " [", AccessMode::typeString(accessType), "]")};
   } else {
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
@@ -613,14 +612,14 @@ Result TransactionState::checkCollectionPermission(
           << "User " << exec.user() << " has no write right for collection "
           << cname;
 
-      return Result(TRI_ERROR_ARANGO_READ_ONLY,
-                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) +
-                        ": " + std::string{cname} + " [" +
-                        AccessMode::typeString(accessType) + "]");
+      return {
+          TRI_ERROR_ARANGO_READ_ONLY,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY), ": ",
+                       cname, " [", AccessMode::typeString(accessType), "]")};
     }
   }
 
-  return Result{};
+  return {};
 }
 
 /// @brief clear the query cache for all collections that were modified by

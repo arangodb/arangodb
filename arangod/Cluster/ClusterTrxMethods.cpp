@@ -163,7 +163,7 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
-  network::addUserParameter(reqOpts, ExecContext::current().user());
+  network::addUserParameter(reqOpts, state.username());
 
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
