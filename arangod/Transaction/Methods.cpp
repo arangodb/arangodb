@@ -1070,7 +1070,6 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
          this->_options.isSynchronousReplicationFrom.empty() &&
          _batchOptions.computedValues == nullptr);
 
-    // TODO: handle REPLACE
     if (this->_replicationType != Methods::ReplicationType::FOLLOWER &&
         !this->_options.versionAttribute.empty()) {
       // check document versions
@@ -1079,11 +1078,19 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
       if (VPackSlice previous =
               previousDocument.get(this->_options.versionAttribute);
           previous.isNumber()) {
-        previousVersion = previous.getNumericValue<uint64_t>();
+        try {
+          previousVersion = previous.getNumericValue<uint64_t>();
+        } catch (...) {
+          // no error reported from here
+        }
       }
       if (VPackSlice current = value.get(this->_options.versionAttribute);
           current.isNumber()) {
-        currentVersion = current.getNumericValue<uint64_t>();
+        try {
+          currentVersion = current.getNumericValue<uint64_t>();
+        } catch (...) {
+          // no error reported from here
+        }
       }
       if (previousVersion.has_value() && currentVersion.has_value() &&
           *currentVersion <= *previousVersion) {

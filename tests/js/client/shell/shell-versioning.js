@@ -28,6 +28,7 @@ const arangodb = require("@arangodb");
 const { waitForShardsInSync } = require("@arangodb/test-helper");
 const isCluster = require("internal").isCluster();
 const db = arangodb.db;
+const _ = require("lodash");
 
 const cn = "UnitTestsVersioning";
 
@@ -80,6 +81,36 @@ function VersioningSuite () {
       waitUntilInSync();
     },
     
+    testUpdateInvalidVersionAttributeProvided : function () {
+      const values = [
+        { _key: "test1", value: 2, version: "maul" },
+        { _key: "test1", value: 3, version: [1, 23] },
+        { _key: "test1", value: 1, version: true },
+        { _key: "test2", value: 1, version: false },
+        { _key: "test2", value: 9, version: {} },
+        { _key: "test2", value: 42, version: -12 },
+        { _key: "test2", value: 0, version: null },
+      ];
+
+      let state = {};
+      values.forEach((v) => {
+        if (state.hasOwnProperty(v._key)) {
+          let res = db[cn].update(v._key, v, {versionAttribute: "version"});
+          assertEqual(res._oldRev, state[v._key]._rev);
+          delete res._oldRev;
+          state[v._key] = Object.assign(state[v._key], Object.assign(res, v));
+        } else {
+          let res = db[cn].insert(v);
+          state[v._key] = Object.assign(res, v);
+        }
+
+        let doc = db[cn].document(v._key);
+        assertEqual(doc, state[v._key]);
+      });
+
+      waitUntilInSync();
+    },
+    
     testUpdateWithVersionAttribute : function () {
       const values = [
         { _key: "test1", version: 2 },
@@ -103,6 +134,49 @@ function VersioningSuite () {
           delete res._oldRev;
           if (!state[v._key].hasOwnProperty("version") || !v.hasOwnProperty("version") || state[v._key].version < v.version) {
             state[v._key] = Object.assign(state[v._key], Object.assign(res, v));
+          }
+        } else {
+          let res = db[cn].insert(v);
+          state[v._key] = Object.assign(res, v);
+        }
+
+        let doc = db[cn].document(v._key);
+        assertEqual(doc, state[v._key]);
+      });
+      
+      waitUntilInSync();
+    },
+    
+    testUpdateWithVersionAttributeReturnOldNew : function () {
+      const values = [
+        { _key: "test1", version: 2 },
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3" },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      let state = {};
+      values.forEach((v) => {
+        if (state.hasOwnProperty(v._key)) {
+          let res = db[cn].update(v._key, v, {versionAttribute: "version", returnOld: true, returnNew: true});
+          assertEqual(res._oldRev, state[v._key]._rev);
+          let oldVersion = _.clone(res.old);
+          let newVersion = _.clone(res.new);
+          delete res._oldRev;
+          delete res.old;
+          delete res.new;
+          if (!state[v._key].hasOwnProperty("version") || !v.hasOwnProperty("version") || state[v._key].version < v.version) {
+            assertEqual(oldVersion, state[v._key]);
+            state[v._key] = Object.assign(state[v._key], Object.assign(res, v));
+            assertEqual(newVersion, state[v._key]);
+            assertEqual(newVersion, db[cn].document(v._key));
           }
         } else {
           let res = db[cn].insert(v);
@@ -169,6 +243,49 @@ function VersioningSuite () {
           delete res._oldRev;
           if (!state[v._key].hasOwnProperty("version") || !v.hasOwnProperty("version") || state[v._key].version < v.version) {
             state[v._key] = Object.assign(res, v);
+          }
+        } else {
+          let res = db[cn].insert(v);
+          state[v._key] = Object.assign(res, v);
+        }
+
+        let doc = db[cn].document(v._key);
+        assertEqual(doc, state[v._key]);
+      });
+      
+      waitUntilInSync();
+    },
+    
+    testReplaceWithVersionAttributeReturnOldNew : function () {
+      const values = [
+        { _key: "test1", version: 2 },
+        { _key: "test1", version: 3 },
+        { _key: "test1", version: 1 },
+        { _key: "test2", version: 1 },
+        { _key: "test2", version: 9 },
+        { _key: "test2", version: 42 },
+        { _key: "test2", version: 0 },
+        { _key: "test3" },
+        { _key: "test3", version: 5 },
+        { _key: "test3", version: 4 },
+        { _key: "test3", value: 2 },
+      ];
+
+      let state = {};
+      values.forEach((v) => {
+        if (state.hasOwnProperty(v._key)) {
+          let res = db[cn].replace(v._key, v, {versionAttribute: "version", returnOld: true, returnNew: true});
+          assertEqual(res._oldRev, state[v._key]._rev);
+          let oldVersion = _.clone(res.old);
+          let newVersion = _.clone(res.new);
+          delete res._oldRev;
+          delete res.old;
+          delete res.new;
+          if (!state[v._key].hasOwnProperty("version") || !v.hasOwnProperty("version") || state[v._key].version < v.version) {
+            assertEqual(oldVersion, state[v._key]);
+            state[v._key] = Object.assign(res, v);
+            assertEqual(newVersion, state[v._key]);
+            assertEqual(newVersion, db[cn].document(v._key));
           }
         } else {
           let res = db[cn].insert(v);
