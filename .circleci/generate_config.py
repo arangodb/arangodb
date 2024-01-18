@@ -293,7 +293,7 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     return result
 
 
-def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist, repl2):
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
         if "!" + dist in test["flags"]:
