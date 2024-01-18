@@ -1084,7 +1084,7 @@ function indexStoredValuesResultsIdSuite() {
     },
     
     testResultProjectionsIdAfterCollectionRename: function () {
-      if (require("@arangodb/cluster").isCluster()) {
+      if (require("internal").isCluster()) {
         // cluster does not support renaming
         return;
       }
