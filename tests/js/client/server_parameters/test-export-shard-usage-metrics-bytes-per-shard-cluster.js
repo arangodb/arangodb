@@ -1672,6 +1672,70 @@ function testSuite() {
         }
       });
     },
+    
+    testHasMetricsGeneralGraphOperations : function () {
+      [1, 2].forEach((replicationFactor) => {
+        const vn = getUniqueCollectionName();
+        const en = getUniqueCollectionName();
+        const gn = "UnitTestsGraph";
+        const graphs = require("@arangodb/general-graph");
+
+        let cleanup = function () {
+          try {
+            graphs._drop(gn, true);
+          } catch (err) {}
+          db._drop(vn);
+          db._drop(en);
+        };
+
+        graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor });
+        try {
+          const n = 29;
+
+          let g = graphs._graph(gn);
+          // vertex collection
+          for (let i = 0; i < n; ++i) {
+            g[vn].insert({ _key: "test" + i, value: i });
+          }
+
+          let parsed = getParsedMetrics(db._name(), vn);
+          assertFalse(parsed.hasOwnProperty("reads"), {parsed});
+        
+          let shards = db[vn].shards();
+          shards.forEach((shard) => {
+            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
+          });
+          let totalWritten = 0;
+          shards.forEach((shard) => {
+            totalWritten += parsed.writes[shard];
+          });
+
+          // count 40-50 bytes for each insert into vn
+          assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+          assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+
+          // edge collection
+          for (let i = 0; i < (n - 1); ++i) {
+            g[en].insert({ _key: "test" + i, _from: vn + "/test" + i, _to: vn + "/test" + i });
+          }
+
+          parsed = getParsedMetrics(db._name(), en);
+
+          shards = db[en].shards();
+          totalWritten = 0;
+          shards.forEach((shard) => {
+            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
+            totalWritten += parsed.writes[shard];
+          });
+
+          // count 90-105 bytes for each insert into en
+          assertTrue(totalWritten > n * 90 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+          assertTrue(totalWritten < n * 105 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+        } finally {
+          cleanup();
+        }
+      });
+    },
 
   };
 }
