@@ -89,9 +89,10 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       continue;
     }
 
-    if (indexNode->hasFilter()) {
+    if (indexNode->hasFilter() &&
+        !indexNode->filterProjections().usesCoveringIndex()) {
       LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
-               << "has post filter";
+               << "has post filter, which is not covered";
       continue;
     }
 

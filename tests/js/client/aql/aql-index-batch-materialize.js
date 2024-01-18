@@ -199,7 +199,7 @@ function IndexBatchMaterializeTestSuite() {
           RETURN [doc.y, doc.z, doc.a]
       `;
       const {materializeNode, indexNode} = expectOptimization(query);
-      assertTrue(indexNode.projections, undefined);
+      assertEqual(normalize(indexNode.projections), []);
       assertEqual(normalize(materializeNode.projections), [["a"], ["y"], ["z"]]);
     },
 
@@ -219,7 +219,7 @@ function IndexBatchMaterializeTestSuite() {
           RETURN doc
       `;
 
-      expectNoOptimization(query);
+      expectOptimization(query);
     },
 
     testMaterializeIndexScanPostFilterNotCovered: function () {
@@ -232,6 +232,18 @@ function IndexBatchMaterializeTestSuite() {
       expectNoOptimization(query);
     },
 
+    testMaterializeIndexScanPostFilterDependentVar: function () {
+      const query = `
+        FOR i IN 1..5
+          FOR doc IN ${collection}
+            FILTER doc.x > 5 AND doc.b < i
+            RETURN doc
+      `;
+
+      const {indexNode} = expectOptimization(query);
+      assertTrue(indexNode.indexCoversFilterProjections);
+      assertEqual(normalize(indexNode.filterProjections), [["b"]]);
+    },
 
   };
 }
