@@ -707,7 +707,7 @@ auto DocumentLeaderState::createIndex(
             ReplicationOptions{.waitForCommit = true, .waitForSync = true});
       });
   auto indexId = helpers::extractId(sharedIndexInfo.slice());
-  // TODO assert indexId isn't none when creation succeeded
+  TRI_ASSERT(indexId != IndexId::none() or localIndexCreation.fail());
   return std::move(replicationFuture)
       .thenValue([self = shared_from_this(),
                   localIndexCreation = std::move(localIndexCreation), shard,
