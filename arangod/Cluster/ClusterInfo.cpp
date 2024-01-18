@@ -5636,6 +5636,7 @@ void ClusterInfo::syncWaitForAllShardsToEstablishALeader() {
   // not being responsive right now.
   for (size_t i = 0; i < 600; ++i) {
     READ_LOCKER(readLocker, _planProt.lock);
+    READ_LOCKER(readLocker2, _currentProt.lock);
     // First we test that we have planned some shards.
     // This is to protect ourselves against a "no plan loaded yet" situation.
     // We will always have some shards (at least we will need the _users in

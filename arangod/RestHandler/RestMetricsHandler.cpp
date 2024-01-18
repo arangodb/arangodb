@@ -53,21 +53,6 @@ constexpr frozen::unordered_map<frozen::string, metrics::CollectMode, 4> kModes{
     {"write_global", metrics::CollectMode::WriteGlobal},
 };
 
-network::Headers buildHeaders(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto const& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-
 bool isOutdated(
     GeneralRequest const& oldData,
     std::shared_ptr<metrics::ClusterMetricsFeature::Data> const& data) {
@@ -280,10 +265,10 @@ RestStatus RestMetricsHandler::makeRedirection(std::string const& serverId,
     options.parameters.try_emplace("type", metrics::kLast);
   }
 
-  auto f =
-      network::sendRequest(pool, "server:" + serverId, fuerte::RestVerb::Get,
-                           _request->requestPath(), VPackBuffer<uint8_t>{},
-                           options, buildHeaders(_request->headers()));
+  auto f = network::sendRequest(
+      pool, "server:" + serverId, fuerte::RestVerb::Get,
+      _request->requestPath(), VPackBuffer<uint8_t>{}, options,
+      network::addAuthorizationHeader(_request->headers()));
 
   return waitForFuture(std::move(f).thenValue([self = shared_from_this(),
                                                last](network::Response&& r) {
