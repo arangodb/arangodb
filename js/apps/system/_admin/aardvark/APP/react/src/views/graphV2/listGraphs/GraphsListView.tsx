@@ -1,6 +1,7 @@
 import { AddIcon } from "@chakra-ui/icons";
 import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
 import React from "react";
+import { useDatabaseReadOnly } from "../../../utils/useDatabaseReadOnly";
 import { AddGraphModal } from "../addGraph/AddGraphModal";
 import { GraphsListProvider } from "./GraphsListContext";
 import { GraphsModeProvider } from "./GraphsModeContext";
@@ -22,11 +23,14 @@ export const GraphsListView = () => {
 };
 
 const GraphListViewHeader = ({ onOpen }: { onOpen: () => void }) => {
+  const { readOnly, isLoading } = useDatabaseReadOnly();
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
       <Heading size="lg">Graphs</Heading>
       <Button
         size="sm"
+        isLoading={isLoading}
+        isDisabled={readOnly}
         leftIcon={<AddIcon />}
         colorScheme="green"
         onClick={onOpen}
