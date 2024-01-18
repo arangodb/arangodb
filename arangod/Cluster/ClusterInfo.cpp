@@ -5087,6 +5087,10 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
       trxOperations.emplace_back(absl::StrCat("Plan/", subEntry),
                                  AgencyValueOperationType::SET, entry);
     }
+    if (auto entry = plan.get({"arango", "Current", subEntry}); !entry.isNone()) {
+      trxOperations.emplace_back(absl::StrCat("Current/", subEntry),
+                                 AgencyValueOperationType::SET, entry);
+    }
   }
 
   // Apply only Collections and DBServers
