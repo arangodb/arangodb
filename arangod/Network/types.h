@@ -25,9 +25,10 @@
 
 #include <fuerte/types.h>
 #include <chrono>
+#include <map>
+#include <string>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 struct Response;
 typedef std::string DestinationId;
@@ -41,5 +42,4 @@ struct EndpointSpec {
   std::string endpoint;
 };
 
-}  // namespace network
-}  // namespace arangodb
+}  // namespace arangodb::network

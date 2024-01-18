@@ -123,7 +123,7 @@ arangodb::aql::MaterializeExecutor<T>::produceRows(
         collection->getPhysical()
             ->read(&_trx,
                    LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                   callback, ReadOwnWrites::no)
+                   callback, ReadOwnWrites::no, /*countBytes*/ true)
             .ok();
 
     if (written) {

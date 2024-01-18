@@ -857,7 +857,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
     if (needsInsert) {
       LocalDocumentId const docId = RocksDBKey::edgeDocumentId(key);
       // warmup does not need to observe own writes
-      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no)) {
+      if (!rocksColl->readDocument(trx, docId, mdr, ReadOwnWrites::no,
+                                   /*countBytes*/ false)) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);
         continue;

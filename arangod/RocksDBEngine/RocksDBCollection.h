@@ -109,21 +109,21 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                    std::pair<LocalDocumentId, RevisionId>& result,
                    ReadOwnWrites readOwnWrites) const override;
 
-  bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
+  bool lookupRevision(transaction::Methods* trx, velocypack::Slice key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
   Result read(transaction::Methods*, std::string_view key,
               IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+              ReadOwnWrites readOwnWrites, bool countBytes) const override;
 
   /// @brief lookup with callback, not thread-safe on same transaction::Context
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
               IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+              ReadOwnWrites readOwnWrites, bool countBytes) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites readOwnWrites) const override;
+                    ManagedDocumentResult& result, ReadOwnWrites readOwnWrites,
+                    bool countBytes) const override;
 
   Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                 velocypack::Slice newDocument,
@@ -155,8 +155,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   /// @param fillCache fill cache with found document
   Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
                         velocypack::Builder& builder, bool readCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
+                        bool fillCache, ReadOwnWrites readOwnWrites,
+                        bool countBytes) const override;
 
  private:
   // optimized truncate, using DeleteRange operations.
@@ -214,12 +214,14 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                                        LocalDocumentId const& documentId,
                                        rocksdb::PinnableSlice& ps,
                                        bool readCache, bool fillCache,
-                                       ReadOwnWrites readOwnWrites) const;
+                                       ReadOwnWrites readOwnWrites,
+                                       bool countBytes) const;
 
   Result lookupDocumentVPack(transaction::Methods*,
                              LocalDocumentId const& documentId,
                              IndexIterator::DocumentCallback const& cb,
-                             bool withCache, ReadOwnWrites readOwnWrites) const;
+                             bool withCache, ReadOwnWrites readOwnWrites,
+                             bool countBytes) const;
 
   /// @brief create hash-cache
   void setupCache() const;
