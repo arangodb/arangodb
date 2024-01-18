@@ -268,7 +268,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual("persistent", nodes[0].indexes[0].type, query);
         assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        assertEqual("covering, filter only", nodes[0].strategy);
+        assertEqual("late materialized", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
@@ -295,7 +295,7 @@ function filterProjectionsResultsTestSuite () {
         assertEqual("persistent", nodes[0].indexes[0].type, query);
         assertNotEqual(normalize([]), normalize(nodes[0].filterProjections), query);
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
-        assertEqual("covering, filter only", nodes[0].strategy);
+        assertEqual("late materialized", nodes[0].strategy);
         
         // query must not contain any FILTER nodes
         nodes = plan.nodes.filter(function(node) { return node.type === 'FilterNode'; });
