@@ -165,6 +165,19 @@ Result fillIndexSingleThreaded(
         }
       }
 
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+      TRI_IF_FAILURE("fillIndex::pause") {
+        std::cout << "fillIndex::pause" << std::endl;
+        while(true) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          TRI_IF_FAILURE("fillIndex::unpause") {
+            std::cout << "fillIndex::unpause" << std::endl;
+            break;
+          }
+        }
+      }
+#endif
+
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
       // cppcheck-suppress identicalConditionAfterEarlyExit
