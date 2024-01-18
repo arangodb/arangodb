@@ -88,21 +88,21 @@ endif ()
 option(USE_PRECOMPILED_V8 "use a precompiled V8" OFF)
 
 set(V8_VERSION
-  "7.9.317"
+  "12.1.165"
   CACHE INTERNAL
   "${PROJECT_NAME}: Version"
   FORCE
 )
-set(V8_SUB_DIR "v${V8_VERSION}")
 set(V8_VERSION ${V8_VERSION} PARENT_SCOPE)
-add_subdirectory(V8)
+set(V8_SUB_DIR "v8")
+add_subdirectory(v8-build)
 add_library(v8_interface INTERFACE)
 target_include_directories(v8_interface SYSTEM INTERFACE ${V8_INCLUDE_DIR})
 
 set(ICU_DT "${ICU_DT}" PARENT_SCOPE)
 set(ICU_DT_DEST "${ICU_DT_DEST}" PARENT_SCOPE)
 set(ICU_LIBRARY_DIR "${ICU_LIBRARY_DIR}" PARENT_SCOPE)
-set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/V8/${V8_SUB_DIR}/third_party/icu/")
+set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${V8_SUB_DIR}/third_party/icu/")
 
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 

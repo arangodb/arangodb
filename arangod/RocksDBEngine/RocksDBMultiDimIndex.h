@@ -66,6 +66,8 @@ class RocksDBMdiIndexBase : public RocksDBIndex {
   std::vector<std::vector<basics::AttributeName>> const _storedValues;
   std::vector<std::vector<basics::AttributeName>> const _prefixFields;
   std::vector<std::vector<basics::AttributeName>> const _coveredFields;
+
+  IndexType const _type;
 };
 
 class RocksDBMdiIndex final : public RocksDBMdiIndexBase {

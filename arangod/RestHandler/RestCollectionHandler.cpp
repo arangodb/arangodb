@@ -528,13 +528,19 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
       // their own write ops to follower C one after the after, then C will
       // first see only shards from A and then only from B).
       res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                std::string("Transaction with id '") +
-                    std::to_string(_activeTrx->tid().id()) +
-                    "' does not contain collection '" + coll->name() +
-                    "' with the required access mode.");
+                absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+                             "' does not contain collection '", coll->name(),
+                             "' with the required access mode."));
       generateError(res);
       _activeTrx.reset();
       co_return RestStatus::DONE;
+    }
+
+    if (opts.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
+      _activeTrx->state()->trackRequest(
+          *_activeTrx->resolver(), _vocbase.name(), coll->name(),
+          _request->value("user"), AccessMode::Type::WRITE, "truncate");
     }
 
     OperationResult opres =

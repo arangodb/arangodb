@@ -74,6 +74,17 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
 
 DropIndex::~DropIndex() = default;
 
+void DropIndex::setState(ActionState state) {
+  if (_description.isRunEvenIfDuplicate() &&
+      (COMPLETE == state || FAILED == state) && _state != state) {
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(ShardID{_description.get(SHARD)});
+  }
+  ActionBase::setState(state);
+}
+
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& shard = _description.get(SHARD);

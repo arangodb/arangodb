@@ -36,13 +36,14 @@ std::array<char const*,
     RocksDBColumnFamilyManager::_internalNames = {
         "default",    "Documents",  "PrimaryIndex",  "EdgeIndex",
         "VPackIndex", "GeoIndex",   "FulltextIndex", "ReplicatedLogs",
-        "ZkdIndex",   "MdiPrefixed"};
+        "ZkdIndex",   "MdiPrefixed"};  // We have to keep `ZkdIndex` cf name for
+                                       // backwards compatibility.
 
 std::array<char const*,
            arangodb::RocksDBColumnFamilyManager::numberOfColumnFamilies>
     RocksDBColumnFamilyManager::_externalNames = {
         "definitions", "documents", "primary",         "edge", "vpack",
-        "geo",         "fulltext",  "replicated-logs", "zkd",  "mdi-prefixed"};
+        "geo",         "fulltext",  "replicated-logs", "mdi",  "mdi-prefixed"};
 
 std::array<rocksdb::ColumnFamilyHandle*,
            RocksDBColumnFamilyManager::numberOfColumnFamilies>

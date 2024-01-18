@@ -358,7 +358,7 @@ function printStats(stats, isCoord) {
 
   stringBuilder.appendLine(' ' + pad(1 + maxWELen - String(stats.writesExecuted).length) + value(stats.writesExecuted) + spc +
     pad(1 + maxWILen - String(stats.writesIgnored).length) + value(stats.writesIgnored) + spc +
-    pad(1 + maxDLLen - String(stats.documentLookups).length) + value(stats.documentLookups) + spc +
+    pad(1 + maxDLLen - String((stats.documentLookups || 0)).length) + value(stats.documentLookups || 0) + spc +
     pad(1 + maxSFLen - String(stats.scannedFull).length) + value(stats.scannedFull) + spc +
     pad(1 + maxSILen - String(stats.scannedIndex).length) + value(stats.scannedIndex) + spc +
     pad(1 + maxCHMLen - (String(stats.cacheHits || 0) + ' / ' + String(stats.cacheMisses || 0)).length) + value(stats.cacheHits || 0) + ' / ' + value(stats.cacheMisses || 0) + spc +
@@ -876,18 +876,21 @@ function processQuery(query, explain, planIndex) {
   };
   recursiveWalk(plan.nodes, 0, 'COOR');
 
-  if (profileMode) { // merge runtime info into plan
+  if (profileMode) { 
+    // merge runtime info into plan.
+    // note that this is only necessary for server versions <= 3.11.
+    // the code can be removed when only supporting server versions
+    // >= 3.12.
+    stats.nodes.forEach(n => {
+      nodes[n.id].runtime = n.runtime;
+    });
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id) && !n.hasOwnProperty('fetching')) {
         // no separate fetching stats. that means the runtime is cumulative.
         // by subtracting the dependencies from parent runtime we get the runtime per node
-        nodes[n.id].fetching = 0;
         if (parents.hasOwnProperty(n.id)) {
           parents[n.id].forEach(pid => {
-            if (typeof nodes[pid].runtime === 'number') {
-              nodes[pid].runtime -= n.runtime;
-              nodes[pid].fetching = 0;
-            }
+            nodes[pid].runtime -= n.runtime;
           });
         }
       }
@@ -895,12 +898,19 @@ function processQuery(query, explain, planIndex) {
 
     stats.nodes.forEach(n => {
       if (nodes.hasOwnProperty(n.id)) {
-        let runtime = n.runtime || 0;
+        let runtime = 0;
         if (n.hasOwnProperty('fetching')) {
+          // this branch is taken for servers >= 3.12.
+          runtime = n.runtime;
           // we have separate runtime (including fetching time)
           // and fetching stats
           runtime -= n.fetching;
+        } else if (nodes[n.id].hasOwnProperty('runtime')) {
+          // this branch is taken for servers <= 3.11 and can be removed
+          // eventually.
+          runtime = nodes[n.id].runtime;
         }
+
         nodes[n.id].calls = String(n.calls || 0);
         nodes[n.id].parallel = (nodes[n.id].isAsyncPrefetchEnabled ? String(n.parallel || 0) : '-');
         nodes[n.id].items = String(n.items || 0);
