@@ -154,7 +154,7 @@ auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
           shardId, indexIdStr);
       return res.result();
     }
-    auto indexId = IndexId{basics::StringUtils::uint64(indexIdStr)};
+    auto indexId = IndexId{res.get()};
     return coll->getDocumentStateLeader()->dropIndex(shardId, indexId).get();
   });
 
