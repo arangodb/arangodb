@@ -48,6 +48,11 @@ const jwt = crypto.jwtEncode(jwtSecret, {
 
 function testSuite() {
   const baseName = "UnitTestsCollection";
+  let nextCollectionId = 0;
+
+  let getUniqueCollectionName = () => {
+    return baseName + nextCollectionId++;
+  };
 
   let usersAdded = [];
 
@@ -153,7 +158,7 @@ function testSuite() {
     },
     
     testDoesNotPoluteNormalMetricsAPI : function () {
-      const cn = baseName + "0";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -180,7 +185,7 @@ function testSuite() {
     },
     
     testNoMetricsJustForCreatingCollection : function () {
-      const cn = baseName + "1";
+      const cn = getUniqueCollectionName();
   
       addUser("foo", db._name(), "rw");
       connectWith("tcp", "foo", "");
@@ -201,7 +206,7 @@ function testSuite() {
     },
    
     testHasMetricsWhenReadingFromCollectionSingleReads : function () {
-      const cn = baseName + "2";
+      const cn = getUniqueCollectionName();
       
       addUser("bar", db._name(), "rw");
       connectWith("tcp", "bar", "");
@@ -237,7 +242,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenReadingFromCollectionBatchRead : function () {
-      const cn = baseName + "3";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "ro");
       addUser("bar", db._name(), "rw");
@@ -279,7 +284,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleInserts : function () {
-      const cn = baseName + "4";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -315,7 +320,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchInsert : function () {
-      const cn = baseName + "5";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -352,7 +357,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleRemoves : function () {
-      const cn = baseName + "6";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -391,7 +396,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchRemove : function () {
-      const cn = baseName + "7";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -434,7 +439,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleUpdates : function () {
-      const cn = baseName + "8";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -473,7 +478,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchUpdate : function () {
-      const cn = baseName + "9";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -517,7 +522,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleReplaces : function () {
-      const cn = baseName + "10";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -556,7 +561,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchReplace : function () {
-      const cn = baseName + "11";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -600,7 +605,7 @@ function testSuite() {
     },
    
     testHasMetricsWhenWritingIntoCollectionSingleInsertsMultiShard : function () {
-      const cn = baseName + "12";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -640,7 +645,7 @@ function testSuite() {
     },
     
     testHasMetricsReadOnlyAQL : function () {
-      const cn = baseName + "13";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -653,13 +658,13 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(1, shards.length);
 
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 5; ++i) {
-          db._query("FOR doc IN " + cn + " RETURN doc");
+          db._query(`FOR doc IN ${cn} RETURN doc`);
         }
         
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
@@ -671,7 +676,7 @@ function testSuite() {
     },
     
     testHasMetricsReadOnlyAQLMultiShard : function () {
-      const cn = baseName + "14";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -684,13 +689,13 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(3, shards.length);
 
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 6; ++i) {
-          db._query("FOR doc IN " + cn + " RETURN doc");
+          db._query(`FOR doc IN ${cn} RETURN doc`);
         }
         
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
@@ -705,7 +710,7 @@ function testSuite() {
     },
     
     testHasMetricsWriteAQL : function () {
-      const cn = baseName + "15";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -718,13 +723,13 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(1, shards.length);
 
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${cn}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
-          db._query("FOR i IN 1..100 INSERT {} INTO " + cn);
+          db._query(`FOR i IN 1..100 INSERT {} INTO ${cn}`);
         }
         
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
@@ -736,7 +741,7 @@ function testSuite() {
     },
     
     testHasMetricsWriteAQLMultiShard : function () {
-      const cn = baseName + "16";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -749,13 +754,13 @@ function testSuite() {
         let shards = c.shards();
         assertEqual(3, shards.length);
 
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + cn);
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${cn}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
-          db._query("FOR i IN 1..666 INSERT {} INTO " + cn);
+          db._query(`FOR i IN 1..666 INSERT {} INTO ${cn}`);
         }
         
         let parsed = getParsedMetrics(db._name(), cn, ["foo", "bar"]);
@@ -770,7 +775,7 @@ function testSuite() {
     },
 
     testHasMetricsReadOnlyAQLMultiCollections : function () {
-      const cn = baseName + "17";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -781,13 +786,13 @@ function testSuite() {
       let c1 = db._create(cn);
       let c2 = db._create(cn + "_2");
       try {
-        db._query("FOR doc1 IN " + c1.name() + " FOR doc2 IN " + c2.name() + " RETURN doc1");
+        db._query(`FOR doc1 IN ${c1.name()} FOR doc2 IN ${c2.name()} RETURN doc1`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 10; ++i) {
-          db._query("FOR doc1 IN " + c1.name() + " RETURN doc1");
+          db._query(`FOR doc1 IN ${c1.name()} RETURN doc1`);
         }
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()], ["foo", "bar"]);
@@ -806,7 +811,7 @@ function testSuite() {
     },
     
     testHasMetricsReadWriteAQLMultiCollections : function () {
-      const cn = baseName + "18";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -817,13 +822,13 @@ function testSuite() {
       let c1 = db._create(cn, { numberOfShards: 5 });
       let c2 = db._create(cn + "_2", { numberOfShards: 3 });
       try {
-        db._query("FOR doc IN " + c1.name() + " INSERT {} INTO " + c2.name());
+        db._query(`FOR doc IN ${c1.name()} INSERT {} INTO ${c2.name()}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 3; ++i) {
-          db._query("FOR doc1 IN " + c1.name() + " FOR doc2 IN " + c2.name() + " RETURN doc1");
+          db._query(`FOR doc1 IN ${c1.name()} FOR doc2 IN ${c2.name()} RETURN doc1`);
         }
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()], ["foo", "bar"]);
@@ -844,7 +849,7 @@ function testSuite() {
     },
     
     testHasMetricsExclusiveAQLMultiCollections : function () {
-      const cn = baseName + "19";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -855,13 +860,13 @@ function testSuite() {
       let c1 = db._create(cn, { numberOfShards: 5 });
       let c2 = db._create(cn + "_2", { numberOfShards: 3 });
       try {
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 2; ++i) {
-          db._query("FOR i IN 1..3 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} FOR doc IN " + c2.name() +  " RETURN doc");
+          db._query(`FOR i IN 1..3 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} FOR doc IN ${c2.name()} RETURN doc`);
         }
 
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()], ["foo", "bar"]);
@@ -882,7 +887,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleInsertsFollowerShards : function () {
-      const cn = baseName + "20";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -916,7 +921,7 @@ function testSuite() {
     },
     
     testHasMetricsAQLFollowerShards : function () {
-      const cn = baseName + "21";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -927,13 +932,13 @@ function testSuite() {
       let c1 = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
       let c2 = db._create(cn + "_2", { numberOfShards: 3, replicationFactor: 2 });
       try {
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
         for (let i = 0; i < 2; ++i) {
-          db._query("FOR i IN 1..3 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} FOR doc IN " + c2.name() +  " RETURN doc");
+          db._query(`FOR i IN 1..3 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} FOR doc IN ${c2.name()} RETURN doc`);
         }
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()], ["foo", "bar"]);
@@ -955,7 +960,7 @@ function testSuite() {
     },
     
     testHasMetricsMultipleDatabases : function () {
-      const cn = baseName + "22";
+      const cn = getUniqueCollectionName();
 
       const databases = [baseName + "1", baseName + "2", baseName + "3"];
 
@@ -1000,7 +1005,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenTruncating : function () {
-      const cn = baseName + "23";
+      const cn = getUniqueCollectionName();
 
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -1031,7 +1036,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenPerformingMixedOperations : function () {
-      const cn = baseName + "24";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -1064,12 +1069,12 @@ function testSuite() {
         connectWith("tcp", "bar", "");
         assertEqual("bar", arango.connectedUser());
         
-        db._query("FOR doc IN " + cn + " INSERT {} INTO " + cn);
+        db._query(`FOR doc IN ${cn} INSERT {} INTO ${cn}`);
         
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
         
-        db._query("FOR doc IN " + cn + " RETURN doc");
+        db._query(`FOR doc IN ${cn} RETURN doc`);
 
         c.truncate();
         
@@ -1082,7 +1087,7 @@ function testSuite() {
     },
 
     testHasMetricsWhenUsingCustomShardKey : function () {
-      const cn = baseName + "25";
+      const cn = getUniqueCollectionName();
       
       addUser("foo", db._name(), "rw");
       addUser("bar", db._name(), "rw");
@@ -1143,8 +1148,8 @@ function testSuite() {
         return;
       }
 
-      const vn = baseName + "Vertices26";
-      const en = baseName + "Edges26";
+      const vn = getUniqueCollectionName();
+      const en = getUniqueCollectionName();
       const gn = "UnitTestsGraph";
       const graphs = require("@arangodb/smart-graph");
       
@@ -1219,8 +1224,8 @@ function testSuite() {
         return;
       }
   
-      const vn = baseName + "Vertices27";
-      const en = baseName + "Edges27";
+      const vn = getUniqueCollectionName();
+      const en = getUniqueCollectionName();
       const gn = "UnitTestsGraph";
       const graphs = require("@arangodb/smart-graph");
       
@@ -1238,7 +1243,7 @@ function testSuite() {
       
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
       try {
-        db._query("FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO " + vn);
+        db._query(`FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO ${vn}`);
         
         let parsed = getParsedMetrics(db._name(), vn, ["foo", "bar"]);
         let expected = { "bar": { "writes": {} } };
@@ -1247,7 +1252,7 @@ function testSuite() {
         });
         assertEqual(expected, parsed);
 
-        let keys = db._query("FOR i IN 0..19 INSERT {_from: CONCAT('" + vn + "/test', i, ':test', (i % 10)), _to: CONCAT('" + vn + "/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO " + en + " RETURN NEW._key").toArray();
+        let keys = db._query(`FOR i IN 0..19 INSERT {_from: CONCAT('${vn}/test', i, ':test', (i % 10)), _to: CONCAT('${vn}/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO ${en} RETURN NEW._key`).toArray();
         
         parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en], ["foo", "bar"]);
 
@@ -1270,7 +1275,7 @@ function testSuite() {
         connectWith("tcp", "foo", "");
         assertEqual("foo", arango.connectedUser());
 
-        db._query("FOR doc IN " + en + " FILTER doc._key IN @keys RETURN doc", { keys });
+        db._query(`FOR doc IN ${en} FILTER doc._key IN @keys RETURN doc`, { keys });
 
         parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en], ["foo", "bar"]);
 
