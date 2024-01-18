@@ -847,8 +847,8 @@ requires std::is_same_v<IndexSpec, IndexId> or
 
   auto trx = createTrxForDrop(col);
 
-  auto& collection = *trx->documentCollection();
   auto beginRes = co_await trx->beginAsync();
+  auto& collection = *trx->documentCollection();
 
   if (!beginRes.ok()) {
     events::DropIndex(collection.vocbase().name(), collection.name(), "",
