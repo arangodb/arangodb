@@ -752,8 +752,7 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
 
   if (ServerState::instance()->isCoordinator()) {
     CollectionNameResolver resolver(collection.vocbase());
-    auto handleRes =
-        co_await getHandle(collection, indexArg, &resolver);
+    auto handleRes = co_await getHandle(collection, indexArg, &resolver);
     if (!handleRes.ok()) {
       co_return std::move(handleRes).result();
     }
@@ -785,9 +784,8 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   }
 }
 
-        futures::Future<arangodb::Result> Indexes::dropCoordinator(
-            LogicalCollection& collection, IndexId indexId) {
-
+futures::Future<arangodb::Result> Indexes::dropCoordinator(
+    LogicalCollection& collection, IndexId indexId) {
   // flush estimates
   collection.getPhysical()->flushClusterIndexEstimates();
 
