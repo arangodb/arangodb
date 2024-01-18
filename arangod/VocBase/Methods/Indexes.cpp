@@ -751,7 +751,16 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   }
 
   if (ServerState::instance()->isCoordinator()) {
-    co_return co_await dropCoordinator(collection, indexArg);
+    CollectionNameResolver resolver(collection.vocbase());
+    auto handleRes =
+        co_await getHandle(collection, indexArg, &resolver);
+    if (!handleRes.ok()) {
+      co_return std::move(handleRes).result();
+    }
+    auto&& [iid, name] = handleRes.get();
+    auto const indexId = iid;
+
+    co_return co_await dropCoordinator(collection, indexId);
   } else {
     co_return co_await dropDBServer(collection, indexArg);
   }
@@ -776,32 +785,8 @@ futures::Future<arangodb::Result> Indexes::drop(LogicalCollection& collection,
   }
 }
 
-template<typename IndexSpec>
-requires std::is_same_v<IndexSpec, IndexId> or
-    std::is_same_v<IndexSpec, velocypack::Slice>
         futures::Future<arangodb::Result> Indexes::dropCoordinator(
-            LogicalCollection& collection, IndexSpec indexSpec) {
-  CollectionNameResolver resolver(collection.vocbase());
-  auto const indexIdRes = co_await std::invoke(
-      overload{
-          [](IndexId indexId) -> futures::Future<ResultT<IndexId>> {
-            co_return indexId;
-          },
-          [&](velocypack::Slice indexArg) -> futures::Future<ResultT<IndexId>> {
-            auto handleRes =
-                co_await getHandle(collection, indexArg, &resolver);
-            if (!handleRes.ok()) {
-              co_return std::move(handleRes).result();
-            }
-            auto&& [iid, name] = handleRes.get();
-            co_return iid;
-          },
-      },
-      indexSpec);
-  if (!indexIdRes.ok()) {
-    co_return std::move(indexIdRes).result();
-  }
-  auto const indexId = indexIdRes.get();
+            LogicalCollection& collection, IndexId indexId) {
 
   // flush estimates
   collection.getPhysical()->flushClusterIndexEstimates();
@@ -814,11 +799,6 @@ requires std::is_same_v<IndexSpec, IndexId> or
 #endif
   co_return res;
 }
-template futures::Future<arangodb::Result> Indexes::dropCoordinator<IndexId>(
-    LogicalCollection&, IndexId);
-template futures::Future<arangodb::Result>
-Indexes::dropCoordinator<velocypack::Slice>(LogicalCollection&,
-                                            velocypack::Slice);
 
 std::unique_ptr<SingleCollectionTransaction> Indexes::createTrxForDrop(
     LogicalCollection& collection) {
