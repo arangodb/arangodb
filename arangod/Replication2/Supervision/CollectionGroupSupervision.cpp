@@ -21,11 +21,12 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "CollectionGroupSupervision.h"
+
 #include "Agency/TransactionBuilder.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/Utils/EvenDistribution.h"
-#include "CollectionGroupSupervision.h"
 #include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/AgencyCollectionSpecificationInspectors.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
@@ -34,6 +35,9 @@
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
+
+#include <velocypack/Slice.h>
+
 #include <random>
 
 using namespace arangodb;
@@ -338,6 +342,12 @@ auto checkAssociatedReplicatedLogs(
     if (log.target.config != wantedConfig) {
       // we have to update this replicated log
       return UpdateReplicatedLogConfig{sheaf.replicatedLog, wantedConfig};
+    }
+
+    for (auto const& p : log.target.participants) {
+      if (!health.contains(p.first)) {
+        return RemoveParticipantFromLog{log.target.id, p.first};
+      }
     }
 
     auto currentReplicationFactor = log.target.participants.size();
@@ -728,10 +738,15 @@ struct TransactionBuilder {
             velocypack::serialize(builder, it.value);
           });
     }
-    // Special handling for Schema, which can be nullopt and should be removed
+    // Special handling for Schema, which can be nullopt, in which case if
+    // should be set to null.
+    // Note: we cannot _remove_ it, because the maintenance ignores properties
+    // that are not present in the plan.
     if (!action.spec.schema.has_value()) {
-      tmp = std::move(tmp).remove(basics::StringUtils::concatT(
-          "/arango/Plan/Collections/", database, "/", action.cid, "/schema"));
+      tmp = std::move(tmp).set(
+          basics::StringUtils::concatT("/arango/Plan/Collections/", database,
+                                       "/", action.cid, "/schema"),
+          VPackSlice::nullSlice());
     }
     env = std::move(tmp)
               .inc("/arango/Plan/Version")
@@ -918,13 +933,15 @@ struct TransactionBuilder {
   }
 
   void operator()(UpdateCollectionGroupInPlan const& action) {
-    auto write = env.write().emplace_object(
-        basics::StringUtils::concatT("/arango/Plan/CollectionGroups/", database,
-                                     "/", action.id.id(),
-                                     "/attributes/mutable"),
-        [&](VPackBuilder& builder) {
-          velocypack::serialize(builder, action.spec);
-        });
+    auto write =
+        env.write()
+            .emplace_object(basics::StringUtils::concatT(
+                                "/arango/Plan/CollectionGroups/", database, "/",
+                                action.id.id(), "/attributes/mutable"),
+                            [&](VPackBuilder& builder) {
+                              velocypack::serialize(builder, action.spec);
+                            })
+            .inc("/arango/Plan/Version");
     env = write.precs()
               .isNotEmpty(basics::StringUtils::concatT(
                   "/arango/Target/CollectionGroups/", database, "/", gid.id()))

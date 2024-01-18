@@ -270,7 +270,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
 
   [[nodiscard]] QueryContext const& getQuery() const;
 
-  [[nodiscard]] auto executor() noexcept -> Executor&;
+  [[nodiscard]] auto executor() -> Executor&;
 
   [[nodiscard]] auto fetcher() noexcept -> Fetcher&;
 

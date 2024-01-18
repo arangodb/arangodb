@@ -117,26 +117,38 @@ size_t AstResources::newCapacity(T const& container,
 
 // create and register an AstNode
 AstNode* AstResources::registerNode(AstNodeType type) {
-  // may throw
-  ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
+  // ensure extra capacity for at least one more node in the allocator.
+  // note that this may throw, but then no state is modified here.
+  _nodes.ensureCapacity();
 
-  AstNode* node = _nodes.allocate(type);
+  // now we can unconditionally increase the memory usage for the
+  // one more node. if this throws, no harm is done.
+  _resourceMonitor.increaseMemoryUsage(sizeof(AstNode));
 
-  // now we are responsible for tracking the memory usage
-  scope.steal();
-  return node;
+  // _nodes.allocate() will not throw if we are only creating a single
+  // node wihout subnodes, which is what we do here.
+  return _nodes.allocate(type);
 }
 
 // create and register an AstNode
 AstNode* AstResources::registerNode(Ast* ast, velocypack::Slice slice) {
-  // may throw
-  ResourceUsageScope scope(_resourceMonitor, sizeof(AstNode));
+  // ensure extra capacity for at least one more node in the allocator.
+  // note that this may throw, but then no state is modified here.
+  _nodes.ensureCapacity();
 
-  AstNode* node = _nodes.allocate(ast, slice);
+  // now we can unconditionally increase the memory usage for the
+  // one more node. if this throws, no harm is done.
+  _resourceMonitor.increaseMemoryUsage(sizeof(AstNode));
 
-  // now we are responsible for tracking the memory usage
-  scope.steal();
-  return node;
+  // _nodes.allocate() will not throw if we are only creating a single
+  // node wihout subnodes. however, if we create a node with subnodes,
+  // then the call to allocate() will recursively create the child
+  // nodes. this may run out of memory. however, in allocate() we
+  // unconditionally increase the memory pointer for every node, so
+  // even if the allocate() call throws, we can use _nodes.numUsed()
+  // to determine the actual number of nodes that were created and we
+  // can use that number of decreasing memory usage safely.
+  return _nodes.allocate(ast, slice);
 }
 
 // register a string

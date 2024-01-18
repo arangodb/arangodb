@@ -43,8 +43,10 @@ class Metric {
   static void addMark(std::string& result, std::string_view name,
                       std::string_view globals, std::string_view labels);
 
-  Metric(std::string_view name, std::string_view help,
-         std::string_view labels) noexcept;
+  Metric(std::string_view name, std::string_view help, std::string_view labels,
+         bool dynamic = false);
+
+  virtual ~Metric();
 
   [[nodiscard]] std::string_view help() const noexcept;
   [[nodiscard]] std::string_view name() const noexcept;
@@ -61,12 +63,15 @@ class Metric {
   virtual void toVPack(velocypack::Builder& builder,
                        ArangodServer& server) const;
 
-  virtual ~Metric();
+  void setDynamic() noexcept { _dynamic = true; }
+
+  bool isDynamic() const noexcept { return _dynamic; }
 
  private:
   std::string_view _name;
   std::string _help;
   std::string _labels;
+  bool _dynamic;
 };
 
 using CounterType =

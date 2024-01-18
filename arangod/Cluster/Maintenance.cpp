@@ -37,6 +37,7 @@
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -83,6 +84,12 @@ static VPackValue const VP_SET("set");
 
 static std::string_view const PRIMARY("primary");
 static std::string_view const EDGE("edge");
+
+namespace {
+bool isViewIndex(std::string_view indexType) noexcept {
+  return indexType == iresearch::StaticStrings::ViewArangoSearchType;
+}
+};  // namespace
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -443,6 +450,15 @@ static void handlePlanShard(
             // these actions to run in parallel to others and to similar ones.
             // Note however, that new index jobs are intentionally not
             // discovered when the shard is locked for maintenance.
+            auto indexTypeName =
+                index.get(StaticStrings::IndexType).copyString();
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be created in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(indexTypeName);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
@@ -451,11 +467,11 @@ static void handlePlanShard(
                     {DATABASE, dbname},
                     {COLLECTION, colname},
                     {SHARD, shname},
-                    {StaticStrings::IndexType,
-                     index.get(StaticStrings::IndexType).copyString()},
+                    {StaticStrings::IndexType, std::move(indexTypeName)},
                     {FIELDS, index.get(FIELDS).toJson()},
                     {ID, index.get(ID).copyString()}},
-                INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
+                INDEX_PRIORITY, doLockShard,
+                std::make_shared<VPackBuilder>(index)));
           }
         }
       }
@@ -589,6 +605,15 @@ static void handleLocalShard(
           } else {
             // Note that drop index actions are exempt from locking, since we
             // want that they can run in parallel.
+            // Exception are SearchIndexes, as they can conflict on attached
+            // views during update.
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be dropped in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(type);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
@@ -596,7 +621,7 @@ static void handleLocalShard(
                                                    {DATABASE, dbname},
                                                    {SHARD, shname},
                                                    {"index", id}},
-                INDEX_PRIORITY, false));
+                INDEX_PRIORITY, doLockShard));
           }
         }
       }
@@ -1818,7 +1843,9 @@ static void reportCurrentReplicatedLog(
   if (!localTerm.has_value()) {
     return;
   }
-
+  if (!cur.isObject()) {
+    return;
+  }
   // load current into memory
   auto current = std::invoke([&]() -> std::optional<LogCurrent> {
     auto currentSlice = cur.get(cluster::paths::aliases::current()
@@ -1949,7 +1976,6 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
       std::vector<std::string> ppath{AgencyCommHelper::path(), PLAN,
                                      COLLECTIONS, dbName};
       TRI_ASSERT(pdb.isObject());
-
       if (!localDBExists) {
         // If the local database is not found, the replication version is
         // assumed to be ONE. As fallback, the following code checks for the
@@ -1964,17 +1990,14 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
           }
         }
       }
-
       // Plan of this database's collections
       pdb = pdb.get(ppath);
       if (!pdb.isNone()) {
         shardMap = getShardMap(pdb);
       }
     }
-
     auto cdbpath = std::vector<std::string>{AgencyCommHelper::path(), CURRENT,
                                             DATABASES, dbName, serverId};
-
     if (ldb.isObject()) {
       if (cur.isNone() || (cur.isObject() && !cur.hasKey(cdbpath))) {
         auto const localDatabaseInfo =

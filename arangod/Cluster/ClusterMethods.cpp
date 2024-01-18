@@ -1137,8 +1137,8 @@ futures::Future<OperationResult> figuresOnCoordinator(
   for (auto const& p : *shards) {
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/figures", VPackBuffer<uint8_t>(),
-        reqOpts);
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/figures"),
+        VPackBuffer<uint8_t>(), reqOpts);
     futures.emplace_back(std::move(future));
   }
 
@@ -1228,8 +1228,8 @@ futures::Future<OperationResult> countOnCoordinator(
 
     futures.emplace_back(network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Get,
-        "/_api/collection/" + p.first + "/count", VPackBuffer<uint8_t>(),
-        reqOpts, std::move(headers)));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/count"),
+        VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
   }
 
   auto cb = [options](std::vector<Try<network::Response>>&& results) mutable
@@ -1558,6 +1558,12 @@ futures::Future<OperationResult> insertDocumentOnCoordinator(
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
+    if (!ExecContext::current().user().empty()) {
+      // send name of current user, if set. note that we cannot send
+      // empty URL parameters with our networking tools right now.
+      reqOpts.param("user", ExecContext::current().user());
+    }
+
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
     std::vector<Future<network::Response>> futures;
@@ -1702,6 +1708,12 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                   (options.refillIndexCaches == RefillIndexCaches::kRefill)
                       ? "true"
                       : "false");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   bool const isManaged =
@@ -1880,6 +1892,11 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
+  }
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -1900,8 +1917,8 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
     addTransactionHeaderForShard(trx, *shardIds, /*shard*/ p.first, headers);
     auto future = network::sendRequestRetry(
         pool, "shard:" + p.first, fuerte::RestVerb::Put,
-        "/_api/collection/" + p.first + "/truncate", std::move(buffer), reqOpts,
-        std::move(headers));
+        absl::StrCat("/_api/collection/", std::string{p.first}, "/truncate"),
+        std::move(buffer), reqOpts, std::move(headers));
     futures.emplace_back(std::move(future));
   }
 
@@ -1973,6 +1990,12 @@ Future<OperationResult> getDocumentOnCoordinator(
     reqOpts.param(StaticStrings::SilentString,
                   options.silent ? "true" : "false");
     reqOpts.param("onlyget", "true");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   if (canUseFastPath) {
@@ -2117,8 +2140,8 @@ Future<OperationResult> getDocumentOnCoordinator(
 
       futures.emplace_back(network::sendRequestRetry(
           pool, "shard:" + shard, restVerb,
-          "/_api/document/" + shard + "/" +
-              StringUtils::urlEncode(key.data(), key.size()),
+          absl::StrCat("/_api/document/", std::string{shard}, "/",
+                       StringUtils::urlEncode(key.data(), key.size())),
           VPackBuffer<uint8_t>(), reqOpts, std::move(headers)));
     }
   } else {
@@ -2136,7 +2159,8 @@ Future<OperationResult> getDocumentOnCoordinator(
       }
 
       futures.emplace_back(network::sendRequestRetry(
-          pool, "shard:" + shard, restVerb, "/_api/document/" + shard,
+          pool, "shard:" + shard, restVerb,
+          absl::StrCat("/_api/document/", std::string{shard}),
           /*cannot move*/ buffer, reqOpts, std::move(headers)));
     }
   }
@@ -2198,8 +2222,7 @@ Result fetchEdgesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2296,8 +2319,7 @@ Result fetchEdgesFromEngines(transaction::Methods& trx,
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::edgeUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
-        reqOpts));
+        absl::StrCat(::edgeUrl, engine.second), leased->bufferRef(), reqOpts));
   }
 
   for (Future<network::Response>& f : futures) {
@@ -2391,7 +2413,7 @@ void fetchVerticesFromEngines(
   for (auto const& engine : *engines) {
     futures.emplace_back(network::sendRequestRetry(
         pool, "server:" + engine.first, fuerte::RestVerb::Put,
-        ::vertexUrl + StringUtils::itoa(engine.second), leased->bufferRef(),
+        absl::StrCat(::vertexUrl, engine.second), leased->bufferRef(),
         reqOpts));
   }
 
@@ -2549,6 +2571,12 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
   }
   if (options.returnOld) {
     reqOpts.param(StaticStrings::ReturnOldString, "true");
+  }
+
+  if (!ExecContext::current().user().empty()) {
+    // send name of current user, if set. note that we cannot send
+    // empty URL parameters with our networking tools right now.
+    reqOpts.param("user", ExecContext::current().user());
   }
 
   bool isManaged =
@@ -3221,22 +3249,34 @@ arangodb::Result restoreOnDBServers(network::ConnectionPool* pool,
 arangodb::Result applyDBServerMatchesToPlan(
     VPackSlice const plan, std::map<ServerID, ServerID> const& matches,
     VPackBuilder& newPlan) {
-  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&)>
+  std::function<void(VPackSlice const, std::map<ServerID, ServerID> const&,
+                     bool)>
       replaceDBServer;
-
+  /*
+   * This recursive function replaces all occurences of DBServer names with
+   * their handed replacement map. In Replication2 also remove the currentTerm
+   * entry, to enforce leader election.
+   */
   replaceDBServer = [&newPlan, &replaceDBServer](
                         VPackSlice const s,
-                        std::map<ServerID, ServerID> const& matches) {
+                        std::map<ServerID, ServerID> const& matches,
+                        bool inReplicatedLogs) {
     if (s.isObject()) {
       VPackObjectBuilder o(&newPlan);
       for (auto it : VPackObjectIterator(s)) {
         newPlan.add(it.key);
-        replaceDBServer(it.value, matches);
+        if (it.key.isEqualString("ReplicatedLogs")) {
+          replaceDBServer(it.value, matches, true);
+        } else if (inReplicatedLogs && it.key.isEqualString("currentTerm")) {
+          newPlan.add(VPackSlice::emptyObjectSlice());
+        } else {
+          replaceDBServer(it.value, matches, inReplicatedLogs);
+        }
       }
     } else if (s.isArray()) {
       VPackArrayBuilder a(&newPlan);
       for (VPackSlice it : VPackArrayIterator(s)) {
-        replaceDBServer(it, matches);
+        replaceDBServer(it, matches, inReplicatedLogs);
       }
     } else {
       bool swapped = false;
@@ -3255,7 +3295,7 @@ arangodb::Result applyDBServerMatchesToPlan(
     }
   };
 
-  replaceDBServer(plan, matches);
+  replaceDBServer(plan, matches, false);
 
   return arangodb::Result();
 }
@@ -3449,6 +3489,9 @@ arangodb::Result hotRestoreCoordinator(ClusterFeature& feature,
     }
   }
 
+  // and Wait for Shards to decide on a leader
+  ci.syncWaitForAllShardsToEstablishALeader();
+
   {
     VPackObjectBuilder o(&report);
     report.add("previous", VPackValue(previous));
@@ -3608,10 +3651,9 @@ arangodb::Result unlockServersTrxCommit(
   std::vector<Future<network::Response>> futures;
   futures.reserve(lockedServers.size());
 
-  for (auto const& dbServer : lockedServers) {
-    futures.emplace_back(network::sendRequestRetry(pool, "server:" + dbServer,
-                                                   fuerte::RestVerb::Post, url,
-                                                   body, reqOpts));
+  for (auto const& server : lockedServers) {
+    futures.emplace_back(network::sendRequestRetry(
+        pool, "server:" + server, fuerte::RestVerb::Post, url, body, reqOpts));
   }
 
   std::ignore = futures::collectAll(futures).get();

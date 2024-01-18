@@ -35,7 +35,9 @@ Custom boost locator
 
 ## date
 
-Forward port of C++20 date/time class
+Forward port of C++20 date/time class. We have patched this slightly to
+avoid a totally unnecessary user database lookup which poses problems
+with static glibc builds and nsswitch.
 
 ## fakeit
 

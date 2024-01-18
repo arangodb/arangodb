@@ -193,7 +193,10 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
   static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
   static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
+  static const DefaultIndexFactory mdiIndexFactory(server, "mdi");
   static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
+  static const DefaultIndexFactory mdiPrefixedIndexFactory(server,
+                                                           "mdi-prefixed");
   static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
       server);
 
@@ -208,6 +211,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+  factory.emplace(mdiIndexFactory._type, mdiIndexFactory);
+  factory.emplace(mdiPrefixedIndexFactory._type, mdiPrefixedIndexFactory);
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 

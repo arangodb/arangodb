@@ -43,6 +43,7 @@ class DropIndex : public ActionBase {
 
   virtual ~DropIndex();
 
+  void setState(ActionState state) override final;
   virtual bool first() override final;
 
  private:

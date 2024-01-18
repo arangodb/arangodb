@@ -735,7 +735,8 @@ a single index (this is always true if the shard key is the default `_key`).)");
                R"(Move filters on non-indexed collection attributes into
 `IndexNode` or `EnumerateCollectionNode` to allow early pruning of
 non-matching documents. This optimization can help to avoid a lot of temporary
-document copies.)");
+document copies. The optimization can also be applied to enumerations over
+non-collection array.)");
 
   registerRule("optimize-count", optimizeCountRule,
                OptimizerRule::optimizeCountRule,
@@ -791,6 +792,12 @@ as possible if the involved attributes are covered by the View index.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Try to read from collections as late as possible if the
 involved attributes are covered by regular indexes.)");
+
+  // apply late materialization for index queries
+  registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
+               OptimizerRule::batchMaterializeDocumentsRule,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Batch document lookup from indexes.)");
 
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos

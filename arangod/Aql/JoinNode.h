@@ -63,6 +63,9 @@ class JoinNode : public ExecutionNode {
     bool producesOutput{true};
     bool isLateMaterialized{false};
     Variable const* outDocIdVariable = nullptr;
+    std::vector<std::unique_ptr<Expression>> expressions;
+    std::vector<size_t> usedKeyFields;
+    std::vector<size_t> constantFields;
   };
 
   JoinNode(ExecutionPlan* plan, ExecutionNodeId id,

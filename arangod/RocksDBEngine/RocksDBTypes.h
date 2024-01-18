@@ -59,8 +59,10 @@ enum class RocksDBEntryType : char {
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
   RevisionTreeValue = '*',
   ReplicatedState = 's',
-  ZkdIndexValue = 'z',
-  UniqueZkdIndexValue = 'Z',
+  MdiIndexValue = 'z',
+  UniqueMdiIndexValue = 'Z',
+  MdiVPackIndexValue = 'w',
+  UniqueMdiVPackIndexValue = 'W',
 };
 
 std::string_view rocksDBEntryTypeName(RocksDBEntryType);

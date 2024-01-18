@@ -16,6 +16,8 @@ declare global {
     arangoValidationHelper: { [key: string]: any };
     prettyBytes: (bytes: number) => string;
     App: any;
+    /* add views here */
+    ShardDistributionReactView: any;
   }
 }
 

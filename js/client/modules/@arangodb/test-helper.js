@@ -109,7 +109,7 @@ exports.debugCanUseFailAt = function (endpoint) {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -124,7 +124,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -138,7 +138,7 @@ exports.debugResetRaceControl = function (endpoint) {
     }
     return false;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -153,7 +153,7 @@ exports.debugRemoveFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -167,7 +167,7 @@ exports.debugClearFailAt = function (endpoint) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -184,7 +184,7 @@ exports.debugGetFailurePoints = function (endpoint) {
       return res.parsedBody;
     }
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
   return [];
 };
@@ -199,7 +199,7 @@ exports.getChecksum = function (endpoint, name) {
     }
     return res.parsedBody.checksum;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -635,7 +635,6 @@ exports.activateFailure = function (name) {
     roles.push("single");
   }
   
-  print(roles);
   roles.forEach(role => {
     exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
   });
@@ -682,7 +681,6 @@ exports.getResponsibleServersFromClusterInfo = function (arg) {
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
-  
   const isCluster = require("internal").isCluster();
   
   let res = [];
@@ -825,6 +823,31 @@ exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
 
+exports.arangoClusterInfoFlush = function () {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
+};
+
+exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
+};
+
+exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
+      ${JSON.stringify(dbName)}, 
+      ${JSON.stringify(collName)}, 
+      ${JSON.stringify(shard)})`);
+};
+
+exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
+};
+
+exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
+};
+
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
   if (typeof bindVars === "object") {
@@ -845,8 +868,10 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     warnings: extra.warnings,
     profile: extra.profile,
     plan: extra.plan,
-    cached: cursor.cached};
+    cached: cursor.cached
+  };
 };
+
 exports.insertManyDocumentsIntoCollection 
   = function(db, coll, maker, limit, batchSize) {
   // This function uses the asynchronous API of `arangod` to quickly
@@ -900,7 +925,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];

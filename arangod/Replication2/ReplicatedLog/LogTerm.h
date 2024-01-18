@@ -38,6 +38,7 @@ struct LogTerm {
   friend auto operator<<(std::ostream&, LogTerm) -> std::ostream&;
 
   [[nodiscard]] explicit operator velocypack::Value() const noexcept;
+  auto succ() const noexcept -> LogTerm;
 };
 
 auto operator<<(std::ostream&, LogTerm) -> std::ostream&;

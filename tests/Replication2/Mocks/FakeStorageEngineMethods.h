@@ -35,10 +35,14 @@ struct FakeStorageEngineMethodsContext {
   FakeStorageEngineMethodsContext(
       std::uint64_t objectId, LogId logId,
       std::shared_ptr<rocksdb::AsyncLogWriteBatcher::IAsyncExecutor> executor,
-      LogRange range = {}, std::optional<storage::PersistedStateInfo> = {});
+      std::variant<LogRange, std::vector<LogPayload>> initialRange = {},
+      std::optional<storage::PersistedStateInfo> = {});
 
   auto getMethods() -> std::unique_ptr<IStorageEngineMethods>;
   void emplaceLogRange(LogRange, LogTerm term = LogTerm{1});
+  void emplaceLogRange(std::vector<LogPayload> range,
+                       LogTerm term = LogTerm{1});
+  auto nextLogIndex() const noexcept -> LogIndex;
 
   std::uint64_t const objectId;
   LogId const logId;

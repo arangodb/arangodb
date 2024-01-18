@@ -44,7 +44,7 @@ class TraverserEngineShardLists {
   TraverserEngineShardLists(
       GraphNode const*, ServerID const& server,
       containers::FlatHashMap<ShardID, ServerID> const& shardMapping,
-      QueryContext& query);
+      QueryContext const& query);
 
   ~TraverserEngineShardLists() = default;
 

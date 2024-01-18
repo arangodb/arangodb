@@ -34,6 +34,8 @@ auto operator<<(std::ostream& os, LogTerm term) -> std::ostream& {
   return os << term.value;
 }
 
+auto LogTerm::succ() const noexcept -> LogTerm { return LogTerm(value + 1); }
+
 auto to_string(LogTerm term) -> std::string {
   return std::to_string(term.value);
 }
