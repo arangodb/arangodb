@@ -214,7 +214,7 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
                 ->read(
                     &_trx,
                     LocalDocumentId(input.getValue(docRegId).slice().getUInt()),
-                    callback, ReadOwnWrites::no)
+                    callback, ReadOwnWrites::no, /*countBytes*/ true)
                 .ok();
       }
     } else {
@@ -224,11 +224,11 @@ MaterializeExecutor<T, localDocumentId>::produceRows(
           auto const& viewSegment = *std::get<0>(*doc).segment();
           TRI_ASSERT(viewSegment.collection);
           // FIXME(gnusi): use rocksdb::DB::MultiGet(...)
-          written =
-              viewSegment.collection->getPhysical()
-                  ->readFromSnapshot(&_trx, documentId, callback,
-                                     ReadOwnWrites::no, *viewSegment.snapshot)
-                  .ok();
+          written = viewSegment.collection->getPhysical()
+                        ->readFromSnapshot(
+                            &_trx, documentId, callback, ReadOwnWrites::no,
+                            /*countBytes*/ true, *viewSegment.snapshot)
+                        .ok();
         }
         ++doc;
       }

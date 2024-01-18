@@ -57,8 +57,15 @@ DECLARE_COUNTER(arangodb_collection_leader_reads_total,
                 "Number of per-collection read requests on leaders");
 DECLARE_COUNTER(arangodb_collection_leader_writes_total,
                 "Number of per-collection write requests on leaders");
+DECLARE_COUNTER(arangodb_collection_requests_bytes_read_total,
+                "Number of per-collection bytes read on leaders and followers");
+DECLARE_COUNTER(
+    arangodb_collection_requests_bytes_written_total,
+    "Number of per-collection bytes written on leaders and followers");
 
 namespace {
+// build a dynamic shard-access metric with database/collection/shard,
+// and an optional user component.
 template<typename T>
 T getMetric(std::string_view database, std::string_view collection,
             std::string_view shard, std::string_view user, bool includeUser) {
@@ -162,22 +169,23 @@ TransactionState::Cookie::ptr TransactionState::cookie(
   return std::move(cookie);
 }
 
-void TransactionState::trackRequest(CollectionNameResolver const& resolver,
-                                    std::string_view database,
-                                    std::string_view shard,
-                                    std::string_view user,
-                                    AccessMode::Type accessMode,
-                                    std::string_view context) {
-  // no tracking performed on coordinators or single servers
-  TRI_ASSERT(isDBServer());
+void TransactionState::trackShardRequest(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context) noexcept try {
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
+
+  // no tracking performed on coordinators or single servers
+  if (!isDBServer()) {
+    return;
+  }
 
   auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
   auto mode = mf.usageTrackingMode();
   if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
-    // tracking is turned off
+    // tracking is turned off. this is the default setting.
     return;
   }
 
@@ -213,6 +221,109 @@ void TransactionState::trackRequest(CollectionNameResolver const& resolver,
       << collection << "', shard '" << shard << "', user '" << user
       << "', mode " << AccessMode::typeString(accessMode)
       << ", context: " << context;
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
+}
+
+void TransactionState::trackShardUsage(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context, size_t nBytes) noexcept try {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
+  // no tracking performed on coordinators or single servers
+  if (!isDBServer()) {
+    return;
+  }
+
+  if (nBytes == 0) {
+    // nothing to be tracked. should normally not happen except for
+    // collection scans etc. that did not encounter any documents.
+    return;
+  }
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  auto mode = mf.usageTrackingMode();
+  if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // tracking is turned off. this is the default setting.
+    return;
+  }
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
+    return;
+  }
+
+  bool includeUser =
+      (mode ==
+       metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser);
+
+  DataSourceId cid = resolver.getCollectionIdLocal(shard);
+  std::string collection = resolver.getCollectionNameCluster(cid);
+
+  if (AccessMode::isRead(accessMode)) {
+    // build metric for reads and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_requests_bytes_read_total>(
+            database, collection, shard, user, includeUser));
+    metric.count(nBytes);
+  } else {
+    // build metric for writes and increase it
+    auto& metric = mf.addDynamic(
+        getMetric<arangodb_collection_requests_bytes_written_total>(
+            database, collection, shard, user, includeUser));
+    metric.count(nBytes);
+  }
+
+  LOG_TOPIC("d3599", TRACE, Logger::FIXME)
+      << "tracking access for database '" << database << "', collection '"
+      << collection << "', shard '" << shard << "', user '" << user
+      << "', mode " << AccessMode::typeString(accessMode)
+      << ", context: " << context << ", nbytes: " << nBytes;
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
+}
+
+void TransactionState::setUsername(std::string_view name) {
+  if (name.empty()) {
+    // no username to set here
+    return;
+  }
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // username already set
+      return;
+    }
+  }
+  // slow path: username not yet set. we need to protect this
+  // operation with a mutex so that other concurrent threads
+  // that try to read the username do not see any garbled
+  // value.
+  std::unique_lock lock(_usernameLock);
+  if (_username.empty()) {
+    // only set if still empty
+    _username = std::string{name};
+  }
+}
+
+std::string_view TransactionState::username() const noexcept {
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // if username is already set, it will not change anymore,
+      // so we can return a view into the username string.
+      return _username;
+    }
+  }
+  // if the username was not yet set, some other thread may
+  // still set it concurrently. in this case it is not safe
+  // to return a view into the string, because the string may
+  // be modified later/concurrently.
+  return StaticStrings::Empty;
 }
 
 /// @brief add a collection to a transaction
@@ -460,7 +571,7 @@ Result TransactionState::checkCollectionPermission(
 
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec.isSuperuser()) {
-    return Result{};
+    return {};
   }
 
   auto level = exec.collectionAuthLevel(_vocbase.name(), cname);

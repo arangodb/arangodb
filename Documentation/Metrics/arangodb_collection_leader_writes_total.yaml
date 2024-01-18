@@ -29,3 +29,8 @@ description: |
   different labels for each shard that was read from. With the latter setting,
   the metric will have different labels for each combination of shard and user
   that accessed the shard.
+  
+  Note that internal operations, such as internal queries executed for statistics
+  gathering, internal garbage collection, TTL index cleanup are not counted in
+  these metrics. Additionally all requests that are using the superuser JWT for 
+  authentication and that do not have a specific user set, will not be counted.

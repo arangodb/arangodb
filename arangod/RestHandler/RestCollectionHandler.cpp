@@ -44,6 +44,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 
@@ -536,11 +537,13 @@ RestStatus RestCollectionHandler::handleCommandPut() {
       return RestStatus::DONE;
     }
 
+    // track request only on leader
     if (opts.isSynchronousReplicationFrom.empty() &&
         ServerState::instance()->isDBServer()) {
-      _activeTrx->state()->trackRequest(
+      _activeTrx->state()->trackShardRequest(
           *_activeTrx->resolver(), _vocbase.name(), coll->name(),
-          _request->value("user"), AccessMode::Type::WRITE, "truncate");
+          _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+          "truncate");
     }
 
     return waitForFuture(
@@ -820,9 +823,10 @@ RestCollectionHandler::collectionRepresentationAsync(
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location,
-                         "/_db/" + StringUtils::urlEncode(_vocbase.name()) +
-                             _request->requestPath());
+  _response->setHeaderNC(
+      StaticStrings::Location,
+      absl::StrCat("/_db/", StringUtils::urlEncode(_vocbase.name()),
+                   _request->requestPath()));
   return RestStatus::DONE;
 }
 
