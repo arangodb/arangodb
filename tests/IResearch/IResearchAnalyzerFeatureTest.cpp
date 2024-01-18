@@ -3251,9 +3251,9 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // features cannot use the existing server since its features already have
   // some state
   arangodb::ArangodServer newServer(nullptr, nullptr);
+  auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   auto& analyzers =
       newServer.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>();
-  auto& dbfeature = newServer.addFeature<arangodb::DatabaseFeature>();
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -4326,8 +4326,8 @@ TEST_F(IResearchAnalyzerFeatureTest, test_visit) {
   };
 
   arangodb::ArangodServer newServer(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -4662,8 +4662,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_toVelocyPack) {
   // features cannot use the existing server since its features already have
   // some state
   arangodb::ArangodServer newServer(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);
@@ -4801,8 +4801,8 @@ TEST_F(IResearchAnalyzerFeatureTest, custom_analyzers_vpack_create) {
   // features cannot use the existing server since its features already have
   // some state
   arangodb::ArangodServer newServer(nullptr, nullptr);
-  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& dbFeature = newServer.addFeature<arangodb::DatabaseFeature>();
+  arangodb::iresearch::IResearchAnalyzerFeature feature(newServer);
   auto& selector = newServer.addFeature<arangodb::EngineSelectorFeature>();
   StorageEngineMock engine(newServer);
   selector.setEngineTesting(&engine);

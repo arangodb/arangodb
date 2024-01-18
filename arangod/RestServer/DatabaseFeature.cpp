@@ -443,7 +443,7 @@ void DatabaseFeature::start() {
       _performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
         server(), server().getFeature<metrics::MetricsFeature>(),
-        *_databasePathFeature);
+        server().getFeature<DatabasePathFeature>());
     if (!_ioHeartbeatThread->start()) {
       LOG_TOPIC("7eb07", FATAL, Logger::FIXME)
           << "could not start IO check thread";
@@ -605,7 +605,6 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
-  _databasePathFeature = &server().getFeature<DatabasePathFeature>();
   _engine = &server().getFeature<EngineSelectorFeature>().engine();
   if (server().hasFeature<ReplicationFeature>()) {
     _replicationFeature = &server().getFeature<ReplicationFeature>();

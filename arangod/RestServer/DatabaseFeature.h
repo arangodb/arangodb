@@ -257,7 +257,6 @@ class DatabaseFeature final : public ArangodFeature {
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
 
-  DatabasePathFeature* _databasePathFeature = nullptr;
   StorageEngine* _engine = nullptr;
   ReplicationFeature* _replicationFeature = nullptr;
 };

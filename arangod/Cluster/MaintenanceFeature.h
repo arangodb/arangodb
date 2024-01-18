@@ -459,7 +459,7 @@ class MaintenanceFeature : public ArangodFeature {
   void refillToCheck();
 
  protected:
-  ClusterFeature& _clusterFeature;
+  ClusterFeature* _clusterFeature;
 
   /// @brief option for forcing this feature to always be enable - used by the
   /// catch tests
