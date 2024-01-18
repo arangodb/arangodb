@@ -1062,7 +1062,7 @@ else () # NOT MSVC
     set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
   else ()
     # full debug symbols
-    set(DEBUGINFO_FLAGS "-g")
+    set(DEBUGINFO_FLAGS "-g -gz")
   endif ()
 
   # c
