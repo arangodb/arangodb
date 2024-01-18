@@ -13,6 +13,10 @@ signal:crashHandlerSignalHandler
 
 signal:c_exit_handler
 
+# alloc in signal handers strack trace here:
+signal:arangodb::application_features::ApplicationServer::wait
+
+    
 # A compiler optimization in DBImpl::ReleaseSnapshot() produces code where a
 # register is populated with different addresses based on some condition, and
 # this register is later read to populate the variable `oldest_snapshot`.

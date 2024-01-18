@@ -244,7 +244,6 @@ function IndexBatchMaterializeTestSuite() {
       assertTrue(indexNode.indexCoversFilterProjections);
       assertEqual(normalize(indexNode.filterProjections), [["b"]]);
     },
-
   };
 }
 

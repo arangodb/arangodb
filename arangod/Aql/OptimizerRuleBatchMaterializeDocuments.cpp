@@ -128,7 +128,6 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       // move projections from index node into materialize node
       materialized->projections(std::move(indexNode->projections()));
     }
-
     modified = true;
   }
 

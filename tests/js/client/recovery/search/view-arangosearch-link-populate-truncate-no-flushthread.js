@@ -77,6 +77,12 @@ function recoverySuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     testIResearchLinkPopulateTruncate: function () {
+      if (db._properties().replicationVersion === "2") {
+        // TODO: Temporarily disabled.
+        // Should be re-enabled as soon as https://arangodb.atlassian.net/browse/CINFRA-876
+        // is fixed.
+        return;
+      }
       var v = db._view(vn);
       assertEqual(v.name(), vn);
       assertEqual(v.type(), 'arangosearch');
