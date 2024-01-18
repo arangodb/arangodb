@@ -799,6 +799,13 @@ involved attributes are covered by regular indexes.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Batch document lookup from indexes.)");
 
+  // push down materialization nodes to reduce the number of documents
+  registerRule("push-down-late-materialization",
+               pushDownLateMaterializationRule,
+               OptimizerRule::pushDownLateMaterialization,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Push down late materialization.)");
+
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos
   registerRule("late-materialization-offset-info",

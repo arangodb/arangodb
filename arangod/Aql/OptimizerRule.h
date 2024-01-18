@@ -379,6 +379,7 @@ struct OptimizerRule {
     // for it.
     joinIndexNodesRule,
 
+    pushDownLateMaterialization,
     // remove unnecessary projections & store projection attributes in
     // individual registers. must be executed after the joinIndexNodesRule,
     // otherwise the projections handling of JoinNodes will be incorrect.
