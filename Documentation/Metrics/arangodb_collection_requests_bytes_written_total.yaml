@@ -25,7 +25,9 @@ description: |
   each time with the approximate number of bytes written for document/edge.
   
   The numbers reported by this metric normally relate to the cumulated sizes of
-  documents/edges written.
+  documents/edges written. For remove operations however only a fixed number of 
+  bytes is counted per removed document/edge.
+  Writes into secondary indexes are not counted at all.
   The metric is also increased for transactions that are started but later
   aborted.
 

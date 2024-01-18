@@ -825,10 +825,10 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     ManagedTrx& mtrx = it->second;
     if (mtrx.type == MetaType::Tombstone) {
       if (mtrx.finalStatus == transaction::Status::ABORTED) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
-                                       "transaction " +
-                                           std::to_string(tid.id()) +
-                                           " has already been aborted");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_TRANSACTION_ABORTED,
+            absl::StrCat("transaction ", tid.id(),
+                         " has already been aborted"));
       }
       return nullptr;
     }
@@ -1131,9 +1131,9 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       } else {
         operation = "abort";
       }
-      std::string msg = absl::StrCat("updating", hint, "transaction status on ",
-                                     operation, " failed. transaction ",
-                                     std::to_string(tid.id()), " is in use");
+      std::string msg =
+          absl::StrCat("updating", hint, "transaction status on ", operation,
+                       " failed. transaction ", tid.id(), " is in use");
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
       return res.reset(TRI_ERROR_LOCKED, std::move(msg));
     }

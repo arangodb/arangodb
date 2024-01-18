@@ -27,6 +27,9 @@ description: |
   documents/edges read.
   The metric is also increased for transactions that are started but later
   aborted.
+  Note that the metric is not increased for secondary index point lookups or
+  scans, or for scans in a collection that iterate over documents but do not
+  read them.
   
   This metric is not exposed by default. It is only present if the startup option 
   `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or
