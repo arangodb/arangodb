@@ -253,6 +253,11 @@ function assertIsProfileStatsObject (stats, {level, fullCount}) {
 
   expect(stats).to.be.an('object');
 
+  // the following are optional and experimental, so we don't
+  // consider them here.
+  delete stats.activeRulesTime;
+  delete stats.inactiveRulesTime;
+
   let statsKeys = [
     'writesExecuted',
     'writesIgnored',
