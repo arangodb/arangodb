@@ -1242,13 +1242,16 @@ class instanceManager {
         }
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_admin/aardvark/index.html';
+          url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
         const reply = download(url, '', httpOptions);
+        if (!this.options.noStartStopLogs) {
+          print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
+        }
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
           return true;
