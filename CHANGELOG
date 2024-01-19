@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to v0.18.0.
+
 * BTS-1741: fix updates of values in unique persistent indexes with stored
   values defined for them. When such an index value was updated, it was
   possible that the stored value was not correctly updated, so that subsequent
