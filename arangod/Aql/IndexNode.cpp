@@ -410,7 +410,7 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
       filterVarsToRegs.emplace_back(var->id, regId);
     }
 
-    if (!isLateMaterialized() && filterProjections().usesCoveringIndex()) {
+    if (filterProjections().usesCoveringIndex()) {
       // if the filter projections are covered by the index, optimize
       // the expression by introducing new variables for the projected
       // values
