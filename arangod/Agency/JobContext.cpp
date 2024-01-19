@@ -23,7 +23,6 @@
 
 #include "JobContext.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/CleanOutServer.h"
 #include "Agency/FailedFollower.h"
@@ -65,8 +64,6 @@ JobContext::JobContext(JOB_STATUS status, std::string const& id,
     _job = std::make_unique<AddFollower>(snapshot, agent, status, id);
   } else if (type == "removeFollower") {
     _job = std::make_unique<RemoveFollower>(snapshot, agent, status, id);
-  } else if (type == "activeFailover") {
-    _job = std::make_unique<ActiveFailoverJob>(snapshot, agent, status, id);
   } else if (type == "reconfigureReplicatedLog") {
     _job =
         std::make_unique<ReconfigureReplicatedLog>(snapshot, agent, status, id);

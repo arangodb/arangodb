@@ -31,6 +31,7 @@
 #include "analysis/analyzers.hpp"
 #include "analysis/delimited_token_stream.hpp"
 #include "analysis/collation_token_stream.hpp"
+#include "analysis/multi_delimited_token_stream.hpp"
 #include "analysis/ngram_token_stream.hpp"
 #include "analysis/text_token_normalizing_stream.hpp"
 #include "analysis/text_token_stemming_stream.hpp"
@@ -2493,6 +2494,7 @@ void IResearchAnalyzerFeature::prepare() {
   ::irs::analysis::token_stopwords_stream::init();
   ::irs::analysis::pipeline_token_stream::init();
   ::irs::analysis::segmentation_token_stream::init();
+  ::irs::analysis::MultiDelimitedAnalyser::init();
 #ifdef USE_ENTERPRISE
   initAnalyzersEE();
 #endif

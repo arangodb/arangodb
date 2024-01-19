@@ -122,7 +122,7 @@ auto DocumentStateErrorHandler::handleOpResult(
     // During follower applyEntries or leader recovery, we might have already
     // dropped the shard.
     LOG_CTX("a8971", DEBUG, _loggerContext)
-        << "Index drop " << op.index.toJson() << " on shard " << op.shard
+        << "Index drop " << op.indexId << " on shard " << op.shard
         << " failed because the shard was not found, ignoring: " << res;
     return TRI_ERROR_NO_ERROR;
   }
@@ -130,7 +130,7 @@ auto DocumentStateErrorHandler::handleOpResult(
     // During follower applyEntries or leader recovery, we might have already
     // dropped the index. Therefore, it's possible to try a "double-drop".
     LOG_CTX("50835", DEBUG, _loggerContext)
-        << "Index drop " << op.index.toJson() << " on shard " << op.shard
+        << "Index drop " << op.indexId << " on shard " << op.shard
         << " failed because the index was not found, ignoring: " << res;
     return TRI_ERROR_NO_ERROR;
   }

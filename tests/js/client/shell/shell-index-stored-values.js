@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail, AQL_EXPLAIN */
+/*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
@@ -26,6 +26,7 @@
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
+const helper = require("@arangodb/test-helper");
 const internal = require("internal");
 const errors = internal.errors;
   
@@ -314,7 +315,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanNotUsedForLookup: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " FILTER doc.value2 == 123 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
     },
@@ -322,7 +323,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanNotUsedForUniqueLookup: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       const query =" FOR doc IN " + cn + " FILTER doc.value2 == 123 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
@@ -331,7 +332,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanNotUsedForSort: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " SORT doc.value2 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
       // query must use a Sortnode
@@ -342,7 +343,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanNotUsedForSortUnique: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       const query =" FOR doc IN " + cn + " SORT doc.value2 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // query cannot use the index for filtering
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
       // query must use a Sortnode
@@ -353,7 +354,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanUsedForProjections1: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN doc.value2"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
       assertTrue(nodes[1].indexCoversProjections);
@@ -363,7 +364,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanUsedForProjections2: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
@@ -373,7 +374,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanUsedForProjections3: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
@@ -383,7 +384,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanUsedForMaterializeOneAttribute: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value2 LIMIT 3 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
       assertEqual(normalize([]), normalize(nodes[1].projections));
@@ -394,7 +395,7 @@ function indexStoredValuesPlanSuite() {
     testExecutionPlanUsedForMaterializeMultipleAttributes: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
       const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value3 LIMIT 3 RETURN doc"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
       assertEqual(normalize([]), normalize(nodes[1].projections));
@@ -407,7 +408,7 @@ function indexStoredValuesPlanSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       c.ensureIndex({ type: "persistent", fields: ["value3"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       assertEqual(normalize(["value1", "value2"]), normalize(nodes[1].projections));
@@ -441,7 +442,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -456,7 +457,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -471,7 +472,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -486,7 +487,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -502,7 +503,7 @@ function indexStoredValuesResultsSuite() {
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
       let result = db._query(query).toArray();
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -517,7 +518,7 @@ function indexStoredValuesResultsSuite() {
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
       let result = db._query(query).toArray();
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -531,7 +532,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 DESC RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -547,7 +548,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 DESC RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
       
@@ -563,7 +564,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // index cannot be used
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
@@ -579,7 +580,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true, unique: true });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       // index cannot be used
       assertEqual(0, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
@@ -595,7 +596,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -611,7 +612,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true, unique: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -627,7 +628,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -643,7 +644,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true, unique: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -659,7 +660,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 FILTER doc.value2 < 4000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -675,7 +676,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], sparse: true, unique: true });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1000 FILTER doc.value2 < 4000 SORT doc.value1 RETURN [doc.value1, doc.value2]`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -698,7 +699,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["lookup"], storedValues: ["value"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.lookup == @value RETURN [doc.value.sub1, doc.value.sub2, doc.value.sub3, doc.value.sub4]`; 
-      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -722,7 +723,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value.sub1", "value.sub3"], storedValues: ["value.sub2", "value.sub4"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.value.sub1 == @value RETURN [doc.value.sub1, doc.value.sub2, doc.value.sub3, doc.value.sub4]`; 
-      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -746,7 +747,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value.sub1.sub2.sub3"], storedValues: ["value.sub1.a", "value.a"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.value.sub1.sub2.sub3 == @value RETURN [doc.value.sub1.sub2.sub3, doc.value.sub1.a, doc.value.a]`; 
-      let nodes = AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query, { value: 0 }).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertTrue(nodes[1].indexCoversProjections);
@@ -772,7 +773,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -785,7 +786,7 @@ function indexStoredValuesResultsSuite() {
       // point lookups
       for (let i = 0; i < 10; ++i) {
         const query = `FOR doc IN ${cn} FILTER doc.value1 == @value RETURN doc.value2`; 
-        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query, { value: i }).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertTrue(nodes[1].indexCoversProjections);
 
@@ -811,7 +812,7 @@ function indexStoredValuesResultsSuite() {
       for (let i = 0; i < 10; ++i) {
         // projections won't be used here because we access the full "doc" variable
         const query = `FOR doc IN ${cn} FILTER doc.value1 == @value RETURN HAS(doc, 'value2')`; 
-        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query, { value: i }).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertFalse(nodes[1].indexCoversProjections);
         assertEqual([], nodes[1].projections);
@@ -839,7 +840,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -852,7 +853,7 @@ function indexStoredValuesResultsSuite() {
       // point lookups
       for (let i = 0; i < 10; ++i) {
         const query = `FOR doc IN ${cn} FILTER doc.value1 == @value RETURN doc.value2`; 
-        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query, { value: i }).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertTrue(nodes[1].indexCoversProjections);
 
@@ -875,7 +876,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -888,7 +889,7 @@ function indexStoredValuesResultsSuite() {
       // point lookups
       for (let i = 0; i < 10; ++i) {
         const query = `FOR doc IN ${cn} FILTER doc.value1 == @value RETURN doc.value2`; 
-        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query, { value: i }).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertTrue(nodes[1].indexCoversProjections);
 
@@ -915,7 +916,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"], unique: true });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc.value2`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -928,7 +929,7 @@ function indexStoredValuesResultsSuite() {
       // point lookups
       for (let i = 0; i < 10; ++i) {
         const query = `FOR doc IN ${cn} FILTER doc.value1 == @value RETURN doc.value2`; 
-        let nodes = AQL_EXPLAIN(query, { value: i }).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query, { value: i }).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertTrue(nodes[1].indexCoversProjections);
 
@@ -942,7 +943,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       const n = 100;
       const query = `FOR doc IN ${cn} FILTER doc.value1 < ${n} SORT doc.value2 DESC LIMIT ${n} RETURN doc`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
       assertEqual([], nodes[1].projections);
@@ -963,7 +964,7 @@ function indexStoredValuesResultsSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
       const n = 100;
       const query = `FOR doc IN ${cn} FILTER doc.value1 < ${n} SORT doc.value3 DESC LIMIT ${n} RETURN doc`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertFalse(nodes[1].indexCoversProjections);
       assertEqual([], nodes[1].projections);
@@ -979,6 +980,39 @@ function indexStoredValuesResultsSuite() {
         assertEqual(base * 3, result[i].value3);
       }
     },
+
+    testResultAfterUpdate: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
+      const n = 100;
+     
+      db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc.value1 == i UPDATE doc WITH { value2: 10 * i, value3: 5 * i } IN ${cn}`);
+
+      for (let i = 0; i < n; ++i) {
+        let result = db._query(`FOR doc IN ${cn} FILTER doc.value1 == ${i} RETURN [doc.value2, doc.value3]`).toArray();
+        assertEqual(1, result.length);
+
+        let doc = result[0];
+        assertEqual(10 * i, doc[0]);
+        assertEqual(5 * i, doc[1]);
+      }
+    },
+    
+    testResultAfterUpdateUnique: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"], unique: true });
+      const n = 100;
+     
+      db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc.value1 == i UPDATE doc WITH { value2: 10 * i, value3: 5 * i } IN ${cn}`);
+
+      for (let i = 0; i < n; ++i) {
+        let result = db._query(`FOR doc IN ${cn} FILTER doc.value1 == ${i} RETURN [doc.value2, doc.value3]`).toArray();
+        assertEqual(1, result.length);
+
+        let doc = result[0];
+        assertEqual(10 * i, doc[0]);
+        assertEqual(5 * i, doc[1]);
+      }
+    },
+
   };
 }
 
@@ -1006,7 +1040,7 @@ function indexStoredValuesResultsIdSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["_id"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN doc._id`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -1021,7 +1055,7 @@ function indexStoredValuesResultsIdSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["_id", "value2"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN {id: doc._id, value2: doc.value2}`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -1037,7 +1071,7 @@ function indexStoredValuesResultsIdSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["_id", "_key"] });
       
       const query = `FOR doc IN ${cn} SORT doc.value1 RETURN {id: doc._id, key: doc._key}`; 
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -1050,7 +1084,7 @@ function indexStoredValuesResultsIdSuite() {
     },
     
     testResultProjectionsIdAfterCollectionRename: function () {
-      if (require("@arangodb/cluster").isCluster()) {
+      if (require("internal").isCluster()) {
         // cluster does not support renaming
         return;
       }
@@ -1060,7 +1094,7 @@ function indexStoredValuesResultsIdSuite() {
 
       try {
         const query = `FOR doc IN ${cn}xx SORT doc.value1 RETURN doc._id`; 
-        let nodes = AQL_EXPLAIN(query).plan.nodes;
+        let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertTrue(nodes[1].indexCoversProjections);
 
@@ -1078,7 +1112,7 @@ function indexStoredValuesResultsIdSuite() {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["_id"] });
       
       const query = `FOR doc IN ${cn} FILTER doc.value1 >= 1500 SORT doc.value1 RETURN {value1: doc.value1, id: doc._id}`;
-      let nodes = AQL_EXPLAIN(query).plan.nodes;
+      let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
       assertTrue(nodes[1].indexCoversProjections);
 
@@ -1094,10 +1128,8 @@ function indexStoredValuesResultsIdSuite() {
 }
 
 jsunity.run(indexStoredValuesCreateSuite);
-if (require("@arangodb").isServer) {
-  jsunity.run(indexStoredValuesPlanSuite);
-  jsunity.run(indexStoredValuesResultsSuite);
-  jsunity.run(indexStoredValuesResultsIdSuite);
-}
+jsunity.run(indexStoredValuesPlanSuite);
+jsunity.run(indexStoredValuesResultsSuite);
+jsunity.run(indexStoredValuesResultsIdSuite);
 
 return jsunity.done();
