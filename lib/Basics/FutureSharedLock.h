@@ -63,6 +63,8 @@ struct FutureSharedLock {
 
     bool isLocked() const noexcept { return _lock != nullptr; }
 
+    void release() noexcept { _lock = nullptr; }
+
     void unlock() noexcept {
       TRI_ASSERT(_lock != nullptr);
       _lock->unlock();
@@ -113,6 +115,7 @@ struct FutureSharedLock {
     explicit Node(bool exclusive) : exclusive(exclusive) {}
 
     Promise<LockGuard> promise;
+    typename Scheduler::WorkHandle _workItem;
     bool exclusive;
   };
 
@@ -208,18 +211,23 @@ struct FutureSharedLock {
     void scheduleTimeout(
         typename std::list<std::shared_ptr<Node>>::iterator queueIterator,
         std::chrono::milliseconds timeout) {
-      _scheduler.queueDelayed(
+      (*queueIterator)->_workItem = _scheduler.queueDelayed(
           [self = this->weak_from_this(),
            node = std::weak_ptr<Node>(*queueIterator),
-           queueIterator]() mutable {
+           queueIterator](bool cancelled) mutable {
             if (auto me = self.lock(); me) {
               if (auto nodePtr = node.lock(); nodePtr) {
-                std::lock_guard lock(me->_mutex);
+                std::unique_lock lock(me->_mutex);
                 if (nodePtr.use_count() != 1) {
                   // if use_count == 1, this means that the promise has already
                   // been scheduled and the node has been removed from the queue
                   // otherwise the iterator must still be valid!
                   me->removeNode(queueIterator);
+                  lock.unlock();
+                  nodePtr->promise.setException(::arangodb::basics::Exception(
+                      cancelled ? TRI_ERROR_REQUEST_CANCELED
+                                : TRI_ERROR_LOCK_TIMEOUT,
+                      ADB_HERE));
                 }
               }
             }

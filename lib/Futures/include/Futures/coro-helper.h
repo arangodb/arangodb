@@ -34,6 +34,26 @@ namespace std_coro = std;
 #include "Basics/Result.h"
 #include "Promise.h"
 #include "Try.h"
+#include "Utils/ExecContext.h"
+
+/// This file contains helper classes and tools for coroutines. We use
+/// coroutines for asynchronous operations. Every function, method or
+/// closure which contains at least one of the keywords
+///  - co_await
+///  - co_yield
+///  - co_return
+/// is a coroutine and is thus compiled differently by the C++ compiler
+/// than normal. Essentially, the compiler creates a state machine for
+/// each such functions. All instances of co_await and co_yield are potential
+/// suspension points. The code before and after a co_await/co_yield can
+/// be executed by different threads!
+/// The return type of a coroutine plays a very special role. For us, it
+/// will usually be `Future<T>` for some type T. The code in this file
+/// uses this fact and essentially implements the magic for coroutines
+/// by providing a few helper classes. See below for details.
+
+/// See below at (*) for an explanation why we need this class
+/// `FutureAwaitable` here!
 
 namespace arangodb::futures {
 template<typename T>
@@ -43,10 +63,12 @@ struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
+    _execContext = &ExecContext::current();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
           if (_counter.fetch_sub(1) == 1) {
+            ExecContextScope exec(_execContext);
             coro.resume();
           }
         });
@@ -59,7 +81,11 @@ struct FutureAwaitable {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<futures::Try<T>> _result;
+  ExecContext const* _execContext;
 };
+
+/// See below at (*) for an explanation why we need this operator co_await
+/// here!
 
 template<typename T>
 auto operator co_await(Future<T>&& f) noexcept {
@@ -69,12 +95,18 @@ auto operator co_await(Future<T>&& f) noexcept {
 template<typename T, typename F>
 struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  void await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+    // returning false resumes `coro`
+    _execContext = &ExecContext::current();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
           _result = F::operator()(std::move(result));
-          coro.resume();
+          if (_counter.fetch_sub(1) == 1) {
+            ExecContextScope exec(_execContext);
+            coro.resume();
+          }
         });
+    return _counter.fetch_sub(1) != 1;
   }
   using ResultType = std::invoke_result_t<F, futures::Try<T>&&>;
   auto await_resume() noexcept -> ResultType {
@@ -85,8 +117,10 @@ struct FutureTransformAwaitable : F {
 
  private:
   static_assert(std::is_nothrow_invocable_v<F, futures::Try<T>&&>);
+  std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
+  ExecContext const* _execContext;
 };
 
 template<typename T>
@@ -119,6 +153,17 @@ auto asResult(Future<ResultT<T>>&& f) noexcept {
 }
 
 }  // namespace arangodb::futures
+
+/// For every coroutine, there must be a so-called `promise_type`, which
+/// is a helper class providing a few methods to configure the behaviour
+/// of the coroutine. This can either be a member type called `promise_type`
+/// of the return type of the coroutine, or, as in our case, it is determined
+/// using the `std_coro::coroutine_traits` template with template parameters
+/// using the return type (see
+///   https://en.cppreference.com/w/cpp/language/coroutines
+/// under "Promise") and then some. Since our return type for coroutines
+/// is `arangodb::futures::Future<T>`, we specialize this template here
+/// to configure our coroutines (for an explanation see below the class):
 
 template<typename T, typename... Args>
 struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
@@ -165,6 +210,46 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
     }
   };
 };
+
+/// (*) Explanation for the details:
+/// The `promise_type` holds two pieces of data:
+///  - first an `arangodb::futures::Promise<T>` (not to be confused with the
+///    promise_type!), and
+///  - second an `arangodb::futures::Try<T>`
+/// After all, we want that the coroutine "returns" an empty `Future<T>`
+/// when it suspends, and it is supposed to set the return value (or
+/// exception) via the corresponding `Promise<T>` object to trigger
+/// potential callbacks which are attached to the Future<T>.
+/// So how does this all work?
+/// When the coroutine is first called an object of type `promise_type`
+/// is contructed, which constructs its member `promise` of type
+/// `Promise<T>`. Then, early in the life of the coroutine, the method
+/// `get_return_object` is called, which builds an object of type
+/// `Future<T>` from the `promise` member, so that it is associated with
+/// the `promise` member. This is what will be returned when the coroutine
+/// is first suspended.
+/// Since `initial_suspend` returns `std_coro::suspend_never{}` no
+/// suspension happens before the first code of the coroutine is run.
+/// When the coroutine reaches a `co_await`, the expression behind it is
+/// first evaluated. It is then the "awaitable" object (unless there is
+/// a method `await_transform` in the current coroutines promise object,
+/// which we haven't). In most cases, this will be another `Future<T'>`
+/// which is returned from another coroutine.
+/// The "awaitable" is now transformed to an "awaiter". This is done by
+/// means of an `operator co_await` defined earlier in this file. It
+/// essentially wraps our `Future<T'>` into a `FutureAwaitable` class
+/// also defined above.
+/// The C++ coroutine framework will then cal methods on the "awaiter"
+/// for events to unfold: First it calls `await_ready` to see if we have
+/// to suspend after all. We always return `false` there.
+/// Then it calls `await_suspend` to suspend and later `await_resume` to
+/// resume. The `FutureAwaitable` class essentially attaches a closure
+/// to the `Future<T'>` which resumes the coroutine.
+
+/// The following is the version for return type `Future<Unit>`,
+/// corresponding to coroutines which return nothing. The differences
+/// are purely technical (`return_void` instead of `return_value`,
+/// basically).
 
 template<typename... Args>
 struct std_coro::coroutine_traits<

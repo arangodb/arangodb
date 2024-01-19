@@ -68,11 +68,87 @@ function likeOptimizationSuite () {
       });
 
       c.insert(docs);
-      c.ensureIndex({ type: "persistent", fields: ["value1"] });
+      c.ensureIndex({ type: "persistent", fields: ["value1"], name: "per" });
     },
 
     tearDownAll: function () {
       db._drop(cn);
+    },
+    
+    testDoNotOptimizeForInvertedIndex: function () {
+      let idx = db[cn].ensureIndex({ type: "inverted", fields: ["name"], name: "inv" });
+
+      const queries = [
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: true } FILTER LIKE(doc.name, 'a%') RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: true } FILTER LIKE(doc.name, 'a') RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: false } FILTER LIKE(doc.name, 'a%') RETURN doc`,
+        `FOR doc IN ${cn} OPTIONS { indexHint: 'inv', forceIndexHint: false } FILTER LIKE(doc.name, 'a') RETURN doc`,
+      ];
+      
+      try {
+        queries.forEach((q) => {
+          let plan = db._createStatement(q).explain().plan;
+          let nodes = plan.nodes.filter((n) => n.type === 'EnumerateCollectionNode');
+          assertEqual(0, nodes.length);
+          nodes = plan.nodes.filter((n) => n.type === 'CalculationNode');
+          assertEqual(0, nodes.length);
+          nodes = plan.nodes.filter((n) => n.type === 'IndexNode');
+          assertEqual(1, nodes.length);
+          let calc = nodes[0].condition;
+          assertEqual("n-ary or", calc.type);
+          let sub = calc.subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("n-ary and", sub[0].type);
+          sub = sub[0].subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("function call", sub[0].type);
+          assertEqual("LIKE", sub[0].name);
+          sub = sub[0].subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("array", sub[0].type);
+          sub = sub[0].subNodes;
+          assertEqual(2, sub.length);
+          assertEqual("attribute access", sub[0].type);
+          assertEqual("value", sub[1].type);
+        });
+      } finally {
+        db[cn].dropIndex(idx);
+      }
+    },
+
+    testDoNotOptimizeForView: function () {
+      const queries = [
+        `FOR doc IN ${cn}View SEARCH LIKE(doc.name, 'a%') RETURN doc`,
+        `FOR doc IN ${cn}View SEARCH LIKE(doc.name, 'a') RETURN doc`,
+      ];
+      
+      let v = db._createView(cn + "View", "arangosearch", {});
+      
+      try {
+        queries.forEach((q) => {
+          let plan = db._createStatement(q).explain().plan;
+          let nodes = plan.nodes.filter((n) => n.type === 'EnumerateViewNode');
+          assertEqual(1, nodes.length);
+          let calc = nodes[0].condition;
+          assertEqual("n-ary or", calc.type);
+          let sub = calc.subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("n-ary and", sub[0].type);
+          sub = sub[0].subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("function call", sub[0].type);
+          assertEqual("LIKE", sub[0].name);
+          sub = sub[0].subNodes;
+          assertEqual(1, sub.length);
+          assertEqual("array", sub[0].type);
+          sub = sub[0].subNodes;
+          assertEqual(2, sub.length);
+          assertEqual("attribute access", sub[0].type);
+          assertEqual("value", sub[1].type);
+        });
+      } finally {
+        db._dropView(cn + "View");
+      }
     },
       
     testLikeOnNonAttributeAccess: function () {
@@ -172,6 +248,9 @@ function likeOptimizationSuite () {
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'aA') RETURN doc.value1`, ["aA"] ],
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'ab') RETURN doc.value1`, ["ab"] ],
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'C') RETURN doc.value1`, ["C"] ],
+        
+        [`FOR doc IN ${cn} OPTIONS { indexHint: 'per', forceIndexHint: true } FILTER LIKE(doc.value1, 'a') RETURN doc.value1`, ["a"] ],
+        [`FOR doc IN ${cn} OPTIONS { indexHint: 'per', forceIndexHint: false } FILTER LIKE(doc.value1, 'a') RETURN doc.value1`, ["a"] ],
       ];
 
       queries.forEach((q) => {
@@ -253,6 +332,8 @@ function likeOptimizationSuite () {
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'C%') SORT doc.value1 RETURN doc.value1`, ["C"] ],
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'B%a%') SORT doc.value1 RETURN doc.value1`, ["Ba", "BaC"] ],
         [`FOR doc IN ${cn} FILTER LIKE(doc.value1, 'a%b%c%') SORT doc.value1 RETURN doc.value1`, ["abc"] ],
+        
+        [`FOR doc IN ${cn} OPTIONS { indexHint: 'per', forceIndexHint: true } FILTER LIKE(doc.value1, 'a%') SORT doc.value1 RETURN doc.value1`, ["a", "aA", "ab", "abc"] ],
       ];
 
       queries.forEach((q) => {

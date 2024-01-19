@@ -229,7 +229,13 @@ function indexCleanupSuite() {
 }
 
 // only run when there is a coordinator
-jsunity.run(indexCleanupSuite);
+
+if (db._properties().replicationVersion !== "2") {
+  // In replication two the Index is written to Target in the agency
+  // the Coordinator is not involved with index creation anymore.
+  // Making this test suite obsolete.
+  jsunity.run(indexCleanupSuite);
+}
 
 return jsunity.done();
 

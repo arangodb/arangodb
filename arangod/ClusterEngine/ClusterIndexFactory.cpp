@@ -178,21 +178,20 @@ namespace arangodb {
 void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
                                              IndexFactory& factory,
                                              ClusterEngine& engine) {
-  static const EdgeIndexFactory edgeIndexFactory(server, "edge", engine);
-  static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext",
-                                                        engine);
-  static const DefaultIndexFactory geoIndexFactory(server, "geo", engine);
-  static const DefaultIndexFactory geo1IndexFactory(server, "geo1", engine);
-  static const DefaultIndexFactory geo2IndexFactory(server, "geo2", engine);
-  static const DefaultIndexFactory hashIndexFactory(server, "hash", engine);
-  static const DefaultIndexFactory persistentIndexFactory(server, "persistent",
-                                                          engine);
-  static const PrimaryIndexFactory primaryIndexFactory(server, "primary",
-                                                       engine);
-  static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist",
-                                                        engine);
-  static const DefaultIndexFactory ttlIndexFactory(server, "ttl", engine);
-  static const DefaultIndexFactory zkdIndexFactory(server, "zkd", engine);
+  static const EdgeIndexFactory edgeIndexFactory(server, "edge");
+  static const DefaultIndexFactory fulltextIndexFactory(server, "fulltext");
+  static const DefaultIndexFactory geoIndexFactory(server, "geo");
+  static const DefaultIndexFactory geo1IndexFactory(server, "geo1");
+  static const DefaultIndexFactory geo2IndexFactory(server, "geo2");
+  static const DefaultIndexFactory hashIndexFactory(server, "hash");
+  static const DefaultIndexFactory persistentIndexFactory(server, "persistent");
+  static const PrimaryIndexFactory primaryIndexFactory(server, "primary");
+  static const DefaultIndexFactory skiplistIndexFactory(server, "skiplist");
+  static const DefaultIndexFactory ttlIndexFactory(server, "ttl");
+  static const DefaultIndexFactory mdiIndexFactory(server, "mdi");
+  static const DefaultIndexFactory zkdIndexFactory(server, "zkd");
+  static const DefaultIndexFactory mdiPrefixedIndexFactory(server,
+                                                           "mdi-prefixed");
   static const IResearchInvertedIndexClusterFactory invertedIndexFactory(
       server, engine);
 
@@ -207,6 +206,8 @@ void ClusterIndexFactory::linkIndexFactories(ArangodServer& server,
   factory.emplace(skiplistIndexFactory._type, skiplistIndexFactory);
   factory.emplace(ttlIndexFactory._type, ttlIndexFactory);
   factory.emplace(zkdIndexFactory._type, zkdIndexFactory);
+  factory.emplace(mdiIndexFactory._type, mdiIndexFactory);
+  factory.emplace(mdiPrefixedIndexFactory._type, mdiPrefixedIndexFactory);
   factory.emplace(invertedIndexFactory._type, invertedIndexFactory);
 }
 

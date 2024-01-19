@@ -105,6 +105,8 @@ struct OptimizerRule {
 
     inlineSubqueriesRule,
 
+    replaceLikeWithRange,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 
@@ -214,6 +216,9 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // put path filters into enumerate paths
+    optimizeEnumeratePathsFilterRule,
 
     // optimize K_PATHS
     optimizePathsRule,
@@ -362,6 +367,9 @@ struct OptimizerRule {
     // needs to take into account query distribution across cluster nodes
     // for index
     lateDocumentMaterializationRule,
+
+    // batch materialization rule
+    batchMaterializeDocumentsRule,
 
 #ifdef USE_ENTERPRISE
     lateMaterialiationOffsetInfoRule,

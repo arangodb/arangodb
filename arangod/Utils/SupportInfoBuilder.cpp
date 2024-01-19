@@ -40,6 +40,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/CpuUsageFeature.h"
@@ -67,19 +68,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std::literals;
-
-namespace {
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
-}  // namespace
 
 void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                          VPackSlice infoSlice,
@@ -369,9 +357,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
         std::string reqUrl =
             isTelemetricsReq ? "/_admin/telemetrics" : "/_admin/support-info";
-        auto f = network::sendRequestRetry(
-            pool, "server:" + server.first, fuerte::RestVerb::Get, reqUrl,
-            VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+        auto f = network::sendRequestRetry(pool, "server:" + server.first,
+                                           fuerte::RestVerb::Get, reqUrl,
+                                           VPackBuffer<uint8_t>{}, options,
+                                           network::addAuthorizationHeader({}));
         futures.emplace_back(std::move(f));
       }
 
@@ -694,10 +683,10 @@ void SupportInfoBuilder::buildDbServerDataStoredInfo(
 
             auto flags = Index::makeFlags(Index::Serialize::Estimates,
                                           Index::Serialize::Figures);
-            constexpr std::array<std::string_view, 12> idxTypes = {
-                "edge",     "geo",        "hash",     "fulltext",
-                "inverted", "persistent", "skiplist", "ttl",
-                "zkd",      "iresearch",  "primary",  "unknown"};
+            constexpr std::array<std::string_view, 13> idxTypes = {
+                "edge",       "geo",      "hash",   "fulltext", "inverted",
+                "persistent", "skiplist", "ttl",    "mdi",      "mdi-prefixed",
+                "iresearch",  "primary",  "unknown"};
             for (auto const& type : idxTypes) {
               idxTypesToAmounts.try_emplace(type, 0);
             }

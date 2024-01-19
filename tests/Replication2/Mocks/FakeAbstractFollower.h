@@ -24,10 +24,8 @@
 
 #include "Basics/voc-errors.h"
 
-#include "Replication2/ReplicatedLog/ILogInterfaces.h"
-#include "Replication2/ReplicatedLog/LogFollower.h"
-#include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/types.h"
+#include "Replication2/ReplicatedLog/NetworkMessages.h"
 
 namespace arangodb::replication2::test {
 
@@ -38,7 +36,7 @@ namespace arangodb::replication2::test {
  * It only models an AbstractFollower. If you want to have full control,
  * consider using the FakeFollower.
  */
-struct FakeAbstractFollower : replicated_log::AbstractFollower {
+struct FakeAbstractFollower : replicated_log::AbstractFollower, IHasScheduler {
   explicit FakeAbstractFollower(ParticipantId id)
       : participantId(std::move(id)) {}
 
@@ -56,14 +54,31 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
     requests.front().promise.setValue(std::move(result));
     requests.pop_front();
   }
+  auto hasWork() const noexcept -> bool override {
+    return hasPendingRequests();
+  }
+  auto runAll() noexcept -> std::size_t override {
+    auto count = std::size_t{0};
+    while (hasPendingRequests()) {
+      ++count;
+      resolveWithOk();
+    }
+    return count;
+  }
 
   void resolveWithOk() {
     resolveRequest(
-        replicated_log::AppendEntriesResult{LogTerm{4},
+        replicated_log::AppendEntriesResult{currentRequest().leaderTerm,
                                             TRI_ERROR_NO_ERROR,
                                             {},
                                             currentRequest().messageId,
-                                            snapshotStatus});
+                                            snapshotStatus,
+                                            syncIndex});
+  }
+
+  void setSyncIndex(LogIndex index) {
+    TRI_ASSERT(index >= syncIndex);
+    syncIndex = index;
   }
 
   template<typename E>
@@ -97,5 +112,6 @@ struct FakeAbstractFollower : replicated_log::AbstractFollower {
   std::deque<AsyncRequest> requests;
   ParticipantId participantId;
   bool snapshotStatus{true};
+  LogIndex syncIndex = LogIndex{0};
 };
 }  // namespace arangodb::replication2::test

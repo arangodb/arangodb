@@ -31,10 +31,8 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Query.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/Range.h"
-#ifdef USE_V8
-#include "Aql/V8Executor.h"
-#endif
 #include "Basics/Endian.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
@@ -255,10 +253,7 @@ bool isValidDocument(VPackSlice slice) {
 
 void registerICUWarning(ExpressionContext* expressionContext,
                         std::string_view functionName, UErrorCode status) {
-  std::string msg;
-  msg.append("in function '");
-  msg.append(functionName);
-  msg.append("()': ");
+  std::string msg = absl::StrCat("in function '", functionName, "()': ");
   msg.append(basics::Exception::FillExceptionString(TRI_ERROR_ARANGO_ICU_ERROR,
                                                     u_errorName(status)));
   expressionContext->registerWarning(TRI_ERROR_ARANGO_ICU_ERROR, msg);
@@ -342,6 +337,7 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
     return INVALID;
   }
 
+  // must be copied because we are lower-casing the string
   std::string flagStr = flag.copyString();
   if (flagStr.empty()) {
     return INVALID;
@@ -403,11 +399,29 @@ DateSelectionModifier parseDateModifierFlag(VPackSlice flag) {
   return INVALID;
 }
 
+date::sys_info localizeTimePoint(std::string const& timezone,
+                                 tp_sys_clock_ms& localTimePoint) {
+  auto const utc = floor<milliseconds>(localTimePoint);
+  auto const zoned = date::make_zoned(timezone, utc);
+  localTimePoint = tp_sys_clock_ms{zoned.get_local_time().time_since_epoch()};
+  return zoned.get_info();
+}
+
+date::sys_info unlocalizeTimePoint(std::string const& timezone,
+                                   tp_sys_clock_ms& utcTimePoint) {
+  auto const local = date::local_time<milliseconds>{
+      floor<milliseconds>(utcTimePoint).time_since_epoch()};
+  auto const zoned = date::make_zoned(timezone, local);
+  utcTimePoint = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
+  return zoned.get_info();
+}
+
 AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
                                         tp_sys_clock_ms const& tp,
                                         VPackSlice durationUnitsSlice,
                                         VPackSlice durationType,
-                                        char const* AFN, bool isSubtract) {
+                                        char const* AFN, bool isSubtract,
+                                        std::string const& timezone) {
   bool isInteger = durationUnitsSlice.isInteger();
   double durationUnits = durationUnitsSlice.getNumber<double>();
   std::chrono::duration<double, std::ratio<1l, 1000l>> ms{};
@@ -493,12 +507,18 @@ AqlValue addOrSubtractUnitFromTimestamp(ExpressionContext* expressionContext,
         date::sys_days(ymd) + day_time.to_duration() +
         std::chrono::duration_cast<duration<int64_t, std::milli>>(ms)};
   }
+
+  if (timezone != "UTC") {
+    ::unlocalizeTimePoint(timezone, resTime);
+  }
+
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
 AqlValue addOrSubtractIsoDurationFromTimestamp(
     ExpressionContext* expressionContext, tp_sys_clock_ms const& tp,
-    std::string_view duration, char const* AFN, bool isSubtract) {
+    std::string_view duration, char const* AFN, bool isSubtract,
+    std::string const& timezone) {
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
 
@@ -533,6 +553,11 @@ AqlValue addOrSubtractIsoDurationFromTimestamp(
     resTime =
         tp_sys_clock_ms{date::sys_days(ymd) + day_time.to_duration() + ms};
   }
+
+  if (timezone != "UTC") {
+    ::unlocalizeTimePoint(timezone, resTime);
+  }
+
   return ::timeAqlValue(expressionContext, AFN, resTime);
 }
 
@@ -729,7 +754,8 @@ void extractKeys(containers::FlatHashSet<std::string>& names,
 
 /// @brief append the VelocyPack value to a string buffer
 ///        Note: Backwards compatibility. Is different than Slice.toJson()
-void appendAsString(VPackOptions const& vopts, velocypack::StringSink& buffer,
+template<typename T>
+void appendAsString(VPackOptions const& vopts, T& buffer,
                     AqlValue const& value) {
   AqlValueMaterializer materializer(&vopts);
   VPackSlice slice = materializer.slice(value);
@@ -845,7 +871,7 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   VPackObjectBuilder b(&result);  // Close the object after this function
   for (auto const& entry : VPackObjectIterator(value, false)) {
     TRI_ASSERT(entry.key.isString());
-    std::string key = entry.key.copyString();
+    std::string_view key = entry.key.stringView();
     if ((names.find(key) == names.end()) == unset) {
       // not found and unset or found and keep
       if (recursive && entry.value.isObject()) {
@@ -863,8 +889,8 @@ void unsetOrKeep(transaction::Methods* trx, VPackSlice const& value,
   }
 }
 
-/// @brief Helper function to get a document by it's identifier
-///        Lazy Locks the collection if necessary.
+/// @brief Helper function to get a document by its identifier
+/// Lazily adds the collection to the transaction if necessary.
 void getDocumentByIdentifier(transaction::Methods* trx,
                              OperationOptions const& options,
                              std::string& collectionName,
@@ -917,9 +943,8 @@ void getDocumentByIdentifier(transaction::Methods* trx,
       // special error message to indicate which collection was undeclared
       THROW_ARANGO_EXCEPTION_MESSAGE(
           res.errorNumber(),
-          StringUtils::concatT(res.errorMessage(), ": ", collectionName, " [",
-                               AccessMode::typeString(AccessMode::Type::READ),
-                               "]"));
+          absl::StrCat(res.errorMessage(), ": ", collectionName, " [",
+                       AccessMode::typeString(AccessMode::Type::READ), "]"));
     }
     THROW_ARANGO_EXCEPTION(res);
   }
@@ -1173,58 +1198,82 @@ AqlValue callApplyBackend(ExpressionContext* expressionContext,
 
   // JavaScript function (this includes user-defined functions)
   {
-    ISOLATE;
+    v8::Isolate* isolate = v8::Isolate::GetCurrent();
     if (isolate == nullptr) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
           absl::StrCat(
               "no V8 context available when executing call to function ", AFN));
     }
-    TRI_V8_CURRENT_GLOBALS_AND_SCOPE;
-    auto context = TRI_IGETC;
+
+    TRI_v8_global_t* v8g = static_cast<TRI_v8_global_t*>(
+        isolate->GetData(arangodb::V8PlatformFeature::V8_DATA_SLOT));
+
+    TRI_ASSERT(v8g != nullptr);
+
+    auto queryCtx = dynamic_cast<QueryExpressionContext*>(expressionContext);
+    if (queryCtx == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL, "unable to cast into QueryExpressionContext");
+    }
+
+    auto query = dynamic_cast<Query*>(&queryCtx->query());
+    if (query == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "unable to cast into Query");
+    }
+
+    VPackOptions const& options = trx.vpackOptions();
 
     auto old = v8g->_expressionContext;
     v8g->_expressionContext = expressionContext;
     auto sg = scopeGuard([&]() noexcept { v8g->_expressionContext = old; });
 
-    VPackOptions const& options = trx.vpackOptions();
-    std::string jsName;
-    int const n = static_cast<int>(invokeParams.size());
-    int const callArgs = (func == nullptr ? 3 : n);
-    auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
+    AqlValue funcRes;
+    query->runInV8ExecutorContext([&](v8::Isolate* isolate) {
+      v8::HandleScope scope(isolate);
 
-    if (func == nullptr) {
-      // a call to a user-defined function
-      jsName = "FCALL_USER";
+      std::string jsName;
+      int const n = static_cast<int>(invokeParams.size());
+      int const callArgs = (func == nullptr ? 3 : n);
+      auto args = std::make_unique<v8::Handle<v8::Value>[]>(callArgs);
 
-      // function name
-      args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
-      // call parameters
-      v8::Handle<v8::Array> params =
-          v8::Array::New(isolate, static_cast<int>(n));
+      if (func == nullptr) {
+        // a call to a user-defined function
+        jsName = "FCALL_USER";
 
-      for (int i = 0; i < n; ++i) {
-        params
-            ->Set(context, static_cast<uint32_t>(i),
-                  invokeParams[i].toV8(isolate, &options))
-            .FromMaybe(true);
+        // function name
+        args[0] = TRI_V8_STD_STRING(isolate, ucInvokeFN);
+
+        v8::Handle<v8::Context> context = isolate->GetCurrentContext();
+        // call parameters
+        v8::Handle<v8::Array> params =
+            v8::Array::New(isolate, static_cast<int>(n));
+
+        for (int i = 0; i < n; ++i) {
+          params
+              ->Set(context, static_cast<uint32_t>(i),
+                    invokeParams[i].toV8(isolate, &options))
+              .FromMaybe(true);
+        }
+        args[1] = params;
+        args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
+      } else {
+        // a call to a built-in V8 function
+        TRI_ASSERT(func->hasV8Implementation());
+
+        jsName = absl::StrCat("AQL_", func->name);
+        for (int i = 0; i < n; ++i) {
+          args[i] = invokeParams[i].toV8(isolate, &options);
+        }
       }
-      args[1] = params;
-      args[2] = TRI_V8_ASCII_STRING(isolate, AFN);
-    } else {
-      // a call to a built-in V8 function
-      TRI_ASSERT(func->hasV8Implementation());
 
-      jsName = "AQL_" + func->name;
-      for (int i = 0; i < n; ++i) {
-        args[i] = invokeParams[i].toV8(isolate, &options);
-      }
-    }
-
-    bool dummy;
-    return Expression::invokeV8Function(*expressionContext, jsName, ucInvokeFN,
-                                        AFN, false, callArgs, args.get(),
-                                        dummy);
+      bool dummy;
+      funcRes = Expression::invokeV8Function(*expressionContext, jsName,
+                                             isolate, ucInvokeFN, AFN, false,
+                                             callArgs, args.get(), dummy);
+    });
+    return funcRes;
   }
 }
 #endif
@@ -1416,12 +1465,10 @@ std::string_view getFunctionName(AstNode const& node) noexcept {
 
 /// @brief register warning
 void registerWarning(ExpressionContext* expressionContext,
-                     std::string_view functionName, Result const& rr) {
-  std::string msg = "in function '";
-  msg.append(functionName);
-  msg.append("()': ");
-  msg.append(rr.errorMessage());
-  expressionContext->registerWarning(rr.errorNumber(), msg);
+                     std::string_view functionName, Result const& r) {
+  std::string msg =
+      absl::StrCat("in function '", functionName, "()': ", r.errorMessage());
+  expressionContext->registerWarning(r.errorNumber(), msg);
 }
 
 /// @brief register warning
@@ -1452,10 +1499,8 @@ void registerError(ExpressionContext* expressionContext,
     std::string fname(functionName);
     msg = basics::Exception::FillExceptionString(code, fname.c_str());
   } else {
-    msg.append("in function '");
-    msg.append(functionName);
-    msg.append("()': ");
-    msg.append(TRI_errno_string(code));
+    msg = absl::StrCat("in function '", functionName,
+                       "()': ", TRI_errno_string(code));
   }
 
   expressionContext->registerError(code, msg);
@@ -1472,8 +1517,9 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
 }  // namespace arangodb
 
 /// @brief append the VelocyPack value to a string buffer
-void functions::Stringify(VPackOptions const* vopts,
-                          velocypack::StringSink& buffer, VPackSlice slice) {
+template<typename T>
+void functions::Stringify(VPackOptions const* vopts, T& buffer,
+                          VPackSlice slice) {
   if (slice.isNull()) {
     // null is the empty string
     return;
@@ -1493,6 +1539,16 @@ void functions::Stringify(VPackOptions const* vopts,
   VPackDumper dumper(&buffer, &adjustedOptions);
   dumper.dump(slice);
 }
+
+template void functions::Stringify<arangodb::velocypack::StringSink>(
+    velocypack::Options const* vopts, arangodb::velocypack::StringSink& buffer,
+    arangodb::velocypack::Slice slice);
+
+template void
+functions::Stringify<arangodb::velocypack::SizeConstrainedStringSink>(
+    velocypack::Options const* vopts,
+    arangodb::velocypack::SizeConstrainedStringSink& buffer,
+    arangodb::velocypack::Slice slice);
 
 /// @brief function IS_NULL
 AqlValue functions::IsNull(ExpressionContext*, AstNode const&,
@@ -1601,6 +1657,79 @@ AqlValue functions::ToHex(ExpressionContext* expr, AstNode const&,
       basics::StringUtils::encodeHex(buffer->data(), buffer->length());
 
   return AqlValue(encoded);
+}
+
+AqlValue functions::ToChar(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "TO_CHAR";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  int64_t v = -1;
+  if (ADB_UNLIKELY(value.isNumber())) {
+    v = value.toInt64();
+  }
+  if (v < 0) {
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  UChar32 c = static_cast<uint32_t>(v);
+  char buffer[6];
+  int32_t offset = 0;
+  U8_APPEND_UNSAFE(&buffer[0], offset, c);
+
+  return AqlValue(std::string_view(&buffer[0], static_cast<size_t>(offset)));
+}
+
+AqlValue functions::Repeat(ExpressionContext* ctx, AstNode const&,
+                           VPackFunctionParametersView parameters) {
+  static char const* AFN = "REPEAT";
+  AqlValue const& value = extractFunctionParameterValue(parameters, 0);
+
+  AqlValue const& repetitions = extractFunctionParameterValue(parameters, 1);
+  int64_t r = repetitions.toInt64();
+  if (r == 0) {
+    // empty string
+    return AqlValue(std::string_view("", 0));
+  }
+  if (r < 0) {
+    // negative number of repetitions
+    aql::registerInvalidArgumentWarning(ctx, AFN);
+    return aql::AqlValue{aql::AqlValueHintNull{}};
+  }
+
+  auto& trx = ctx->trx();
+
+  transaction::StringLeaser sepBuffer(&trx);
+  velocypack::StringSink sepAdapter(sepBuffer.get());
+  std::string_view separator;
+  if (parameters.size() > 2) {
+    // separator
+    ::appendAsString(trx.vpackOptions(), sepAdapter,
+                     extractFunctionParameterValue(parameters, 2));
+    separator = {sepBuffer->data(), sepBuffer->size()};
+  }
+
+  transaction::StringLeaser buffer(&trx);
+  velocypack::SizeConstrainedStringSink adapter(buffer.get(),
+                                                /*maxLength*/ 16 * 1024 * 1024);
+
+  for (int64_t i = 0; i < r; ++i) {
+    if (i > 0 && !separator.empty()) {
+      buffer->append(separator);
+    }
+    ::appendAsString(trx.vpackOptions(), adapter, value);
+    if (adapter.overflowed()) {
+      registerWarning(
+          ctx, AFN,
+          Result{TRI_ERROR_RESOURCE_LIMIT,
+                 "Output string of AQL REPEAT function was limited to 16MB."});
+      return AqlValue(AqlValueHintNull());
+    }
+  }
+
+  // hand over string to AqlValue
+  return AqlValue(std::string_view(buffer->data(), buffer->size()));
 }
 
 /// @brief function ENCODE_URI_COMPONENT
@@ -3770,6 +3899,20 @@ AqlValue functions::DateDayOfWeek(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::weekday wd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintUInt(wd.c_encoding()));
@@ -3785,6 +3928,20 @@ AqlValue functions::DateYear(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   // Not the library has operator (int) implemented...
   int64_t year = static_cast<int64_t>((int)ymd.year());
@@ -3801,6 +3958,20 @@ AqlValue functions::DateMonth(ExpressionContext* expressionContext,
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   // The library has operator (unsigned) implemented
   uint64_t month = static_cast<uint64_t>((unsigned)ymd.month());
@@ -3816,6 +3987,19 @@ AqlValue functions::DateDay(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto ymd = date::year_month_day(floor<date::days>(tp));
@@ -3835,6 +4019,19 @@ AqlValue functions::DateHour(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto day_time = date::make_time(tp - floor<date::days>(tp));
   uint64_t hours = day_time.hours().count();
   return AqlValue(AqlValueHintUInt(hours));
@@ -3849,6 +4046,19 @@ AqlValue functions::DateMinute(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto day_time = date::make_time(tp - floor<date::days>(tp));
@@ -3898,6 +4108,19 @@ AqlValue functions::DateDayOfYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   auto ymd = date::year_month_day(floor<date::days>(tp));
   auto yyyy = date::year{ymd.year()};
   // we construct the date with the first day in the year:
@@ -3919,6 +4142,19 @@ AqlValue functions::DateIsoWeek(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
   // The (unsigned) operator is overloaded...
   uint64_t isoWeek = static_cast<uint64_t>((unsigned)(yww.weeknum()));
@@ -3934,6 +4170,19 @@ AqlValue functions::DateIsoWeekYear(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   iso_week::year_weeknum_weekday yww{floor<date::days>(tp)};
@@ -3961,6 +4210,19 @@ AqlValue functions::DateLeapYear(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::year_month_day ymd{floor<date::days>(tp)};
 
   return AqlValue(AqlValueHintBool(ymd.year().is_leap()));
@@ -3975,6 +4237,19 @@ AqlValue functions::DateQuarter(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   date::year_month_day ymd{floor<date::days>(tp)};
@@ -3996,6 +4271,19 @@ AqlValue functions::DateDaysInMonth(ExpressionContext* expressionContext,
 
   if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 2) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 1);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   auto ymd = date::year_month_day{floor<date::days>(tp)};
@@ -4028,6 +4316,21 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   std::string duration = durationType.slice().copyString();
   basics::StringUtils::tolowerInPlace(duration);
 
+  std::string inputTimezone = "UTC";
+
+  if (parameters.size() == 3) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 2);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   date::year_month_day ymd{floor<date::days>(tp)};
   auto day_time = date::make_time(tp - date::sys_days(ymd));
   milliseconds ms{0};
@@ -4054,6 +4357,10 @@ AqlValue functions::DateTrunc(ExpressionContext* expressionContext,
   }
   tp = tp_sys_clock_ms{date::sys_days(ymd) + ms};
 
+  if (parameters.size() == 3) {
+    ::unlocalizeTimePoint(inputTimezone, tp);
+  }
+
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
@@ -4069,9 +4376,9 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& timezoneParam = extractFunctionParameterValue(parameters, 1);
 
-  if (!timeZoneParam.isString()) {  // timezone type must be string
+  if (!timezoneParam.isString()) {  // timezone type must be string
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
@@ -4088,7 +4395,7 @@ AqlValue functions::DateUtcToLocal(ExpressionContext* expressionContext,
     showDetail = detailParam.slice().getBoolean();
   }
 
-  std::string const tz = timeZoneParam.slice().copyString();
+  std::string const tz = timezoneParam.slice().copyString();
   auto const utc = floor<milliseconds>(tp_utc);
   auto const zoned = date::make_zoned(tz, utc);
   auto const info = zoned.get_info();
@@ -4145,9 +4452,9 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValue const& timeZoneParam = extractFunctionParameterValue(parameters, 1);
+  AqlValue const& timezoneParam = extractFunctionParameterValue(parameters, 1);
 
-  if (!timeZoneParam.isString()) {  // timezone type must be string
+  if (!timezoneParam.isString()) {  // timezone type must be string
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
   }
@@ -4164,13 +4471,10 @@ AqlValue functions::DateLocalToUtc(ExpressionContext* expressionContext,
     showDetail = detailParam.slice().getBoolean();
   }
 
-  std::string const tz = timeZoneParam.slice().copyString();
-  auto const local = date::local_time<milliseconds>{
-      floor<milliseconds>(tp_local).time_since_epoch()};
-  auto const zoned = date::make_zoned(tz, local);
-  auto const info = zoned.get_info();
-  auto const tp_utc = tp_sys_clock_ms{zoned.get_sys_time().time_since_epoch()};
-  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_utc);
+  std::string inputTimezone = timezoneParam.slice().copyString();
+  // converts tp_local to tp_utc
+  auto const info = ::unlocalizeTimePoint(inputTimezone, tp_local);
+  AqlValue aqlUtc = ::timeAqlValue(expressionContext, AFN, tp_local);
 
   AqlValueGuard aqlUtcGuard(aqlUtc, true);
 
@@ -4253,10 +4557,33 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  // size == 4 unit / unit type / timezone
   // size == 3 unit / unit type
+  // size == 3 iso duration / timezone
   // size == 2 iso duration
 
-  if (parameters.size() == 3) {
+  AqlValue const& parameter1 = extractFunctionParameterValue(parameters, 1);
+
+  auto const isTimezoned = parameters.size() == 4 ||
+                           (parameters.size() == 3 && parameter1.isString());
+  auto const timezoneParameterIndex = parameters.size() == 4 ? 3 : 2;
+  std::string inputTimezone = "UTC";
+
+  if (isTimezoned) {
+    AqlValue const timezoneParam =
+        extractFunctionParameterValue(parameters, timezoneParameterIndex);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
+  if ((parameters.size() == 3 && !isTimezoned) || parameters.size() == 4) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
       registerInvalidArgumentWarning(expressionContext, AFN);
@@ -4270,9 +4597,9 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     }
 
     // Numbers and Strings can both be sliced
-    return ::addOrSubtractUnitFromTimestamp(expressionContext, tp,
-                                            durationUnit.slice(),
-                                            durationType.slice(), AFN, false);
+    return ::addOrSubtractUnitFromTimestamp(
+        expressionContext, tp, durationUnit.slice(), durationType.slice(), AFN,
+        false, inputTimezone);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -4281,7 +4608,8 @@ AqlValue functions::DateAdd(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(
-        expressionContext, tp, isoDuration.slice().stringView(), AFN, false);
+        expressionContext, tp, isoDuration.slice().stringView(), AFN, false,
+        inputTimezone);
   }
 }
 
@@ -4296,10 +4624,33 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  // size == 4 unit / unit type / timezone
   // size == 3 unit / unit type
+  // size == 3 iso duration / timezone
   // size == 2 iso duration
 
-  if (parameters.size() == 3) {
+  AqlValue const& parameter1 = extractFunctionParameterValue(parameters, 1);
+
+  auto const isTimezoned = parameters.size() == 4 ||
+                           (parameters.size() == 3 && parameter1.isString());
+  auto const timezoneParameterIndex = parameters.size() == 4 ? 3 : 2;
+  std::string inputTimezone = "UTC";
+
+  if (isTimezoned) {
+    AqlValue const timezoneParam =
+        extractFunctionParameterValue(parameters, timezoneParameterIndex);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
+  if ((parameters.size() == 3 && !isTimezoned) || parameters.size() == 4) {
     AqlValue const& durationUnit = extractFunctionParameterValue(parameters, 1);
     if (!durationUnit.isNumber()) {  // unit must be number
       registerInvalidArgumentWarning(expressionContext, AFN);
@@ -4313,9 +4664,9 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     // Numbers and Strings can both be sliced
-    return ::addOrSubtractUnitFromTimestamp(expressionContext, tp,
-                                            durationUnit.slice(),
-                                            durationType.slice(), AFN, true);
+    return ::addOrSubtractUnitFromTimestamp(
+        expressionContext, tp, durationUnit.slice(), durationType.slice(), AFN,
+        true, inputTimezone);
   } else {  // iso duration
     AqlValue const& isoDuration = extractFunctionParameterValue(parameters, 1);
     if (!isoDuration.isString()) {
@@ -4324,7 +4675,8 @@ AqlValue functions::DateSubtract(ExpressionContext* expressionContext,
     }
 
     return ::addOrSubtractIsoDurationFromTimestamp(
-        expressionContext, tp, isoDuration.slice().stringView(), AFN, true);
+        expressionContext, tp, isoDuration.slice().stringView(), AFN, true,
+        inputTimezone);
   }
 }
 
@@ -4347,7 +4699,6 @@ AqlValue functions::DateDiff(ExpressionContext* expressionContext,
 
   double diff = 0.0;
   bool asFloat = false;
-  auto diffDuration = tp2 - tp1;
 
   AqlValue const& unitValue = extractFunctionParameterValue(parameters, 2);
   if (!unitValue.isString()) {
@@ -4357,14 +4708,55 @@ AqlValue functions::DateDiff(ExpressionContext* expressionContext,
 
   DateSelectionModifier flag = ::parseDateModifierFlag(unitValue.slice());
 
-  if (parameters.size() == 4) {
-    AqlValue const& asFloatValue = extractFunctionParameterValue(parameters, 3);
-    if (!asFloatValue.isBoolean()) {
+  if (parameters.size() > 3) {
+    AqlValue const& parameter4 = extractFunctionParameterValue(parameters, 3);
+    if (parameter4.isBoolean()) {
+      asFloat = parameter4.toBoolean();
+    } else if (parameter4.isString()) {
+      std::string inputTimezone = parameter4.slice().copyString();
+      ::localizeTimePoint(inputTimezone, tp1);
+      if (parameters.size() == 4) {
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+    } else {
       registerInvalidArgumentWarning(expressionContext, AFN);
       return AqlValue(AqlValueHintNull());
     }
-    asFloat = asFloatValue.toBoolean();
+
+    if (parameters.size() > 4) {
+      AqlValue const& parameter5 = extractFunctionParameterValue(parameters, 4);
+
+      if (!parameter5.isString()) {  // timezone type must be string
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      std::string inputTimezone = parameter5.slice().copyString();
+      if (parameter4.isBoolean()) {
+        ::localizeTimePoint(inputTimezone, tp1);
+        if (parameters.size() == 5) {
+          ::localizeTimePoint(inputTimezone, tp2);
+        }
+      } else {
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+
+      if (parameters.size() == 6) {
+        AqlValue const& parameter6 =
+            extractFunctionParameterValue(parameters, 5);
+
+        if (!parameter6.isString()) {  // timezone type must be string
+          registerInvalidArgumentWarning(expressionContext, AFN);
+          return AqlValue(AqlValueHintNull());
+        }
+
+        inputTimezone = parameter6.slice().copyString();
+        ::localizeTimePoint(inputTimezone, tp2);
+      }
+    }
   }
+
+  auto diffDuration = tp2 - tp1;
 
   switch (flag) {
     case YEAR:
@@ -4447,17 +4839,66 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
   }
 
   DateSelectionModifier rangeEnd = rangeStart;
-  if (parameters.size() == 4) {
+  if (parameters.size() > 3) {
     AqlValue const& rangeEndValue =
         extractFunctionParameterValue(parameters, 3);
     rangeEnd = ::parseDateModifierFlag(rangeEndValue.slice());
 
+    auto startTimezoneIndex = 0;
+    auto endTimezoneIndex = 0;
+
     if (rangeEnd == INVALID) {
-      registerWarning(expressionContext, AFN,
-                      TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
-      return AqlValue(AqlValueHintNull());
+      startTimezoneIndex = 3;
+      rangeEnd = rangeStart;
+      if (parameters.size() == 4) {
+        endTimezoneIndex = 3;
+      } else if (parameters.size() == 5) {
+        endTimezoneIndex = 4;
+      } else {
+        registerWarning(expressionContext, AFN,
+                        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
+        return AqlValue(AqlValueHintNull());
+      }
+    } else if (parameters.size() > 4) {
+      startTimezoneIndex = 4;
+      if (parameters.size() == 5) {
+        endTimezoneIndex = 4;
+      } else if (parameters.size() == 6) {
+        endTimezoneIndex = 5;
+      }
+    }
+
+    if (startTimezoneIndex > 0) {
+      AqlValue const startTimezoneParam =
+          extractFunctionParameterValue(parameters, startTimezoneIndex);
+
+      if (!startTimezoneParam.isString()) {  // timezone type must be string
+        registerInvalidArgumentWarning(expressionContext, AFN);
+        return AqlValue(AqlValueHintNull());
+      }
+
+      std::string startTimezone = startTimezoneParam.slice().copyString();
+
+      ::localizeTimePoint(startTimezone, tp1);
+
+      if (startTimezoneIndex != endTimezoneIndex) {
+        AqlValue const endTimezoneParam =
+            extractFunctionParameterValue(parameters, endTimezoneIndex);
+
+        if (!endTimezoneParam.isString()) {  // timezone type must be string
+          registerInvalidArgumentWarning(expressionContext, AFN);
+          return AqlValue(AqlValueHintNull());
+        }
+
+        std::string endTimezone = endTimezoneParam.slice().copyString();
+
+        ::localizeTimePoint(endTimezone, tp2);
+      } else {
+        ::localizeTimePoint(startTimezone, tp2);
+      }
     }
   }
+
   auto ymd1 = date::year_month_day{floor<date::days>(tp1)};
   auto ymd2 = date::year_month_day{floor<date::days>(tp2)};
   auto time1 = date::make_time(tp1 - floor<date::days>(tp1));
@@ -4470,10 +4911,10 @@ AqlValue functions::DateCompare(ExpressionContext* expressionContext,
   // In each case if the value is significant
   // (above or equal the endRange) we compare it.
   // If this part is not equal we return false.
-  // Otherwise we fall down to the next part.
+  // Otherwise, we fall down to the next part.
   // As soon as we are below the endRange
   // we bail out.
-  // So all Fall throughs here are intentional
+  // So all fall throughs here are intentional
   switch (rangeStart) {
     case YEAR:
       // Always check for the year
@@ -4563,6 +5004,21 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
     return AqlValue(AqlValueHintNull());
   }
 
+  std::string inputTimezone = "UTC";
+
+  if (parameters.size() == 4) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 3);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
+  }
+
   int64_t const m = durationUnit.toInt64();
   if (m <= 0) {
     registerInvalidArgumentWarning(expressionContext, AFN);
@@ -4594,6 +5050,11 @@ AqlValue functions::DateRound(ExpressionContext* expressionContext,
   // integer division!
   t /= multiplier;
   tp = tp_sys_clock_ms(milliseconds(t * multiplier));
+
+  if (parameters.size() == 4) {
+    ::unlocalizeTimePoint(inputTimezone, tp);
+  }
+
   return ::timeAqlValue(expressionContext, AFN, tp);
 }
 
@@ -8629,7 +9090,7 @@ AqlValue functions::Percentile(ExpressionContext* expressionContext,
                       TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
       return AqlValue(AqlValueHintNull());
     }
-    std::string method = methodValue.slice().copyString();
+    std::string_view method = methodValue.slice().stringView();
     if (method == "interpolation") {
       useInterpolation = true;
     } else if (method == "rank") {
@@ -8796,6 +9257,7 @@ AqlValue functions::Position(ExpressionContext* expressionContext,
 AqlValue functions::Call(ExpressionContext* expressionContext,
                          AstNode const& node,
                          VPackFunctionParametersView parameters) {
+#ifdef USE_V8
   static char const* AFN = "CALL";
 
   AqlValue const& invokeFN = extractFunctionParameterValue(parameters, 0);
@@ -8816,7 +9278,6 @@ AqlValue functions::Call(ExpressionContext* expressionContext,
     }
   }
 
-#ifdef USE_V8
   return ::callApplyBackend(expressionContext, node, AFN, invokeFN,
                             invokeParams);
 #else
@@ -8994,8 +9455,8 @@ AqlValue functions::Assert(ExpressionContext* expressionContext, AstNode const&,
     return AqlValue(AqlValueHintNull());
   }
   if (!expr.toBoolean()) {
-    std::string msg = message.slice().copyString();
-    expressionContext->registerError(TRI_ERROR_QUERY_USER_ASSERT, msg.data());
+    expressionContext->registerError(TRI_ERROR_QUERY_USER_ASSERT,
+                                     message.slice().stringView());
   }
   return AqlValue(AqlValueHintBool(true));
 }
@@ -9014,8 +9475,8 @@ AqlValue functions::Warn(ExpressionContext* expressionContext, AstNode const&,
   }
 
   if (!expr.toBoolean()) {
-    std::string msg = message.slice().copyString();
-    expressionContext->registerWarning(TRI_ERROR_QUERY_USER_WARN, msg.data());
+    expressionContext->registerWarning(TRI_ERROR_QUERY_USER_WARN,
+                                       message.slice().stringView());
     return AqlValue(AqlValueHintBool(false));
   }
   return AqlValue(AqlValueHintBool(true));
@@ -9043,18 +9504,32 @@ AqlValue functions::Fail(ExpressionContext* expressionContext, AstNode const&,
 /// @brief function DATE_FORMAT
 AqlValue functions::DateFormat(ExpressionContext* expressionContext,
                                AstNode const&,
-                               VPackFunctionParametersView params) {
+                               VPackFunctionParametersView parameters) {
   static char const* AFN = "DATE_FORMAT";
   tp_sys_clock_ms tp;
 
-  if (!::parameterToTimePoint(expressionContext, params, tp, AFN, 0)) {
+  if (!::parameterToTimePoint(expressionContext, parameters, tp, AFN, 0)) {
     return AqlValue(AqlValueHintNull());
   }
 
-  AqlValue const& aqlFormatString = extractFunctionParameterValue(params, 1);
+  AqlValue const& aqlFormatString =
+      extractFunctionParameterValue(parameters, 1);
   if (!aqlFormatString.isString()) {
     registerInvalidArgumentWarning(expressionContext, AFN);
     return AqlValue(AqlValueHintNull());
+  }
+
+  if (parameters.size() == 3) {
+    AqlValue const timezoneParam = extractFunctionParameterValue(parameters, 2);
+
+    if (!timezoneParam.isString()) {  // timezone type must be string
+      registerInvalidArgumentWarning(expressionContext, AFN);
+      return AqlValue(AqlValueHintNull());
+    }
+
+    std::string inputTimezone = timezoneParam.slice().copyString();
+
+    ::localizeTimePoint(inputTimezone, tp);
   }
 
   return AqlValue(basics::formatDate(aqlFormatString.slice().copyString(), tp));
@@ -9099,7 +9574,8 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
   if (collection == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
-        "could not find collection: " + colName + " in database " + dbName);
+        absl::StrCat("could not find collection: ", colName, " in database ",
+                     dbName));
   }
 
   std::string shardId;
@@ -9108,8 +9584,8 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
     if (maybeShardID.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           maybeShardID.errorNumber(),
-          "could not find shard for document by shard keys " + keys.toJson() +
-              " in " + colName);
+          absl::StrCat("could not find shard for document by shard keys ",
+                       keys.toJson(), " in ", colName));
     }
     shardId = maybeShardID.get();
   } else {  // Agents, single server, AFO return the collection name in favour

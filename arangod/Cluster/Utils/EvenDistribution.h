@@ -31,15 +31,18 @@ struct EvenDistribution : public IShardDistributionFactory {
                    std::vector<ServerID> avoidServers,
                    bool enforceReplicationFactor);
 
-  Result planShardsOnServers(
-      std::vector<ServerID> availableServers,
-      std::unordered_set<ServerID>& serversPlanned) override;
+  auto checkDistributionPossible(std::vector<ServerID>& availableServers)
+      -> Result override;
+
+  auto planShardsOnServers(std::vector<ServerID> availableServers,
+                           std::unordered_set<ServerID>& serversPlanned)
+      -> Result override;
 
  private:
-  uint64_t _numberOfShards;
-  uint64_t _replicationFactor;
-  std::vector<ServerID> _avoidServers;
-  bool _enforceReplicationFactor;
+  uint64_t const _numberOfShards;
+  uint64_t const _replicationFactor;
+  std::vector<ServerID> const _avoidServers;
+  bool const _enforceReplicationFactor;
 };
 
 }  // namespace arangodb

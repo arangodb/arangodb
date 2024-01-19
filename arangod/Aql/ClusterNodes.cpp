@@ -208,11 +208,11 @@ std::unique_ptr<ExecutionBlock> ScatterNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* ScatterNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                  bool withProperties) const {
+ExecutionNode* ScatterNode::clone(ExecutionPlan* plan,
+                                  bool withDependencies) const {
   auto c = std::make_unique<ScatterNode>(plan, _id, getScatterType());
   c->copyClients(clients());
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief doToVelocyPack, for ScatterNode
@@ -310,8 +310,8 @@ DistributeNode::DistributeNode(ExecutionPlan* plan,
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                     bool withProperties) const {
+ExecutionNode* DistributeNode::clone(ExecutionPlan* plan,
+                                     bool withDependencies) const {
   auto c = std::make_unique<DistributeNode>(
       plan, _id, getScatterType(), collection(), _variable, _targetNodeId);
   c->copyClients(clients());
@@ -321,7 +321,7 @@ ExecutionNode* DistributeNode::clone(ExecutionPlan* plan, bool withDependencies,
     c->_satellites.emplace_back(it);
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 /// @brief creates corresponding ExecutionBlock

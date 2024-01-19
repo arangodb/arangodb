@@ -340,22 +340,20 @@ class ExecutionNode {
   virtual std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine) const = 0;
 
-  /// @brief clone execution Node recursively, this makes the class abstract
-  virtual ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                               bool withProperties) const = 0;
+  /// @brief clone execution Node recursively
+  virtual ExecutionNode* clone(ExecutionPlan* plan,
+                               bool withDependencies) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
   /// @return pointer to a registered node owned by a plan
   ExecutionNode* cloneHelper(std::unique_ptr<ExecutionNode> Other,
-                             bool withDependencies, bool withProperties) const;
+                             bool withDependencies) const;
 
   void cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
-                                              ExecutionNode& other,
-                                              bool withProperties) const;
+                                              ExecutionNode& other) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
-  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
-                         bool withProperties) const;
+  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone) const;
 
   // clone register plan of dependency, needed when inserting nodes after
   // planning
@@ -545,7 +543,7 @@ class ExecutionNode {
 
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice const& slice,
+                              arangodb::velocypack::Slice slice,
                               char const* which);
 
   RegisterId variableToRegisterId(Variable const*) const;
@@ -635,7 +633,7 @@ class SingletonNode : public ExecutionNode {
  public:
   SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -648,10 +646,10 @@ class SingletonNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     return cloneHelper(std::make_unique<SingletonNode>(plan, _id),
-                       withDependencies, withProperties);
+                       withDependencies);
   }
 
   /// @brief the cost of a singleton is 1
@@ -681,7 +679,7 @@ class EnumerateCollectionNode : public ExecutionNode,
                           IndexHint const& hint);
 
   EnumerateCollectionNode(ExecutionPlan* plan,
-                          arangodb::velocypack::Slice const& base);
+                          arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -694,8 +692,8 @@ class EnumerateCollectionNode : public ExecutionNode,
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief replaces variables in the internals of the execution node
   /// replacements are { old variable id => new variable }
@@ -758,7 +756,7 @@ class EnumerateListNode : public ExecutionNode {
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
                     Variable const* inVariable, Variable const* outVariable);
 
-  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -771,8 +769,8 @@ class EnumerateListNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
@@ -782,6 +780,21 @@ class EnumerateListNode : public ExecutionNode {
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
+  /// @brief remember the condition to execute for early filtering
+  void setFilter(std::unique_ptr<Expression> filter);
+
+  /// @brief return the early pruning condition for the node
+  Expression* filter() const noexcept { return _filter.get(); }
+
+  /// @brief whether or not the node has an early pruning filter condition
+  bool hasFilter() const noexcept { return _filter != nullptr; }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -806,6 +819,9 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief output variable to write to
   Variable const* _outVariable;
+
+  /// @brief early filtering condition
+  std::unique_ptr<Expression> _filter;
 };
 
 /// @brief class LimitNode
@@ -816,7 +832,7 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
             size_t limit);
 
-  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -829,8 +845,8 @@ class LimitNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -875,7 +891,7 @@ class CalculationNode : public ExecutionNode {
                   std::unique_ptr<Expression> expr,
                   Variable const* outVariable);
 
-  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   ~CalculationNode();
 
@@ -890,8 +906,8 @@ class CalculationNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief return out variable
   Variable const* outVariable() const;
@@ -947,7 +963,7 @@ class SubqueryNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id, ExecutionNode* subquery,
                Variable const* outVariable);
@@ -969,8 +985,8 @@ class SubqueryNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief this is true iff the subquery contains a data-modification
   /// operation
@@ -1024,7 +1040,7 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override;
@@ -1037,8 +1053,8 @@ class FilterNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -1092,7 +1108,7 @@ class ReturnNode : public ExecutionNode {
   ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1108,8 +1124,8 @@ class ReturnNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -1149,7 +1165,7 @@ class NoResultsNode : public ExecutionNode {
  public:
   NoResultsNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1162,8 +1178,8 @@ class NoResultsNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
@@ -1185,7 +1201,7 @@ class AsyncNode : public ExecutionNode {
  public:
   AsyncNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
@@ -1198,8 +1214,8 @@ class AsyncNode : public ExecutionNode {
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
@@ -1217,7 +1233,7 @@ class MaterializeNode : public ExecutionNode {
                   aql::Variable const& inDocId,
                   aql::Variable const& outVariable);
 
-  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
  public:
   /// @brief return the type of the node
@@ -1231,8 +1247,8 @@ class MaterializeNode : public ExecutionNode {
       ExecutionEngine& engine) const override = 0;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override = 0;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override = 0;
 
   CostEstimate estimateCost() const override final;
 
@@ -1268,16 +1284,15 @@ class MaterializeSearchNode : public MaterializeNode {
                         aql::Variable const& inDocId,
                         aql::Variable const& outVariable);
 
-  MaterializeSearchNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine) const override final;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
  protected:
   /// @brief export to VelocyPack
@@ -1293,16 +1308,15 @@ class MaterializeRocksDBNode : public MaterializeNode,
                          aql::Variable const& inDocId,
                          aql::Variable const& outVariable);
 
-  MaterializeRocksDBNode(ExecutionPlan* plan,
-                         arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine) const override final;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }

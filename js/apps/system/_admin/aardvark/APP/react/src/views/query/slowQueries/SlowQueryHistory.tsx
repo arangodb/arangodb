@@ -1,7 +1,7 @@
 import { Box, Button, Flex, ModalFooter, ModalHeader } from "@chakra-ui/react";
 import { QueryInfo } from "arangojs/database";
 import React from "react";
-import moment from "../../../../../frontend/js/lib/moment.min";
+import moment from "moment";
 import { Modal } from "../../../components/modal";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";

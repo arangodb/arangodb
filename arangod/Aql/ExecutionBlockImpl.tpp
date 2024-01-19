@@ -342,7 +342,11 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
         if (!hasShadowRows || !newBlock->isShadowRow(row)) {
           for (auto const& reg : regs) {
             AqlValue const& val = newBlock->getValueReference(row, reg);
-            TRI_ASSERT(val.isEmpty() && reg.isRegularRegister());
+            TRI_ASSERT(val.isEmpty() && reg.isRegularRegister())
+                << std::boolalpha << "val.isEmpty() = " << val.isEmpty()
+                << " reg.isRegularRegister() = " << reg.isRegularRegister()
+                << " reg = " << reg.value()
+                << " value = " << val.slice().toJson();
           }
         }
       }
@@ -366,8 +370,12 @@ std::unique_ptr<OutputAqlItemRow> ExecutionBlockImpl<Executor>::createOutputRow(
 }
 
 template<class Executor>
-auto ExecutionBlockImpl<Executor>::executor() noexcept -> Executor& {
+auto ExecutionBlockImpl<Executor>::executor() -> Executor& {
   TRI_ASSERT(_executor.has_value());
+  if (!_executor.has_value()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "no executor available in query");
+  }
   return *_executor;
 }
 
@@ -795,7 +803,7 @@ static SkipRowsRangeVariant constexpr skipRowsType() {
                   MultipleRemoteModificationExecutor, SortExecutor,
                   // only available in Enterprise
                   arangodb::iresearch::OffsetMaterializeExecutor,
-                  MaterializeSearchExecutor, MaterializeRocksDBExecutor>) ||
+                  MaterializeSearchExecutor>) ||
           IsSearchExecutor<Executor>::value,
       "Unexpected executor for SkipVariants::EXECUTOR");
 

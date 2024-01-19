@@ -29,6 +29,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -38,9 +39,9 @@
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
 #include "Transaction/StandaloneContext.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/Events.h"
 #include "Utils/OperationOptions.h"
-#include "Utils/CollectionNameResolver.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/vocbase.h"
 
@@ -240,7 +241,6 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  // find and load collection given by name or identifier
   _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"inserting document(s)"},
@@ -249,7 +249,7 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   addTransactionHints(cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
 
-  Result res = _activeTrx->begin();
+  Result res = co_await _activeTrx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -269,10 +269,17 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") +
-            std::to_string(_activeTrx->tid().id()) +
-            "' does not contain collection '" + cname +
-            "' with the required access mode.");
+        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+                     "' does not contain collection '", cname,
+                     "' with the required access mode."));
+  }
+
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackRequest(*_activeTrx->resolver(), _vocbase.name(),
+                                      cname, _request->value("user"),
+                                      AccessMode::Type::WRITE, "insert");
   }
 
   OperationResult opres =
@@ -393,6 +400,13 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
     co_return;
+  }
+
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackRequest(*_activeTrx->resolver(), _vocbase.name(),
+                                      collection, _request->value("user"),
+                                      AccessMode::Type::READ, "read");
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {
@@ -597,6 +611,15 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
     co_return;
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackRequest(*_activeTrx->resolver(), _vocbase.name(),
+                                      cname, _request->value("user"),
+                                      AccessMode::Type::WRITE,
+                                      isPatch ? "update" : "replace");
+  }
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
            nullptr ||
@@ -610,10 +633,9 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") +
-            std::to_string(_activeTrx->tid().id()) +
-            "' does not contain collection '" + cname +
-            "' with the required access mode.");
+        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+                     "' does not contain collection '", cname,
+                     "' with the required access mode."));
   }
 
   auto f = futures::Future<OperationResult>::makeEmpty();
@@ -745,6 +767,14 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
     co_return;
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackRequest(*_activeTrx->resolver(), _vocbase.name(),
+                                      cname, _request->value("user"),
+                                      AccessMode::Type::WRITE, "remove");
+  }
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
            nullptr ||
@@ -758,10 +788,9 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string("Transaction with id '") +
-            std::to_string(_activeTrx->tid().id()) +
-            "' does not contain collection '" + cname +
-            "' with the required access mode.");
+        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+                     "' does not contain collection '", cname,
+                     "' with the required access mode."));
   }
 
   OperationResult opRes =
@@ -810,6 +839,12 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
     // there, the flag is ignored.
   }
 
+  bool success;
+  VPackSlice search = this->parseVPackBody(success);
+  if (!success) {  // error message generated in parseVPackBody
+    co_return;
+  }
+
   _activeTrx = co_await createTransaction(
       cname, AccessMode::Type::READ, opOptions,
       transaction::OperationOriginREST{"fetching documents"});
@@ -825,10 +860,11 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
     co_return;
   }
 
-  bool success;
-  VPackSlice const search = this->parseVPackBody(success);
-  if (!success) {  // error message generated in parseVPackBody
-    co_return;
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackRequest(*_activeTrx->resolver(), _vocbase.name(),
+                                      cname, _request->value("user"),
+                                      AccessMode::Type::READ, "read-multiple");
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {

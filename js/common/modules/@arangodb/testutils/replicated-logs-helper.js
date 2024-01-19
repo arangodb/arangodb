@@ -33,6 +33,7 @@ const db = arangodb.db;
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const helper = require('@arangodb/test-helper-common');
 const clientHelper = require('@arangodb/test-helper');
+const isServer = arangodb.isServer;
 
 const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   const waitTimes = [0.1, 0.1, 0.2, 0.2, 0.2, 0.3, 0.5];
@@ -77,6 +78,10 @@ const getServerRebootId = function (serverId) {
   return readAgencyValueAt(`Current/ServersKnown/${serverId}/rebootId`);
 };
 
+const isDBServerInCurrent = function (serverId) {
+  return readAgencyValueAt(`Current/DBServers/${serverId}`);
+};
+
 const bumpServerRebootId = function (serverId) {
   const response = clientHelper.agency.increaseVersion(`Current/ServersKnown/${serverId}/rebootId`);
   if (response !== true) {
@@ -116,7 +121,7 @@ const getServerHealth = function (serverId) {
 };
 
 const dbservers = (function () {
-  return clientHelper.getServersByType('dbserver').map((x) => x.id);
+  return clientHelper.getDBServers().map((x) => x.id);
 }());
 const coordinators = (function () {
   return clientHelper.getServersByType('coordinator').map((x) => x.id);
@@ -299,10 +304,15 @@ const waitForReplicatedLogAvailable = function (id) {
 
 
 const getServerProcessID = function (serverId) {
-  // Now look for instanceManager:
-  let pos = _.findIndex(global.instanceManager.arangods,
+  let arangods = [];
+  try {
+    arangods = global.instanceManager.arangods;
+  } catch(_) {
+    arangods = helper.getServersByType("dbserver");
+  }
+  let pos = _.findIndex(arangods,
       x => x.id === serverId);
-  return global.instanceManager.arangods[pos].pid;
+  return arangods[pos].pid;
 };
 
 const stopServerImpl = function (serverId) {
@@ -726,6 +736,11 @@ const unsetLeader = (database, logId) => {
  * Causes underlying replicated logs to trigger leader recovery.
  */
 const bumpTermOfLogsAndWaitForConfirmation = function (dbn, col) {
+  const {numberOfShards, isSmart} = col.properties();
+  if (isSmart && numberOfShards === 0) {
+    // Adjust for SmartEdgeCollections
+    col = db._collection(`_local_${col.name()}`);
+  }
   const shards = col.shards();
   const shardsToLogs = getShardsToLogsMapping(dbn, col._id);
   const stateMachineIds = shards.map(s => shardsToLogs[s]);
@@ -787,6 +802,7 @@ exports.getReplicatedLogLeaderPlan = getReplicatedLogLeaderPlan;
 exports.getReplicatedLogLeaderTarget = getReplicatedLogLeaderTarget;
 exports.getServerHealth = getServerHealth;
 exports.getServerRebootId = getServerRebootId;
+exports.isDBServerInCurrent = isDBServerInCurrent;
 exports.bumpServerRebootId = bumpServerRebootId;
 exports.getServerUrl = getServerUrl;
 exports.getSupervisionActionTypes = getSupervisionActionTypes;

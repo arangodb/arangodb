@@ -23,6 +23,10 @@
 
 #pragma once
 
+#include "Aql/types.h"
+#include "Containers/HashSet.h"
+#include "Basics/ResourceUsage.h"
+
 #include <cstdint>
 #include <span>
 #include <string>
@@ -33,10 +37,6 @@
 #include <v8.h>
 #endif
 #include <velocypack/Slice.h>
-
-#include "Aql/types.h"
-#include "Containers/HashSet.h"
-#include "Basics/ResourceUsage.h"
 
 namespace arangodb {
 namespace transaction {
@@ -123,6 +123,7 @@ class Expression {
 #ifdef USE_V8
   static AqlValue invokeV8Function(ExpressionContext& expressionContext,
                                    std::string const& jsName,
+                                   v8::Isolate* isolate,
                                    std::string const& ucInvokeFN,
                                    char const* AFN, bool rethrowV8Exception,
                                    size_t callArgs, v8::Handle<v8::Value>* args,
