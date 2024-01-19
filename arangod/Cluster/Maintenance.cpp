@@ -281,20 +281,16 @@ static bool isReplication2Leader(ShardID const& shname,
   if (it != std::end(localShardsToLogs)) {
     auto logId = it->second;
     auto logStatus = localLogs.find(logId);
-    if (logStatus == std::end(localLogs)) {
-      // NOTE: We would like to guarantee that the log exists, but we cannot
-      // do that right now, we can eventually have the log removed by the
-      // maintenance before the shard is dropped. Also note: The Log could be
-      // stolen from the lookup map for shard and log deletion where there is a
-      // small time-window, where the shard and log still exist, but are not
-      // listed.
-      LOG_TOPIC("c1d8d", WARN, Logger::MAINTENANCE)
-          << "Replicated log " << logId << " not found. Since the shard "
-          << shname << " exists, so must the log";
-      return false;
+    // NOTE: We would like to guarantee that the log exists, but we cannot
+    // do that right now, we can eventually have the log removed by the
+    // maintenance before the shard is dropped. Also note: The Log could be
+    // stolen from the lookup map for shard and log deletion where there is a
+    // small time-window, where the shard and log still exist, but are not
+    // listed.
+    if (logStatus != std::end(localLogs)) {
+      return logStatus->second.status.role ==
+             replication2::replicated_log::ParticipantRole::kLeader;
     }
-    return logStatus->second.status.role ==
-           replication2::replicated_log::ParticipantRole::kLeader;
   }
   return false;
 }
