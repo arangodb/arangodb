@@ -31,7 +31,7 @@ description: |
   The metric is also increased for transactions that are started but later aborted.
 
   This metric is not exposed by default. It is only present if the
-  startup option `--server.export-shard-usage-metrics` is set to either
+  `--server.export-shard-usage-metrics` startup option is set to either
   `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
   the metric has different labels for each shard that was read from. With the
   latter setting, the metric has different labels for each combination of shard
