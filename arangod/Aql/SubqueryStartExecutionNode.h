@@ -46,13 +46,14 @@ class SubqueryStartNode : public ExecutionNode {
 
   NodeType getType() const override final { return SUBQUERY_START; }
 
-  std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  std::unique_ptr<ExecutionBlock> createBlock(
+      ExecutionEngine& engine) const override;
+
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   bool isEqualTo(ExecutionNode const& other) const override final;
 

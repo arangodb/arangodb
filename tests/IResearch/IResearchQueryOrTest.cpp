@@ -94,9 +94,10 @@ class QueryOr : public QueryTest {
       OperationOptions opt;
 
       transaction::Methods trx(
-          transaction::StandaloneContext::Create(_vocbase), kEmpty,
-          {logicalCollection1->name(), logicalCollection2->name()}, kEmpty,
-          transaction::Options());
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          kEmpty, {logicalCollection1->name(), logicalCollection2->name()},
+          kEmpty, transaction::Options());
       EXPECT_TRUE(trx.begin().ok());
 
       // insert into collections
@@ -672,7 +673,7 @@ class QueryOrSearch : public QueryOr {
       auto collection =
           _vocbase.lookupCollection(absl::Substitute("collection_$0", name));
       ASSERT_TRUE(collection);
-      collection->createIndex(createJson->slice(), created);
+      collection->createIndex(createJson->slice(), created).get();
       ASSERT_TRUE(created);
     };
     createIndex(1);

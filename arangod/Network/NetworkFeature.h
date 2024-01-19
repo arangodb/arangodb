@@ -96,20 +96,24 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;
   uint64_t _idleTtlMilli;
   uint32_t _numIOThreads;
   bool _verifyHosts;
+
   std::atomic<bool> _prepared;
 
-  std::mutex _workItemMutex;
-  Scheduler::WorkHandle _workItem;
   /// @brief where rhythm is life, and life is rhythm :)
   std::function<void(bool)> _gcfunc;
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;
+
+  // protects _workItem and _retryRequests
+  std::mutex _workItemMutex;
+  Scheduler::WorkHandle _workItem;
 
   std::unordered_map<std::shared_ptr<network::RetryableRequest>,
                      Scheduler::WorkHandle>

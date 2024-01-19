@@ -24,7 +24,9 @@
 
 #include "Replication2/ReplicatedState/ReplicatedStateMetrics.h"
 
+namespace arangodb::replication2::tests {
 struct ReplicatedStateMetricsMock
     : arangodb::replication2::replicated_state::ReplicatedStateMetrics {
   explicit ReplicatedStateMetricsMock(std::string_view);
 };
+}  // namespace arangodb::replication2::tests

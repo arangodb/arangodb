@@ -41,7 +41,7 @@ template<SocketType T>
 class HttpCommTask final : public GeneralCommTask<T> {
  public:
   HttpCommTask(GeneralServer& server, ConnectionInfo,
-               std::unique_ptr<AsioSocket<T>> so);
+               std::shared_ptr<AsioSocket<T>> so);
   ~HttpCommTask() noexcept;
 
   void start() override;
@@ -97,8 +97,6 @@ class HttpCommTask final : public GeneralCommTask<T> {
   bool _lastHeaderWasValue;
   bool _shouldKeepAlive;  /// keep connection open
   bool _messageDone;
-
-  bool const _allowMethodOverride;  /// allow method override
 };
 }  // namespace rest
 }  // namespace arangodb

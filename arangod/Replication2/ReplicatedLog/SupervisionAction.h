@@ -33,7 +33,6 @@
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
-#include "Agency/TransactionBuilder.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Supervision/ModifyContext.h"
@@ -140,7 +139,7 @@ struct SwitchLeaderAction {
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->term = plan.currentTerm->term.succ();
       plan.currentTerm->leader = _leader;
     });
   }
@@ -162,7 +161,7 @@ struct WriteEmptyTermAction {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
       // TODO: what to do if currentTerm does not have a value?
       //       this shouldn't happen, but what if it does?
-      plan.currentTerm->term = LogTerm{minTerm.value + 1};
+      plan.currentTerm->term = minTerm.succ();
       plan.currentTerm->leader.reset();
     });
   }
@@ -192,7 +191,7 @@ struct LeaderElectionAction {
 
   auto execute(ActionContext& ctx) const -> void {
     ctx.modify<LogPlanSpecification>([&](LogPlanSpecification& plan) {
-      plan.currentTerm->term = LogTerm{plan.currentTerm->term.value + 1};
+      plan.currentTerm->term = plan.currentTerm->term.succ();
       plan.currentTerm->leader = _electedLeader;
       plan.participantsConfig.generation =
           plan.participantsConfig.generation + 1;

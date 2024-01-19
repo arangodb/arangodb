@@ -38,7 +38,7 @@ struct ParseResult {
   explicit ParseResult(StatusCode status) : status(status) {}
 
   ParseResult(StatusCode status, std::string message)
-      : status(status), message(message), result(T()) {}
+      : status(status), message(std::move(message)), result(T()) {}
 
   explicit ParseResult(T&& result)
       : status(StatusCode::VALID), result(std::move(result)) {}

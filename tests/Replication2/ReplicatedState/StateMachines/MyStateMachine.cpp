@@ -77,7 +77,7 @@ auto MyFactory::constructFollower(std::unique_ptr<MyCoreType> core)
   return std::make_shared<MyFollowerState>(std::move(core));
 }
 
-auto MyFactory::constructCore(GlobalLogIdentifier const&)
+auto MyFactory::constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
     -> std::unique_ptr<MyCoreType> {
   return std::make_unique<MyCoreType>();
 }
@@ -93,7 +93,7 @@ auto MyFollowerState::resign() && noexcept -> std::unique_ptr<MyCoreType> {
   return std::move(_core);
 }
 
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 
 template struct replicated_state::ReplicatedState<MyState>;
 template struct streams::LogMultiplexer<

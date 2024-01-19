@@ -37,9 +37,11 @@ struct Initial : ExecutionState {
   explicit Initial(ConductorState& conductor);
   ~Initial() override = default;
   [[nodiscard]] auto name() const -> std::string override { return "initial"; };
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+  auto receive(actor::DistributedActorPID sender,
+               message::ConductorMessages message)
       -> std::optional<StateChange> override;
-  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+  auto cancel(actor::DistributedActorPID sender,
+              message::ConductorMessages message)
       -> std::optional<StateChange> override;
 
   ConductorState& conductor;

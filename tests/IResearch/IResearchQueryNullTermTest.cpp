@@ -24,6 +24,8 @@
 
 #include "IResearch/IResearchVPackComparer.h"
 #include "IResearch/IResearchViewSort.h"
+#include "IResearch/VelocyPackHelper.h"
+#include "VocBase/LogicalCollection.h"
 #include "IResearchQueryCommon.h"
 #include "store/mmap_directory.hpp"
 #include "utils/index_utils.hpp"
@@ -60,7 +62,8 @@ class QueryNullTerm : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
@@ -95,7 +98,8 @@ class QueryNullTerm : public QueryTest {
       arangodb::OperationOptions options;
       options.returnNew = true;
       arangodb::SingleCollectionTransaction trx(
-          arangodb::transaction::StandaloneContext::Create(_vocbase),
+          arangodb::transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
           *collection, arangodb::AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 

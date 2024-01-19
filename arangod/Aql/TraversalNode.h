@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Aql/EdgeConditionBuilder.h"
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/TraversalExecutor.h"
 #include "Graph/Types/UniquenessLevel.h"
@@ -119,11 +119,12 @@ class TraversalNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return TRAVERSAL; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   std::unique_ptr<ExecutionBlock> createBlock(
       ExecutionEngine& engine,
@@ -140,14 +141,20 @@ class TraversalNode : public virtual GraphNode {
       bool isSmart = false) const;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   /// @brief Test if this node uses an in variable or constant
   bool usesInVariable() const { return _inVariable != nullptr; }
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere
   void getVariablesUsedHere(VarSet& result) const override final;
@@ -250,8 +257,7 @@ class TraversalNode : public virtual GraphNode {
   void checkConditionsDefined() const;
 #endif
 
-  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c,
-                            bool withProperties) const;
+  void traversalCloneHelper(ExecutionPlan& plan, TraversalNode& c) const;
 
   /// @brief vertex output variable
   Variable const* _pathOutVariable;
@@ -285,10 +291,14 @@ class TraversalNode : public virtual GraphNode {
   std::vector<AstNode const*> _globalVertexConditions;
 
   /// @brief List of all depth specific conditions for edges
+  /// Note about memory: No need to track memory here separately. Inner
+  /// AstNodes and ExecutionNodes are already been kept into account.
   std::unordered_map<uint64_t, std::unique_ptr<TraversalEdgeConditionBuilder>>
       _edgeConditions;
 
   /// @brief List of all depth specific conditions for vertices
+  /// Note about memory: No need to track memory here separately.
+  /// AstNodes are already been kept into account.
   std::unordered_map<uint64_t, AstNode*> _vertexConditions;
 
   /// @brief the hashSet for variables used in pruning

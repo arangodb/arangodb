@@ -47,10 +47,10 @@ class ShardingStrategyNone final : public ShardingStrategy {
   /// @brief does not really matter here
   bool usesDefaultShardKeys() const noexcept override { return true; }
 
-  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                bool docComplete, ShardID& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key) override;
+  ResultT<ShardID> getResponsibleShard(arangodb::velocypack::Slice slice,
+                                       bool docComplete,
+                                       bool& usesDefaultShardKeys,
+                                       std::string_view key) override;
 };
 
 /// @brief a sharding class used to indicate that the selected sharding strategy
@@ -68,10 +68,10 @@ class ShardingStrategyOnlyInEnterprise final : public ShardingStrategy {
 
   /// @brief will always throw an exception telling the user the selected
   /// sharding is only available in the Enterprise Edition
-  ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                bool docComplete, ShardID& shardID,
-                                bool& usesDefaultShardKeys,
-                                std::string_view key) override;
+  ResultT<ShardID> getResponsibleShard(arangodb::velocypack::Slice slice,
+                                       bool docComplete,
+                                       bool& usesDefaultShardKeys,
+                                       std::string_view key) override;
 
  private:
   /// @brief name of the sharding strategy we are replacing
@@ -83,10 +83,9 @@ class ShardingStrategyHashBase : public ShardingStrategy {
  public:
   explicit ShardingStrategyHashBase(ShardingInfo* sharding);
 
-  virtual ErrorCode getResponsibleShard(arangodb::velocypack::Slice slice,
-                                        bool docComplete, ShardID& shardID,
-                                        bool& usesDefaultShardKeys,
-                                        std::string_view key) override;
+  virtual ResultT<ShardID> getResponsibleShard(
+      arangodb::velocypack::Slice slice, bool docComplete,
+      bool& usesDefaultShardKeys, std::string_view key) override;
 
   /// @brief does not really matter here
   bool usesDefaultShardKeys() const noexcept override {

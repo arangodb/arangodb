@@ -112,8 +112,7 @@ void RebootTracker::updateServerState(ServersKnown state) {
   _state = std::move(state);
 }
 
-CallbackGuard RebootTracker::callMeOnChange(RebootTracker::PeerState peer,
-                                            Callback callback,
+CallbackGuard RebootTracker::callMeOnChange(PeerState peer, Callback callback,
                                             std::string description) {
   std::lock_guard guard{_mutex};
   auto const it = _state.find(peer.serverId);
@@ -191,7 +190,7 @@ void RebootTracker::queueCallback(DescriptedCallback&& callback) noexcept {
                     });
 }
 
-void RebootTracker::unregisterCallback(RebootTracker::PeerState const& peer,
+void RebootTracker::unregisterCallback(PeerState const& peer,
                                        CallbackId callbackId) noexcept {
   std::lock_guard guard{_mutex};
   if (auto const it = _callbacks.find(peer.serverId); it != _callbacks.end()) {
@@ -209,7 +208,7 @@ void RebootTracker::unregisterCallback(RebootTracker::PeerState const& peer,
   }
 }
 
-bool RebootTracker::isServerAlive(ServerID id) const {
+bool RebootTracker::isServerAlive(ServerID const& id) const {
   std::lock_guard guard{_mutex};
   auto it = _state.find(id);
   return it != _state.end() && it->second.status == ServerHealth::kGood;

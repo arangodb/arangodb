@@ -21,6 +21,7 @@
 /// @author Andrey Abramov
 /// @author Vasiliy Nabatchikov
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "Basics/Common.h"
 #include "Basics/DownCast.h"
 
@@ -128,7 +129,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
                   velocypack::Slice definition) {
   try {
     bool isNew = false;
-    auto link = collection.createIndex(definition, isNew);
+    auto link = collection.createIndex(definition, isNew).get();
 
     if (!(link && isNew)) {
       return {TRI_ERROR_INTERNAL,
@@ -195,7 +196,8 @@ Result createLink(LogicalCollection& collection,
   builder.close();
 
   velocypack::Builder tmp;
-  return methods::Indexes::ensureIndex(collection, builder.slice(), true, tmp);
+  return methods::Indexes::ensureIndex(collection, builder.slice(), true, tmp)
+      .get();
 }
 
 template<typename ViewType>
@@ -230,7 +232,7 @@ Result dropLink<IResearchViewCoordinator>(LogicalCollection& collection,
               velocypack::Value(link.index().id().id()));
   builder.close();
 
-  return methods::Indexes::drop(collection, builder.slice());
+  return methods::Indexes::drop(collection, builder.slice()).get();
 }
 
 struct State {
@@ -364,7 +366,10 @@ Result modifyLinks(containers::FlatHashSet<DataSourceId>& modified,
     linkDefinitions.emplace_back(std::move(namedJson), std::move(linkMeta));
   }
 
-  auto trxCtx = transaction::StandaloneContext::Create(view.vocbase());
+  auto operationOrigin =
+      transaction::OperationOriginInternal{"resolving collection names"};
+  auto trxCtx =
+      transaction::StandaloneContext::create(view.vocbase(), operationOrigin);
 
   // add removals for any 'stale' links not found in the 'links' definition
   for (auto& id : stale) {

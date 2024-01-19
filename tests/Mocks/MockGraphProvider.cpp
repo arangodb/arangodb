@@ -183,6 +183,8 @@ auto MockGraphProvider::addEdgeToBuilder(const Step::Edge& edge,
     -> void {
   std::string fromId = edge.getEdge()._from;
   std::string toId = edge.getEdge()._to;
+  ADB_PROD_ASSERT(fromId.size() >= 2) << "fromId: `" << fromId << "`";
+  ADB_PROD_ASSERT(toId.size() >= 2) << "toId: `" << toId << "`";
   std::string keyId = fromId.substr(2) + "-" + toId.substr(2);
 
   builder.openObject();

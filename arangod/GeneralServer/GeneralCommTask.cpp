@@ -37,7 +37,7 @@ using namespace arangodb::rest;
 
 template<SocketType T>
 GeneralCommTask<T>::GeneralCommTask(GeneralServer& server, ConnectionInfo info,
-                                    std::unique_ptr<AsioSocket<T>> socket)
+                                    std::shared_ptr<AsioSocket<T>> socket)
     : CommTask(server, std::move(info)),
       _protocol(std::move(socket)),
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),

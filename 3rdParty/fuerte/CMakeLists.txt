@@ -24,6 +24,7 @@ target_link_libraries(fuerte PUBLIC
   nghttp2
   llhttp
   boost_system
+  absl::strings
   velocypack)
 
 include(CheckTypeSize)

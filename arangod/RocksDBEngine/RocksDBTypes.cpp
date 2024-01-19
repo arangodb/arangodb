@@ -28,6 +28,18 @@ using namespace arangodb;
 /// @brief rocksdb format version
 char arangodb::rocksDBFormatVersion() { return '1'; }
 
+std::string_view arangodb::rocksDBEndiannessString(RocksDBEndianness value) {
+  switch (value) {
+    case RocksDBEndianness::Big:
+      return "big";
+    case RocksDBEndianness::Little:
+      return "little";
+    case RocksDBEndianness::Invalid:
+      break;
+  }
+  return "invalid";
+}
+
 namespace {
 
 static RocksDBEntryType placeholder = arangodb::RocksDBEntryType::Placeholder;
@@ -148,21 +160,36 @@ static rocksdb::Slice RevisionTreeValue(
         &revisionTreeValue),
     1);
 
-static RocksDBEntryType zkdIndexValue = RocksDBEntryType::ZkdIndexValue;
-static rocksdb::Slice ZdkIndexValue(
+static RocksDBEntryType mdiIndexValue = RocksDBEntryType::MdiIndexValue;
+static rocksdb::Slice MdiIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &zkdIndexValue),
+        &mdiIndexValue),
     1);
 
-static RocksDBEntryType uniqueZkdIndexValue =
-    RocksDBEntryType::UniqueZkdIndexValue;
-static rocksdb::Slice UniqueZdkIndexValue(
+static RocksDBEntryType uniqueMdiIndexValue =
+    RocksDBEntryType::UniqueMdiIndexValue;
+static rocksdb::Slice UniqueMdiIndexValue(
     reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
-        &uniqueZkdIndexValue),
+        &uniqueMdiIndexValue),
+    1);
+
+static RocksDBEntryType mdiVPackIndexValue =
+    RocksDBEntryType::MdiVPackIndexValue;
+static rocksdb::Slice MdiVPackIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &mdiVPackIndexValue),
+    1);
+
+static RocksDBEntryType uniqueMdiVPackIndexValue =
+    RocksDBEntryType::UniqueMdiVPackIndexValue;
+static rocksdb::Slice UniqueMdiVPackIndexValue(
+    reinterpret_cast<std::underlying_type<RocksDBEntryType>::type*>(
+        &uniqueMdiVPackIndexValue),
     1);
 }  // namespace
 
-char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
+std::string_view arangodb::rocksDBEntryTypeName(
+    arangodb::RocksDBEntryType type) {
   switch (type) {
     case arangodb::RocksDBEntryType::Placeholder:
       return "Placeholder";
@@ -200,10 +227,14 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
       return "KeyGeneratorValue";
     case arangodb::RocksDBEntryType::RevisionTreeValue:
       return "RevisionTreeValue";
-    case arangodb::RocksDBEntryType::ZkdIndexValue:
-      return "ZkdIndexValue";
-    case arangodb::RocksDBEntryType::UniqueZkdIndexValue:
-      return "UniqueZkdIndexValue";
+    case arangodb::RocksDBEntryType::MdiIndexValue:
+      return "MdiIndexValue";
+    case arangodb::RocksDBEntryType::UniqueMdiIndexValue:
+      return "UniqueMdiIndexValue";
+    case arangodb::RocksDBEntryType::MdiVPackIndexValue:
+      return "MdiVPackIndexValue";
+    case arangodb::RocksDBEntryType::UniqueMdiVPackIndexValue:
+      return "UniqueMdiVPackIndexValue";
     case RocksDBEntryType::LogEntry:
       return "ReplicatedLogEntry";
     case RocksDBEntryType::ReplicatedState:
@@ -212,7 +243,7 @@ char const* arangodb::rocksDBEntryTypeName(arangodb::RocksDBEntryType type) {
   return "Invalid";
 }
 
-char const* arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
+std::string_view arangodb::rocksDBLogTypeName(arangodb::RocksDBLogType type) {
   switch (type) {
     case arangodb::RocksDBLogType::DatabaseCreate:
       return "DatabaseCreate";
@@ -306,10 +337,14 @@ rocksdb::Slice const& arangodb::rocksDBSlice(RocksDBEntryType const& type) {
       return KeyGeneratorValue;
     case RocksDBEntryType::RevisionTreeValue:
       return RevisionTreeValue;
-    case RocksDBEntryType::ZkdIndexValue:
-      return ZdkIndexValue;
-    case RocksDBEntryType::UniqueZkdIndexValue:
-      return UniqueZdkIndexValue;
+    case RocksDBEntryType::MdiIndexValue:
+      return MdiIndexValue;
+    case RocksDBEntryType::UniqueMdiIndexValue:
+      return UniqueMdiIndexValue;
+    case RocksDBEntryType::MdiVPackIndexValue:
+      return MdiVPackIndexValue;
+    case RocksDBEntryType::UniqueMdiVPackIndexValue:
+      return UniqueMdiVPackIndexValue;
     case RocksDBEntryType::LogEntry:
       return LogEntry;
     case RocksDBEntryType::ReplicatedState:

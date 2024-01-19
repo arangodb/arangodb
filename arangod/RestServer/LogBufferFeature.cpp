@@ -275,7 +275,6 @@ information leakage via these means.)");
                                                        logLevels),
           arangodb::options::makeDefaultFlags(
               arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30709)
       .setLongDescription(R"(You can use this option to control which log
 messages are preserved in memory (in case `--log.in-memory` is enabled).
 

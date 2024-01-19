@@ -1,4 +1,3 @@
-/* global window, arangoHelper */
 (function () {
   'use strict';
 

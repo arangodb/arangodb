@@ -808,7 +808,7 @@ static void splitPEM(std::string const& pem, std::vector<std::string>& certs,
                             pem[p] == ' ')) {
       --p;
     }
-    std::string type(pem.c_str() + pos + 11, (p + 1) - (pos + 11));
+    std::string_view type(pem.c_str() + pos + 11, (p + 1) - (pos + 11));
     if (type == "CERTIFICATE") {
       certs.emplace_back(pem.c_str() + pos, posEndFooter - pos);
     } else if (type.find("PRIVATE KEY") != std::string::npos) {

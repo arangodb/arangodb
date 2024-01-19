@@ -40,7 +40,7 @@ ConstFetcher::ConstFetcher() : _currentBlock{nullptr}, _rowIndex(0) {}
 ConstFetcher::ConstFetcher(DependencyProxy& executionBlock)
     : _currentBlock{nullptr}, _rowIndex(0) {}
 
-auto ConstFetcher::execute(AqlCallStack& stack)
+auto ConstFetcher::execute(AqlCallStack const& stack)
     -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange> {
   // We only peek the call here, as we do not take over ownership.
   // We can replace this by pop again if all executors also only take a

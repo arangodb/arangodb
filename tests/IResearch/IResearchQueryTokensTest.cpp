@@ -124,7 +124,7 @@ class TestDelimAnalyzer final
   }
 
  private:
-  std::basic_string<irs::byte_type> _delim;
+  irs::bstring _delim;
   irs::bytes_view _data;
   irs::term_attribute _term;
 };

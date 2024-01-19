@@ -26,8 +26,13 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "Cluster/ClusterTypes.h"
+
+struct TRI_vocbase_t;
 
 namespace arangodb {
+class LogicalCollection;
+
 namespace maintenance {
 
 class UpdateCollection : public ActionBase, public ShardDefinition {
@@ -38,6 +43,12 @@ class UpdateCollection : public ActionBase, public ShardDefinition {
 
   virtual bool first() override final;
   void setState(ActionState state) override final;
+
+ private:
+  static auto updateCollectionReplication2(
+      ShardID const& shard, CollectionID const& collection,
+      velocypack::SharedSlice props,
+      std::shared_ptr<LogicalCollection> coll) noexcept -> Result;
 };
 
 }  // namespace maintenance

@@ -23,20 +23,16 @@
 
 #include "RestAdminLogHandler.h"
 
-#include <velocypack/Builder.h>
-#include <velocypack/Iterator.h>
-#include <velocypack/Slice.h>
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/conversions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "GeneralServer/AuthenticationFeature.h"
 #include "GeneralServer/ServerSecurityFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
+#include "Logger/LogMacros.h"
 #include "Logger/LogTopic.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -44,26 +40,13 @@
 #include "RestServer/LogBufferFeature.h"
 #include "Utils/ExecContext.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Iterator.h>
+#include <velocypack/Slice.h>
+
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::rest;
-
-namespace {
-network::Headers buildHeaders(
-    std::unordered_map<std::string, std::string> const& originalHeaders) {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  for (auto& header : originalHeaders) {
-    headers.try_emplace(header.first, header.second);
-  }
-  return headers;
-}
-}  // namespace
 
 RestAdminLogHandler::RestAdminLogHandler(arangodb::ArangodServer& server,
                                          GeneralRequest* request,
@@ -180,7 +163,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       if (!found) {
         generateError(rest::ResponseCode::NOT_FOUND,
                       TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown serverId supplied."));
+                      "unknown serverId supplied.");
         return RestStatus::DONE;
       }
 
@@ -198,7 +181,7 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, fuerte::RestVerb::Get,
           _request->requestPath(), VPackBuffer<uint8_t>{}, options,
-          buildHeaders(_request->headers()));
+          network::addAuthorizationHeader(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -247,8 +230,8 @@ RestStatus RestAdminLogHandler::reportLogs(bool newFormat) {
       bool isValid = Logger::translateLogLevel(logLevel, true, ul);
       if (!isValid) {
         generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                      std::string("unknown '") + (found2 ? "level" : "upto") +
-                          "' log level: '" + logLevel + "'");
+                      absl::StrCat("unknown '", (found2 ? "level" : "upto"),
+                                   "' log level: '", logLevel, "'"));
         return RestStatus::DONE;
       }
     }
@@ -500,7 +483,8 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
 
       auto f = network::sendRequestRetry(
           pool, "server:" + serverId, requestType, _request->requestPath(),
-          std::move(*body), options, buildHeaders(_request->headers()));
+          std::move(*body), options,
+          network::addAuthorizationHeader(_request->headers()));
       return waitForFuture(std::move(f).thenValue(
           [self = std::dynamic_pointer_cast<RestAdminLogHandler>(
                shared_from_this())](network::Response const& r) {
@@ -541,14 +525,14 @@ RestStatus RestAdminLogHandler::handleLogLevel() {
       if (VPackSlice all = slice.get("all"); all.isString()) {
         // handle "all" first, so we can do
         // {"all":"info","requests":"debug"} or such
-        std::string const l = "all=" + all.copyString();
+        std::string l = absl::StrCat("all=", all.stringView());
         Logger::setLogLevel(l);
       }
       // now process all log topics except "all"
-      for (auto it : VPackObjectIterator(slice)) {
+      for (auto it : VPackObjectIterator(slice, true)) {
         if (it.value.isString() && !it.key.isEqualString(LogTopic::ALL)) {
-          std::string const l =
-              it.key.copyString() + "=" + it.value.copyString();
+          std::string l =
+              absl::StrCat(it.key.stringView(), "=", it.value.stringView());
           Logger::setLogLevel(l);
         }
       }

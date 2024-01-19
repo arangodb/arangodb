@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "RocksDBEngine/RocksDBMethods.h"
+#include "RocksDBEngine/Methods/RocksDBBatchedBaseMethods.h"
 
 #include <rocksdb/utilities/write_batch_with_index.h>
 
@@ -34,15 +34,12 @@ class WriteBatchWithIndex;
 namespace arangodb {
 
 /// wraps a writebatch with index - non transactional
-class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
+class RocksDBBatchedWithIndexMethods final : public RocksDBBatchedBaseMethods {
  public:
   RocksDBBatchedWithIndexMethods(rocksdb::TransactionDB* db,
-                                 rocksdb::WriteBatchWithIndex*);
+                                 rocksdb::WriteBatchWithIndex*,
+                                 RocksDBMethodsMemoryTracker& memoryTracker);
 
-  rocksdb::Status GetFromSnapshot(rocksdb::ColumnFamilyHandle*,
-                                  rocksdb::Slice const&,
-                                  rocksdb::PinnableSlice*, ReadOwnWrites,
-                                  rocksdb::Snapshot const*) override;
   rocksdb::Status Get(rocksdb::ColumnFamilyHandle*, rocksdb::Slice const&,
                       rocksdb::PinnableSlice*, ReadOwnWrites) override;
   rocksdb::Status GetForUpdate(rocksdb::ColumnFamilyHandle*,
@@ -59,7 +56,13 @@ class RocksDBBatchedWithIndexMethods final : public RocksDBMethods {
                                RocksDBKey const&) override;
   void PutLogData(rocksdb::Slice const&) override;
 
+  void MultiGet(rocksdb::ColumnFamilyHandle& family, size_t count,
+                rocksdb::Slice const* keys, rocksdb::PinnableSlice* values,
+                rocksdb::Status* statuses, ReadOwnWrites) override;
+
  private:
+  size_t currentWriteBatchSize() const noexcept override;
+
   rocksdb::TransactionDB* _db;
   rocksdb::WriteBatchWithIndex* _wb;
 };

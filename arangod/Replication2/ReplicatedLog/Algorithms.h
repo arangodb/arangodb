@@ -32,21 +32,10 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedLog/AgencyLogSpecification.h"
 
-namespace arangodb::cluster {
-struct IFailureOracle;
+namespace arangodb::replication2::replicated_log {
+struct TermIndexMapping;
 }
-
 namespace arangodb::replication2::algorithms {
-
-struct ParticipantRecord {
-  RebootId rebootId;
-  bool isHealthy;
-
-  ParticipantRecord(RebootId rebootId, bool isHealthy)
-      : rebootId(rebootId), isHealthy(isHealthy) {}
-};
-
-using ParticipantInfo = std::unordered_map<ParticipantId, ParticipantRecord>;
 
 enum class ConflictReason {
   LOG_ENTRY_AFTER_END,
@@ -57,28 +46,16 @@ enum class ConflictReason {
 
 auto to_string(ConflictReason r) noexcept -> std::string_view;
 
-auto detectConflict(replicated_log::InMemoryLog const& log,
+auto detectConflict(replicated_log::TermIndexMapping const& log,
                     TermIndexPair prevLog) noexcept
     -> std::optional<std::pair<ConflictReason, TermIndexPair>>;
-
-struct LogActionContext {
-  virtual ~LogActionContext() = default;
-  virtual auto dropReplicatedState(LogId) -> Result = 0;
-  virtual auto ensureReplicatedState(LogId id, std::string_view type,
-                                     VPackSlice parameter) -> Result = 0;
-};
-
-auto updateReplicatedLog(
-    LogActionContext& ctx, ServerID const& myServerId, RebootId myRebootId,
-    LogId logId, agency::LogPlanSpecification const* spec,
-    std::shared_ptr<cluster::IFailureOracle const> failureOracle) noexcept
-    -> futures::Future<arangodb::Result>;
 
 struct ParticipantState {
   TermIndexPair lastAckedEntry;
   ParticipantId id;
   bool snapshotAvailable = false;
   ParticipantFlags flags{};
+  LogIndex syncIndex;
 
   [[nodiscard]] auto isAllowedInQuorum() const noexcept -> bool;
   [[nodiscard]] auto isForced() const noexcept -> bool;
@@ -98,11 +75,17 @@ auto operator<=>(ParticipantState const& left,
 auto operator<<(std::ostream& os, ParticipantState const& p) noexcept
     -> std::ostream&;
 
+struct CommitIndexReport {
+  LogIndex commitIndex;
+  LogIndex syncCommitIndex;
+  replicated_log::CommitFailReason reason;
+  std::vector<ParticipantId> failedParticipants;
+};
+
 auto calculateCommitIndex(std::vector<ParticipantState> const& participants,
                           size_t effectiveWriteConcern,
                           LogIndex currentCommitIndex,
-                          TermIndexPair lastTermIndex)
-    -> std::tuple<LogIndex, replicated_log::CommitFailReason,
-                  std::vector<ParticipantId>>;
+                          TermIndexPair lastTermIndex,
+                          LogIndex currentSyncCommitIndex) -> CommitIndexReport;
 
 }  // namespace arangodb::replication2::algorithms

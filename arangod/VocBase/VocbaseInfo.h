@@ -92,6 +92,8 @@ class CreateDatabaseInfo {
 
   uint64_t getId() const;
 
+  void validateNames(bool value) noexcept { _validateNames = value; }
+
   void strictValidation(bool value) noexcept { _strictValidation = value; }
 
   bool valid() const noexcept { return _valid; }
@@ -133,6 +135,16 @@ class CreateDatabaseInfo {
 
   ShardingPrototype shardingPrototype() const;
   void shardingPrototype(ShardingPrototype type);
+  void setSharding(std::string_view sharding);
+
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+ protected:
+  struct MockConstruct {
+  } constexpr static mockConstruct = {};
+  CreateDatabaseInfo(MockConstruct, ArangodServer& server,
+                     ExecContext const& execContext, std::string const& name,
+                     std::uint64_t id, replication::Version version);
+#endif
 
  private:
   Result extractUsers(VPackSlice users);
@@ -140,7 +152,6 @@ class CreateDatabaseInfo {
                         bool extractName = true);
   Result checkOptions();
 
- private:
   ArangodServer& _server;
   ExecContext const& _context;
 
@@ -155,6 +166,7 @@ class CreateDatabaseInfo {
   ShardingPrototype _shardingPrototype = ShardingPrototype::Undefined;
 
   bool _strictValidation = true;
+  bool _validateNames = true;
   bool _validId = false;
   bool _valid = false;
 };

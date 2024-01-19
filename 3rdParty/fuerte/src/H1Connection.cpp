@@ -22,6 +22,8 @@
 
 #include "H1Connection.h"
 
+#include <absl/strings/escaping.h>
+#include <absl/strings/str_cat.h>
 #include <fuerte/helper.h>
 #include <fuerte/loop.h>
 #include <fuerte/types.h>
@@ -177,8 +179,8 @@ H1Connection<ST>::H1Connection(EventLoopService& loop,
   // preemptively cache
   if (this->_config._authenticationType == AuthenticationType::Basic) {
     _authHeader.append("Authorization: Basic ");
-    _authHeader.append(fu::encodeBase64(
-        this->_config._user + ":" + this->_config._password, true));
+    _authHeader.append(absl::Base64Escape(
+        absl::StrCat(this->_config._user, ":", this->_config._password)));
     _authHeader.append("\r\n");
   } else if (this->_config._authenticationType == AuthenticationType::Jwt) {
     if (this->_config._jwtToken.empty()) {

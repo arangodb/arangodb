@@ -81,13 +81,13 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
   ASSERT_TRUE(success);
 
   ASSERT_FALSE(bucket->isFull());
-  ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
+  ASSERT_EQ(nullptr, bucket->evictionCandidate());
 
   // fill bucket
   for (std::size_t i = 0; i < 8; i++) {
     ASSERT_FALSE(bucket->isFull());
     bucket->insert(hashes[i], ptrs[i]);
-    ASSERT_EQ(ptrs[0], bucket->evictionCandidate(false));
+    ASSERT_EQ(ptrs[0], bucket->evictionCandidate());
   }
   ASSERT_TRUE(bucket->isFull());
 
@@ -98,9 +98,9 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
   }
 
   for (std::size_t i = 0; i < 8; i++) {
-    ASSERT_EQ(ptrs[i], bucket->evictionCandidate(false));
+    ASSERT_EQ(ptrs[i], bucket->evictionCandidate());
     std::uint64_t expected = ptrs[i]->size();
-    std::uint64_t reclaimed = bucket->evictCandidate(/*moveToFront*/ false);
+    std::uint64_t reclaimed = bucket->evictCandidate();
     ASSERT_EQ(reclaimed, expected);
     ptrs[i] = nullptr;
 
@@ -116,7 +116,7 @@ TEST(CacheTransactionalBucketTest, verify_eviction_behavior) {
       }
     }
   }
-  ASSERT_EQ(nullptr, bucket->evictionCandidate(false));
+  ASSERT_EQ(nullptr, bucket->evictionCandidate());
   bucket->unlock();
 }
 
@@ -262,7 +262,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   // check that we get proper eviction candidate
   CachedValue* candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[0]);
-  bucket->evict(candidate, false);
+  bucket->evict(candidate);
   CachedValue* res = bucket->find<BinaryKeyHasher>(hashes[0], ptrs[0]->key(),
                                                    ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
@@ -271,7 +271,7 @@ TEST(CacheTransactionalBucketTest, verify_that_eviction_works_as_expected) {
   // check that we still find the right candidate if not full
   candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[1]);
-  bucket->evict(candidate, true);
+  bucket->evict(candidate);
   res = bucket->find<BinaryKeyHasher>(hashes[1], ptrs[1]->key(),
                                       ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);

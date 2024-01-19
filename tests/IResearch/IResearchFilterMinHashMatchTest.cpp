@@ -31,6 +31,7 @@
 #include "Aql/Function.h"
 #include "IResearch/common.h"
 #include "IResearch/IResearchCommon.h"
+#include "IResearch/IResearchAnalyzerFeature.h"
 #include "IResearch/ExpressionContextMock.h"
 #include "RestServer/DatabaseFeature.h"
 #include "VocBase/Methods/Collections.h"
@@ -117,8 +118,9 @@ class IResearchFilterMinHashMatchTest
           "analyzer" : { "type": "delimiter", "properties": { "delimiter": " " } },
           "numHashes": 10
         })");
-    auto res = analyzers.emplace(result, "testVocbase::test_analyzer",
-                                 "minhash", props->slice());
+    auto res = analyzers.emplace(
+        result, "testVocbase::test_analyzer", "minhash", props->slice(),
+        arangodb::transaction::OperationOriginTestCase{});
 #ifdef USE_ENTERPRISE
     EXPECT_TRUE(res.ok());
 #else

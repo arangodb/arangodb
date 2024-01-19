@@ -34,12 +34,6 @@
 
 #include <function2.hpp>
 
-namespace iresearch {
-
-class boolean_filter;
-
-}  // namespace iresearch
-
 namespace arangodb {
 class Result;
 

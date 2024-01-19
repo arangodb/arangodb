@@ -461,6 +461,11 @@ function readTestResult(path, rc, testCase) {
     if ((testCase !== undefined) && result.hasOwnProperty(testCase)) {
       return result[testCase];
     } else {
+      if (rc.hasOwnProperty('exitCode') && rc.exitCode !== 0) {
+        result.failed += 1;
+        result.status = false;
+        result.message = rc.message;
+      }
       return result;
     }
   } else {
@@ -480,7 +485,7 @@ function writeTestResult(path, data) {
 // / @brief runs a local unittest file using arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-class runInArangoshRunner extends testRunnerBase{
+class runInArangoshRunner extends testRunnerBase {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "forkedArangosh";
@@ -521,7 +526,7 @@ class runInArangoshRunner extends testRunnerBase{
 // / @brief runs a local unittest file in the current arangosh
 // //////////////////////////////////////////////////////////////////////////////
 
-class runLocalInArangoshRunner extends testRunnerBase{
+class runLocalInArangoshRunner extends testRunnerBase {
   constructor(options, testname, ...optionalArgs) {
     super(options, testname, ...optionalArgs);
     this.info = "localArangosh";

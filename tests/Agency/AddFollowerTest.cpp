@@ -38,12 +38,14 @@
 #include "Agency/Node.h"
 #include "Basics/StringUtils.h"
 #include "Basics/TimeString.h"
+#include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
 
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::consensus;
 using namespace fakeit;
+using namespace arangodb::velocypack;
 
 namespace arangodb {
 namespace tests {
@@ -68,15 +70,8 @@ const char* todo =
 #include "AddFollowerTestToDo.json"
     ;
 
-Node createNodeFromBuilder(Builder const& builder) {
-  Builder opBuilder;
-  {
-    VPackObjectBuilder a(&opBuilder);
-    opBuilder.add("new", builder.slice());
-  }
-  Node node("");
-  node.handle<SET>(opBuilder.slice());
-  return node;
+NodePtr createNodeFromBuilder(Builder const& builder) {
+  return Node::create(builder.slice());
 }
 
 Builder createBuilder(char const* c) {
@@ -90,11 +85,11 @@ Builder createBuilder(char const* c) {
   return builder;
 }
 
-Node createNode(char const* c) {
+NodePtr createNode(char const* c) {
   return createNodeFromBuilder(createBuilder(c));
 }
 
-Node createRootNode() { return createNode(agency); }
+NodePtr createRootNode() { return createNode(agency); }
 
 typedef std::function<std::unique_ptr<Builder>(Slice const&,
                                                std::string const&)>
@@ -108,7 +103,7 @@ class AddFollowerTest
     : public ::testing::Test,
       public LogSuppressor<Logger::SUPERVISION, LogLevel::FATAL> {
  protected:
-  Node baseStructure;
+  NodePtr baseStructure;
   Builder builder;
   std::string jobId;
   write_ret_t fakeWriteResult;
@@ -122,7 +117,7 @@ class AddFollowerTest
         fakeTransResult(true, "", 1, 0, std::make_shared<Builder>()) {
     arangodb::RandomGenerator::initialize(
         arangodb::RandomGenerator::RandomType::MERSENNE);
-    baseStructure.toBuilder(builder);
+    baseStructure->toBuilder(builder);
   }
 };
 
@@ -162,9 +157,8 @@ TEST_F(AddFollowerTest, creating_a_job_should_create_a_job_in_todo) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  auto addFollower =
-      AddFollower(baseStructure.getOrCreate(PREFIX), &agent, jobId, "unittest",
-                  DATABASE, COLLECTION, SHARD);
+  auto addFollower = AddFollower(*baseStructure->get(PREFIX), &agent, jobId,
+                                 "unittest", DATABASE, COLLECTION, SHARD);
 
   addFollower.create();
 }
@@ -197,9 +191,9 @@ TEST_F(AddFollowerTest, collection_still_exists) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -226,7 +220,7 @@ TEST_F(AddFollowerTest, collection_still_exists) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -255,7 +249,7 @@ TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -283,7 +277,7 @@ TEST_F(AddFollowerTest, collection_has_nonempty_distributeshardslike) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -319,9 +313,9 @@ TEST_F(AddFollowerTest, condition_still_holds) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -354,7 +348,7 @@ TEST_F(AddFollowerTest, condition_still_holds) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -383,7 +377,7 @@ TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
   auto agency = createNodeFromBuilder(*builder);
 
@@ -409,7 +403,7 @@ TEST_F(AddFollowerTest, if_no_job_under_shard_leave_job_in_todo) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   auto& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -426,24 +420,20 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
           builder->add(it.key.copyString(), childBuilder->slice());
         }
       }
-      if (path == "/arango/Target/ToDo") {
-        builder->add(jobId, createBuilder(todo).slice());
-      }
-      if (path == "/arango/Supervision/Health/follower2") {
-        builder->add("Status", VPackValue("FAILED"));
-      }
-      if (path == "/arango/Supervision/Health/free") {
-        builder->add("Status", VPackValue("FAILED"));
-      }
     } else {
       builder->add(s);
     }
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
+  agency = agency->placeAt("arango/Supervision/Health/free/Status", "FAILED");
+  agency =
+      agency->placeAt("arango/Supervision/Health/follower2/Status", "FAILED");
+  agency = agency->placeAt("/arango/Target/ToDo/" + jobId,
+                           createBuilder(todo).slice());
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -453,7 +443,8 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
         EXPECT_EQ(q.length(), 1);
         EXPECT_EQ(typeName(q[0]), "array");
         EXPECT_EQ(q[0].length(),
-                  1);  // we always simply override! no preconditions...
+                  1)
+            << q[0].toJson();  // we always simply override! no preconditions...
         EXPECT_EQ(typeName(q[0][0]), "object");
 
         auto writes = q[0][0];
@@ -467,7 +458,7 @@ TEST_F(AddFollowerTest, we_can_find_one_with_status_good) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -493,9 +484,9 @@ TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -526,7 +517,7 @@ TEST_F(AddFollowerTest, job_performed_immediately_in_a_single_transaction) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .start(aborts);
 }
 
@@ -552,9 +543,9 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -589,7 +580,7 @@ TEST_F(AddFollowerTest, job_can_still_be_safely_aborted) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::PENDING, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::PENDING, jobId)
       .abort("test abort");
 }
 
@@ -615,9 +606,9 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -652,7 +643,7 @@ TEST_F(AddFollowerTest, job_cannot_be_aborted) {
   When(Method(mockAgent, waitFor))
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
-  AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+  AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
       .abort("test abort");
 }
 
@@ -689,9 +680,9 @@ TEST_F(AddFollowerTest, job_only_starting_with_delay) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
 #if 0
@@ -729,7 +720,7 @@ TEST_F(AddFollowerTest, job_only_starting_with_delay) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   bool res =
-      AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
           .start(aborts);
   EXPECT_FALSE(res);
 }
@@ -765,9 +756,9 @@ TEST_F(AddFollowerTest, job_only_starting_with_no_delay) {
     return builder;
   };
 
-  auto builder = createTestStructure(baseStructure.toBuilder().slice(), "");
+  auto builder = createTestStructure(baseStructure->toBuilder().slice(), "");
   ASSERT_TRUE(builder);
-  Node agency = createNodeFromBuilder(*builder);
+  auto agency = createNodeFromBuilder(*builder);
 
   Mock<AgentInterface> mockAgent;
   When(Method(mockAgent, write))
@@ -796,7 +787,7 @@ TEST_F(AddFollowerTest, job_only_starting_with_no_delay) {
       .AlwaysReturn(AgentInterface::raft_commit_t::OK);
   AgentInterface& agent = mockAgent.get();
   bool res =
-      AddFollower(agency.getOrCreate("arango"), &agent, JOB_STATUS::TODO, jobId)
+      AddFollower(*agency->get("arango"), &agent, JOB_STATUS::TODO, jobId)
           .start(aborts);
   EXPECT_TRUE(res);
 }

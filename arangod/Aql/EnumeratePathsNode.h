@@ -25,7 +25,6 @@
 #pragma once
 
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Graph/PathType.h"
 #include "Graph/Providers/BaseProviderOptions.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
@@ -85,15 +84,16 @@ class EnumeratePathsNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return ENUMERATE_PATHS; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   bool usesPathOutVariable() const { return _pathOutVariable != nullptr; }
   Variable const& pathOutVariable() const {
@@ -155,6 +155,9 @@ class EnumeratePathsNode : public virtual GraphNode {
   ///  (casts graph::BaseOptions* into graph::ShortestPathOptions*)
   auto options() const -> graph::ShortestPathOptions*;
 
+  auto registerGlobalVertexCondition(AstNode const*) -> void;
+  auto registerGlobalEdgeCondition(AstNode const*) -> void;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -163,8 +166,8 @@ class EnumeratePathsNode : public virtual GraphNode {
  private:
   std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
 
-  void enumeratePathsCloneHelper(ExecutionPlan& plan, EnumeratePathsNode& c,
-                                 bool withProperties) const;
+  void enumeratePathsCloneHelper(ExecutionPlan& plan,
+                                 EnumeratePathsNode& c) const;
 
   /// @brief algorithm type (K_SHORTEST_PATHS or K_PATHS)
   arangodb::graph::PathType::Type _pathType;
@@ -189,6 +192,14 @@ class EnumeratePathsNode : public virtual GraphNode {
 
   /// @brief The hard coded condition on _to
   AstNode* _toCondition;
+
+  /// @brief Global conditions on vertices; if these conditions
+  /// are not satisfied the path search is stopped from there.
+  std::vector<AstNode const*> _globalVertexConditions;
+
+  /// @brief Global conditions on edges; if this conditions are not
+  // satisfied the path search is stopped from here
+  std::vector<AstNode const*> _globalEdgeConditions;
 
   /// @brief Variable that contains the value on which the distribution is
   /// determined. This is required for hybrid disjoint smart graphs

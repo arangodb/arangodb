@@ -24,6 +24,8 @@
 
 #include "IResearchQueryCommon.h"
 
+#include "VocBase/LogicalCollection.h"
+
 namespace arangodb::tests {
 namespace {
 
@@ -50,8 +52,9 @@ class QueryInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (auto& entry : docs) {
@@ -80,8 +83,9 @@ class QueryInRange : public QueryTest {
       OperationOptions options;
       options.returnNew = true;
       SingleCollectionTransaction trx(
-          transaction::StandaloneContext::Create(_vocbase), *collection,
-          AccessMode::Type::WRITE);
+          transaction::StandaloneContext::create(
+              _vocbase, arangodb::transaction::OperationOriginTestCase{}),
+          *collection, AccessMode::Type::WRITE);
       EXPECT_TRUE(trx.begin().ok());
 
       for (velocypack::ArrayIterator it{slice}; it.valid(); ++it) {

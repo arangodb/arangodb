@@ -24,9 +24,11 @@
 
 #include "ApplicationFeatures/LanguageFeature.h"
 #include "RestServer/LanguageCheckFeature.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/InitDatabaseFeature.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/DatabasePathFeature.h"
 #include "Basics/directories.h"
 #include "Servers.h"
 #include "Basics/Utf8Helper.h"

@@ -35,7 +35,8 @@ struct Loaded : ExecutionState {
   ~Loaded() override = default;
 
   [[nodiscard]] auto name() const -> std::string override { return "loaded"; };
-  auto receive(actor::ActorPID const& sender, actor::ActorPID const& self,
+  auto receive(actor::DistributedActorPID const& sender,
+               actor::DistributedActorPID const& self,
                message::WorkerMessages const& message, Dispatcher dispatcher)
       -> std::unique_ptr<ExecutionState> override;
 

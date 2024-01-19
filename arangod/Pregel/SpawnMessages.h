@@ -23,7 +23,7 @@
 #pragma once
 
 #include <variant>
-#include "Actor/ActorPID.h"
+#include "Actor/DistributedActorPID.h"
 #include "Inspection/Types.h"
 #include "Pregel/Worker/Messages.h"
 
@@ -37,10 +37,10 @@ auto inspect(Inspector& f, SpawnStart& x) {
 
 struct SpawnWorker {
   actor::ServerID destinationServer;
-  actor::ActorPID conductor;
-  actor::ActorPID resultActorOnCoordinator;
-  actor::ActorPID statusActor;
-  actor::ActorPID metricsActor;
+  actor::DistributedActorPID conductor;
+  actor::DistributedActorPID resultActorOnCoordinator;
+  actor::DistributedActorPID statusActor;
+  actor::DistributedActorPID metricsActor;
   TTL ttl;
   worker::message::CreateWorker message;
 };

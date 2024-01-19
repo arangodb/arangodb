@@ -32,11 +32,12 @@ export const useJobSync = ({
 
       const onJobError = (error: any, jobId: string) => {
         const statusCode = error?.response?.body?.code;
-        onError(error);
         if (statusCode === 404 || statusCode === 400) {
           // delete non existing aardvark job
           window.arangoHelper.deleteAardvarkJob(jobId);
+          return;
         }
+        onError(error);
       };
       // if a job is in the list, this checks for status
       // by calling 'put /job/:jobId'

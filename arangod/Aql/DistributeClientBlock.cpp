@@ -24,6 +24,7 @@
 #include "DistributeClientBlock.h"
 
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/IdExecutor.h"
 #include "Aql/OutputAqlItemRow.h"

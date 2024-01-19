@@ -34,6 +34,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <string_view>
 
 namespace arangodb::fuerte {
 inline namespace v1 {
@@ -105,8 +106,8 @@ class ExecutionBlockImpl<RemoteExecutor> : public ExecutionBlock {
   void traceExecuteRequest(velocypack::Slice slice,
                            AqlCallStack const& callStack);
   void traceInitializeCursorRequest(velocypack::Slice slice);
-  void traceRequest(char const* rpc, velocypack::Slice slice,
-                    std::string const& args);
+  void traceRequest(std::string_view rpc, velocypack::Slice slice,
+                    std::string_view args);
 
  private:
   RegisterInfos _registerInfos;

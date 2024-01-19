@@ -35,17 +35,20 @@ struct ConductorState;
 struct Computing : ExecutionState {
   Computing(ConductorState& conductor,
             std::unique_ptr<MasterContext> masterContext,
-            std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
+            std::unordered_map<actor::DistributedActorPID, uint64_t>
+                sendCountPerActor,
             uint64_t totalSendMessagesCount,
             uint64_t totalReceivedMessagesCount);
   ~Computing() override = default;
   auto name() const -> std::string override { return "computing"; };
   auto messages()
-      -> std::unordered_map<actor::ActorPID,
+      -> std::unordered_map<actor::DistributedActorPID,
                             worker::message::WorkerMessages> override;
-  auto receive(actor::ActorPID sender, message::ConductorMessages message)
+  auto receive(actor::DistributedActorPID sender,
+               message::ConductorMessages message)
       -> std::optional<StateChange> override;
-  auto cancel(actor::ActorPID sender, message::ConductorMessages message)
+  auto cancel(actor::DistributedActorPID sender,
+              message::ConductorMessages message)
       -> std::optional<StateChange> override;
   struct PostGlobalSuperStepResult {
     bool finished;
@@ -55,16 +58,17 @@ struct Computing : ExecutionState {
 
   ConductorState& conductor;
   std::unique_ptr<MasterContext> masterContext;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor;
+  std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor;
 
-  std::unordered_set<actor::ActorPID> respondedWorkers;
+  std::unordered_set<actor::DistributedActorPID> respondedWorkers;
   uint64_t totalSendMessagesCount;
   uint64_t totalReceivedMessagesCount;
   uint64_t activeCount = 0;
   uint64_t vertexCount = 0;
   uint64_t edgeCount = 0;
   VPackBuilder aggregators;
-  std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActorForNextGss;
+  std::unordered_map<actor::DistributedActorPID, uint64_t>
+      sendCountPerActorForNextGss;
 };
 
 }  // namespace conductor

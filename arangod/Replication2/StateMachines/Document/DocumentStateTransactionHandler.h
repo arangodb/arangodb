@@ -22,11 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
 
+#include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
-#include "Replication2/StateMachines/Document/DocumentLogEntry.h"
+#include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
+#include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
+#include "Basics/Guarded.h"
 #include "Transaction/Options.h"
-#include "Utils/DatabaseGuard.h"
 #include "VocBase/Identifiers/TransactionId.h"
 
 #include <memory>
@@ -37,6 +39,7 @@ namespace arangodb::replication2::replicated_state::document {
 
 struct IDocumentStateTransaction;
 struct IDocumentStateHandlersFactory;
+struct IDocumentStateShardHandler;
 class DocumentStateTransaction;
 
 struct IDocumentStateTransactionHandler {
@@ -45,35 +48,68 @@ struct IDocumentStateTransactionHandler {
                          std::shared_ptr<IDocumentStateTransaction>>;
 
   virtual ~IDocumentStateTransactionHandler() = default;
-  virtual auto applyEntry(DocumentLogEntry doc) -> Result = 0;
-  virtual auto ensureTransaction(DocumentLogEntry const& doc)
-      -> std::shared_ptr<IDocumentStateTransaction> = 0;
+
+  [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation) noexcept
+      -> Result = 0;
+
+  [[nodiscard]] virtual auto applyEntry(
+      ReplicatedOperation::OperationType const& operation) noexcept
+      -> Result = 0;
+
   virtual void removeTransaction(TransactionId tid) = 0;
+
+  virtual auto getTransactionsForShard(ShardID const&)
+      -> std::vector<TransactionId> = 0;
   [[nodiscard]] virtual auto getUnfinishedTransactions() const
-      -> TransactionMap const& = 0;
+      -> TransactionMap = 0;
 };
 
 class DocumentStateTransactionHandler
     : public IDocumentStateTransactionHandler {
  public:
   explicit DocumentStateTransactionHandler(
-      GlobalLogIdentifier gid, std::unique_ptr<IDatabaseGuard> dbGuard,
-      std::shared_ptr<IDocumentStateHandlersFactory> factory);
-  auto applyEntry(DocumentLogEntry doc) -> Result override;
-  auto ensureTransaction(DocumentLogEntry const& doc)
-      -> std::shared_ptr<IDocumentStateTransaction> override;
+      GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
+      std::shared_ptr<IDocumentStateHandlersFactory> factory,
+      std::shared_ptr<IDocumentStateShardHandler> shardHandler);
+
+  [[nodiscard]] auto applyEntry(ReplicatedOperation operation) noexcept
+      -> Result override;
+
+  [[nodiscard]] auto applyEntry(
+      ReplicatedOperation::OperationType const& operation) noexcept
+      -> Result override;
+
   void removeTransaction(TransactionId tid) override;
+
+  auto getTransactionsForShard(ShardID const&)
+      -> std::vector<TransactionId> override;
+
   [[nodiscard]] auto getUnfinishedTransactions() const
-      -> TransactionMap const& override;
+      -> TransactionMap override;
 
  private:
   auto getTrx(TransactionId tid) -> std::shared_ptr<IDocumentStateTransaction>;
+  void setTrx(TransactionId tid,
+              std::shared_ptr<IDocumentStateTransaction> trx);
+
+  auto applyOp(FinishesUserTransaction auto const&) -> Result;
+  auto applyOp(ReplicatedOperation::IntermediateCommit const&) -> Result;
+  auto applyOp(ModifiesUserTransaction auto const&) -> Result;
+  auto applyOp(ReplicatedOperation::AbortAllOngoingTrx const&) -> Result;
+  auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
+  auto applyOp(ReplicatedOperation::ModifyShard const&) -> Result;
+  auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
+  auto applyOp(ReplicatedOperation::CreateIndex const&) -> Result;
+  auto applyOp(ReplicatedOperation::DropIndex const&) -> Result;
 
  private:
-  GlobalLogIdentifier _gid;
-  std::unique_ptr<IDatabaseGuard> _dbGuard;
-  std::shared_ptr<IDocumentStateHandlersFactory> _factory;
-  TransactionMap _transactions;
+  GlobalLogIdentifier const _gid;
+  TRI_vocbase_t* const _vocbase;
+  LoggerContext const _loggerContext;
+  std::shared_ptr<IDocumentStateHandlersFactory> const _factory;
+  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> const _errorHandler;
+  Guarded<TransactionMap> _transactions;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

@@ -53,7 +53,8 @@ void OptionsCheckFeature::prepare() {
         if (option.hasDeprecatedIn()) {
           LOG_TOPIC("78b1e", WARN, Logger::STARTUP)
               << "option '" << option.displayName() << "' is deprecated since "
-              << option.deprecatedInString();
+              << option.deprecatedInString()
+              << " and may be removed or unsupported in a future version";
         }
       },
       true, true);

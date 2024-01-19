@@ -192,6 +192,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testRemoveInsertWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -212,6 +220,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateWithSameRevTransaction: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -231,6 +247,14 @@ function transactionRevisionsSuite (dbParams) {
     },
 
     testUpdateAbortWithSameRev: function () {
+      if (isCluster) {
+        // this test uses isRestore=true, which can interfere with the
+        // LocalDocumentId values created by coordinators/DB servers.
+        // running this test in cluster can trigger assertion failures
+        // that validate LocalDocumentId values, which are faithfully
+        // picked up from the incoming requests if isRestore=true.
+        return;
+      }
       var doc = c.insert({ _key: 'test', value: 1 });
 
       let trx = db._createTransaction({
@@ -5512,6 +5536,71 @@ function transactionOverlapUniqueIndexSuite(dbParams) {
   };
 }
 
+function transactionIndexSuite(dbParams) {
+  'use strict';
+  const dbn = 'UnitTestsTransactionDatabase';
+  const cn = 'UnitTestsTransaction';
+  const indexName = 'testIdx';
+  const indexedField = 'value';
+
+  const opts = {
+    collections: {
+      write: [cn]
+    }
+  };
+
+  return {
+    setUpAll: function () {
+      db._createDatabase(dbn, dbParams);
+      db._useDatabase(dbn);
+    },
+
+    tearDownAll: function () {
+      db._useDatabase("_system");
+      db._dropDatabase(dbn);
+    },
+
+    setUp: function () {
+      db._drop(cn);
+      db._create(cn, { numberOfShards: 1, replicationFactor: 3 });
+      db[cn].ensureIndex({ type: "persistent", fields: [indexedField], name: indexName });
+    },
+
+    tearDown: function () {
+      db._drop(cn);
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test: drop index during a transaction
+    ////////////////////////////////////////////////////////////////////////////////
+
+    testDropIndex: function () {
+      const trx1 = internal.db._createTransaction(opts);
+      const tc1 = trx1.collection(cn);
+      tc1.insert({ _key: "k1", [indexedField]: "test" });
+      db[cn].dropIndex(indexName);
+      try {
+        tc1.insert({ _key: "k2", [indexedField]: "test" });
+        trx1.commit();
+      } catch(e) {
+        trx1.abort();
+      }
+
+      if (db._properties().replicationVersion === "2") {
+        const dh = require('@arangodb/testutils/document-state-helper');
+        const {logs: [logHandle]} = dh.getCollectionShardsAndLogs(db, db[cn]);
+        const log = logHandle.tail(100);
+        const ops = log
+            .filter(entry => entry.hasOwnProperty('payload'))
+            .map(entry => entry['payload']['operation']['type']);
+        const createShardIdx = ops.indexOf('CreateShard');
+        // The DropIndex operation must never happen during a running transaction:
+        assertEqual(ops.slice(createShardIdx + 1), ['CreateIndex', 'Insert', 'Insert', 'Commit', 'DropIndex']);
+      }
+    },
+  };
+}
+
 function transactionDatabaseSuite() {
   'use strict';
   const cn = 'UnitTestsTransaction';
@@ -5649,6 +5738,7 @@ exports.transactionTTLStreamSuite = transactionTTLStreamSuite;
 exports.transactionIteratorSuite = transactionIteratorSuite;
 exports.transactionOverlapSuite = transactionOverlapSuite;
 exports.transactionOverlapUniqueIndexSuite = transactionOverlapUniqueIndexSuite;
+exports.transactionIndexSuite = transactionIndexSuite;
 
 /*
  * Due to the large number of tests, if we were to execute all the suites in this file sequentially,
@@ -5672,8 +5762,9 @@ exports.partSuites = [
     transactionTTLStreamSuite,
     transactionIteratorSuite,
     transactionOverlapSuite,
-    transactionOverlapUniqueIndexSuite
-  ]
+    transactionOverlapUniqueIndexSuite,
+    transactionIndexSuite,
+  ],
 ];
 
 // The following suites are replication1 specific

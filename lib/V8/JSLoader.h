@@ -23,6 +23,10 @@
 
 #pragma once
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <string>
 
 #include <v8.h>
@@ -35,28 +39,14 @@ namespace velocypack {
 class Builder;
 }
 
-////////////////////////////////////////////////////////////////////////////////
 /// @brief JavaScript source code loader
-////////////////////////////////////////////////////////////////////////////////
-
 class JSLoader : public ScriptLoader {
  public:
   enum eState { eFailLoad, eFailExecute, eSuccess };
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief constructs a loader
-  //////////////////////////////////////////////////////////////////////////////
-
-  JSLoader();
-
- public:
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief loads a named script, if the builder pointer is not nullptr the
   /// returned result will be written there as vpack
-  //////////////////////////////////////////////////////////////////////////////
-
-  JSLoader::eState loadScript(v8::Isolate* isolate, v8::Handle<v8::Context>&,
-                              std::string const& name,
+  JSLoader::eState loadScript(v8::Isolate* isolate, std::string const& name,
                               velocypack::Builder* builder);
 };
 }  // namespace arangodb

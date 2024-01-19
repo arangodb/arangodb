@@ -159,8 +159,8 @@ class RocksDBReplicationContext {
   /// remove matching iterator
   void releaseIterators(TRI_vocbase_t&, DataSourceId);
 
-  std::tuple<Result, DataSourceId, uint64_t> bindCollectionIncremental(
-      TRI_vocbase_t& vocbase, std::string const& cname);
+  futures::Future<std::tuple<Result, DataSourceId, uint64_t>>
+  bindCollectionIncremental(TRI_vocbase_t& vocbase, std::string const& cname);
 
   // returns inventory
   Result getInventory(TRI_vocbase_t& vocbase, bool includeSystem,
@@ -202,14 +202,14 @@ class RocksDBReplicationContext {
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpJson(TRI_vocbase_t& vocbase, std::string const& cname,
-                      basics::StringBuffer&, uint64_t chunkSize,
-                      bool useEnvelope);
+                      basics::StringBuffer&, size_t docsPerBatch,
+                      uint64_t chunkSize, bool useEnvelope);
 
   // iterates over at most 'limit' documents in the collection specified,
   // creating a new iterator if one does not exist for this collection
   DumpResult dumpVPack(TRI_vocbase_t& vocbase, std::string const& cname,
-                       velocypack::Buffer<uint8_t>& buffer, uint64_t chunkSize,
-                       bool useEnvelope, bool singleArray);
+                       velocypack::Buffer<uint8_t>& buffer, size_t docsPerBatch,
+                       uint64_t chunkSize, bool useEnvelope, bool singleArray);
 
   // ==================== Incremental Sync ===========================
 

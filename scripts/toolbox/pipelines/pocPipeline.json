@@ -1,0 +1,20 @@
+[
+  {
+    "component": "startCluster"
+  },
+  {
+    "component": "feed",
+    "parameters": {
+      "folderName": "../../tests/js/transform/poc"
+    }
+  },
+  {
+    "component": "test",
+    "parameters": {
+      "folderName": "../../tests/js/transform/poc"
+    }
+  },
+  {
+    "component": "stopCluster"
+  }
+]

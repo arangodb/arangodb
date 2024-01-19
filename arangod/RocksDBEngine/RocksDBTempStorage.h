@@ -38,6 +38,7 @@ class Env;
 }  // namespace rocksdb
 
 namespace arangodb {
+class RocksDBMethodsMemoryTracker;
 class RocksDBSortedRowsStorageContext;
 class StorageUsageTracker;
 
@@ -58,8 +59,8 @@ class RocksDBTempStorage {
 
   void close();
 
-  std::unique_ptr<RocksDBSortedRowsStorageContext>
-  getSortedRowsStorageContext();
+  std::unique_ptr<RocksDBSortedRowsStorageContext> getSortedRowsStorageContext(
+      RocksDBMethodsMemoryTracker& memoryTracker);
 
  private:
   uint64_t nextId() noexcept;

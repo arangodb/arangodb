@@ -48,9 +48,9 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
             engine, inputRegister, RegisterPlan::MaxRegisterId,
             RegisterPlan::MaxRegisterId, outputNewRegisterId,
             outputOldRegisterId, outputRegisterId, query, std::move(options),
-            aqlCollection, ProducesResults(false), consultAqlWriteFilter,
-            ignoreErrors, DoCount(true), IsReplace(false),
-            ignoreDocumentNotFound),
+            aqlCollection, ExecutionBlock::DefaultBatchSize,
+            ProducesResults(false), consultAqlWriteFilter, ignoreErrors,
+            DoCount(true), IsReplace(false), ignoreDocumentNotFound),
         _hasParent(hasParent),
         _isExclusive(isExclusive) {}
 
@@ -63,7 +63,6 @@ struct MultipleRemoteModificationExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Infos = MultipleRemoteModificationInfos;
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;

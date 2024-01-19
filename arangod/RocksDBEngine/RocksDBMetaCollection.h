@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Basics/Common.h"
+#include "Basics/FutureSharedLock.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
@@ -61,14 +62,16 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
 
-  ErrorCode lockWrite(double timeout = 0.0);
+  futures::Future<ErrorCode> lockWrite(double timeout = 0.0);
   void unlockWrite() noexcept;
-  ErrorCode lockRead(double timeout = 0.0);
+  futures::Future<ErrorCode> lockRead(double timeout = 0.0);
   void unlockRead();
+
+  void freeMemory() noexcept override;
 
   /// recalculate counts for collection in case of failure, blocks other writes
   /// for a short period
-  uint64_t recalculateCounts() override;
+  futures::Future<uint64_t> recalculateCounts() override;
 
   /// @brief compact-data operation
   /// triggers rocksdb compaction for documentDB and indexes
@@ -93,24 +96,13 @@ class RocksDBMetaCollection : public PhysicalCollection {
       std::string const& context, std::string& output,
       rocksdb::SequenceNumber& appliedSeq);
 
- private:
-  bool needToPersistRevisionTree(
-      rocksdb::SequenceNumber maxCommitSeq,
-      std::unique_lock<std::mutex> const& lock) const;
-  rocksdb::SequenceNumber lastSerializedRevisionTree(
-      rocksdb::SequenceNumber maxCommitSeq,
-      std::unique_lock<std::mutex> const& lock);
-  rocksdb::SequenceNumber serializeRevisionTree(
-      std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
-      std::unique_lock<std::mutex> const& lock);
-
- public:
-  Result rebuildRevisionTree() override;
+  futures::Future<Result> rebuildRevisionTree() override;
   void rebuildRevisionTree(std::unique_ptr<rocksdb::Iterator>& iter);
   // returns a pair with the number of documents and the tree's seq number.
   std::pair<uint64_t, uint64_t> revisionTreeInfo() const;
 
-  void revisionTreeSummary(VPackBuilder& builder, bool fromCollection);
+  [[nodiscard]] futures::Future<futures::Unit> revisionTreeSummary(
+      VPackBuilder& builder, bool fromCollection);
   void revisionTreePendingUpdates(VPackBuilder& builder);
 
   uint64_t placeRevisionTreeBlocker(TransactionId transactionId) override;
@@ -137,8 +129,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   virtual RocksDBKeyBounds bounds() const = 0;
 
   /// @brief produce a revision tree from the documents in the collection
-  ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
-                    rocksdb::SequenceNumber>>
+  futures::Future<ResultT<std::pair<std::unique_ptr<containers::RevisionTree>,
+                                    rocksdb::SequenceNumber>>>
   revisionTreeFromCollection(bool checkForBlockers);
 
   std::unique_ptr<containers::RevisionTree> buildTreeFromIterator(
@@ -149,6 +141,16 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #endif
 
  private:
+  bool needToPersistRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock) const;
+  rocksdb::SequenceNumber lastSerializedRevisionTree(
+      rocksdb::SequenceNumber maxCommitSeq,
+      std::unique_lock<std::mutex> const& lock);
+  rocksdb::SequenceNumber serializeRevisionTree(
+      std::string& output, rocksdb::SequenceNumber commitSeq, bool force,
+      std::unique_lock<std::mutex> const& lock);
+
   /// @brief sends the collection's revision tree to hibernation
   void hibernateRevisionTree(std::unique_lock<std::mutex> const& lock);
 
@@ -156,7 +158,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
                                     rocksdb::SequenceNumber commitSeq,
                                     std::unique_lock<std::mutex>& lock) const;
 
-  ErrorCode doLock(double timeout, AccessMode::Type mode);
+  futures::Future<ErrorCode> doLock(double timeout, AccessMode::Type mode);
   bool haveBufferedOperations(std::unique_lock<std::mutex> const& lock) const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(
       std::size_t depth) const;
@@ -192,7 +194,18 @@ class RocksDBMetaCollection : public PhysicalCollection {
  protected:
   RocksDBMetadata _meta;  /// collection metadata
   /// @brief collection lock used for write access
-  mutable basics::ReadWriteLock _exclusiveLock;
+
+  struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
+    template<typename F>
+    void queue(F&&);
+    template<typename F>
+    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
+  };
+
+  SchedulerWrapper _schedulerWrapper;
+  using FutureLock = arangodb::futures::FutureSharedLock<SchedulerWrapper>;
+  mutable FutureLock _exclusiveLock;
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 

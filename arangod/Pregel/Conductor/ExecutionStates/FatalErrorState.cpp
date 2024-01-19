@@ -31,16 +31,17 @@ using namespace arangodb::pregel::conductor;
 FatalError::FatalError(ConductorState& conductor) : conductor{conductor} {}
 
 auto FatalError::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
-  auto messages =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>{};
+    -> std::unordered_map<actor::DistributedActorPID,
+                          worker::message::WorkerMessages> {
+  auto messages = std::unordered_map<actor::DistributedActorPID,
+                                     worker::message::WorkerMessages>{};
   for (auto const& worker : conductor.workers) {
     messages.emplace(worker, worker::message::Cleanup{});
   }
   return messages;
 }
 
-auto FatalError::receive(actor::ActorPID sender,
+auto FatalError::receive(actor::DistributedActorPID sender,
                          message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or

@@ -38,7 +38,6 @@ namespace arangodb {
 struct ConnectionInfo;
 namespace velocypack {
 class Builder;
-struct Options;
 }  // namespace velocypack
 
 class VstRequest final : public GeneralRequest {
@@ -47,20 +46,20 @@ class VstRequest final : public GeneralRequest {
              velocypack::Buffer<uint8_t> buffer, size_t payloadOffset,
              uint64_t messageId);
 
-  ~VstRequest() = default;
+  ~VstRequest();
 
-  size_t contentLength() const override;
+  size_t contentLength() const noexcept override;
   std::string_view rawPayload() const override;
   velocypack::Slice payload(bool strictValidation = true) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
 
-  virtual void setDefaultContentType() override {
+  void setDefaultContentType() noexcept override {
     _contentType = rest::ContentType::VPACK;
   }
 
-  arangodb::Endpoint::TransportType transportType() override {
-    return arangodb::Endpoint::TransportType::VST;
-  };
+  Endpoint::TransportType transportType() override {
+    return Endpoint::TransportType::VST;
+  }
 
  private:
   void setHeader(velocypack::Slice key, velocypack::Slice content);

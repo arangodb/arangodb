@@ -28,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const versionHas = require("@arangodb/test-helper").versionHas;
 
 function IndexInBackgroundFailuresSuite () {
   'use strict';
@@ -42,6 +43,11 @@ function IndexInBackgroundFailuresSuite () {
     let ranges = getRanges();
     if (ranges.length) {
       maxArchivedLogNumber = ranges[ranges.length - 1];
+    }
+
+    let timeout = 600;
+    if (versionHas('asan') || versionHas('tsan') || versionHas('coverage')) {
+      timeout *= 10;
     }
 
     let newFiles = 0;
@@ -63,7 +69,7 @@ function IndexInBackgroundFailuresSuite () {
         break;
       }
 
-      assertFalse(time() - start > 600, "time's up for this test!");
+      assertFalse(time() - start > timeout, "time's up for this test!");
     }
   };
 

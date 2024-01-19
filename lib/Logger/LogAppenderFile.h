@@ -67,8 +67,10 @@ class LogAppenderStream : public LogAppender {
 };
 
 class LogAppenderFile : public LogAppenderStream {
+  friend struct LogAppenderFileFactory;
+
  public:
-  explicit LogAppenderFile(std::string const& filename);
+  explicit LogAppenderFile(std::string const& filename, int fd);
   ~LogAppenderFile();
 
   void writeLogMessage(LogLevel level, size_t topicId,
@@ -78,29 +80,40 @@ class LogAppenderFile : public LogAppenderStream {
 
   std::string const& filename() const { return _filename; }
 
- public:
+ private:
+  std::string const _filename;
+};
+
+struct LogAppenderFileFactory {
+  static std::shared_ptr<LogAppenderFile> getFileAppender(
+      std::string const& filename);
+
   static void reopenAll();
   static void closeAll();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  static std::vector<std::tuple<int, std::string, LogAppenderFile*>>
+  static std::vector<
+      std::tuple<int, std::string, std::shared_ptr<LogAppenderFile>>>
   getAppenders();
 
   static void setAppenders(
-      std::vector<std::tuple<int, std::string, LogAppenderFile*>> const& fds);
+      std::vector<std::tuple<int, std::string,
+                             std::shared_ptr<LogAppenderFile>>> const& fds);
 #endif
 
   static void setFileMode(int mode) { _fileMode = mode; }
   static void setFileGroup(int group) { _fileGroup = group; }
 
  private:
-  std::string const _filename;
-
   static std::mutex _openAppendersMutex;
-  static std::vector<LogAppenderFile*> _openAppenders;
+  static std::vector<std::shared_ptr<LogAppenderFile>> _openAppenders;
 
   static int _fileMode;
   static int _fileGroup;
+
+ private:
+  // Static class, never construct it.
+  LogAppenderFileFactory() = delete;
 };
 
 class LogAppenderStdStream : public LogAppenderStream {

@@ -32,5 +32,4 @@ target_link_libraries(arangodbtests_pregel
 add_test(NAME pregel
   COMMAND arangodbtests_pregel)
 
-add_subdirectory(Actor)
 add_subdirectory(GraphStore)

@@ -25,6 +25,7 @@
 
 #include <stddef.h>
 #include <functional>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -32,6 +33,15 @@
 #include "Basics/FileResult.h"
 #include "Basics/FileResultString.h"
 #include "Basics/Result.h"
+#include "Basics/operating-system.h"
+
+#ifdef ARANGODB_HAVE_GETGRGID
+#include <grp.h>
+#endif
+
+#ifdef ARANGODB_HAVE_GETPWNAM
+#include <pwd.h>
+#endif
 
 namespace arangodb::basics::FileUtils {
 
@@ -65,6 +75,12 @@ void spit(std::string const& filename, char const* ptr, size_t len,
           bool sync = false);
 void spit(std::string const& filename, std::string const& content,
           bool sync = false);
+
+// appends to an existing file
+void appendToFile(std::string const& filename, char const* ptr, size_t len,
+                  bool sync = false);
+void appendToFile(std::string const& filename, std::string_view s,
+                  bool sync = false);
 
 // if a file could be removed returns TRI_ERROR_NO_ERROR.
 // otherwise, returns TRI_ERROR_SYS_ERROR and sets LastError.
@@ -147,5 +163,16 @@ std::string dirname(std::string const&);
 
 // returns the output of a program
 std::string slurpProgram(std::string const& program);
+
+#ifdef ARANGODB_HAVE_GETPWUID
+std::optional<uid_t> findUser(std::string const& nameOrId) noexcept;
+std::optional<std::string> findUserName(uid_t id) noexcept;
+#endif
+#ifdef ARANGODB_HAVE_GETGRGID
+std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept;
+#endif
+#ifdef ARANGODB_HAVE_INITGROUPS
+void initGroups(std::string const& userName, gid_t groupId) noexcept;
+#endif
 
 }  // namespace arangodb::basics::FileUtils

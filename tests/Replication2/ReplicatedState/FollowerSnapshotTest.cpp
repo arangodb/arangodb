@@ -32,7 +32,7 @@
 #include "Replication2/Mocks/FakeReplicatedState.h"
 #include "Replication2/Mocks/PersistedLog.h"
 #include "Replication2/ReplicatedLog/TestHelper.h"
-#include "Replication2/ReplicatedState/ReplicatedState.tpp"
+#include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
 #include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Replication2/Streams/LogMultiplexer.h"
 #include "Replication2/Mocks/ReplicatedStateMetricsMock.h"

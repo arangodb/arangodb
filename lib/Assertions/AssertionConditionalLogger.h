@@ -26,6 +26,8 @@
 
 #include "AssertionConditionalStream.h"
 
+#include "CrashHandler/CrashHandler.h"
+
 namespace arangodb::debug {
 struct AssertionConditionalLogger {
   void operator&(AssertionConditionalStream& stream) const {

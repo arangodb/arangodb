@@ -144,6 +144,19 @@ ArangoReplicatedLog.prototype.compact = function() {
   arangosh.checkRequestResult(requestResult);
 };
 
+/**
+ * @returns {{
+ *       index: number,
+ *       result: {
+ *         commitIndex: number,
+ *         quorum: {
+ *           index: number,
+ *           term: number,
+ *           quorum: [string],
+ *         },
+ *       },
+ *   }}
+ */
 ArangoReplicatedLog.prototype.insert = function (payload, {waitForSync = false, dontWaitForCommit = false} = {}) {
   let str = JSON.stringify(payload);
   let requestResult = this._database._connection.POST(this._baseurl() + `/insert?waitForSync=${waitForSync}&dontWaitForCommit=${dontWaitForCommit}`, str);

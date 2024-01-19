@@ -56,11 +56,11 @@ void AcceptorTcp<T>::open() {
   } else {  // we need to resolve the string containing the ip
     std::unique_ptr<asio_ns::ip::tcp::resolver::query> query;
     if (_endpoint->domain() == AF_INET6) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v6(), hostname, std::to_string(portNumber));
     } else if (_endpoint->domain() == AF_INET) {
-      query.reset(new asio_ns::ip::tcp::resolver::query(
-          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber)));
+      query = std::make_unique<asio_ns::ip::tcp::resolver::query>(
+          asio_ns::ip::tcp::v4(), hostname, std::to_string(portNumber));
     } else {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_IP_ADDRESS_INVALID);
     }
@@ -145,7 +145,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
   TRI_ASSERT(_endpoint->encryption() == Endpoint::EncryptionType::NONE);
 
   auto asioSocket =
-      std::make_unique<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
+      std::make_shared<AsioSocket<SocketType::Tcp>>(_server.selectIoContext());
   auto& socket = asioSocket->socket;
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](
@@ -182,7 +182,7 @@ void AcceptorTcp<SocketType::Tcp>::asyncAccept() {
 
 template<>
 void AcceptorTcp<SocketType::Tcp>::performHandshake(
-    std::unique_ptr<AsioSocket<SocketType::Tcp>> proto) {
+    std::shared_ptr<AsioSocket<SocketType::Tcp>> proto) {
   TRI_ASSERT(false);  // MSVC requires the implementation to exist
 }
 
@@ -205,7 +205,7 @@ bool tls_h2_negotiated(SSL* ssl) {
 
 template<>
 void AcceptorTcp<SocketType::Ssl>::performHandshake(
-    std::unique_ptr<AsioSocket<SocketType::Ssl>> proto) {
+    std::shared_ptr<AsioSocket<SocketType::Ssl>> proto) {
   // io_context is single-threaded, no sync needed
   auto* ptr = proto.get();
   proto->timer.expires_from_now(std::chrono::seconds(60));
@@ -259,7 +259,7 @@ void AcceptorTcp<SocketType::Ssl>::asyncAccept() {
   auto& ctx = _server.selectIoContext();
 
   auto asioSocket =
-      std::make_unique<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
+      std::make_shared<AsioSocket<SocketType::Ssl>>(ctx, _server.sslContexts());
   auto& socket = asioSocket->socket.lowest_layer();
   auto& peer = asioSocket->peer;
   auto handler = [this, asioSocket = std::move(asioSocket)](

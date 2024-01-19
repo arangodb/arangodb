@@ -47,34 +47,37 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
-  virtual auto startSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<SnapshotBatch>> = 0;
+  virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> = 0;
   virtual auto finishSnapshot(SnapshotId id) -> futures::Future<Result> = 0;
 };
 
-class DocumentStateLeaderInterface : public IDocumentStateLeaderInterface {
+class DocumentStateLeaderInterface
+    : public IDocumentStateLeaderInterface,
+      public std::enable_shared_from_this<DocumentStateLeaderInterface> {
  public:
   explicit DocumentStateLeaderInterface(ParticipantId participantId,
                                         GlobalLogIdentifier gid,
-                                        network::ConnectionPool* pool);
+                                        network::ConnectionPool* pool,
+                                        LoggerContext loggerContext);
 
-  auto startSnapshot(LogIndex waitForIndex)
-      -> futures::Future<ResultT<SnapshotBatch>> override;
+  auto startSnapshot() -> futures::Future<ResultT<SnapshotBatch>> override;
   auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> override;
   auto finishSnapshot(SnapshotId id) -> futures::Future<Result> override;
 
  private:
-  auto postSnapshotRequest(std::string path,
+  template<class T>
+  auto postSnapshotRequest(std::string path, VPackBufferUInt8 payload,
                            network::RequestOptions const& opts)
-      -> futures::Future<ResultT<SnapshotBatch>>;
+      -> futures::Future<ResultT<T>>;
 
  private:
   ParticipantId _participantId;
   GlobalLogIdentifier _gid;
   network::ConnectionPool* _pool;
+  LoggerContext const _loggerContext;
 };
 
 /**
@@ -89,7 +92,8 @@ struct IDocumentStateNetworkHandler {
 class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
  public:
   explicit DocumentStateNetworkHandler(GlobalLogIdentifier gid,
-                                       network::ConnectionPool* pool);
+                                       network::ConnectionPool* pool,
+                                       LoggerContext loggerContext);
 
   auto getLeaderInterface(ParticipantId participantId) noexcept
       -> std::shared_ptr<IDocumentStateLeaderInterface> override;
@@ -97,6 +101,7 @@ class DocumentStateNetworkHandler : public IDocumentStateNetworkHandler {
  private:
   GlobalLogIdentifier _gid;
   network::ConnectionPool* _pool;
+  LoggerContext const _loggerContext;
 };
 
 }  // namespace replication2::replicated_state::document

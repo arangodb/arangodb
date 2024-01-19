@@ -31,7 +31,6 @@ var _ = require('lodash'),
   is = require('@arangodb/is');
 
 // //////////////////////////////////////////////////////////////////////////////
-  // / JSF_foxx_internals_constructUrlObject
   // / @brief create a new url object
   // /
   // / This creates a new `UrlObject`.

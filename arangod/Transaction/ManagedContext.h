@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Transaction/OperationOrigin.h"
 #include "Transaction/SmartContext.h"
 
 namespace arangodb::transaction {

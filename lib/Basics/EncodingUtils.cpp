@@ -174,7 +174,7 @@ ErrorCode encoding::gzipUncompress(uint8_t const* compressed,
 }
 
 template<typename T>
-ErrorCode encoding::gzipInflate(uint8_t const* compressed,
+ErrorCode encoding::zlibInflate(uint8_t const* compressed,
                                 size_t compressedLength, T& uncompressed) {
   return ::uncompressWrapper<T>(compressed, compressedLength, uncompressed,
                                 [](z_stream& strm) -> ErrorCode {
@@ -219,7 +219,7 @@ ErrorCode encoding::gzipCompress(uint8_t const* uncompressed,
 }
 
 template<typename T>
-ErrorCode encoding::gzipDeflate(uint8_t const* uncompressed,
+ErrorCode encoding::zlibDeflate(uint8_t const* uncompressed,
                                 size_t uncompressedLength, T& compressed) {
   compressed.clear();
 
@@ -257,19 +257,23 @@ encoding::gzipUncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::velocypack::Buffer<uint8_t>& uncompressed);
 
+template ErrorCode encoding::gzipUncompress<arangodb::basics::StringBuffer>(
+    uint8_t const* compressed, size_t compressedLength,
+    arangodb::basics::StringBuffer& uncompressed);
+
 template ErrorCode encoding::gzipUncompress<std::string>(
     uint8_t const* compressed, size_t compressedLength,
     std::string& uncompressed);
 
-template ErrorCode encoding::gzipInflate<arangodb::velocypack::Buffer<uint8_t>>(
+template ErrorCode encoding::zlibInflate<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::velocypack::Buffer<uint8_t>& uncompressed);
 
-template ErrorCode encoding::gzipInflate<arangodb::basics::StringBuffer>(
+template ErrorCode encoding::zlibInflate<arangodb::basics::StringBuffer>(
     uint8_t const* compressed, size_t compressedLength,
     arangodb::basics::StringBuffer& uncompressed);
 
-template ErrorCode encoding::gzipInflate<std::string>(
+template ErrorCode encoding::zlibInflate<std::string>(
     uint8_t const* compressed, size_t compressedLength,
     std::string& uncompressed);
 
@@ -282,12 +286,15 @@ template ErrorCode encoding::gzipCompress<arangodb::basics::StringBuffer>(
     uint8_t const* uncompressed, size_t uncompressedLength,
     arangodb::basics::StringBuffer& compressed);
 
-template ErrorCode encoding::gzipDeflate<arangodb::velocypack::Buffer<uint8_t>>(
+template ErrorCode encoding::zlibDeflate<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* uncompressed, size_t uncompressedLength,
     arangodb::velocypack::Buffer<uint8_t>& compressed);
 
-template ErrorCode encoding::gzipDeflate<arangodb::basics::StringBuffer>(
+template ErrorCode encoding::zlibDeflate<arangodb::basics::StringBuffer>(
     uint8_t const* uncompressed, size_t uncompressedLength,
     arangodb::basics::StringBuffer& compressed);
 
+template ErrorCode encoding::zlibDeflate<std::string>(
+    uint8_t const* uncompressed, size_t uncompressedLength,
+    std::string& compressed);
 }  // namespace arangodb

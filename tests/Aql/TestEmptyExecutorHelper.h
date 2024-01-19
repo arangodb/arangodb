@@ -48,7 +48,6 @@ class TestEmptyExecutorHelper {
     static const bool preservesOrder = true;
     static const BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Disable;
-    static const bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = EmptyExecutorInfos;

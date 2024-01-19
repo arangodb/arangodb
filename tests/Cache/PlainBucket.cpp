@@ -178,7 +178,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   // check that we get proper eviction candidate
   CachedValue* candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[0]);
-  bucket->evict(candidate, false);
+  bucket->evict(candidate);
   CachedValue* res = bucket->find<BinaryKeyHasher>(hashes[0], ptrs[0]->key(),
                                                    ptrs[0]->keySize());
   ASSERT_EQ(nullptr, res);
@@ -187,7 +187,7 @@ TEST(CachePlainBucketTest, verify_eviction_works_correctly) {
   // check that we still find the right candidate if not full
   candidate = bucket->evictionCandidate();
   ASSERT_EQ(candidate, ptrs[1]);
-  bucket->evict(candidate, true);
+  bucket->evict(candidate);
   res = bucket->find<BinaryKeyHasher>(hashes[1], ptrs[1]->key(),
                                       ptrs[1]->keySize());
   ASSERT_EQ(nullptr, res);

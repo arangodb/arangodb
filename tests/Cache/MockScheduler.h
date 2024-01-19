@@ -25,21 +25,14 @@
 #pragma once
 
 #include <memory>
-#include <thread>
-#include <vector>
-
-#include <boost/asio/io_service.hpp>
-
-#include "Basics/asio_ns.h"
+#include <functional>
 
 namespace arangodb {
 namespace cache {
 
 class MockScheduler {
-  typedef std::unique_ptr<asio_ns::io_context::work> asio_worker;
-  std::unique_ptr<asio_ns::io_context> _ioService;
-  std::unique_ptr<asio_ns::io_context::work> _serviceGuard;
-  std::vector<std::thread*> _group;
+  struct Impl;
+  std::unique_ptr<Impl> _impl;
 
  public:
   MockScheduler(std::size_t threads);

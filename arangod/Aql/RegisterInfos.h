@@ -34,8 +34,7 @@
 #include <memory>
 #include <unordered_set>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /**
  * @brief Class to be handed into ExecutionBlock during construction
@@ -133,5 +132,4 @@ class RegisterInfos {
   RegIdFlatSet _registersToClear;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -144,6 +144,11 @@ class RocksDBKeyBounds {
   static RocksDBKeyBounds DatabaseViews(TRI_voc_tick_t databaseId);
 
   //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all replicated states belonging to a specified database
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds DatabaseStates(TRI_voc_tick_t databaseId);
+
+  //////////////////////////////////////////////////////////////////////////////
   /// @brief Bounds for all entries in a log
   //////////////////////////////////////////////////////////////////////////////
   static RocksDBKeyBounds LogRange(uint64_t objectId);
@@ -162,7 +167,13 @@ class RocksDBKeyBounds {
   /// @brief Bounds for all index-entries belonging to a specified non-unique
   /// index (hash, skiplist and permanent)
   //////////////////////////////////////////////////////////////////////////////
-  static RocksDBKeyBounds ZkdIndex(uint64_t indexId);
+  static RocksDBKeyBounds MdiIndex(uint64_t indexId);
+
+  //////////////////////////////////////////////////////////////////////////////
+  /// @brief Bounds for all index-entries belonging to a specified non-unique
+  /// index (hash, skiplist and permanent)
+  //////////////////////////////////////////////////////////////////////////////
+  static RocksDBKeyBounds MdiVPackIndex(uint64_t indexId);
 
  public:
   RocksDBKeyBounds(RocksDBKeyBounds const& other);

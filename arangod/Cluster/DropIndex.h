@@ -29,7 +29,12 @@
 
 #include <chrono>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+
+class LogicalCollection;
+
 namespace maintenance {
 
 class DropIndex : public ActionBase {
@@ -38,7 +43,12 @@ class DropIndex : public ActionBase {
 
   virtual ~DropIndex();
 
+  void setState(ActionState state) override final;
   virtual bool first() override final;
+
+ private:
+  static auto dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
+                                    std::string indexId) noexcept -> Result;
 };
 
 }  // namespace maintenance

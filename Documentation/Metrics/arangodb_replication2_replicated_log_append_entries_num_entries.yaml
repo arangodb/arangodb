@@ -1,0 +1,15 @@
+name: arangodb_replication2_replicated_log_append_entries_num_entries
+introducedIn: "3.11.0"
+help: |
+  Histogram of the number of entries in an append-entries message.
+unit: number
+type: histogram
+category: Replication
+complexity: medium
+exposedBy:
+  - dbserver
+description: |
+  The leader of a replicated log replicates the log entries by sending
+  append-entries requests to its followers.
+  This is a histogram keeping track of the number of log entries in those
+  requests.

@@ -280,10 +280,6 @@ std::string ServerState::modeToString(Mode mode) {
       return "startup";
     case Mode::MAINTENANCE:
       return "maintenance";
-    case Mode::TRYAGAIN:
-      return "tryagain";
-    case Mode::REDIRECT:
-      return "redirect";
     case Mode::INVALID:
       return "invalid";
   }
@@ -296,26 +292,22 @@ std::string ServerState::modeToString(Mode mode) {
 /// @brief convert string to mode
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::Mode ServerState::stringToMode(std::string_view value) {
+ServerState::Mode ServerState::stringToMode(std::string_view value) noexcept {
   if (value == "default") {
     return Mode::DEFAULT;
   } else if (value == "startup") {
     return Mode::STARTUP;
   } else if (value == "maintenance") {
     return Mode::MAINTENANCE;
-  } else if (value == "tryagain") {
-    return Mode::TRYAGAIN;
-  } else if (value == "redirect") {
-    return Mode::REDIRECT;
-  } else {
-    return Mode::INVALID;
   }
+  return Mode::INVALID;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief atomically load current server mode
 ////////////////////////////////////////////////////////////////////////////////
-ServerState::Mode ServerState::mode() {
+
+ServerState::Mode ServerState::mode() noexcept {
   return ::serverMode.load(std::memory_order_acquire);
 }
 
@@ -351,13 +343,13 @@ bool ServerState::readOnlyByLicense() {
 bool ServerState::setReadOnly(ReadOnlyMode ro) {
   auto ret = readOnly();
   if (ro == API_FALSE) {
-    ::serverStateReadOnly.exchange(false, std::memory_order_release);
+    ::serverStateReadOnly.store(false, std::memory_order_release);
   } else if (ro == API_TRUE) {
-    ::serverStateReadOnly.exchange(true, std::memory_order_release);
+    ::serverStateReadOnly.store(true, std::memory_order_release);
   } else if (ro == LICENSE_FALSE) {
-    ::licenseReadOnly.exchange(false, std::memory_order_release);
+    ::licenseReadOnly.store(false, std::memory_order_release);
   } else if (ro == LICENSE_TRUE) {
-    ::licenseReadOnly.exchange(true, std::memory_order_release);
+    ::licenseReadOnly.store(true, std::memory_order_release);
   }
   return ret;
 }
@@ -711,6 +703,10 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     auto checkSetting = [](velocypack::Slice servers,
                            std::string_view optionName, std::string_view key,
                            bool localValue) -> bool {
+      bool isFirst = true;
+      bool unequal = false;
+      bool checkFor = true;
+
       for (auto pair : VPackObjectIterator(servers)) {
         if (!pair.value.isObject()) {
           continue;
@@ -722,46 +718,60 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
           continue;
         }
 
+        if (isFirst) {
+          checkFor = setting.isTrue();
+          isFirst = false;
+        } else if (checkFor != setting.isTrue()) {
+          unequal = true;
+          break;
+        }
+
         if (!localValue && setting.isTrue()) {
           // different settings detected:
-          //  stored value ii true, but we are locally setting it to false
-          // bail out!
-          LOG_TOPIC("75972", ERR, arangodb::Logger::STARTUP)
-              << "The usage of different settings for object naming "
-              << "conventions (i.e. `--" << optionName << "` settings) "
-              << "in the cluster is unsupported and may cause follow-up "
-                 "issues. "
-              << "Please unify the settings for the startup option "
-                 "`--"
-              << optionName << "` "
-              << "on all coordinators and DB servers in this cluster.";
-
-          std::string msg;
-          for (auto p : VPackObjectIterator(servers)) {
-            if (!p.value.isObject()) {
-              continue;
-            }
-            VPackSlice s = p.value.get(key);
-            if (!msg.empty()) {
-              msg += ", ";
-            }
-            msg += "[" + p.key.copyString() + ": " +
-                   (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") +
-                   "]";
-          }
-
-          if (!msg.empty()) {
-            LOG_TOPIC("1220d", INFO, arangodb::Logger::STARTUP)
-                << "The following effective settings exist for "
-                   "`--"
-                << optionName << "` "
-                << "for the servers in this cluster, either explicitly "
-                   "configured or persisted on database servers: "
-                << msg;
-          }
-          return false;
+          // stored value is true, but we are locally setting it to false
+          unequal = true;
         }
       }
+
+      if (unequal) {
+        LOG_TOPIC("c12dc", ERR, arangodb::Logger::STARTUP)
+            << "It is unsupported to change the value of the startup "
+               "option `--"
+            << optionName << "`"
+            << " back to `false` after it was set to `true` before, "
+            << "or to use different settings for object naming "
+            << "conventions (i.e. different `--" << optionName << "` settings) "
+            << "in the cluster. This may cause cause follow-up issues. "
+            << "Please remove the setting `--" << optionName
+            << " false` from the startup options, or unify the settings "
+            << "for the startup option `--" << optionName
+            << "` on all coordinators and DB servers in this cluster.";
+
+        std::string msg;
+        for (auto p : VPackObjectIterator(servers)) {
+          if (!p.value.isObject()) {
+            continue;
+          }
+          VPackSlice s = p.value.get(key);
+          if (!msg.empty()) {
+            msg += ", ";
+          }
+          msg += "[" + p.key.copyString() + ": " +
+                 (s.isBool() ? (s.getBool() ? "true" : "false") : "not set") +
+                 "]";
+        }
+
+        if (!msg.empty()) {
+          LOG_TOPIC("1220d", INFO, arangodb::Logger::STARTUP)
+              << "The following effective settings exist for "
+                 "`--"
+              << optionName << "` "
+              << "for the servers in this cluster, either explicitly "
+                 "configured or persisted on database servers: "
+              << msg;
+        }
+      }
+      // start anyway
       return true;
     };
 
@@ -772,8 +782,8 @@ bool ServerState::checkNamingConventionsEquality(AgencyComm& comm) {
     // --database.extended-names
     if (!checkSetting(servers, "database.extended-names", ::extendedNamesKey,
                       df.extendedNames())) {
-      // settings mismatch
-      return false;
+      // settings mismatch. start anyway!
+      return true;
     }
   }
 
@@ -913,12 +923,12 @@ bool ServerState::registerAtAgencyPhase1(AgencyComm& comm,
     if (latestIdSlice.isNumber()) {
       num = latestIdSlice.getNumber<uint32_t>();
       latestIdBuilder.add(VPackValue(num));
-      latestIdPrecondition.reset(
-          new AgencyPrecondition(targetIdPath, AgencyPrecondition::Type::VALUE,
-                                 latestIdBuilder.slice()));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::VALUE,
+          latestIdBuilder.slice());
     } else {
-      latestIdPrecondition.reset(new AgencyPrecondition(
-          targetIdPath, AgencyPrecondition::Type::EMPTY, true));
+      latestIdPrecondition = std::make_unique<AgencyPrecondition>(
+          targetIdPath, AgencyPrecondition::Type::EMPTY, true);
     }
 
     VPackBuilder localIdBuilder;

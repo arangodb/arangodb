@@ -42,7 +42,6 @@ namespace arangodb {
 
 ShellFeature::ShellFeature(Server& server, int* result)
     : ArangoshFeature(server, *this),
-      _jslint(),
       _result(result),
       _runMode(RunMode::INTERACTIVE) {
   setOptional(false);
@@ -53,9 +52,6 @@ ShellFeature::~ShellFeature() = default;
 
 void ShellFeature::collectOptions(
     std::shared_ptr<options::ProgramOptions> options) {
-  options->addOption("--jslint", "Do not start as a shell, run jslint instead.",
-                     new VectorParameter<StringParameter>(&_jslint));
-
   options->addSection("javascript", "JavaScript engine");
 
   options->addOption("--javascript.execute",
@@ -106,10 +102,6 @@ void ShellFeature::validateOptions(
     client.disable();
   }
 
-  if (!_jslint.empty()) {
-    client.disable();
-  }
-
   size_t n = 0;
 
   _runMode = RunMode::INTERACTIVE;
@@ -138,16 +130,10 @@ void ShellFeature::validateOptions(
     ++n;
   }
 
-  if (!_jslint.empty()) {
-    console.setQuiet(true);
-    _runMode = RunMode::JSLINT;
-    ++n;
-  }
-
   if (1 < n) {
     LOG_TOPIC("80a8c", ERR, arangodb::Logger::FIXME)
         << "you cannot specify more than one type ("
-        << "jslint, execute, execute-string, check-syntax, unit-tests)";
+        << "execute, execute-string, check-syntax, unit-tests)";
   }
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
@@ -194,10 +180,6 @@ void ShellFeature::start() {
 
       case RunMode::UNIT_TESTS:
         ok = shell.runUnitTests(_unitTests, _positionals, _unitTestFilter);
-        break;
-
-      case RunMode::JSLINT:
-        ok = shell.jslint(_jslint);
         break;
     }
   } catch (std::exception const& ex) {

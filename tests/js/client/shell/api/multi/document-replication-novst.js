@@ -62,7 +62,7 @@ function import_handlingSuite () {
       }
     },
 
-    test_returns_an_error_if_an_string_attribute_in_the_JSON_body_is_corrupted: function() {
+    test_returns_an_error_if_a_string_attribute_in_the_JSON_body_is_corrupted: function() {
       let id = db._create(cn);
 
       let cmd = `/_api/replication/restore-data?collection=${cn}`;

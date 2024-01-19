@@ -94,7 +94,7 @@ function BaseTestConfig () {
             break;
           }
         } else if (tries === 20) {
-          // wait several seconds so we can be sure the
+          // wait several seconds so we can be sure the failure point was triggered.
           clearFailurePoints([]);
           waitForShardsInSync(cn, 60, 1); 
         }

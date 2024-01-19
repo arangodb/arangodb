@@ -253,8 +253,7 @@ CollectNode::calcInputVariableNames() const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   switch (aggregationMethod()) {
     case CollectOptions::CollectMethod::HASH: {
       ExecutionNode const* previousNode = getFirstDependency();
@@ -407,54 +406,19 @@ std::unique_ptr<ExecutionBlock> CollectNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* CollectNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                  bool withProperties) const {
-  auto outVariable = _outVariable;
-  auto expressionVariable = _expressionVariable;
-  auto groupVariables = _groupVariables;
-  auto aggregateVariables = _aggregateVariables;
-
-  if (withProperties) {
-    if (expressionVariable != nullptr) {
-      expressionVariable =
-          plan->getAst()->variables()->createVariable(expressionVariable);
-    }
-
-    if (outVariable != nullptr) {
-      outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    }
-
-    // need to re-create all variables
-    groupVariables.clear();
-
-    for (auto& it : _groupVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = plan->getAst()->variables()->createVariable(it.inVar);
-      groupVariables.emplace_back(GroupVarInfo{out, in});
-    }
-
-    aggregateVariables.clear();
-
-    for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = it.inVar == nullptr
-                    ? nullptr
-                    : plan->getAst()->variables()->createVariable(it.inVar);
-      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
-    }
-  }
-
-  auto c = std::make_unique<CollectNode>(plan, _id, _options, groupVariables,
-                                         aggregateVariables, expressionVariable,
-                                         outVariable, _keepVariables,
-                                         _variableMap, _isDistinctCommand);
+ExecutionNode* CollectNode::clone(ExecutionPlan* plan,
+                                  bool withDependencies) const {
+  auto c = std::make_unique<CollectNode>(
+      plan, _id, _options, _groupVariables, _aggregateVariables,
+      _expressionVariable, _outVariable, _keepVariables, _variableMap,
+      _isDistinctCommand);
 
   // specialize the cloned node
   if (isSpecialized()) {
     c->specialized();
   }
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 auto isStartNode(ExecutionNode const& node) -> bool {
@@ -483,6 +447,7 @@ auto isStartNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
@@ -529,6 +494,7 @@ auto isVariableInvalidatingNode(ExecutionNode const& node) -> bool {
     case ExecutionNode::UPSERT:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::SHORTEST_PATH:
     case ExecutionNode::ENUMERATE_PATHS:
     case ExecutionNode::REMOTESINGLE:
@@ -553,6 +519,7 @@ auto isLoop(ExecutionNode const& node) -> bool {
   switch (node.getType()) {
     case ExecutionNode::ENUMERATE_COLLECTION:
     case ExecutionNode::INDEX:
+    case ExecutionNode::JOIN:
     case ExecutionNode::ENUMERATE_LIST:
     case ExecutionNode::TRAVERSAL:
     case ExecutionNode::SHORTEST_PATH:
@@ -751,7 +718,13 @@ CostEstimate CollectNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility CollectNode::canUseAsyncPrefetching() const noexcept {
+  return AsyncPrefetchEligibility::kEnableForNode;
+}
+
 ExecutionNode::NodeType CollectNode::getType() const { return COLLECT; }
+
+size_t CollectNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 bool CollectNode::isDistinctCommand() const { return _isDistinctCommand; }
 

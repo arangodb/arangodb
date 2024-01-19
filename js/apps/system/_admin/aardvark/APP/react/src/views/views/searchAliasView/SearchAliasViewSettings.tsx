@@ -1,27 +1,28 @@
-import { Box } from "@chakra-ui/react";
+import { Grid } from "@chakra-ui/react";
 import React from "react";
-import { SearchAliasProvider } from "./SearchAliasContext";
-import { SearchAliasHeader } from "./SearchAliasHeader";
+import { EditViewProvider } from "../editView/EditViewContext";
+import { EditViewHeader } from "../editView/EditViewHeader";
+import { SearchAliasViewPropertiesType } from "../View.types";
 import { SearchAliasJsonForm } from "./SearchAliasJsonForm";
-import { ViewPropertiesType } from "./useFetchViewProperties";
+import { useUpdateAliasViewProperties } from "./useUpdateAliasViewProperties";
 
 export const SearchAliasViewSettings = ({
   view
 }: {
-  view: ViewPropertiesType;
+  view: SearchAliasViewPropertiesType;
 }) => {
+  const { onSave } = useUpdateAliasViewProperties();
   return (
-    <SearchAliasProvider initialView={view}>
-      <Box
+    <EditViewProvider initialView={view} onSave={onSave as any}>
+      <Grid
         width="full"
         height="calc(100vh - 60px)"
-        display={"grid"}
         gridTemplateRows="120px 1fr"
         rowGap="5"
       >
-        <SearchAliasHeader />
+        <EditViewHeader />
         <SearchAliasJsonForm />
-      </Box>
-    </SearchAliasProvider>
+      </Grid>
+    </EditViewProvider>
   );
 };

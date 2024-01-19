@@ -871,10 +871,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/1"]]),[{1:["C","C++","Java","Python"]}]);
       writeAndCheck([[{"1":["C",2.0,"Java","Python"]}]]);
       assertEqual(readAndCheck([["/1"]]),[{1:["C",2.0,"Java","Python"]}]);
-      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7}]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7}]}]);
-      writeAndCheck([[{"1":["C",2.0,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]]);
-      assertEqual(readAndCheck([["/1"]]),[{"1":["C",2,"Java",{"op":"set","new":12,"ttl":7,"Array":[12,3]}]}]);
       writeAndCheck([[{"2":[[],[],[],[],[[[[[]]]]]]}]]);
       assertEqual(readAndCheck([["/2"]]),[{"2":[[],[],[],[],[[[[[]]]]]]}]);
       writeAndCheck([[{"2":[[[[[[]]]]],[],[],[],[[]]]}]]);
@@ -901,80 +897,11 @@ function agencyTestSuite () {
     testOpSetNew : function () {
       writeAndCheck([[{"a/z":{"op":"set","new":12}}]]);
       assertEqual(readAndCheck([["/a/z"]]), [{"a":{"z":12}}]);
-      writeAndCheck([[{"a/y":{"op":"set","new":12, "ttl": 1}}]]);
-      assertEqual(readAndCheck([["/a/y"]]), [{"a":{"y":12}}]);
-      wait(1.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
-      writeAndCheck([[{"/a/y":{"op":"set","new":12, "ttl": 3}}]]);
-      assertEqual(readAndCheck([["a/y"]]), [{"a":{"y":12}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["/a/y"]]), [{a:{}}]);
       writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12}}}]]);
       assertEqual(readAndCheck([["/foo/bar/baz"]]),
                   [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{"bar":{"baz":12}}}]);
       assertEqual(readAndCheck([["/foo"]]), [{"foo":{"bar":{"baz":12}}}]);
-      writeAndCheck([[{"foo/bar":{"op":"set","new":{"baz":12},"ttl":3}}]]);
-      wait(3.1);
-      assertEqual(readAndCheck([["/foo"]]), [{"foo":{}}]);
-      assertEqual(readAndCheck([["/foo/bar"]]), [{"foo":{}}]);
-      assertEqual(readAndCheck([["/foo/bar/baz"]]), [{"foo":{}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":25, "ttl": 3}}]]);
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":25}}]);
-      writeAndCheck([[{"a/u":{"op":"set","new":26}}]]);
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
-      wait(3.0);  // key should still be there
-      assertEqual(readAndCheck([["/a/u"]]), [{"a":{"u":26}}]);
-      writeAndCheck([
-        [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}}, "ttl":30 }}]]);
-
-      // temporary to make sure we remain with same leader.
-      var tmp = agencyLeader;
-      var leaderErr = false;
-
-      let res = request({url: agencyLeader + "/_api/agency/stores",
-                         method: "GET", followRedirect: true});
-      if (res.statusCode === 200) {
-        res.bodyParsed = JSON.parse(res.body);
-        if (res.bodyParsed.read_db[0].a !== undefined) {
-          assertTrue(res.bodyParsed.read_db[1]["/a/u"] >= 0);
-        } else {
-          leaderErr = true; // not leader
-        }
-      } else {
-        assertTrue(false); // no point in continuing
-      }
-
-      // continue ttl test only, if we have not already lost
-      // touch with the leader
-      if (!leaderErr) {
-        writeAndCheck([
-          [{ "/a/u": { "op":"set", "new":{"z":{"z":{"z":"z"}}} }}]]);
-
-        res = request({url: agencyLeader + "/_api/agency/stores",
-                       method: "GET", followRedirect: true});
-
-        // only, if agency is still led by same guy/girl
-        if (agencyLeader === tmp) {
-          if (res.statusCode === 200) {
-            res.bodyParsed = JSON.parse(res.body);
-            console.warn(res.bodyParsed.read_db[0]);
-            if (res.bodyParsed.read_db[0].a !== undefined) {
-              assertTrue(res.bodyParsed.read_db[1]["/a/u"] === undefined);
-            } else {
-              leaderErr = true;
-            }
-          } else {
-            assertTrue(false); // no point in continuing
-          }
-        } else {
-          leaderErr = true;
-        }
-      }
-
-      if (leaderErr) {
-        require("console").warn("on the record: status code was " + res.statusCode + " couldn't test proper implementation of TTL at this point. not going to startle the chickens over this however and assume rare leader change within.");
-      }
      },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -994,16 +921,6 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"push","new":2.71828182845904523536}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[2.71828182845904523536]}}]);
-
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"push", "new":"world"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"push", "new":"hello"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1094,16 +1011,6 @@ function agencyTestSuite () {
       writeAndCheck([[{"/a/euler":{"op":"prepend","new":1.25}}]]);
       assertEqual(readAndCheck([["/a/euler"]]),
                   [{a:{euler:[1.25,2.71828182845904523536]}}]);
-
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"world"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["world","hello"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"prepend", "new":"hello"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1119,15 +1026,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/a/b/c"]]), [{a:{b:{c:[1,2,3,"max"]}}}]);
       writeAndCheck([[{"/a/b/d":{"op":"shift"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
-
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["world"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"shift"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1144,15 +1042,6 @@ function agencyTestSuite () {
       writeAndCheck([[{"a/b/d":1}]]); // on existing scalar
       writeAndCheck([[{"/a/b/d":{"op":"pop"}}]]); // on existing scalar
       assertEqual(readAndCheck([["/a/b/d"]]), [{a:{b:{d:[]}}}]);
-
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c": ["hello","world"]}, "ttl":3}}]]);
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello","world"]}}]);
-      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:["hello"]}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"pop"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:[]}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1255,14 +1144,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:1}]);
       writeAndCheck([[{"/version":{"op":"increment"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
-      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:13}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"increment"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1275,14 +1156,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["version"]]), [{version:-1}]);
       writeAndCheck([[{"/version":{"op":"decrement"}}]]); // int before
       assertEqual(readAndCheck([["version"]]), [{version:-2}]);
-      writeAndCheck([[{"/version":{"op":"set", "new": {"c":12}, "ttl":3}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:12}}]);
-      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:11}}]);
-      wait(3.1);
-      assertEqual(readAndCheck([["version"]]), [{}]);
-      writeAndCheck([[{"/version/c":{"op":"decrement"}}]]); // int before
-      assertEqual(readAndCheck([["version"]]), [{version:{c:-1}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1309,12 +1182,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:-1}}}}}]);
       writeAndCheck([[{"/op/a/b/c/op":{"op":"push","new":-1}}]]);
       assertEqual(readAndCheck([["/op/a/b/c"]]), [{op:{a:{b:{c:{op:[-1]}}}}}]);
-      writeAndCheck([[{"/op/a/b/d":{"op":"set","new":{"ttl":14}}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
-      writeAndCheck([[{"/op/a/b/d/ttl":{"op":"increment"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:15}}}}}]);
-      writeAndCheck([[{"/op/a/b/d/ttl":{"op":"decrement"}}]]);
-      assertEqual(readAndCheck([["/op/a/b/d"]]), [{op:{a:{b:{d:{ttl:14}}}}}]);
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1354,90 +1221,6 @@ function agencyTestSuite () {
       assertEqual(readAndCheck([["/"]]), [{}]);
       writeAndCheck([[{"/":{"op":"delete"}}]]);
       assertEqual(readAndCheck([["/"]]), [{}]);
-    },
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief Test observe / unobserve
-////////////////////////////////////////////////////////////////////////////////
-
-    testObserve : function () {
-      var res, before, after, clean;
-      var trx = [{"/a":"a"}, {"a":{"oldEmpty":true}}];
-
-      // In the beginning
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      clean = JSON.parse(res.body);
-
-      // Don't create empty object for observation
-      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 200);
-      res = accessAgency("write",[trx]);
-      assertEqual(res.statusCode, 412);
-
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      var c = agencyConfig().term;
-
-      // No duplicate entries in
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"/a":{"op":"observe", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      if (!_.isEqual(before, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(before, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
-
-      // Normalization
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"//////a////":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"a":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"a/":{"op":"observe", "url":"https://google.com"}}]]);
-      writeAndCheck([[{"/a/":{"op":"observe", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      if (!_.isEqual(before, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(before, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
-
-      // Unobserve
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      before = JSON.parse(res.body);
-      writeAndCheck([[{"//////a":{"op":"unobserve", "url":"https://google.com"}}]]);
-      res = request({url:agencyLeader+"/_api/agency/stores", method:"GET"});
-      assertEqual(200, res.statusCode);
-      after = JSON.parse(res.body);
-      assertEqual(clean, after);
-      if (!_.isEqual(clean, after)) {
-        if (agencyConfig().term === c) {
-          assertEqual(clean, after); //peng
-        } else {
-          require("console").warn("skipping remaining callback tests this time around");
-          return; //
-        }
-      }
-
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      assertEqual(readAndCheck([["/"]]), [{}]);
-
     },
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1522,22 +1305,6 @@ function agencyTestSuite () {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Test nasty willful attempt to break
 ////////////////////////////////////////////////////////////////////////////////
-
-    testSlashORama : function () {
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"//////////////////////a/////////////////////b//":
-                       {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]), [{a:{b:{b:{c:4}}}}]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck([[{"////////////////////////": "Hi there!"}]]);
-      assertEqual(readAndCheck([["/"]]), ["Hi there!"]);
-      writeAndCheck([[{"/":{"op":"delete"}}]]);
-      writeAndCheck(
-        [[{"/////////////////\\/////a/////////////^&%^&$^&%$////////b\\\n//":
-           {"b///////c":4}}]]);
-      assertEqual(readAndCheck([["/"]]),
-                  [{"\\":{"a":{"^&%^&$^&%$":{"b\\\n":{"b":{"c":4}}}}}}]);
-    },
 
     testKeysBeginningWithSameString: function() {
       var res = accessAgency("write",[[{"/bumms":{"op":"set","new":"fallera"}, "/bummsfallera": {"op":"set","new":"lalalala"}}]]);

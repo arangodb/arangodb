@@ -31,6 +31,11 @@ class CrashHandler {
   /// @brief log backtrace for current thread to logfile
   static void logBacktrace();
 
+  /// @brief set server state string as context for crash messages.
+  /// state string will be advanced whenever the application server
+  /// changes its state. state string must be null-terminated!
+  static void setState(std::string_view state);
+
   /// @brief logs a fatal message and crashes the program
   [[noreturn]] static void crash(std::string_view context);
 

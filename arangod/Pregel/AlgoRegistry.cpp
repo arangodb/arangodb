@@ -89,7 +89,6 @@ IAlgorithm* AlgoRegistry::createAlgorithm(std::string const& algorithm,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
                                    "Unsupported Algorithm");
   }
-  return nullptr;
 }
 auto AlgoRegistry::createAlgorithmNew(std::string const& algorithm,
                                       VPackSlice userParams)

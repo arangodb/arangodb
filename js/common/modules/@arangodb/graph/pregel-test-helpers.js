@@ -62,9 +62,32 @@ const runFinished = (stats) => runFinishedSuccessfully(stats) || runFinishedUnsu
 const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sleepIntervalSeconds = 0.2) {
   let wakeupsLeft = maxWaitSeconds / sleepIntervalSeconds;
   var status;
+  // Note: This is added because there is a race between the conductor for pid
+  // being created and the user asking for the status of a pregel run for the
+  // first time.
+  //
+  // The *correct* fix for this is that once a client gets to know an
+  // ExecutionNumber this should be valid for being requested.
   do {
     internal.sleep(sleepIntervalSeconds);
-    status = pregel.status(pid);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn(`ExecutionNumber ${pid} does not exist (yet).`);
+    }
+    if (wakeupsLeft-- === 0) {
+      assertTrue(false, "Pregel did not start after timeout");
+      return;
+    }
+  } while(status === undefined);
+  do {
+    internal.sleep(sleepIntervalSeconds);
+    try {
+      status = pregel.status(pid);
+    } catch(e) {
+      require('console').warn("ExecutionNumber ${pid} does not exist.");
+      return;
+    }
     if (wakeupsLeft-- === 0) {
       assertTrue(false, "Pregel did not finish after timeout but is in state " + status.state);
       return;
@@ -84,7 +107,7 @@ const waitUntilRunFinishedSuccessfully = function (pid, maxWaitSeconds = 120, sl
   return status;
 };
 
-const waitForResultsBeeingGarbageCollected = function (pid, ttl) {
+const waitForResultsBeingGarbageCollected = function (pid, ttl) {
   // garbage collection runs every 20s, therefore we should wait at least that long plus the ttl given
 	const maxWaitSeconds = ttl + 100;
 	const sleepIntervalSeconds = 0.2;
@@ -166,6 +189,19 @@ const testPageRankOnGraph = function (vertices, edges, seeded = false) {
       `for vertex ${JSON.stringify(resultV)}. The ranks returned by the algorithm are ${JSON.stringify(result)}.`
     );
   }
+};
+
+const testLineRankOnGraph = function (vertices, edges) {
+  db[vColl].save(vertices);
+  db[eColl].save(edges);
+  let parameters = {maxGSS: 1000, resultField: "linerank"};
+  const pid = pregel.start("linerank", graphName, parameters);
+  waitUntilRunFinishedSuccessfully(pid);
+  return db._query(`
+                  FOR v in ${vColl}
+                  sort v._rev
+                  RETURN v.linerank
+                `).toArray();
 };
 
 /**
@@ -288,21 +324,19 @@ const pregelRunSmallInstanceGetComponents = function (algName, graphName, parame
 };
 
 const makeSetUp = function (smart, smartAttribute, numberOfShards) {
-    return function () {
-        if (smart) {
-            smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
-                {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
-        } else {
-            db._create(vColl, {numberOfShards: numberOfShards});
-            db._createEdgeCollection(eColl, {
-                numberOfShards: numberOfShards,
-                replicationFactor: 1,
-                shardKeys: ["vertex"],
-                distributeShardsLike: vColl
-            });
-            general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
-        }
-    };
+  return function () {
+    if (smart) {
+      smart_graph_module._create(graphName, [smart_graph_module._relation(eColl, vColl, vColl)], [],
+        {smartGraphAttribute: smartAttribute, numberOfShards: numberOfShards});
+    } else {
+      db._create(vColl, {numberOfShards: numberOfShards});
+      db._createEdgeCollection(eColl, {
+        shardKeys: ["vertex"],
+        distributeShardsLike: vColl
+      });
+      general_graph_module._create(graphName, [general_graph_module._relation(eColl, vColl, vColl)], []);
+    }
+  };
 };
 
 const makeTearDown = function (smart) {
@@ -1689,6 +1723,26 @@ function makeSSSPTestSuite(isSmart, smartAttribute, numberOfShards) {
   };
 }
 
+function makeLineRankTestSuite(isSmart, smartAttribute, numberOfShards) {
+  const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
+  return function () {
+    'use strict';
+    return {
+      setUp: makeSetUp(isSmart, smartAttribute, numberOfShards),
+      tearDown: makeTearDown(isSmart),
+
+      testLineRankDirectedCycle: function () {
+        const length = 4;
+        const {vertices, edges} = graphGenerator(verticesEdgesGenerator(vColl, "v0")).makeDirectedCycle(length);
+        const result = testLineRankOnGraph(vertices, edges);
+        for (const rank of result) {
+          assertAlmostEquals(rank, 2.0 / length, 0.1);
+        }
+      },
+    };
+  };
+}
+
 function makeHITSTestSuite(isSmart, smartAttribute, numberOfShards) {
 
   const verticesEdgesGenerator = loadGraphGenerators(isSmart).verticesEdgesGenerator;
@@ -1794,6 +1848,7 @@ exports.makePagerankTestSuite = makePagerankTestSuite;
 exports.makeSeededPagerankTestSuite = makeSeededPagerankTestSuite;
 exports.makeSSSPTestSuite = makeSSSPTestSuite;
 exports.makeHITSTestSuite = makeHITSTestSuite;
+exports.makeLineRankTestSuite = makeLineRankTestSuite;
 
 // Suite helper methods
 exports.makeSetUp = makeSetUp;
@@ -1809,5 +1864,5 @@ exports.runFinished = runFinished;
 exports.runCanceled = runCanceled;
 exports.runFinishedSuccessfully = runFinishedSuccessfully;
 exports.waitUntilRunFinishedSuccessfully = waitUntilRunFinishedSuccessfully;
-exports.waitForResultsBeeingGarbageCollected = waitForResultsBeeingGarbageCollected;
+exports.waitForResultsBeingGarbageCollected = waitForResultsBeingGarbageCollected;
 exports.uniquePregelResults = uniquePregelResults;

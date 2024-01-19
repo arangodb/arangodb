@@ -25,12 +25,13 @@
 
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
-#include "Logger/Logger.h"
+
+#include <absl/strings/str_cat.h>
 
 using namespace arangodb;
 using namespace arangodb::maskings;
 
-ParseResult<Path> Path::parse(std::string const& def) {
+ParseResult<Path> Path::parse(std::string_view def) {
   if (def.empty()) {
     return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
                              "path must not be empty");
@@ -48,7 +49,7 @@ ParseResult<Path> Path::parse(std::string const& def) {
     wildcard = true;
   }
 
-  uint8_t const* p = reinterpret_cast<uint8_t const*>(def.c_str());
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(def.data());
   int32_t off = 0;
   int32_t len = static_cast<int32_t>(def.size());
   UChar32 ch;
@@ -63,13 +64,14 @@ ParseResult<Path> Path::parse(std::string const& def) {
     U8_NEXT(p, off, len, ch);
 
     if (ch < 0) {
-      return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                               "path '" + def + "' contains illegal UTF-8");
+      return ParseResult<Path>(
+          ParseResult<Path>::ILLEGAL_PARAMETER,
+          absl::StrCat("path '", def, "' contains illegal UTF-8"));
     } else if (ch == 46) {
       if (buffer.size() == 0) {
         return ParseResult<Path>(
             ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an empty component");
+            absl::StrCat("path '", def, "' contains an empty component"));
       }
 
       components.push_back(buffer);
@@ -79,8 +81,9 @@ ParseResult<Path> Path::parse(std::string const& def) {
       U8_NEXT(p, off, len, ch);
 
       if (ch < 0) {
-        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def + "' contains illegal UTF-8");
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            absl::StrCat("path '", def, "' contains illegal UTF-8"));
       }
 
       while (off < len && ch != quote) {
@@ -88,22 +91,24 @@ ParseResult<Path> Path::parse(std::string const& def) {
         U8_NEXT(p, off, len, ch);
 
         if (ch < 0) {
-          return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                   "path '" + def + "' contains illegal UTF-8");
+          return ParseResult<Path>(
+              ParseResult<Path>::ILLEGAL_PARAMETER,
+              absl::StrCat("path '", def, "' contains illegal UTF-8"));
         }
       }
 
       if (ch != quote) {
         return ParseResult<Path>(
             ParseResult<Path>::ILLEGAL_PARAMETER,
-            "path '" + def + "' contains an unbalanced quote");
+            absl::StrCat("path '", def, "' contains an unbalanced quote"));
       }
 
       U8_NEXT(p, off, len, ch);
 
       if (ch < 0) {
-        return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                                 "path '" + def + "' contains illegal UTF-8");
+        return ParseResult<Path>(
+            ParseResult<Path>::ILLEGAL_PARAMETER,
+            absl::StrCat("path '", def, "' contains illegal UTF-8"));
       }
     } else {
       basics::Utf8Helper::appendUtf8Character(buffer, ch);
@@ -111,21 +116,23 @@ ParseResult<Path> Path::parse(std::string const& def) {
   }
 
   if (buffer.size() == 0) {
-    return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                             "path '" + def + "' contains an empty component");
+    return ParseResult<Path>(
+        ParseResult<Path>::ILLEGAL_PARAMETER,
+        absl::StrCat("path '", def, "' contains an empty component"));
   }
 
   components.push_back(buffer);
 
   if (components.empty()) {
-    return ParseResult<Path>(ParseResult<Path>::ILLEGAL_PARAMETER,
-                             "path '" + def + "' contains no component");
+    return ParseResult<Path>(
+        ParseResult<Path>::ILLEGAL_PARAMETER,
+        absl::StrCat("path '", def, "' contains no component"));
   }
 
   return ParseResult<Path>(Path(wildcard, false, components));
 }
 
-bool Path::match(std::vector<std::string> const& path) const {
+bool Path::match(std::vector<std::string_view> const& path) const {
   size_t cs = _components.size();
   size_t ps = path.size();
 

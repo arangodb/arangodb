@@ -254,7 +254,7 @@ struct Str {
 template<Str File, std::size_t Line>
 struct FileLineType {
   static auto annotate(std::string_view message) -> std::string {
-    return fmt::format("{}:{}:{}", File.buffer, Line, message);
+    return fmt::format("{}:{}: {}", File.buffer, Line, message);
   }
 };
 }  // namespace detail

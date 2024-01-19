@@ -25,6 +25,7 @@
 
 #include "Aql/SortedRowsStorageBackend.h"
 #include "Aql/SortExecutor.h"
+#include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <cstddef>
 #include <memory>
@@ -73,6 +74,8 @@ class SortedRowsStorageBackendRocksDB final
 
   // next row number that we generate on insert
   size_t _rowNumberForInsert;
+
+  RocksDBMethodsMemoryTracker _memoryTracker;
 };
 
 }  // namespace arangodb

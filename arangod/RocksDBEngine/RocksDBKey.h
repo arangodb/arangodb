@@ -31,6 +31,7 @@
 #include "VocBase/voc-types.h"
 #include "Zkd/ZkdHelper.h"
 
+#include <iosfwd>
 #include <string>
 #include <string_view>
 
@@ -63,9 +64,8 @@ class RocksDBKey {
   RocksDBKey& operator=(RocksDBKey const& other) = delete;
   RocksDBKey& operator=(RocksDBKey&& other) = delete;
 
- public:
   /// @brief verify that a key actually contains the given local document id
-  bool containsLocalDocumentId(LocalDocumentId const& id) const;
+  bool containsLocalDocumentId(LocalDocumentId id) const;
 
   /// @brief construct a RocksDB key from another, already filled buffer
   void constructFromBuffer(std::string_view buffer);
@@ -180,10 +180,15 @@ class RocksDBKey {
   void constructRevisionTreeValue(uint64_t objectId);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Create a fully-specified key for zkd index
+  /// @brief Create a fully-specified key for mdi
   //////////////////////////////////////////////////////////////////////////////
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value);
-  void constructZkdIndexValue(uint64_t objectId, const zkd::byte_string& value,
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, velocypack::Slice prefix,
+                              const zkd::byte_string& value,
+                              LocalDocumentId documentId);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value);
+  void constructMdiIndexValue(uint64_t objectId, const zkd::byte_string& value,
                               LocalDocumentId documentId);
 
   //////////////////////////////////////////////////////////////////////////////
@@ -191,7 +196,6 @@ class RocksDBKey {
   //////////////////////////////////////////////////////////////////////////////
   void constructLogEntry(uint64_t objectId, replication2::LogIndex idx);
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts the type from a key
   ///
@@ -294,11 +298,17 @@ class RocksDBKey {
   static uint64_t geoValue(rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief Extracts the zkd index value
+  /// @brief Extracts the mdi value
   ///
-  /// May be called only on zkd index values
+  /// May be called only on mdi values
   //////////////////////////////////////////////////////////////////////////////
-  static zkd::byte_string_view zkdIndexValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(
+      rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiIndexCurveValue(rocksdb::Slice const& slice);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(
+      rocksdb::Slice const& slice);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Extracts log index from key
@@ -309,7 +319,6 @@ class RocksDBKey {
   /// size of internal objectID
   static constexpr size_t objectIdSize() { return sizeof(uint64_t); }
 
- public:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Returns a reference to the full, constructed key
   //////////////////////////////////////////////////////////////////////////////
@@ -362,7 +371,14 @@ class RocksDBKey {
   static std::string_view primaryKey(char const* data, size_t size);
   static std::string_view vertexId(char const* data, size_t size);
   static VPackSlice indexedVPack(char const* data, size_t size);
-  static zkd::byte_string_view zkdIndexValue(char const* data, size_t size);
+  static zkd::byte_string_view mdiIndexCurveValue(char const* data,
+                                                  size_t size);
+  static zkd::byte_string_view mdiUniqueIndexCurveValue(char const* data,
+                                                        size_t size);
+  static zkd::byte_string_view mdiVPackIndexCurveValue(char const* data,
+                                                       size_t size);
+  static zkd::byte_string_view mdiUniqueVPackIndexCurveValue(char const* data,
+                                                             size_t size);
 
  private:
   static const char _stringSeparator;

@@ -31,7 +31,6 @@
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
 
-#include <unordered_set>
 #include <vector>
 
 namespace arangodb {
@@ -63,7 +62,6 @@ struct CalculationExecutorInfos {
   RegisterId getOutputRegisterId() const noexcept;
 
   QueryContext& getQuery() const noexcept;
-  transaction::Methods* getTrx() const noexcept;
 
   Expression& getExpression() const noexcept;
 
@@ -79,7 +77,13 @@ struct CalculationExecutorInfos {
   std::vector<std::pair<VariableId, RegisterId>> _expVarToRegs;
 };
 
-enum class CalculationType { Condition, V8Condition, Reference };
+enum class CalculationType {
+  Condition,
+#ifdef USE_V8
+  V8Condition,
+#endif
+  Reference
+};
 
 template<CalculationType calculationType>
 class CalculationExecutor {
@@ -88,8 +92,6 @@ class CalculationExecutor {
     static constexpr bool preservesOrder = true;
     static constexpr BlockPassthrough allowsBlockPassthrough =
         BlockPassthrough::Enable;
-    /* This could be set to true after some investigation/fixes */
-    static constexpr bool inputSizeRestrictsOutputSize = false;
   };
   using Fetcher = SingleRowFetcher<Properties::allowsBlockPassthrough>;
   using Infos = CalculationExecutorInfos;
@@ -111,6 +113,7 @@ class CalculationExecutor {
   // specialized implementations
   void doEvaluation(InputAqlItemRow& input, OutputAqlItemRow& output);
 
+#ifdef USE_V8
   // Only for V8Conditions
   template<CalculationType U = calculationType,
            typename = std::enable_if_t<U == CalculationType::V8Condition>>
@@ -120,23 +123,24 @@ class CalculationExecutor {
   template<CalculationType U = calculationType,
            typename = std::enable_if_t<U == CalculationType::V8Condition>>
   void exitContext() noexcept;
+#endif
 
   [[nodiscard]] bool shouldExitContextBetweenBlocks() const noexcept;
 
  private:
+  CalculationExecutorInfos& _infos;
   transaction::Methods _trx;
   aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
-  CalculationExecutorInfos& _infos;
 
   Fetcher& _fetcher;
 
   InputAqlItemRow _currentRow;
   ExecutionState _rowState;
 
-  // true iff we entered a V8 context and didn't exit it yet.
-  // Necessary for owned contexts, which will not be exited when we call
+  // true iff we entered a V8 executor and didn't exit it yet.
+  // Necessary for owned executors, which will not be exited when we call
   // exitContext; but only for assertions in maintainer mode.
-  bool _hasEnteredContext;
+  bool _hasEnteredExecutor;
 };
 
 }  // namespace aql

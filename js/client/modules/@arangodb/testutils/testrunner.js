@@ -47,11 +47,14 @@ let didSplitBuckets = false;
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief checks no tasks were left on the SUT by tests
 // //////////////////////////////////////////////////////////////////////////////
+function filterTasksList(taskList) {
+  return taskList.filter(task => !task.hasOwnProperty('id') || task.id !== 'foxx-queue-manager');
+}
 let tasksTests = {
   name: 'tasks',
   setUp: function (obj, te) {
     try {
-      obj.taskCount = tasks.get().length;
+      obj.taskCount = filterTasksList(tasks.get()).length;
     } catch (x) {
       obj.results[obj.translateResult(te)] = {
         status: false,
@@ -64,7 +67,7 @@ let tasksTests = {
   },
   runCheck: function (obj, te) {
     try {
-      if (tasks.get().length !== obj.taskCount) {
+      if (filterTasksList(tasks.get()).length !== obj.taskCount) {
         obj.results[obj.translateResult(te)] = {
           status: false,
           message: 'Cleanup of tasks missing - found tasks left over: [ ' +
@@ -407,7 +410,7 @@ class testRunner {
     }
     if (this.options.agency) {
       // pure agency tests won't need user checks.
-      if (this.options.cluster || this.options.activefailover) {
+      if (this.options.cluster) {
         this.cleanupChecks.push(databasesTest);
       }
     } else {

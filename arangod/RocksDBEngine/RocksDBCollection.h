@@ -29,6 +29,9 @@
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/vocbase.h"
 
+#include <atomic>
+#include <memory>
+
 namespace rocksdb {
 class PinnableSlice;
 class Transaction;
@@ -67,8 +70,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   // -- SECTION Indexes --
   ///////////////////////////////////
 
-  std::shared_ptr<Index> createIndex(velocypack::Slice info, bool restore,
-                                     bool& created) override;
+  futures::Future<std::shared_ptr<Index>> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
+          nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;
@@ -102,20 +107,18 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
-  Result read(transaction::Methods*, std::string_view key,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::string_view key,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options) const override;
 
-  Result readFromSnapshot(transaction::Methods* trx,
-                          LocalDocumentId const& token,
-                          IndexIterator::DocumentCallback const& cb,
-                          ReadOwnWrites readOwnWrites,
-                          StorageSnapshot const& snapshot) const override;
+  Result lookup(transaction::Methods* trx, LocalDocumentId token,
+                IndexIterator::DocumentCallback const& cb,
+                LookupOptions options,
+                StorageSnapshot const* snapshot = nullptr) const override;
 
-  /// @brief lookup with callback, not thread-safe on same transaction::Context
-  Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites readOwnWrites) const override;
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const override;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
@@ -145,17 +148,11 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  bool cacheEnabled() const noexcept { return _cacheEnabled; }
+  bool cacheEnabled() const noexcept override;
 
   bool hasDocuments() override;
 
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocument(transaction::Methods& trx, LocalDocumentId documentId,
-                        velocypack::Builder& builder, bool readCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
+  void freeMemory() noexcept override;
 
   // @brief return the primary index
   // WARNING: Make sure that this instance
@@ -210,27 +207,18 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                         RevisionId oldRevisionId, RevisionId newRevisionId,
                         OperationOptions const& options) const;
 
-  /// @brief lookup document in cache and / or rocksdb
-  /// @param readCache attempt to read from cache
-  /// @param fillCache fill cache with found document
-  Result lookupDocumentVPack(transaction::Methods* trx,
-                             LocalDocumentId const& documentId,
-                             rocksdb::PinnableSlice& ps, bool readCache,
-                             bool fillCache, ReadOwnWrites readOwnWrites) const;
-
-  Result lookupDocumentVPack(
-      transaction::Methods*, LocalDocumentId const& documentId,
-      IndexIterator::DocumentCallback const& cb, bool withCache,
-      ReadOwnWrites readOwnWrites,
-      RocksDBEngine::RocksDBSnapshot const* snapshot = nullptr) const;
+  Result lookupDocumentVPack(transaction::Methods* trx, LocalDocumentId token,
+                             IndexIterator::DocumentCallback const& cb,
+                             LookupOptions options,
+                             StorageSnapshot const* snapshot) const;
 
   /// @brief create hash-cache
   void setupCache() const;
   /// @brief destory hash-cache
   void destroyCache() const;
 
-  /// is this collection using a cache
-  inline bool useCache() const noexcept { return (_cacheEnabled && _cache); }
+  /// @brief: this can return a nullptr. the caller has to check the result
+  std::shared_ptr<cache::Cache> useCache() const noexcept;
 
   /// @brief track key in file
   void invalidateCacheEntry(RocksDBKey const& key) const;
@@ -259,9 +247,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
   cache::Manager* _cacheManager;
 
   /// @brief document cache (optional)
+  /// use only with std::atomic_load|store_explicit()!
   mutable std::shared_ptr<cache::Cache> _cache;
 
-  std::atomic<bool> _cacheEnabled;
+  std::atomic_bool _cacheEnabled;
 
   TransactionStatistics& _statistics;
 };

@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/GraphNode.h"
-#include "Aql/Graphs.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
 #include "ShortestPathExecutor.h"
@@ -82,15 +81,16 @@ class ShortestPathNode : public virtual GraphNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return SHORTEST_PATH; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override;
 
   /// @brief Test if this node uses an in variable or constant for start
   bool usesStartInVariable() const { return _inStartVariable != nullptr; }
@@ -142,10 +142,8 @@ class ShortestPathNode : public virtual GraphNode {
  private:
   std::vector<arangodb::graph::IndexAccessor> buildIndexes(bool reverse) const;
 
-  void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c,
-                               bool withProperties) const;
+  void shortestPathCloneHelper(ExecutionPlan& plan, ShortestPathNode& c) const;
 
- private:
   /// @brief input variable only used if _vertexId is unused
   Variable const* _inStartVariable;
 

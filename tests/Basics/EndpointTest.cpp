@@ -71,8 +71,8 @@ TEST(EndpointTest, EndpointInvalid) {
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("unix://"));
 
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("fish://127.0.0.1:8529"));
-  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("http://127.0.0.1:8529"));
-  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("https://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("htp://127.0.0.1:8529"));
+  EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("ftp://127.0.0.1:8529"));
 
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp//127.0.0.1:8529"));
   EXPECT_TRUE(e == arangodb::Endpoint::clientFactory("tcp:127.0.0.1:8529"));
@@ -107,10 +107,16 @@ TEST(EndpointTest, EndpointSpecification) {
                          "http+tcp://127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "tcp://localhost", specification,
                          "http+tcp://127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "ssl://localhost", specification,
+                         "http+ssl://127.0.0.1:8529");
   CHECK_ENDPOINT_FEATURE(client, "SSL://127.0.0.5", specification,
                          "http+ssl://127.0.0.5:8529");
   CHECK_ENDPOINT_FEATURE(client, "httP@ssl://localhost:4635", specification,
                          "http+ssl://127.0.0.1:4635");
+  CHECK_ENDPOINT_FEATURE(client, "http://localhost", specification,
+                         "http+tcp://127.0.0.1:8529");
+  CHECK_ENDPOINT_FEATURE(client, "https://localhost", specification,
+                         "http+ssl://127.0.0.1:8529");
 
 #ifndef _WIN32
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", specification,
@@ -144,9 +150,13 @@ TEST(EndpointTest, EndpointTypes) {
                                 arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "tcp://localhost", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "http://localhost", type,
+                                arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://127.0.0.1", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
   CHECK_ENDPOINT_SERVER_FEATURE(server, "ssl://localhost", type,
+                                arangodb::Endpoint::EndpointType::SERVER);
+  CHECK_ENDPOINT_SERVER_FEATURE(server, "https://localhost", type,
                                 arangodb::Endpoint::EndpointType::SERVER);
 #ifndef _WIN32
   CHECK_ENDPOINT_SERVER_FEATURE(server, "unix:///path/to/socket", type,
@@ -339,6 +349,7 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(
       client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666", port,
       666);
+  CHECK_ENDPOINT_FEATURE(client, "http://localhost:65535", port, 65535);
 
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", port,
                          EndpointIp::_defaultPortHttp);
@@ -357,6 +368,7 @@ TEST(EndpointTest, EndpointPorts) {
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:443", port, 443);
   CHECK_ENDPOINT_FEATURE(client, "ssl://localhost:65535", port, 65535);
   CHECK_ENDPOINT_FEATURE(client, "ssl://www.arangodb.org:8529", port, 8529);
+  CHECK_ENDPOINT_FEATURE(client, "https://www.arangodb.org:8529", port, 8529);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://www.arangodb.org:8529", port,
                          8529);
   CHECK_ENDPOINT_FEATURE(client, "ssl://[127.0.0.1]", port,
@@ -420,6 +432,8 @@ TEST(EndpointTest, EndpointEncryption) {
   CHECK_ENDPOINT_FEATURE(
       client, "http@tcp://[2001:0db8:0000:0000:0000:ff00:0042:8329]:666",
       encryption, arangodb::Endpoint::EncryptionType::NONE);
+  CHECK_ENDPOINT_FEATURE(client, "http://[::]:8529", encryption,
+                         arangodb::Endpoint::EncryptionType::NONE);
 
   CHECK_ENDPOINT_FEATURE(client, "ssl://127.0.0.1", encryption,
                          arangodb::Endpoint::EncryptionType::SSL);
@@ -451,6 +465,8 @@ TEST(EndpointTest, EndpointEncryption) {
   CHECK_ENDPOINT_FEATURE(client, "sSL://[::]:8529", encryption,
                          arangodb::Endpoint::EncryptionType::SSL);
   CHECK_ENDPOINT_FEATURE(client, "http@ssl://[::]:8529", encryption,
+                         arangodb::Endpoint::EncryptionType::SSL);
+  CHECK_ENDPOINT_FEATURE(client, "https://[::]:8529", encryption,
                          arangodb::Endpoint::EncryptionType::SSL);
 
 #ifndef _WIN32

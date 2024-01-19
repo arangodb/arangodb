@@ -30,9 +30,10 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
-namespace arangodb { namespace fuerte { inline namespace v1 {
+namespace arangodb {
+namespace fuerte {
+inline namespace v1 {
 class Request;
 class Response;
 
@@ -248,5 +249,7 @@ struct ConnectionConfiguration {
   std::string _jwtToken;
 };
 }  // namespace detail
-}}}  // namespace arangodb::fuerte::v1
+}  // namespace v1
+}  // namespace fuerte
+}  // namespace arangodb
 #endif

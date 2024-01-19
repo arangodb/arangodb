@@ -145,7 +145,7 @@ class ShardLocking {
   // Adjust locking level of a single collection
   void updateLocking(Collection const* col, AccessMode::Type const& accessType,
                      size_t snippetId,
-                     std::unordered_set<std::string> const& restrictedShards,
+                     std::unordered_set<ShardID> const& restrictedShards,
                      bool useAsSatellite);
 
  private:

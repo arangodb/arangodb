@@ -26,10 +26,15 @@
 
 #include "ActionBase.h"
 #include "ActionDescription.h"
+#include "VocBase/Methods/Indexes.h"
 
 #include <chrono>
 
+struct TRI_vocbase_t;
+
 namespace arangodb {
+class LogicalCollection;
+
 namespace maintenance {
 
 class EnsureIndex : public ActionBase {
@@ -38,7 +43,17 @@ class EnsureIndex : public ActionBase {
 
   virtual ~EnsureIndex();
 
+  void setState(ActionState state) override final;
+  virtual arangodb::Result setProgress(double d) override final;
   virtual bool first() override final;
+
+  static void indexCreationLogging(VPackSlice index);
+
+ private:
+  static auto ensureIndexReplication2(
+      std::shared_ptr<LogicalCollection> coll, VPackSlice indexInfo,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      -> Result;
 };
 
 }  // namespace maintenance

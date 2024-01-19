@@ -36,6 +36,7 @@ if (getOptions === true) {
     'log.role': 'false',
     'log.output': 'file://' + fs.getTempFile() + '.$PID',
     'log.foreground-tty': 'false',
+    'log.thread': 'false',
   };
 }
 

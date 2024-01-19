@@ -29,13 +29,12 @@
 #include <limits>
 #include <type_traits>
 
-namespace arangodb {
-namespace cache {
+namespace arangodb::cache {
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief Simple state class with a small footprint.
 ///
-/// Underlying store is simply a std::atomic<uint32_t>, and each bit corresponds
+/// Underlying store is simply a std::atomic<uint16_t>, and each bit corresponds
 /// to a flag that can be set. The lowest bit is special and is designated as
 /// the locking flag. Any access (read or modify) to the state must occur when
 /// the state is already locked; the two exceptions are to check whether the
@@ -47,24 +46,19 @@ struct BucketState {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Flags which can be queried or toggled to reflect state.
   ///
-  /// Each flag must have exactly one bit set, fit in uint32_t. The 'locked'
+  /// Each flag must have exactly one bit set, fit in uint16_t. The 'locked'
   /// flag is special and should remain the least-significant bit. When other
   /// flags are added,they should be kept in alphabetical order for readability,
   /// and all flag values should be adjusted to keep bit-significance in
   /// ascending order.
   //////////////////////////////////////////////////////////////////////////////
-  enum class Flag : std::uint32_t {
-    locked = 0x00000001,
-    banished = 0x00000002,
-    disabled = 0x00000004,
-    evictions = 0x00000008,
-    migrated = 0x00000010,
-    migrating = 0x00000020,
-    rebalancing = 0x00000040,
-    resizing = 0x00000080,
-    shutdown = 0x00000100,
-    shuttingDown = 0x00000200,
+  enum class Flag : std::uint16_t {
+    locked = 0x0001,
+    banished = 0x0002,
+    migrated = 0x0004,
   };
+
+  using FlagType = std::underlying_type<Flag>::type;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Initializes state with no flags set and unlocked
@@ -117,7 +111,6 @@ struct BucketState {
   /// @brief Checks whether the given flag is set. Requires state to be locked.
   //////////////////////////////////////////////////////////////////////////////
   bool isSet(BucketState::Flag flag) const noexcept;
-  bool isSet(BucketState::Flag flag1, BucketState::Flag flag2) const noexcept;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Toggles the given flag. Requires state to be locked.
@@ -130,12 +123,10 @@ struct BucketState {
   void clear() noexcept;
 
  private:
-  std::atomic<std::uint32_t> _state;
+  std::atomic<FlagType> _state;
 };
 
-// ensure that state is exactly the size of uint32_t
-static_assert(sizeof(BucketState) == sizeof(std::uint32_t),
-              "Expected sizeof(BucketState) == sizeof(uint32_t).");
+// ensure that state is exactly the size of uint16_t
+static_assert(sizeof(BucketState) == sizeof(std::uint16_t));
 
-};  // end namespace cache
-};  // end namespace arangodb
+};  // end namespace arangodb::cache

@@ -126,7 +126,7 @@ void ProcessMonitorThread::run() {  // override
   while (!isStopping()) {
     try {
       _processMonitorFeature.visitMonitoring([&](auto const& pid) {
-        auto status = TRI_CheckExternalProcess(pid, false, 0);
+        auto status = TRI_CheckExternalProcess(pid, false, 0, noDeadLine);
         if ((status._status == TRI_EXT_TERMINATED) ||
             (status._status == TRI_EXT_ABORTED) ||
             (status._status == TRI_EXT_NOT_FOUND)) {

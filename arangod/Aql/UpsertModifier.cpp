@@ -28,18 +28,15 @@
 #include "Aql/ModificationExecutor.h"
 #include "Aql/ModificationExecutorAccumulator.h"
 #include "Aql/ModificationExecutorHelpers.h"
-#include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/application-exit.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Collection.h>
-
-#include "Logger/LogMacros.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -146,6 +143,15 @@ ModificationExecutorResultState UpsertModifier::resultState() const noexcept {
   return _resultState;
 }
 
+UpsertModifier::UpsertModifier(ModificationExecutorInfos& infos)
+    : _infos(infos),
+      _updateResults(Result(), infos._options),
+      _insertResults(Result(), infos._options),
+      // Batch size has to be 1 in case the upsert modifier sees its own
+      // writes. otherwise it will use the default batching
+      _batchSize(_infos._batchSize),
+      _resultState(ModificationExecutorResultState::NoResult) {}
+
 void UpsertModifier::reset() {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   {
@@ -200,12 +206,10 @@ UpsertModifier::OperationType UpsertModifier::updateReplaceCase(
 
       return UpsertModifier::OperationType::UpdateReturnIfAvailable;
     } else {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
-          std::string("expecting 'Object', got: ") +
-              updateDoc.slice().typeName() +
-              std::string(" while handling: UPSERT"));
-      return UpsertModifier::OperationType::SkipRow;
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_ARANGO_DOCUMENT_TYPE_INVALID,
+                                     absl::StrCat("expecting 'Object', got: ",
+                                                  updateDoc.slice().typeName(),
+                                                  " while handling: UPSERT"));
     }
   } else {
     return UpsertModifier::OperationType::CopyRow;

@@ -1,7 +1,7 @@
 import { Box } from "@chakra-ui/react";
 import { useFormikContext } from "formik";
 import React from "react";
-import { IndexFormField, IndexFormFieldProps } from "../IndexFormField";
+import { FormField, FormFieldProps } from "../../../../../components/form/FormField";
 import { FieldBreadcrumbs } from "./FieldBreadcrumbs";
 import { FieldsDropdown } from "./FieldsDropdown";
 import { InvertedIndexAnalyzerDropdown } from "./InvertedIndexAnalyzerDropdown";
@@ -44,32 +44,32 @@ const SelectedFieldDetails = ({
           }}
           dependentFieldName={`${fullPath}.features`}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.features,
             name: `${fullPath}.features`
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.includeAllFields,
             name: `${fullPath}.includeAllFields`
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.trackListPositions,
             name: `${fullPath}.trackListPositions`
           }}
         />
-        <IndexFormField
+        <FormField
           field={{
             ...invertedIndexFieldsMap.searchField,
             name: `${fullPath}.searchField`
           }}
         />
         <Box gridColumn="1 / span 3">
-          <IndexFormField
+          <FormField
             render={({ field }) => {
               return <FieldsDropdown field={field} />;
             }}
@@ -92,7 +92,7 @@ export const InvertedIndexFieldsDataEntry = ({
   field
 }: {
   autoFocus: boolean;
-  field: IndexFormFieldProps;
+  field: FormFieldProps;
 }) => {
   const { currentFieldData } = useInvertedIndexContext();
   return (

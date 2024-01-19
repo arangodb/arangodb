@@ -69,10 +69,13 @@ VertexID WorkerConfig::documentIdToPregel(std::string_view documentID) const {
     auto& ci = vocbase()->server().getFeature<ClusterFeature>().clusterInfo();
     auto info = ci.getCollectionNT(database(), collPart);
 
-    ShardID responsibleShard;
-    info->getResponsibleShard(partial.slice(), false, responsibleShard);
+    auto maybeShardID = info->getResponsibleShard(partial.slice(), false);
+    if (maybeShardID.fail()) {
+      THROW_ARANGO_EXCEPTION(maybeShardID.result());
+    }
 
-    PregelShard source = this->_graphSerdeConfig.pregelShard(responsibleShard);
+    PregelShard source =
+        this->_graphSerdeConfig.pregelShard(maybeShardID.get());
     return VertexID(source, std::string(keyPart));
   }
 }

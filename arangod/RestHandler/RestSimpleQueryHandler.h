@@ -41,8 +41,8 @@ class RestSimpleQueryHandler : public RestCursorHandler {
   char const* name() const override final { return "RestSimpleQueryHandler"; }
 
  private:
-  RestStatus allDocuments();
-  RestStatus allDocumentKeys();
-  RestStatus byExample();
+  futures::Future<RestStatus> allDocuments();
+  futures::Future<RestStatus> allDocumentKeys();
+  futures::Future<RestStatus> byExample();
 };
 }  // namespace arangodb

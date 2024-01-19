@@ -71,6 +71,10 @@ class Try {
   explicit Try(std::exception_ptr e) noexcept
       : _exception(std::move(e)), _content(Content::Exception) {}
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+#endif
   // Move constructor
   Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
       : _content(t._content) {
@@ -80,6 +84,9 @@ class Try {
       new (&_exception) std::exception_ptr(std::move(t._exception));
     }
   }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
   // Move assigner
   Try& operator=(Try<T>&& t) noexcept(
@@ -151,7 +158,7 @@ class Try {
   /// Set an exception value into this Try object.
   /// Destroys any previous value prior to constructing the new value.
   /// Leaves *this empty if throws
-  void set_exception(std::exception_ptr e) {
+  void set_exception(std::exception_ptr const& e) {
     this->destroy();
     new (&_exception) std::exception_ptr(e);
     _content = Content::Exception;
@@ -371,10 +378,6 @@ class Try<void> {
   /// In-place construct a 'void' value into this Try object.
   /// This has the effect of clearing any existing exception stored
   void emplace() noexcept { _exception = nullptr; }
-
-  /// Set an exception value into this Try object.
-  /// This has the effect of clearing any existing exception stored
-  void set_exception(std::exception_ptr e) noexcept { _exception = e; }
 
   /// Set an exception value into this Try object.
   /// This has the effect of clearing any existing exception stored

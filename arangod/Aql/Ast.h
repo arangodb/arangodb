@@ -26,6 +26,7 @@
 #include <functional>
 #include <iterator>
 #include <memory>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -42,8 +43,10 @@
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
+#include "Basics/ResourceUsage.h"
+#include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
-#include "Containers/HashSet.h"
+#include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
 
@@ -128,7 +131,7 @@ class Ast {
   AstNode* endSubQuery();
 
   /// @brief whether or not we currently are in a subquery
-  bool isInSubQuery() const;
+  bool isInSubQuery() const noexcept;
 
   /// @brief return a copy of our own bind parameters
   std::unordered_set<std::string> bindParameters() const;
@@ -151,6 +154,8 @@ class Ast {
   bool containsUpsertNode() const noexcept;
   void setContainsUpsertNode() noexcept;
   void setContainsParallelNode() noexcept;
+  bool containsAsyncPrefetch() const noexcept;
+  void setContainsAsyncPrefetch() noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
@@ -223,8 +228,11 @@ class Ast {
                              AstNode const*);
 
   /// @brief create an AST upsert node
-  AstNode* createNodeUpsert(AstNodeType, AstNode const*, AstNode const*,
-                            AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeUpsert(AstNodeType type, AstNode const* docVariable,
+                            AstNode const* insertExpression,
+                            AstNode const* updateExpression,
+                            AstNode const* collection, AstNode const* options,
+                            bool canReadOwnWrites);
 
   /// @brief create an AST distinct node
   AstNode* createNodeDistinct(AstNode const*);
@@ -277,7 +285,8 @@ class Ast {
   AstNode* createNodeReference(Variable const* variable);
 
   /// @brief create an AST subquery reference node
-  AstNode* createNodeSubqueryReference(std::string_view variableName);
+  AstNode* createNodeSubqueryReference(std::string_view variableName,
+                                       AstNode const*);
 
   /// @brief create an AST parameter node for a value literal
   AstNode* createNodeParameter(std::string_view name);
@@ -468,6 +477,8 @@ class Ast {
   /// @brief determines the variables referenced in an expression
   static void getReferencedVariables(AstNode const*, VarSet&);
 
+  static bool isVarsUsed(AstNode const*, VarSet const&);
+
   /// @brief count how many times a variable is referenced in an expression
   static size_t countReferences(AstNode const*, Variable const*);
 
@@ -475,12 +486,14 @@ class Ast {
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
       AstNode const*, Variable const*, std::string_view expectedAttribute,
-      containers::FlatHashSet<aql::AttributeNamePath>&);
+      containers::FlatHashSet<aql::AttributeNamePath>&,
+      arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief replace an attribute access with just the variable
   static AstNode* replaceAttributeAccess(
-      AstNode* node, Variable const* variable,
-      std::vector<std::string> const& attributeName);
+      Ast* ast, AstNode* node, Variable const* searchVariable,
+      std::span<std::string_view> attributeName,
+      Variable const* replaceVariable);
 
   /// @brief recursively clone a node
   AstNode* clone(AstNode const*);
@@ -525,6 +538,8 @@ class Ast {
   /// the unary plus will be converted into a simple value node if the operand
   /// of the operation is a constant number
   AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
+
+  AstNode const* getSubqueryForVariable(Variable const* variable) const;
 
  private:
   /// @brief make condition from example
@@ -658,8 +673,13 @@ class Ast {
   /// @brief root node of the AST
   AstNode* _root;
 
-  /// @brief root nodes of queries and subqueries
-  std::vector<AstNode*> _queries;
+  /// @brief root nodes of queries and subqueries. this container is added
+  /// to whenever we enter a subquery, but it is removed from when a subquery
+  /// is left
+  containers::SmallVector<AstNode*, 4> _queries;
+
+  /// @brief all subqueries used in the query
+  containers::FlatHashMap<VariableId, AstNode const*> _subqueries;
 
   /// @brief which collection is going to be modified in the query
   /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to
@@ -675,13 +695,17 @@ class Ast {
   /// @brief whether or not the query contains bind parameters
   bool _containsBindParameters;
 
-  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE
+  /// @brief contains INSERT / UPDATE / REPLACE / REMOVE / UPSERT
   bool _containsModificationNode;
 
-  bool _containsUpsertNode{false};
+  /// @brief contains UPSERT
+  bool _containsUpsertNode;
 
   /// @brief contains a parallel traversal
   bool _containsParallelNode;
+
+  /// @brief whether or not a part of the query uses async prefetching
+  bool _containsAsyncPrefetch;
 
   /// @brief query makes use of V8 function(s)
   bool _willUseV8;

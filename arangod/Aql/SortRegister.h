@@ -25,7 +25,10 @@
 #pragma once
 
 #include "Aql/ExecutionNode.h"
-#include "types.h"
+#include "Aql/types.h"
+
+#include <string>
+#include <vector>
 
 namespace arangodb {
 namespace aql {

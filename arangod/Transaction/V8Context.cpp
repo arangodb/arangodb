@@ -21,6 +21,10 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include "V8Context.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
@@ -35,8 +39,12 @@
 using namespace arangodb;
 
 /// @brief create the context
-transaction::V8Context::V8Context(TRI_vocbase_t& vocbase, bool embeddable)
-    : Context(vocbase), _currentTransaction(nullptr), _embeddable(embeddable) {}
+transaction::V8Context::V8Context(TRI_vocbase_t& vocbase,
+                                  OperationOrigin operationOrigin,
+                                  bool embeddable)
+    : Context(vocbase, operationOrigin),
+      _currentTransaction(nullptr),
+      _embeddable(embeddable) {}
 
 transaction::V8Context::~V8Context() noexcept {
   auto v8g = getV8State();
@@ -97,7 +105,7 @@ void transaction::V8Context::enterV8Context() {
   if (v8g == nullptr) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "no v8 context available to enter for current transaction context");
+        "no v8 executor available to enter for current transaction context");
   }
   TRI_ASSERT(v8g != nullptr);
 
@@ -127,7 +135,8 @@ std::shared_ptr<transaction::Context> transaction::V8Context::clone() const {
   // This comes with the consequence that one cannot run any JavaScript
   // code in the cloned context!
   TRI_ASSERT(_currentTransaction != nullptr);
-  auto clone = std::make_shared<transaction::StandaloneContext>(_vocbase);
+  auto clone = std::make_shared<transaction::StandaloneContext>(
+      _vocbase, _operationOrigin);
   clone->setState(_currentTransaction);
   return clone;
 }
@@ -148,30 +157,32 @@ transaction::V8Context::getParentState() {
 
 /// @brief check whether the transaction is embedded
 /*static*/ bool transaction::V8Context::isEmbedded() {
-  return (getParentState() != nullptr);
+  return getParentState() != nullptr;
 }
 
 /// @brief create a context, returned in a shared ptr
-std::shared_ptr<transaction::V8Context> transaction::V8Context::Create(
-    TRI_vocbase_t& vocbase, bool embeddable) {
-  return std::make_shared<transaction::V8Context>(vocbase, embeddable);
+std::shared_ptr<transaction::V8Context> transaction::V8Context::create(
+    TRI_vocbase_t& vocbase, OperationOrigin operationOrigin, bool embeddable) {
+  return std::make_shared<transaction::V8Context>(vocbase, operationOrigin,
+                                                  embeddable);
 }
 
 std::shared_ptr<transaction::Context>
-transaction::V8Context::CreateWhenRequired(TRI_vocbase_t& vocbase,
+transaction::V8Context::createWhenRequired(TRI_vocbase_t& vocbase,
+                                           OperationOrigin operationOrigin,
                                            bool embeddable) {
   // is V8 enabled and are currently in a V8 scope ?
   if (vocbase.server().hasFeature<V8DealerFeature>() &&
       vocbase.server().isEnabled<V8DealerFeature>() &&
-      v8::Isolate::GetCurrent() != nullptr) {
-    return transaction::V8Context::Create(vocbase, embeddable);
+      v8::Isolate::TryGetCurrent() != nullptr) {
+    return transaction::V8Context::create(vocbase, operationOrigin, embeddable);
   }
 
-  return transaction::StandaloneContext::Create(vocbase);
+  return transaction::StandaloneContext::create(vocbase, operationOrigin);
 }
 
 /*static*/ TRI_v8_global_t* transaction::V8Context::getV8State() noexcept {
-  v8::Isolate* isolate = v8::Isolate::GetCurrent();
+  v8::Isolate* isolate = v8::Isolate::TryGetCurrent();
   if (isolate == nullptr) {
     return nullptr;
   }

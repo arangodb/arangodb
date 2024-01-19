@@ -26,6 +26,7 @@
 
 #include "Basics/StaticStrings.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Parser.h>
@@ -40,7 +41,9 @@ void HttpResponseChecker::trimPayload(VPackSlice input, VPackBuilder& output) {
     output.openObject();
     ObjectIterator it(input);
     while (it.valid()) {
-      if (it.key().stringView() != "passwd") {
+      // trim passwd key and custom values from output.
+      // custom values cannot be printed without a proper custom type handler.
+      if (it.key().stringView() != "passwd" && !it.value().isCustom()) {
         output.add(it.key());
         trimPayload(it.value(), output);
       }
@@ -51,7 +54,10 @@ void HttpResponseChecker::trimPayload(VPackSlice input, VPackBuilder& output) {
     output.openArray();
     VPackArrayIterator it(input);
     while (it.valid()) {
-      trimPayload(it.value(), output);
+      // custom values cannot be printed without a proper custom type handler.
+      if (!it.value().isCustom()) {
+        trimPayload(it.value(), output);
+      }
       it.next();
     }
     output.close();
@@ -61,11 +67,11 @@ void HttpResponseChecker::trimPayload(VPackSlice input, VPackBuilder& output) {
 }
 
 /// @brief Check for error in http response
-Result HttpResponseChecker::check(
-    std::string const& clientErrorMsg,
-    httpclient::SimpleHttpResult const* const response,
-    std::string const& actionMsg, std::string_view requestPayload,
-    PayloadType type) {
+Result HttpResponseChecker::check(std::string const& clientErrorMsg,
+                                  httpclient::SimpleHttpResult const* response,
+                                  std::string const& actionMsg,
+                                  std::string_view requestPayload,
+                                  PayloadType type) {
   if (response != nullptr && !response->wasHttpError() &&
       response->isComplete()) {
     return {TRI_ERROR_NO_ERROR};
@@ -92,6 +98,7 @@ Result HttpResponseChecker::check(
           output);
       msgBody = output.toJson();
     } else {
+      // probably JSONL. use as is
       msgBody = requestPayload;
     }
   }
@@ -101,15 +108,15 @@ Result HttpResponseChecker::check(
     msgBody.resize(maxMsgBodySize);
     msgBody.append("...");
   }
-  using basics::StringUtils::itoa;
   if (response == nullptr || !response->isComplete()) {
-    return {
-        TRI_ERROR_INTERNAL,
-        "got invalid response from server " +
-            (clientErrorMsg.empty() ? "" : ": '" + clientErrorMsg + "'") +
-            (actionMsg.empty() ? "" : " while executing " + actionMsg) +
-            (msgBody.empty() ? ""
-                             : " with this requestPayload: '" + msgBody + "'")};
+    return {TRI_ERROR_INTERNAL,
+            absl::StrCat(
+                "got invalid response from server ",
+                (clientErrorMsg.empty() ? "" : ": '" + clientErrorMsg + "'"),
+                (actionMsg.empty() ? "" : " while executing " + actionMsg),
+                (msgBody.empty()
+                     ? ""
+                     : " with this request payload: '" + msgBody + "'"))};
   }
   auto errorNum = static_cast<int>(TRI_ERROR_INTERNAL);
   std::string errorMsg = response->getHttpReturnMessage();
@@ -127,13 +134,13 @@ Result HttpResponseChecker::check(
   }
 
   auto err = ErrorCode{errorNum};
-  return {
-      err,
-      "got invalid response from server: HTTP " +
-          itoa(response->getHttpReturnCode()) + ": '" + errorMsg + "'" +
-          (actionMsg.empty() ? "" : " while executing " + actionMsg) +
-          (msgBody.empty() ? ""
-                           : " with this requestPayload: '" + msgBody + "'")};
+  return {err, absl::StrCat(
+                   "got invalid response from server: HTTP ",
+                   response->getHttpReturnCode(), ": '", errorMsg, "'",
+                   (actionMsg.empty() ? "" : " while executing " + actionMsg),
+                   (msgBody.empty()
+                        ? ""
+                        : " with this request payload: '" + msgBody + "'"))};
 }
 
 /// @brief Check for error in http response

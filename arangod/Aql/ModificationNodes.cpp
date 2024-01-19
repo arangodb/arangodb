@@ -92,6 +92,11 @@ CostEstimate ModificationNode::estimateCost() const {
   return estimate;
 }
 
+AsyncPrefetchEligibility ModificationNode::canUseAsyncPrefetching()
+    const noexcept {
+  return AsyncPrefetchEligibility::kDisableGlobally;
+}
+
 void ModificationNode::cloneCommon(ModificationNode* c) const {
   if (!_countStats) {
     c->disableStatistics();
@@ -119,8 +124,7 @@ void RemoveNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
 
   TRI_ASSERT(previousNode != nullptr);
@@ -147,7 +151,8 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
       &engine, inDocRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -157,24 +162,13 @@ std::unique_ptr<ExecutionBlock> RemoveNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* RemoveNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
+ExecutionNode* RemoveNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<RemoveNode>(plan, _id, collection(), _options,
-                                        inVariable, outVariableOld);
+                                        _inVariable, _outVariableOld);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -199,8 +193,7 @@ void InsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -229,7 +222,8 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
       &engine, inputRegister, RegisterPlan::MaxRegisterId,
       RegisterPlan::MaxRegisterId, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), ExecutionBlock::DefaultBatchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -239,36 +233,33 @@ std::unique_ptr<ExecutionBlock> InsertNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* InsertNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    inVariable = plan->getAst()->variables()->createVariable(inVariable);
-  }
-
-  auto c =
-      std::make_unique<InsertNode>(plan, _id, collection(), _options,
-                                   inVariable, outVariableOld, outVariableNew);
+ExecutionNode* InsertNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  auto c = std::make_unique<InsertNode>(plan, _id, collection(), _options,
+                                        _inVariable, _outVariableOld,
+                                        _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 void InsertNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   _inVariable = Variable::replace(_inVariable, replacements);
 }
+
+void InsertNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+    _inVariable = replaceVariable;
+  }
+}
+
+size_t InsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// REMOVE
@@ -312,10 +303,31 @@ void UpdateReplaceNode::replaceVariables(
   }
 }
 
+void UpdateReplaceNode::replaceAttributeAccess(
+    ExecutionNode const* self, Variable const* searchVariable,
+    std::span<std::string_view> attribute, Variable const* replaceVariable,
+    size_t /*index*/) {
+  auto replace = [&](Variable const*& variable) {
+    if (variable != nullptr && searchVariable == variable &&
+        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+      // replace the following patterns:
+      // FOR doc IN collection LET #x = doc._key (projection)
+      //   UPDATE|REPLACE doc._key WITH ... INTO collection
+      // with
+      //   UPDATE|REPLACE #x WITH ... INTO collection
+      // doc._id does not need to be supported for the lookup value here,
+      // as using `_id` for the lookup value is not supported.
+      variable = replaceVariable;
+    }
+  };
+
+  replace(_inKeyVariable);
+  replace(_inDocVariable);
+}
+
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -348,7 +360,7 @@ std::unique_ptr<ExecutionBlock> UpdateNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(false) /*(needed by upsert)*/,
@@ -362,37 +374,38 @@ void RemoveNode::replaceVariables(
   _inVariable = Variable::replace(_inVariable, replacements);
 }
 
-/// @brief clone ExecutionNode recursively
-ExecutionNode* UpdateNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inKeyVariable = _inKeyVariable;
-  auto inDocVariable = _inDocVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
+void RemoveNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
+  if (_inVariable != nullptr && searchVariable == _inVariable &&
+      attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+    // replace the following patterns:
+    // FOR doc IN collection LET #x = doc._key (projection)
+    //   REMOVE doc._key WITH ... INTO collection
+    // with
+    //   REMOVE #x WITH ... INTO collection
+    // doc._id does not need to be supported for the lookup value here,
+    // as using `_id` for the lookup value is not supported.
+    _inVariable = replaceVariable;
   }
+}
 
+size_t RemoveNode::getMemoryUsedBytes() const { return sizeof(*this); }
+
+/// @brief clone ExecutionNode recursively
+ExecutionNode* UpdateNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<UpdateNode>(plan, _id, collection(), _options,
-                                        inDocVariable, inKeyVariable,
-                                        outVariableOld, outVariableNew);
+                                        _inDocVariable, _inKeyVariable,
+                                        _outVariableOld, _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
+
+size_t UpdateNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ReplaceNode::ReplaceNode(ExecutionPlan* plan,
                          arangodb::velocypack::Slice const& base)
@@ -400,8 +413,7 @@ ReplaceNode::ReplaceNode(ExecutionPlan* plan,
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -434,7 +446,7 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
       &engine, inDocRegister, inKeyRegister, RegisterPlan::MaxRegisterId,
       outputNew, outputOld, RegisterPlan::MaxRegisterId /*output*/,
       _plan->getAst()->query(), std::move(options), collection(),
-      ProducesResults(producesResults()),
+      ExecutionBlock::DefaultBatchSize, ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(true), IgnoreDocumentNotFound(_options.ignoreDocumentNotFound));
@@ -443,42 +455,41 @@ std::unique_ptr<ExecutionBlock> ReplaceNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                  bool withProperties) const {
-  auto outVariableOld = _outVariableOld;
-  auto outVariableNew = _outVariableNew;
-  auto inKeyVariable = _inKeyVariable;
-  auto inDocVariable = _inDocVariable;
-
-  if (withProperties) {
-    if (_outVariableOld != nullptr) {
-      outVariableOld =
-          plan->getAst()->variables()->createVariable(outVariableOld);
-    }
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    if (inKeyVariable != nullptr) {
-      inKeyVariable =
-          plan->getAst()->variables()->createVariable(inKeyVariable);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-  }
-
+ExecutionNode* ReplaceNode::clone(ExecutionPlan* plan,
+                                  bool withDependencies) const {
   auto c = std::make_unique<ReplaceNode>(plan, _id, collection(), _options,
-                                         inDocVariable, inKeyVariable,
-                                         outVariableOld, outVariableNew);
+                                         _inDocVariable, _inKeyVariable,
+                                         _outVariableOld, _outVariableNew);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
+
+size_t ReplaceNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 ///////////////////////////////////////////////////////////////////////////////
 /// UPSERT
 ///
 using SingleRowUpsertExecutionBlock = ExecutionBlockImpl<ModificationExecutor<
     SingleRowFetcher<BlockPassthrough::Disable>, UpsertModifier>>;
+
+UpsertNode::UpsertNode(
+    ExecutionPlan* plan, ExecutionNodeId id, Collection const* collection,
+    ModificationOptions const& options, Variable const* inDocVariable,
+    Variable const* insertVariable, Variable const* updateVariable,
+    Variable const* outVariableNew, bool isReplace, bool canReadOwnWrites)
+    : ModificationNode(plan, id, collection, options, nullptr, outVariableNew),
+      _inDocVariable(inDocVariable),
+      _insertVariable(insertVariable),
+      _updateVariable(updateVariable),
+      _isReplace(isReplace),
+      _canReadOwnWrites(canReadOwnWrites) {
+  TRI_ASSERT(_inDocVariable != nullptr);
+  TRI_ASSERT(_insertVariable != nullptr);
+  TRI_ASSERT(_updateVariable != nullptr);
+
+  TRI_ASSERT(_outVariableOld == nullptr);
+}
 
 UpsertNode::UpsertNode(ExecutionPlan* plan,
                        arangodb::velocypack::Slice const& base)
@@ -489,7 +500,15 @@ UpsertNode::UpsertNode(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), base, "insertVariable")),
       _updateVariable(
           Variable::varFromVPack(plan->getAst(), base, "updateVariable")),
-      _isReplace(base.get("isReplace").getBoolean()) {}
+      _isReplace(base.get("isReplace").isTrue()),
+      _canReadOwnWrites(true) {
+  if (auto s = base.get(StaticStrings::ReadOwnWrites); !s.isNone()) {
+    // "readOwnWrites" attribute was introduced in 3.12.
+    // older coordinators will not send it. thus we make it default
+    // to true.
+    _canReadOwnWrites = s.isTrue();
+  }
+}
 
 /// @brief toVelocyPack
 void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
@@ -502,12 +521,12 @@ void UpsertNode::doToVelocyPack(VPackBuilder& nodes, unsigned flags) const {
   nodes.add(VPackValue("updateVariable"));
   _updateVariable->toVelocyPack(nodes);
   nodes.add("isReplace", VPackValue(_isReplace));
+  nodes.add(StaticStrings::ReadOwnWrites, VPackValue(_canReadOwnWrites));
 }
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   using namespace arangodb::aql;
 
   ExecutionNode const* previousNode = getFirstDependency();
@@ -538,10 +557,19 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
   // a non-unique secondary index
   options.canDisableIndexing = false;
 
+  // if we do not need to observe our own writes, we can turn on batching
+  // for the UpsertNode. otherwise, the Upsert will execute with a batch
+  // size of just 1.
+  size_t batchSize = 1;
+  if (!_canReadOwnWrites) {
+    batchSize = ExecutionBlock::DefaultBatchSize;
+  }
+
   auto executorInfos = ModificationExecutorInfos(
       &engine, inDoc, insert, update, outputNew, outputOld,
       RegisterPlan::MaxRegisterId /*output*/, _plan->getAst()->query(),
-      std::move(options), collection(), ProducesResults(producesResults()),
+      std::move(options), collection(), batchSize,
+      ProducesResults(producesResults()),
       ConsultAqlWriteFilter(_options.consultAqlWriteFilter),
       IgnoreErrors(_options.ignoreErrors), DoCount(countStats()),
       IsReplace(_isReplace) /*(needed by upsert)*/,
@@ -551,31 +579,14 @@ std::unique_ptr<ExecutionBlock> UpsertNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* UpsertNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto outVariableNew = _outVariableNew;
-  auto inDocVariable = _inDocVariable;
-  auto insertVariable = _insertVariable;
-  auto updateVariable = _updateVariable;
-
-  if (withProperties) {
-    if (_outVariableNew != nullptr) {
-      outVariableNew =
-          plan->getAst()->variables()->createVariable(outVariableNew);
-    }
-    inDocVariable = plan->getAst()->variables()->createVariable(inDocVariable);
-    insertVariable =
-        plan->getAst()->variables()->createVariable(insertVariable);
-    updateVariable =
-        plan->getAst()->variables()->createVariable(updateVariable);
-  }
-
+ExecutionNode* UpsertNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
   auto c = std::make_unique<UpsertNode>(
-      plan, _id, collection(), _options, inDocVariable, insertVariable,
-      updateVariable, outVariableNew, _isReplace);
+      plan, _id, collection(), _options, _inDocVariable, _insertVariable,
+      _updateVariable, _outVariableNew, _isReplace, _canReadOwnWrites);
   ModificationNode::cloneCommon(c.get());
 
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+  return cloneHelper(std::move(c), withDependencies);
 }
 
 void UpsertNode::replaceVariables(
@@ -590,5 +601,24 @@ void UpsertNode::replaceVariables(
     _updateVariable = Variable::replace(_updateVariable, replacements);
   }
 }
+
+void UpsertNode::replaceAttributeAccess(ExecutionNode const* self,
+                                        Variable const* searchVariable,
+                                        std::span<std::string_view> attribute,
+                                        Variable const* replaceVariable,
+                                        size_t /*index*/) {
+  auto replace = [&](Variable const*& variable) {
+    if (variable != nullptr && searchVariable == variable &&
+        attribute.size() == 1 && attribute[0] == StaticStrings::KeyString) {
+      variable = replaceVariable;
+    }
+  };
+
+  replace(_inDocVariable);
+  replace(_insertVariable);
+  replace(_updateVariable);
+}
+
+size_t UpsertNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 }  // namespace arangodb::aql

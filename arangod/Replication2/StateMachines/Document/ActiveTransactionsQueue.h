@@ -35,15 +35,23 @@ namespace arangodb::replication2::replicated_state::document {
  * Keeps track of active transactions.
  * Uses a deque instead of a set because log indices are always given in
  * increasing order.
+ * Note that there is no concurrency control inside this class. It is assumed
+ * that the caller will take care of that. Currently, the leader wraps it into a
+ * guard, while the follower only uses it synchronously.
  */
 class ActiveTransactionsQueue {
   enum Status { kActive, kInactive };
 
  public:
-  LogIndex getReleaseIndex(LogIndex current) const;
-  bool erase(TransactionId const& tid);
-  void emplace(TransactionId tid, LogIndex index);
-  std::size_t size() const noexcept;
+  void markAsActive(TransactionId tid, LogIndex index);
+  void markAsInactive(TransactionId tid);
+
+  // These are used when we have a log index but no transaction id.
+  void markAsActive(LogIndex index);
+  void markAsInactive(LogIndex index);
+
+  std::optional<LogIndex> getReleaseIndex() const;
+
   auto getTransactions() const
       -> std::unordered_map<TransactionId, LogIndex> const&;
   void clear();

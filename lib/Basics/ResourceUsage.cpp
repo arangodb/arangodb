@@ -33,10 +33,13 @@ ResourceMonitor::ResourceMonitor(GlobalResourceMonitor& global) noexcept
     : _current(0), _peak(0), _limit(0), _global(global) {}
 
 ResourceMonitor::~ResourceMonitor() {
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // this assertion is here to ensure that our memory usage tracking works
   // correctly, and everything that we accounted for is actually properly torn
   // down. the assertion will have no effect in production.
-  TRI_ASSERT(_current.load(std::memory_order_relaxed) == 0);
+  [[maybe_unused]] auto leftover = _current.load(std::memory_order_relaxed);
+  TRI_ASSERT(leftover == 0) << "leftover: " << leftover;
+#endif
 }
 
 /// @brief sets a memory limit

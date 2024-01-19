@@ -1,0 +1,34 @@
+<div id="skeleton-loading">
+    <style>
+    .card-container {
+        padding: 20px;
+        background-color: #fff;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+        border-radius: 0px;
+        animation: loading 1.5s ease infinite;
+    }
+
+    .skeleton-text {
+        height: 12px;
+        background: linear-gradient(90deg, #f4f4f4 25%, #e0e0e0 50%, #f4f4f4 75%);
+        background-size: 200% 100%;
+        animation: loading 1.5s ease infinite;
+    }
+
+    @keyframes loading {
+        0% {
+            background-position: 200% 0;
+        }
+        100% {
+            background-position: -200% 0;
+        }
+    }
+    </style>
+
+    <div  class="card-container">
+        <div class="skeleton-text" style="width: 80%; margin-bottom: 10px;"></div>
+        <div class="skeleton-text" style="width: 60%; margin-bottom: 10px;"></div>
+        <div class="skeleton-text" style="width: 70%; margin-bottom: 10px;"></div>
+        <div class="skeleton-text" style="width: 40%; margin-bottom: 10px;"></div>
+    </div>
+</div>

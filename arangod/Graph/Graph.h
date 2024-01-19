@@ -172,14 +172,6 @@ class Graph {
   virtual void createCollectionOptions(VPackBuilder& builder,
                                        bool waitForSync) const;
 
-  /*
-   * Creates a document in the builder containing all relevant options for the
-   * creation satellite collection process (e.g. replicationFactor,
-   * numberOfShards, ...)
-   */
-  virtual void createSatelliteCollectionOptions(VPackBuilder& builder,
-                                                bool waitForSync) const;
-
  public:
   /// @brief get the cids of all vertexCollections
   std::set<std::string> const& vertexCollections() const;
@@ -247,10 +239,16 @@ class Graph {
    * within this graph
    *
    * @param col The collection
+   * @param leadingCollection The leading collection for EE graphs
    *
-   * @return TRUE if we are safe to use it.
+   * @return Result, if ok() we can us it, of fail() there is an error reason
+   * contained
    */
-  virtual Result validateCollection(LogicalCollection& col) const;
+  virtual Result validateCollection(
+      LogicalCollection const& col,
+      std::optional<std::string> const& leadingCollection,
+      std::function<std::string(LogicalCollection const&)> const& getLeader)
+      const;
   virtual void ensureInitial(const LogicalCollection& col);
 
   void edgesToVpack(VPackBuilder& builder) const;
@@ -290,6 +288,52 @@ class Graph {
   virtual auto addSatellites(VPackSlice const& satellites) -> Result;
 
   std::ostream& operator<<(std::ostream& ostream);
+
+  auto prepareCreateCollectionBodyEdge(
+      std::string_view name,
+      std::optional<std::string> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites,
+      DatabaseConfiguration const& config) const noexcept
+      -> ResultT<CreateCollectionBody>;
+
+  auto prepareCreateCollectionBodyVertex(
+      std::string_view name,
+      std::optional<std::string> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites,
+      DatabaseConfiguration const& config) const noexcept
+      -> ResultT<CreateCollectionBody>;
+
+  /**
+   *
+   * @param documentCollectionsToCreate
+   * @param satellites
+   * @param anyExistingCollection
+   * @param getLeader
+   * @return First entry: Desired leading collection,
+   *         Second entry: if the handed in existing collection was picked
+   */
+  virtual auto getLeadingCollection(
+      std::unordered_set<std::string> const& documentCollectionsToCreate,
+      std::unordered_set<std::string> const& edgeCollectionsToCreate,
+      std::unordered_set<std::string> const& satellites,
+      std::shared_ptr<LogicalCollection> const& anyExistingCollection,
+      const std::function<std::string(const LogicalCollection&)>& getLeader)
+      const noexcept -> std::pair<std::optional<std::string>, bool> const;
+
+  virtual auto requiresInitialUpdate() const noexcept -> bool;
+
+  virtual auto updateInitial(
+      std::vector<std::shared_ptr<LogicalCollection>> const&,
+      std::optional<std::string> const& leadingCollection,
+      std::function<std::string(LogicalCollection const&)> const& getLeader)
+      -> void;
+
+ protected:
+  virtual auto injectShardingToCollectionBody(
+      CreateCollectionBody& body,
+      std::optional<std::string> const& leadingCollection,
+      std::unordered_set<std::string> const& satellites,
+      DatabaseConfiguration const& config) const noexcept -> Result;
 
  private:
   /// @brief Parse the edgeDefinition slice and inject it into this graph

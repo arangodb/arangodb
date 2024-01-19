@@ -52,6 +52,7 @@ struct IDocumentStateShardHandler;
 
 struct ReplicationOptions {
   bool waitForCommit{false};
+  bool waitForSync{false};
 };
 
 struct DocumentCleanupHandler {
@@ -71,13 +72,15 @@ struct DocumentState {
 };
 
 struct DocumentCoreParameters {
-  std::string collectionId;
   std::string databaseName;
+  std::uint64_t groupId;  // TODO use CollectionGroupId type
+  std::size_t shardSheafIndex;
 
   template<class Inspector>
   inline friend auto inspect(Inspector& f, DocumentCoreParameters& p) {
-    return f.object(p).fields(f.field("collectionId", p.collectionId),
-                              f.field("databaseName", p.databaseName));
+    return f.object(p).fields(f.field("databaseName", p.databaseName),
+                              f.field("groupId", p.groupId),
+                              f.field("shardSheafIndex", p.shardSheafIndex));
   }
 
   [[nodiscard]] auto toSharedSlice() const -> velocypack::SharedSlice;
@@ -88,14 +91,15 @@ struct DocumentFactory {
       std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
       transaction::IManager& transactionManager);
 
-  auto constructFollower(std::unique_ptr<DocumentCore> core)
+  auto constructFollower(std::unique_ptr<DocumentCore> core,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<DocumentFollowerState>;
 
   auto constructLeader(std::unique_ptr<DocumentCore> core)
       -> std::shared_ptr<DocumentLeaderState>;
 
-  auto constructCore(GlobalLogIdentifier, DocumentCoreParameters)
-      -> std::unique_ptr<DocumentCore>;
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier,
+                     DocumentCoreParameters) -> std::unique_ptr<DocumentCore>;
 
   auto constructCleanupHandler() -> std::shared_ptr<DocumentCleanupHandler>;
 
@@ -109,6 +113,3 @@ extern template struct replicated_state::ReplicatedState<
     document::DocumentState>;
 
 }  // namespace arangodb::replication2::replicated_state
-
-#include "Replication2/StateMachines/Document/DocumentFollowerState.h"
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"

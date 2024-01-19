@@ -21,6 +21,10 @@
 /// @author Dr. Frank Celler
 ////////////////////////////////////////////////////////////////////////////////
 
+#ifndef USE_V8
+#error this file is not supposed to be used in builds with -DUSE_V8=Off
+#endif
+
 #include <stddef.h>
 #include <cstdint>
 #include <mutex>
@@ -292,6 +296,7 @@ class V8Completer : public Completer {
 
     // locate global object or sub-object
     v8::Isolate* isolate = v8::Isolate::GetCurrent();
+    TRI_ASSERT(isolate != nullptr);
 
     v8::Local<v8::Context> context = isolate->GetCurrentContext();
     v8::Handle<v8::Object> current = context->Global();

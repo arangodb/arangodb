@@ -70,25 +70,29 @@ class SortNode : public ExecutionNode {
   /// @brief return the type of the node
   NodeType getType() const override final { return SORT; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief whether or not the sort is stable
-  inline bool isStable() const { return _stable; }
+  bool isStable() const { return _stable; }
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     return cloneHelper(
         std::make_unique<SortNode>(plan, _id, _elements, _stable),
-        withDependencies, withProperties);
+        withDependencies);
   }
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;

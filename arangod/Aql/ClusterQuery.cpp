@@ -30,19 +30,25 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/QueryProfile.h"
+#include "Aql/SharedQueryState.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "Cluster/TraverserEngine.h"
+#include "Utils/CollectionNameResolver.h"
+#include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
+
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+const double FAST_PATH_LOCK_TIMEOUT = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
@@ -91,8 +97,9 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
-    QueryAnalyzerRevisions const& analyzersRevision) {
+    VPackSlice snippets, VPackSlice traverserSlice, std::string_view user,
+    VPackBuilder& answerBuilder,
+    QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
       << " this: " << (uintptr_t)this;
@@ -139,17 +146,25 @@ void ClusterQuery::prepareClusterQuery(
   _trx = AqlTransaction::create(_transactionContext, _collections,
                                 _queryOptions.transactionOptions,
                                 std::move(inaccessibleCollections));
-  // create the transaction object, but do not start it yet
+
+  // create the transaction object, but do not start the transaction yet
   _trx->addHint(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   if (_trx->state()->isDBServer()) {
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   }
 
+  double origLockTimeout = _trx->state()->options().lockTimeout;
+  if (fastPathLocking) {
+    _trx->state()->options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
+  }
+
   Result res = _trx->begin();
   if (!res.ok()) {
     THROW_ARANGO_EXCEPTION(res);
   }
+
+  _trx->state()->options().lockTimeout = origLockTimeout;
 
   TRI_IF_FAILURE("Query::setupLockTimeout") {
     if (!_trx->state()->isReadOnlyTransaction() &&
@@ -158,9 +173,16 @@ void ClusterQuery::prepareClusterQuery(
     }
   }
 
-  enterState(QueryExecutionState::ValueType::PARSING);
+  if (ServerState::instance()->isDBServer()) {
+    _collections.visit(
+        [&](std::string const&, aql::Collection const& c) -> bool {
+          _trx->state()->trackRequest(*_trx->resolver(), _vocbase.name(),
+                                      c.name(), user, c.accessType(), "aql");
+          return true;
+        });
+  }
 
-  SerializationFormat format = SerializationFormat::SHADOWROWS;
+  enterState(QueryExecutionState::ValueType::PARSING);
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](VPackSlice snippet) {
@@ -169,7 +191,7 @@ void ClusterQuery::prepareClusterQuery(
 
     plan->findVarUsage();  // I think this is a no-op
 
-    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters, format);
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
     _plans.push_back(std::move(plan));
   };
 

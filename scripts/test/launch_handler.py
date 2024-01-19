@@ -7,10 +7,11 @@ import time
 from threading import Thread
 from traceback import print_exc
 
-from dmesg import DmesgWatcher, dmesg_runner
 from site_config import SiteConfig, IS_LINUX
 from testing_runner import TestingRunner
 
+if IS_LINUX:
+    from dmesg import DmesgWatcher, dmesg_runner
 
 # pylint: disable=broad-except
 def launch(args, tests):
@@ -33,8 +34,8 @@ def launch(args, tests):
 
 def launch_runner(runner, create_report):
     """Manage test execution on our own"""
-    dmesg = DmesgWatcher(runner.cfg)
     if IS_LINUX:
+        dmesg = DmesgWatcher(runner.cfg)
         dmesg_thread = Thread(target=dmesg_runner, args=[dmesg])
         dmesg_thread.start()
         time.sleep(3)

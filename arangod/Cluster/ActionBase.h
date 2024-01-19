@@ -29,6 +29,7 @@
 #include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/debugging.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <atomic>
 #include <chrono>
@@ -112,8 +113,15 @@ class ActionBase {
   /// @brief finalize statistics
   void endStats();
 
+  /**
+   *  @brief    update progress by long running processes
+   *  @param  d percentage of work done
+   *  @return   abort if !ok(), true if ok(), with reason to abort.
+   */
+  virtual arangodb::Result setProgress(double d);
+
   /// @brief return progress statistic
-  uint64_t getProgress() const { return _progress.load(); }
+  double getProgress() const { return _progress.load(); }
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() { _preAction.reset(); }
@@ -237,7 +245,7 @@ class ActionBase {
   std::atomic<std::chrono::system_clock::duration> _actionLastStat;
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
-  std::atomic<uint64_t> _progress;
+  std::atomic<double> _progress;
 
   int _priority;
 
@@ -260,15 +268,15 @@ class ShardDefinition {
 
   std::string const& getDatabase() const noexcept { return _database; }
 
-  std::string const& getShard() const noexcept { return _shard; }
+  ShardID const& getShard() const noexcept { return _shard; }
 
   bool isValid() const noexcept {
-    return !_database.empty() && !_shard.empty();
+    return !_database.empty() && _shard.isValid();
   }
 
  private:
   std::string const _database;
-  std::string const _shard;
+  ShardID const _shard;
 };
 
 }  // namespace maintenance

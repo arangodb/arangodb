@@ -1,0 +1,6 @@
+python-arango
+prometheus_client
+requests
+numpy
+matplotlib
+termcolor

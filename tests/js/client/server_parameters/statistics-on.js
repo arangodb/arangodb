@@ -1,5 +1,5 @@
 /*jshint globalstrict:false, strict:false */
-/* global getOptions, assertTrue, arango */
+/* global getOptions, assertTrue, assertEqual, assertNotEqual, arango */
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test for server startup options
@@ -87,6 +87,24 @@ function testSuite() {
       }
       assertTrue(count > 0, { count });
     },
+
+    testMemoryUsageMetrics : function() {
+      // metric values should never be 0 if statistics are enabled
+      const connectionsBefore = getMetric("arangodb_connection_statistics_memory_usage");
+      assertNotEqual(0, connectionsBefore);
+      const requestsBefore = getMetric("arangodb_request_statistics_memory_usage");
+      assertNotEqual(0, requestsBefore);
+      
+      // issue some random requests to the server
+      for (let i = 0; i < 10; ++i) {
+         arango.GET_RAW("/_admin/metrics");
+      }
+      
+      // metrics values shouldn't have changed, because the statistics memory
+      // is allocated at startup and shouldn't grow under normal circumstances
+      assertEqual(connectionsBefore, getMetric("arangodb_connection_statistics_memory_usage"));
+      assertEqual(requestsBefore, getMetric("arangodb_request_statistics_memory_usage"));
+    }
 
   };
 }

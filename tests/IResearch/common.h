@@ -25,12 +25,11 @@
 #pragma once
 
 #include "Aql/AstNode.h"
-#include "Aql/Query.h"
+#include "Aql/QueryResult.h"
 #include "Basics/StaticStrings.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 #include "IResearch/IResearchFilterOptimization.h"
-#include "IResearch/IResearchFilterContext.h"
 
 #include <string>
 #include <vector>
@@ -65,8 +64,10 @@ class ApplicationServer;
 }
 
 namespace aql {
+class Query;
+class ExecutionPlan;
 class ExpressionContext;
-}
+}  // namespace aql
 
 namespace iresearch {
 class ByExpression;

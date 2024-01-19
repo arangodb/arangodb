@@ -7,6 +7,7 @@ target_include_directories(arango_inspection_test_helper
 add_library(arango_tests_inspection OBJECT
   InspectionTest.cpp
   JsonPrintTest.cpp
+  TransformerTest.cpp
   ValidateTest.cpp
   ValidateTest.cpp
   VPackLoadTest.cpp
@@ -15,7 +16,6 @@ add_library(arango_tests_inspection OBJECT
 target_link_libraries(arango_tests_inspection
   PRIVATE gtest
           velocypack
-          fmt::fmt
           arango_lightweight # jezas.
           arango_inspection
           arango_inspection_test_helper)

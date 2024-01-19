@@ -57,10 +57,6 @@ RestStatus RestExplainHandler::execute() {
   return RestStatus::DONE;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock REST_DOCUMENT_CREATE
-////////////////////////////////////////////////////////////////////////////////
-
 void RestExplainHandler::explainQuery() {
   std::vector<std::string> const& suffixes = _request->suffixes();
   if (suffixes.size() != 0) {
@@ -106,8 +102,10 @@ void RestExplainHandler::explainQuery() {
 
   auto bindBuilder = std::make_shared<VPackBuilder>(bindSlice);
 
+  auto origin = transaction::OperationOriginAQL{"explaining query"};
+
   auto query = arangodb::aql::Query::create(
-      transaction::StandaloneContext::Create(_vocbase),
+      transaction::StandaloneContext::create(_vocbase, origin),
       aql::QueryString(queryString), std::move(bindBuilder),
       aql::QueryOptions(optionsSlice));
   auto queryResult = query->explain();

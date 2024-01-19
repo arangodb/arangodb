@@ -127,7 +127,7 @@ bool ExecContext::canUseDatabase(std::string const& db,
 
 /// @brief returns auth level for user
 auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
-                                             std::string const& coll) const {
+                                             std::string_view coll) const {
   if (isInternal()) {
     // should be RW for superuser, RO for read-only
     return _databaseAuthLevel;

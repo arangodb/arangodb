@@ -57,7 +57,7 @@ class AqlCallList {
    * @brief Construct a new Aql Call List object
    *        This constructor will only allow a single call.
    *        As soon as this call is completed, there will be no next call.
-   *        Hance the executor needs to return.
+   *        Hence the executor needs to return.
    * @param call The call relevant for this subquery run.
    */
   explicit AqlCallList(AqlCall const& call);
@@ -95,7 +95,7 @@ class AqlCallList {
    *
    * @return AqlCall The next call
    */
-  [[nodiscard]] auto peekNextCall() const -> AqlCall const&;
+  [[nodiscard]] auto peekNextCall() const noexcept -> AqlCall const&;
 
   /**
    * @brief Test if there are more calls available in the list.

@@ -318,7 +318,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_validate_cross_db_analyzer) {
     ASSERT_TRUE(analyzers
                     .emplace(emplaceResult,
                              "testVocbaseWithAnalyzer::myIdentity", "identity",
-                             VPackParser::fromJson("{ }")->slice())
+                             VPackParser::fromJson("{ }")->slice(),
+                             arangodb::transaction::OperationOriginTestCase{})
                     .ok());
   }
 
@@ -363,7 +364,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -404,7 +406,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -434,7 +437,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
   }
 
   // analyzer single-server, for creation, missing "testAanalyzer0"
@@ -453,7 +457,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer0",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
   }
 
   // analyzer single-server (inRecovery), for creation
@@ -480,7 +485,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -527,7 +533,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         "{ \
@@ -566,7 +573,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json =
         arangodb::velocypack::Parser::fromJson(R"({
@@ -617,7 +625,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -669,7 +678,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -723,7 +733,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -776,7 +787,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({
@@ -859,7 +871,8 @@ TEST_F(IResearchLinkHelperTestSingle, test_normalize) {
     EXPECT_EQ(nullptr,
               analyzers.get(
                   arangodb::StaticStrings::SystemDatabase + "::testAnalyzer1",
-                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST));
+                  arangodb::QueryAnalyzerRevisions::QUERY_LATEST,
+                  arangodb::transaction::OperationOriginTestCase{}));
 
     auto expected_json = arangodb::velocypack::Parser::fromJson(
         R"({

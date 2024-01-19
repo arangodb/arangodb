@@ -119,7 +119,7 @@ class MultiDependencySingleRowFetcher {
   // May only be called once, after the dependencies are injected.
   void initDependencies();
 
-  size_t numberDependencies();
+  size_t numberDependencies() const noexcept;
 
   [[nodiscard]] auto execute(AqlCallStack const&, AqlCallSet const&)
       -> std::tuple<ExecutionState, SkipResult,
@@ -157,7 +157,7 @@ class MultiDependencySingleRowFetcher {
 
  private:
   [[nodiscard]] auto executeForDependency(size_t dependency,
-                                          AqlCallStack& stack)
+                                          AqlCallStack const& stack)
       -> std::tuple<ExecutionState, SkipResult, AqlItemBlockInputRange>;
 
   /**
@@ -170,11 +170,10 @@ class MultiDependencySingleRowFetcher {
   bool isDone(DependencyInfo const& info) const;
 
   AqlCallStack adjustStackWithSkipReport(AqlCallStack const& stack,
-                                         const size_t dependency);
+                                         size_t dependency);
 
   void reportSkipForDependency(AqlCallStack const& originalStack,
-                               SkipResult const& skipped,
-                               const size_t dependency);
+                               SkipResult const& skipped, size_t dependency);
 
   void initializeReports(size_t subqueryDepth);
 };

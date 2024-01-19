@@ -300,7 +300,7 @@ auto ConstrainedSortExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
   return {state, NoStats{}, call.getSkipCount(), AqlCall{}};
 }
 
-[[nodiscard]] auto ConstrainedSortExecutor::expectedNumberOfRowsNew(
+[[nodiscard]] auto ConstrainedSortExecutor::expectedNumberOfRows(
     AqlItemBlockInputRange const& input, AqlCall const& call) const noexcept
     -> size_t {
   size_t rowsPerBlock = _infos.limit();

@@ -12,7 +12,7 @@ using namespace arangodb::pregel::conductor;
 
 Computing::Computing(
     ConductorState& conductor, std::unique_ptr<MasterContext> masterContext,
-    std::unordered_map<actor::ActorPID, uint64_t> sendCountPerActor,
+    std::unordered_map<actor::DistributedActorPID, uint64_t> sendCountPerActor,
     uint64_t totalSendMessagesCount, uint64_t totalReceivedMessagesCount)
     : conductor{conductor},
       masterContext{std::move(masterContext)},
@@ -21,7 +21,8 @@ Computing::Computing(
       totalReceivedMessagesCount{totalReceivedMessagesCount} {}
 
 auto Computing::messages()
-    -> std::unordered_map<actor::ActorPID, worker::message::WorkerMessages> {
+    -> std::unordered_map<actor::DistributedActorPID,
+                          worker::message::WorkerMessages> {
   if (masterContext->_globalSuperstep == 0) {
     masterContext->preApplication();
   }
@@ -32,8 +33,8 @@ auto Computing::messages()
     VPackObjectBuilder ob(&aggregators);
     masterContext->_aggregators->serializeValues(aggregators);
   }
-  auto out =
-      std::unordered_map<actor::ActorPID, worker::message::WorkerMessages>();
+  auto out = std::unordered_map<actor::DistributedActorPID,
+                                worker::message::WorkerMessages>();
   for (auto const& worker : conductor.workers) {
     out.emplace(worker, worker::message::RunGlobalSuperStep{
                             .gss = masterContext->_globalSuperstep,
@@ -46,7 +47,7 @@ auto Computing::messages()
   }
   return out;
 }
-auto Computing::cancel(arangodb::pregel::actor::ActorPID sender,
+auto Computing::cancel(arangodb::actor::DistributedActorPID sender,
                        message::ConductorMessages message)
     -> std::optional<StateChange> {
   auto newState = std::make_unique<Canceled>(conductor);
@@ -60,7 +61,7 @@ auto Computing::cancel(arangodb::pregel::actor::ActorPID sender,
                   pregel::metrics::message::PreviousState::COMPUTING},
       .newState = std::move(newState)};
 }
-auto Computing::receive(actor::ActorPID sender,
+auto Computing::receive(actor::DistributedActorPID sender,
                         message::ConductorMessages message)
     -> std::optional<StateChange> {
   if (not conductor.workers.contains(sender) or
@@ -72,9 +73,9 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage =
-                    fmt::format("In {}: Received unexpected message {} from {}",
-                                name(), inspection::json(message), sender)},
+                .errorMessage = fmt::format(
+                    "In {}: Received unexpected message {} from {}", name(),
+                    inspection::json(message), inspection::json(sender))},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =
@@ -90,9 +91,10 @@ auto Computing::receive(actor::ActorPID sender,
         .statusMessage =
             pregel::message::InFatalError{
                 .state = stateName,
-                .errorMessage = fmt::format(
-                    "In {}: Received error {} from {}", name(),
-                    inspection::json(gssFinished.errorMessage()), sender)},
+                .errorMessage =
+                    fmt::format("In {}: Received error {} from {}", name(),
+                                inspection::json(gssFinished.errorMessage()),
+                                inspection::json(sender))},
         .metricsMessage =
             pregel::metrics::message::ConductorFinished{
                 .previousState =
@@ -101,7 +103,7 @@ auto Computing::receive(actor::ActorPID sender,
   }
   LOG_TOPIC("543aa", INFO, Logger::PREGEL) << fmt::format(
       "Conductor Actor: Global super step {} finished on worker {}",
-      masterContext->_globalSuperstep, sender);
+      masterContext->_globalSuperstep, inspection::json(sender));
   respondedWorkers.emplace(sender);
   _aggregateMessage(std::move(gssFinished.get()));
 

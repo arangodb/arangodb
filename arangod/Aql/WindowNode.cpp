@@ -126,8 +126,8 @@ WindowBounds::WindowBounds(Type type, AqlValue&& preceding,
 }
 
 WindowBounds::WindowBounds(Type t, VPackSlice slice)
-    : WindowBounds(t, AqlValue(slice.get("following")),
-                   AqlValue(slice.get("preceding"))) {}
+    : WindowBounds(t, AqlValue(slice.get("preceding")),
+                   AqlValue(slice.get("following"))) {}
 
 WindowBounds::~WindowBounds() = default;
 
@@ -404,8 +404,7 @@ void WindowNode::calcAggregateTypes(
 
 /// @brief creates corresponding ExecutionBlock
 std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const&) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -451,28 +450,12 @@ std::unique_ptr<ExecutionBlock> WindowNode::createBlock(
 }
 
 /// @brief clone ExecutionNode recursively
-ExecutionNode* WindowNode::clone(ExecutionPlan* plan, bool withDependencies,
-                                 bool withProperties) const {
-  auto aggregateVariables = _aggregateVariables;
-
-  if (withProperties) {
-    // need to re-create all variables
-
-    aggregateVariables.clear();
-
-    for (auto& it : _aggregateVariables) {
-      auto out = plan->getAst()->variables()->createVariable(it.outVar);
-      auto in = it.inVar == nullptr
-                    ? nullptr
-                    : plan->getAst()->variables()->createVariable(it.inVar);
-      aggregateVariables.emplace_back(AggregateVarInfo{out, in, it.type});
-    }
-  }
-
-  auto c = std::make_unique<WindowNode>(plan, _id, WindowBounds(_bounds),
-                                        _rangeVariable, aggregateVariables);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+ExecutionNode* WindowNode::clone(ExecutionPlan* plan,
+                                 bool withDependencies) const {
+  return cloneHelper(
+      std::make_unique<WindowNode>(plan, _id, WindowBounds(_bounds),
+                                   _rangeVariable, _aggregateVariables),
+      withDependencies);
 }
 
 /// @brief replaces variables in the internals of the execution node
@@ -526,6 +509,8 @@ CostEstimate WindowNode::estimateCost() const {
 ExecutionNode::NodeType WindowNode::getType() const {
   return ExecutionNode::WINDOW;
 }
+
+size_t WindowNode::getMemoryUsedBytes() const { return sizeof(*this); }
 
 std::vector<Variable const*> WindowNode::getVariablesSetHere() const {
   std::vector<Variable const*> v;

@@ -23,10 +23,8 @@
 
 #pragma once
 
-#include "Basics/asio_ns.h"
-#include "Scheduler/Scheduler.h"
-#include "Scheduler/SupervisedScheduler.h"
 #include "RestServer/arangod.h"
+#include "Scheduler/Scheduler.h"
 
 #include <functional>
 #include <memory>
@@ -37,7 +35,7 @@ class SchedulerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "Scheduler"; }
 
-  static SupervisedScheduler* SCHEDULER;
+  static Scheduler* SCHEDULER;
 
   explicit SchedulerFeature(Server& server);
   ~SchedulerFeature();
@@ -63,6 +61,7 @@ class SchedulerFeature final : public ArangodFeature {
 
   uint64_t _nrMinimalThreads = 4;
   uint64_t _nrMaximalThreads = 0;
+  uint64_t _nrMaximalDetachedThreads = 1000;
   uint64_t _queueSize = 4096;
   uint64_t _fifo1Size = 4096;
   uint64_t _fifo2Size = 4096;
@@ -72,12 +71,8 @@ class SchedulerFeature final : public ArangodFeature {
 
   std::unique_ptr<Scheduler> _scheduler;
 
-  std::function<void(asio_ns::error_code const&, int)> _signalHandler;
-  std::function<void(asio_ns::error_code const&, int)> _exitHandler;
-  std::shared_ptr<asio_ns::signal_set> _exitSignals;
-
-  std::function<void(asio_ns::error_code const&, int)> _hangupHandler;
-  std::shared_ptr<asio_ns::signal_set> _hangupSignals;
+  struct AsioHandler;
+  std::unique_ptr<AsioHandler> _asioHandler;
 };
 
 }  // namespace arangodb

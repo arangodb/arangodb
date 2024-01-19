@@ -26,6 +26,7 @@
 #include "SmartContext.h"
 
 #include "Basics/Common.h"
+#include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"
 
 #include <memory>
@@ -40,7 +41,8 @@ namespace transaction {
 /// Can be used to reuse transaction state between multiple
 /// transaction::Methods instances.
 struct StandaloneContext final : public SmartContext {
-  explicit StandaloneContext(TRI_vocbase_t& vocbase);
+  explicit StandaloneContext(TRI_vocbase_t& vocbase,
+                             OperationOrigin operationOrigin);
 
   /// @brief get transaction state, determine commit responsiblity
   std::shared_ptr<TransactionState> acquireState(
@@ -52,7 +54,8 @@ struct StandaloneContext final : public SmartContext {
   std::shared_ptr<Context> clone() const override;
 
   /// @brief create a context, returned in a shared ptr
-  static std::shared_ptr<transaction::Context> Create(TRI_vocbase_t& vocbase);
+  static std::shared_ptr<transaction::Context> create(
+      TRI_vocbase_t& vocbase, OperationOrigin operationOrigin);
 };
 
 }  // namespace transaction

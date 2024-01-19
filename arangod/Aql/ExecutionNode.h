@@ -55,6 +55,9 @@
 #pragma once
 
 #include <memory>
+#include <span>
+#include <string>
+#include <string_view>
 #include <vector>
 #include <unordered_map>
 
@@ -68,6 +71,7 @@
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
+#include "Basics/ResourceUsage.h"
 #include "Basics/TypeTraits.h"
 #include "Basics/Identifier.h"
 #include "Containers/HashSet.h"
@@ -99,6 +103,17 @@ struct Variable;
 
 size_t estimateListLength(ExecutionPlan const* plan, Variable const* var);
 
+enum class AsyncPrefetchEligibility {
+  // enable prefetching for one particular node
+  kEnableForNode,
+  // disable prefetching for one particular node
+  kDisableForNode,
+  // disable for node and its dependencies (north of ourselves)
+  kDisableForNodeAndDependencies,
+  // disable prefetching for entire query
+  kDisableGlobally,
+};
+
 /// @brief sort element, consisting of variable, sort direction, and a possible
 /// attribute path to dig into the document
 
@@ -109,8 +124,7 @@ struct SortElement {
 
   SortElement(Variable const* v, bool asc);
 
-  SortElement(Variable const* v, bool asc,
-              std::vector<std::string> const& path);
+  SortElement(Variable const* v, bool asc, std::vector<std::string> path);
 
   /// @brief stringify a sort element. note: the output of this should match the
   /// stringification output of an AstNode for an attribute access
@@ -168,6 +182,7 @@ class ExecutionNode {
     WINDOW = 34,
     OFFSET_INFO_MATERIALIZE = 35,
     REMOTE_MULTIPLE = 36,
+    JOIN = 37,
 
     MAX_NODE_TYPE_VALUE
   };
@@ -236,6 +251,9 @@ class ExecutionNode {
 
   /// @brief return the type of the node
   virtual NodeType getType() const = 0;
+
+  /// @brief return the amount of bytes used
+  virtual size_t getMemoryUsedBytes() const = 0;
 
   /// @brief resolve nodeType to a string.
   static std::string const& getTypeString(NodeType type);
@@ -320,26 +338,22 @@ class ExecutionNode {
 
   /// @brief creates corresponding ExecutionBlock
   virtual std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache)
-      const = 0;
+      ExecutionEngine& engine) const = 0;
 
-  /// @brief clone execution Node recursively, this makes the class abstract
-  virtual ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                               bool withProperties) const = 0;
+  /// @brief clone execution Node recursively
+  virtual ExecutionNode* clone(ExecutionPlan* plan,
+                               bool withDependencies) const = 0;
 
   /// @brief execution Node clone utility to be called by derives
   /// @return pointer to a registered node owned by a plan
   ExecutionNode* cloneHelper(std::unique_ptr<ExecutionNode> Other,
-                             bool withDependencies, bool withProperties) const;
+                             bool withDependencies) const;
 
   void cloneWithoutRegisteringAndDependencies(ExecutionPlan& plan,
-                                              ExecutionNode& other,
-                                              bool withProperties) const;
+                                              ExecutionNode& other) const;
 
   /// @brief helper for cloning, use virtual clone methods for dependencies
-  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone,
-                         bool withProperties) const;
+  void cloneDependencies(ExecutionPlan* plan, ExecutionNode* theClone) const;
 
   // clone register plan of dependency, needed when inserting nodes after
   // planning
@@ -349,6 +363,14 @@ class ExecutionNode {
   /// replacements are { old variable id => new variable }
   virtual void replaceVariables(
       std::unordered_map<VariableId, Variable const*> const& replacements);
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  virtual void replaceAttributeAccess(ExecutionNode const* self,
+                                      Variable const* searchVariable,
+                                      std::span<std::string_view> attribute,
+                                      Variable const* replaceVariable,
+                                      size_t index);
 
   /// @brief check equality of ExecutionNodes
   virtual bool isEqualTo(ExecutionNode const& other) const;
@@ -453,6 +475,8 @@ class ExecutionNode {
   /// @brief whether or not the node is a data modification node
   virtual bool isModificationNode() const;
 
+  virtual AsyncPrefetchEligibility canUseAsyncPrefetching() const noexcept;
+
   ExecutionPlan const* plan() const;
 
   ExecutionPlan* plan();
@@ -497,9 +521,9 @@ class ExecutionNode {
   void enableCallstackSplit() noexcept { _isCallstackSplitEnabled = true; }
 
   [[nodiscard]] static bool isIncreaseDepth(NodeType type);
-  [[nodiscard]] bool isIncreaseDepth() const;
+  [[nodiscard]] virtual bool isIncreaseDepth() const;
   [[nodiscard]] static bool alwaysCopiesRows(NodeType type);
-  [[nodiscard]] bool alwaysCopiesRows() const;
+  [[nodiscard]] virtual bool alwaysCopiesRows() const;
 
   auto getRegsToKeepStack() const -> RegIdSetStack;
 
@@ -519,7 +543,7 @@ class ExecutionNode {
 
   /// @brief factory for sort elements
   static void getSortElements(SortElementVector& elements, ExecutionPlan* plan,
-                              arangodb::velocypack::Slice const& slice,
+                              arangodb::velocypack::Slice slice,
                               char const* which);
 
   RegisterId variableToRegisterId(Variable const*) const;
@@ -609,26 +633,30 @@ class SingletonNode : public ExecutionNode {
  public:
   SingletonNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  SingletonNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final {
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final {
     return cloneHelper(std::make_unique<SingletonNode>(plan, _id),
-                       withDependencies, withProperties);
+                       withDependencies);
   }
 
   /// @brief the cost of a singleton is 1
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
  protected:
   /// @brief export to VelocyPack
@@ -651,29 +679,41 @@ class EnumerateCollectionNode : public ExecutionNode,
                           IndexHint const& hint);
 
   EnumerateCollectionNode(ExecutionPlan* plan,
-                          arangodb::velocypack::Slice const& base);
+                          arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief replaces variables in the internals of the execution node
   /// replacements are { old variable id => new variable }
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
 
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
   /// @brief the cost of an enumerate collection node is a multiple of the cost
   /// of its unique dependency
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -689,6 +729,10 @@ class EnumerateCollectionNode : public ExecutionNode,
 
   /// @brief user hint regarding which index ot use
   IndexHint const& hint() const;
+
+  void setProjections(Projections projections) override;
+
+  bool isProduceResult() const override;
 
  protected:
   /// @brief export to VelocyPack
@@ -712,26 +756,45 @@ class EnumerateListNode : public ExecutionNode {
   EnumerateListNode(ExecutionPlan* plan, ExecutionNodeId id,
                     Variable const* inVariable, Variable const* outVariable);
 
-  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  EnumerateListNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of an enumerate list node
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
+
+  /// @brief remember the condition to execute for early filtering
+  void setFilter(std::unique_ptr<Expression> filter);
+
+  /// @brief return the early pruning condition for the node
+  Expression* filter() const noexcept { return _filter.get(); }
+
+  /// @brief whether or not the node has an early pruning filter condition
+  bool hasFilter() const noexcept { return _filter != nullptr; }
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -756,6 +819,9 @@ class EnumerateListNode : public ExecutionNode {
 
   /// @brief output variable to write to
   Variable const* _outVariable;
+
+  /// @brief early filtering condition
+  std::unique_ptr<Expression> _filter;
 };
 
 /// @brief class LimitNode
@@ -766,23 +832,27 @@ class LimitNode : public ExecutionNode {
   LimitNode(ExecutionPlan* plan, ExecutionNodeId id, size_t offset,
             size_t limit);
 
-  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  LimitNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   /// @brief tell the node to fully count what it will limit
   void setFullCount(bool enable = true);
@@ -821,22 +891,23 @@ class CalculationNode : public ExecutionNode {
                   std::unique_ptr<Expression> expr,
                   Variable const* outVariable);
 
-  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  CalculationNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   ~CalculationNode();
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief return out variable
   Variable const* outVariable() const;
@@ -847,8 +918,19 @@ class CalculationNode : public ExecutionNode {
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
 
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
+
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
+
+  /// @brief replaces an attribute access in the internals of the execution
+  /// node with a simple variable access
+  void replaceAttributeAccess(ExecutionNode const* self,
+                              Variable const* searchVariable,
+                              std::span<std::string_view> attribute,
+                              Variable const* replaceVariable,
+                              size_t index) override;
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
@@ -881,13 +963,16 @@ class SubqueryNode : public ExecutionNode {
   friend class ExecutionBlock;
 
  public:
-  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  SubqueryNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   SubqueryNode(ExecutionPlan* plan, ExecutionNodeId id, ExecutionNode* subquery,
                Variable const* outVariable);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief invalidate the cost estimate for the node and its dependencies
   void invalidateCost() override;
@@ -897,13 +982,11 @@ class SubqueryNode : public ExecutionNode {
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief this is true iff the subquery contains a data-modification
   /// operation
@@ -957,23 +1040,27 @@ class FilterNode : public ExecutionNode {
   FilterNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  FilterNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;
@@ -1021,23 +1108,24 @@ class ReturnNode : public ExecutionNode {
   ReturnNode(ExecutionPlan* plan, ExecutionNodeId id,
              Variable const* inVariable);
 
-  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
+  ReturnNode(ExecutionPlan*, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
+
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
 
   /// @brief tell the node to count the returned values
   void setCount();
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief estimateCost
   CostEstimate estimateCost() const override final;
@@ -1047,6 +1135,9 @@ class ReturnNode : public ExecutionNode {
 
   /// @brief getVariablesUsedHere, modifying the set in-place
   void getVariablesUsedHere(VarSet& vars) const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
   Variable const* inVariable() const;
 
@@ -1074,23 +1165,27 @@ class NoResultsNode : public ExecutionNode {
  public:
   NoResultsNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  NoResultsNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of a NoResults is 0
   CostEstimate estimateCost() const override final;
+
+  AsyncPrefetchEligibility canUseAsyncPrefetching()
+      const noexcept override final;
 
  protected:
   /// @brief export to VelocyPack
@@ -1106,20 +1201,21 @@ class AsyncNode : public ExecutionNode {
  public:
   AsyncNode(ExecutionPlan* plan, ExecutionNodeId id);
 
-  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  AsyncNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief return the type of the node
   NodeType getType() const override final;
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override;
+      ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief the cost of a AsyncNode is whatever is 0
   CostEstimate estimateCost() const override final;
@@ -1137,21 +1233,22 @@ class MaterializeNode : public ExecutionNode {
                   aql::Variable const& inDocId,
                   aql::Variable const& outVariable);
 
-  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice const& base);
+  MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
  public:
   /// @brief return the type of the node
   NodeType getType() const override final { return ExecutionNode::MATERIALIZE; }
 
+  /// @brief return the amount of bytes used
+  size_t getMemoryUsedBytes() const override final;
+
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override = 0;
+      ExecutionEngine& engine) const override = 0;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override = 0;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override = 0;
 
   CostEstimate estimateCost() const override final;
 
@@ -1181,24 +1278,21 @@ class MaterializeNode : public ExecutionNode {
   Variable const* _outVariable;
 };
 
-class MaterializeMultiNode : public MaterializeNode {
+class MaterializeSearchNode : public MaterializeNode {
  public:
-  MaterializeMultiNode(ExecutionPlan* plan, ExecutionNodeId id,
-                       aql::Variable const& inDocId,
-                       aql::Variable const& outVariable);
+  MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
+                        aql::Variable const& inDocId,
+                        aql::Variable const& outVariable);
 
-  MaterializeMultiNode(ExecutionPlan* plan,
-                       arangodb::velocypack::Slice const& base);
+  MaterializeSearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override final;
+      ExecutionEngine& engine) const override final;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
  protected:
   /// @brief export to VelocyPack
@@ -1206,27 +1300,26 @@ class MaterializeMultiNode : public MaterializeNode {
                       unsigned flags) const override final;
 };
 
-template<bool localDocumentId>
-class MaterializeSingleNode : public MaterializeNode,
-                              public CollectionAccessingNode {
+class MaterializeRocksDBNode : public MaterializeNode,
+                               public CollectionAccessingNode {
  public:
-  MaterializeSingleNode(ExecutionPlan* plan, ExecutionNodeId id,
-                        aql::Collection const* collection,
-                        aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+  MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
+                         aql::Collection const* collection,
+                         aql::Variable const& inDocId,
+                         aql::Variable const& outVariable);
 
-  MaterializeSingleNode(ExecutionPlan* plan,
-                        arangodb::velocypack::Slice const& base);
+  MaterializeRocksDBNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
-      ExecutionEngine& engine,
-      std::unordered_map<ExecutionNode*, ExecutionBlock*> const&)
-      const override final;
+      ExecutionEngine& engine) const override final;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
+
+  bool alwaysCopiesRows() const override { return false; }
+  bool isIncreaseDepth() const override { return false; }
 
  protected:
   /// @brief export to VelocyPack

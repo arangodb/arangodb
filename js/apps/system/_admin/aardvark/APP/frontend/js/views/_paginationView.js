@@ -1,7 +1,3 @@
-/* jshint browser: true */
-/* jshint unused: false */
-/* global Backbone, $, window */
-
 (function () {
   'use strict';
   window.PaginationView = Backbone.View.extend({

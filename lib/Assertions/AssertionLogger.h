@@ -25,6 +25,7 @@
 
 #include <sstream>
 
+#include "Basics/SourceLocation.h"
 #include "CrashHandler/CrashHandler.h"
 
 namespace arangodb::debug {
@@ -32,7 +33,7 @@ struct AssertionLogger {
   [[noreturn]] void operator&(std::ostringstream const& stream) const {
     std::string message = stream.str();
     arangodb::CrashHandler::assertionFailure(
-        file, line, function, expr,
+        location.file_name(), location.line(), function, expr,
         message.empty() ? nullptr : message.c_str());
   }
   // can be removed in C++20 because of LWG 1203
@@ -40,8 +41,7 @@ struct AssertionLogger {
     operator&(static_cast<std::ostringstream const&>(stream));
   }
 
-  const char* file;
-  int line;
+  basics::SourceLocation location;
   const char* function;
   const char* expr;
 

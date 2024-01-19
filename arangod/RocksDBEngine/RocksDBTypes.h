@@ -28,6 +28,8 @@
 
 #include <rocksdb/slice.h>
 
+#include <string_view>
+
 namespace arangodb {
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -57,11 +59,13 @@ enum class RocksDBEntryType : char {
   // RevisionTreeValue = '/', // pre-3.8 GA revision trees. do not use or reuse!
   RevisionTreeValue = '*',
   ReplicatedState = 's',
-  ZkdIndexValue = 'z',
-  UniqueZkdIndexValue = 'Z',
+  MdiIndexValue = 'z',
+  UniqueMdiIndexValue = 'Z',
+  MdiVPackIndexValue = 'w',
+  UniqueMdiVPackIndexValue = 'W',
 };
 
-char const* rocksDBEntryTypeName(RocksDBEntryType);
+std::string_view rocksDBEntryTypeName(RocksDBEntryType);
 
 ////////////////////////////////////////////////////////////////////////////////
 /// Used to for various metadata in the write-ahead-log
@@ -111,9 +115,11 @@ enum class RocksDBSettingsType : char {
 /// @brief endianess value
 enum class RocksDBEndianness : char { Invalid = 0, Little = 'L', Big = 'B' };
 
+std::string_view rocksDBEndiannessString(RocksDBEndianness value);
+
 /// @brief rocksdb format version
 char rocksDBFormatVersion();
 
-char const* rocksDBLogTypeName(RocksDBLogType);
+std::string_view rocksDBLogTypeName(RocksDBLogType);
 rocksdb::Slice const& rocksDBSlice(RocksDBEntryType const& type);
 }  // namespace arangodb

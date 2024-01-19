@@ -23,10 +23,11 @@
 
 #include "Basics/Common.h"
 #include "gtest/gtest.h"
+#include "Mocks/Servers.h"
 
-#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBFormat.h"
+#include "RocksDBEngine/RocksDBMetadata.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 
 using namespace arangodb;
@@ -45,7 +46,7 @@ class IndexEstimatorTest : public ::testing::Test {
 };
 
 TEST_F(IndexEstimatorTest, test_empty) {
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   EXPECT_EQ(est.nrUsed(), 0);
   // estimate for an empty estimator is 1.0
   EXPECT_EQ(est.computeEstimate(), 1.0);
@@ -56,7 +57,7 @@ TEST_F(IndexEstimatorTest, test_clear) {
   uint64_t i = 0;
   std::generate(toInsert.begin(), toInsert.end(), [&i] { return i++; });
 
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   est.insert(toInsert);
 
   EXPECT_EQ(est.nrUsed(), 100);
@@ -84,7 +85,7 @@ TEST_F(IndexEstimatorTest, test_unique_values) {
 
   // test single operations
   {
-    RocksDBCuckooIndexEstimatorType est(2048);
+    RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
     for (auto it : toInsert) {
       est.insert(it);
     }
@@ -106,7 +107,7 @@ TEST_F(IndexEstimatorTest, test_unique_values) {
 
   // test vector operations
   {
-    RocksDBCuckooIndexEstimatorType est(2048);
+    RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
     est.insert(toInsert);
     EXPECT_EQ(est.nrUsed(), 100);
     EXPECT_EQ(est.computeEstimate(), 1);
@@ -133,7 +134,7 @@ TEST_F(IndexEstimatorTest, test_multiple_values) {
 
   // test single operations
   {
-    RocksDBCuckooIndexEstimatorType est(2048);
+    RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
     for (auto it : toInsert) {
       est.insert(it);
     }
@@ -158,7 +159,7 @@ TEST_F(IndexEstimatorTest, test_multiple_values) {
 
   // test vector operations
   {
-    RocksDBCuckooIndexEstimatorType est(2048);
+    RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
     est.insert(toInsert);
 
     EXPECT_EQ(est.nrUsed(), 10);
@@ -187,7 +188,7 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
   std::vector<uint64_t> toInsert(10000);
   uint64_t i = 0;
   std::string serialization;
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   std::generate(toInsert.begin(), toInsert.end(), [&i] { return i++; });
   for (auto it : toInsert) {
     est.insert(it);
@@ -210,7 +211,7 @@ TEST_F(IndexEstimatorTest, test_serialize_deserialize) {
   // We first have an uint64_t representing the length.
   // This has to be extracted BEFORE initialization.
   std::string_view ref(serialization.data(), persLength + 8);
-  RocksDBCuckooIndexEstimatorType copy(ref);
+  RocksDBCuckooIndexEstimatorType copy(nullptr, ref);
 
   // After serialization => deserialization
   // both estimates have to be identical
@@ -241,7 +242,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
   rocksdb::SequenceNumber currentSeq(0);
   rocksdb::SequenceNumber expected = currentSeq;
   std::string serialization;
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   RocksDBMetadata meta;
 
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
@@ -312,7 +313,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_basic) {
 TEST_F(IndexEstimatorTest, test_blocker_logic_overlapping) {
   rocksdb::SequenceNumber currentSeq(0);
   std::string serialization;
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   RocksDBMetadata meta;
 
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
@@ -345,7 +346,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
   rocksdb::SequenceNumber currentSeq(0);
   rocksdb::SequenceNumber expected(0);
   std::string serialization;
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   RocksDBMetadata meta;
 
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
@@ -385,7 +386,7 @@ TEST_F(IndexEstimatorTest, test_blocker_logic_out_of_order) {
 TEST_F(IndexEstimatorTest, test_truncate_logic) {
   rocksdb::SequenceNumber currentSeq(0);
   rocksdb::SequenceNumber expected(0);
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   RocksDBMetadata meta;
 
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
@@ -430,7 +431,7 @@ TEST_F(IndexEstimatorTest, test_truncate_logic) {
 
 TEST_F(IndexEstimatorTest, test_truncate_logic_2) {
   rocksdb::SequenceNumber currentSeq(0);
-  RocksDBCuckooIndexEstimatorType est(2048);
+  RocksDBCuckooIndexEstimatorType est(nullptr, 2048);
   RocksDBMetadata meta;
 
   auto format = RocksDBCuckooIndexEstimatorType::SerializeFormat::UNCOMPRESSED;
@@ -467,7 +468,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
 
   auto buildEstimator = [&]() {
     uint64_t i = 0;
-    auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(2048);
+    auto est = std::make_unique<RocksDBCuckooIndexEstimatorType>(nullptr, 2048);
     std::generate(toInsert.begin(), toInsert.end(), [&i] { return i++; });
     for (auto it : toInsert) {
       est->insert(it);
@@ -481,7 +482,7 @@ TEST_F(IndexEstimatorTest, test_serialize_compression) {
   auto validateSerializedValue = [&](auto& est,
                                      std::string const& serialization) {
     std::string_view ref(serialization);
-    RocksDBCuckooIndexEstimatorType copy(ref);
+    RocksDBCuckooIndexEstimatorType copy(nullptr, ref);
 
     // After serialization => deserialization
     // both estimates have to be identical

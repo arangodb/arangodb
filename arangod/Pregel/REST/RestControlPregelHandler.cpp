@@ -234,8 +234,7 @@ void RestControlPregelHandler::handleGetRequest() {
     pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase,
                                                          executionNumber};
     return handlePregelHistoryResult(cWriter.readResult(), true);
-  } else if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
-             suffixes.at(0) == "history") {
+  } else if (suffixes.size() <= 2 && suffixes.at(0) == "history") {
     if (_pregel.isStopping()) {
       return handlePregelHistoryResult({Result(TRI_ERROR_SHUTTING_DOWN)});
     }
@@ -315,8 +314,7 @@ void RestControlPregelHandler::handleDeleteRequest() {
   }
   std::vector<std::string> const& suffixes = _request->decodedSuffixes();
 
-  if ((suffixes.size() >= 1 || suffixes.size() <= 2) &&
-      suffixes.at(0) == "history") {
+  if (suffixes.size() >= 1 && suffixes.at(0) == "history") {
     if (suffixes.size() == 1) {
       // Delete all pregel history entries
       pregel::statuswriter::CollectionStatusWriter cWriter{_vocbase};

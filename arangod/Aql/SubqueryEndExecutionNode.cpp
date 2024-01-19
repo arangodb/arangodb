@@ -80,8 +80,7 @@ void SubqueryEndNode::doToVelocyPack(VPackBuilder& nodes,
 }
 
 std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
-    ExecutionEngine& engine,
-    std::unordered_map<ExecutionNode*, ExecutionBlock*> const& cache) const {
+    ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
 
@@ -107,21 +106,10 @@ std::unique_ptr<ExecutionBlock> SubqueryEndNode::createBlock(
 }
 
 ExecutionNode* SubqueryEndNode::clone(ExecutionPlan* plan,
-                                      bool withDependencies,
-                                      bool withProperties) const {
-  auto outVariable = _outVariable;
-  auto inVariable = _inVariable;
-
-  if (withProperties) {
-    outVariable = plan->getAst()->variables()->createVariable(outVariable);
-    if (inVariable != nullptr) {
-      inVariable = plan->getAst()->variables()->createVariable(inVariable);
-    }
-  }
-  auto c =
-      std::make_unique<SubqueryEndNode>(plan, _id, inVariable, outVariable);
-
-  return cloneHelper(std::move(c), withDependencies, withProperties);
+                                      bool withDependencies) const {
+  return cloneHelper(
+      std::make_unique<SubqueryEndNode>(plan, _id, _inVariable, _outVariable),
+      withDependencies);
 }
 
 void SubqueryEndNode::replaceOutVariable(Variable const* var) {
@@ -168,3 +156,5 @@ bool SubqueryEndNode::isModificationNode() const {
   TRI_ASSERT(false);
   return false;
 }
+
+size_t SubqueryEndNode::getMemoryUsedBytes() const { return sizeof(*this); }

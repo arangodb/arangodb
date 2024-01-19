@@ -105,6 +105,8 @@ struct OptimizerRule {
 
     inlineSubqueriesRule,
 
+    replaceLikeWithRange,
+
     /// simplify some conditions in CalculationNodes
     simplifyConditionsRule,
 
@@ -147,6 +149,9 @@ struct OptimizerRule {
 
     interchangeAdjacentEnumerationsRule,
 
+    // replace attribute accesses that are equal due to a filter statement
+    // with the same value. This might enable other optimizations later on.
+
     // "Pass 4": moving nodes "up" (potentially outside loops) (second try):
     // ======================================================
 
@@ -157,6 +162,8 @@ struct OptimizerRule {
     // move filters up the dependency chain (to make result sets as small
     // as possible as early as possible)
     moveFiltersUpRule2,
+
+    replaceEqualAttributeAccesses,
 
     /// "Pass 5": try to remove redundant or unnecessary nodes (second try)
     // remove filters from the query that are not necessary at all
@@ -209,6 +216,9 @@ struct OptimizerRule {
 
     // merge filters into graph traversals
     optimizeTraversalsRule,
+
+    // put path filters into enumerate paths
+    optimizeEnumeratePathsFilterRule,
 
     // optimize K_PATHS
     optimizePathsRule,
@@ -332,17 +342,11 @@ struct OptimizerRule {
     restrictToSingleShardRule,
 
     // turns LENGTH(FOR doc IN collection ... RETURN doc) into an optimized
-    // count
-    // operation
+    // count operation
     optimizeCountRule,
 
     // parallelizes execution in coordinator-sided GatherNodes
     parallelizeGatherRule,
-
-    // allows execution nodes to asynchronously prefetch the next batch from
-    // their
-    // upstream node.
-    asyncPrefetch,
 
     // reduce a sorted gather to an unsorted gather if only a single shard is
     // affected
@@ -364,15 +368,42 @@ struct OptimizerRule {
     // for index
     lateDocumentMaterializationRule,
 
+    // batch materialization rule
+    batchMaterializeDocumentsRule,
+
 #ifdef USE_ENTERPRISE
     lateMaterialiationOffsetInfoRule,
 #endif
+
+    // replace adjacent index nodes with a join node if the indexes qualify
+    // for it.
+    joinIndexNodesRule,
+
+    // remove unnecessary projections & store projection attributes in
+    // individual registers. must be executed after the joinIndexNodesRule,
+    // otherwise the projections handling of JoinNodes will be incorrect.
+    optimizeProjectionsRule,
+
+    // final cleanup, after projections
+    removeUnnecessaryCalculationsRule4,
+
+    // allows execution nodes to asynchronously prefetch the next batch from
+    // their upstream node.
+    asyncPrefetchRule,
+
+    // Better to be last, because it doesn't change plan and
+    // rely on no one will change search condition after this rule
+    immutableSearchConditionRule,
 
     // splice subquery into the place of a subquery node
     // enclosed by a SubqueryStartNode and a SubqueryEndNode
     // Must run last.
     spliceSubqueriesRule
   };
+
+  static_assert(lateDocumentMaterializationRule < optimizeProjectionsRule);
+  static_assert(joinIndexNodesRule < optimizeProjectionsRule);
+  static_assert(optimizeProjectionsRule < removeUnnecessaryCalculationsRule4);
 
 #ifdef USE_ENTERPRISE
   static_assert(clusterOneShardRule < distributeInClusterRule);
@@ -404,11 +435,17 @@ struct OptimizerRule {
   RuleFunction func;
   RuleLevel level;
   std::underlying_type<Flags>::type flags;
+  std::string_view description;
 
   OptimizerRule() = delete;
   OptimizerRule(std::string_view name, RuleFunction const& ruleFunc,
-                RuleLevel level, std::underlying_type<Flags>::type flags)
-      : name(name), func(ruleFunc), level(level), flags(flags) {}
+                RuleLevel level, std::underlying_type<Flags>::type flags,
+                std::string_view description)
+      : name(name),
+        func(ruleFunc),
+        level(level),
+        flags(flags),
+        description(description) {}
 
   OptimizerRule(OptimizerRule&& other) = default;
   OptimizerRule& operator=(OptimizerRule&& other) = default;

@@ -95,11 +95,13 @@ struct MyFollowerState : MyStateBase,
 };
 
 struct MyFactory {
-  auto constructFollower(std::unique_ptr<MyCoreType>)
+  auto constructFollower(std::unique_ptr<MyCoreType>,
+                         std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<MyFollowerState>;
   auto constructLeader(std::unique_ptr<MyCoreType>)
       -> std::shared_ptr<MyLeaderState>;
-  auto constructCore(GlobalLogIdentifier const&) -> std::unique_ptr<MyCoreType>;
+  auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
+      -> std::unique_ptr<MyCoreType>;
 };
 
 struct MyCoreType {};

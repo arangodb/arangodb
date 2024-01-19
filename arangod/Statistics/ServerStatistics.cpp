@@ -25,6 +25,7 @@
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Statistics/StatisticsFeature.h"
 #include "Metrics/CounterBuilder.h"
+#include "Metrics/GaugeBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
@@ -49,6 +50,10 @@ DECLARE_COUNTER(
 DECLARE_COUNTER(
     arangodb_collection_lock_timeouts_write_total,
     "Number of timeouts when trying to acquire collection write locks");
+DECLARE_GAUGE(arangodb_transactions_rest_memory_usage, uint64_t,
+              "Memory usage of transactions (excl. AQL queries)");
+DECLARE_GAUGE(arangodb_transactions_internal_memory_usage, uint64_t,
+              "Memory usage of internal transactions");
 DECLARE_COUNTER(arangodb_transactions_aborted_total,
                 "Number of transactions aborted");
 DECLARE_COUNTER(arangodb_transactions_committed_total,
@@ -89,6 +94,10 @@ DECLARE_HISTOGRAM(arangodb_collection_truncate_time, TimeScale<>,
 
 TransactionStatistics::TransactionStatistics(metrics::MetricsFeature& metrics)
     : _metrics(metrics),
+      _restTransactionsMemoryUsage(
+          _metrics.add(arangodb_transactions_rest_memory_usage{})),
+      _internalTransactionsMemoryUsage(
+          _metrics.add(arangodb_transactions_internal_memory_usage{})),
       _transactionsStarted(_metrics.add(arangodb_transactions_started_total{})),
       _transactionsAborted(_metrics.add(arangodb_transactions_aborted_total{})),
       _transactionsCommitted(

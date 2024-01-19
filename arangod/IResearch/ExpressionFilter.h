@@ -94,12 +94,8 @@ class ByExpression final : public irs::filter {
     return irs::type<ByExpression>::id();
   }
 
-  using irs::filter::prepare;
-
   irs::filter::prepared::ptr prepare(
-      irs::IndexReader const& index, irs::Scorers const& order,
-      irs::score_t filter_boost,
-      irs::attribute_provider const* ctx) const final;
+      irs::PrepareContext const& ctx) const final;
 
   size_t hash() const noexcept final;
 

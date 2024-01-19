@@ -49,11 +49,9 @@ RestBatchHandler::RestBatchHandler(ArangodServer& server,
 
 RestBatchHandler::~RestBatchHandler() = default;
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief was docuBlock JSF_batch_processing
-////////////////////////////////////////////////////////////////////////////////
-
 RestStatus RestBatchHandler::execute() {
+  _response->setAllowCompression(rest::ResponseCompressionType::kNoCompression);
+
   switch (_response->transportType()) {
     case Endpoint::TransportType::HTTP: {
       return executeHttp();
@@ -186,9 +184,8 @@ bool RestBatchHandler::executeNextHandler() {
   LOG_TOPIC("910e9", TRACE, arangodb::Logger::REPLICATION)
       << "part header is: " << std::string(headerStart, headerLength);
 
-  auto request =
-      std::make_unique<HttpRequest>(_request->connectionInfo(), /*messageId*/ 1,
-                                    /*allowMethodOverride*/ false);
+  auto request = std::make_unique<HttpRequest>(_request->connectionInfo(),
+                                               /*messageId*/ 1);
   if (0 < headerLength) {
     auto buff = std::make_unique<char[]>(headerLength + 1);
     memcpy(buff.get(), headerStart, headerLength);
@@ -203,27 +200,25 @@ bool RestBatchHandler::executeNextHandler() {
 
   if (bodyLength > 0) {
     LOG_TOPIC("63afb", TRACE, arangodb::Logger::REPLICATION)
-        << "part body is '" << std::string(bodyStart, bodyLength) << "'";
-    request->body().clear();
-    request->body().reserve(bodyLength + 1);
-    request->body().append(bodyStart, bodyLength);
-    request->body().push_back('\0');
-    request->body().resetTo(bodyLength);  // ensure null terminated
+        << "part body is '" << std::string_view(bodyStart, bodyLength) << "'";
+    request->clearBody();
+    request->appendBody(bodyStart, bodyLength);
+    request->appendNullTerminator();
   }
 
   if (!authorization.empty()) {
     // inject Authorization header of multipart message into part message
-    request->setHeader(StaticStrings::Authorization.c_str(),
-                       StaticStrings::Authorization.size(),
-                       authorization.c_str(), authorization.size());
+    request->setHeader(StaticStrings::Authorization, authorization);
   }
 
   std::shared_ptr<RestHandler> handler;
 
   {
+    // batch responses do not support response compression
     auto response =
         std::make_unique<HttpResponse>(rest::ResponseCode::SERVER_ERROR, 1,
-                                       std::make_unique<StringBuffer>(false));
+                                       std::make_unique<StringBuffer>(false),
+                                       ResponseCompressionType::kNoCompression);
     auto factory = server().getFeature<GeneralServerFeature>().handlerFactory();
     handler = factory->createHandler(server(), std::move(request),
                                      std::move(response));

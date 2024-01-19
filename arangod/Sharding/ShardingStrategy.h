@@ -75,10 +75,10 @@ class ShardingStrategy {
   /// `_key` is the one and only sharding attribute.
   ////////////////////////////////////////////////////////////////////////////////
 
-  virtual ErrorCode getResponsibleShard(velocypack::Slice slice,
-                                        bool docComplete, ShardID& shardID,
-                                        bool& usesDefaultShardKeys,
-                                        std::string_view key) = 0;
+  virtual ResultT<ShardID> getResponsibleShard(velocypack::Slice slice,
+                                               bool docComplete,
+                                               bool& usesDefaultShardKeys,
+                                               std::string_view key) = 0;
 };
 
 }  // namespace arangodb

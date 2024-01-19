@@ -1,5 +1,5 @@
 /* jshint globalstrict:false, strict:false, unused : false */
-/* global assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango, AQL_EXECUTE */
+/* global assertEqual, assertTrue, assertFalse, assertNull, fail, print, arango */
 // //////////////////////////////////////////////////////////////////////////////
 // / @brief recovery tests for views
 // /
@@ -77,8 +77,7 @@ function recoverySuite () {
   jsunity.jsUnity.attachAssertions();
 
   return {
-    setUp: function () {},
-    tearDown: function () {},
+
 
     // //////////////////////////////////////////////////////////////////////////////
     // / @brief test whether we can restore the trx data

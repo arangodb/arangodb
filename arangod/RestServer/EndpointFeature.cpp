@@ -62,8 +62,8 @@ void EndpointFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   options
       ->addOption("--server.endpoint",
                   "Endpoint for client requests (e.g. "
-                  "`http+tcp://127.0.0.1:8529`, or "
-                  "`vst+ssl://192.168.1.1:8529`)",
+                  "`http://127.0.0.1:8529`, or "
+                  "`https://192.168.1.1:8529`)",
                   new VectorParameter<StringParameter>(&_endpoints))
       .setLongDescription(R"(You can specify this option multiple times to let
 the ArangoDB server listen for incoming requests on multiple endpoints.
@@ -78,6 +78,9 @@ of endpoints:
 - `ssl://[ipv6-address]:port` - TCP/IP endpoint, using IPv6, SSL encryption
 - `unix:///path/to/socket` - Unix domain socket endpoint
 
+You can use `http://` as an alias for `tcp://`, and `https://` as an alias for
+`ssl://`.
+
 If a TCP/IP endpoint is specified without a port number, then the default port
 (8529) is used.
 
@@ -89,15 +92,7 @@ arangod --server.endpoint tcp://127.0.0.1:8529 \
         --server.endpoint ssl://127.0.0.1:8530 \
         --ssl.keyfile server.pem /tmp/data-dir
 
-2022-11-07T10:39:29Z [1] INFO [e52b0] {general} ArangoDB 3.10.0 [linux] 64bit, using jemalloc, build tags/v3.10.0-0-g207ec6937e4, VPack 0.1.36, RocksDB 7.2.0, ICU 64.2, V8 7.9.317, OpenSSL 1.1.1q  5 Jul 2022
-2022-11-07T10:39:29Z [1] INFO [75ddc] {general} detected operating system: Linux version 4.15.0-140-generic (buildd@lgw01-amd64-054) (gcc version 7.5.0 (Ubuntu 7.5.0-3ubuntu1~18.04)) #144-Ubuntu SMP Fri Mar 19 14:12:35 UTC 2021
-2022-11-07T10:39:29Z [1] INFO [25362] {memory} Available physical memory: 67513589760 bytes, available cores: 32
-2022-11-07T10:39:29Z [1] INFO [a1c60] {syscall} file-descriptors (nofiles) hard limit is 1048576, soft limit is 1048576
-2022-11-07T10:39:29Z [1] INFO [3bb7d] {cluster} Starting up with role SINGLE
-2022-11-07T10:39:29Z [1] INFO [f6e0e] {aql} memory limit per AQL query automatically set to 40508153856 bytes. to modify this value, please adjust the startup option `--query.memory-limit`
-2022-11-07T10:39:30Z [1] INFO [fe333] {engines} RocksDB recovery starting, scanning WAL starting from sequence number 91, latest sequence number: 202, files in archive: 0
-2022-11-07T10:39:30Z [1] INFO [a4ec8] {engines} RocksDB recovery finished, WAL entries scanned: 116, recovery start sequence number: 91, latest WAL sequence number: 202, max tick value found in WAL: 24, last HLC value found in WAL: 1748833470939922432
-2022-11-07T10:39:30Z [1] INFO [c1b63] {arangosearch} ArangoSearch maintenance: [5..5] commit thread(s), [5..5] consolidation thread(s)
+...
 2022-11-07T10:39:30Z [1] INFO [6ea38] {general} using endpoint 'http+ssl://0.0.0.0:8530' for ssl-encrypted requests
 2022-11-07T10:39:30Z [1] INFO [6ea38] {general} using endpoint 'http+tcp://0.0.0.0:8529' for non-encrypted requests
 2022-11-07T10:39:31Z [1] INFO [cf3f4] {general} ArangoDB (version 3.10.0 [linux]) is ready for business. Have fun!
