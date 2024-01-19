@@ -25,10 +25,12 @@
 
 #include "Aql/OptimizerRulesFeature.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Network/NetworkFeature.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "Scheduler/SchedulerFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/ManagerFeature.h"
@@ -52,6 +54,8 @@ struct TransactionManagerSetup {
 
   TransactionManagerSetup() : server(false) {
     TRI_ASSERT(server.server().hasFeature<transaction::ManagerFeature>());
+    server.addFeature<NetworkFeature>(true);
+    server.addFeature<SchedulerFeature>(true);
     server.startFeatures();
   }
 
