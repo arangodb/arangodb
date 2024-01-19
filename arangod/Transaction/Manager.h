@@ -68,8 +68,8 @@ struct Options;
 
 struct IManager {
   virtual ~IManager() = default;
-  virtual Result abortManagedTrx(TransactionId,
-                                 std::string const& database) = 0;
+  virtual futures::Future<Result> abortManagedTrx(
+      TransactionId, std::string const& database) = 0;
 };
 
 /// @brief Tracks TransactionState instances
@@ -86,6 +86,9 @@ class Manager final : public IManager {
   };
 
   struct ManagedTrx {
+    // This class belongs to the Manager and its methods. The members of
+    // this class are protected by the lock on the bucket in
+    // Manager::_transactions.
     ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
                std::shared_ptr<TransactionState> state,
                arangodb::cluster::CallbackGuard rGuard);
@@ -94,6 +97,11 @@ class Manager final : public IManager {
     bool hasPerformedIntermediateCommits() const noexcept;
     bool expired() const noexcept;
     void updateExpiry() noexcept;
+
+    /// Note that all members in this class are protected by the
+    /// member `rwlock` below. One must only read members whilst
+    /// holding the read lock and must only change members whilst
+    /// holding the write lock. Otherwise ASAN will be unhappy with us!
 
     /// @brief managed, AQL or tombstone
     MetaType type;
@@ -119,8 +127,17 @@ class Manager final : public IManager {
     arangodb::cluster::CallbackGuard rGuard;
     std::string const user;  /// user owning the transaction
     std::string db;          /// database in which the transaction operates
-    /// cheap usage lock for _state
     SchedulerWrapper _schedulerWrapper;
+    // The following lock protects access to the above `TransactionState`
+    // in the `state` member. For a read-only transaction, multiple
+    // threads (or coroutines) are allowed to hold the read lock. For
+    // read/write transactions, only one thread (or coroutine) must hold the
+    // write lock. One acquires the lock by calling `leaseManagedTrx`
+    // on the manager and returns the lock by calling `returnManagedTrx`.
+    // Usually this will be done by holding a copy of the `state` shared_ptr
+    // in an object of type `transaction::Context` (or any of its derived
+    // classes), such that the destructor of this context objects will
+    // call `returnManagedTrx`.
     mutable FutureLock rwlock;
   };
 
@@ -133,11 +150,18 @@ class Manager final : public IManager {
 
   static constexpr double idleTTLDBServer = 5 * 60.0;  //  5 minutes
 
-  // register a transaction
+  // register a transaction, note that this does **not** store the
+  // transaction in the Manager, and it does not make the transaction
+  // into a "managed" transaction. It only counts it in an atomic CounterGuard
+  // in the Manager. The CounterGuard object will do this and will
+  // automatically count down again in the destructor!
   std::shared_ptr<CounterGuard> registerTransaction(TransactionId transactionId,
                                                     bool isReadOnlyTransaction,
                                                     bool isFollowerTransaction);
 
+  // The following concerns only transactions which are counted by the
+  // Manager via CounterGuards (see registerTransaction), but will not
+  // count "managed" transactions!
   uint64_t getActiveTransactionCount();
 
   void disallowInserts() noexcept {
@@ -147,7 +171,9 @@ class Manager final : public IManager {
   arangodb::cluster::CallbackGuard buildCallbackGuard(
       TransactionState const& state);
 
-  /// @brief register a AQL transaction
+  /// @brief register a AQL transaction, this will make the transaction
+  /// a managed transaction which is stored in the Manager. If this does
+  /// not work, an exception is thrown.
   void registerAQLTrx(std::shared_ptr<TransactionState> const&);
   void unregisterAQLTrx(TransactionId tid) noexcept;
 
@@ -173,21 +199,30 @@ class Manager final : public IManager {
       std::vector<std::string> const& exclusiveCollections, Options options,
       OperationOrigin operationOrigin, double ttl);
 
+ private:
   futures::Future<Result> beginTransaction(
       transaction::Hints hints, std::shared_ptr<TransactionState>& state);
 
-  /// @brief lease the transaction, increases nesting
-  std::shared_ptr<transaction::Context> leaseManagedTrx(TransactionId tid,
-                                                        AccessMode::Type mode,
-                                                        bool isSideUser);
+ public:
+  /// @brief lease the transaction, increases nesting, this will acquire
+  /// the `rwlock` in the `ManagedTrx` struct either for reading or for
+  /// writing. One has to use `returnManagedTrx` to release this lock
+  /// eventually. This is usually done through the destructor of the
+  /// `transaction::Context` object, which holds a copy of the
+  /// `shared_ptr<TransactionState>` and will automatically call
+  /// `returnManagedTrx` on destruction.
+  futures::Future<std::shared_ptr<transaction::Context>> leaseManagedTrx(
+      TransactionId tid, AccessMode::Type mode, bool isSideUser);
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
   /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId,
                                           std::string const& database) const;
 
-  Result commitManagedTrx(TransactionId, std::string const& database);
-  Result abortManagedTrx(TransactionId, std::string const& database) override;
+  futures::Future<Result> commitManagedTrx(TransactionId,
+                                           std::string const& database);
+  futures::Future<Result> abortManagedTrx(TransactionId,
+                                          std::string const& database) override;
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -218,7 +253,10 @@ class Manager final : public IManager {
   // Hotbackup Stuff
   // ---------------------------------------------------------------------------
 
-  // temporarily block all transactions from committing
+  // temporarily block all transactions from committing, this is needed
+  // on coordinators to produce a consistent hotbackup. Therefore, all
+  // transactions (even the non-managed ones) must call
+  // `getTransactionCommitGuard` below before they commit!
   template<typename TimeOutType>
   bool holdTransactions(TimeOutType timeout) {
     bool ret = false;
@@ -269,8 +307,9 @@ class Manager final : public IManager {
   transaction::Hints ensureHints(transaction::Options& options) const;
 
   /// @brief performs a status change on a transaction using a timeout
-  Result statusChangeWithTimeout(TransactionId tid, std::string const& database,
-                                 transaction::Status status);
+  futures::Future<Result> statusChangeWithTimeout(TransactionId tid,
+                                                  std::string const& database,
+                                                  transaction::Status status);
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
@@ -280,7 +319,7 @@ class Manager final : public IManager {
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
       TransactionId tid, ManagedTrx& mtrx);
 
-  Result updateTransaction(
+  futures::Future<Result> updateTransaction(
       TransactionId tid, transaction::Status status, bool clearServers,
       std::string const& database =
           "" /* leave empty to operate across all databases */);
@@ -300,15 +339,35 @@ class Manager final : public IManager {
  private:
   ManagerFeature& _feature;
 
+  // There is a danger of deadlock between the `_lock` in the bucket here
+  // and the rwlock in the `ManagedTrx` object, if some thread tries to
+  // acquire them in this order and the other in that order. Since it is
+  // possible to hold the rwlock across method calls to the manager
+  // (see leaseManagedTrx/returnManagedTrx), we must never ever acquire
+  // ManagedTrx::rwlock whilst we are holding _lock in the bucket!
+  // The other order is allowed.
   struct {
-    // a lock protecting _managed
+    // This is a lock protecting _managed, as well as the members of the
+    // `ManagedTrx` objects behind the shared_ptrs in the map.
+    // Note it is crucial to not hold this lock whilst trying
+    // to lock the rwlock in the `ManagedTrx` instances behind the
+    // shared_ptr! If we did this, we would run into the danger that
+    // threads which need to lock _lock for writing could be blocked
+    // and this could create an entirely new "all threads are blocked"
+    // situation! (see also the comment above this struct about
+    // deadlock!) Therefore: Always get _lock, then look up and copy
+    // the shared_ptr<ManagedTrx>, release _lock, and then lock the
+    // ManagedTrx!
+    // If you need to recheck the members of `ManagedTrx` after that, you
+    // have to re-acquire _lock!
     mutable basics::ReadWriteLock _lock;
 
-    // managed transactions, seperate lifetime from above
-    std::unordered_map<TransactionId, ManagedTrx> _managed;
+    // managed transactions, separate lifetime from above
+    std::unordered_map<TransactionId, std::shared_ptr<ManagedTrx>> _managed;
   } _transactions[numBuckets];
 
-  /// Nr of running transactions
+  // Nr of running transactions, this only counts the non-managed ones
+  // which register themselves with `registerTransaction` in the Manager!
   std::atomic<uint64_t> _nrRunning;
 
   std::atomic<bool> _disallowInserts;

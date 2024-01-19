@@ -84,14 +84,6 @@ std::string currentUser() { return arangodb::ExecContext::current().user(); }
 
 namespace arangodb::transaction {
 
-namespace {
-struct MGMethods final : arangodb::transaction::Methods {
-  MGMethods(std::shared_ptr<arangodb::transaction::Context> ctx,
-            arangodb::transaction::Options const& opts)
-      : Methods(std::move(ctx)) {}
-};
-}  // namespace
-
 Manager::Manager(ManagerFeature& feature)
     : _feature(feature),
       _nrRunning(0),
@@ -191,9 +183,9 @@ Manager::ManagedTrx::~ManagedTrx() {
     transaction::ManagedContext ctx(TransactionId{2}, state,
                                     /*responsibleForCommit*/ true,
                                     /*cloned*/ false);
-    MGMethods trx(std::shared_ptr<transaction::Context>(
-                      std::shared_ptr<transaction::Context>(), &ctx),
-                  opts);  // own state now
+    transaction::Methods trx(std::shared_ptr<transaction::Context>(
+                                 std::shared_ptr<transaction::Context>(), &ctx),
+                             opts);  // own state now
     TRI_ASSERT(trx.state()->status() == transaction::Status::RUNNING);
     TRI_ASSERT(trx.isMainTransaction());
     std::ignore = trx.abort();
@@ -280,7 +272,10 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, std::string());
+            // Note that this can potentially block on the future, in
+            // case we do not get the lock on the ManagedTrx object
+            // quickly!
+            abortManagedTrx(tid, std::string()).get();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -320,24 +315,28 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
 
 void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
   size_t bucket = getBucket(tid);
-  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-
   auto& buck = _transactions[bucket];
-  auto it = buck._managed.find(tid);
-  if (it == buck._managed.end()) {
-    LOG_TOPIC("92a49", WARN, Logger::TRANSACTIONS)
-        << "registered transaction " << tid << " not found";
-    TRI_ASSERT(false);
-    return;
+
+  std::shared_ptr<ManagedTrx> mtrx;
+
+  {
+    READ_LOCKER(readLocker, _transactions[bucket]._lock);
+    auto it = buck._managed.find(tid);
+    if (it == buck._managed.end()) {
+      LOG_TOPIC("92a49", WARN, Logger::TRANSACTIONS)
+          << "registered transaction " << tid << " not found";
+      TRI_ASSERT(false);
+      return;
+    }
+    std::shared_ptr<ManagedTrx> mtrx = it->second;  // copy shared_ptr!
   }
-  TRI_ASSERT(it->second.type == MetaType::StandaloneAQL);
 
   /// we need to make sure no-one else is still using the TransactionState
   /// we try for a second, before we give up in despair:
   {
-    auto guard = it->second.rwlock
-                     .asyncTryLockExclusiveFor(std::chrono::milliseconds(1000))
-                     .get();
+    auto guard =
+        mtrx->rwlock.asyncTryLockExclusiveFor(std::chrono::milliseconds(1000))
+            .get();
     if (!guard.isLocked()) {
       LOG_TOPIC("9f7d7", WARN, Logger::TRANSACTIONS)
           << "transaction " << tid << " is still in use";
@@ -345,8 +344,14 @@ void Manager::unregisterAQLTrx(TransactionId tid) noexcept {
       return;
     }
   }
+  // It is possible that somebody else has in the meantime deleted the
+  // transaction or set its state to MetaType::Tombstone!
+  // TRI_ASSERT(mtrx->type == MetaType::StandaloneAQL);
 
-  buck._managed.erase(it);
+  WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+  buck._managed.erase(tid);  // ignore if it was already gone!
+  // Note that we have already destroyed `guard` and so `mtrx` and thus
+  // the rwlock can now automatically be destroyed in the right order!
 }
 
 futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
@@ -790,28 +795,28 @@ futures::Future<Result> Manager::ensureManagedTrx(
 }
 
 /// @brief lease the transaction, increases nesting
-std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
+futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
     TransactionId tid, AccessMode::Type mode, bool isSideUser) {
+  // simon: Two allowed scenarios:
+  // 1. User sends concurrent write (CRUD) requests, (which was never intended
+  // to be possible)
+  //    but now we do have to kind of support it otherwise shitty apps break
+  // 2. one does a bulk write within a el-cheapo / V8 transaction into
+  // multiple shards
+  //    on the same DBServer (still bad design).
   TRI_ASSERT(mode != AccessMode::Type::NONE);
 
   if (_disallowInserts.load(std::memory_order_acquire)) {
-    return nullptr;
+    co_return nullptr;
   }
 
-  TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
+  TRI_IF_FAILURE("leaseManagedTrxFail") { co_return nullptr; }
 
   auto role = ServerState::instance()->getRole();
-  std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
-  std::chrono::steady_clock::time_point endTime;
+  int64_t timeoutMilliseconds = -1;      // no timeout
   if (!ServerState::isDBServer(role)) {  // keep end time as small as possible
-    endTime =
-        now + std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
+    timeoutMilliseconds = int64_t(1000 * _streamingLockTimeout);
   }
-  std::chrono::steady_clock::time_point detachTime;
-  if (_streamingLockTimeout >= 1.0) {
-    detachTime = now + std::chrono::milliseconds(1000);
-  }
-  bool alreadyDetached = false;
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
   if (ServerState::isCoordinator(role)) {
@@ -821,141 +826,138 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
   TRI_ASSERT(!isSideUser || AccessMode::isRead(mode));
 
   size_t bucket = getBucket(tid);
-  int i = 0;
-  do {
+  std::shared_ptr<ManagedTrx> mtrx_ptr;
+  MetaType type;
+  {
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end()) {
-      return nullptr;
+      co_return nullptr;
     }
 
-    ManagedTrx& mtrx = it->second;
-    if (mtrx.type == MetaType::Tombstone) {
-      if (mtrx.finalStatus == transaction::Status::ABORTED) {
+    mtrx_ptr = it->second;  // copy shared_ptr!
+    if (mtrx_ptr->type == MetaType::Tombstone) {
+      if (mtrx_ptr->finalStatus == transaction::Status::ABORTED) {
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
                                        "transaction " +
                                            std::to_string(tid.id()) +
                                            " has already been aborted");
       }
-      return nullptr;
+      co_return nullptr;
     }
 
-    if (mtrx.expired() || !::authorized(mtrx.user)) {
-      return nullptr;  // no need to return anything
+    if (mtrx_ptr->expired() || !::authorized(mtrx_ptr->user)) {
+      co_return nullptr;  // no need to return anything
     }
+    type = mtrx_ptr->type;  // Keep a copy, since we must not access
+                            // the members of mtrx (except rwlock) when
+                            // we release the bucket _lock!
+  }
+  ManagedTrx& mtrx = *mtrx_ptr;
+  // It is crucial to release the _transactions[bucket]._lock here before
+  // trying to acquire the mtrx.rwlock, since otherwise we would run into
+  // the danger to produce a deadlock, since some other thread might
+  // have the mtrx.rwlock and then try to acquire the
+  // _transactions[bucket]._lock!
+  // On the other hand, we may now no longer access the members of mtrx,
+  // (with the exception of rwlock), since they are protected by the bucket
+  // _lock!
 
-    if (AccessMode::isWriteOrExclusive(mode)) {
-      if (mtrx.type == MetaType::StandaloneAQL) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-            "not allowed to write lock an AQL transaction");
-      }
-      if (mtrx.rwlock.tryLockWrite()) {
-        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
-        if (mtrx.state->isReadOnlyTransaction()) {
-          managedContext->setReadOnly();
-        }
-        return managedContext;
-      }
-      // continue the loop after a small pause
-    } else {
-      TRI_ASSERT(mode == AccessMode::Type::READ);
-      // even for side user leases, first try acquiring the read lock
-      if (mtrx.rwlock.tryLockRead()) {
-        auto managedContext = buildManagedContextUnderLock(tid, mtrx);
-        if (mtrx.state->isReadOnlyTransaction()) {
-          managedContext->setReadOnly();
-        }
-        return managedContext;
-      }
-      if (isSideUser) {
-        // number of side users is atomically increased under the bucket's read
-        // lock. due to us holding the bucket's read lock here, there can be no
-        // other threads concurrently aborting/commiting the transaction (these
-        // operations acquire the write lock on the transaction's bucket).
-        mtrx.sideUsers.fetch_add(1, std::memory_order_relaxed);
-        // note: we are intentionally _not_ acquiring the lock on the
-        // transaction here, as we expect another operation to have acquired it
-        // already!
-        try {
-          std::shared_ptr<TransactionState> state = mtrx.state;
-          TRI_ASSERT(state != nullptr);
-          auto managedContext = std::make_shared<ManagedContext>(
-              tid, std::move(state), TransactionContextSideUser{});
-          if (mtrx.state->isReadOnlyTransaction()) {
-            managedContext->setReadOnly();
-          }
-          return managedContext;
-        } catch (...) {
-          // roll back our increase of the number of side users
-          auto previous =
-              mtrx.sideUsers.fetch_sub(1, std::memory_order_relaxed);
-          TRI_ASSERT(previous > 0);
-          throw;
-        }
-      }
-
+  if (AccessMode::isWriteOrExclusive(mode)) {
+    if (type == MetaType::StandaloneAQL) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_LOCKED, std::string("cannot read-lock, transaction ") +
-                                std::to_string(tid.id()) +
-                                " is already in use");
+          TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+          "not allowed to write lock an AQL transaction");
     }
-
-    locker.unlock();  // failure;
-
-    // simon: never allow concurrent use of transactions
-    // either busy loop until we get the lock or throw an error
-
-    LOG_TOPIC("abd72", TRACE, Logger::TRANSACTIONS)
-        << "transaction " << tid << " is already in use (RO)";
-
-    // simon: Two allowed scenarios:
-    // 1. User sends concurrent write (CRUD) requests, (which was never intended
-    // to be possible)
-    //    but now we do have to kind of support it otherwise shitty apps break
-    // 2. one does a bulk write within a el-cheapo / V8 transaction into
-    // multiple shards
-    //    on the same DBServer (still bad design).
-    TRI_ASSERT(endTime.time_since_epoch().count() == 0 ||
-               !ServerState::instance()->isDBServer());
-
-    auto now = std::chrono::steady_clock::now();
-    if (!alreadyDetached && detachTime.time_since_epoch().count() != 0 &&
-        now > detachTime) {
-      alreadyDetached = true;
-      LOG_TOPIC("dd234", INFO, Logger::THREADS)
-          << "Did not get lock within 1 seconds, detaching scheduler thread.";
-      uint64_t currentNumberDetached = 0;
-      uint64_t maximumNumberDetached = 0;
-      auto res = SchedulerFeature::SCHEDULER->detachThread(
-          &currentNumberDetached, &maximumNumberDetached);
-      if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-        LOG_TOPIC("dd233", WARN, Logger::THREADS)
-            << "Could not detach scheduler thread (currently detached threads: "
-            << currentNumberDetached
-            << ", maximal number of detached threads: " << maximumNumberDetached
-            << "), will continue to acquire "
-               "lock in scheduler thread, this can potentially lead to "
-               "blockages!";
+    auto guard = co_await mtrx.rwlock.asyncTryLockExclusiveFor(
+        std::chrono::milliseconds(timeoutMilliseconds));
+    if (guard.isLocked()) {
+      auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+      // Get the bucket lock again:
+      READ_LOCKER(locker, _transactions[bucket]._lock);
+      // We may now access the members of mtrx again!
+      if (mtrx.state->isReadOnlyTransaction()) {
+        managedContext->setReadOnly();
       }
-    }
-    if (!ServerState::isDBServer(role) && now > endTime) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_LOCKED, std::string("cannot write-lock, transaction ") +
-                                std::to_string(tid.id()) +
-                                " is already in use");
-    } else if ((i % 32) == 0) {
-      LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS)
-          << "waiting on trx write-lock " << tid;
-      i = 0;
-      if (_feature.server().isStopping()) {
-        return nullptr;  // shutting down
+      // Now need to check again that nobody has soft deleted or aborted the
+      // transaction in the meantime:
+      // We may now access the mem
+      auto it = _transactions[bucket]._managed.find(tid);
+      if (it == _transactions[bucket]._managed.end()) {
+        co_return nullptr;
       }
+      if (mtrx.type == MetaType::Tombstone &&
+          mtrx.finalStatus == transaction::Status::ABORTED) {
+        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
+                                       "transaction " +
+                                           std::to_string(tid.id()) +
+                                           " has already been aborted");
+      }
+      guard.release();  // Sack the guard, keep the lock
+      co_return managedContext;
     }
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_LOCKED, std::string("cannot write-lock, transaction ") +
+                              std::to_string(tid.id()) + " is already in use");
+  }
+  TRI_ASSERT(mode == AccessMode::Type::READ);
+  // even for side user leases, first try acquiring the read lock
+  auto guard = co_await mtrx.rwlock.asyncTryLockSharedFor(
+      std::chrono::milliseconds(timeoutMilliseconds));
+  if (guard.isLocked()) {
+    auto managedContext = buildManagedContextUnderLock(tid, mtrx);
+    // Get the bucket lock again:
+    READ_LOCKER(locker, _transactions[bucket]._lock);
+    // We may now access the members of mtrx again!
+    if (mtrx.state->isReadOnlyTransaction()) {
+      managedContext->setReadOnly();
+    }
+    // Now need to check again that nobody has soft deleted or aborted the
+    // transaction in the meantime:
+    // We may now access the mem
+    auto it = _transactions[bucket]._managed.find(tid);
+    if (it == _transactions[bucket]._managed.end()) {
+      co_return nullptr;
+    }
+    if (mtrx.type == MetaType::Tombstone &&
+        mtrx.finalStatus == transaction::Status::ABORTED) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
+                                     "transaction " + std::to_string(tid.id()) +
+                                         " has already been aborted");
+    }
+    guard.release();  // Sack the guard, keep the lock
+    co_return managedContext;
+  }
+  if (isSideUser) {
+    // number of side users is atomically increased under the bucket's read
+    // lock. due to us holding the bucket's read lock here, there can be no
+    // other threads concurrently aborting/commiting the transaction (these
+    // operations acquire the write lock on the transaction's bucket).
+    mtrx.sideUsers.fetch_add(1, std::memory_order_relaxed);
+    // note: we are intentionally _not_ acquiring the lock on the
+    // transaction here, as we expect another operation to have acquired it
+    // already!
+    try {
+      std::shared_ptr<TransactionState> state = mtrx.state;
+      TRI_ASSERT(state != nullptr);
+      auto managedContext = std::make_shared<ManagedContext>(
+          tid, std::move(state), TransactionContextSideUser{});
+      if (mtrx.state->isReadOnlyTransaction()) {
+        managedContext->setReadOnly();
+      }
+      co_return managedContext;
+    } catch (...) {
+      // roll back our increase of the number of side users
+      auto previous = mtrx.sideUsers.fetch_sub(1, std::memory_order_relaxed);
+      TRI_ASSERT(previous > 0);
+      throw;
+    }
+  }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  } while (true);
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_LOCKED, std::string("cannot read-lock, transaction ") +
+                            std::to_string(tid.id()) + " is already in use");
 }
 
 void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
@@ -967,14 +969,14 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end() ||
-        !::authorized(it->second.user)) {
+        !::authorized(it->second->user)) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
           << "managed transaction " << tid << " not found";
       TRI_ASSERT(false);
       return;
     }
 
-    TRI_ASSERT(it->second.state != nullptr);
+    TRI_ASSERT(it->second->state != nullptr);
 
     if (isSideUser) {
       // number of side users is atomically decreased under the bucket's read
@@ -982,18 +984,18 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
       // other threads concurrently aborting/commiting the transaction (these
       // operations acquire the write lock on the transaction's bucket).
       auto previous =
-          it->second.sideUsers.fetch_sub(1, std::memory_order_relaxed);
+          it->second->sideUsers.fetch_sub(1, std::memory_order_relaxed);
       TRI_ASSERT(previous > 0);
-      // note: we are intentionally _not_ releasing the lock on the transaction
-      // here, because we have not acquired it before!
+      // note: we are intentionally _not_ releasing the lock on the
+      // transaction here, because we have not acquired it before!
     } else {
       // garbageCollection might soft abort used transactions
-      isSoftAborted = it->second.expiryTime == 0;
+      isSoftAborted = it->second->expiryTime == 0;
       if (!isSoftAborted) {
-        it->second.updateExpiry();
+        it->second->updateExpiry();
       }
 
-      it->second.rwlock.unlock();
+      it->second->rwlock.unlock();
     }
   }
 
@@ -1006,7 +1008,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
   if (isSoftAborted) {
     TRI_ASSERT(!isSideUser);
-    abortManagedTrx(tid, "" /* any database */);
+    abortManagedTrx(tid, "" /* any database */).get();
   }
 }
 
@@ -1018,11 +1020,11 @@ transaction::Status Manager::getManagedTrxStatus(
 
   auto it = _transactions[bucket]._managed.find(tid);
   if (it == _transactions[bucket]._managed.end() ||
-      !::authorized(it->second.user) || it->second.db != database) {
+      !::authorized(it->second->user) || it->second->db != database) {
     return transaction::Status::UNDEFINED;
   }
 
-  auto const& mtrx = it->second;
+  auto const& mtrx = *it->second;
 
   if (mtrx.type == MetaType::Tombstone) {
     return mtrx.finalStatus;
@@ -1033,14 +1035,14 @@ transaction::Status Manager::getManagedTrxStatus(
   }
 }
 
-Result Manager::statusChangeWithTimeout(TransactionId tid,
-                                        std::string const& database,
-                                        transaction::Status status) {
+futures::Future<Result> Manager::statusChangeWithTimeout(
+    TransactionId tid, std::string const& database,
+    transaction::Status status) {
   double startTime = 0.0;
   constexpr double maxWaitTime = 3.0;
   Result res;
   while (true) {
-    res = updateTransaction(tid, status, false, database);
+    res = co_await updateTransaction(tid, status, false, database);
     if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
       break;
     }
@@ -1053,23 +1055,25 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
     }
     std::this_thread::yield();
   }
-  return res;
+  co_return res;
 }
 
-Result Manager::commitManagedTrx(TransactionId tid,
-                                 std::string const& database) {
+futures::Future<Result> Manager::commitManagedTrx(TransactionId tid,
+                                                  std::string const& database) {
   READ_LOCKER(guard, _hotbackupCommitLock);
-  return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
+  co_return co_await statusChangeWithTimeout(tid, database,
+                                             transaction::Status::COMMITTED);
 }
 
-Result Manager::abortManagedTrx(TransactionId tid,
-                                std::string const& database) {
-  return statusChangeWithTimeout(tid, database, transaction::Status::ABORTED);
+futures::Future<Result> Manager::abortManagedTrx(TransactionId tid,
+                                                 std::string const& database) {
+  co_return co_await statusChangeWithTimeout(tid, database,
+                                             transaction::Status::ABORTED);
 }
 
-Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
-                                  bool clearServers,
-                                  std::string const& database) {
+futures::Future<Result> Manager::updateTransaction(
+    TransactionId tid, transaction::Status status, bool clearServers,
+    std::string const& database) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
@@ -1097,63 +1101,89 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     return msg;
   };
 
-  std::shared_ptr<TransactionState> state;
+  std::shared_ptr<ManagedTrx> mtrx_ptr;
   {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
-      // insert a tombstone for an aborted transaction that we never saw before
+      // insert a tombstone for an aborted transaction that we never saw
+      // before
       auto inserted = buck._managed.try_emplace(
-          tid, _feature, MetaType::Tombstone,
-          ttlForType(_feature, MetaType::Tombstone), nullptr,
-          arangodb::cluster::CallbackGuard{});
-      inserted.first->second.finalStatus = transaction::Status::ABORTED;
-      inserted.first->second.db = database;
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
-                       buildErrorMessage(tid, status, /*found*/ false));
+          tid, std::make_shared<ManagedTrx>(
+                   _feature, MetaType::Tombstone,
+                   ttlForType(_feature, MetaType::Tombstone), nullptr,
+                   arangodb::cluster::CallbackGuard{}));
+      inserted.first->second->finalStatus = transaction::Status::ABORTED;
+      inserted.first->second->db = database;
+      co_return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                          buildErrorMessage(tid, status, /*found*/ false));
     }
 
-    ManagedTrx& mtrx = it->second;
-    if (!::authorized(mtrx.user) ||
-        (!database.empty() && mtrx.db != database)) {
-      return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
-                       buildErrorMessage(tid, status, /*found*/ true));
+    mtrx_ptr = it->second;
+    if (!::authorized(mtrx_ptr->user) ||
+        (!database.empty() && mtrx_ptr->db != database)) {
+      co_return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                          buildErrorMessage(tid, status, /*found*/ true));
+    }
+  }
+  // We are releasing the lock on the bucket here, because we must now
+  // acquire the rwlock on the `ManagedTrx` object.
+
+  // in order to modify the transaction's status, we need the write lock
+  // here, plus we must ensure that the number of sideUsers is 0.
+  auto tryGuard = co_await mtrx_ptr->rwlock.asyncTryLockExclusiveFor(
+      std::chrono::milliseconds(100));
+  bool canAccessTrx = tryGuard.isLocked();
+  if (canAccessTrx) {
+    canAccessTrx &= (mtrx_ptr->sideUsers.load(std::memory_order_relaxed) == 0);
+  }
+  if (!canAccessTrx) {
+    std::string_view hint = " ";
+    if (tid.isFollowerTransactionId()) {
+      hint = " follower ";
     }
 
-    // in order to modify the transaction's status, we need the write lock here,
-    // plus we must ensure that the number of sideUsers is 0.
-    TRY_WRITE_LOCKER(tryGuard, mtrx.rwlock);
-    bool canAccessTrx = tryGuard.isLocked();
-    if (canAccessTrx) {
-      canAccessTrx &= (mtrx.sideUsers.load(std::memory_order_relaxed) == 0);
+    std::string_view operation;
+    if (status == transaction::Status::COMMITTED) {
+      operation = "commit";
+    } else {
+      operation = "abort";
     }
-    if (!canAccessTrx) {
-      std::string_view hint = " ";
-      if (tid.isFollowerTransactionId()) {
-        hint = " follower ";
-      }
+    std::string msg = absl::StrCat("updating", hint, "transaction status on ",
+                                   operation, " failed. transaction ",
+                                   std::to_string(tid.id()), " is in use");
+    LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
+    co_return res.reset(TRI_ERROR_LOCKED, std::move(msg));
+  }
+  TRI_ASSERT(tryGuard.isLocked());
 
-      std::string_view operation;
-      if (status == transaction::Status::COMMITTED) {
-        operation = "commit";
-      } else {
-        operation = "abort";
-      }
-      std::string msg = absl::StrCat("updating", hint, "transaction status on ",
-                                     operation, " failed. transaction ",
-                                     std::to_string(tid.id()), " is in use");
-      LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
-      return res.reset(TRI_ERROR_LOCKED, std::move(msg));
+  // A place to move the `TransactionState` out of the `ManagedTrx`:
+  std::shared_ptr<TransactionState> state;
+  {
+    // Now we need to reacquire the lock for the bucket (and thus for the
+    // members of the `ManagedTrx`:
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+
+    auto& buck = _transactions[bucket];
+    auto it = buck._managed.find(tid);
+    // Potentially, the transaction could be gone in the meantime, If
+    // somebody else first got the lock, then our work is done with an error:
+    if (it == buck._managed.end()) {
+      // This will automatically first release `writeLocker`, then delete
+      // `tryGuard`, thereby releasing the rwlock and then destroying
+      // `mtrx_ptr` and thus the `ManagedTrx`.
+      co_return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
+                          buildErrorMessage(tid, status, /*found*/ false));
     }
 
-    TRI_ASSERT(tryGuard.isLocked());
+    ManagedTrx& mtrx = *mtrx_ptr;
 
     if (mtrx.type == MetaType::StandaloneAQL) {
-      return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                       "not allowed to change an AQL transaction");
-    } else if (mtrx.type == MetaType::Tombstone) {
+      co_return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                          "not allowed to change an AQL transaction");
+    } else if (mtrx_ptr->type == MetaType::Tombstone) {
       TRI_ASSERT(mtrx.state == nullptr);
       // make sure everyone who asks gets the updated timestamp
       mtrx.updateExpiry();
@@ -1166,10 +1196,10 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
           // intermediate commits already. in this case we return a special
           // error code, which makes the leader drop us as a follower for all
           // shards in the transaction.
-          return res.reset(
+          co_return res.reset(
               TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED);
         }
-        return res;  // all good
+        co_return res;  // all good
       } else {
         std::string msg("transaction was already ");
         if (mtrx.wasExpired) {
@@ -1177,23 +1207,25 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
         } else {
           msg.append(statusString(mtrx.finalStatus));
         }
-        return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
-                         std::move(msg));
+        co_return res.reset(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+                            std::move(msg));
       }
     }
     TRI_ASSERT(mtrx.type == MetaType::Managed);
 
     if (mtrx.expired()) {
       // we will update the expire time of the tombstone shortly afterwards,
-      // but we need to store the fact that this transaction originally expired
+      // but we need to store the fact that this transaction originally
+      // expired
       wasExpired = true;
       status = transaction::Status::ABORTED;
     }
 
+    // Now take the `TransactionState` out of the `ManagedTrx`:
     std::swap(state, mtrx.state);
     TRI_ASSERT(mtrx.state == nullptr);
-    // type is changed under the transaction's write lock and the bucket's write
-    // lock
+    // type is changed under the transaction's write lock and the bucket's
+    // write lock
     mtrx.type = MetaType::Tombstone;
     if (state->numCommits() > 0) {
       // note that we have performed a commit or an intermediate commit.
@@ -1206,32 +1238,39 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     // it is sufficient to pretend that the operation already succeeded
   }
 
+  // Now we have sorted out the Manager's data structures, so we can really
+  // commit or abort the transaction:
   TRI_ASSERT(state);
   if (!state) {  // this should never happen
-    return res.reset(TRI_ERROR_INTERNAL, "managed trx in an invalid state");
+    co_return res.reset(TRI_ERROR_INTERNAL, "managed trx in an invalid state");
   }
 
-  auto abortTombstone = [&] {  // set tombstone entry to aborted
-    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
-    auto& buck = _transactions[bucket];
-    auto it = buck._managed.find(tid);
-    if (it != buck._managed.end()) {
-      it->second.finalStatus = Status::ABORTED;
-    }
-  };
   if (!state->isRunning()) {  // this also should not happen
-    abortTombstone();
-    return res.reset(TRI_ERROR_TRANSACTION_ABORTED,
-                     "transaction was not running");
+    // We need to reacquire the lock for the bucket because of the
+    // members of the `ManagedTrx`. Note that it is **not** a problem
+    // if the entry in the bucket map has vanished in the meantime, since
+    // we still hold `mtrx_ptr`!
+    WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+    mtrx_ptr->finalStatus = Status::ABORTED;
+    co_return res.reset(TRI_ERROR_TRANSACTION_ABORTED,
+                        "transaction was not running");
   }
 
   bool isCoordinator = state->isCoordinator();
   bool intermediateCommits = state->numCommits() > 0;
 
-  MGMethods trx(std::make_shared<ManagedContext>(tid, std::move(state),
-                                                 /*responsibleForCommit*/ true,
-                                                 /*cloned*/ false),
-                transaction::Options{});
+  // We now need to use a `transactions::Methods` object to officially
+  // commit the transaction. Note that we already have the rwlock in
+  // write mode on the `ManagedTrx`, which we usually would get by
+  // `leaseManagedTrx`. The `ManagedContext` which we are using here
+  // will unregister the transaction in the Manager and thus free it,
+  // so we release the guard here:
+  tryGuard.release();
+  transaction::Methods trx(
+      std::make_shared<ManagedContext>(tid, std::move(state),
+                                       /*responsibleForCommit*/ true,
+                                       /*cloned*/ false),
+      transaction::Options{});
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(trx.isMainTransaction());
   if (clearServers && !isCoordinator) {
@@ -1247,7 +1286,12 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
         // ignore return code here
         std::ignore = trx.abort();
       }
-      abortTombstone();
+      // We need to reacquire the lock for the bucket because of the
+      // members of the `ManagedTrx`. Note that it is **not** a problem
+      // if the entry in the bucket map has vanished in the meantime, since
+      // we still hold `mtrx_ptr`!
+      WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
+      mtrx_ptr->finalStatus = Status::ABORTED;
     }
   } else {
     res = trx.abort();
@@ -1262,7 +1306,10 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   }
   TRI_ASSERT(!trx.state()->isRunning());
 
-  return res;
+  // Finally, our work is done. This will now release things in exactly
+  // the right order: `trx` is destroyed, the `ManagedContext` created
+  // above is destroyed as a consequence, the .
+  co_return res;
 }
 
 /// @brief calls the callback function for each managed transaction
@@ -1275,9 +1322,9 @@ void Manager::iterateManagedTrx(
 
     auto& buck = _transactions[bucket];
     for (auto const& it : buck._managed) {
-      if (it.second.type == MetaType::Managed) {
+      if (it.second->type == MetaType::Managed) {
         // we only care about managed transactions here
-        callback(it.first, it.second);
+        callback(it.first, *it.second);
       }
     }
   }
@@ -1310,7 +1357,7 @@ bool Manager::garbageCollect(bool abortAll) {
         scopeGuard([&]() noexcept { _transactions[bucket]._lock.unlock(); });
 
     for (auto& it : _transactions[bucket]._managed) {
-      ManagedTrx& mtrx = it.second;
+      ManagedTrx& mtrx = *it.second;
 
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
@@ -1326,7 +1373,8 @@ bool Manager::garbageCollect(bool abortAll) {
             toAbort.emplace_back(mtrx.state->id());
             LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
                 << "aborting expired transaction " << it.first;
-          } else if (abortAll) {  // transaction is in use but we want to abort
+          } else if (abortAll) {  // transaction is in use but we want to
+                                  // abort
             LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS)
                 << "soft-aborting expired transaction " << it.first;
             mtrx.expiryTime = 0;  // soft-abort transaction
@@ -1350,7 +1398,8 @@ bool Manager::garbageCollect(bool abortAll) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
     try {
-      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+      Result res =
+          updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true).get();
       // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
       // successfully aborts, so ignore this error.
       // we can also get the TRI_ERROR_LOCKED error in case we cannot
@@ -1399,7 +1448,7 @@ bool Manager::abortManagedTrx(
 
     auto it = _transactions[bucket]._managed.begin();
     while (it != _transactions[bucket]._managed.end()) {
-      ManagedTrx& mtrx = it->second;
+      ManagedTrx& mtrx = *it->second;
       if (mtrx.type == MetaType::Managed) {
         TRI_ASSERT(mtrx.state != nullptr);
         TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
@@ -1413,7 +1462,8 @@ bool Manager::abortManagedTrx(
   }
 
   for (TransactionId tid : toAbort) {
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+    Result res =
+        updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true).get();
     if (res.fail() &&
         !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)

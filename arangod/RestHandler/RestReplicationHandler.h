@@ -545,8 +545,8 @@ class RestReplicationHandler : public RestVocbaseBaseHandler {
   ///        Will return error if the lock has expired.
   //////////////////////////////////////////////////////////////////////////////
 
-  ResultT<std::string> computeCollectionChecksum(TransactionId readLockId,
-                                                 LogicalCollection* col) const;
+  futures::Future<ResultT<std::string>> computeCollectionChecksum(
+      TransactionId readLockId, LogicalCollection* col) const;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Cacnel the lock with the given id
