@@ -34,7 +34,7 @@ export const useJobSync = ({
         const statusCode = error?.response?.body?.code;
         const message = error.message;
         window.arangoHelper.arangoError(
-          `Something when wrong while creating the index ${
+          `Something went wrong while creating the index ${
             message ? `: ${message}` : ""
           }`
         );
