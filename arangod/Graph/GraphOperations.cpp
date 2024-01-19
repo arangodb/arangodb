@@ -209,11 +209,12 @@ Result GraphOperations::checkVertexCollectionAvailability(
         originString = "_to";
       }
 
-      return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
-                    absl::StrCat("referenced ", originString, " collection '",
-                        vertexCollectionName, "' is not part of the graph"));
+      return Result(
+          TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH,
+          absl::StrCat("referenced ", originString, " collection '",
+                       vertexCollectionName, "' is not part of the graph"));
     }
-    return Result(TRI_ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED);
+    return Result(TRI_ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH);
   }
 
   // check if the collection is available
