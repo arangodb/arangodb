@@ -151,12 +151,10 @@ struct ReplicatedOperation {
 
   struct DropIndex {
     ShardID shard;
-    velocypack::SharedSlice index;
+    IndexId indexId;
 
-    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs) -> bool {
-      return lhs.shard == rhs.shard &&
-             lhs.index.binaryEquals(rhs.index.slice());
-    }
+    friend auto operator==(DropIndex const& lhs, DropIndex const& rhs)
+        -> bool = default;
   };
 
   struct Insert : DocumentOperation {};
@@ -198,8 +196,7 @@ struct ReplicatedOperation {
       ShardID shard, velocypack::SharedSlice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress =
           nullptr) noexcept -> ReplicatedOperation;
-  static auto buildDropIndexOperation(ShardID shard,
-                                      velocypack::SharedSlice index) noexcept
+  static auto buildDropIndexOperation(ShardID shard, IndexId indexId) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(
       TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
