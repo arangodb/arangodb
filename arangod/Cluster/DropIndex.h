@@ -48,8 +48,7 @@ class DropIndex : public ActionBase {
 
  private:
   static auto dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
-                                    velocypack::SharedSlice index) noexcept
-      -> Result;
+                                    std::string indexId) noexcept -> Result;
 };
 
 }  // namespace maintenance

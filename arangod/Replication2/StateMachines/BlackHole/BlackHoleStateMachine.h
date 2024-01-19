@@ -54,7 +54,16 @@ struct BlackHoleState {
 };
 
 struct BlackHoleLogEntry {
-  std::string value;
+  [[nodiscard]] static auto createFromString(std::string_view payload)
+      -> BlackHoleLogEntry {
+    return BlackHoleLogEntry{.value = LogPayload::createFromString(payload)};
+  }
+
+  [[nodiscard]] static auto createFromSlice(velocypack::Slice slice)
+      -> BlackHoleLogEntry {
+    return BlackHoleLogEntry{.value = LogPayload::createFromSlice(slice)};
+  }
+  LogPayload value;
 };
 
 struct BlackHoleLeaderState
@@ -66,6 +75,7 @@ struct BlackHoleLeaderState
       -> std::unique_ptr<BlackHoleCore> override;
 
   auto release(LogIndex) const -> futures::Future<Result>;
+  auto insert(LogPayload payload, bool waitForSync = false) -> LogIndex;
 
  protected:
   auto recoverEntries(std::unique_ptr<EntryIterator> ptr)
