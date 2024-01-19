@@ -419,8 +419,9 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       auto& engine = selector.engine<RocksDBEngine>();
       if (engine.syncThread() == nullptr) {
         return Result(TRI_ERROR_ILLEGAL_OPTION,
-                      "Unless using the custom WAL, automatic syncing must be "
-                      "enabled for replication version 2");
+                      "Automatic syncing must be enabled for replication "
+                      "version 2. Please make sure the --rocksdb.sync-interval "
+                      "option is set to a value greater than 0.");
       }
     }
 
