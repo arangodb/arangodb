@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated ArangoDB Starter to v0.18.0.
+
 * Added support for simple external versioning to document operations.
 
   UPDATE and REPLACE operations can now be given an optional `versionAttribute`
