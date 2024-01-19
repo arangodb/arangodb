@@ -15,30 +15,29 @@ description: |
   The metric is first increased only the leader, but for every replication request
   to followers it is also increased on followers.
   
-  For every write operation, the metric will be increased by the approximate 
-  number of bytes written for the document or edge in question. 
-  If an operation writes multiple documents/edges, it will increase the counter
+  For every write operation, the metric is increased by the approximate
+  number of bytes written for the document or edge in question.
+  If an operation writes multiple documents/edges, it increases the counter
   multiple times, each time with the approximate number of bytes written for the
   particular document/edge.
 
-  An AQL query will also increase the counter for every document or edge written,
+  An AQL query also increases the counter for every document or edge written,
   each time with the approximate number of bytes written for document/edge.
   
   The numbers reported by this metric normally relate to the cumulated sizes of
-  documents/edges written. For remove operations however only a fixed number of 
+  documents/edges written. For remove operations, however, only a fixed number of
   bytes is counted per removed document/edge.
   Writes into secondary indexes are not counted at all.
-  The metric is also increased for transactions that are started but later
-  aborted.
+  The metric is also increased for transactions that are started but later aborted.
 
-  This metric is not exposed by default. It is only present if the startup option 
-  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or
-  `enabled-per-shard-per-user`. With the former setting, the metric will have
-  different labels for each shard that was read from. With the latter setting,
-  the metric will have different labels for each combination of shard and user
-  that accessed the shard.
+  This metric is not exposed by default. It is only present if the
+  `--server.export-shard-usage-metrics` startup option is set to either
+  `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
+  the metric has different labels for each shard that was read from. With the
+  latter setting, the metric has different labels for each combination of shard
+  and user that accessed the shard.
   
   Note that internal operations, such as internal queries executed for statistics
-  gathering, internal garbage collection, TTL index cleanup are not counted in
-  these metrics. Additionally all requests that are using the superuser JWT for 
-  authentication and that do not have a specific user set, will not be counted.
+  gathering, internal garbage collection, and TTL index cleanup are not counted in
+  these metrics. Additionally, all requests that use the superuser JWT for
+  authentication and that do not have a specific user set, are not counted.
