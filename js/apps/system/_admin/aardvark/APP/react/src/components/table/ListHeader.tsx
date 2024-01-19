@@ -26,7 +26,7 @@ export const ListHeader = ({
     }, 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
     return () => window.clearTimeout(timeout);
-  }, []);
+  }, [forceUpdate]);
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
       <Heading size="lg">{heading}</Heading>
