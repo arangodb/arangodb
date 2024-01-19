@@ -1,6 +1,18 @@
 devel
 -----
 
+* APM-665: RocksDB memory tracking
+  Changed the default value of the following command line options
+  
+  - `--rocksdb.reserve-table-builder-memory`
+  - `--rocksdb.reserve-table-reader-memory`
+  - `--rocksdb.reserve-file-metadata-memory`
+
+  from `false` to `true` by default to account for the memory usage of the 
+  above RocksDB components in the RocksDB block cache and thus the metric
+  `rocksdb_block_cache_usage`. This also allows to better limit the total
+  memory usage of RocksDB.
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * Added support for simple external versioning to document operations.
