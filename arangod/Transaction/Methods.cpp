@@ -611,7 +611,8 @@ struct GetDocumentProcessor
         }
         return true;
       };
-      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
+      res = _collection.getPhysical()->lookup(&_methods, key, cb,
+                                              {.countBytes = true});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -918,7 +919,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -1324,7 +1325,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
         res = _collection.getPhysical()->lookup(
             &_methods, oldDocumentId, cb,
-            {.fillCache = false, .readOwnWrites = true});
+            {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1535,7 +1536,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -1715,7 +1716,18 @@ bool transaction::Methods::removeStatusChangeCallback(
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
+  TRI_ASSERT(_state);
   return _state->vocbase();
+}
+
+void transaction::Methods::setUsername(std::string_view name) {
+  TRI_ASSERT(_state);
+  _state->setUsername(name);
+}
+
+std::string_view transaction::Methods::username() const noexcept {
+  TRI_ASSERT(_state);
+  return _state->username();
 }
 
 // is this instance responsible for commit / abort
@@ -1730,11 +1742,13 @@ void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const noexcept {
+  TRI_ASSERT(_state);
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
 transaction::Status transaction::Methods::status() const noexcept {
+  TRI_ASSERT(_state);
   return _state->status();
 }
 
@@ -1778,6 +1792,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
   // initialize the transaction. this can update _mainTransaction!
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+
+  setUsername(ExecContext::current().user());
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
@@ -2142,7 +2158,8 @@ futures::Future<Result> transaction::Methods::documentFastPath(
     co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   auto cb = IndexIterator::makeDocumentCallback(result);
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2176,7 +2193,8 @@ futures::Future<Result> transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 namespace {
@@ -2841,6 +2859,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::Compact,
                     (options.truncateCompact ? "true" : "false"));
+      network::addUserParameter(reqOpts, username());
 
       for (auto const& f : *followers) {
         // check following term id for the follower:
@@ -2856,8 +2875,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
                         ServerState::instance()->getId());
         } else {
           reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                        ServerState::instance()->getId() + "_" +
-                            basics::StringUtils::itoa(followingTermId));
+                        absl::StrCat(ServerState::instance()->getId(), "_",
+                                     followingTermId));
         }
         // reqOpts is copied deep in sendRequestRetry, so we are OK to
         // change it in the loop!
@@ -3371,8 +3390,11 @@ Future<Result> Methods::replicateOperations(
   reqOpts.param(StaticStrings::RefillIndexCachesString,
                 refill ? "true" : "false");
 
-  std::string url = "/_api/document/";
-  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
+  network::addUserParameter(reqOpts, username());
+
+  std::string url = absl::StrCat(
+      "/_api/document/",
+      arangodb::basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3466,9 +3488,9 @@ Future<Result> Methods::replicateOperations(
       reqOpts.param(StaticStrings::IsSynchronousReplicationString,
                     ServerState::instance()->getId());
     } else {
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                    ServerState::instance()->getId() + "_" +
-                        basics::StringUtils::itoa(followingTermId));
+      reqOpts.param(
+          StaticStrings::IsSynchronousReplicationString,
+          absl::StrCat(ServerState::instance()->getId(), "_", followingTermId));
     }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!

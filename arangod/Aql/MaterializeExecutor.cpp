@@ -109,7 +109,7 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
         output.advanceRow();
         return true;
       },
-      {});
+      {.countBytes = true});
   TRI_ASSERT(inputRowIterator == _inputRows.end());
 
   _docIds.clear();

@@ -25,12 +25,12 @@
 
 #include <chrono>
 #include <map>
+#include <string>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 struct Response;
-typedef std::string DestinationId;
+using DestinationId = std::string;
 
 using Headers = std::map<std::string, std::string>;
 using Timeout = std::chrono::duration<double>;
@@ -41,5 +41,4 @@ struct EndpointSpec {
   std::string endpoint;
 };
 
-}  // namespace network
-}  // namespace arangodb
+}  // namespace arangodb::network
