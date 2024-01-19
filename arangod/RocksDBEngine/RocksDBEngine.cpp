@@ -1250,6 +1250,9 @@ void RocksDBEngine::start() {
   _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
       &server().getFeature<metrics::MetricsFeature>());
 
+#ifndef USE_CUSTOM_WAL
+  // When using the custom WAL implementation, we don't need to register a
+  // RocksDB sync listener.
   auto logPersistor =
       std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
           RocksDBColumnFamilyManager::get(
@@ -1264,8 +1267,9 @@ void RocksDBEngine::start() {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
            "work correctly without a syncer thread. See the "
-           "--rocksdbsync-interval option.";
+           "--rocksdb.sync-interval option.";
   }
+#endif
 
   _settingsManager->retrieveInitialValues();
 
