@@ -21,10 +21,11 @@ export const ListHeader = ({
   // HACK: force update for window variable, todo: fix this
   const forceUpdate = useForceUpdate();
   React.useEffect(() => {
-    window.setTimeout(() => {
+    const timeout = window.setTimeout(() => {
       forceUpdate();
     }, 1000);
     // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => window.clearTimeout(timeout);
   }, []);
   return (
     <Stack direction="row" marginBottom="4" alignItems="center">
