@@ -27,6 +27,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerDefaults.h"
@@ -452,7 +453,19 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
                              /*showCount*/ CountType::None);
     co_return standardResponse();
   } else if (sub == "compact") {
-    coll->compact();
+    if (ServerState::instance()->isCoordinator()) {
+      auto& feature = server().getFeature<ClusterFeature>();
+      // while this call is technically blocking, the requests to the
+      // DB servers only schedule the compactions, but they do not
+      // block until they are completed.
+      auto res = compactOnAllDBServers(feature, _vocbase.name(), name);
+      if (res.fail()) {
+        generateError(res);
+        co_return RestStatus::DONE;
+      }
+    } else {
+      coll->compact();
+    }
 
     collectionRepresentation(name, /*showProperties*/ false,
                              /*showFigures*/ FiguresType::None,

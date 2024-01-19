@@ -56,8 +56,7 @@ struct IMaintenanceActionExecutor {
       -> Result = 0;
 
   virtual auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
-                                velocypack::SharedSlice index) noexcept
-      -> Result = 0;
+                                IndexId indexId) noexcept -> Result = 0;
 
   virtual auto addDirty() noexcept -> Result = 0;
 };
@@ -88,8 +87,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
       -> Result override;
 
   auto executeDropIndex(std::shared_ptr<LogicalCollection> col,
-                        velocypack::SharedSlice index) noexcept
-      -> Result override;
+                        IndexId indexId) noexcept -> Result override;
 
   auto addDirty() noexcept -> Result override;
 

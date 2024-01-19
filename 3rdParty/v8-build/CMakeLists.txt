@@ -358,11 +358,9 @@ else ()
 
   set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
 
-  # build V8 without debug information
-  if (USE_MINIMAL_DEBUGINFO)
-    set(V8_CFLAGS   "${V8_CFLAGS} -g0")
-    set(V8_CXXFLAGS "${V8_CXXFLAGS} -g0")
-  endif ()
+  # for V8 we minimal debug information is more than enough
+  set(V8_CFLAGS   "${V8_CFLAGS} -g1 -gno-column-info -gz")
+  set(V8_CXXFLAGS "${V8_CXXFLAGS} -g1 -gno-column-info -gz")
   
   add_c_flags_if_supported(V8_CFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)
   add_cxx_flags_if_supported(V8_CXXFLAGS -Wno-suggest-override -Wno-implicit-const-int-float-conversion -Wno-non-virtual-dtor -Wno-final-dtor-non-final-class -Wno-implicit-const-int-float-conversion)

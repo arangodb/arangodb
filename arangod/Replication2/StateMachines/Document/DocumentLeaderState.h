@@ -85,8 +85,7 @@ struct DocumentLeaderState
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress)
       -> futures::Future<Result>;
 
-  auto dropIndex(ShardID shard, velocypack::SharedSlice indexInfo)
-      -> futures::Future<Result>;
+  auto dropIndex(ShardID shard, IndexId indexId) -> futures::Future<Result>;
 
   auto getActiveTransactionsCount() const noexcept -> std::size_t {
     return _activeTransactions.getLockedGuard()->getTransactions().size();
