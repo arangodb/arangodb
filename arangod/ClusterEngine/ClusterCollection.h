@@ -121,21 +121,21 @@ class ClusterCollection final : public PhysicalCollection {
                    ReadOwnWrites) const override;
 
   Result read(transaction::Methods*, std::string_view key,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites,
+              bool countBytes) const override;
 
   Result read(transaction::Methods* trx, LocalDocumentId const& token,
-              IndexIterator::DocumentCallback const& cb,
-              ReadOwnWrites) const override;
+              IndexIterator::DocumentCallback const& cb, ReadOwnWrites,
+              bool countBytes) const override;
 
   bool readDocument(transaction::Methods* trx, LocalDocumentId const& token,
-                    ManagedDocumentResult& result,
-                    ReadOwnWrites) const override;
+                    ManagedDocumentResult& result, ReadOwnWrites,
+                    bool countBytes) const override;
 
   Result lookupDocument(transaction::Methods& trx, LocalDocumentId token,
                         velocypack::Builder& builder, bool readCache,
-                        bool fillCache,
-                        ReadOwnWrites readOwnWrites) const override;
+                        bool fillCache, ReadOwnWrites readOwnWrites,
+                        bool countBytes) const override;
 
   Result insert(transaction::Methods& trx, RevisionId newRevisionId,
                 velocypack::Slice newDocument,

@@ -112,7 +112,7 @@ Result removeKeysOutsideRange(
           builder.clear();
           Result r = physical->lookupDocument(
               trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+              /*fillCache*/ false, ReadOwnWrites::yes, /*countBytes*/ false);
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -158,7 +158,7 @@ Result removeKeysOutsideRange(
           builder.clear();
           Result r = physical->lookupDocument(
               trx, documentId, builder, /*readCache*/ true,
-              /*fillCache*/ false, ReadOwnWrites::yes);
+              /*fillCache*/ false, ReadOwnWrites::yes, /*countBytes*/ false);
 
           if (r.ok()) {
             TRI_ASSERT(builder.slice().isObject());
@@ -338,7 +338,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           tempBuilder->clear();
           r = physical->lookupDocument(*trx, documentId, *tempBuilder,
                                        /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+                                       ReadOwnWrites::yes,
+                                       /*countBytes*/ false);
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -406,7 +407,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
         tempBuilder->clear();
         r = physical->lookupDocument(*trx, documentId, *tempBuilder,
                                      /*readCache*/ true, /*fillCache*/ false,
-                                     ReadOwnWrites::yes);
+                                     ReadOwnWrites::yes, /*countBytes*/ false);
 
         if (r.ok()) {
           TRI_ASSERT(tempBuilder->slice().isObject());
@@ -574,7 +575,8 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
           tempBuilder->clear();
           r = physical->lookupDocument(*trx, documentId, *tempBuilder,
                                        /*readCache*/ true, /*fillCache*/ false,
-                                       ReadOwnWrites::yes);
+                                       ReadOwnWrites::yes,
+                                       /*countBytes*/ false);
 
           if (r.ok()) {
             TRI_ASSERT(tempBuilder->slice().isObject());
@@ -881,7 +883,8 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
               tempBuilder.clear();
               r = physical->lookupDocument(
                   *trx, documentId, tempBuilder, /*readCache*/ true,
-                  /*fillCache*/ false, ReadOwnWrites::yes);
+                  /*fillCache*/ false, ReadOwnWrites::yes,
+                  /*countBytes*/ false);
 
               if (r.ok()) {
                 TRI_ASSERT(tempBuilder.slice().isObject());
@@ -977,7 +980,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
                   docRev = RevisionId::fromSlice(doc);
                   return true;
                 },
-                ReadOwnWrites::yes);
+                ReadOwnWrites::yes, /*countBytes*/ false);
           }
           compareChunk(docKey, docRev);
           return true;

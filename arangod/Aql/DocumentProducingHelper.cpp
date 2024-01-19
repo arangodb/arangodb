@@ -543,7 +543,7 @@ IndexIterator::CoveringCallback aql::getCallback(
             output.advanceRow();
             return false;
           },
-          context.getReadOwnWrites());
+          context.getReadOwnWrites(), /*countBytes*/ true);
     }
 
     return true;

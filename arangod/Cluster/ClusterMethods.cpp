@@ -1277,6 +1277,8 @@ futures::Future<OperationResult> countOnCoordinator(
     reqOpts.timeout = network::Timeout(10.0);
   }
 
+  network::addUserParameter(reqOpts, trx.username());
+
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
 
@@ -1607,11 +1609,7 @@ futures::Future<OperationResult> createDocumentOnCoordinator(
           OperationOptions::stringifyOverwriteMode(options.overwriteMode));
     }
 
-    if (!ExecContext::current().user().empty()) {
-      // send name of current user, if set. note that we cannot send
-      // empty URL parameters with our networking tools right now.
-      reqOpts.param("user", ExecContext::current().user());
-    }
+    network::addUserParameter(reqOpts, trx.username());
 
     // Now prepare the requests:
     auto* pool = trx.vocbase().server().getFeature<NetworkFeature>().pool();
@@ -1754,11 +1752,7 @@ futures::Future<OperationResult> removeDocumentOnCoordinator(
                       : "false");
   }
 
-  if (!ExecContext::current().user().empty()) {
-    // send name of current user, if set. note that we cannot send
-    // empty URL parameters with our networking tools right now.
-    reqOpts.param("user", ExecContext::current().user());
-  }
+  network::addUserParameter(reqOpts, trx.username());
 
   bool const isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -1936,11 +1930,7 @@ futures::Future<OperationResult> truncateCollectionOnCoordinator(
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
   reqOpts.param(StaticStrings::Compact,
                 (options.truncateCompact ? "true" : "false"));
-  if (!ExecContext::current().user().empty()) {
-    // send name of current user, if set. note that we cannot send
-    // empty URL parameters with our networking tools right now.
-    reqOpts.param("user", ExecContext::current().user());
-  }
+  network::addUserParameter(reqOpts, trx.username());
 
   std::vector<Future<network::Response>> futures;
   futures.reserve(shardIds->size());
@@ -2037,11 +2027,7 @@ Future<OperationResult> getDocumentOnCoordinator(
     reqOpts.param("onlyget", "true");
   }
 
-  if (!ExecContext::current().user().empty()) {
-    // send name of current user, if set. note that we cannot send
-    // empty URL parameters with our networking tools right now.
-    reqOpts.param("user", ExecContext::current().user());
-  }
+  network::addUserParameter(reqOpts, trx.username());
 
   if (canUseFastPath) {
     // All shard keys are known in all documents.
@@ -2629,11 +2615,7 @@ futures::Future<OperationResult> modifyDocumentOnCoordinator(
     reqOpts.param(StaticStrings::ReturnOldString, "true");
   }
 
-  if (!ExecContext::current().user().empty()) {
-    // send name of current user, if set. note that we cannot send
-    // empty URL parameters with our networking tools right now.
-    reqOpts.param("user", ExecContext::current().user());
-  }
+  network::addUserParameter(reqOpts, trx.username());
 
   const bool isManaged =
       trx.state()->hasHint(transaction::Hints::Hint::GLOBAL_MANAGED);
@@ -4826,7 +4808,7 @@ arangodb::Result getEngineStatsFromDBServers(ClusterFeature& feature,
   }
   report.close();
 
-  return Result();
+  return {};
 }
 
 }  // namespace arangodb

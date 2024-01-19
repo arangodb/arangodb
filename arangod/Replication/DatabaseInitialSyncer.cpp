@@ -135,7 +135,8 @@ arangodb::Result removeRevisions(
       tempBuilder->clear();
       res = physical->lookupDocument(trx, documentId, *tempBuilder,
                                      /*readCache*/ true, /*fillCache*/ false,
-                                     arangodb::ReadOwnWrites::yes);
+                                     arangodb::ReadOwnWrites::yes,
+                                     /*countBytes*/ false);
 
       if (res.ok()) {
         res = physical->remove(trx, documentId, rid, tempBuilder->slice(),
@@ -232,7 +233,8 @@ arangodb::Result fetchRevisions(
       tempBuilder->clear();
       r = physical->lookupDocument(trx, documentId, *tempBuilder,
                                    /*readCache*/ true, /*fillCache*/ false,
-                                   arangodb::ReadOwnWrites::yes);
+                                   arangodb::ReadOwnWrites::yes,
+                                   /*countBytes*/ false);
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
@@ -413,7 +415,8 @@ arangodb::Result fetchRevisions(
           // replicated in unexpected order.
           arangodb::ManagedDocumentResult mdr;
           if (physical->readDocument(&trx, arangodb::LocalDocumentId(rid.id()),
-                                     mdr, arangodb::ReadOwnWrites::yes)) {
+                                     mdr, arangodb::ReadOwnWrites::yes,
+                                     /*countBytes*/ false)) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);
             break;
