@@ -15,10 +15,7 @@
       this.collection.bind('reset', this.renderNotifications.bind(this));
 
       window.setTimeout(function () {
-        if (frontendConfig.authenticationEnabled === false &&
-          frontendConfig.isCluster === false &&
-          arangoHelper.showAuthDialog() === true
-        ) {
+        if (frontendConfig.authenticationEnabled === false && frontendConfig.isCluster === false && arangoHelper.showAuthDialog() === true) {
           window.arangoHelper.arangoWarning(
             'Warning', 'Authentication is disabled. Do not use this setup in production mode.'
           );
