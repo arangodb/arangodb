@@ -1,6 +1,69 @@
 devel
 -----
 
+* Added support for simple external versioning to document operations.
+
+  UPDATE and REPLACE operations can now be given an optional `versionAttribute`
+  property. If set, the attribute with the name specified by the property is
+  looked up in the to-be-updated/to-be-replaced document. If no such attribute
+  exists, the UPDATE/REPLACE is performed as usual. If such attribute exists,
+  its content is read and compared numerically to the value of the versioning 
+  attribute in the document that updates/replaces it. If the version number in
+  the new document is higher than in the document that exists in the database,
+  the UPDATE/REPLACE is performed normally. If the version number in the new
+  document is lower or equal to what exists in the database, the UPDATE/REPLACE
+  is not performed and behaves like a no-op. No error will be returned to the
+  user in this case.
+
+  This simple versioning can help to avoid overwriting existing data with older
+  versions in case data is transferred from an external system into ArangoDB
+  and the copies are currently not in sync.
+
+  The `versionAttribute` property can also be used for INSERT operations with
+  `overwriteMode: "update"` or `overwriteMode: "replace"`.
+  It can also be used inside AQL queries by specifying it in the `OPTIONS`
+  clause of an UPDATE/REPLACE/INSERT operation.
+
+  Examples:
+
+      // insert normally
+      db.collection.insert({_key: "test", value: 1, ver: 1}); 
+      
+      // updates because version attribute value is higher in new document
+      db.collection.update("test", 
+                           {value: 2, ver: 2}, 
+                           {versionAttribute: "ver"});
+      
+      // does not update because version attribute value is lower in new 
+      // document
+      db.collection.update("test", 
+                           {value: 3, ver: 1}, 
+                           {versionAttribute: "ver"});
+
+      // updates because key already exists and version attribute value is 
+      // higher in new document
+      db.collection.insert({_key: "test", value: 4, ver: 3}, 
+                           {overwriteMode: "update", versionAttribute: "ver"});
+
+      db._query("UPDATE 'test' WITH {value: 5, ver: 4} IN collection 
+                OPTIONS {versionAttribute: 'ver'}");
+
+  Note that versioning is opt-in, and that no version checking is performed for
+  operations for which the `versionAttribute` property was not set as part of
+  the update or replace operation or as an option in the AQL query. 
+
+  Also note that version checking only kicks in if both the existing version of
+  the document in the database and the new document version contain the version 
+  attribute and they contain numeric values between 0 and 18446744073709551615.
+  If either the existing document in the database or the new document version
+  do not contain the version attribute, or if the version attribute in any of
+  the two is not a number inside the valid range, the update/replace operation
+  will behave as if no version checking was requested.
+
+  Also note that document removal operations do not support versioning. Removal
+  operations are always carried out normally without checking the version 
+  attribute, even if it is specified.
+
 * FE-349: show full error message on web UI when moving shards.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored
