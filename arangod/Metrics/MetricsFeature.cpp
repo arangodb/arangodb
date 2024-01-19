@@ -106,7 +106,6 @@ Prometheus itself doesn't need it.)")
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31013)
-      .setIntroducedIn(31107)
       .setLongDescription(R"(This option can be used to make DB-Servers export
 detailed shard usage metrics.
 
