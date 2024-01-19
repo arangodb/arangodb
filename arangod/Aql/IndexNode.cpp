@@ -468,7 +468,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     // object.
     // this will be handled below by adding the main output register.
   }
-  if (writableOutputRegisters.empty() && (doCount() || isProduceResult())) {
+  if (isLateMaterialized() ||
+      (writableOutputRegisters.empty() && (doCount() || isProduceResult()))) {
     // counting also needs an output register.
     writableOutputRegisters.emplace(outRegister);
   }
