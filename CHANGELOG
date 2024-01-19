@@ -24,8 +24,11 @@ v3.11.7 (XXXX-XX-XX)
   - `enabled-per-shard`: this will make DB-Servers collect per-shard usage
     metrics.
   - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
-    and per-user metrics. This is more granular than `enabled-per-shard` but can
-    produce a lot of metrics.
+    and per-user metrics. This is more granular than `enabled-per-shard` but
+    can produce a lot of metrics.
+  
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
 
   Whenever a shard is accessed in read or write mode by one of the following
   operations, the metrics are populated dynamically, either with a per-user
@@ -50,17 +53,17 @@ v3.11.7 (XXXX-XX-XX)
     read counter will be increased once for each shard that is affected by the
     operation.
 
-  Note: if an AQL query for a single collection gets optimized into a single or
-  multi-document operation, then the description for single or multi-document
-  operations apply.
+  The metrics are increased when any of the above operations start, and they
+  are not decreased should an operation abort or if an operation does not
+  lead to any actual reads or writes.
 
-  The metrics are increased when any of the above operations start, and they are
-  not decreased should an operation abort or if an operation does not lead to
-  any actual reads or writes.
-  Note that internal operations, such as internal queries executed for statistics
-  gathering, internal garbage collection, TTL index cleanup are not counted in
-  these metrics. Additionally all requests that are using the superuser JWT for 
-  authentication and that do not have a specific user set, will not be counted.
+  Note that internal operations, such as internal queries executed for 
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
 
   As there can be many of these dynamic metrics based on the number of shards
   and/or users in the deployment, these metrics are turned off by default (see
@@ -113,7 +116,17 @@ v3.11.7 (XXXX-XX-XX)
     
     The numbers reported by this metric normally relate to the cumulated sizes
     of documents/edges written. For remove operations however only a fixed
-    number of bytes is counted per removed document/edge.
+    number of bytes is counted per removed document/edge. For truncate 
+    operations, the metrics will be affected differently depending on how the
+    truncate is executed internally.
+    For truncates on smaller shards, the truncate operation will be executed as
+    the removal of the individual documents in the shard. Thus the metric will
+    also be increased as if the documents were removed individually. Truncate
+    operations on larger shards however will be executed via a special 
+    operation in the storage engine, which marks a whole range of documents as
+    removed, but defers the actual removal until much later (compaction 
+    process). If a truncate is executed like this, the metric will not be 
+    increased at all.
     Writes into secondary indexes are not counted at all.
 
     The metric is also increased for transactions that are started but later
@@ -126,11 +139,16 @@ v3.11.7 (XXXX-XX-XX)
   the latter setting, the metric will have different labels for each 
   combination of shard and user that accessed the shard.
   
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
+  
   Note that internal operations, such as internal queries executed for 
-  statistics gathering, internal garbage collection, TTL index cleanup are not
-  counted in these metrics. Additionally all requests that are using the 
-  superuser JWT for authentication and that do not have a specific user set, 
-  will not be counted.
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
 
 * Validate that the attribute stored in the `smartGraphAttribute` of SmartGraph
   vertex collections exists and is not changed afterwards by update or replace
