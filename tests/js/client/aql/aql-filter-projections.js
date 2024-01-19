@@ -2,6 +2,7 @@
 /*global assertEqual, assertNotEqual */
 
 const jsunity = require("jsunity");
+const {waitForEstimatorSync} = require("@arangodb/test-helper");
 const db = require("@arangodb").db;
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const ruleName = "reduce-extraction-to-projection";
@@ -242,10 +243,11 @@ function filterProjectionsResultsTestSuite () {
       c = db._create(cn, { numberOfShards: 4 });
 
       let docs = [];
-      for (let i = 0; i < 10000; ++i) {
+      for (let i = 0; i < 50000; ++i) {
         docs.push({ _key: "test" + i, value1: (i % 100), value2: "test" + i, value3: "test" + i, value4: i });
       }
       c.insert(docs);
+      waitForEstimatorSync();
     },
 
     tearDown : function () {

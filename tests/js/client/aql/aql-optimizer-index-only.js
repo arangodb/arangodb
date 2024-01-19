@@ -319,20 +319,30 @@ function optimizerIndexOnlyVPackTestSuite () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let queries = [
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a == 1 SORT doc.x RETURN doc.x`, ["x"] ]
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.c, doc.d ]`, ["c", "d"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["x"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "u"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a == 1 SORT doc.x RETURN doc.x`, ["x"], true ]
       ];
-    
-      queries.forEach(function(query) { 
+
+      queries.forEach(function (query) {
+        const expectLateMaterialized = query[2];
         let plan = db._createStatement(query[0]).explain().plan;
-        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections));
-        assertFalse(nodes[0].indexCoversProjections);
+        let nodes = plan.nodes.filter(function (n) {
+          return n.type === 'IndexNode' || n.type === "MaterializeNode";
+        });
+        if (expectLateMaterialized) {
+          assertEqual(2, nodes.length);
+          assertEqual([], normalize(nodes[0].projections));
+          assertEqual(normalize(query[1]), normalize(nodes[1].projections));
+          assertFalse(nodes[0].isLateMaterialize);
+        } else {
+          assertEqual(1, nodes.length);
+          assertEqual(normalize(query[1]), normalize(nodes[0].projections));
+          assertFalse(nodes[0].indexCoversFilterProjections);
+        }
       });
     },
     
