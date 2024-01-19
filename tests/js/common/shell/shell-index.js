@@ -64,11 +64,16 @@ function IndexSuite() {
       }
       c.insert(docs);
       internal.debugSetFailAt("fillIndex::pause");
-      c.ensureIndex({ type: "persistent", fields:["name"]});
+      c.ensureIndex({ type: "persistent", fields:["name"], inBackground: true});
+      //arango.POST("_api/index?collecion=c0l", { type: "persistent", fields:["name"], inBackground: true}, {"x-arango-async": "store"})
       console.error("hu");
-      require('internal').sleep(1);
+      require('internal').sleep(1000);
       console.error("ha");
       internal.debugSetFailAt("fillIndex::unpause");
+      internal.debugRemoveFailAt("fillIndex::pause");
+      internal.debugRemoveFailAt("fillIndex::unpause");
+      require('internal').sleep(1000);
+      c.drop();
     },
 
 ////////////////////////////////////////////////////////////////////////////////

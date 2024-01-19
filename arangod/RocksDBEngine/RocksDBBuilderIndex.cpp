@@ -155,7 +155,16 @@ Result fillIndexSingleThreaded(
     }
     numDocsWritten++;
 
-    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
+    if (numDocsWritten > 0 &&
+        numDocsWritten % 1024 == 0) {  // commit buffered writes
+
+      res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
+                                      ridx, foreground);
+      // cppcheck-suppress identicalConditionAfterEarlyExit
+      if (res.fail()) {
+        break;
+      }
+
       if (count > 0) {
         double p =
             docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
@@ -168,22 +177,15 @@ Result fillIndexSingleThreaded(
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       TRI_IF_FAILURE("fillIndex::pause") {
         std::cout << "fillIndex::pause" << std::endl;
-        while(true) {
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          TRI_IF_FAILURE("fillIndex::unpause") {
-            std::cout << "fillIndex::unpause" << std::endl;
-            break;
-          }
+        while (true) {
+          std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+          // TRI_IF_FAILURE("fillIndex::unpause") {
+          std::cout << "fillIndex::unpause" << std::endl;
+          break;
+          //}
         }
       }
 #endif
-
-      res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
-                                      ridx, foreground);
-      // cppcheck-suppress identicalConditionAfterEarlyExit
-      if (res.fail()) {
-        break;
-      }
 
       if (ridx.collection().vocbase().server().isStopping()) {
         res.reset(TRI_ERROR_SHUTTING_DOWN);

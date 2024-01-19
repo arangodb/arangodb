@@ -168,6 +168,7 @@ bool EnsureIndex::first() {
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
+      setProgress(100.);
       LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
     } else {
       std::stringstream error;
