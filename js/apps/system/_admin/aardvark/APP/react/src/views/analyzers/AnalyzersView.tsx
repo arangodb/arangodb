@@ -1,6 +1,6 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
+import { Box, useDisclosure } from "@chakra-ui/react";
 import React from "react";
+import { ListHeader } from "../../components/table/ListHeader";
 import { AddAnalyzerModal } from "./addAnalyzer/AddAnalyzerModal";
 import { AnalyzersTable } from "./listAnalyzers/AnalyzersTable";
 
@@ -17,18 +17,10 @@ export const AnalyzersView = () => {
 
 const AnalyzerViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
-    <Stack direction="row" marginBottom="4" alignItems="center">
-      <Heading size="lg">Analyzers</Heading>
-      <Button
-        size="sm"
-        leftIcon={<AddIcon />}
-        colorScheme="green"
-        onClick={() => {
-          onOpen();
-        }}
-      >
-        Add analyzer
-      </Button>
-    </Stack>
+    <ListHeader
+      onButtonClick={onOpen}
+      heading="Analyzers"
+      buttonText="Add analyzer"
+    />
   );
 };
