@@ -38,7 +38,7 @@ function IndexBatchMaterializeTestSuite() {
 
   function makeCollection(name) {
     const c = db._create(name);
-    c.ensureIndex({type: "persistent", fields: ["x"]});
+    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
     c.ensureIndex({type: "persistent", fields: ["u"], unique: true});
@@ -48,23 +48,28 @@ function IndexBatchMaterializeTestSuite() {
   function fillCollection(c, n) {
     let docs = [];
     for (let i = 0; i < n; i++) {
-      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i});
+      docs.push({x: i, y: 2 * i, z: 2 * i + 1, w: i % 10, u: i, b: i + 1});
     }
     c.insert(docs);
   }
 
   function expectNoOptimization(query) {
-    const plan = db._createStatement({query}).explain().plan;
-    assertEqual(plan.rules.indexOf(batchMaterializeRule), -1);
-    const nodes = plan.nodes.map(n => n.type);
+    try {
+      const plan = db._createStatement({query}).explain().plan;
+      assertEqual(plan.rules.indexOf(batchMaterializeRule), -1);
+      const nodes = plan.nodes.map(n => n.type);
 
-    assertEqual(nodes.indexOf("MaterializeNode"), -1);
-    assertNotEqual(nodes.indexOf("IndexNode"), -1);
+      assertEqual(nodes.indexOf("MaterializeNode"), -1);
+      assertNotEqual(nodes.indexOf("IndexNode"), -1);
 
-    const indexNode = plan.nodes[nodes.indexOf("IndexNode")];
-    assertEqual(indexNode.strategy, "document");
+      const indexNode = plan.nodes[nodes.indexOf("IndexNode")];
+      assertNotEqual(indexNode.strategy, "late materialized");
 
-    return plan;
+      return plan;
+    } catch (e) {
+      db._explain(query);
+      throw e;
+    }
   }
 
   function checkResult(query) {
@@ -76,21 +81,26 @@ function IndexBatchMaterializeTestSuite() {
   }
 
   function expectOptimization(query) {
-    const plan = db._createStatement({query}).explain().plan;
-    assertNotEqual(plan.rules.indexOf(batchMaterializeRule), -1);
-    const nodes = plan.nodes.map(n => n.type);
+    try {
+      const plan = db._createStatement({query}).explain().plan;
+      assertNotEqual(plan.rules.indexOf(batchMaterializeRule), -1);
+      const nodes = plan.nodes.map(n => n.type);
 
-    assertNotEqual(nodes.indexOf("MaterializeNode"), -1);
-    assertNotEqual(nodes.indexOf("IndexNode"), -1);
+      assertNotEqual(nodes.indexOf("MaterializeNode"), -1);
+      assertNotEqual(nodes.indexOf("IndexNode"), -1);
 
-    const indexNode = plan.nodes[nodes.indexOf("IndexNode")];
-    assertEqual(indexNode.strategy, "late materialized");
+      const indexNode = plan.nodes[nodes.indexOf("IndexNode")];
+      assertEqual(indexNode.strategy, "late materialized");
 
-    const materializeNode = plan.nodes[nodes.indexOf("MaterializeNode")];
-    assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
+      const materializeNode = plan.nodes[nodes.indexOf("MaterializeNode")];
+      assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
 
-    checkResult(query);
-    return plan;
+      checkResult(query);
+      return {plan, indexNode, materializeNode};
+    } catch (e) {
+      db._explain(query);
+      throw e;
+    }
   }
 
   return {
@@ -182,6 +192,58 @@ function IndexBatchMaterializeTestSuite() {
       expectNoOptimization(query);
     },
 
+    testMaterializeIndexScanProjections: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          RETURN [doc.y, doc.z, doc.a]
+      `;
+      const {materializeNode, indexNode} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), []);
+      assertEqual(normalize(materializeNode.projections), [["a"], ["y"], ["z"]]);
+    },
+
+    testMaterializeIndexScanCoveringProjections: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          RETURN [doc.x, doc.b]
+      `;
+      expectNoOptimization(query);
+    },
+
+    testMaterializeIndexScanPostFilterCovered: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5 AND doc.b < 7
+          RETURN doc
+      `;
+
+      expectOptimization(query);
+    },
+
+    testMaterializeIndexScanPostFilterNotCovered: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5 AND doc.c < 7
+          RETURN doc
+      `;
+
+      expectNoOptimization(query);
+    },
+
+    testMaterializeIndexScanPostFilterDependentVar: function () {
+      const query = `
+        FOR i IN 1..5
+          FOR doc IN ${collection}
+            FILTER doc.x > 5 AND doc.b < i
+            RETURN doc
+      `;
+
+      const {indexNode} = expectOptimization(query);
+      assertTrue(indexNode.indexCoversFilterProjections);
+      assertEqual(normalize(indexNode.filterProjections), [["b"]]);
+    },
   };
 }
 

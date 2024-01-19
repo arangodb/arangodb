@@ -27,6 +27,7 @@
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/Projections.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Aql/MultiGet.h"
@@ -54,11 +55,13 @@ class MaterializerExecutorInfos {
  public:
   MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
                             aql::QueryContext& query,
-                            Collection const* collection)
+                            Collection const* collection,
+                            Projections projections)
       : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query),
-        _collection(collection) {}
+        _collection(collection),
+        _projections(std::move(projections)) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -77,6 +80,8 @@ class MaterializerExecutorInfos {
 
   Collection const* collection() const noexcept { return _collection; }
 
+  Projections const& projections() const noexcept { return _projections; }
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
@@ -84,6 +89,7 @@ class MaterializerExecutorInfos {
   RegisterId const _outMaterializedDocumentRegId;
   aql::QueryContext& _query;
   Collection const* _collection;
+  Projections const _projections;
 };
 
 struct MaterializeExecutorBase {
@@ -120,6 +126,7 @@ class MaterializeRocksDBExecutor : public MaterializeExecutorBase {
   PhysicalCollection* _collection{};
   std::vector<LocalDocumentId> _docIds;
   std::vector<InputAqlItemRow> _inputRows;
+  velocypack::Builder _projectionsBuilder;
 };
 
 class MaterializeSearchExecutor : public MaterializeExecutorBase {

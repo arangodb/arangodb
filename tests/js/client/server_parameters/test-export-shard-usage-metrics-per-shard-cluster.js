@@ -37,6 +37,12 @@ const request = require("@arangodb/request");
 
 function testSuite() {
   const baseName = "UnitTestsCollection";
+  
+  let nextCollectionId = 0;
+
+  let getUniqueCollectionName = () => {
+    return baseName + nextCollectionId++;
+  };
 
   let getRawMetrics = function() {
     let lines = [];
@@ -94,7 +100,7 @@ function testSuite() {
 
   return {
     testDoesNotPoluteNormalMetricsAPI : function () {
-      const cn = baseName + "0";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -131,7 +137,7 @@ function testSuite() {
     },
 
     testNoMetricsJustForCreatingCollection : function () {
-      const cn = baseName + "1";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -146,7 +152,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenReadingFromCollectionSingleReads : function () {
-      const cn = baseName + "2";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -172,7 +178,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenReadingFromCollectionBatchRead : function () {
-      const cn = baseName + "3";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -200,7 +206,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleInserts : function () {
-      const cn = baseName + "4";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -219,7 +225,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchInsert : function () {
-      const cn = baseName + "5";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -240,7 +246,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleRemoves : function () {
-      const cn = baseName + "6";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -266,7 +272,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchRemove : function () {
-      const cn = baseName + "7";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -290,7 +296,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleUpdates : function () {
-      const cn = baseName + "8";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -316,7 +322,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchUpdate : function () {
-      const cn = baseName + "9";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -344,7 +350,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleReplaces : function () {
-      const cn = baseName + "10";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -370,7 +376,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionBatchReplace : function () {
-      const cn = baseName + "11";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -398,7 +404,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleInsertsMultiShard : function () {
-      const cn = baseName + "12";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn, { numberOfShards: 3 });
       try {
@@ -419,7 +425,7 @@ function testSuite() {
     },
     
     testHasMetricsReadOnlyAQL : function () {
-      const cn = baseName + "13";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -436,7 +442,7 @@ function testSuite() {
     },
     
     testHasMetricsReadOnlyAQLMultiShard : function () {
-      const cn = baseName + "14";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {numberOfShards: 3});
       try {
@@ -455,7 +461,7 @@ function testSuite() {
     },
     
     testHasMetricsWriteAQL : function () {
-      const cn = baseName + "15";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -472,7 +478,7 @@ function testSuite() {
     },
     
     testHasMetricsWriteAQLMultiShard : function () {
-      const cn = baseName + "16";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {numberOfShards: 3});
       try {
@@ -491,12 +497,10 @@ function testSuite() {
     },
 
     testHasMetricsReadOnlyAQLMultiCollections : function () {
-      const cn = baseName + "17";
-
-      let c1 = db._create(cn);
-      let c2 = db._create(cn + "_2");
+      let c1 = db._create(getUniqueCollectionName());
+      let c2 = db._create(getUniqueCollectionName());
       try {
-        db._query("FOR doc1 IN " + c1.name() + " FOR doc2 IN " + c2.name() + " RETURN doc1");
+        db._query(`FOR doc1 IN ${c1.name()} FOR doc2 IN ${c2.name()} RETURN doc1`);
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
         
@@ -512,12 +516,10 @@ function testSuite() {
     },
     
     testHasMetricsReadWriteAQLMultiCollections : function () {
-      const cn = baseName + "18";
-
-      let c1 = db._create(cn, { numberOfShards: 5 });
-      let c2 = db._create(cn + "_2", { numberOfShards: 3 });
+      let c1 = db._create(getUniqueCollectionName(), { numberOfShards: 5 });
+      let c2 = db._create(getUniqueCollectionName(), { numberOfShards: 3 });
       try {
-        db._query("FOR doc IN " + c1.name() + " INSERT {} INTO " + c2.name());
+        db._query(`FOR doc IN ${c1.name()} INSERT {} INTO ${c2.name()}`);
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
         
@@ -533,12 +535,10 @@ function testSuite() {
     },
     
     testHasMetricsExclusiveAQLMultiCollections : function () {
-      const cn = baseName + "19";
-
-      let c1 = db._create(cn, { numberOfShards: 5 });
-      let c2 = db._create(cn + "_2", { numberOfShards: 3 });
+      let c1 = db._create(getUniqueCollectionName(), { numberOfShards: 5 });
+      let c2 = db._create(getUniqueCollectionName(), { numberOfShards: 3 });
       try {
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
         
@@ -554,7 +554,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenWritingIntoCollectionSingleInsertsFollowerShards : function () {
-      const cn = baseName + "20";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn, { replicationFactor: 2 });
       try {
@@ -574,12 +574,10 @@ function testSuite() {
     },
     
     testHasMetricsAQLFollowerShards : function () {
-      const cn = baseName + "21";
-
-      let c1 = db._create(cn, { numberOfShards: 5, replicationFactor: 2 });
-      let c2 = db._create(cn + "_2", { numberOfShards: 3, replicationFactor: 2 });
+      let c1 = db._create(getUniqueCollectionName(), { numberOfShards: 5, replicationFactor: 2 });
+      let c2 = db._create(getUniqueCollectionName(), { numberOfShards: 3, replicationFactor: 2 });
       try {
-        db._query("FOR i IN 1..1000 INSERT {} INTO " + c1.name() + " OPTIONS {exclusive: true} INSERT {} INTO " + c2.name() +  " OPTIONS {exclusive: true}");
+        db._query(`FOR i IN 1..1000 INSERT {} INTO ${c1.name()} OPTIONS {exclusive: true} INSERT {} INTO ${c2.name()} OPTIONS {exclusive: true}`);
         
         let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
         
@@ -596,7 +594,7 @@ function testSuite() {
     },
     
     testHasMetricsMultipleDatabases : function () {
-      const cn = baseName + "22";
+      const cn = getUniqueCollectionName();
 
       const databases = [baseName + "1", baseName + "2", baseName + "3"];
 
@@ -631,7 +629,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenTruncating : function () {
-      const cn = baseName + "23";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -648,7 +646,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenPerformingMixedOperations : function () {
-      const cn = baseName + "24";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn);
       try {
@@ -700,7 +698,7 @@ function testSuite() {
     },
     
     testHasMetricsWhenUsingCustomShardKey : function () {
-      const cn = baseName + "25";
+      const cn = getUniqueCollectionName();
 
       let c = db._create(cn, {shardKeys: ["qux"], numberOfShards: 3});
       try {
@@ -750,8 +748,8 @@ function testSuite() {
         return;
       }
 
-      const vn = baseName + "Vertices26";
-      const en = baseName + "Edges26";
+      const vn = getUniqueCollectionName();
+      const en = getUniqueCollectionName();
       const gn = "UnitTestsGraph";
       const graphs = require("@arangodb/smart-graph");
 
@@ -786,6 +784,10 @@ function testSuite() {
         Object.keys(counts).forEach((k) => {
           expected["writes"][k] = counts[k];
         });
+        counts = db["_to_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["writes"][k] = counts[k];
+        });
 
         assertEqual(expected, parsed);
 
@@ -813,8 +815,8 @@ function testSuite() {
         return;
       }
   
-      const vn = baseName + "Vertices27";
-      const en = baseName + "Edges27";
+      const vn = getUniqueCollectionName();
+      const en = getUniqueCollectionName();
       const gn = "UnitTestsGraph";
       const graphs = require("@arangodb/smart-graph");
 
@@ -828,7 +830,8 @@ function testSuite() {
       
       graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
       try {
-        db._query("FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO " + vn);
+        // smart vertex collection
+        db._query(`FOR i IN 0..24 INSERT {_key: CONCAT('test', (i % 10), ':test', i), testi: CONCAT('test', (i % 10))} INTO ${vn}`);
         
         let parsed = getParsedMetrics(db._name(), vn);
         let expected = { "writes": {} };
@@ -837,7 +840,8 @@ function testSuite() {
         });
         assertEqual(expected, parsed);
 
-        let keys = db._query("FOR i IN 0..19 INSERT {_from: CONCAT('" + vn + "/test', i, ':test', (i % 10)), _to: CONCAT('" + vn + "/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO " + en + " RETURN NEW._key").toArray();
+        // smart edge collection
+        let keys = db._query(`FOR i IN 0..19 INSERT {_from: CONCAT('${vn}/test', i, ':test', (i % 10)), _to: CONCAT('${vn}/test', ((i + 1) % 100), ':test', (i % 10)), testi: (i % 10)} INTO ${en} RETURN NEW._key`).toArray();
         
         parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
 
@@ -857,7 +861,7 @@ function testSuite() {
 
         assertEqual(expected, parsed);
 
-        db._query("FOR doc IN " + en + " FILTER doc._key IN @keys RETURN doc", { keys });
+        db._query(`FOR doc IN ${en} FILTER doc._key IN @keys RETURN doc`, { keys });
 
         parsed = getParsedMetrics(db._name(), ["_from_" + en, "_to_" + en, "_local_" + en]);
 

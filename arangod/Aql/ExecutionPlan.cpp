@@ -998,6 +998,10 @@ bool ExecutionPlan::hasExclusiveAccessOption(AstNode const* node) {
 ModificationOptions ExecutionPlan::parseModificationOptions(
     QueryContext& query, std::string_view operationName, AstNode const* node,
     bool addWarnings) {
+  TRI_ASSERT(operationName == "INSERT" || operationName == "UPDATE" ||
+             operationName == "REPLACE" || operationName == "REMOVE" ||
+             operationName == "UPSERT");
+
   ModificationOptions options;
 
   // parse the modification options we got
@@ -1041,6 +1045,11 @@ ModificationOptions ExecutionPlan::parseModificationOptions(
           }
         } else if (name == StaticStrings::IgnoreRevsString) {
           options.ignoreRevs = value->isTrue();
+        } else if (name == StaticStrings::VersionAttributeString &&
+                   value->isStringValue() &&
+                   (operationName == "INSERT" || operationName == "UPDATE" ||
+                    operationName == "REPLACE")) {
+          options.versionAttribute = value->getString();
         } else if (name == "exclusive") {
           options.exclusive = value->isTrue();
         } else if (name == "ignoreErrors") {

@@ -1692,7 +1692,8 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         // modifications always need to observe all changes
         // in order to validate uniqueness constraints
         auto readResult = _collection.getPhysical()->lookup(
-            &trx, docId, callback, {.readOwnWrites = true});
+            &trx, docId, callback,
+            {.readOwnWrites = true, .countBytes = false});
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1832,7 +1833,7 @@ Result RocksDBVPackIndex::insertUnique(
       // modifications always need to observe all changes
       // in order to validate uniqueness constraints
       auto readResult = _collection.getPhysical()->lookup(
-          &trx, docId, callback, {.readOwnWrites = true});
+          &trx, docId, callback, {.readOwnWrites = true, .countBytes = false});
       if (readResult.fail()) {
         addErrorMsg(readResult);
         THROW_ARANGO_EXCEPTION(readResult);
