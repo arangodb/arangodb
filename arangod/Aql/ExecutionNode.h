@@ -1321,10 +1321,17 @@ class MaterializeRocksDBNode : public MaterializeNode,
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }
 
+  void projections(Projections proj) noexcept {
+    _projections = std::move(proj);
+  }
+  Projections const& projections() const noexcept { return _projections; }
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,
                       unsigned flags) const override final;
+
+  Projections _projections;
 };
 
 MaterializeNode* createMaterializeNode(ExecutionPlan* plan,
