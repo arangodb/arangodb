@@ -1256,6 +1256,16 @@ class instanceManager {
           arangod.upAndRunning = true;
           return true;
         }
+        if (reply.code === 403) {
+          let parsedBody = JSON.parse(reply.body);
+          if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+            if (!this.options.noStartStopLogs) {
+              print("service API disabled, continuing.");
+            }
+            arangod.upAndRunning = true;
+            return true;
+          }
+        }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
           this.arangods.forEach(arangod => {
