@@ -1077,9 +1077,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
   vocbase().engine().changeCollection(vocbase(), *this);
 
   auto& df = vocbase().server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("change collection");
-  }
+  df.versionTracker().track("change collection");
 
   return {};
 }
@@ -1112,9 +1110,7 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
                                              std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("create index");
-    }
+    df.versionTracker().track("create index");
   }
   co_return idx;
 }
@@ -1129,9 +1125,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
 
   if (res.ok()) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("drop index");
-    }
+    df.versionTracker().track("drop index");
   }
 
   return res;

@@ -3034,7 +3034,7 @@ void RocksDBEngine::addSystemDatabase() {
 /// @brief open an existing database. internal function
 std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
     CreateDatabaseInfo&& info, bool wasCleanShutdown, bool isUpgrade) {
-  auto vocbase = std::make_unique<TRI_vocbase_t>(std::move(info));
+  auto vocbase = createDatabase(std::move(info));
 
   LOG_TOPIC("26c21", TRACE, arangodb::Logger::ENGINES)
       << "opening views and collections metadata in database '"

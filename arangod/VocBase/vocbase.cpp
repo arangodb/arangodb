@@ -792,9 +792,7 @@ std::shared_ptr<LogicalCollection> TRI_vocbase_t::createCollection(
 
     events::CreateCollection(dbName, name, TRI_ERROR_NO_ERROR);
 
-    if (_databaseFeature.versionTracker() != nullptr) {
-      _databaseFeature.versionTracker()->track("create collection");
-    }
+    _versionTracker.track("create collection");
 
     return collection;
   } catch (basics::Exception const& ex) {
@@ -911,10 +909,7 @@ TRI_vocbase_t::createCollections(
     events::CreateCollection(dbName, col->name(), TRI_ERROR_NO_ERROR);
   }
 
-  if (_databaseFeature.versionTracker() != nullptr) {
-    _databaseFeature.versionTracker()->track("create collection");
-  }
-
+  _versionTracker.track("create collection");
   return collections;
 }
 
@@ -949,11 +944,7 @@ Result TRI_vocbase_t::dropCollection(DataSourceId cid, bool allowDropSystem) {
 
   if (res.ok()) {
     collection->deferDropCollection(dropCollectionCallback);
-
-    auto& df = server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("drop collection");
-    }
+    _versionTracker.track("drop collection");
   }
 
   return res;
@@ -970,9 +961,8 @@ Result TRI_vocbase_t::validateCollectionParameters(
       parameters, StaticStrings::DataSourceName, "");
   bool isSystem = VelocyPackHelper::getBooleanValue(
       parameters, StaticStrings::DataSourceSystem, false);
-  bool extendedNames = _databaseFeature.extendedNames();
   if (auto res =
-          CollectionNameValidator::validateName(isSystem, extendedNames, name);
+          CollectionNameValidator::validateName(isSystem, _extendedNames, name);
       res.fail()) {
     return res;
   }
@@ -1007,25 +997,8 @@ Result TRI_vocbase_t::validateExtendedCollectionParameters(velocypack::Slice) {
 Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   auto const view = lookupView(cid);
-  std::string const& dbName = _info.getName();
-
   if (!view) {
     return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
-  }
-
-  if (!server().hasFeature<DatabaseFeature>()) {
-    return Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to find feature 'Database' while renaming view '") +
-            view->name() + "' in database '" + dbName + "'");
-  }
-
-  if (!server().hasFeature<EngineSelectorFeature>() ||
-      !server().getFeature<EngineSelectorFeature>().selected()) {
-    return Result(
-        TRI_ERROR_INTERNAL,
-        std::string("failed to find StorageEngine while renaming view '") +
-            view->name() + "' in database '" + dbName + "'");
   }
 
   // lock collection because we are going to copy its current name
@@ -1038,9 +1011,8 @@ Result TRI_vocbase_t::renameView(DataSourceId cid, std::string_view oldName) {
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = _databaseFeature.extendedNames();
   if (auto res = ViewNameValidator::validateName(/*allowSystem*/ false,
-                                                 extendedNames, newName);
+                                                 _extendedNames, newName);
       res.fail()) {
     return res;
   }
@@ -1114,9 +1086,8 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
     return TRI_ERROR_NO_ERROR;
   }
 
-  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
   if (auto res = CollectionNameValidator::validateName(/*allowSystem*/ false,
-                                                       extendedNames, newName);
+                                                       _extendedNames, newName);
       res.fail()) {
     return res;
   }
@@ -1194,10 +1165,7 @@ Result TRI_vocbase_t::renameCollection(DataSourceId cid,
   checkCollectionInvariants();
   locker.unlock();
   writeLocker.unlock();
-
-  if (_databaseFeature.versionTracker() != nullptr) {
-    _databaseFeature.versionTracker()->track("rename collection");
-  }
+  _versionTracker.track("rename collection");
 
   return TRI_ERROR_NO_ERROR;
 }
@@ -1255,9 +1223,8 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
     name = VelocyPackHelper::getStringValue(parameters,
                                             StaticStrings::DataSourceName, "");
 
-    bool extendedNames = _databaseFeature.extendedNames();
     valid &= ViewNameValidator::validateName(/*allowSystem*/ false,
-                                             extendedNames, name)
+                                             _extendedNames, name)
                  .ok();
   }
 
@@ -1304,10 +1271,7 @@ std::shared_ptr<LogicalView> TRI_vocbase_t::createView(
   }
 
   events::CreateView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-
-  if (_databaseFeature.versionTracker() != nullptr) {
-    _databaseFeature.versionTracker()->track("create view");
-  }
+  _versionTracker.track("create view");
 
   view->open();  // And lets open it.
 
@@ -1351,18 +1315,23 @@ Result TRI_vocbase_t::dropView(DataSourceId cid, bool allowDropSystem) {
   writeLocker.unlock();
 
   events::DropView(dbName, view->name(), TRI_ERROR_NO_ERROR);
-
-  if (_databaseFeature.versionTracker() != nullptr) {
-    _databaseFeature.versionTracker()->track("drop view");
-  }
+  _versionTracker.track("drop view");
 
   return TRI_ERROR_NO_ERROR;
 }
 
-TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
+TRI_vocbase_t::TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info)
+    : TRI_vocbase_t(
+          std::move(info),
+          info.server().getFeature<DatabaseFeature>().versionTracker(),
+          info.server().getFeature<DatabaseFeature>().extendedNames()) {}
+
+TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
+                             VersionTracker& versionTracker, bool extendedNames)
     : _server(info.server()),
       _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
-      _databaseFeature(_server.getFeature<arangodb::DatabaseFeature>()),
+      _versionTracker(versionTracker),
+      _extendedNames(extendedNames),
       _info(std::move(info)) {
   TRI_ASSERT(_info.valid());
 
@@ -1402,10 +1371,14 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info)
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
-                             CreateDatabaseInfo&& info)
+                             CreateDatabaseInfo&& info,
+                             arangodb::StorageEngine& engine,
+                             arangodb::VersionTracker& versionTracker,
+                             bool extendedNames)
     : _server(info.server()),
-      _engine(_server.getFeature<arangodb::EngineSelectorFeature>().engine()),
-      _databaseFeature(_server.getFeature<arangodb::DatabaseFeature>()),
+      _engine(engine),
+      _versionTracker(versionTracker),
+      _extendedNames(extendedNames),
       _info(std::move(info)),
       _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
@@ -1656,7 +1629,6 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 [[nodiscard]] auto TRI_vocbase_t::getDatabaseConfiguration()
     -> DatabaseConfiguration {
   auto& cl = server().getFeature<ClusterFeature>();
-  auto& db = server().getFeature<DatabaseFeature>();
 
   auto config = std::invoke([&]() -> DatabaseConfiguration {
     if (!ServerState::instance()->isCoordinator() &&
@@ -1692,7 +1664,7 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   config.isSystemDB = isSystem();
   config.maxNumberOfShards = cl.maxNumberOfShards();
-  config.allowExtendedNames = db.extendedNames();
+  config.allowExtendedNames = _extendedNames;
   config.shouldValidateClusterSettings = true;
   config.minReplicationFactor = cl.minReplicationFactor();
   config.maxReplicationFactor = cl.maxReplicationFactor();

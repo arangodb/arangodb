@@ -22,10 +22,19 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 // test setup
-#include "gtest/gtest.h"
+#include "RestServer/arangod.h"
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
+
+#include "Aql/OptimizerRulesFeature.h"
+#include "ClusterEngine/ClusterEngine.h"
 #include "IResearch/common.h"
+#include "Metrics/MetricsFeature.h"
+#include "Random/RandomGenerator.h"
+#include "RestServer/AqlFeature.h"
+#include "RestServer/DatabasePathFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
 
@@ -59,7 +68,9 @@ GraphTestSetup::GraphTestSetup() : server(nullptr, nullptr), engine(server) {
       server.addFeature<arangodb::QueryRegistryFeature>(
           server.template getFeature<arangodb::metrics::MetricsFeature>()),
       false);  // must be first
-  system = std::make_unique<TRI_vocbase_t>(systemDBInfo(server));
+  system = std::make_unique<TRI_vocbase_t>(
+      systemDBInfo(server),
+      server.getFeature<DatabaseFeature>().versionTracker(), true);
   features.emplace_back(
       server.addFeature<arangodb::SystemDatabaseFeature>(system.get()),
       false);  // required for IResearchAnalyzerFeature

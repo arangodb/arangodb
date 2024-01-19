@@ -127,7 +127,7 @@ class DatabaseFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker* versionTracker() { return &_versionTracker; }
+  VersionTracker& versionTracker() { return _versionTracker; }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);

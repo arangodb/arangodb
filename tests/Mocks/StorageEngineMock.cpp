@@ -447,7 +447,8 @@ std::unique_ptr<TRI_vocbase_t> StorageEngineMock::openDatabase(
   auto new_info = info;
   new_info.setId(++vocbaseCount);
 
-  return std::make_unique<TRI_vocbase_t>(std::move(new_info));
+  return std::make_unique<TRI_vocbase_t>(std::move(new_info), _versionTracker,
+                                         true);
 }
 
 TRI_voc_tick_t StorageEngineMock::releasedTick() const {

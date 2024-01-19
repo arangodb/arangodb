@@ -42,6 +42,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -104,6 +105,7 @@ class LogicalView;
 struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+class VersionTracker;
 struct VocBaseLogManager;
 }  // namespace arangodb
 
@@ -124,13 +126,17 @@ struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  explicit TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info,
+                arangodb::StorageEngine& engine,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
 #endif
 
  private:
@@ -142,7 +148,8 @@ struct TRI_vocbase_t {
 
   arangodb::ArangodServer& _server;
   arangodb::StorageEngine& _engine;
-  arangodb::DatabaseFeature& _databaseFeature;
+  arangodb::VersionTracker& _versionTracker;
+  bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
 
   arangodb::CreateDatabaseInfo _info;
 

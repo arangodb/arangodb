@@ -197,7 +197,7 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(
     arangodb::CreateDatabaseInfo&& info, bool /*isUpgrade*/) {
-  return std::make_unique<TRI_vocbase_t>(std::move(info));
+  return createDatabase(std::move(info));
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {

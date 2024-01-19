@@ -394,8 +394,10 @@ void DatabaseFeature::validateOptions(
 }
 
 void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
+  auto& df = server.getFeature<DatabaseFeature>();
   calculationVocbase =
-      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server));
+      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server),
+                                      df.versionTracker(), df.extendedNames());
 }
 
 void DatabaseFeature::start() {
@@ -784,9 +786,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 
   result = vocbase.release();
 
-  if (versionTracker() != nullptr) {
-    versionTracker()->track("create database");
-  }
+  versionTracker().track("create database");
 
   return res;
 }
@@ -871,9 +871,7 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  if (versionTracker() != nullptr) {
-    versionTracker()->track("drop database");
-  }
+  versionTracker().track("drop database");
 
   return res;
 }

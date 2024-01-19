@@ -886,7 +886,7 @@ void HeartbeatThread::runSingleServer() {
       // the global version number in the agency in case it changed. this
       // informs other listeners about our local DDL changes
       uint64_t currentVersion =
-          server().getFeature<DatabaseFeature>().versionTracker()->current();
+          server().getFeature<DatabaseFeature>().versionTracker().current();
       if (currentVersion != lastSentVersion) {
         AgencyOperation incrementVersion(
             "Plan/Version", AgencySimpleOperationType::INCREMENT_OP);
