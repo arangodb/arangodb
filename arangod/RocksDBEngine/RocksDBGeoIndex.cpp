@@ -286,7 +286,7 @@ class RDBNearIterator final : public IndexIterator {
                          return true;
                          // geo index never needs to observe own writes
                        },
-                       ReadOwnWrites::no)
+                       ReadOwnWrites::no, /*countBytes*/ true)
                    .ok()) {
             return false;  // ignore document
           }
@@ -321,7 +321,7 @@ class RDBNearIterator final : public IndexIterator {
                            return true;
                            // geo index never needs to observe own writes
                          },
-                         ReadOwnWrites::no)
+                         ReadOwnWrites::no, /*countBytes*/ true)
                      .ok()) {
               return false;
             }
@@ -505,7 +505,7 @@ class RDBCoveringIterator final : public IndexIterator {
                          return true;
                          // geo index never needs to observe own writes
                        },
-                       ReadOwnWrites::no)
+                       ReadOwnWrites::no, /*countBytes*/ true)
                    .ok()) {
             return false;  // ignore document
           }
@@ -540,7 +540,7 @@ class RDBCoveringIterator final : public IndexIterator {
                            return true;
                            // geo index never needs to observe own writes
                          },
-                         ReadOwnWrites::no)
+                         ReadOwnWrites::no, /*countBytes*/ true)
                      .ok()) {
               return false;
             }

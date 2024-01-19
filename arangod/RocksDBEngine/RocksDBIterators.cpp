@@ -56,12 +56,20 @@ class RocksDBAllIndexIterator final : public IndexIterator {
                     ->bounds()),
         _upperBound(_bounds.end()),
         _cmp(_bounds.columnFamily()->GetComparator()),
-        _mustSeek(true) {
+        _mustSeek(true),
+        _bytesRead(0) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     rocksdb::ColumnFamilyDescriptor desc;
     _bounds.columnFamily()->GetDescriptor(&desc);
     TRI_ASSERT(desc.options.prefix_extractor);
 #endif
+  }
+
+  ~RocksDBAllIndexIterator() {
+    _trx->state()->trackShardUsage(
+        *_trx->resolver(), _collection->vocbase().name(), _collection->name(),
+        _trx->username(), AccessMode::Type::READ, "collection scan",
+        _bytesRead);
   }
 
   std::string_view typeName() const noexcept override {
@@ -90,6 +98,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     do {
       TRI_ASSERT(_bounds.objectId() == RocksDBKey::objectId(_iterator->key()));
 
+      // do not count number of bytes read here, as the cb will likely read
+      // the document itself
       cb(RocksDBKey::documentId(_iterator->key()));
       _iterator->Next();
 
@@ -125,6 +135,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
     TRI_ASSERT(limit > 0);
 
     do {
+      // count number of bytes read here
+      _bytesRead += _iterator->value().size();
       cb(RocksDBKey::documentId(_iterator->key()),
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
@@ -246,6 +258,7 @@ class RocksDBAllIndexIterator final : public IndexIterator {
   rocksdb::Comparator const* _cmp;
   // we use _mustSeek to save repeated seeks for the same start key
   bool _mustSeek;
+  size_t _bytesRead;
 };
 
 template<bool forward>
@@ -264,7 +277,8 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
         _bounds(static_cast<RocksDBMetaCollection*>(collection->getPhysical())
                     ->bounds()),
         _total(0),
-        _returned(0) {
+        _returned(0),
+        _bytesRead(0) {
     auto* mthds = RocksDBTransactionState::toMethods(trx, collection->id());
     _iterator = mthds->NewIterator(
         _bounds.columnFamily(), [](rocksdb::ReadOptions& options) {
@@ -283,6 +297,13 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
     reset();  // initial seek
   }
 
+  ~RocksDBAnyIndexIterator() {
+    _trx->state()->trackShardUsage(
+        *_trx->resolver(), _collection->vocbase().name(), _collection->name(),
+        _trx->username(), AccessMode::Type::READ, "collection any lookup",
+        _bytesRead);
+  }
+
   std::string_view typeName() const noexcept override {
     return "any-index-iterator";
   }
@@ -294,6 +315,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   bool nextDocumentImpl(DocumentCallback const& cb, uint64_t limit) override {
     return doNext(limit, [&]() {
+      _bytesRead += _iterator->value().size();
       cb(RocksDBKey::documentId(_iterator->key()),
          VPackSlice(
              reinterpret_cast<uint8_t const*>(_iterator->value().data())));
@@ -400,6 +422,7 @@ class RocksDBAnyIndexIterator final : public IndexIterator {
 
   uint64_t _total;
   uint64_t _returned;
+  size_t _bytesRead;
 };
 
 RocksDBGenericIterator::RocksDBGenericIterator(rocksdb::TransactionDB* db,

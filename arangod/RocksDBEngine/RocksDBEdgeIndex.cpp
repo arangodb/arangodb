@@ -1142,7 +1142,8 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
       // warmup does not need to observe own writes
       if (rocksColl
               ->lookupDocument(*trx, docId, docBuilder, /*readCache*/ true,
-                               /*fillCache*/ true, ReadOwnWrites::no)
+                               /*fillCache*/ true, ReadOwnWrites::no,
+                               /*countBytes*/ false)
               .fail()) {
         // Data Inconsistency. revision id without a document...
         TRI_ASSERT(false);

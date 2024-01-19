@@ -511,7 +511,7 @@ TEST_F(SpliceSubqueryNodeOptimizerRuleTest, splice_subquery_with_upsert) {
         EXPECT_EQ(std::string{"myKey"}, document.get("_key").copyString());
         return true;
       },
-      arangodb::ReadOwnWrites::no);
+      arangodb::ReadOwnWrites::no, /*countBytes*/ false);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
 }

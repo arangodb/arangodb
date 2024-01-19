@@ -191,12 +191,12 @@ class PhysicalCollection {
 
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   virtual Result readFromSnapshot(transaction::Methods* trx,
                                   LocalDocumentId const& token,
                                   IndexIterator::DocumentCallback const& cb,
-                                  ReadOwnWrites readOwnWrites,
+                                  ReadOwnWrites readOwnWrites, bool countBytes,
                                   StorageSnapshot const& snapshot) const {
     TRI_ASSERT(false);
     return {TRI_ERROR_NOT_IMPLEMENTED};
@@ -204,13 +204,13 @@ class PhysicalCollection {
 
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   virtual Result lookupDocument(transaction::Methods& trx,
                                 LocalDocumentId token,
                                 velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+                                bool fillCache, ReadOwnWrites readOwnWrites,
+                                bool countBytes) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,

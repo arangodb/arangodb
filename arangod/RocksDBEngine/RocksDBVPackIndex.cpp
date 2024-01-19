@@ -1677,9 +1677,10 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
               }
               return true;  // return value does not matter here
             },
-            ReadOwnWrites::yes);  // modifications always need to observe all
-                                  // changes in order to validate uniqueness
-                                  // constraints
+            ReadOwnWrites::yes,
+            /*countBytes*/ false);  // modifications always need to observe all
+                                    // changes in order to validate uniqueness
+                                    // constraints
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1808,9 +1809,10 @@ Result RocksDBVPackIndex::insertUnique(
             }
             return true;  // return value does not matter here
           },
-          ReadOwnWrites::yes);  // modifications always need to observe all
-                                // changes in order to validate uniqueness
-                                // constraints
+          ReadOwnWrites::yes,
+          /*countBytes*/ false);  // modifications always need to observe all
+                                  // changes in order to validate uniqueness
+                                  // constraints
       if (readResult.fail()) {
         addErrorMsg(readResult);
         THROW_ARANGO_EXCEPTION(readResult);
