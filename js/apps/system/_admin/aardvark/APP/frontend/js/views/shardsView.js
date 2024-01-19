@@ -335,7 +335,7 @@
         error: function (error) {
           var message = error.responseJSON && error.responseJSON.errorMessage;
           arangoHelper.arangoError(
-            `Shard ${shardName} could not be moved to ${arangoHelper.getDatabaseShortName(
+            `The shard ${shardName} could not be moved to ${arangoHelper.getDatabaseShortName(
               toServer
             )}: ${message}`
           );
