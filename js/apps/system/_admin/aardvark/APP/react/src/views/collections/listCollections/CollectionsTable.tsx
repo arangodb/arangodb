@@ -1,11 +1,10 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Button, Flex, Heading, Link } from "@chakra-ui/react";
+import { Flex, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
+import { ListHeader } from "../../../components/table/ListHeader";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { useDatabaseReadOnly } from "../../../utils/useDatabaseReadOnly";
 import { useCollectionsContext } from "../CollectionsContext";
 import { STATUS_TO_LABEL_MAP, TYPE_TO_LABEL_MAP } from "../CollectionsHelpers";
 import { LockableCollectionDescription } from "../useFetchCollections";
@@ -118,20 +117,11 @@ const CollectionTableHeader = ({
 }: {
   onAddCollectionClick: () => void;
 }) => {
-  const { readOnly, isLoading } = useDatabaseReadOnly();
   return (
-    <Flex direction="row" gap="2" alignItems="center">
-      <Heading size="lg">Collections</Heading>
-      <Button
-        size="sm"
-        isLoading={isLoading}
-        isDisabled={readOnly}
-        leftIcon={<AddIcon />}
-        colorScheme="green"
-        onClick={onAddCollectionClick}
-      >
-        Add collection
-      </Button>
-    </Flex>
+    <ListHeader
+      onButtonClick={onAddCollectionClick}
+      heading="Collections"
+      buttonText="Add collection"
+    />
   );
 };
