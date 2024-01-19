@@ -204,14 +204,14 @@ Result GraphOperations::checkVertexCollectionAvailability(
   if (!found) {
     if (edgeDocumentOrigin == VertexValidationOrigin::FROM_ATTRIBUTE ||
         edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
-      std::string originString = "_from";
+      std::string_view originString = "_from";
       if (edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
         originString = "_to";
       }
 
       return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
-                    "referenced " + originString + " collection '" +
-                        vertexCollectionName + "' is not part of the graph");
+                    absl::StrCat("referenced ", originString, " collection '",
+                        vertexCollectionName, "' is not part of the graph"));
     }
     return Result(TRI_ERROR_GRAPH_VERTEX_COLLECTION_NOT_USED);
   }
