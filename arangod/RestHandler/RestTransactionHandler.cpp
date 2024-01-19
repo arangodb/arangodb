@@ -75,11 +75,11 @@ RestStatus RestTransactionHandler::execute() {
       break;
 
     case rest::RequestType::PUT:
-      executeCommit();
+      return waitForFuture(executeCommit());
       break;
 
     case rest::RequestType::DELETE_REQ:
-      executeAbort();
+      return waitForFuture(executeAbort());
       break;
 
     case rest::RequestType::GET:
@@ -239,35 +239,36 @@ futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
   }
 }
 
-void RestTransactionHandler::executeCommit() {
+futures::Future<RestStatus> RestTransactionHandler::executeCommit() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return RestStatus::DONE;
   }
 
   TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
   if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "bad transaction ID");
-    return;
+    co_return RestStatus::DONE;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
+  Result res = co_await mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
     generateTransactionResult(rest::ResponseCode::OK, tid,
                               transaction::Status::COMMITTED);
   }
+  co_return RestStatus::DONE;
 }
 
-void RestTransactionHandler::executeAbort() {
+futures::Future<RestStatus> RestTransactionHandler::executeAbort() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return RestStatus::DONE;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -285,6 +286,7 @@ void RestTransactionHandler::executeAbort() {
     } else {
       generateError(res);
     }
+    co_return RestStatus::DONE;
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     // unofficial API to clear the transactions history. NOT A PUBLIC API!
   } else if (_request->suffixes()[0] == "history") {
@@ -296,16 +298,17 @@ void RestTransactionHandler::executeAbort() {
     } else {
       generateError(TRI_ERROR_FORBIDDEN);
     }
+    co_return RestStatus::DONE;
 #endif
   } else {
     TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
     if (tid.empty()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "bad transaction ID");
-      return;
+      co_return RestStatus::DONE;
     }
 
-    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
+    Result res = co_await mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);
@@ -313,6 +316,7 @@ void RestTransactionHandler::executeAbort() {
       generateTransactionResult(rest::ResponseCode::OK, tid,
                                 transaction::Status::ABORTED);
     }
+    co_return RestStatus::DONE;
   }
 }
 

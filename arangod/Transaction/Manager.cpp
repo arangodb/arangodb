@@ -302,8 +302,9 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
     auto& buck = _transactions[bucket];
 
     double ttl = Manager::ttlForType(_feature, MetaType::StandaloneAQL);
-    auto it = buck._managed.try_emplace(tid, _feature, MetaType::StandaloneAQL,
-                                        ttl, state, std::move(rGuard));
+    auto it = buck._managed.try_emplace(
+        tid, std::make_shared<ManagedTrx>(_feature, MetaType::StandaloneAQL,
+                                          ttl, state, std::move(rGuard)));
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_INTERNAL,
@@ -1332,6 +1333,9 @@ void Manager::iterateManagedTrx(
 
 /// @brief collect forgotten transactions
 bool Manager::garbageCollect(bool abortAll) {
+  // This method is intentionally synchronous. We only call it on
+  // shutdown, in tests, and in background threads.
+
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   // clear transaction history as well
   if (_history != nullptr) {
@@ -1348,48 +1352,65 @@ bool Manager::garbageCollect(bool abortAll) {
   uint64_t numAborted = 0;
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    if (abortAll) {
-      _transactions[bucket]._lock.lockWrite();
-    } else {
-      _transactions[bucket]._lock.lockRead();
-    }
-    auto scope =
-        scopeGuard([&]() noexcept { _transactions[bucket]._lock.unlock(); });
+    struct Info {
+      TransactionId id;
+      std::shared_ptr<TransactionState> state;
+      std::shared_ptr<ManagedTrx> mtrx_ptr;
+    };
+    std::vector<Info> inBucket;
 
-    for (auto& it : _transactions[bucket]._managed) {
-      ManagedTrx& mtrx = *it.second;
+    {
+      if (abortAll) {
+        _transactions[bucket]._lock.lockWrite();
+      } else {
+        _transactions[bucket]._lock.lockRead();
+      }
+      auto scope =
+          scopeGuard([&]() noexcept { _transactions[bucket]._lock.unlock(); });
 
-      if (mtrx.type == MetaType::Managed) {
-        TRI_ASSERT(mtrx.state != nullptr);
-        if (abortAll || mtrx.expired()) {
-          ++numAborted;
+      for (auto& it : _transactions[bucket]._managed) {
+        ManagedTrx& mtrx = *it.second;
 
-          TRY_WRITE_LOCKER(tryGuard,
-                           mtrx.rwlock);  // needs lock to access state
-
-          if (tryGuard.isLocked()) {
-            TRI_ASSERT(mtrx.state->isRunning());
-            TRI_ASSERT(it.first == mtrx.state->id());
-            toAbort.emplace_back(mtrx.state->id());
-            LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
-                << "aborting expired transaction " << it.first;
-          } else if (abortAll) {  // transaction is in use but we want to
-                                  // abort
-            LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS)
-                << "soft-aborting expired transaction " << it.first;
-            mtrx.expiryTime = 0;  // soft-abort transaction
-            didWork = true;
-            LOG_TOPIC("7ad4f", INFO, Logger::TRANSACTIONS)
-                << "soft aborting transaction " << it.first;
+        if (mtrx.type == MetaType::Managed) {
+          TRI_ASSERT(mtrx.state != nullptr);
+          if (abortAll || mtrx.expired()) {
+            ++numAborted;
+            inBucket.push_back(Info{
+                .id = it.first,
+                .state = mtrx.state,
+                .mtrx_ptr = it.second,
+            });
           }
+        } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
+          LOG_TOPIC("7ad5f", INFO, Logger::TRANSACTIONS)
+              << "expired AQL query transaction " << it.first;
+        } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
+          TRI_ASSERT(mtrx.state == nullptr);
+          TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
+          toErase.emplace_back(it.first);
         }
-      } else if (mtrx.type == MetaType::StandaloneAQL && mtrx.expired()) {
-        LOG_TOPIC("7ad5f", INFO, Logger::TRANSACTIONS)
-            << "expired AQL query transaction " << it.first;
-      } else if (mtrx.type == MetaType::Tombstone && mtrx.expired()) {
-        TRI_ASSERT(mtrx.state == nullptr);
-        TRI_ASSERT(mtrx.finalStatus != transaction::Status::UNDEFINED);
-        toErase.emplace_back(it.first);
+      }
+    }
+
+    for (auto& info : inBucket) {
+      auto tryGuard =
+          info.mtrx_ptr->rwlock
+              .asyncTryLockExclusiveFor(std::chrono::milliseconds(100))
+              .get();
+      if (tryGuard.isLocked()) {
+        TRI_ASSERT(info.state->isRunning());
+        TRI_ASSERT(info.id == info.state->id());
+        toAbort.emplace_back(info.id);
+        LOG_TOPIC("7ad3f", INFO, Logger::TRANSACTIONS)
+            << "aborting expired transaction " << info.id;
+      } else if (abortAll) {  // transaction is in use but we want to
+                              // abort
+        LOG_TOPIC("92431", INFO, Logger::TRANSACTIONS)
+            << "soft-aborting expired transaction " << info.id;
+        info.mtrx_ptr->expiryTime = 0;  // soft-abort transaction
+        didWork = true;
+        LOG_TOPIC("7ad4f", INFO, Logger::TRANSACTIONS)
+            << "soft aborting transaction " << info.id;
       }
     }
   }
@@ -1441,26 +1462,47 @@ bool Manager::garbageCollect(bool abortAll) {
 /// @brief abort all transactions matching
 bool Manager::abortManagedTrx(
     std::function<bool(TransactionState const&, std::string const&)> cb) {
+  // FIXME: This method should be asynchronous and a coroutine.
   containers::SmallVector<TransactionId, 8> toAbort;
 
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
-    READ_LOCKER(locker, _transactions[bucket]._lock);
+    // First get the list of managed transactions as shared_ptr copies:
+    struct Info {
+      TransactionId id;
+      std::shared_ptr<ManagedTrx> mtrx_ptr;
+      std::shared_ptr<TransactionState> state;
+      std::string user;
+    };
+    std::vector<Info> inBucket;
+    {
+      READ_LOCKER(locker, _transactions[bucket]._lock);
 
-    auto it = _transactions[bucket]._managed.begin();
-    while (it != _transactions[bucket]._managed.end()) {
-      ManagedTrx& mtrx = *it->second;
-      if (mtrx.type == MetaType::Managed) {
-        TRI_ASSERT(mtrx.state != nullptr);
-        TRY_READ_LOCKER(tryGuard, mtrx.rwlock);  // needs lock to access state
-        if (tryGuard.isLocked() && cb(*mtrx.state, mtrx.user)) {
-          toAbort.emplace_back(it->first);
+      auto it = _transactions[bucket]._managed.begin();
+      while (it != _transactions[bucket]._managed.end()) {
+        ManagedTrx& mtrx = *it->second;
+        if (mtrx.type == MetaType::Managed) {
+          TRI_ASSERT(mtrx.state != nullptr);
+          inBucket.push_back(Info{.id = it->first,
+                                  .mtrx_ptr = it->second,
+                                  .state = mtrx.state,
+                                  .user = mtrx.user});
         }
-      }
 
-      ++it;  // next
+        ++it;  // next
+      }
+    }
+
+    // Now acquire for each the rwlock as read and call the callback to
+    // see if it is to be aborted:
+    for (auto& info : inBucket) {
+      auto guard = info.mtrx_ptr->rwlock.asyncLockShared().get();  // FIXME
+      if (guard.isLocked() && cb(*info.state, info.user)) {
+        toAbort.emplace_back(info.id);
+      }
     }
   }
 
+  // Finally, we can actually abort all those filtered transaction:
   for (TransactionId tid : toAbort) {
     Result res =
         updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true).get();
