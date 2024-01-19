@@ -64,6 +64,14 @@ devel
   operations are always carried out normally without checking the version 
   attribute, even if it is specified.
 
+* FE-349: show full error message on web UI when moving shards.
+
+* BTS-1741: fix updates of values in unique persistent indexes with stored
+  values defined for them. When such an index value was updated, it was
+  possible that the stored value was not correctly updated, so that subsequent
+  reads of the index value would run into exceptions such as 
+  `Expecting type Array or Object`.
+
 * Upgraded bundled version of V8 to 12.1.165.
 
 * Upgraded bundled version of ICU to 73.
