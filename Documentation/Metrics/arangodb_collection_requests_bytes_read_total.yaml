@@ -31,14 +31,16 @@ description: |
   scans, or for scans in a collection that iterate over documents but do not
   read them.
   
-  This metric is not exposed by default. It is only present if the
-  `--server.export-shard-usage-metrics` startup option is set to either
-  `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
-  the metric has different labels for each shard that was read from. With the
-  latter setting, the metric has different labels for each combination of shard
-  and user that accessed the shard.
+  This metric is not exposed by default. It is only present if the startup option
+  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 
+  `enabled-per-shard-per-user`. With the former setting, the metric has different 
+  labels for each shard that was read from. With the latter setting, the metric 
+  has different labels for each combination of shard and user that accessed the shard.
+  The metric is only exposed on DB servers and not on Coordinators or single servers.
   
   Note that internal operations, such as internal queries executed for statistics
   gathering, internal garbage collection, and TTL index cleanup are not counted in
   these metrics. Additionally, all requests that use the superuser JWT for
   authentication and that do not have a specific user set, are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with them,
+  so that the cluster must also be running with authentication turned on.
