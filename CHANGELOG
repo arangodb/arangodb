@@ -15,6 +15,8 @@ devel
   such cases like a not known vertex is being used inside an edge documents
   `_from` or `_to` attribute.
 
+* FE-349: show full error message on web UI when moving shards.
+
 * BTS-1741: fix updates of values in unique persistent indexes with stored
   values defined for them. When such an index value was updated, it was
   possible that the stored value was not correctly updated, so that subsequent
