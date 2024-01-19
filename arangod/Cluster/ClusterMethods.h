@@ -244,6 +244,10 @@ Result recalculateCountsOnAllDBServers(ClusterFeature&, std::string_view dbname,
 Result compactOnAllDBServers(ClusterFeature&, bool changeLevel,
                              bool compactBottomMostLevel);
 
+/// @brief compact the data of a single collection on all DB servers
+Result compactOnAllDBServers(ClusterFeature&, std::string const& dbname,
+                             std::string const& collname);
+
 //////////////////////////////////////////////////////////////////////////////
 /// @brief create hotbackup on a coordinator
 //////////////////////////////////////////////////////////////////////////////
