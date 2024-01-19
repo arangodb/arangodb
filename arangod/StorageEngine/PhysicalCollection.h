@@ -197,6 +197,7 @@ class PhysicalCollection {
     bool readCache = true;
     bool fillCache = true;
     bool readOwnWrites = false;
+    bool countBytes = false;
   };
 
   virtual Result lookup(transaction::Methods* trx, std::string_view key,

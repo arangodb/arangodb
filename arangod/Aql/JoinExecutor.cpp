@@ -210,7 +210,7 @@ auto JoinExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                                cb.template operator()<decltype(docPtr)>(docPtr);
                                return true;
                              }}},
-                         {});
+                         {.countBytes = true});
         if (ADB_UNLIKELY(result.fail())) {
           THROW_ARANGO_EXCEPTION_MESSAGE(
               result.errorNumber(),
@@ -553,7 +553,7 @@ auto JoinExecutor::skipRowsRange(AqlItemBlockInputRange& inputRange,
                               cb.template operator()<decltype(docPtr)>(docPtr);
                               return true;
                             }}},
-                        {});
+                        {.countBytes = true});
             if (result.fail()) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
                   result.errorNumber(),

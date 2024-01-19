@@ -3,6 +3,91 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.10.
 
+* APM-665: RocksDB memory tracking
+  Changed the default value of the following command line options
+  
+  - `--rocksdb.reserve-table-builder-memory`
+  - `--rocksdb.reserve-table-reader-memory`
+  - `--rocksdb.reserve-file-metadata-memory`
+
+  from `false` to `true` by default to account for the memory usage of the 
+  above RocksDB components in the RocksDB block cache and thus the metric
+  `rocksdb_block_cache_usage`. This also allows to better limit the total
+  memory usage of RocksDB.
+
+* Updated ArangoDB Starter to v0.18.0.
+
+* Added support for simple external versioning to document operations.
+
+  UPDATE and REPLACE operations can now be given an optional `versionAttribute`
+  property. If set, the attribute with the name specified by the property is
+  looked up in the to-be-updated/to-be-replaced document. If no such attribute
+  exists, the UPDATE/REPLACE is performed as usual. If such attribute exists,
+  its content is read and compared numerically to the value of the versioning 
+  attribute in the document that updates/replaces it. If the version number in
+  the new document is higher than in the document that exists in the database,
+  the UPDATE/REPLACE is performed normally. If the version number in the new
+  document is lower or equal to what exists in the database, the UPDATE/REPLACE
+  is not performed and behaves like a no-op. No error will be returned to the
+  user in this case.
+
+  This simple versioning can help to avoid overwriting existing data with older
+  versions in case data is transferred from an external system into ArangoDB
+  and the copies are currently not in sync.
+
+  The `versionAttribute` property can also be used for INSERT operations with
+  `overwriteMode: "update"` or `overwriteMode: "replace"`.
+  It can also be used inside AQL queries by specifying it in the `OPTIONS`
+  clause of an UPDATE/REPLACE/INSERT operation.
+
+  Examples:
+
+      // insert normally
+      db.collection.insert({_key: "test", value: 1, ver: 1}); 
+      
+      // updates because version attribute value is higher in new document
+      db.collection.update("test", 
+                           {value: 2, ver: 2}, 
+                           {versionAttribute: "ver"});
+      
+      // does not update because version attribute value is lower in new 
+      // document
+      db.collection.update("test", 
+                           {value: 3, ver: 1}, 
+                           {versionAttribute: "ver"});
+
+      // updates because key already exists and version attribute value is 
+      // higher in new document
+      db.collection.insert({_key: "test", value: 4, ver: 3}, 
+                           {overwriteMode: "update", versionAttribute: "ver"});
+
+      db._query("UPDATE 'test' WITH {value: 5, ver: 4} IN collection 
+                OPTIONS {versionAttribute: 'ver'}");
+
+  Note that versioning is opt-in, and that no version checking is performed for
+  operations for which the `versionAttribute` property was not set as part of
+  the update or replace operation or as an option in the AQL query. 
+
+  Also note that version checking only kicks in if both the existing version of
+  the document in the database and the new document version contain the version 
+  attribute and they contain numeric values between 0 and 18446744073709551615.
+  If either the existing document in the database or the new document version
+  do not contain the version attribute, or if the version attribute in any of
+  the two is not a number inside the valid range, the update/replace operation
+  will behave as if no version checking was requested.
+
+  Also note that document removal operations do not support versioning. Removal
+  operations are always carried out normally without checking the version 
+  attribute, even if it is specified.
+
+* FE-349: show full error message on web UI when moving shards.
+
+* BTS-1741: fix updates of values in unique persistent indexes with stored
+  values defined for them. When such an index value was updated, it was
+  possible that the stored value was not correctly updated, so that subsequent
+  reads of the index value would run into exceptions such as 
+  `Expecting type Array or Object`.
+
 * Upgraded bundled version of V8 to 12.1.165.
 
 * Upgraded bundled version of ICU to 73.
@@ -39,6 +124,9 @@ devel
   - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
     and per-user metrics. This is more granular than `enabled-per-shard` but
     can produce a lot of metrics.
+  
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
 
   Whenever a shard is accessed in read or write mode by one of the following 
   operations, the metrics are populated dynamically, either with a per-user
@@ -71,11 +159,98 @@ devel
   are not decreased should an operation abort or if an operation does not
   lead to any actual reads or writes.
 
+  Note that internal operations, such as internal queries executed for 
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
+
   As there can be many of these dynamic metrics based on the number of shards
   and/or users in the deployment, these metrics are turned off by default
   (see above), and if turned on, are only exposed only via a new HTTP REST API
   endpoint GET `/_admin/usage-metrics`. They are not exposed via the existing
   metrics API endpoint GET `/_admin/metrics`.
+
+* Add additional metrics for tracking the number of bytes read or written per
+  shard on DB-Servers:
+
+  - `arangodb_collection_requests_bytes_read_total`:
+    This metric exposes the per-shard number of bytes read by read operation 
+    requests on DB-Servers. 
+    It is increased by AQL queries that read documents or edges and for single-
+    or multi-document read operations.
+    The metric is normally increased only on the leader, but it can also 
+    increase on followers if "reads from followers" are enabled.
+
+    For every read operation, the metric will be increased by the approximate 
+    number of bytes read to retrieve the underlying document or edge data. This
+    is also true if a document or edge is served from an in-memory cache.
+    If an operation reads multiple documents/edges, it will increase the 
+    counter multiple times, each time with the approximate number of bytes read
+    for the particular document/edge.
+    
+    The numbers reported by this metric normally relate to the cumulated sizes
+    of documents/edges read.
+    The metric is also increased for transactions that are started but later
+    aborted.
+    Note that the metric is not increased for secondary index point lookups or
+    scans, or for scans in a collection that iterate over documents but do not
+    read them.
+
+  - `arangodb_collection_requests_bytes_written_total`:
+    This metric exposes the per-shard number of bytes written by write operation
+    requests on DB-Servers, on both leaders and followers.
+    It is increased by AQL queries and single-/multi-document write operations.
+    The metric is first increased only the leader, but for every replication 
+    request to followers it is also increased on followers.
+    
+    For every write operation, the metric will be increased by the approximate 
+    number of bytes written for the document or edge in question. 
+    If an operation writes multiple documents/edges, it will increase the 
+    counter multiple times, each time with the approximate number of bytes 
+    written for the particular document/edge.
+
+    An AQL query will also increase the counter for every document or edge 
+    written, each time with the approximate number of bytes written for 
+    document/edge.
+    
+    The numbers reported by this metric normally relate to the cumulated sizes
+    of documents/edges written. For remove operations however only a fixed
+    number of bytes is counted per removed document/edge. For truncate 
+    operations, the metrics will be affected differently depending on how the
+    truncate is executed internally.
+    For truncates on smaller shards, the truncate operation will be executed as
+    the removal of the individual documents in the shard. Thus the metric will
+    also be increased as if the documents were removed individually. Truncate
+    operations on larger shards however will be executed via a special 
+    operation in the storage engine, which marks a whole range of documents as
+    removed, but defers the actual removal until much later (compaction 
+    process). If a truncate is executed like this, the metric will not be 
+    increased at all.
+    Writes into secondary indexes are not counted at all.
+
+    The metric is also increased for transactions that are started but later
+    aborted.
+  
+  These metrics are not exposed by default. It is only present if the startup 
+  option `--server.export-shard-usage-metrics` is set to either 
+  `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
+  the metric will have different labels for each shard that was read from. With
+  the latter setting, the metric will have different labels for each 
+  combination of shard and user that accessed the shard.
+  
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
+  
+  Note that internal operations, such as internal queries executed for 
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
 
 * Fixed the frontend build in Windows environments.
 
@@ -1058,16 +1233,8 @@ devel
   The high water multiplier is used to calculate the effective memory usage 
   limit for the in-memory cache subsystem. The cache's configured memory usage 
   limit (`--cache.size`) is multiplied by the high water multiplier, and the 
-  resulting value is used as the effective memory limit. It defaults to 95%
+  resulting value is used as the effective memory limit. It defaults to 56%
   of the configured cache size.
-
-  Note that this is a behavior change. Previous versions of ArangoDB set the
-  high water multiplier to effectively 56% of the configured memory. The value
-  was hard-coded in versions before 3.11.3, and is exposed since then with a
-  default value of 56%. 
-  3.12 now sets the default value for the high water multiplier to 95%, so that
-  the configured memory limit for the cache subsystem is actually better
-  honored than before.
 
 * Wrap imports into SmartGraph edge collections via the REST import API
   (POST `/_api/import`) into a managed transaction, so that edge data is

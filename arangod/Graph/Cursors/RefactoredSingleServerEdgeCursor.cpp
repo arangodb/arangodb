@@ -386,7 +386,9 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
         return true;
       };
       cursor.all([&](LocalDocumentId token) {
-        return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
+        return collection->getPhysical()
+            ->lookup(_trx, token, cb, {.countBytes = true})
+            .ok();
       });
     }
 

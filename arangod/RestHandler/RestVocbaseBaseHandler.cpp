@@ -579,8 +579,9 @@ RestVocbaseBaseHandler::createTransaction(
     OperationOptions const& opOptions,
     transaction::OperationOrigin operationOrigin,
     transaction::Options&& trxOpts) const {
-  bool isFollower = !opOptions.isSynchronousReplicationFrom.empty() &&
-                    ServerState::instance()->isDBServer();
+  bool const isDBServer = ServerState::instance()->isDBServer();
+  bool isFollower =
+      !opOptions.isSynchronousReplicationFrom.empty() && isDBServer;
 
   bool found = false;
   std::string const& value =
@@ -594,6 +595,10 @@ RestVocbaseBaseHandler::createTransaction(
         collectionName, type, std::move(trxOpts));
     if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    if (isDBServer) {
+      // set username from request
+      tmp->setUsername(_request->value(StaticStrings::UserString));
     }
     co_return tmp;
   }
@@ -645,9 +650,8 @@ RestVocbaseBaseHandler::createTransaction(
   // lock on the context for the entire duration of the query. if this is the
   // case, then the query already has the lock, and it is ok if we lease the
   // context here without acquiring it again.
-  bool isSideUser =
-      (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
-       !_request->header(StaticStrings::AqlDocumentCall).empty());
+  bool isSideUser = (isDBServer && AccessMode::isRead(type) &&
+                     !_request->header(StaticStrings::AqlDocumentCall).empty());
 
   std::shared_ptr<transaction::Context> ctx =
       mgr->leaseManagedTrx(tid, type, isSideUser);
@@ -677,6 +681,10 @@ RestVocbaseBaseHandler::createTransaction(
       }
     }
     trx = std::make_unique<transaction::Methods>(std::move(ctx));
+  }
+  if (isDBServer) {
+    // set username from request
+    trx->setUsername(_request->value(StaticStrings::UserString));
   }
   co_return trx;
 }
