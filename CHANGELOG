@@ -1,6 +1,12 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1741: fix updates of values in unique persistent indexes with stored
+  values defined for them. When such an index value was updated, it was
+  possible that the stored value was not correctly updated, so that subsequent
+  reads of the index value would run into exceptions such as 
+  `Expecting type Array or Object`.
+
 * APM-828: Per collection/database/user monitoring.
 
   This adds optional metrics for tracking per-shard requests on DB-Servers.
