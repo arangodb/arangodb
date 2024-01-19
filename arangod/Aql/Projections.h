@@ -98,6 +98,16 @@ class Projections {
   /// @brief erase projection members if cb returns true
   void erase(std::function<bool(Projection&)> const& cb);
 
+  /// @brief adds a path to the projections
+  void addPath(AttributeNamePath path);
+  template<typename T>
+  void addPaths(T paths) {
+    for (auto& path : paths) {
+      addPathInternal(std::move(path));
+    }
+    healProjections();
+  }
+
   /// @brief set covering index context for these projections
   void setCoveringContext(DataSourceId const& id,
                           std::shared_ptr<Index> const& index);
@@ -201,9 +211,13 @@ class Projections {
   template<typename T>
   void init(T paths);
 
+  template<typename P>
+  void addPathInternal(P&&);
+
   /// @brief clean up projections, so that there are no 2 projections where one
   /// is a true prefix of another. also sets level attributes
   void handleSharedPrefixes();
+  void healProjections();
 
   /// @brief all our projections (sorted, unique)
   std::vector<Projection> _projections;

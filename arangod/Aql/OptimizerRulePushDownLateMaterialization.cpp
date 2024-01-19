@@ -26,9 +26,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
-#include "Aql/JoinNode.h"
+#include "Aql/Query.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
+#include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
 using namespace arangodb;
@@ -45,19 +46,67 @@ bool usesOutVariable(materialize::MaterializeNode const* matNode,
   return other->getVariableIdsUsedHere().contains(matNode->outVariable().id);
 }
 
+bool checkCalculation(materialize::MaterializeNode const* matNode,
+                      ExecutionNode* other) {
+  if (!usesOutVariable(matNode, other)) {
+    return true;
+  }
+
+  TRI_ASSERT(other->getType() == EN::CALCULATION);
+  auto* calc = ExecutionNode::castTo<CalculationNode*>(other);
+
+  auto* matOriginNode =
+      matNode->plan()->getVarSetBy(matNode->docIdVariable().id);
+  if (matOriginNode->getType() != EN::INDEX) {
+    return false;
+  }
+
+  auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
+  TRI_ASSERT(indexNode->isLateMaterialized());
+  auto index = indexNode->getSingleIndex();
+  if (index == nullptr) {
+    return false;
+  }
+
+  containers::FlatHashSet<aql::AttributeNamePath> attributes;
+  Ast::getReferencedAttributesRecursive(
+      calc->expression()->node(), &matNode->outVariable(), "", attributes,
+      matNode->plan()->getAst()->query().resourceMonitor());
+  LOG_DEVEL << "CALC ATTRIBUTES: ";
+  for (auto const& attr : attributes) {
+    LOG_DEVEL << attr;
+  }
+
+  auto proj = indexNode->projections();  // copy intentional
+  proj.addPaths(attributes);
+
+  if (index->covers(proj)) {
+    LOG_DEVEL << "INDEX COVERS THOSE PROJECTIONS";
+    LOG_DEVEL << "NEW PROJ: " << proj;
+    calc->replaceVariables(
+        {{matNode->outVariable().id, indexNode->outVariable()}});
+    indexNode->setProjections(std::move(proj));
+
+    return true;
+  }
+
+  return false;
+}
+
 bool canMovePastNode(materialize::MaterializeNode const* matNode,
-                     ExecutionNode const* other) {
+                     ExecutionNode* other) {
   switch (other->getType()) {
     case EN::LIMIT:
     case EN::MATERIALIZE:
       return true;
     case EN::SORT:
     case EN::FILTER:
+      return !usesOutVariable(matNode, other);
     case EN::CALCULATION:
       // TODO This is very pessimistic. In fact we could move the materialize
       // node down, if the index supports
       //      projecting the required attribute.
-      return !usesOutVariable(matNode, other);
+      return checkCalculation(matNode, other);
     default:
       break;
   }

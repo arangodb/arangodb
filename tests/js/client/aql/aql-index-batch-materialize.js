@@ -38,7 +38,7 @@ function IndexBatchMaterializeTestSuite() {
 
   function makeCollection(name) {
     const c = db._create(name);
-    c.ensureIndex({type: "persistent", fields: ["x"]});
+    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
     c.ensureIndex({type: "persistent", fields: ["u"], unique: true});
@@ -180,6 +180,16 @@ function IndexBatchMaterializeTestSuite() {
           RETURN doc
       `;
       expectNoOptimization(query);
+    },
+
+    testMaterializeSortStoredValues: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          SORT doc.b
+          RETURN doc
+      `;
+      db._explain(query);
     },
 
   };
