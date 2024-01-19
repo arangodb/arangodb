@@ -1706,8 +1706,8 @@ bool Manager::storeManagedState(
   WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.try_emplace(
-      tid, _feature, MetaType::Managed, ttl, std::move(state),
-      std::move(rGuard));
+      tid, std::make_shared<ManagedTrx>(_feature, MetaType::Managed, ttl,
+                                        std::move(state), std::move(rGuard)));
   return it.second;
 }
 
