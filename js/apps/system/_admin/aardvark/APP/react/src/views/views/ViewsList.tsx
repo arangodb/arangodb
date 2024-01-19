@@ -1,6 +1,6 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
+import { Box, useDisclosure } from "@chakra-ui/react";
 import React from "react";
+import { ListHeader } from "../../components/table/ListHeader";
 import { AddNewViewModal } from "./viewsList/addNewViewForm/AddNewViewModal";
 import { ViewsTable } from "./viewsList/ViewsTable";
 
@@ -17,16 +17,6 @@ export const ViewsList = () => {
 
 const ViewListHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
-    <Stack direction="row" marginBottom="4" alignItems="center">
-      <Heading size="lg">Views</Heading>
-      <Button
-        size="sm"
-        leftIcon={<AddIcon />}
-        colorScheme="green"
-        onClick={onOpen}
-      >
-        Add view
-      </Button>
-    </Stack>
+    <ListHeader onButtonClick={onOpen} heading="Views" buttonText="Add view" />
   );
 };
