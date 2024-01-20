@@ -55,24 +55,41 @@ function IndexSuite() {
       collection = null;
     },
 
-
     testIndexProgress : function () {
       var c = internal.db._create("c0l");
       var docs = [];
+      const sleep = require('internal').sleep;
       for (var i = 0; i < 10000; ++i) {
         docs.push({name : "name" + i});
       }
       c.insert(docs);
       internal.debugSetFailAt("fillIndex::pause");
-      c.ensureIndex({ type: "persistent", fields:["name"], inBackground: true});
-      //arango.POST("_api/index?collecion=c0l", { type: "persistent", fields:["name"], inBackground: true}, {"x-arango-async": "store"})
-      console.error("hu");
-      require('internal').sleep(1000);
-      console.error("ha");
+      var idx = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
+      arango.GET(`/_api/index?collection=c0l`);
+      arango.POST_RAW(`/_api/index?collection=c0l`, idx,
+                      {"x-arango-async": "store"});
+      for (i = 1; i < 10; ++i) {
+        while (true) {
+          var idxs = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes;
+          if (idxs.length > 1) {
+            if (idxs[1].hasOwnProperty("progress") && idxs[1].progress === i*10.24) {
+              console.warn(idxs[1].progress + "%");
+              internal.debugSetFailAt("fillIndex::unpause");
+              break;
+            }
+            sleep (0.1);
+          }
+        }
+        sleep(0.1);
+        internal.debugRemoveFailAt("fillIndex::unpause");
+        internal.debugSetFailAt("fillIndex::next");
+        sleep(0.1);
+        internal.debugRemoveFailAt("fillIndex::next");
+      }
+      
       internal.debugSetFailAt("fillIndex::unpause");
       internal.debugRemoveFailAt("fillIndex::pause");
       internal.debugRemoveFailAt("fillIndex::unpause");
-      require('internal').sleep(1000);
       c.drop();
     },
 
