@@ -281,7 +281,7 @@ RestStatus RestIndexHandler::getIndexes() {
                     << r.destination << ": " << resSlice.toJson();
               }
             }
-            tmp.add("progress", VPackValue(progress));
+            tmp.add("progress", VPackValue(progress / shards->size()));
           }
         }
       }
