@@ -178,11 +178,11 @@ Result fillIndexSingleThreaded(
       TRI_IF_FAILURE("fillIndex::pause") {
         while (true) {
           TRI_IF_FAILURE("fillIndex::unpause") { break; }
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
         while (true) {
           TRI_IF_FAILURE("fillIndex::next") { break; }
-          std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          std::this_thread::sleep_for(std::chrono::milliseconds(50));
         }
       }
 #endif

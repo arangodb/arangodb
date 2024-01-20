@@ -71,8 +71,10 @@ function IndexSuite() {
       internal.debugSetFailAt("fillIndex::pause");
       var idx = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
       arango.GET(`/_api/index?collection=c0l`);
-      arango.POST_RAW(`/_api/index?collection=c0l`, idx,
-                      {"x-arango-async": "store"});
+
+      var job = arango.POST_RAW(`/_api/index?collection=c0l`, idx,
+                                {"x-arango-async": "store"}).headers["x-arango-async-id"];
+      let count = 0;
       var progress = 0.0;
       var idxs = [];
       while (true) {
@@ -80,34 +82,35 @@ function IndexSuite() {
         if (idxs.length > 1) {
           break;
         }
-        sleep(0.1);
+        sleep(0.05);
       }
       while (arango.GET(`/_api/index?collection=c0l&withHidden=true`) &&
              arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1].hasOwnProperty("progress")) {
         while (true) {
-          var idxs = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes;
+          idxs = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes;
           if (idxs[1].hasOwnProperty("progress") && idxs[1].progress > progress) {
             progress = idxs[1].progress;
             console.warn(Math.round(progress) + "%");
             internal.debugSetFailAt("fillIndex::unpause");
             break;
           }
-          sleep (0.1);
+          sleep (0.05);
         }
-        sleep(0.1);
+        sleep(0.05);
         internal.debugRemoveFailAt("fillIndex::unpause");
         internal.debugSetFailAt("fillIndex::next");
-        sleep(0.1);
+        sleep(0.05);
         internal.debugRemoveFailAt("fillIndex::next");
       }
-      
-      internal.debugSetFailAt("fillIndex::unpause");
-      internal.debugSetFailAt("fillIndex::next");
+
+      // Clear fail points
       internal.debugRemoveFailAt("fillIndex::pause");
       internal.debugRemoveFailAt("fillIndex::unpause");
       internal.debugRemoveFailAt("fillIndex::next");
+
+      // Clean up
       c.drop();
-    }
+    },
   };
 }
 
