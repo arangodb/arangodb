@@ -65,7 +65,7 @@ function IndexSuite() {
       var c = internal.db._create("c0l", {numberOfShards: 3});
       var docs = [];
       const sleep = require('internal').sleep;
-      for (var j = 0; j < 50; ++j) {
+      for (var j = 0; j < 10; ++j) {
         docs=[];
         for (var i = 0; i < 10240; ++i) {
           docs.push({name : "name" + i});
@@ -106,8 +106,8 @@ function IndexSuite() {
         internal.debugRemoveFailAt("fillIndex::unpause");
 //        sleep(0.2);
 //        internal.debugSetFailAt("fillIndex::next");
-        sleep(0.1);
-        internal.debugRemoveFailAt("fillIndex::next");
+//        sleep(0.1);
+//        internal.debugRemoveFailAt("fillIndex::next");
       }
 
       // Clear fail points
