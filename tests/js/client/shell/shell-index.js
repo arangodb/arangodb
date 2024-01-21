@@ -28,6 +28,7 @@
 
 const jsunity = require("jsunity");
 const internal = require("internal");
+const arango = internal.arango;
 const errors = internal.errors;
 const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
