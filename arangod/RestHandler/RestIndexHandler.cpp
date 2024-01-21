@@ -217,73 +217,75 @@ RestStatus RestIndexHandler::getIndexes() {
         for (auto const& i : VPackArrayIterator(indexes.slice())) {
           tmp.add(i);
         }
-        for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
-          if (pi.hasKey("isBuilding") && pi.get("isBuilding").getBool()) {
-            VPackObjectBuilder o(&tmp);
-            for (auto const& source : VPackObjectIterator(pi)) {
-              tmp.add(source.key.copyString(), source.value);
-            }
-            std::string iid = pi.get("id").copyString();
-            double progress = 0;
-            double success = 0;
-            auto const shards = coll->shardIds();
-            auto const body = VPackBuffer<uint8_t>();
-            auto* pool =
-                coll->vocbase().server().getFeature<NetworkFeature>().pool();
-            std::vector<Future<network::Response>> futures;
-            futures.reserve(shards->size());
-            // std::string const prefix = "/_db/" + _vocbase.name() +
-            // "/_api/index/";
-            std::string const prefix = "/_api/index/";
-            network::RequestOptions reqOpts;
-            reqOpts.param("withHidden", "true");
-            // best effort. only displaying progress
-            reqOpts.timeout = network::Timeout(10.0);
-            for (auto const& shard : *shards) {
-              std::string const url = prefix + shard.first + "/" + iid;
-              futures.emplace_back(network::sendRequestRetry(
-                  pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
-                  body, reqOpts));
-            }
-            for (Future<network::Response>& f : futures) {
-              network::Response const& r = f.get();
-
-              // Only best effort accounting. If something breaks here, we just
-              // ignore the output. Account for what we can and move on.
-              if (r.fail()) {
-                LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-                    << "Communication error while collecting figures for "
-                       "collection "
-                    << coll->name() << " from " << r.destination;
-                continue;
+        try { // this is a best effort progress display.
+          for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
+            if (pi.hasKey("isBuilding") && pi.get("isBuilding").getBool()) {
+              VPackObjectBuilder o(&tmp);
+              for (auto const& source : VPackObjectIterator(pi)) {
+                tmp.add(source.key.copyString(), source.value);
               }
-              VPackSlice resSlice = r.slice();
-              if (!resSlice.isObject() ||
-                  !resSlice.get(StaticStrings::Error).isBoolean()) {
-                LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
+              std::string iid = pi.get("id").copyString();
+              double progress = 0;
+              double success = 0;
+              auto const shards = coll->shardIds();
+              auto const body = VPackBuffer<uint8_t>();
+              auto* pool =
+                coll->vocbase().server().getFeature<NetworkFeature>().pool();
+              std::vector<Future<network::Response>> futures;
+              futures.reserve(shards->size());
+              // std::string const prefix = "/_db/" + _vocbase.name() +
+              // "/_api/index/";
+              std::string const prefix = "/_api/index/";
+              network::RequestOptions reqOpts;
+              reqOpts.param("withHidden", "true");
+              // best effort. only displaying progress
+              reqOpts.timeout = network::Timeout(10.0);
+              for (auto const& shard : *shards) {
+                std::string const url = prefix + shard.first + "/" + iid;
+                futures.emplace_back(network::sendRequestRetry(
+                                       pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
+                                       body, reqOpts));
+              }
+              for (Future<network::Response>& f : futures) {
+                network::Response const& r = f.get();
+
+                // Only best effort accounting. If something breaks here, we just
+                // ignore the output. Account for what we can and move on.
+                if (r.fail()) {
+                  LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+                    << "Communication error while collecting figures for "
+                    "collection "
+                    << coll->name() << " from " << r.destination;
+                  continue;
+                }
+                VPackSlice resSlice = r.slice();
+                if (!resSlice.isObject() ||
+                    !resSlice.get(StaticStrings::Error).isBoolean()) {
+                  LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
                     << "Result of collecting figures for collection "
                     << coll->name() << " from " << r.destination
                     << " is invalid";
-                continue;
-              }
-              if (resSlice.get(StaticStrings::Error).getBoolean()) {
-                LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
+                  continue;
+                }
+                if (resSlice.get(StaticStrings::Error).getBoolean()) {
+                  LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
                     << "Failed to collect figures for collection "
                     << coll->name() << " from " << r.destination;
-                continue;
-              }
-              if (resSlice.get("progress").isNumber()) {
-                progress += resSlice.get("progress").getNumber<double>();
-                success++;
-              } else {
-                LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
+                  continue;
+                }
+                if (resSlice.get("progress").isNumber()) {
+                  progress += resSlice.get("progress").getNumber<double>();
+                  success++;
+                } else {
+                  LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
                     << "No progress entry on index " << iid << "  from "
                     << r.destination << ": " << resSlice.toJson();
+                }
               }
-            }
-            tmp.add("progress", VPackValue(progress / shards->size()));
+              tmp.add("progress", VPackValue(progress / shards->size()));
+            }            
           }
-        }
+        } catch (...) {} // best effort only
       }
     } else {
       tmp.add("indexes", indexes.slice());

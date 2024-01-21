@@ -61,13 +61,17 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexProgress : function () {
-      var c = internal.db._create("c0l", {"numberOfShards": 3});
+      var c = internal.db._create("c0l", {numberOfShards: 3});
       var docs = [];
       const sleep = require('internal').sleep;
-      for (var i = 0; i < 30720; ++i) {
-        docs.push({name : "name" + i});
+      for (var j = 0; j < 50; ++j) {
+        docs=[];
+        for (var i = 0; i < 10240; ++i) {
+          docs.push({name : "name" + i});
+        }
+        c.insert(docs);
       }
-      c.insert(docs);
+      
       internal.debugSetFailAt("fillIndex::pause");
       var idx = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
       arango.GET(`/_api/index?collection=c0l`);
@@ -92,20 +96,24 @@ function IndexSuite() {
             progress = idxs[1].progress;
             console.warn(Math.round(progress) + "%");
             internal.debugSetFailAt("fillIndex::unpause");
+            internal.debugSetFailAt("fillIndex::next");
             break;
           }
-          sleep (0.05);
+          sleep (0.1);
         }
-        sleep(0.05);
+        sleep(0.1);
         internal.debugRemoveFailAt("fillIndex::unpause");
-        internal.debugSetFailAt("fillIndex::next");
-        sleep(0.05);
+//        sleep(0.2);
+//        internal.debugSetFailAt("fillIndex::next");
+        sleep(0.1);
         internal.debugRemoveFailAt("fillIndex::next");
       }
 
       // Clear fail points
       internal.debugRemoveFailAt("fillIndex::pause");
+      internal.debugSetFailAt("fillIndex::unpause");
       internal.debugRemoveFailAt("fillIndex::unpause");
+      internal.debugSetFailAt("fillIndex::next");
       internal.debugRemoveFailAt("fillIndex::next");
 
       // Clean up
