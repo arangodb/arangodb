@@ -217,7 +217,7 @@ RestStatus RestIndexHandler::getIndexes() {
         for (auto const& i : VPackArrayIterator(indexes.slice())) {
           tmp.add(i);
         }
-        try { // this is a best effort progress display.
+        try {  // this is a best effort progress display.
           for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
             if (pi.hasKey("isBuilding") && pi.get("isBuilding").getBool()) {
               VPackObjectBuilder o(&tmp);
@@ -230,7 +230,7 @@ RestStatus RestIndexHandler::getIndexes() {
               auto const shards = coll->shardIds();
               auto const body = VPackBuffer<uint8_t>();
               auto* pool =
-                coll->vocbase().server().getFeature<NetworkFeature>().pool();
+                  coll->vocbase().server().getFeature<NetworkFeature>().pool();
               std::vector<Future<network::Response>> futures;
               futures.reserve(shards->size());
               // std::string const prefix = "/_db/" + _vocbase.name() +
@@ -243,34 +243,34 @@ RestStatus RestIndexHandler::getIndexes() {
               for (auto const& shard : *shards) {
                 std::string const url = prefix + shard.first + "/" + iid;
                 futures.emplace_back(network::sendRequestRetry(
-                                       pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
-                                       body, reqOpts));
+                    pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
+                    body, reqOpts));
               }
               for (Future<network::Response>& f : futures) {
                 network::Response const& r = f.get();
 
-                // Only best effort accounting. If something breaks here, we just
-                // ignore the output. Account for what we can and move on.
+                // Only best effort accounting. If something breaks here, we
+                // just ignore the output. Account for what we can and move on.
                 if (r.fail()) {
                   LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-                    << "Communication error while collecting figures for "
-                    "collection "
-                    << coll->name() << " from " << r.destination;
+                      << "Communication error while collecting figures for "
+                         "collection "
+                      << coll->name() << " from " << r.destination;
                   continue;
                 }
                 VPackSlice resSlice = r.slice();
                 if (!resSlice.isObject() ||
                     !resSlice.get(StaticStrings::Error).isBoolean()) {
                   LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
-                    << "Result of collecting figures for collection "
-                    << coll->name() << " from " << r.destination
-                    << " is invalid";
+                      << "Result of collecting figures for collection "
+                      << coll->name() << " from " << r.destination
+                      << " is invalid";
                   continue;
                 }
                 if (resSlice.get(StaticStrings::Error).getBoolean()) {
                   LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
-                    << "Failed to collect figures for collection "
-                    << coll->name() << " from " << r.destination;
+                      << "Failed to collect figures for collection "
+                      << coll->name() << " from " << r.destination;
                   continue;
                 }
                 if (resSlice.get("progress").isNumber()) {
@@ -278,14 +278,15 @@ RestStatus RestIndexHandler::getIndexes() {
                   success++;
                 } else {
                   LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
-                    << "No progress entry on index " << iid << "  from "
-                    << r.destination << ": " << resSlice.toJson();
+                      << "No progress entry on index " << iid << "  from "
+                      << r.destination << ": " << resSlice.toJson();
                 }
               }
               tmp.add("progress", VPackValue(progress / shards->size()));
-            }            
+            }
           }
-        } catch (...) {} // best effort only
+        } catch (...) {
+        }  // best effort only
       }
     } else {
       tmp.add("indexes", indexes.slice());
