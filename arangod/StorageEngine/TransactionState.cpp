@@ -77,7 +77,7 @@ T getMetric(std::string_view database, std::string_view collection,
   constexpr size_t overheadPerLabel = 4;
   size_t requiredSpace =
       overheadPerLabel + /*db*/ 2 + database.size() + overheadPerLabel +
-      /*collection*/ 9 + collection.size() + overheadPerLabel + /*shard*/ 5 +
+      /*collection*/ 10 + collection.size() + overheadPerLabel + /*shard*/ 5 +
       shard.size() +
       (includeUser ? overheadPerLabel + /*user*/ 4 + user.size() : 0);
 
