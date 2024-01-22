@@ -36,10 +36,9 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
-const { getDBServers, getCoordinators } = require("@arangodb/test-helper");
+const { getDBServers } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
-const helper = require('@arangodb/testutils/user-helper');
 const crypto = require('@arangodb/crypto');
   
 const jwt = crypto.jwtEncode(jwtSecret, {
@@ -1186,7 +1185,10 @@ function testSuite() {
         Object.keys(counts).forEach((k) => {
           expected["bar"]["writes"][k] = counts[k];
         });
-
+        counts = db["_to_" + en].count(true);
+        Object.keys(counts).forEach((k) => {
+          expected["bar"]["writes"][k] = counts[k];
+        });
         assertEqual(expected, parsed);
         
         connectWith("tcp", "foo", "");

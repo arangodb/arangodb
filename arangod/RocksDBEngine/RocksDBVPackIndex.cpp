@@ -1455,9 +1455,10 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
               }
               return true;  // return value does not matter here
             },
-            ReadOwnWrites::yes);  // modifications always need to observe all
-                                  // changes in order to validate uniqueness
-                                  // constraints
+            ReadOwnWrites::yes,
+            /*countBytes*/ false);  // modifications always need to observe all
+                                    // changes in order to validate uniqueness
+                                    // constraints
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1567,9 +1568,10 @@ Result RocksDBVPackIndex::insert(transaction::Methods& trx,
               }
               return true;  // return value does not matter here
             },
-            ReadOwnWrites::yes);  // modifications always need to observe all
-                                  // changes in order to validate uniqueness
-                                  // constraints
+            ReadOwnWrites::yes,
+            /*countBytes*/ false);  // modifications always need to observe all
+                                    // changes in order to validate uniqueness
+                                    // constraints
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1709,6 +1711,8 @@ Result RocksDBVPackIndex::update(
                                 newDocumentId, newDoc, options, performChecks);
   }
 
+  TRI_ASSERT(_unique);
+
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
         return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
       })) {
@@ -1733,7 +1737,23 @@ Result RocksDBVPackIndex::update(
     }
   }
 
-  RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::Placeholder);
+  if (_storedValuesPaths.empty()) {
+    value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
+  } else {
+    transaction::BuilderLeaser leased(&trx);
+    leased->openArray(true);
+    for (auto const& it : _storedValuesPaths) {
+      VPackSlice s = newDoc.get(it);
+      if (s.isNone()) {
+        s = VPackSlice::nullSlice();
+      }
+      leased->add(s);
+    }
+    leased->close();
+    value = RocksDBValue::UniqueVPackIndexValue(newDocumentId, leased->slice());
+  }
+
   for (auto const& key : elements) {
     // banish key in in-memory cache
     invalidateCacheEntry(::lookupValueFromSlice(key.string()));

@@ -553,15 +553,22 @@ void RestVocbaseBaseHandler::extractStringParameter(std::string const& name,
 std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
     std::string const& collectionName, AccessMode::Type type,
     OperationOptions const& opOptions) const {
+  bool const isDBServer = ServerState::instance()->isDBServer();
+  bool isFollower =
+      !opOptions.isSynchronousReplicationFrom.empty() && isDBServer;
+
   bool found = false;
   std::string const& value =
       _request->header(StaticStrings::TransactionId, found);
   if (!found) {
     auto tmp = std::make_unique<SingleCollectionTransaction>(
         transaction::StandaloneContext::Create(_vocbase), collectionName, type);
-    if (!opOptions.isSynchronousReplicationFrom.empty() &&
-        ServerState::instance()->isDBServer()) {
+    if (isFollower) {
       tmp->addHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+    }
+    if (isDBServer) {
+      // set username from request
+      tmp->setUsername(_request->value(StaticStrings::UserString));
     }
     if (opOptions.allowDirtyReads && AccessMode::isRead(type)) {
       tmp->state()->options().allowDirtyReads = true;
@@ -594,9 +601,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
         _request->header(StaticStrings::TransactionBody, found);
     if (found) {
       auto trxOpts = VPackParser::fromJson(trxDef);
-      Result res = mgr->ensureManagedTrx(
-          _vocbase, tid, trxOpts->slice(),
-          !opOptions.isSynchronousReplicationFrom.empty());
+      Result res =
+          mgr->ensureManagedTrx(_vocbase, tid, trxOpts->slice(), isFollower);
       if (res.fail()) {
         THROW_ARANGO_EXCEPTION(res);
       }
@@ -610,9 +616,8 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   // lock on the context for the entire duration of the query. if this is the
   // case, then the query already has the lock, and it is ok if we lease the
   // context here without acquiring it again.
-  bool const isSideUser =
-      (ServerState::instance()->isDBServer() && AccessMode::isRead(type) &&
-       !_request->header(StaticStrings::AqlDocumentCall).empty());
+  bool isSideUser = (isDBServer && AccessMode::isRead(type) &&
+                     !_request->header(StaticStrings::AqlDocumentCall).empty());
 
   std::shared_ptr<transaction::Context> ctx =
       mgr->leaseManagedTrx(tid, type, isSideUser);
@@ -626,8 +631,7 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
   }
 
   std::unique_ptr<transaction::Methods> trx;
-  if (ServerState::instance()->isDBServer() &&
-      !opOptions.isSynchronousReplicationFrom.empty()) {
+  if (isFollower) {
     // a write request from synchronous replication
     TRI_ASSERT(AccessMode::isWriteOrExclusive(type));
     // inject at least the required collection name
@@ -643,6 +647,10 @@ std::unique_ptr<transaction::Methods> RestVocbaseBaseHandler::createTransaction(
                              "invalid access mode for request", ADB_HERE);
       }
     }
+  }
+  if (isDBServer) {
+    // set username from request
+    trx->setUsername(_request->value(StaticStrings::UserString));
   }
   return trx;
 }

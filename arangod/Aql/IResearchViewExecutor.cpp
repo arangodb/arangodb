@@ -885,10 +885,10 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRow(
   }
   if constexpr (Traits::MaterializeType == MaterializeType::Materialize) {
     // read document from underlying storage engine, if we got an id
-    if (ADB_UNLIKELY(
-            !collection.getPhysical()
-                 ->read(&_trx, documentId, ctx.callback, ReadOwnWrites::no)
-                 .ok())) {
+    if (ADB_UNLIKELY(!collection.getPhysical()
+                          ->read(&_trx, documentId, ctx.callback,
+                                 ReadOwnWrites::no, /*countBytes*/ true)
+                          .ok())) {
       return false;
     }
   } else if constexpr ((Traits::MaterializeType &
