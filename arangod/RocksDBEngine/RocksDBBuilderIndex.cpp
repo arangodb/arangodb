@@ -142,6 +142,7 @@ Result fillIndexSingleThreaded(
   rocksdb::Slice upper(bounds.end());
 
   OperationOptions options;
+  double p;
 
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
@@ -166,8 +167,7 @@ Result fillIndexSingleThreaded(
       }
 
       if (count > 0) {
-        double p =
-            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+        p = docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
         ridx.progress(p);
         if (progress != nullptr) {
           (*progress)(p);
@@ -176,14 +176,7 @@ Result fillIndexSingleThreaded(
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       TRI_IF_FAILURE("fillIndex::pause") {
-        while (true) {
-          TRI_IF_FAILURE("fillIndex::unpause") { break; }
-          std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        while (true) {
-          TRI_IF_FAILURE("fillIndex::next") { break; }
-          std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
 #endif
 

@@ -87,37 +87,22 @@ function IndexSuite() {
         if (idxs.length > 1) {
           break;
         }
-        sleep(0.05);
-      }
-      while (arango.GET(`/_api/index?collection=c0l&withHidden=true`) &&
-             arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1].hasOwnProperty("progress")) {
-        while (true) {
-          idxs = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes;
-          if (idxs[1].hasOwnProperty("progress") && idxs[1].progress > progress) {
-            progress = idxs[1].progress;
-            console.warn(Math.round(progress) + "%");
-            internal.debugSetFailAt("fillIndex::unpause");
-            internal.debugSetFailAt("fillIndex::next");
-            break;
-          }
-          sleep (0.1);
-        }
         sleep(0.1);
-        internal.debugRemoveFailAt("fillIndex::unpause");
-//        sleep(0.2);
-//        internal.debugSetFailAt("fillIndex::next");
-//        sleep(0.1);
-//        internal.debugRemoveFailAt("fillIndex::next");
       }
 
-      // Clear fail points
-      internal.debugRemoveFailAt("fillIndex::pause");
-      internal.debugSetFailAt("fillIndex::unpause");
-      internal.debugRemoveFailAt("fillIndex::unpause");
-      internal.debugSetFailAt("fillIndex::next");
-      internal.debugRemoveFailAt("fillIndex::next");
+      while (true) {
+        var idx = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1];
+        if (idx.hasOwnProperty("progress") && idx.progress < 100.0) {
+          assertTrue(idx.progress >= progress);
+          progress = idx.progress;
+          print(progress.toPrecision(4) + "%");
+          sleep(0.1);
+        } else {
+          break;
+        }
+      }
 
-      // Clean up
+      internal.debugRemoveFailAt("fillIndex::pause");
       c.drop();
     },
   };
