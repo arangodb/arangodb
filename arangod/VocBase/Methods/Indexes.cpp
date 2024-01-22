@@ -319,6 +319,7 @@ static Result EnsureIndexLocal(
 
     if (create) {
       idx = collection->createIndex(definition, created, std::move(progress));
+      progress(100.);
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection->lookupIndex(definition);

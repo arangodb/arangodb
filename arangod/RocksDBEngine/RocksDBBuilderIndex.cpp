@@ -171,14 +171,13 @@ Result fillIndexSingleThreaded(
         ridx.progress(p);
         if (progress != nullptr) {
           (*progress)(p);
-        }
-      }
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       TRI_IF_FAILURE("fillIndex::pause") {
         std::this_thread::sleep_for(std::chrono::milliseconds(50));
       }
 #endif
+        }
+      }
 
       if (ridx.collection().vocbase().server().isStopping()) {
         res.reset(TRI_ERROR_SHUTTING_DOWN);
