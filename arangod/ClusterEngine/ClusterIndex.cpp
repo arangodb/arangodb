@@ -433,29 +433,3 @@ ClusterIndex::coveredFields() const {
   }
 }
 
-bool ClusterIndex::inProgress() const {
-  // If agency entry "isBuilding".
-  try {
-    auto const& vocbase = _collection.vocbase();
-    auto const& dbname = vocbase.name();
-    auto const cid = std::to_string(_collection.id().id());
-    auto const& agencyCache =
-        vocbase.server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] =
-        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-            "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" +
-            cid + "/indexes")});
-    auto slc = acb->slice()[0].get(std::vector<std::string>{
-        "arango", "Plan", "Collections", vocbase.name()});
-    if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
-      slc = slc.get(std::vector<std::string>{cid, "indexes"});
-      for (auto const& index : VPackArrayIterator(slc)) {
-        if (index.get("id").stringView() == std::to_string(_iid.id())) {
-          return index.hasKey(StaticStrings::IndexIsBuilding);
-        }
-      }
-    }
-  } catch (...) {
-  }
-  return false;
-}

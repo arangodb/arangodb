@@ -30,6 +30,7 @@ const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
 const errors = internal.errors;
+const print = internal.print;
 const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
@@ -91,7 +92,7 @@ function IndexSuite() {
       }
 
       while (true) {
-        var idx = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1];
+        idx = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1];
         if (idx.hasOwnProperty("progress") && idx.progress < 100.0) {
           assertTrue(idx.progress >= progress);
           progress = idx.progress;
