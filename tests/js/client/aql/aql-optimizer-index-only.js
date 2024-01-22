@@ -57,7 +57,7 @@ function optimizerIndexOnlyPrimaryTestSuite () {
         `FOR doc IN ${c.name()} FILTER doc._id == "${c.name()}/test123" RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._id == "${c.name()}/test123" SORT doc RETURN doc._id`
       ];
-     
+
       queries.forEach(function(query) {
         let plan = db._createStatement({query: query, bindVars:  {}, options:  disableSingleDocOp}).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
@@ -127,6 +127,7 @@ function optimizerIndexOnlyEdgeTestSuite () {
       for (var i = 0; i < 2000; ++i) {
         c.save({ _key: "test" + i, _from: "test/" + (i % 10), _to: "test/" + i });
       }
+      require('@arangodb/test-helper').waitForEstimatorSync();
     },
 
     tearDownAll : function () {
@@ -162,29 +163,38 @@ function optimizerIndexOnlyEdgeTestSuite () {
 
     testEdgeNotCoveringProjection : function () {
       let queries = [
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc.b`, ["b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc._from, doc.b ]`, ["_from", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc.x RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc.b`, ["b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc._to, doc.b ]`, ["_to", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"] ]
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc.b`, ["b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc._from, doc.b ]`, ["_from", "b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN doc.x`, ["x"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" && doc.b == 1 RETURN CONCAT(doc._from, doc.u)`, ["_from", "u"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc.x RETURN doc.x`, ["x"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc.b`, ["b"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc._to, doc.b ]`, ["_to", "b"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.a, doc.b ]`, ["a", "b"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN [ doc.c, doc.d ]`, ["c", "d"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN doc.x`, ["x"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" && doc.b == 1 RETURN CONCAT(doc._to, doc.u)`, ["_to", "u"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc.x RETURN doc.x`, ["x"], false ]
 
       ];
-    
-      queries.forEach(function(query) { 
-        let plan = db._createStatement(query[0]).explain().plan;
-        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections), query);
-        assertFalse(nodes[0].indexCoversProjections);
+
+      queries.forEach(function ([query, projections, expectLateMaterialize], idx) {
+        let plan = db._createStatement(query).explain().plan;
+        let nodes = plan.nodes.filter(function (n) {
+          return n.type === 'IndexNode' || n.type === "MaterializeNode";
+        });
+        if (expectLateMaterialize) {
+          assertEqual(2, nodes.length, idx);
+          assertEqual(normalize([]), normalize(nodes[0].projections), query);
+          assertEqual(normalize(projections), normalize(nodes[1].projections), query);
+          assertFalse(nodes[0].isLateMaterialize, idx);
+        } else {
+          assertEqual(1, nodes.length, idx);
+          assertEqual(normalize(projections), normalize(nodes[0].projections), query);
+          assertFalse(nodes[0].indexCoversProjections, idx);
+        }
       });
     },
 
@@ -319,20 +329,30 @@ function optimizerIndexOnlyVPackTestSuite () {
       c.ensureIndex({ type: "hash", fields: ["a"] });
       
       let queries = [
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.c, doc.d ]`, ["c", "d"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["x"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "u"] ],
-        [ `FOR doc IN ${c.name()} FILTER doc.a == 1 SORT doc.x RETURN doc.x`, ["x"] ]
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN doc.b`, ["b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.a, doc.b ]`, ["a", "b"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 RETURN [ doc.c, doc.d ]`, ["c", "d"], true ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.x`, ["x"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a >= 0 && doc.b == 1 RETURN doc.a + doc.u`, ["a", "u"], false ],
+        [ `FOR doc IN ${c.name()} FILTER doc.a == 1 SORT doc.x RETURN doc.x`, ["x"], true ]
       ];
-    
-      queries.forEach(function(query) { 
+
+      queries.forEach(function (query) {
+        const expectLateMaterialized = query[2];
         let plan = db._createStatement(query[0]).explain().plan;
-        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
-        assertEqual(1, nodes.length);
-        assertEqual(normalize(query[1]), normalize(nodes[0].projections));
-        assertFalse(nodes[0].indexCoversProjections);
+        let nodes = plan.nodes.filter(function (n) {
+          return n.type === 'IndexNode' || n.type === "MaterializeNode";
+        });
+        if (expectLateMaterialized) {
+          assertEqual(2, nodes.length);
+          assertEqual([], normalize(nodes[0].projections));
+          assertEqual(normalize(query[1]), normalize(nodes[1].projections));
+          assertFalse(nodes[0].isLateMaterialize);
+        } else {
+          assertEqual(1, nodes.length);
+          assertEqual(normalize(query[1]), normalize(nodes[0].projections));
+          assertFalse(nodes[0].indexCoversFilterProjections);
+        }
       });
     },
     

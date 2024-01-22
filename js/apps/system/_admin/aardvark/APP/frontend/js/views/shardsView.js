@@ -332,8 +332,13 @@
             }, 3000);
           }
         },
-        error: function () {
-          arangoHelper.arangoError('Shard ' + shardName + ' could not be moved to ' + arangoHelper.getDatabaseShortName(toServer) + '.');
+        error: function (error) {
+          var message = error.responseJSON && error.responseJSON.errorMessage;
+          arangoHelper.arangoError(
+            `The shard ${shardName} could not be moved to ${arangoHelper.getDatabaseShortName(
+              toServer
+            )}: ${message}`
+          );
         }
       });
 

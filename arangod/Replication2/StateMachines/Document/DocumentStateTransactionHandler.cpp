@@ -176,7 +176,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::DropIndex const& op) -> Result {
-  return _shardHandler->dropIndex(op.shard, op.index);
+  return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
 auto DocumentStateTransactionHandler::applyEntry(

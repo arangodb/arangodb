@@ -130,7 +130,8 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
     }
     return true;
   };
-  collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb, {});
+  collection->getPhysical()->lookup(_trx, etkn.localDocumentId(), cb,
+                                    {.countBytes = true});
 }
 
 bool SingleServerEdgeCursor::advanceCursor(
@@ -302,7 +303,9 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
           return true;
         };
         cursor->all([&](LocalDocumentId token) {
-          return collection->getPhysical()->lookup(_trx, token, cb, {}).ok();
+          return collection->getPhysical()
+              ->lookup(_trx, token, cb, {.countBytes = true})
+              .ok();
         });
       }
 

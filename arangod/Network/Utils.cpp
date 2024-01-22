@@ -41,8 +41,7 @@
 
 #include <fuerte/types.h>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 Headers addAuthorizationHeader(
     std::unordered_map<std::string, std::string> const& originalHeaders) {
@@ -371,5 +370,13 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   }
 }
 
-}  // namespace network
-}  // namespace arangodb
+void addUserParameter(RequestOptions& reqOpts, std::string_view value) {
+  if (!value.empty()) {
+    // if no user name is set, we cannot add it to the request options
+    // as a URL parameter, because they will assert that the provided
+    // value is non-empty
+    reqOpts.param(StaticStrings::UserString, value);
+  }
+}
+
+}  // namespace arangodb::network

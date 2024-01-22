@@ -169,44 +169,113 @@ struct ReplicatedLogMethodsDBServer final
   auto insert(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<
           std::pair<LogIndex, replicated_log::WaitForResult>> override {
+    auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
         vocbase.getReplicatedLogLeaderById(id));
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return log->waitFor(idx).thenValue([idx](auto&& result) {
-      return std::make_pair(idx, std::forward<decltype(result)>(result));
-    });
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto idx = leaderState->insert(std::move(payload), waitForSync);
+        return log->waitFor(idx).thenValue([idx](auto&& result) {
+          return std::make_pair(idx, std::forward<decltype(result)>(result));
+        });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insert(LogId id, TypedLogIterator<LogPayload>& iter,
               bool waitForSync) const
       -> futures::Future<std::pair<std::vector<LogIndex>,
                                    replicated_log::WaitForResult>> override {
+    auto stateBase = vocbase.getReplicatedStateById(id);
     auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
         vocbase.getReplicatedLogLeaderById(id));
-    auto indexes = std::vector<LogIndex>{};
-    while (auto payload = iter.next()) {
-      auto idx = log->insert(std::move(*payload), waitForSync);
-      indexes.push_back(idx);
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
     }
-    if (indexes.empty()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                     "multi insert list must not be empty");
-    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        auto indexes = std::vector<LogIndex>{};
+        while (auto payload = iter.next()) {
+          auto idx = leaderState->insert(std::move(*payload), waitForSync);
+          indexes.push_back(idx);
+        }
+        if (indexes.empty()) {
+          THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
+                                         "multi insert list must not be empty");
+        }
 
-    auto lastIndex = indexes.back();
-    return log->waitFor(lastIndex).thenValue(
-        [indexes = std::move(indexes)](auto&& result) mutable {
-          return std::make_pair(std::move(indexes),
-                                std::forward<decltype(result)>(result));
-        });
+        auto lastIndex = indexes.back();
+        return log->waitFor(lastIndex).thenValue(
+            [indexes = std::move(indexes)](auto&& result) mutable {
+              return std::make_pair(std::move(indexes),
+                                    std::forward<decltype(result)>(result));
+            });
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto insertWithoutCommit(LogId id, LogPayload payload, bool waitForSync) const
       -> futures::Future<LogIndex> override {
-    auto log = std::dynamic_pointer_cast<replicated_log::LogLeader>(
-        vocbase.getReplicatedLogLeaderById(id));
-    auto idx = log->insert(std::move(payload), waitForSync);
-    return {idx};
+    auto stateBase = vocbase.getReplicatedStateById(id);
+    if (!stateBase.ok()) {
+      THROW_ARANGO_EXCEPTION(std::move(stateBase).result());
+    }
+    if (auto state =
+            std::dynamic_pointer_cast<replicated_state::ReplicatedState<
+                replicated_state::black_hole::BlackHoleState>>(stateBase.get());
+        state != nullptr) {
+      if (auto leaderState = state->getLeader(); leaderState != nullptr) {
+        return leaderState->insert(std::move(payload), waitForSync);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_HTTP_FORBIDDEN,
+            fmt::format("/insert API is only allowed on leaders; while "
+                        "trying to insert into state machine {} on {}.",
+                        id, ServerState::instance()->getId()));
+      }
+    } else {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_HTTP_FORBIDDEN,
+          fmt::format(
+              "/insert API is only allowed for state machines of the "
+              "`black-hole` type. The requested state {} is of type {}.",
+              id, stateBase.get()->type()));
+    }
   }
 
   auto compact(LogId id) const

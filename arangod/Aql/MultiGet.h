@@ -65,7 +65,8 @@ class MultiGetContext {
                 std::string_view{doc.startAs<char>(), doc.byteSize()});
             return true;
           },
-          {.readCache = false, .fillCache = false}, snapshot);
+          {.readCache = false, .fillCache = false, .countBytes = true},
+          snapshot);
       return _global++;
     }
 #else

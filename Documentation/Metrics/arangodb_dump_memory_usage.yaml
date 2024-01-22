@@ -24,7 +24,7 @@ description: |
   The value will also go down when the server-side part of an abandoned 
   arangodump operation time out and all its data is removed from memory.
   
-  This metric will have a value of 0 on coordinators. The metric will
+  This metric will have a value of 0 on Coordinators. The metric will
   not be increased for any arangodump invocations that did not use the
   `--parallel-dump` option.
 troubleshoot: |
