@@ -289,6 +289,12 @@ void TransactionState::trackShardUsage(
   }
 
   bool publishUpdates = false;
+
+  size_t publishShardMetricsThreshold = 1000;
+  TRI_IF_FAILURE("alwaysPublishShardMetrics") {
+    publishShardMetricsThreshold = 1;
+  }
+
   {
     std::lock_guard<std::mutex> m(_shardsMetricsMutex);
 
@@ -299,7 +305,8 @@ void TransactionState::trackShardUsage(
     }
 
     // only publish every 1000 read/write operations
-    publishUpdates = ++_shardBytesUnpublishedEvents >= 1000;
+    publishUpdates =
+        ++_shardBytesUnpublishedEvents >= publishShardMetricsThreshold;
   }
 
   if (publishUpdates) {

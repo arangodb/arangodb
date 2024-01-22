@@ -32,6 +32,7 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
+const internal = require('internal');
 const { getDBServers, getCoordinators } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 
@@ -121,6 +122,15 @@ function testSuite() {
   };
 
   return {
+    setUpAll : function () {
+      // set this failure point so that metrics updates are pushed immediately
+      internal.debugSetFailAt("alwaysPublishShardMetrics");
+    },
+      
+    tearDownAll : function () {
+      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
+    },
+
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
 
@@ -1756,5 +1766,7 @@ function testSuite() {
   };
 }
 
-jsunity.run(testSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(testSuite);
+}
 return jsunity.done();

@@ -26,7 +26,7 @@ description: |
   The numbers reported by this metric normally relate to the cumulated sizes of
   documents/edges read.
   The metric is also increased for transactions that are started but later
-  aborted.
+  aborted. However, metrics updates may be buffered until the end of a transaction.
   Note that the metric is not increased for secondary index point lookups or
   scans, or for scans in a collection that iterate over documents but do not
   read them.
