@@ -221,8 +221,7 @@ RestStatus RestIndexHandler::getIndexes() {
         }
         try {  // this is a best effort progress display.
           for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
-            if (pi.get("isBuilding").isTrue() &&
-                pi.get("isBackground").isTrue()) {
+            if (pi.get("isBuilding").isTrue()) {
               VPackObjectBuilder o(&tmp);
               for (auto const& source :
                    VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
