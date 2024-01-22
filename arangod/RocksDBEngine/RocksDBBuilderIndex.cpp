@@ -162,9 +162,6 @@ Result fillIndexSingleThreaded(
         ridx.progress(p);
         if (progress != nullptr) {
           (*progress)(p);
-        }
-      }
-
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
       TRI_IF_FAILURE("fillIndex::pause") {
         std::cout << "fillIndex::pause" << std::endl;
@@ -177,6 +174,8 @@ Result fillIndexSingleThreaded(
         }
       }
 #endif
+        }
+      }
 
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
