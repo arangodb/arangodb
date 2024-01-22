@@ -171,9 +171,12 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  _progress.fetch_add(1.);
+  // OSX clang cannot increment double very rare calls
+  std::mutex m;
+  m.lock();
+  _progress.store(_progress.load()+1.0);
+  m.unlock();
   _actionLastStat = secs_since_epoch();
-
 }  // ActionBase::incStats
 
 void ActionBase::endStats() {
