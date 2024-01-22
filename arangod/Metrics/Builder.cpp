@@ -41,6 +41,8 @@ void Builder::addLabel(std::string_view key, std::string_view value) {
   _labels.push_back('"');
 }
 
+void Builder::reserveSpaceForLabels(size_t bytes) { _labels.reserve(bytes); }
+
 IBatch::~IBatch() = default;
 
 }  // namespace arangodb::metrics

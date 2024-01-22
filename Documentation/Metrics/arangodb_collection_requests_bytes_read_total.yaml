@@ -1,7 +1,7 @@
 name: arangodb_collection_requests_bytes_read_total
 introducedIn: "3.11.7"
 help: |
-  Number of bytes read in read requests on leaders.
+  Number of bytes read in read requests on DB-Servers.
 unit: number
 type: counter
 category: Transactions
@@ -44,3 +44,8 @@ description: |
   authentication and that do not have a specific user set, are not counted.
   Requests are also only counted if they have an ArangoDB user associated with them,
   so that the cluster must also be running with authentication turned on.
+
+  Enabling this metric via the startup option will likely result in a small
+  latency overhead of few percent for read operations. The exact overhead depends on
+  several factors, such as the type of operation (single or multi-document operation),
+  replication factor, network latency etc.
