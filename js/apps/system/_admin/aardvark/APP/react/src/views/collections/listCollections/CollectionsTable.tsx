@@ -1,8 +1,9 @@
-import { Link, Stack } from "@chakra-ui/react";
+import { Flex, Link } from "@chakra-ui/react";
 import { createColumnHelper } from "@tanstack/react-table";
 import React from "react";
-import { FiltersList } from "../../../components/table/FiltersList";
+import { ListHeader } from "../../../components/table/ListHeader";
 import { ReactTable } from "../../../components/table/ReactTable";
+import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { useCollectionsContext } from "../CollectionsContext";
 import { STATUS_TO_LABEL_MAP, TYPE_TO_LABEL_MAP } from "../CollectionsHelpers";
@@ -72,34 +73,55 @@ const TABLE_COLUMNS = [
   )
 ];
 
-export const CollectionsTable = () => {
+export const CollectionsTable = ({
+  onAddCollectionClick
+}: {
+  onAddCollectionClick: () => void;
+}) => {
   const { collections } = useCollectionsContext();
   const tableInstance = useSortableReactTable<LockableCollectionDescription>({
     data: collections || [],
     columns: TABLE_COLUMNS,
-    initialSorting: [
+    defaultSorting: [
       {
         id: "name",
         desc: false
       }
     ],
-    initialFilters: [
+    defaultFilters: [
       {
         id: "source",
         value: "Custom"
       }
-    ]
+    ],
+    storageKey: "collections"
   });
   return (
-    <Stack>
-      <FiltersList<LockableCollectionDescription>
-        columns={TABLE_COLUMNS}
-        table={tableInstance}
-      />
+    <Flex direction="column" gap="2">
+      <Flex direction="column" gap="4">
+        <CollectionTableHeader onAddCollectionClick={onAddCollectionClick} />
+        <TableControl<LockableCollectionDescription>
+          table={tableInstance}
+          columns={TABLE_COLUMNS}
+        />
+      </Flex>
       <ReactTable<LockableCollectionDescription>
         table={tableInstance}
         emptyStateMessage="No collections found"
       />
-    </Stack>
+    </Flex>
+  );
+};
+const CollectionTableHeader = ({
+  onAddCollectionClick
+}: {
+  onAddCollectionClick: () => void;
+}) => {
+  return (
+    <ListHeader
+      onButtonClick={onAddCollectionClick}
+      heading="Collections"
+      buttonText="Add collection"
+    />
   );
 };

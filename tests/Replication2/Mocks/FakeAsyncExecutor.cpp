@@ -84,22 +84,37 @@ void DelayedExecutor::operator()(DelayedExecutor::Func fn) {
   queue.emplace_back(std::move(fn));
 }
 
-void DelayedExecutor::runOnce() noexcept {
-  auto f = std::invoke([this] {
-    ADB_PROD_ASSERT(not queue.empty());
-    auto f = std::move(queue.front());
-    queue.pop_front();
-    return f;
-  });
-  f.operator()();
-}
-
-void DelayedExecutor::runAll() noexcept {
-  while (not queue.empty()) {
-    runOnce();
-  }
-}
+void DelayedExecutor::runOnce() noexcept { runOnceFromQueue(queue); }
 
 auto DelayedExecutor::hasWork() const noexcept -> bool {
   return not queue.empty();
+}
+
+auto DelayedExecutor::runAllCurrent() noexcept -> std::size_t {
+  decltype(queue) queue_;
+  std::swap(queue_, this->queue);
+  auto const tasks = queue_.size();
+  while (not queue_.empty()) {
+    runOnceFromQueue(queue_);
+  }
+  return tasks;
+}
+
+auto DelayedExecutor::runAll() noexcept -> std::size_t {
+  auto count = std::size_t{0};
+  while (hasWork()) {
+    runOnce();
+    ++count;
+  }
+  return count;
+}
+
+void DelayedExecutor::runOnceFromQueue(decltype(queue)& queue_) noexcept {
+  auto f = std::invoke([&queue_] {
+    ADB_PROD_ASSERT(not queue_.empty());
+    auto f = std::move(queue_.front());
+    queue_.pop_front();
+    return f;
+  });
+  f.operator()();
 }

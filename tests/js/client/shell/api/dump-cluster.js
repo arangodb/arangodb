@@ -81,47 +81,51 @@ function apiNext(server, ctx, batchId, lastBatch) {
   return arango.POST_RAW(url, {});
 }
 
-function createContext(server, options) {
-  const response = apiCreateContext(server, options);
-  assertEqual(response.code, 201, JSON.stringify(response));
-  assertNotUndefined(response.headers["x-arango-dump-id"]);
-  const id = response.headers["x-arango-dump-id"];
-
-  return {
-    id,
-    read: function* () {
-      for (let batchId = 0; ; batchId++) {
-        const response = apiNext(server, id, batchId, batchId > 0 ? batchId - 1 : undefined);
-        if (response.code === 204) {
-          break;
-        }
-        assertEqual(response.code, 200);
-        assertEqual(response.headers["content-type"], "application/x-arango-dump");
-
-        const shard = response.headers["x-arango-dump-shard-id"];
-        assertNotUndefined(shard);
-        assertNotEqual(options.shards.indexOf(shard), -1);
-
-        const jsonl = response.body.toString().split("\n");
-        for (const line of jsonl) {
-          if (line.length === 0) {
-            continue;
-          }
-          yield [JSON.parse(line), shard];
-        }
-      }
-    },
-    drop: function () {
-      apiDropContext(server, id);
-    },
-  };
-}
-
 
 function DumpAPI() {
 
   let collection;
   let oldDatabase;
+
+  let contexts = [];
+  
+  function createContext(server, options) {
+    const response = apiCreateContext(server, options);
+    assertEqual(response.code, 201, JSON.stringify(response));
+    assertNotUndefined(response.headers["x-arango-dump-id"]);
+    const id = response.headers["x-arango-dump-id"];
+    contexts.push({server, id});
+
+    return {
+      id,
+      read: function* () {
+        for (let batchId = 0; ; batchId++) {
+          const response = apiNext(server, id, batchId, batchId > 0 ? batchId - 1 : undefined);
+          if (response.code === 204) {
+            break;
+          }
+          assertEqual(response.code, 200);
+          assertEqual(response.headers["content-type"], "application/x-arango-dump");
+
+          const shard = response.headers["x-arango-dump-shard-id"];
+          assertNotUndefined(shard);
+          assertNotEqual(options.shards.indexOf(shard), -1);
+
+          const jsonl = response.body.toString().split("\n");
+          for (const line of jsonl) {
+            if (line.length === 0) {
+              continue;
+            }
+            yield [JSON.parse(line), shard];
+          }
+        }
+      },
+      drop: function () {
+        contexts = contexts.filter(ctx => ctx.server !== server || ctx.id !== id);
+        apiDropContext(server, id);
+      },
+    };
+  }
 
   return {
     setUpAll: function () {
@@ -131,8 +135,14 @@ function DumpAPI() {
 
       collection = db._create(collectionNameA, {numberOfShards: 6, replicationFactor: 2});
       fillCollection(collection, 10000);
-
     },
+
+    tearDown: function() {
+      for (const ctx of contexts) {
+        apiDropContext(ctx.server, ctx.id);
+      }
+    },
+
     tearDownAll: function () {
       db._useDatabase(oldDatabase);
       db._dropDatabase(database);

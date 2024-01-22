@@ -344,8 +344,11 @@ Index::IndexType Index::type(std::string_view type) {
   if (type == "geo2") {
     return TRI_IDX_TYPE_GEO2_INDEX;
   }
-  if (type == "mdi" || type == "zkd") {
+  if (type == "mdi") {
     return TRI_IDX_TYPE_MDI_INDEX;
+  }
+  if (type == "zkd") {
+    return TRI_IDX_TYPE_ZKD_INDEX;
   }
   if (type == "mdi-prefixed") {
     return TRI_IDX_TYPE_MDI_PREFIXED_INDEX;
@@ -395,6 +398,8 @@ char const* Index::oldtypeName(Index::IndexType type) {
       return iresearch::StaticStrings::ViewArangoSearchType.data();
     case TRI_IDX_TYPE_NO_ACCESS_INDEX:
       return "noaccess";
+    case TRI_IDX_TYPE_ZKD_INDEX:
+      return "zkd";
     case TRI_IDX_TYPE_MDI_INDEX:
       return "mdi";
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:

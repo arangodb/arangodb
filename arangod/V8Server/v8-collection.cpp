@@ -223,6 +223,12 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
         isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
                      .FromMaybe(v8::Local<v8::Value>()));
   }
+  TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+  if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+    options.versionAttribute = TRI_ObjectToString(
+        isolate, optionsObject->Get(context, VersionAttributeKey)
+                     .FromMaybe(v8::Local<v8::Value>()));
+  }
   TRI_GET_GLOBAL_STRING(CompactKey);
   if (TRI_HasProperty(context, isolate, optionsObject, CompactKey)) {
     options.truncateCompact =
@@ -1883,6 +1889,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
                         IsSynchronousReplicationKey)) {
       options.isSynchronousReplicationFrom = TRI_ObjectToString(
           isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
+                       .FromMaybe(v8::Local<v8::Value>()));
+    }
+    TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+      options.versionAttribute = TRI_ObjectToString(
+          isolate, optionsObject->Get(context, VersionAttributeKey)
                        .FromMaybe(v8::Local<v8::Value>()));
     }
   } else {

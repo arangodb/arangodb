@@ -338,7 +338,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
 auto replicated_log::LogLeader::construct(
     std::unique_ptr<storage::IStorageEngineMethods>&& methods,
     std::shared_ptr<agency::ParticipantsConfig const> participantsConfig,
-    ParticipantId id, LogTerm term, LoggerContext const& logContext,
+    ParticipantId const id, LogTerm term, LoggerContext const& logContext,
     std::shared_ptr<ReplicatedLogMetrics> logMetrics,
     std::shared_ptr<ReplicatedLogGlobalSettings const> options,
     std::unique_ptr<IReplicatedStateHandle> stateHandle,
@@ -427,14 +427,21 @@ auto replicated_log::LogLeader::construct(
 
   auto leader = std::make_shared<MakeSharedLogLeader>(
       commonLogContext.with<logContextKeyLogComponent>("leader"),
-      std::move(logMetrics), options, std::move(id), term,
-      firstIndexOfCurrentTerm, std::move(stateHandle), followerFactory,
-      scheduler, rebootIdCache);
+      std::move(logMetrics), options, id, term, firstIndexOfCurrentTerm,
+      std::move(stateHandle), followerFactory, scheduler, rebootIdCache);
 
   auto compactionManager = std::make_shared<CompactionManager>(
       *storageManager, options,
       commonLogContext.with<logContextKeyLogComponent>(
           "local-compaction-manager"));
+  if (!participants.contains(id)) [[unlikely]] {
+    LOG_CTX("aa777", ERR, logContext)
+        << "Leader not in participants list. Please report this error to "
+           "arangodb.com! Leader is "
+        << id << ", Log participants configuration is: " << *participantsConfig;
+    basics::abortOrThrow(TRI_ERROR_INTERNAL, "Leader not in participants list",
+                         ADB_HERE);
+  }
   auto localFollower = std::make_shared<LocalFollower>(
       *leader,
       commonLogContext.with<logContextKeyLogComponent>("local-follower"),
@@ -655,20 +662,6 @@ auto replicated_log::LogLeader::getQuickStatus() const -> QuickLogStatus {
       .followersWithSnapshot = std::move(followersWithSnapshot)};
 }
 
-auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync)
-    -> LogIndex {
-  auto index =
-      insert(std::move(payload), waitForSync, doNotTriggerAsyncReplication);
-  triggerAsyncReplication();
-  return index;
-}
-
-auto replicated_log::LogLeader::insert(LogPayload payload, bool waitForSync,
-                                       DoNotTriggerAsyncReplication)
-    -> LogIndex {
-  return insertInternal(std::move(payload), waitForSync);
-}
-
 auto replicated_log::LogLeader::insertInternal(
     std::variant<LogMetaPayload, LogPayload> payload, bool waitForSync)
     -> LogIndex {
@@ -737,7 +730,9 @@ auto replicated_log::LogLeader::GuardedLeaderData::updateCommitIndexLeader(
       return _log.getLogConsumerIterator(range);
     }
     auto insert(LogPayload payload, bool waitForSync) -> LogIndex override {
-      return _log.insert(std::move(payload), waitForSync);
+      auto index = _log.insertInternal(std::move(payload), waitForSync);
+      _log.triggerAsyncReplication();
+      return index;
     }
     auto waitFor(LogIndex index) -> WaitForFuture override {
       return _log.waitFor(index);
@@ -1230,6 +1225,7 @@ auto replicated_log::LogLeader::GuardedLeaderData::getLocalStatistics() const
   result.spearHead = _self._inMemoryLogManager->getSpearheadTermIndexPair();
   result.releaseIndex = releaseIndex;
   result.syncIndex = _self._storageManager->getSyncIndex();
+  result.lowestIndexToKeep = lowestIndexToKeep;
   return result;
 }
 

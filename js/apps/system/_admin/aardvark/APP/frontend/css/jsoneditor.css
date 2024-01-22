@@ -1122,6 +1122,7 @@ div.jsoneditor-menu a.jsoneditor-poweredBy {
   right: 0;
   top: 0;
   padding: 10px;
+  display: none;
 }
 table.jsoneditor-search input,
 table.jsoneditor-search div.jsoneditor-results {

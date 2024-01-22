@@ -1,6 +1,6 @@
 [submodule "iresearch"]
 	path = 3rdParty/iresearch
-	url = https://github.com/iresearch-toolkit/iresearch.git
+	url = https://github.com/arangodb/iresearch.git
 [submodule "velocypack"]
 	path = 3rdParty/velocypack
 	url = https://github.com/arangodb/velocypack.git
@@ -26,3 +26,6 @@
 [submodule "scripts/toolbox/feed"]
 	path = scripts/toolbox/feed
 	url = https://github.com/arangodb/feed.git
+[submodule "3rdParty/v8-build"]
+	path = 3rdParty/v8-build/v8
+	url = https://github.com/arangodb/v8.git

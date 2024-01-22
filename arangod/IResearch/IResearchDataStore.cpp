@@ -1661,13 +1661,49 @@ Result IResearchDataStore::insert(transaction::Methods& trx,
       return r;
     }
     TRI_IF_FAILURE("ArangoSearch::MisreportCreationInsertAsFailed") {
-      return {TRI_ERROR_DEBUG};
+      // For replication two only the Leader should throw this error.
+      // Note: Due to the asynchronous nature of replication2, there is a chance
+      // a follower is applying an operation after the leader successfully
+      // passed a test. This can lead to the race that we activate a
+      // failurePoint for the next insert, that is still applied to the previous
+      // insert on the followers.
+      bool isAllLeaders = false;
+      state.allCollections([&](TransactionCollection const& c) {
+        // The transaction can only be all followers are all leaders, never a
+        // mix So just take first collections information
+        isAllLeaders = c.collection()->isLeadingShard();
+        // always return false, do abort iteration.
+        return false;
+      });
+      if (trx.vocbase().replicationVersion() !=
+              arangodb::replication::Version::TWO ||
+          isAllLeaders) {
+        return {TRI_ERROR_DEBUG};
+      }
     }
     return {};
   }
 
   TRI_IF_FAILURE("ArangoSearch::BlockInsertsWithoutIndexCreationHint") {
-    return {TRI_ERROR_DEBUG};
+    // For replication two only the Leader should throw this error.
+    // Note: Due to the asynchronous nature of replication2, there is a chance
+    // a follower is applying an operation after the leader successfully
+    // passed a test. This can lead to the race that we activate a
+    // failurePoint for the next insert, that is still applied to the previous
+    // insert on the followers.
+    bool isAllLeaders = false;
+    state.allCollections([&](TransactionCollection const& c) {
+      // The transaction can only be all followers are all leaders, never a mix
+      // So just take first collections information
+      isAllLeaders = c.collection()->isLeadingShard();
+      // always return false, do abort iteration.
+      return false;
+    });
+    if (trx.vocbase().replicationVersion() !=
+            arangodb::replication::Version::TWO ||
+        isAllLeaders) {
+      return {TRI_ERROR_DEBUG};
+    }
   }
 
   auto* ctx = getContext(state);

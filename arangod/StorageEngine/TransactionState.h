@@ -47,6 +47,8 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -67,11 +69,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 struct ResourceMonitor;
-
-namespace aql {
-class QueryContext;
-}
 
 namespace transaction {
 class CounterGuard;
@@ -363,6 +362,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   std::shared_ptr<transaction::CounterGuard> counterGuard();
 
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string_view name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
+
+  void trackShardRequest(CollectionNameResolver const& resolver,
+                         std::string_view database, std::string_view shard,
+                         std::string_view user, AccessMode::Type accessMode,
+                         std::string_view context) noexcept;
+
+  void trackShardUsage(CollectionNameResolver const& resolver,
+                       std::string_view database, std::string_view shard,
+                       std::string_view user, AccessMode::Type accessMode,
+                       std::string_view context, size_t nBytes) noexcept;
+
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
@@ -479,6 +499,13 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   QueryAnalyzerRevisions _analyzersRevision;
 
   transaction::OperationOrigin const _operationOrigin;
+
+  /// @brief name of user who originated the transaction. may be empty.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc.
+  /// it should not be used for permission checks.
+  std::shared_mutex mutable _usernameLock;
+  std::string _username;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

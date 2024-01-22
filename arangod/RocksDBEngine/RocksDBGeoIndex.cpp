@@ -282,7 +282,9 @@ class RDBNearIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+          if (!physical
+                   ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -314,7 +316,9 @@ class RDBNearIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+            if (!physical
+                     ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -493,7 +497,8 @@ class RDBCoveringIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+          if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -525,7 +530,8 @@ class RDBCoveringIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+            if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
