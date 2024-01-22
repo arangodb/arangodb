@@ -223,7 +223,8 @@ RestStatus RestIndexHandler::getIndexes() {
           for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
             if (pi.get("isBuilding").isTrue()) {
               VPackObjectBuilder o(&tmp);
-              for (auto const& source : VPackObjectIterator(pi)) {
+              for (auto const& source :
+                   VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
                 tmp.add(source.key.stringView(), source.value);
               }
               std::string iid = pi.get("id").copyString();
@@ -241,7 +242,8 @@ RestStatus RestIndexHandler::getIndexes() {
               // best effort. only displaying progress
               reqOpts.timeout = network::Timeout(10.0);
               for (auto const& shard : *shards) {
-                std::string const url = prefix + shard.first + "/" + iid;
+                std::string const url =
+                    absl::StrCat(prefix, shard.first, "/", iid);
                 futures.emplace_back(network::sendRequestRetry(
                     pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
                     body, reqOpts));
