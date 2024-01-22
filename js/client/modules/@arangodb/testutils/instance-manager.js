@@ -1256,15 +1256,19 @@ class instanceManager {
           arangod.upAndRunning = true;
           return true;
         }
-        if (reply.code === 403) {
-          let parsedBody = JSON.parse(reply.body);
-          if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
-            if (!this.options.noStartStopLogs) {
-              print("service API disabled, continuing.");
+        try {
+          if (reply.code === 403) {
+            let parsedBody = JSON.parse(reply.body);
+            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+              if (!this.options.noStartStopLogs) {
+                print("service API disabled, continuing.");
+              }
+              arangod.upAndRunning = true;
+              return true;
             }
-            arangod.upAndRunning = true;
-            return true;
           }
+        } catch (e) {
+          print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
         }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {
