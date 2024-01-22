@@ -277,14 +277,17 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
-arangodb::Result ActionBase::setProgress(double d) { return {}; }
+arangodb::Result ActionBase::setProgress(double d) {
+  _progress.store(d);
+  return {};
+}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = 0.5;
+  progress = _progress.load();
   return {};
 }
 
