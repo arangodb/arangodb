@@ -226,7 +226,6 @@ RestStatus RestIndexHandler::getIndexes() {
               }
               std::string iid = pi.get("id").copyString();
               double progress = 0;
-              double success = 0;
               auto const shards = coll->shardIds();
               auto const body = VPackBuffer<uint8_t>();
               auto* pool =
@@ -238,6 +237,7 @@ RestStatus RestIndexHandler::getIndexes() {
               std::string const prefix = "/_api/index/";
               network::RequestOptions reqOpts;
               reqOpts.param("withHidden", "true");
+              reqOpts.database = _vocbase.name();
               // best effort. only displaying progress
               reqOpts.timeout = network::Timeout(10.0);
               for (auto const& shard : *shards) {
@@ -253,7 +253,8 @@ RestStatus RestIndexHandler::getIndexes() {
                 // just ignore the output. Account for what we can and move on.
                 if (r.fail()) {
                   LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-                      << "Communication error while collecting index figures for "
+                      << "Communication error while collecting index figures "
+                         "for "
                          "collection "
                       << coll->name() << " from " << r.destination;
                   continue;
@@ -275,7 +276,6 @@ RestStatus RestIndexHandler::getIndexes() {
                 }
                 if (resSlice.get("progress").isNumber()) {
                   progress += resSlice.get("progress").getNumber<double>();
-                  success++;
                 } else {
                   LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
                       << "No progress entry on index " << iid << "  from "
