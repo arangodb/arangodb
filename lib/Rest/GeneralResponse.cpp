@@ -403,7 +403,8 @@ rest::ResponseCode GeneralResponse::responseCode(ErrorCode code) {
     case static_cast<int>(TRI_ERROR_GRAPH_NO_GRAPH_COLLECTION):
     case static_cast<int>(TRI_ERROR_GRAPH_EDGE_COLLECTION_NOT_USED):
     case static_cast<int>(
-        TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED):
+        TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH):
+    case static_cast<int>(TRI_ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_FOUND):
     case static_cast<int>(TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_FOUND):
       return ResponseCode::NOT_FOUND;

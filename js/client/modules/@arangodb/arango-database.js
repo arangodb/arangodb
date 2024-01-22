@@ -877,6 +877,9 @@ ArangoDatabase.prototype._replace = function (id, data, overwrite, waitForSync) 
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let requestResult;
   if (rev === null || ignoreRevs) {
@@ -958,6 +961,9 @@ ArangoDatabase.prototype._update = function (id, data, overwrite, keepNull, wait
   url = appendBoolParameter(url, 'returnOld', options.returnOld);
   url = appendBoolParameter(url, 'returnNew', options.returnNew);
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true, true);
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let requestResult;
   if (rev === null || ignoreRevs) {

@@ -100,13 +100,18 @@ although Prometheus itself doesn't need it.)");
               arangodb::options::Flags::DefaultNoComponents,
               arangodb::options::Flags::OnDBServer))
       .setIntroducedIn(31200)
-      .setLongDescription(R"(This option can be used to make DB servers export
-detailed shard usage metrics. By default, this option is set to 'disabled' so
-that no shard usage metrics are exported. 
-Setting the option to 'enabled-per-shard' will make DB-Servers collect per-shard
-usage metrics whenever a shard is accessed.
-Setting the option to 'enabled-per-shard-per-user' will make DB-Servers collect
-usage metrics per shard and per user whenever a shard is accessed. 
+      .setLongDescription(R"(This option can be used to make DB-Servers export
+detailed shard usage metrics.
+
+- By default, this option is set to `disabled` so that no shard usage metrics
+  are exported.
+
+- Set the option to `enabled-per-shard` to make DB-Servers collect per-shard
+  usage metrics whenever a shard is accessed.
+
+- Set this option to `enabled-per-shard-per-user` to make DB-Servers collect
+  usage metrics per shard and per user whenever a shard is accessed.
+
 Note that enabling shard usage metrics can produce a lot of metrics if there 
 are many shards and/or users in the system.)");
 }

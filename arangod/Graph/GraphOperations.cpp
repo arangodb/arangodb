@@ -192,7 +192,8 @@ Result GraphOperations::checkEdgeCollectionAvailability(
 }
 
 Result GraphOperations::checkVertexCollectionAvailability(
-    std::string const& vertexCollectionName) {
+    std::string const& vertexCollectionName,
+    VertexValidationOrigin edgeDocumentOrigin) {
   // first check whether the collection is part of the graph
   bool found = false;
   if (_graph.vertexCollections().contains(vertexCollectionName) ||
@@ -201,7 +202,19 @@ Result GraphOperations::checkVertexCollectionAvailability(
   }
 
   if (!found) {
-    return Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED);
+    if (edgeDocumentOrigin == VertexValidationOrigin::FROM_ATTRIBUTE ||
+        edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
+      std::string_view originString = "_from";
+      if (edgeDocumentOrigin == VertexValidationOrigin::TO_ATTRIBUTE) {
+        originString = "_to";
+      }
+
+      return Result(
+          TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH,
+          absl::StrCat("referenced ", originString, " collection '",
+                       vertexCollectionName, "' is not part of the graph"));
+    }
+    return Result(TRI_ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH);
   }
 
   // check if the collection is available
@@ -844,8 +857,74 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
   VPackSlice toStringSlice = document.get(StaticStrings::ToString);
   OperationOptions options(ExecContext::current());
 
+  // Validate from & to slices or
+  // validate from || to slices
+  auto validateSlices =
+      [&](std::optional<VPackSlice> fromSlice,
+          std::optional<VPackSlice> toSlice) -> OperationResult {
+    if (fromSlice.has_value()) {
+      std::string fromString = fromSlice.value().copyString();
+
+      // _from part
+      size_t pos = fromString.find('/');
+      if (pos != std::string::npos) {
+        fromCollectionName = fromString.substr(0, pos);
+        // check if vertex collections are part of the graph definition
+        auto foundFromRes = checkVertexCollectionAvailability(
+            fromCollectionName, VertexValidationOrigin::FROM_ATTRIBUTE);
+        if (foundFromRes.fail()) {
+          return OperationResult(foundFromRes, options);
+        }
+
+        fromCollectionKey = fromString.substr(pos + 1, fromString.length());
+      } else {
+        return OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
+                               options);
+      }
+    }
+
+    if (toSlice.has_value()) {
+      std::string toString = toSlice.value().copyString();
+      // _to part
+      size_t pos = toString.find('/');
+      if (pos != std::string::npos) {
+        toCollectionName = toString.substr(0, pos);
+        auto foundToRes = checkVertexCollectionAvailability(
+            toCollectionName, VertexValidationOrigin::TO_ATTRIBUTE);
+        if (foundToRes.fail()) {
+          return OperationResult(foundToRes, options);
+        }
+        toCollectionKey = toString.substr(pos + 1, toString.length());
+      } else {
+        return OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE,
+                               options);
+      }
+    }
+
+    return OperationResult(TRI_ERROR_NO_ERROR, options);
+  };
+
   if (!fromStringSlice.isString() || !toStringSlice.isString()) {
     if (isUpdate) {
+      // if the document is already available, we still need to do a
+      // partial validation. This is because the document might have
+      // only _from or only _to attributes defined. Which is totally fine
+      // and valid.
+
+      if (fromStringSlice.isString()) {
+        // validate _from attribute
+        auto sliceRes = validateSlices(fromStringSlice, std::nullopt);
+        if (sliceRes.fail()) {
+          return std::make_pair(std::move(sliceRes), false);
+        }
+      }
+      if (toStringSlice.isString()) {
+        // validate _to attribute
+        auto sliceRes = validateSlices(std::nullopt, toStringSlice);
+        if (sliceRes.fail()) {
+          return std::make_pair(std::move(sliceRes), false);
+        }
+      }
       return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options),
                             false);
     }
@@ -854,52 +933,9 @@ std::pair<OperationResult, bool> GraphOperations::validateEdgeContent(
         false);
   }
 
-  std::string fromString = fromStringSlice.copyString();
-  std::string toString = toStringSlice.copyString();
-
-  size_t pos = fromString.find('/');
-  if (pos != std::string::npos) {
-    fromCollectionName = fromString.substr(0, pos);
-    fromCollectionKey = fromString.substr(pos + 1, fromString.length());
-  } else {
-    return std::make_pair(
-        OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, options),
-        true);
-  }
-
-  pos = toString.find('/');
-  if (pos != std::string::npos) {
-    toCollectionName = toString.substr(0, pos);
-    toCollectionKey = toString.substr(pos + 1, toString.length());
-  } else {
-    return std::make_pair(
-        OperationResult(TRI_ERROR_ARANGO_INVALID_EDGE_ATTRIBUTE, options),
-        true);
-  }
-
-  // check if vertex collections are part of the graph definition
-  auto it = _graph.vertexCollections().find(fromCollectionName);
-
-  if (it == _graph.vertexCollections().end()) {
-    // not found _from vertex
-    return std::make_pair(
-        OperationResult(
-            Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
-                   "referenced _from collection '" + fromCollectionName +
-                       "' is not part of the graph"),
-            options),
-        true);
-  }
-  it = _graph.vertexCollections().find(toCollectionName);
-  if (it == _graph.vertexCollections().end()) {
-    // not found _to vertex
-    return std::make_pair(
-        OperationResult(
-            Result(TRI_ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED,
-                   "referenced _to collection '" + toCollectionName +
-                       "' is not part of the graph"),
-            options),
-        true);
+  auto sliceRes = validateSlices(fromStringSlice, toStringSlice);
+  if (sliceRes.fail()) {
+    return std::make_pair(std::move(sliceRes), true);
   }
 
   return std::make_pair(OperationResult(TRI_ERROR_NO_ERROR, options), true);

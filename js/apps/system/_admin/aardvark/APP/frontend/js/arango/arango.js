@@ -1198,7 +1198,7 @@
       });
     },
 
-    checkDatabasePermissions: function (roCallback, rwCallback) {
+    checkDatabasePermissions: function (roCallback, rwCallback, errorCallback) {
       var url = arangoHelper.databaseUrl('/_api/user/' +
         encodeURIComponent(window.App.userCollection.activeUser || "root") +
         '/database/' + encodeURIComponent(frontendConfig.db));
@@ -1224,10 +1224,17 @@
                 rwCallback(false);
               }
             }
+          } else {
+            if (errorCallback) {
+              errorCallback(data);
+            }
           }
         },
         error: function (data) {
           arangoHelper.arangoError('User', 'Could not fetch collection permissions.');
+          if (errorCallback) {
+            errorCallback(data);
+          }
         }
       });
     },
