@@ -171,9 +171,7 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  auto progress = _progress.load();
-  progress += 1.;
-  _progress.store(progress);
+  _progress.fetch_add(1.);
   _actionLastStat = secs_since_epoch();
 
 }  // ActionBase::incStats
