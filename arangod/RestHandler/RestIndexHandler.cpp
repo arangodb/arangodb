@@ -253,7 +253,7 @@ RestStatus RestIndexHandler::getIndexes() {
                 // just ignore the output. Account for what we can and move on.
                 if (r.fail()) {
                   LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-                      << "Communication error while collecting figures for "
+                      << "Communication error while collecting index figures for "
                          "collection "
                       << coll->name() << " from " << r.destination;
                   continue;
@@ -262,14 +262,14 @@ RestStatus RestIndexHandler::getIndexes() {
                 if (!resSlice.isObject() ||
                     !resSlice.get(StaticStrings::Error).isBoolean()) {
                   LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
-                      << "Result of collecting figures for collection "
+                      << "Result of collecting index figures for collection "
                       << coll->name() << " from " << r.destination
                       << " is invalid";
                   continue;
                 }
                 if (resSlice.get(StaticStrings::Error).getBoolean()) {
                   LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
-                      << "Failed to collect figures for collection "
+                      << "Failed to collect index figures for collection "
                       << coll->name() << " from " << r.destination;
                   continue;
                 }

@@ -432,4 +432,3 @@ ClusterIndex::coveredFields() const {
       return _fields;
   }
 }
-
