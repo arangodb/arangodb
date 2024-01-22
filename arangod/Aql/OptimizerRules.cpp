@@ -8985,8 +8985,11 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
     } else if (n->getType() == EN::MATERIALIZE) {
-      auto* matNode =
-          ExecutionNode::castTo<materialize::MaterializeRocksDBNode*>(n);
+      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(n);
+      if (matNode == nullptr) {
+        continue;
+      }
+
       containers::FlatHashSet<AttributeNamePath> attributes;
       if (utils::findProjections(matNode, &matNode->outVariable(),
                                  /*expectedAttribute*/ "",
