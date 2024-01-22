@@ -24,8 +24,10 @@
 
 #include "Metrics/Metric.h"
 
+#include <cstddef>
 #include <memory>
 #include <string>
+#include <string_view>
 
 namespace arangodb::metrics {
 
@@ -40,6 +42,8 @@ class Builder {
   [[nodiscard]] std::string_view labels() const noexcept;
 
   void addLabel(std::string_view key, std::string_view value);
+
+  void reserveSpaceForLabels(size_t bytes);
 
  protected:
   std::string_view _name;
