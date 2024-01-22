@@ -63,10 +63,10 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexProgress : function () {
-      var c = internal.db._create("c0l", {numberOfShards: 7, replicationFactor:3});
+      var c = internal.db._create("c0l", {numberOfShards: 3, replicationFactor: 2});
       var docs = [];
       const sleep = require('internal').sleep;
-      for (var j = 0; j < 10; ++j) {
+      for (var j = 0; j < 16; ++j) {
         docs=[];
         for (var i = 0; i < 10240; ++i) {
           docs.push({name : "name" + i});
@@ -93,6 +93,7 @@ function IndexSuite() {
 
       while (true) {
         idx = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1];
+        internal.debugSetFailAt("fillIndex::unpause");
         if (idx.hasOwnProperty("progress") && idx.progress < 100.0) {
           assertTrue(idx.progress >= progress);
           progress = idx.progress;
@@ -104,6 +105,7 @@ function IndexSuite() {
       }
 
       internal.debugRemoveFailAt("fillIndex::pause");
+      internal.debugRemoveFailAt("fillIndex::unpause");
       c.drop();
     },
   };
