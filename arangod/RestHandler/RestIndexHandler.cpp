@@ -278,9 +278,12 @@ RestStatus RestIndexHandler::getIndexes() {
                 if (resSlice.get("progress").isNumber()) {
                   progress += resSlice.get("progress").getNumber<double>();
                 } else {
-                  LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
+                  // Obviously, the index is already ready there.
+                  progress += 100.0;
+                  LOG_TOPIC("aeab4", DEBUG, Logger::CLUSTER)
                       << "No progress entry on index " << iid << "  from "
-                      << r.destination << ": " << resSlice.toJson();
+                      << r.destination << ": " << resSlice.toJson()
+                      << " index already finished.";
                 }
               }
               tmp.add("progress", VPackValue(progress / shards->size()));
