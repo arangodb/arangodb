@@ -187,7 +187,7 @@ bool RefactoredTraverserCache::appendEdge(EdgeDocumentToken const& idToken,
                 }
                 return true;
               },
-              ReadOwnWrites::no)
+              ReadOwnWrites::no, /*countBytes*/ true)
           .ok();
   if (ADB_UNLIKELY(!res)) {
     // We already had this token, inconsistent state. Return NULL in Production

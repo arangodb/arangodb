@@ -384,7 +384,7 @@ void RefactoredSingleServerEdgeCursor<Step>::readAll(
                   callback(std::move(edgeToken), edgeDoc, cursorID);
                   return true;
                 },
-                ReadOwnWrites::no)
+                ReadOwnWrites::no, /*countBytes*/ true)
             .ok();
       });
     }

@@ -32,6 +32,7 @@ const errors = internal.errors;
 const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
+
 const cn = "UnitTestsCollection";
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,22 +54,6 @@ function IndexSuite() {
     tearDown : function () {
       internal.db._drop(cn);
       collection = null;
-    },
-
-
-    testIndexProgress : function () {
-      var c = internal.db._create("c0l");
-      var docs = [];
-      for (var i = 0; i < 10000; ++i) {
-        docs.push({name : "name" + i});
-      }
-      c.insert(docs);
-      internal.debugSetFailAt("fillIndex::pause");
-      c.ensureIndex({ type: "persistent", fields:["name"]});
-      console.error("hu");
-      require('internal').sleep(1);
-      console.error("ha");
-      internal.debugSetFailAt("fillIndex::unpause");
     },
 
 ////////////////////////////////////////////////////////////////////////////////

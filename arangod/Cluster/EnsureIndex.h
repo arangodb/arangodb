@@ -38,7 +38,6 @@ class EnsureIndex : public ActionBase {
 
   virtual ~EnsureIndex();
 
-  virtual arangodb::Result setProgress(double d) override final;
   virtual bool first() override final;
 };
 

@@ -90,12 +90,6 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 
 EnsureIndex::~EnsureIndex() = default;
 
-// For local book keeping and reporting on /_admin/actions
-arangodb::Result EnsureIndex::setProgress(double d) {
-  _progress = d;
-  return {};
-}
-
 bool EnsureIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
@@ -168,6 +162,7 @@ bool EnsureIndex::first() {
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
+      setProgress(100.);
       LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
     } else {
       std::stringstream error;

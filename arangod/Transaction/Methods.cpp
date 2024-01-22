@@ -449,16 +449,29 @@ bool transaction::Methods::removeStatusChangeCallback(
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
+  TRI_ASSERT(_state);
   return _state->vocbase();
+}
+
+void transaction::Methods::setUsername(std::string_view name) {
+  TRI_ASSERT(_state);
+  _state->setUsername(name);
+}
+
+std::string_view transaction::Methods::username() const noexcept {
+  TRI_ASSERT(_state);
+  return _state->username();
 }
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const {
+  TRI_ASSERT(_state);
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
 transaction::Status transaction::Methods::status() const {
+  TRI_ASSERT(_state);
   return _state->status();
 }
 
@@ -499,6 +512,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> const& ctx,
   // initialize the transaction
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+
+  setUsername(ExecContext::current().user());
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
@@ -931,7 +946,7 @@ Result transaction::Methods::documentFastPath(std::string const& collectionName,
         result.add(doc);
         return true;
       },
-      ReadOwnWrites::no);
+      ReadOwnWrites::no, /*countBytes*/ true);
 }
 
 /// @brief return one document from a collection, fast path
@@ -965,7 +980,8 @@ Result transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no);
+  return collection->getPhysical()->read(this, key, cb, ReadOwnWrites::no,
+                                         /*countBytes*/ true);
 }
 
 namespace {
@@ -1085,7 +1101,7 @@ Future<OperationResult> transaction::Methods::documentLocal(
             }
             return true;
           },
-          ReadOwnWrites::no);
+          ReadOwnWrites::no, /*countBytes*/ true);
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -1397,7 +1413,8 @@ Future<OperationResult> transaction::Methods::insertLocal(
         previousDocumentBuilder->clear();
         res = collection->getPhysical()->lookupDocument(
             *this, oldDocumentId, *previousDocumentBuilder,
-            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+            /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes,
+            /*countBytes*/ false);
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1790,7 +1807,8 @@ Future<OperationResult> transaction::Methods::modifyLocal(
     previousDocumentBuilder->clear();
     res = collection->getPhysical()->lookupDocument(
         *this, oldDocumentId, *previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes,
+        /*countBytes*/ false);
 
     if (res.fail()) {
       return res;
@@ -2157,7 +2175,8 @@ Future<OperationResult> transaction::Methods::removeLocal(
     previousDocumentBuilder->clear();
     res = collection->getPhysical()->lookupDocument(
         *this, oldDocumentId, *previousDocumentBuilder,
-        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes);
+        /*readCache*/ true, /*fillCache*/ false, ReadOwnWrites::yes,
+        /*countBytes*/ false);
 
     if (res.fail()) {
       return res;
@@ -2462,6 +2481,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::Compact,
                     (options.truncateCompact ? "true" : "false"));
+      network::addUserParameter(reqOpts, username());
 
       for (auto const& f : *followers) {
         // check following term id for the follower:
@@ -2477,8 +2497,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
                         ServerState::instance()->getId());
         } else {
           reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                        ServerState::instance()->getId() + "_" +
-                            basics::StringUtils::itoa(followingTermId));
+                        absl::StrCat(ServerState::instance()->getId(), "_",
+                                     followingTermId));
         }
         // reqOpts is copied deep in sendRequestRetry, so we are OK to
         // change it in the loop!
@@ -2952,8 +2972,11 @@ Future<Result> Methods::replicateOperations(
                   refill ? "true" : "false");
   }
 
-  std::string url = "/_api/document/";
-  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
+  network::addUserParameter(reqOpts, username());
+
+  std::string url = absl::StrCat(
+      "/_api/document/",
+      arangodb::basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3047,9 +3070,9 @@ Future<Result> Methods::replicateOperations(
       reqOpts.param(StaticStrings::IsSynchronousReplicationString,
                     ServerState::instance()->getId());
     } else {
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                    ServerState::instance()->getId() + "_" +
-                        basics::StringUtils::itoa(followingTermId));
+      reqOpts.param(
+          StaticStrings::IsSynchronousReplicationString,
+          absl::StrCat(ServerState::instance()->getId(), "_", followingTermId));
     }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!

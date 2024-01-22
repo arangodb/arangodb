@@ -22,18 +22,12 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ClusterIndex.h"
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Cluster/AgencyCache.h"
 #include "ClusterEngine/ClusterEngine.h"
-#include "Cluster/ClusterFeature.h"
-#include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/LogMacros.h"
-#include "Network/NetworkFeature.h"
 #include "RocksDBEngine/RocksDBZkdIndex.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "VocBase/LogicalCollection.h"
@@ -43,7 +37,6 @@
 #include <velocypack/Iterator.h>
 
 using namespace arangodb;
-using namespace arangodb::futures;
 
 ClusterIndex::ClusterIndex(IndexId id, LogicalCollection& collection,
                            ClusterEngineType engineType, Index::IndexType itype,
