@@ -47,6 +47,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 bool startsWith(std::string const& str, std::string const& prefix) {
   if (str.size() < prefix.size()) {
@@ -205,11 +207,11 @@ RestStatus RestIndexHandler::getIndexes() {
             VPackValue(static_cast<int>(ResponseCode::OK)));
 
     if (ServerState::instance()->isCoordinator()) {
-      std::stringstream ap;
-      ap << "Plan/Collections/" << _vocbase.name() << "/" << coll->planId()
-         << "/indexes";
+      std::string ap =
+          absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
+                       std::to_string(coll->planId().id()), "/indexes");
       auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
-      auto [plannedIndexes, idx] = ac.get(ap.str());
+      auto [plannedIndexes, idx] = ac.get(ap);
 
       tmp.add(VPackValue("indexes"));
       {
@@ -219,7 +221,7 @@ RestStatus RestIndexHandler::getIndexes() {
         }
         try {  // this is a best effort progress display.
           for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
-            if (pi.hasKey("isBuilding") && pi.get("isBuilding").getBool()) {
+            if (pi.get("isBuilding").isTrue()) {
               VPackObjectBuilder o(&tmp);
               for (auto const& source : VPackObjectIterator(pi)) {
                 tmp.add(source.key.stringView(), source.value);
@@ -232,8 +234,6 @@ RestStatus RestIndexHandler::getIndexes() {
                   coll->vocbase().server().getFeature<NetworkFeature>().pool();
               std::vector<Future<network::Response>> futures;
               futures.reserve(shards->size());
-              // std::string const prefix = "/_db/" + _vocbase.name() +
-              // "/_api/index/";
               std::string const prefix = "/_api/index/";
               network::RequestOptions reqOpts;
               reqOpts.param("withHidden", "true");
