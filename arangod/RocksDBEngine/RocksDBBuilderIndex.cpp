@@ -174,9 +174,7 @@ Result fillIndexSingleThreaded(
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
           TRI_IF_FAILURE("fillIndex::pause") {
             while (true) {
-              TRI_IF_FAILURE("fillIndex::unpause") {
-                break;
-              }
+              TRI_IF_FAILURE("fillIndex::unpause") { break; }
               std::this_thread::sleep_for(std::chrono::milliseconds(100));
             }
           }
