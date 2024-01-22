@@ -171,7 +171,6 @@ arangodb::Result Indexes::getAll(
       }
     }
     tmp.close();
-    std::cout << tmp.toJson() << std::endl;
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
