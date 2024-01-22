@@ -222,7 +222,7 @@ RestStatus RestIndexHandler::getIndexes() {
             if (pi.hasKey("isBuilding") && pi.get("isBuilding").getBool()) {
               VPackObjectBuilder o(&tmp);
               for (auto const& source : VPackObjectIterator(pi)) {
-                tmp.add(source.key.copyString(), source.value);
+                tmp.add(source.key.stringView(), source.value);
               }
               std::string iid = pi.get("id").copyString();
               double progress = 0;

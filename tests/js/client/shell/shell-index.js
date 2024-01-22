@@ -63,7 +63,7 @@ function IndexSuite() {
 ////////////////////////////////////////////////////////////////////////////////
 
     testIndexProgress : function () {
-      var c = internal.db._create("c0l", {numberOfShards: 3});
+      var c = internal.db._create("c0l", {numberOfShards: 7, replicationFactor:3});
       var docs = [];
       const sleep = require('internal').sleep;
       for (var j = 0; j < 10; ++j) {
