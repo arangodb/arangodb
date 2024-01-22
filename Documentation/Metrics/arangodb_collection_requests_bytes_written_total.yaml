@@ -39,6 +39,7 @@ description: |
   this, the metric will not be increased at all.
   Writes into secondary indexes are not counted at all.
   The metric is also increased for transactions that are started but later aborted.
+  However, metrics updates may be buffered until the end of a transaction.
 
   This metric is not exposed by default. It is only present if the startup option
   `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 

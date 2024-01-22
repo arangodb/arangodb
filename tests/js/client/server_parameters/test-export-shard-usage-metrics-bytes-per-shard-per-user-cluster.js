@@ -36,6 +36,7 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
+const internal = require('internal');
 const { getDBServers, deriveTestSuite } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
@@ -138,6 +139,15 @@ function BaseTestSuite(targetUser) {
   };
 
   return {
+    setUpAll : function () {
+      // set this failure point so that metrics updates are pushed immediately
+      internal.debugSetFailAt("alwaysPublishShardMetrics");
+    },
+      
+    tearDownAll : function () {
+      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
+    },
+
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
 
@@ -1848,6 +1858,8 @@ function TestUser2Suite() {
   return suite;
 }
 
-jsunity.run(TestUser1Suite);
-jsunity.run(TestUser2Suite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(TestUser1Suite);
+  jsunity.run(TestUser2Suite);
+}
 return jsunity.done();
