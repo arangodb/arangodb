@@ -46,10 +46,6 @@ MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
       _collection(infos.collection()->getCollection()->getPhysical()) {
   TRI_ASSERT(_collection != nullptr);
-
-  TRI_ASSERT(_infos.projections().empty() ||
-             !_infos.projections().hasOutputRegisters())
-      << "Materialize Executor does not support new style projections yet";
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall>

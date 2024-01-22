@@ -8987,6 +8987,16 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
     } else if (n->getType() == EN::MATERIALIZE) {
       auto* matNode =
           ExecutionNode::castTo<materialize::MaterializeRocksDBNode*>(n);
+      containers::FlatHashSet<AttributeNamePath> attributes;
+      if (utils::findProjections(matNode, &matNode->outVariable(),
+                                 /*expectedAttribute*/ "",
+                                 /*excludeStartNodeFilterCondition*/ true,
+                                 attributes)) {
+        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+          matNode->projections() = Projections(std::move(attributes));
+        }
+      }
+
       modified |= replace(n, matNode->projections(), &matNode->outVariable(),
                           /*index*/ 0);
     } else {
