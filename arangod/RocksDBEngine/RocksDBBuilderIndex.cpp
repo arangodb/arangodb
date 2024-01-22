@@ -200,6 +200,7 @@ Result fillIndexSingleThreaded(
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
+    ridx.progress(100.0);  // Report ready
     if (ridx.estimator() != nullptr) {
       ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
