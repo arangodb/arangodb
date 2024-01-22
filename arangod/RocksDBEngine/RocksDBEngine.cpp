@@ -3123,6 +3123,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // replicated states should be loaded before their respective shards
   if (vocbase->replicationVersion() == replication::Version::TWO) {
+    if (syncThread() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ILLEGAL_OPTION,
+          "Automatic syncing must be enabled for replication "
+          "version 2. Please make sure the --rocksdb.sync-interval "
+          "option is set to a value greater than 0.");
+    }
     try {
       loadReplicatedStates(*vocbase);
     } catch (std::exception const& ex) {
