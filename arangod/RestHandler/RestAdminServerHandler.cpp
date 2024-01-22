@@ -110,17 +110,11 @@ void RestAdminServerHandler::handleRole() {
     return;
   }
   auto state = ServerState::instance();
-  bool hasFailover = false;
-  if (server().hasFeature<ReplicationFeature>() &&
-      server().getFeature<ReplicationFeature>().isActiveFailoverEnabled()) {
-    hasFailover = true;
-  }
   VPackBuilder builder;
   {
     VPackObjectBuilder b(&builder);
     builder.add("role", VPackValue(state->roleToString(state->getRole())));
-    builder.add("mode",
-                hasFailover ? VPackValue("resilient") : VPackValue("default"));
+    builder.add("mode", VPackValue("default"));
   }
   generateOk(rest::ResponseCode::OK, builder);
 }
@@ -128,9 +122,9 @@ void RestAdminServerHandler::handleRole() {
 /// @brief simple availability check
 /// this handler does not require authentication
 /// it will return HTTP 200 in case the server is up and usable,
-/// and not in read-only mode (or a follower in case of active failover)
-/// will return HTTP 503 in case the server is starting, stopping, set
-/// to read-only or a follower in case of active failover
+/// and not in read-only mode .
+/// will return HTTP 503 in case the server is starting, stopping,
+/// or set to read-only.
 void RestAdminServerHandler::handleAvailability() {
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
@@ -166,8 +160,6 @@ void RestAdminServerHandler::handleAvailability() {
     }
     case ServerState::Mode::STARTUP:
     case ServerState::Mode::MAINTENANCE:
-    case ServerState::Mode::REDIRECT:
-    case ServerState::Mode::TRYAGAIN:
     case ServerState::Mode::INVALID:
       TRI_ASSERT(!available);
       break;

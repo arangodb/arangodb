@@ -71,7 +71,8 @@ std::ostream& arangodb::operator<<(std::ostream& os,
                                    OperationOptions const& ops) {
   // clang-format off
   os << "OperationOptions: " << std::boolalpha
-     << "{ isSynchronousReplicationFrom : '" << ops.isSynchronousReplicationFrom << "'"
+     << "{ isSynchronousReplicationFrom: '" << ops.isSynchronousReplicationFrom << "'"
+     << ", versionAttribute: '" << ops.versionAttribute << "'"
      << ", indexOperationMode: " << ::indexOpModeString(ops.indexOperationMode)
      << ", overwriteMode: " << OperationOptions::stringifyOverwriteMode(ops.overwriteMode)
      << ", waitForSync: " << ops.waitForSync

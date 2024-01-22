@@ -721,10 +721,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
           RocksDBColumnFamilyManager::get(
               RocksDBColumnFamilyManager::Family::EdgeIndex),
           basics::VelocyPackHelper::stringUInt64(info, StaticStrings::ObjectId),
-          !ServerState::instance()->isCoordinator() &&
-              collection.vocbase()
-                  .engine<RocksDBEngine>()
-                  .useEdgeCache() /*useCache*/,
+          /*useCache*/ !ServerState::instance()->isCoordinator(),
           /*cacheManager*/
           collection.vocbase()
               .server()

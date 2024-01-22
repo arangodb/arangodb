@@ -1469,7 +1469,7 @@ RestStatus RestAdminClusterHandler::handleCollectionShardDistribution() {
 RestStatus RestAdminClusterHandler::handleGetMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1502,7 +1502,7 @@ RestStatus RestAdminClusterHandler::handleGetDBServerMaintenance(
     std::string const& serverId) {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1759,7 +1759,7 @@ RestStatus RestAdminClusterHandler::setDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handlePutMaintenance() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1850,7 +1850,7 @@ RestStatus RestAdminClusterHandler::handleMaintenance() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1896,7 +1896,7 @@ RestStatus RestAdminClusterHandler::handleDBServerMaintenance(
 RestStatus RestAdminClusterHandler::handleGetNumberOfServers() {
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -1961,7 +1961,7 @@ RestStatus RestAdminClusterHandler::handlePutNumberOfServers() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 
@@ -2118,7 +2118,7 @@ RestStatus RestAdminClusterHandler::handleHealth() {
 
   if (AsyncAgencyCommManager::INSTANCE == nullptr) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN,
-                  "only allowed on single server with active failover");
+                  "not allowed on single servers");
     return RestStatus::DONE;
   }
 

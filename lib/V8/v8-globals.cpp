@@ -150,6 +150,9 @@ TRI_v8_global_t::TRI_v8_global_t(
   UrlKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "url"));
   UserKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "user"));
   ValueKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "value"));
+  VersionAttributeKey.Reset(
+      isolate, TRI_V8_ASCII_STD_STRING(
+                   isolate, arangodb::StaticStrings::VersionAttributeString));
   VersionKeyHidden.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "*version"));
   WaitForSyncKey.Reset(isolate, TRI_V8_ASCII_STRING(isolate, "waitForSync"));
   CompactKey.Reset(isolate, TRI_V8_ASCII_STD_STRING(
