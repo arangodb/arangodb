@@ -90,12 +90,6 @@ EnsureIndex::EnsureIndex(MaintenanceFeature& feature,
 
 EnsureIndex::~EnsureIndex() = default;
 
-// For local book keeping and reporting on /_admin/actions
-arangodb::Result EnsureIndex::setProgress(double d) {
-  _progress = d;
-  return {};
-}
-
 bool EnsureIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& collection = _description.get(COLLECTION);
