@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1733: prevent dropping of collection if the collection is part of an
+  existing graph.
+
 * BTS-1660: When updating (PATCH request) edges with API Gharial and only
   specifying one of the two edge attributes `_from` or `_to` (not both),
   the content of the edge was not fully validated. This has been fixed now.

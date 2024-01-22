@@ -539,7 +539,9 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
   auto res = arangodb::methods::Collections::lookup(
       vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
-    res = arangodb::methods::Collections::drop(*col, true);
+    CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                      .allowDropGraphCollection = false};
+    res = arangodb::methods::Collections::drop(*col, dropOptions);
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);

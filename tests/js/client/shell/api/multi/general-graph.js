@@ -352,24 +352,6 @@ function check_creation_of_graphSuite() {
       assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
     },
 
-    test_can_delete_an_already_removed_orphan_collection: function () {
-      let edge_definition = [];
-      create_graph(sync, graph_name, edge_definition);
-      additional_vertex_collection(sync, graph_name, product_collection);
-      db._drop(product_collection);
-      assertFalse(db._collection(product_collection));
-
-      const doc = delete_vertex_collection(sync, graph_name, product_collection);
-
-      assertEqual(doc.code, 202);
-      assertFalse(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], 202);
-      assertEqual(doc.parsedBody['graph']['name'], graph_name);
-      assertEqual(doc.parsedBody['graph']['_rev'], doc.headers['etag']);
-      assertEqual(doc.parsedBody['graph']['edgeDefinitions'], edge_definition);
-      assertEqual(doc.parsedBody['graph']['orphanCollections'], []);
-    },
-
     test_can_delete_a_graph_again: function () {
       let definition = {"collection": friend_collection, "from": [user_collection], "to": [user_collection]};
       create_graph(sync, graph_name, [definition]);
