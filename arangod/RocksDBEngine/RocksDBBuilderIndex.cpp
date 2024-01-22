@@ -172,9 +172,9 @@ Result fillIndexSingleThreaded(
         if (progress != nullptr) {
           (*progress)(p);
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
-      TRI_IF_FAILURE("fillIndex::pause") {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-      }
+          TRI_IF_FAILURE("fillIndex::pause") {
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+          }
 #endif
         }
       }
@@ -200,6 +200,9 @@ Result fillIndexSingleThreaded(
     res = trx.commit();
 
     ridx.progress(100.0);  // Report ready
+    if (progress != nullptr) {
+      (*progress)(100.0);
+    }
     if (ridx.estimator() != nullptr) {
       ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
