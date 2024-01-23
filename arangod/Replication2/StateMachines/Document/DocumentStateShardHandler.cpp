@@ -229,11 +229,15 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
             basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index);
         TRI_ASSERT(!idx._isCreation) << "Inverted index still in creation mode";
         auto res = idx.commit(true);
-        TRI_ASSERT(res.ok()) << "Failed to do Inverted index commit";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(res.ok()) << "Failed to do first Inverted index commit";
+        res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do second Inverted index commit";
         TRI_ASSERT(
             res.get() ==
             arangodb::iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
-            << "Inverted index still has changes after commit.";
+            << "Inverted index still has changes after first commit.";
+#endif
       } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
         auto& idx = basics::downCast<iresearch::IResearchRocksDBLink>(*index);
         TRI_ASSERT(!idx._isCreation)
