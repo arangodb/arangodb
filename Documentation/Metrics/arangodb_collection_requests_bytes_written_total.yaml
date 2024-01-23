@@ -1,7 +1,7 @@
 name: arangodb_collection_requests_bytes_written_total
 introducedIn: "3.11.7"
 help: |
-  Number of bytes written in write requests on leaders and followers.
+  Number of bytes written in write requests on DB-Servers.
 unit: number
 type: counter
 category: Transactions
@@ -12,8 +12,10 @@ description: |
   This metric exposes the per-shard number of bytes written by write operation
   requests on DB-Servers, on both leaders and followers.
   It is increased by AQL queries and single-/multi-document write operations.
-  The metric is first increased only the leader, but for every replication request
-  to followers it is also increased on followers.
+  The metric is first increased only the leader. With traditional replication,
+  the metric is also increased on followers for every replication request that 
+  the leader make to the followers. With the new replication protocol 
+  ("replication2"), the metric is not increased on followers.
   
   For every write operation, the metric is increased by the approximate
   number of bytes written for the document or edge in question.
@@ -37,6 +39,7 @@ description: |
   this, the metric will not be increased at all.
   Writes into secondary indexes are not counted at all.
   The metric is also increased for transactions that are started but later aborted.
+  However, metrics updates may be buffered until the end of a transaction.
 
   This metric is not exposed by default. It is only present if the startup option
   `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 
@@ -51,3 +54,8 @@ description: |
   authentication and that do not have a specific user set, are not counted.
   Requests are also only counted if they have an ArangoDB user associated with them,
   so that the cluster must also be running with authentication turned on.
+  
+  Enabling this metric via the startup option will likely result in a small
+  latency overhead of few percent for write operations. The exact overhead depends on
+  several factors, such as the type of operation (single or multi-document operation),
+  replication factor, network latency etc.

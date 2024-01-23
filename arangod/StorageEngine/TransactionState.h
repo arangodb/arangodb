@@ -31,6 +31,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/Options.h"
 #include "Transaction/Status.h"
@@ -404,6 +405,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   Result addCollectionInternal(DataSourceId cid, std::string const& cname,
                                AccessMode::Type accessType, bool lockUsage);
 
+  void publishShardMetrics(CollectionNameResolver const& resolver);
+
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
 
@@ -460,12 +463,24 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   QueryAnalyzerRevisions _analyzersRevision;
   bool _registeredTransaction = false;
 
+  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+
   /// @brief name of user who originated the transaction. may be empty.
   /// this user name is informational only and can be used for logging,
   /// metrics etc.
   /// it should not be used for permission checks.
   std::shared_mutex mutable _usernameLock;
   std::string _username;
+
+  // protects _shardsBytesWritten and _shardsBytesRead
+  std::mutex mutable _shardsMetricsMutex;
+  // map from collection name (shard name) to number of bytes written
+  containers::FlatHashMap<std::string, size_t> _shardBytesWritten;
+  // map from collection name (shard name) to number of bytes read
+  containers::FlatHashMap<std::string, size_t> _shardBytesRead;
+  // number of times the metrics have been increased since the metrics
+  // were last published
+  size_t _shardBytesUnpublishedEvents = 0;
 };
 
 }  // namespace arangodb
