@@ -172,8 +172,10 @@ void ActionBase::startStats() {
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
   // OSX clang cannot increment double very rare calls
-  std::lock_guard<std::mutex> guard(_progressMutex);
-  _progress = _progress + 1.0;
+  {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    _progress = _progress + 1.0;
+  }
   _actionLastStat = secs_since_epoch();
 }  // ActionBase::incStats
 

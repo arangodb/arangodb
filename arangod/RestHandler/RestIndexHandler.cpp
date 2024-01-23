@@ -207,9 +207,8 @@ RestStatus RestIndexHandler::getIndexes() {
             VPackValue(static_cast<int>(ResponseCode::OK)));
 
     if (ServerState::instance()->isCoordinator()) {
-      std::string ap =
-          absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
-                       std::to_string(coll->planId().id()), "/indexes");
+      std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
+                                    coll->planId().id(), "/indexes");
       auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
       auto [plannedIndexes, idx] = ac.get(ap);
 
