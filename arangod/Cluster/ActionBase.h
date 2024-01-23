@@ -117,7 +117,7 @@ class ActionBase {
    *  @param  d percentage of work done
    *  @return   abort if !ok(), true if ok(), with reason to abort.
    */
-  virtual arangodb::Result setProgress(double d);
+  arangodb::Result setProgress(double d);
 
   /// @brief return progress statistic
   double getProgress() const {
