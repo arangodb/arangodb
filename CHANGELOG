@@ -1,7 +1,21 @@
 devel
 -----
 
-* Upgraded bundled version of RocksDB to 8.10.
+* Upgraded bundled version of RocksDB to 8.11.
+
+* BTS-1660: When updating (PATCH request) edges with API Gharial and only
+  specifying one of the two edge attributes `_from` or `_to` (not both),
+  the content of the edge was not fully validated. This has been fixed now.
+
+* BTS-1661: In addition to BTS-1259: For some operations where a collection
+  is being used, but not known by the graph definition itself, we've
+  introduced a new, more precise error, called:
+  `ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH`.
+  This error will be reported in case a collection is being used, but not
+  part of the graph definition at all. Whereas the
+  `ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED` will be thrown in
+  such cases like a not known vertex is being used inside an edge documents
+  `_from` or `_to` attribute.
 
 * APM-665: RocksDB memory tracking
   Changed the default value of the following command line options
