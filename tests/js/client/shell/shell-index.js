@@ -1,4 +1,4 @@
-*jshint globalstrict:false, strict:false */
+/*jshint globalstrict:false, strict:false */
 /*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,14 +28,14 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
-const sleep = require(internal).sleep;
+const sleep = require('internal').sleep;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
 ////////////////////////////////////////////////////////////////////////////////
 
 function IndexSuite() {
-  use strict;
+  'use strict';
 
   let cn = "c0l";
   let c;
