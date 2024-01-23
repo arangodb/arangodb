@@ -100,7 +100,6 @@ function IndexSuite() {
             seenProgress = true;
           }
           sleep(0.1);
-          print(count);
           if (++count > 4000) {
             // Value intentionally high for ASAN runs, this is 100x slower
             // than observed on an old machine with debug build!
