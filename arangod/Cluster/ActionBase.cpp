@@ -172,10 +172,8 @@ void ActionBase::startStats() {
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
   // OSX clang cannot increment double very rare calls
-  std::mutex m;
-  m.lock();
-  _progress.store(_progress.load()+1.0);
-  m.unlock();
+  std::lock_guard<std::mutex> guard(_progressMutex);
+  _progress = _progress + 1.0;
   _actionLastStat = secs_since_epoch();
 }  // ActionBase::incStats
 
@@ -208,7 +206,10 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add("id", VPackValue(_id));
   builder.add("state", VPackValue(_state));
-  builder.add("progress", VPackValue(_progress));
+  {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    builder.add("progress", VPackValue(_progress));
+  }
 
   builder.add(
       "created",
@@ -281,7 +282,8 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
 }
 
 arangodb::Result ActionBase::setProgress(double d) {
-  _progress.store(d);
+  std::lock_guard<std::mutex> guard(_progressMutex);
+  _progress = d;
   return {};
 }
 
@@ -290,7 +292,8 @@ arangodb::Result ActionBase::setProgress(double d) {
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = _progress.load();
+  std::lock_guard<std::mutex> guard(_progressMutex);
+  progress = _progress;
   return {};
 }
 

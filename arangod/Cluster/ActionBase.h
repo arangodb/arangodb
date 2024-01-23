@@ -120,7 +120,10 @@ class ActionBase {
   virtual arangodb::Result setProgress(double d);
 
   /// @brief return progress statistic
-  double getProgress() const { return _progress.load(); }
+  double getProgress() const {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    return _progress;
+  }
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() { _preAction.reset(); }
@@ -244,7 +247,9 @@ class ActionBase {
   std::atomic<std::chrono::system_clock::duration> _actionLastStat;
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
-  std::atomic<double> _progress;
+  // So far, std::atomic<double> does not have `fetch_add` on all platforms:
+  mutable std::mutex _progressMutex;  // protects _progress
+  double _progress;
 
   int _priority;
 
