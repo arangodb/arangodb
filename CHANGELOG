@@ -1,4 +1,4 @@
-v3.10.13 (XXXX-XX-XX)
+v3.10.14 (XXXX-XX-XX)
 ---------------------
 
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
@@ -11,6 +11,10 @@ v3.10.13 (XXXX-XX-XX)
   ignored. That means the index will simply not be available on the affected
   server, since we will also do not retry to create it at a later time.
   To avoid this, we add a new `indexId` label to the metric to make it unique.
+
+
+v3.10.13 (XXXX-XX-XX)
+---------------------
 
 * Validate that the attribute stored in the `smartGraphAttribute` of SmartGraph
   vertex collections exists and is not changed afterwards by update or replace
