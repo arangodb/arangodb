@@ -172,9 +172,11 @@ class TestMaintenanceFeature : public arangodb::MaintenanceFeature {
       }  // if
 
       VPackSlice progress = (*action).get("progress");
-      if (!(progress.isInteger() && check->_progress == progress.getInt())) {
-        std::cerr << "Progress mismatch: action has " << progress.getInt()
-                  << " expected " << check->_progress << std::endl;
+      if (!(progress.isNumber() &&
+            check->_progress == progress.getNumber<double>())) {
+        std::cerr << "Progress mismatch: action has "
+                  << progress.getNumber<double>() << " expected "
+                  << check->_progress << std::endl;
         good = false;
       }  // if
     }    // for

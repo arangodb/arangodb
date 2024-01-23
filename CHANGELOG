@@ -1,6 +1,8 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* New API to show progress in background index creation.
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored
