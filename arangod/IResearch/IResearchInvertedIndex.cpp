@@ -421,7 +421,8 @@ class IResearchInvertedIndexIterator final
               ->lookup(_trx, token, cb,
                        {.readCache = false,
                         .fillCache = false,
-                        .readOwnWrites = static_cast<bool>(canReadOwnWrites())},
+                        .readOwnWrites = static_cast<bool>(canReadOwnWrites()),
+                        .countBytes = true},
                        &_snapshot.snapshot(0))
               .ok();
         },

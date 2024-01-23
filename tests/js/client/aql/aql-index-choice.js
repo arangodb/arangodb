@@ -511,10 +511,10 @@ function BaseTestConfig () {
       db[cn].ensureIndex({ type: "persistent", fields: ["uid", "dt"] });
 
       [
-        [`FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.dt == 1234 SORT doc.uid RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 SORT doc.uid RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.dt <= 1234 SORT doc.uid RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.dt >= 1234 && doc.dt < 9999 SORT doc.uid RETURN doc`, "late materialized"],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
@@ -550,10 +550,10 @@ function BaseTestConfig () {
       });
 
       [
-        [`FOR doc IN ${cn} FILTER doc.uid > 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`, "covering, filter only"],
-        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`, "covering, filter only"],
+        [`FOR doc IN ${cn} FILTER doc.uid > 1234 && doc.dt == 1234 SORT doc.dt RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 SORT doc.dt RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt <= 1234 SORT doc.dt RETURN doc`, "late materialized"],
+        [`FOR doc IN ${cn} FILTER doc.uid >= 1234 && doc.dt >= 1234 && doc.dt < 9999 SORT doc.dt RETURN doc`, "late materialized"],
       ].forEach((q) => {
         let nodes = db._createStatement(q[0]).explain().plan.nodes;
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);

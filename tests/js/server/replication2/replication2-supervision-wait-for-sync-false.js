@@ -79,6 +79,7 @@ const replicatedLogWaitForSyncFalseSupervisionSuite = function () {
       lh.stopServer(oldLeader);
 
       lh.waitFor(lp.replicatedLogLeaderPlanChanged(database, log.id(), oldLeader));
+      lh.waitFor(lp.replicatedLogLeaderEstablished(database, log.id(), undefined, followers));
 
       // insert a log entry
       const {

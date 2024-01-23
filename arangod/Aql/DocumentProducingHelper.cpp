@@ -680,7 +680,8 @@ IndexIterator::CoveringCallback aql::getCallback(
         };
         context.getPhysical().lookup(
             context.getTrxPtr(), token, cb,
-            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites()),
+             .countBytes = true});
       } else {
         OutputAqlItemRow& output = context.getOutputRow();
         InputAqlItemRow const& input = context.getInputRow();

@@ -9566,7 +9566,7 @@ AqlValue functions::ShardId(ExpressionContext* expressionContext,
   if (cluster) {
     auto& ci = vocbase.server().getFeature<ClusterFeature>().clusterInfo();
     collection = ci.getCollection(dbName, colName);
-  } else {  // single server, agents, active failover try to not break cluster
+  } else {  // single server, agents try to not break cluster
             // ready code
     methods::Collections::lookup(vocbase, colName, collection);
   }

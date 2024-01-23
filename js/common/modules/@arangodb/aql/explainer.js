@@ -830,6 +830,9 @@ function processQuery(query, explain, planIndex) {
     stats = explain.stats;
 
   let plan = explain.plan;
+  if (plan === undefined) {
+    throw "incomplete query execution plan data - this should not happen unless when connected to a DB-Server. fetching query plans/profiles from a DB-Server is not supported!";
+  }
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
@@ -874,6 +877,7 @@ function processQuery(query, explain, planIndex) {
       }
     });
   };
+
   recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { 
@@ -1230,7 +1234,7 @@ function processQuery(query, explain, planIndex) {
   const iterateIndexes = function (idx, i, node, types, variable) {
     let what = (!node.ascending ? 'reverse ' : '') + idx.type + ' index scan';
     if (node.producesResult || !node.hasOwnProperty('producesResult')) {
-      if (node.indexCoversProjections) {
+      if (node.indexCoversProjections || node.isLateMaterialized === true) {
         what += ', index only';
       } else {
         what += ', index scan + document lookup';
@@ -2021,7 +2025,11 @@ function processQuery(query, explain, planIndex) {
         }).join(', ') + (gatherAnnotations.length ? '  ' + annotation('/* ' + gatherAnnotations.join(', ') + ' */') : '');
 
       case 'MaterializeNode':
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable);
+        let annotations = '';
+        if (node.projections) {
+          annotations += projections(node, 'projections', 'projections');
+        }
+        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable) + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '');
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';
