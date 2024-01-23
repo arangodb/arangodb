@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false */
+*jshint globalstrict:false, strict:false */
 /*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse, assertNull */
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -28,27 +28,23 @@
 const jsunity = require("jsunity");
 const internal = require("internal");
 const arango = internal.arango;
-const errors = internal.errors;
-const { helper, versionHas } = require("@arangodb/test-helper");
-const platform = require('internal').platform;
+const sleep = require(internal).sleep;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite: basics
 ////////////////////////////////////////////////////////////////////////////////
 
 function IndexSuite() {
-  'use strict';
+  use strict;
+
+  let cn = "c0l";
+  let c;
 
   return {
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief test: indexes
-////////////////////////////////////////////////////////////////////////////////
-
-    testIndexProgress : function () {
-      let c = internal.db._create("c0l", {numberOfShards: 3, replicationFactor: 2});
+    setUp: function() {
+      c = internal.db._create(cn, {numberOfShards: 3, replicationFactor: 2});
       let docs = [];
-      const sleep = require('internal').sleep;
       for (let j = 0; j < 16; ++j) {
         docs=[];
         for (let i = 0; i < 10240; ++i) {
@@ -56,50 +52,65 @@ function IndexSuite() {
         }
         c.insert(docs);
       }
+    },
 
-      try {
-        internal.debugSetFailAt("fillIndex::pause");
-        let idx = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
-        arango.GET(`/_api/index?collection=c0l`);
+    tearDown: function() {
+      internal.debugRemoveFailAt("fillIndex::pause");
+      internal.debugRemoveFailAt("fillIndex::unpause");
+      c.drop();
+    },
 
-        let job = arango.POST_RAW(`/_api/index?collection=c0l`, idx,
-                                  {"x-arango-async": "store"}).headers["x-arango-async-id"];
-        let count = 0;
-        let progress = 0.0;
-        let idxs = [];
-        // Wait until the index is there (with withHidden):
-        while (true) {
-          idxs = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes;
-          if (idxs.length > 1) {
-            break;
+////////////////////////////////////////////////////////////////////////////////
+/// @brief test: indexes
+////////////////////////////////////////////////////////////////////////////////
+
+    testIndexProgress : function () {
+      internal.debugSetFailAt("fillIndex::pause");
+      let idxdesc = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
+
+      let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
+                                {"x-arango-async": "store"}).headers["x-arango-async-id"];
+      let count = 0;
+      let progress = 0.0;
+      // Wait until the index is there (with withHidden):
+      while (true) {
+        let idxs = arango.GET(`/_api/index?collection=${cn}&withHidden=true`).indexes;
+        if (idxs.length > 1) {
+          break;
+        }
+        sleep(0.1);
+        if (++count > 1000) {
+          assertFalse(true, "Did not see hidden index in time!");
+        }
+      }
+
+      let seenProgress = false;
+      count = 0;
+      while (true) {
+        let idx = arango.GET(`/_api/index?collection=${cn}&withHidden=true`).indexes[1];
+        assertEqual(idx.name, "progress", idx); // Check we have the right one!
+        if (idx.hasOwnProperty("progress")) {
+          assertTrue(idx.progress >= progress, {idx, progress});
+          assertTrue(idx.isBuilding, idx);
+          progress = idx.progress;
+          if (progress > 0 && !seenProgress) {
+            // Only release index building once we have seen at least
+            // once an isBuilding state with non-zero progress
+            internal.debugSetFailAt("fillIndex::unpause");
+            seenProgress = true;
           }
           sleep(0.1);
-        }
-
-        let unpaused = false;
-        while (true) {
-          idx = arango.GET(`/_api/index?collection=c0l&withHidden=true`).indexes[1];
-          if (idx.hasOwnProperty("progress")) {
-            assertTrue(idx.progress >= progress);
-            assertTrue(idx.isBuilding);
-            progress = idx.progress;
-            if (progress > 0 && !unpaused) {
-              // Only release index building once we have seen at least
-              // once an isBuilding state with non-zero progress
-              internal.debugSetFailAt("fillIndex::unpause");
-              unpaused = true;
-            }
-            sleep(0.1);
-          } else {
-            assertFalse(idx.hasOwnProperty("isBuilding"));
-            break;
+          if (++count > 4000) {
+            // Value intentionally high for ASAN runs, this is 100x slower
+            // than observed on an old machine with debug build!
+            assertFalse(true, "Did not see index finished in time! " + JSON.stringify(idx));
           }
+        } else {
+          assertFalse(idx.hasOwnProperty("isBuilding"));
+          break;
         }
-      } finally {
-        internal.debugRemoveFailAt("fillIndex::pause");
-        internal.debugRemoveFailAt("fillIndex::unpause");
-        c.drop();
       }
+      assertTrue(seenProgress, "Never saw progress being reported!");
     },
   };
 }
