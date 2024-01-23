@@ -104,6 +104,76 @@ function testSuite() {
     return result;
   };
 
+  const adjustWriteBounds = (lowerBound, upperBound, replicationFactor) => {
+    if (db._properties().replicationVersion === "2") {
+      // We only guarantee that the leader counts directly on write
+      // follower may be delayed, hence lower bound stays leader only.
+      // On the upper bound the follower may write the statistics, this
+      // is a race with the operation being applied asynchronously on followers.
+      upperBound *= replicationFactor;
+    } else {
+      // Assert Write happen also on all followers
+      lowerBound *= replicationFactor;
+      upperBound *= replicationFactor;
+    }
+    return [lowerBound, upperBound];
+  };
+
+  const assertReadMetricsAreCounted = (parsedMetrics, shard, replicationFactor, leaderLowerBound, leaderUpperBound) => {
+    const readCounter = parsedMetrics.reads[shard];
+    // Assert Reads only happen on leader
+    assertTrue(readCounter > leaderLowerBound, `Expecting reads on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${leaderLowerBound} < ${leaderUpperBound}`);
+    assertTrue(readCounter < leaderUpperBound, `Expecting reads on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${leaderLowerBound} < ${leaderUpperBound}`);
+
+    // In the setup for the collection we had to perform some writes.
+    // Just make sure they are counted properly here:
+    const writeCounter = parsedMetrics.writes[shard];
+    const [writeLowerBound, writeUpperBound] = adjustWriteBounds(leaderLowerBound, leaderUpperBound, replicationFactor);
+    assertTrue(writeCounter > writeLowerBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    assertTrue(writeCounter < writeUpperBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+  };
+
+  const assertWriteOnlyMetricsAreCounted = (parsedMetrics, shard, replicationFactor, leaderLowerBound, leaderUpperBound) => {
+    assertFalse(parsedMetrics.hasOwnProperty("reads"), `${JSON.stringify(parsedMetrics, null, 2)} should not have a reads counter.`);
+    // In the setup for the collection we had to perform some writes.
+    // Just make sure they are counted properly here:
+    const writeCounter = parsedMetrics.writes[shard];
+    const [writeLowerBound, writeUpperBound] = adjustWriteBounds(leaderLowerBound, leaderUpperBound, replicationFactor);
+    assertTrue(writeCounter > writeLowerBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    assertTrue(writeCounter < writeUpperBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+  };
+
+  const assertReadOnlyMetricsAreCounted = (parsedMetrics, shard, leaderLowerBound, leaderUpperBound) => {
+    // Every non-empty collection always has writes.
+    assertTrue(parsedMetrics.hasOwnProperty("writes"), `${JSON.stringify(parsedMetrics, null, 2)} should have a writes counter.`);
+    // Now assert the reads we expect
+    const readCounter = parsedMetrics.reads[shard];
+    assertTrue(readCounter > leaderLowerBound, `Expecting reads on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    assertTrue(readCounter < leaderUpperBound, `Expecting reads on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+  };
+
+  const assertTotalWriteMetricsAreCounted = (parsedMetrics, shards, replicationFactor, leaderLowerBound, leaderUpperBound, canHaveReads = false) => {
+    assertEqual(parsedMetrics.hasOwnProperty("reads"), canHaveReads, `We do ${canHaveReads ? "" : "not"} expect to have reads. ${JSON.stringify(parsedMetrics)}`);
+    assertEqual(shards.length, Object.keys(parsedMetrics.writes).length, `Did not found a metric entry for every shard, expecting: ${JSON.stringify(shards)} got: ${JSON.stringify(Object.keys(parsedMetrics.writes))}`);
+    let totalWritten = 0;
+    Object.keys(parsedMetrics.writes).forEach((shard) => {
+      totalWritten += parsedMetrics.writes[shard];
+    });
+    const [writeLowerBound, writeUpperBound] = adjustWriteBounds(leaderLowerBound, leaderUpperBound, replicationFactor);
+    assertTrue(totalWritten > writeLowerBound, `Expecting accumulated writes (${totalWritten}) on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    assertTrue(totalWritten < writeUpperBound, `Expecting accumulated writes (${totalWritten}) on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+  };
+
+  const assertTotalReadMetricsAreCounted = (parsedMetrics, shards, leaderLowerBound, leaderUpperBound) => {
+    assertEqual(shards.length, Object.keys(parsedMetrics.writes).length, `Did not found a metric entry for every shard, expecting: ${JSON.stringify(shards)} got: ${JSON.stringify(Object.keys(parsedMetrics.writes))}`);
+    let totalReads = 0;
+    Object.keys(parsedMetrics.reads).forEach((shard) => {
+      totalReads += parsedMetrics.reads[shard];
+    });
+    assertTrue(totalReads > leaderLowerBound, `Expecting accumulated reads (${totalReads}) on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    assertTrue(totalReads < leaderUpperBound, `Expecting accumulated reads (${totalReads}) on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+  };
+
   return {
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
@@ -179,10 +249,7 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertTrue(parsed.reads[shards[0]] > n * 40, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -214,10 +281,7 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertTrue(parsed.reads[shards[0]] > n * 40 + 0.95 * payloadLength, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50 + 1.05 * payloadLength, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + 0.95 * payloadLength * replicationFactor, {parsed, replicationFactor, payloadLength});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + 1.05 * payloadLength * replicationFactor, {parsed, replicationFactor, payloadLength});
+          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + 0.95 * payloadLength, n * 50 + 1.05 * payloadLength);
         } finally {
           db._drop(cn);
         }
@@ -248,10 +312,7 @@ function testSuite() {
           c.document(docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertTrue(parsed.reads[shards[0]] > n * 40, {parsed, replicationFactor});
-          assertTrue(parsed.reads[shards[0]] < n * 50, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -273,9 +334,7 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -300,9 +359,7 @@ function testSuite() {
           c.insert(docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -332,10 +389,8 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 10-20 bytes for each remove
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 10 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 20 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 10, n * 50 + n * 20);
         } finally {
           db._drop(cn);
         }
@@ -365,8 +420,7 @@ function testSuite() {
           let parsed = getParsedMetrics(db._name(), cn);
           assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 10-20 bytes for each remove
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 10 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 20 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 10, n * 50 + n * 20);
         } finally {
           db._drop(cn);
         }
@@ -396,10 +450,8 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
           db._drop(cn);
         }
@@ -431,10 +483,8 @@ function testSuite() {
           c.update(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
           db._drop(cn);
         }
@@ -467,10 +517,8 @@ function testSuite() {
           c.update(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 3100 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 3150 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 3100, n * 50 + n * 3150);
         } finally {
           db._drop(cn);
         }
@@ -500,10 +548,8 @@ function testSuite() {
           }
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
           db._drop(cn);
         }
@@ -535,10 +581,8 @@ function testSuite() {
           c.replace(docs, docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // count 40-50 bytes for each insert, and 40-50 bytes for each update
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 40 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 50 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + n * 40, n * 50 + n * 50);
         } finally {
           db._drop(cn);
         }
@@ -563,17 +607,8 @@ function testSuite() {
           c.insert(docs);
 
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-
-          assertEqual(shards.length, Object.keys(parsed.writes).length, {replicationFactor, shards});
-          let totalWritten = 0;
-          Object.keys(parsed.writes).forEach((shard) => {
-            totalWritten += parsed.writes[shard];
-          });
-
           // count 40-50 bytes for each insert
-          assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, shards, totalWritten});
-          assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, shards, totalWritten});
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -583,7 +618,7 @@ function testSuite() {
     testHasMetricsReadOnlyAQL : function () {
       const cn = getUniqueCollectionName();
 
-      let c = db._create(cn);
+      let c = db._create(cn, {replicationFactor: 1});
       try {
         let shards = c.shards();
         assertEqual(1, shards.length);
@@ -605,12 +640,10 @@ function testSuite() {
         db._query(`FOR doc IN ${cn} RETURN doc`);
           
         parsed = getParsedMetrics(db._name(), cn);
-
-        assertTrue(parsed.hasOwnProperty("writes"), parsed);
         // we still assume 40-50 bytes read per document, as we still need to
         // read it entirely from the storage engine
-        assertTrue(parsed.reads[shards[0]] > n * 40, {parsed});
-        assertTrue(parsed.reads[shards[0]] < n * 50, {parsed});
+        assertReadMetricsAreCounted(parsed, shards[0], 1, n * 40, n * 50);
+
       } finally {
         db._drop(cn);
       }
@@ -875,11 +908,8 @@ function testSuite() {
           db._query(`FOR i IN 1..${n} INSERT {} INTO ${cn}`);
 
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-
           // count 30-40 bytes for each insert
-          assertTrue(parsed.writes[shards[0]] > n * 30 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 40 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 30, n * 40);
         } finally {
           db._drop(cn);
         }
@@ -900,17 +930,8 @@ function testSuite() {
           db._query(`FOR i IN 1..${n} INSERT {} INTO ${cn}`);
 
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-
-          assertEqual(shards.length, Object.keys(parsed.writes).length, {replicationFactor, shards});
-          let totalWritten = 0;
-          Object.keys(parsed.writes).forEach((shard) => {
-            totalWritten += parsed.writes[shard];
-          });
-
           // count 30-40 bytes for each insert
-          assertTrue(totalWritten > n * 30 * replicationFactor, {parsed, replicationFactor, shards, totalWritten});
-          assertTrue(totalWritten < n * 40 * replicationFactor, {parsed, replicationFactor, shards, totalWritten});
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 30, n * 40);
         } finally {
           db._drop(cn);
         }
@@ -1062,31 +1083,16 @@ function testSuite() {
           const payload = Array(100).join("foo");
           db._query(`LET payload = '${payload}' FOR i IN 1..${n} INSERT {} INTO ${c1.name()} INSERT {payload} INTO ${c2.name()}`);
         
-          let parsed = getParsedMetrics(db._name(), [c1.name(), c2.name()]);
+          let parsed = getParsedMetrics(db._name(), c1.name());
           assertFalse(parsed.hasOwnProperty("reads"), {parsed});
         
           let shards = c1.shards();
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-          });
-          let totalWritten = 0;
-          shards.forEach((shard) => {
-            totalWritten += parsed.writes[shard];
-          });
-
           // count 30-40 bytes for each insert into c1
-          assertTrue(totalWritten > n * 30 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-          assertTrue(totalWritten < n * 40 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-        
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 30, n * 40);
+          parsed = getParsedMetrics(db._name(), c2.name());
           shards = c2.shards();
-          totalWritten = 0;
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-            totalWritten += parsed.writes[shard];
-          });
           // count 360-370 bytes for each insert into c2
-          assertTrue(totalWritten > n * 360 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-          assertTrue(totalWritten < n * 370 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 360, n * 370);
         } finally {
           db._drop(c2.name());
           db._drop(c1.name());
@@ -1114,11 +1120,8 @@ function testSuite() {
           c.insert(docs);
           
           let parsed = getParsedMetrics(db._name(), cn);
-
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
           // we assume 1050-1150 bytes written per document
-          assertTrue(parsed.writes[shards[0]] > n * 1050 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 1150 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 1050, n * 1150);
 
           // read data back via secondary indexes. note that this returns _key so does full document lookups
           for (let i = 0; i < n; ++i) {
@@ -1164,10 +1167,8 @@ function testSuite() {
           c.remove(docs);
           
           parsed = getParsedMetrics(db._name(), cn);
-          
           // we assume 1050-1150 bytes written per document (for the insert) plus a few bytes for each remove
-          assertTrue(parsed.writes[shards[0]] > n * 1050 * replicationFactor + n * 10 * replicationFactor, {parsed, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 1150 * replicationFactor + n * 20 * replicationFactor, {parsed, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * (1050 + 10), n * (1150 + 20));
         } finally {
           db._drop(cn);
         }
@@ -1234,15 +1235,13 @@ function testSuite() {
         
           parsed = getParsedMetrics(db._name(), cn);
           // count 40-50 bytes for each insert
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, shards, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, shards, replicationFactor});
-        
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
+
           c.truncate();
          
           parsed = getParsedMetrics(db._name(), cn);
           // count 10-20 bytes for each remove
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor + n * 10 * replicationFactor, {parsed, shards, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor + n * 20 * replicationFactor, {parsed, shards, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * (40 + 10), n * (50 + 20));
         } finally {
           db._drop(cn);
         }
@@ -1263,15 +1262,13 @@ function testSuite() {
         
           let parsed = getParsedMetrics(db._name(), cn);
           // count 40-50 bytes for each insert
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, shards, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, shards, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         
           c.truncate();
          
           parsed = getParsedMetrics(db._name(), cn);
           // truncate will have performed a DeleteRange - metrics should not have changed!
-          assertTrue(parsed.writes[shards[0]] > n * 40 * replicationFactor, {parsed, shards, replicationFactor});
-          assertTrue(parsed.writes[shards[0]] < n * 50 * replicationFactor, {parsed, shards, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -1320,8 +1317,7 @@ function testSuite() {
           });
 
           // count 50-60 bytes for each insert into vn
-          assertTrue(totalWritten > n * 50 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-          assertTrue(totalWritten < n * 60 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+          assertWriteOnlyMetricsAreCounted(parsed, shards[0], replicationFactor, n * 50, n * 60);
 
           // smart edge collection
           let keys = [];
@@ -1339,27 +1335,13 @@ function testSuite() {
           });
 
           // we must have inserts into from/to parts
-          shards = db["_from_" + en].shards();
-          let totalFrom = 0;
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-            totalFrom += parsed.writes[shard];
-          });
-          
-          shards = db["_to_" + en].shards();
-          let totalTo = 0;
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-            totalTo += parsed.writes[shard];
-          });
-
           // count 120-170 bytes for each insert into en
-          assertTrue(totalFrom > n * 120 * replicationFactor, {parsed, shards, totalFrom, replicationFactor});
-          assertTrue(totalFrom < n * 170 * replicationFactor, {parsed, shards, totalFrom, replicationFactor});
-         
-          assertTrue(totalTo > n * 120 * replicationFactor, {parsed, shards, totalTo, replicationFactor});
-          assertTrue(totalTo < n * 170 * replicationFactor, {parsed, shards, totalTo, replicationFactor});
-          
+          shards = db["_from_" + en].shards();
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 120, n * 170);
+
+          shards = db["_to_" + en].shards();
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 120, n * 170);
+
           // now perform reads
           keys.forEach((key) => {
             db[en].document(key);
@@ -1375,20 +1357,10 @@ function testSuite() {
 
           // we must have reads in from/to parts
           shards = db["_from_" + en].shards();
-          totalFrom = 0;
-          shards.forEach((shard) => {
-            assertTrue(parsed.reads.hasOwnProperty(shard), {shards, parsed});
-            totalFrom += parsed.reads[shard];
-          });
-          
-          shards = db["_to_" + en].shards();
-          shards.forEach((shard) => {
-            assertFalse(parsed.reads.hasOwnProperty(shard), {shards, parsed});
-          });
+          assertTotalReadMetricsAreCounted(parsed, shards, n * 120, n * 170);
 
-          // count 120-170 bytes for each read
-          assertTrue(totalFrom > n * 120, {parsed, shards, totalFrom});
-          assertTrue(totalFrom < n * 170, {parsed, shards, totalFrom});
+          shards = db["_to_" + en].shards();
+          assertTotalReadMetricsAreCounted(parsed, shards, n * 120, n * 170);
         } finally {
           cleanup();
         }
@@ -1538,32 +1510,15 @@ function testSuite() {
             }
             
             let parsed = getParsedMetrics(db._name(), cn);
-            assertFalse(parsed.hasOwnProperty("reads"), parsed);
-          
-            let totalWritten = 0;
-            shards.forEach((shard) => {
-              totalWritten += parsed.writes[shard];
-            });
-            assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
-            assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
+            assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
 
             // issue read query inside streaming trx
             trx.query(`FOR doc IN ${cn} RETURN doc`).toArray();
             
             parsed = getParsedMetrics(db._name(), cn);
-          
-            let totalRead = 0;
-            totalWritten = 0;
-            shards.forEach((shard) => {
-              totalWritten += parsed.writes[shard];
-              totalRead += parsed.reads[shard];
-            });
             // total written should remain unchanged
-            assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
-            assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
-            
-            assertTrue(totalRead > n * 40, {parsed, totalRead});
-            assertTrue(totalRead < n * 50, {parsed, totalRead});
+            assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
+            assertTotalReadMetricsAreCounted(parsed, shards, n * 40, n * 50);
 
             // write into the collection
             trx.query(`FOR i IN 1..5000 INSERT {} INTO ${cn}`);
@@ -1659,14 +1614,7 @@ function testSuite() {
           });
 
           let parsed = getParsedMetrics(db._name(), cn);
-          assertFalse(parsed.hasOwnProperty("reads"), parsed);
-          
-          let totalWritten = 0;
-          shards.forEach((shard) => {
-            totalWritten += parsed.writes[shard];
-          });
-          assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
-          assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, replicationFactor, totalWritten});
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -1700,20 +1648,8 @@ function testSuite() {
 
           let parsed = getParsedMetrics(db._name(), vn);
           assertFalse(parsed.hasOwnProperty("reads"), {parsed});
-        
           let shards = db[vn].shards();
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-          });
-          let totalWritten = 0;
-          shards.forEach((shard) => {
-            totalWritten += parsed.writes[shard];
-          });
-
-          // count 40-50 bytes for each insert into vn
-          assertTrue(totalWritten > n * 40 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-          assertTrue(totalWritten < n * 50 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
           // edge collection
           for (let i = 0; i < (n - 1); ++i) {
             g[en].insert({ _key: "test" + i, _from: vn + "/test" + i, _to: vn + "/test" + i });
@@ -1722,15 +1658,8 @@ function testSuite() {
           parsed = getParsedMetrics(db._name(), en);
 
           shards = db[en].shards();
-          totalWritten = 0;
-          shards.forEach((shard) => {
-            assertTrue(parsed.writes.hasOwnProperty(shard), {shards, parsed});
-            totalWritten += parsed.writes[shard];
-          });
-
           // count 90-105 bytes for each insert into en
-          assertTrue(totalWritten > n * 90 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
-          assertTrue(totalWritten < n * 105 * replicationFactor, {parsed, shards, totalWritten, replicationFactor});
+          assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 90, n * 105);
         } finally {
           cleanup();
         }
