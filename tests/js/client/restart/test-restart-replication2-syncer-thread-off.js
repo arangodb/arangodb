@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertIdentical} = jsunity.jsUnity.assertions;
+const {assertEqual, assertIdentical, fail} = jsunity.jsUnity.assertions;
 const {db, errors} = require('@arangodb');
 const console = require('console');
 const request = require("@arangodb/request");
@@ -107,7 +107,7 @@ function testSuite() {
       // We should not be able to create a replication2 database if the syncer thread is off
       try {
         db._createDatabase(databaseNameR2, {'replicationVersion': '2'});
-        fail(null, null, "Should not be able to create a database with replication version 2");
+        fail("Should not be able to create a database with replication version 2");
       } catch (err) {
         assertEqual(errors.ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE.code, err.errorNum);
       }
@@ -146,7 +146,7 @@ function testSuite() {
           "server.authentication": "false",
           "rocksdb.sync-interval": 0
         });
-        fail(null, null, "Should not be able to restart using a database with replication version 2");
+        fail("Should not be able to restart using a database with replication version 2");
       } catch (err) {
         // expected
       } finally {
