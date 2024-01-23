@@ -225,32 +225,25 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
     // LocalDocumentID.
     for (auto const& index : shard->getIndexes()) {
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index)
-            .commit(true);
+        auto& idx =
+            basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index);
+        TRI_ASSERT(!idx._isCreation) << "Inverted index still in creation mode";
+        auto res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do Inverted index commit";
+        TRI_ASSERT(
+            res.get() ==
+            arangodb::iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
+            << "Inverted index still has changes after commit.";
       } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-        basics::downCast<iresearch::IResearchRocksDBLink>(*index).commit(true);
-      }
-      if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-        auto maybeInvertedIndex =
-            std::dynamic_pointer_cast<iresearch::IResearchInvertedIndex>(index);
-        // Assert here is good enough, if this fails the index will be ignored.
-        TRI_ASSERT(maybeInvertedIndex) << "Failed to downcast an index that "
-                                          "claims to be an inverted index";
-        if (maybeInvertedIndex) {
-          maybeInvertedIndex->commit(true);
-          maybeInvertedIndex->finishCreation();
-        }
-      }
-      if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-        auto maybeSearchLink =
-            std::dynamic_pointer_cast<iresearch::IResearchRocksDBLink>(index);
-        // Assert here is good enough, if this fails the index will be ignored.
-        TRI_ASSERT(maybeSearchLink)
-            << "Failed to downcast an index that claims to be a link index";
-        if (maybeSearchLink) {
-          maybeSearchLink->commit(true);
-          maybeSearchLink->finishCreation();
-        }
+        auto& idx = basics::downCast<iresearch::IResearchRocksDBLink>(*index);
+        TRI_ASSERT(!idx._isCreation)
+            << "Search link index still in creation mode";
+        auto res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do Search link index commit";
+        TRI_ASSERT(
+            res.get() ==
+            arangodb::iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
+            << "Inverted index still has changes after commit.";
       }
     }
   }
