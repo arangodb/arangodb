@@ -243,11 +243,15 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
         TRI_ASSERT(!idx._isCreation)
             << "Search link index still in creation mode";
         auto res = idx.commit(true);
-        TRI_ASSERT(res.ok()) << "Failed to do Search link index commit";
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(res.ok()) << "Failed to do first Link index commit";
+        res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do second Link index commit";
         TRI_ASSERT(
             res.get() ==
             arangodb::iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
-            << "Inverted index still has changes after commit.";
+            << "Link index still has changes after first commit.";
+#endif
       }
     }
   }
