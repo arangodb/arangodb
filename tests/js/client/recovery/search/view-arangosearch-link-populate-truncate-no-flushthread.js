@@ -43,7 +43,12 @@ function runSetup () {
   db._dropView(vn);
   db._createView(vn, 'arangosearch', {});
 
-  var meta = { links: { [cn]: { includeAllFields: true } } };
+  var meta = { links: { [cn]: { includeAllFields: true,
+        storedValues: [
+          {
+            fields: [ "_key" ]
+          }
+        ]} } };
   db._view(vn).properties(meta);
   
   internal.wal.flush(true, true);
@@ -89,8 +94,11 @@ function recoverySuite () {
       var p = v.properties().links;
       assertTrue(p.hasOwnProperty(cn));
       var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResultStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
+      const message = `Search with COUNT ${result[0]}, Collection COUNT ${expectedResult[0]}, SearchStoredValues: ${expectedResultStoredValues.length}. StoredValue _key values: ${JSON.stringify(expectedResultStoredValues)}`;
+      assertEqual(result[0], expectedResult[0], message);
+      assertEqual(result[0], expectedResultStoredValues.length, message);
     }
  };
 }

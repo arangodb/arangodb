@@ -39,7 +39,7 @@ function runSetup () {
 
   db._drop(cn);
   var c = db._create(cn);
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true, storedValues: ["_key"]});
 
   db._dropView(vn);
   db._createView(vn, 'search-alias', {});
@@ -66,13 +66,6 @@ function recoverySuite () {
 
 
     testIResearchLinkPopulateTruncate: function () {
-      if (db._properties().replicationVersion === "2") {
-        // TODO: Temporarily disabled.
-        // Should be re-enabled as soon as https://arangodb.atlassian.net/browse/CINFRA-876
-        // is fixed.
-        return;
-      }
-
       let checkView = function(viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
@@ -84,9 +77,12 @@ function recoverySuite () {
       };
       checkView(vn, "i1");
 
-      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResultStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(expectedResult[0], result[0]);
+      const message = `Search with COUNT ${result[0]}, Collection COUNT ${expectedResult[0]}, SearchStoredValues: ${expectedResultStoredValues.length}. StoredValue _key values: ${JSON.stringify(expectedResultStoredValues)}`;
+      assertEqual(result[0], expectedResult[0], message);
+      assertEqual(result[0], expectedResultStoredValues.length, message);
     }
  };
 }
