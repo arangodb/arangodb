@@ -55,11 +55,10 @@ struct Indexes {
   static arangodb::Result createIndex(LogicalCollection&, Index::IndexType,
                                       std::vector<std::string> const&,
                                       bool unique, bool sparse, bool estimates);
-
-  static arangodb::Result ensureIndex(LogicalCollection& collection,
-                                      velocypack::Slice definition, bool create,
-                                      velocypack::Builder& output);
-
+  static arangodb::Result ensureIndex(
+      LogicalCollection& collection, velocypack::Slice definition, bool create,
+      velocypack::Builder& output,
+      std::shared_ptr<std::function<arangodb::Result(double)>> f = nullptr);
   static arangodb::Result drop(LogicalCollection& collection,
                                velocypack::Slice indexArg);
 

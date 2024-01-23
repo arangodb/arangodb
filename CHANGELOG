@@ -1,6 +1,8 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* Index progress visibility for indexes, which are created in background
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored

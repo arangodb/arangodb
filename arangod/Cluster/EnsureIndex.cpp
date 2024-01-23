@@ -151,7 +151,11 @@ bool EnsureIndex::first() {
     }
 
     VPackBuilder index;
-    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index);
+    auto lambda = std::make_shared<std::function<arangodb::Result(double d)>>(
+        [this](double d) { return setProgress(d); });
+
+    auto res = methods::Indexes::ensureIndex(*col, body.slice(), true, index,
+                                             std::move(lambda));
     result(res);
 
     if (res.ok()) {
@@ -159,6 +163,7 @@ bool EnsureIndex::first() {
       std::string log = std::string("Index ") + id;
       log += (created.isBool() && created.getBool() ? std::string(" created")
                                                     : std::string(" updated"));
+      setProgress(100.);
       LOG_TOPIC("6e2cd", DEBUG, Logger::MAINTENANCE) << log;
     } else {
       std::stringstream error;
