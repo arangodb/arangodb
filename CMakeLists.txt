@@ -430,14 +430,14 @@ function(determine_repository_version source_dir build_repository have_build_rep
       set(${have_build_repository} "1" PARENT_SCOPE)
     endif()
   elseif(BUILD_REPO_INFO STREQUAL "release")
+    if ("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[1-9][0-9]*$")
+      string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
+    else()
+      set(RELEASE_TAG ${ARANGODB_VERSION})
+    endif()
+    set(RELEASE_TAG "v${RELEASE_TAG}")
     execute_process(
       WORKING_DIRECTORY ${source_dir}
-      if("${ARANGODB_VERSION_RELEASE_NUMBER}" STREQUAL "" AND ARANGODB_VERSION_RELEASE_TYPE MATCHES "^[1-9][0-9]*$")
-        string(REPLACE "-" "." RELEASE_TAG ${ARANGODB_VERSION})
-      else()
-        set(RELEASE_TAG ${ARANGODB_VERSION})
-      endif()
-      set(RELEASE_TAG "v${RELEASE_TAG}")
       COMMAND ${GIT_EXE} describe --all --tags --match ${RELEASE_TAG}
       OUTPUT_VARIABLE TAG_RAW)
     if (NOT TAG_RAW)
