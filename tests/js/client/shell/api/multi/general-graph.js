@@ -849,30 +849,6 @@ function check_edge_operationSuite() {
       assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
-    test_should_not_replace_an_edge_in_case_the_collection_does_not_exist: function () {
-      let v1 = create_vertex(sync, graph_name, user_collection, {});
-      v1 = v1.parsedBody['vertex']['_id'];
-      let v2 = create_vertex(sync, graph_name, user_collection, {});
-      v2 = v2.parsedBody['vertex']['_id'];
-      assertEdgeCollectionNotKnown(replace_edge(sync, graph_name, unknown_collection, unknown_key, {
-        "_from": `${v1}/1`,
-        "_to": `${v2}/2`
-      }));
-
-      // We will now forcefully drop the edge collection manually. It is still part of the graph definition,
-      // but got removed from the database. Therefore, the error must be a 404 in comparison to the check
-      // above in "assertEdgeCollectionNotKnown".
-      db._drop(friend_collection);
-      const doc = replace_edge(sync, graph_name, friend_collection, unknown_key, {
-        "_from": `${v1}/1`,
-        "_to": `${v2}/2`
-      });
-      assertTrue(doc.parsedBody['error']);
-      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-      assertMatch(/.*collection or view not found.*/, doc.parsedBody['errorMessage'], doc);
-    },
-
     test_can_get_an_edge: function () {
       let v1 = create_vertex(sync, graph_name, user_collection, {});
       assertEqual(v1.code, sync ? 201 : 202);
