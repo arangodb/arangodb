@@ -169,16 +169,16 @@ Result fillIndexSingleThreaded(
       if (count > 0) {
         p = docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
         ridx.progress(p);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("fillIndex::pause") {
+          while (true) {
+            TRI_IF_FAILURE("fillIndex::unpause") { break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        }
+#endif
         if (progress != nullptr) {
           (*progress)(p);
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-          TRI_IF_FAILURE("fillIndex::pause") {
-            while (true) {
-              TRI_IF_FAILURE("fillIndex::unpause") { break; }
-              std::this_thread::sleep_for(std::chrono::milliseconds(100));
-            }
-          }
-#endif
         }
       }
 

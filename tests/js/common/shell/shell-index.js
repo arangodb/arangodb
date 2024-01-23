@@ -32,7 +32,6 @@ const errors = internal.errors;
 const { helper, versionHas } = require("@arangodb/test-helper");
 const platform = require('internal').platform;
 
-
 const cn = "UnitTestsCollection";
 
 ////////////////////////////////////////////////////////////////////////////////
