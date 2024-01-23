@@ -286,7 +286,12 @@ RestStatus RestIndexHandler::getIndexes() {
                       << " index already finished.";
                 }
               }
-              tmp.add("progress", VPackValue(progress / shards->size()));
+              if (progress != 0) {
+                // Don't show progress 0, this is in particular relevant
+                // when isBackground is false, in which case no progress
+                // is reported by design.
+                tmp.add("progress", VPackValue(progress / shards->size()));
+              }
             }
           }
         } catch (...) {
