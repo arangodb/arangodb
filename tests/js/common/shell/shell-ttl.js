@@ -1012,13 +1012,16 @@ function TtlSuite () {
         assertTrue(dt >= "2019-01-");
 
         let docs = [];
-        for (let i = 0; i < 10000; ++i) {
+        for (let i = 0; i < 50000; ++i) {
           docs.push({ _key: 'test' + (i % 10) + ':test' + i, testi: 'test' + (i % 10), dateCreated: dt, value: i });
+          if (docs.length === 5000) {
+            db[vn].insert(docs);
+            docs = [];
+          }
         }
-        db[vn].insert(docs);
       
         let oldStats = internal.ttlStatistics();
-        let oldCount = 10000;  
+        let oldCount = 50000;  
         assertEqual(db[vn].count(), oldCount);
       
         // reenable
@@ -1032,18 +1035,20 @@ function TtlSuite () {
         assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
         assertTrue(db._collection(vn).count() < oldCount);
         oldCount = db._collection(vn).count();
-     
-        // wait again for next removal 
-        oldStats = stats;
-        stats = waitForNextRun(db[vn], oldStats, 30);
+    
+        if (oldCount > 0) {
+          // wait again for next removal 
+          oldStats = stats;
+          stats = waitForNextRun(db[vn], oldStats, 30);
 
-        assertNotEqual(stats.runs, oldStats.runs);
-        assertTrue(stats.limitReached > oldStats.limitReached);
-        assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-        // wait again, as fetching the stats and acquiring the collection count is not atomic
-        oldStats = stats;
-        stats = waitForNextRun(db[vn], oldStats, 30);
-        assertTrue(db._collection(vn).count() < oldCount || db._collection(vn).count() === 0);
+          assertNotEqual(stats.runs, oldStats.runs);
+          assertTrue(stats.limitReached > oldStats.limitReached);
+          assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+          // wait again, as fetching the stats and acquiring the collection count is not atomic
+          oldStats = stats;
+          stats = waitForNextRun(db[vn], oldStats, 30);
+          assertTrue(db._collection(vn).count() < oldCount || db._collection(vn).count() === 0);
+        }
       } finally {
         graphs._drop(gn, true);
       }
@@ -1069,13 +1074,16 @@ function TtlSuite () {
         db[en].ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
         
         let docs = [];
-        for (let i = 0; i < 10000; ++i) {
+        for (let i = 0; i < 50000; ++i) {
           docs.push({ _from: vn + '/test' + i + ':test' + (i % 10), _to: vn + '/test' + ((i + 1) % 100) + ':test' + (i % 10), testi: i % 10, dateCreated: dt, value: i });
+          if (docs.length === 5000) {
+            db[en].insert(docs);
+            docs = [];
+          }
         }
-        db[en].insert(docs);
               
         let oldStats = internal.ttlStatistics();
-        let oldCount = 10000;
+        let oldCount = 50000;
         assertEqual(db[en].count(), oldCount);
       
         // reenable
@@ -1089,18 +1097,20 @@ function TtlSuite () {
         assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
         assertTrue(db._collection(en).count() < oldCount);
         oldCount = db._collection(en).count();
-     
-        // wait again for next removal 
-        oldStats = stats;
-        stats = waitForNextRun(db[en], oldStats, 30);
+    
+        if (oldCount > 0) {
+          // wait again for next removal 
+          oldStats = stats;
+          stats = waitForNextRun(db[en], oldStats, 30);
 
-        assertNotEqual(stats.runs, oldStats.runs);
-        assertTrue(stats.limitReached > oldStats.limitReached);
-        assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
-        // wait again, as fetching the stats and acquiring the collection count is not atomic
-        oldStats = stats;
-        stats = waitForNextRun(db[en], oldStats, 30);
-        assertTrue(db._collection(en).count() < oldCount || db._collection(en).count() === 0);
+          assertNotEqual(stats.runs, oldStats.runs);
+          assertTrue(stats.limitReached > oldStats.limitReached);
+          assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+          // wait again, as fetching the stats and acquiring the collection count is not atomic
+          oldStats = stats;
+          stats = waitForNextRun(db[en], oldStats, 30);
+          assertTrue(db._collection(en).count() < oldCount || db._collection(en).count() === 0);
+        }
       } finally {
         graphs._drop(gn, true);
       }
