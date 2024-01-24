@@ -207,11 +207,6 @@ RestStatus RestIndexHandler::getIndexes() {
             VPackValue(static_cast<int>(ResponseCode::OK)));
 
     if (ServerState::instance()->isCoordinator()) {
-      std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(), "/",
-                                    coll->planId().id(), "/indexes");
-      auto& ac = _vocbase.server().getFeature<ClusterFeature>().agencyCache();
-      auto [plannedIndexes, idx] = ac.get(ap);
-
       tmp.add(VPackValue("indexes"));
       {
         VPackArrayBuilder guard(&tmp);
@@ -219,6 +214,12 @@ RestStatus RestIndexHandler::getIndexes() {
           tmp.add(i);
         }
         if (withHidden) {
+          std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(),
+                                        "/", coll->planId().id(), "/indexes");
+          auto& ac =
+              _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+          auto [plannedIndexes, idx] = ac.get(ap);
+
           try {  // this is a best effort progress display.
             for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
               if (pi.get("isBuilding").isTrue()) {
