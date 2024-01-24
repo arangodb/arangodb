@@ -2538,7 +2538,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",index_id=\"%llu\",shard=\"\"}2054\n"
-    , cid, iid, cid, iid, cid, iid, cid, iid, cid);  // clang-format on
+    , cid, iid, cid, iid, cid, iid, cid, iid, cid, iid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2613,7 +2613,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",index_id=\"%llu\",shard=\"\"}1513\n"
-    , cid, iid, cid, iid, cid, iid, cid, iid, cid);  // clang-format on
+    , cid, iid, cid, iid, cid, iid, cid, iid, cid, iid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2652,7 +2652,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",index_id=\"%llu\",shard=\"\"}1561\n"
-    , cid, iid, cid, iid, cid, iid, cid, iid, cid);  // clang-format on
+    , cid, iid, cid, iid, cid, iid, cid, iid, cid, iid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2691,7 +2691,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",index_id=\"%llu\",shard=\"\"}681\n"
-    , cid, iid, cid, iid, cid, iid, cid, iid, cid);  // clang-format on
+    , cid, iid, cid, iid, cid, iid, cid, iid, cid, iid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
@@ -2719,7 +2719,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
       "# HELP arangodb_search_index_size Size of the index in bytes\n"
       "# TYPE arangodb_search_index_size gauge\n"
       "arangodb_search_index_size{db=\"testVocbase\",view=\"h3039/42\",collection=\"%llu\",index_id=\"%llu\",shard=\"\"}1513\n"
-    , cid, iid, cid, iid, cid, iid, cid, iid, cid);  // clang-format on
+    , cid, iid, cid, iid, cid, iid, cid, iid, cid, iid);  // clang-format on
     std::string actual;
     getPrometheusStr(actual);
     EXPECT_EQ(actual, std::string{expectedData});
