@@ -30,20 +30,28 @@
 #include "Basics/ConditionVariable.h"
 #include "Basics/Exceptions.h"
 #include "Basics/MutexLocker.h"
+#include "Basics/StaticStrings.h"
+#include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/application-exit.h"
 #include "Basics/system-functions.h"
+#include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/FollowerInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "Network/Methods.h"
+#include "Network/Utils.h"
+#include "Network/types.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/StandaloneContext.h"
 #include "Transaction/Methods.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/OperationResult.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -257,6 +265,16 @@ class TtlThread final : public ServerThread<ArangodServer> {
 
     stats.runs++;
 
+    // these are only needed if we are on a DB server
+    size_t coordinatorIndex = 0;
+    std::vector<ServerID> coordinators;
+
+    if (ServerState::instance()->isDBServer()) {
+      // fetch list of current coordinators
+      auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+      coordinators = ci.getCurrentCoordinators();
+    }
+
     constexpr size_t maxResultsPerQuery = 4000;
 
     double const stamp = TRI_microtime();
@@ -320,9 +338,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
             continue;
           }
 
-          // TODO: Filter out indexes that are currently still being built
-          // (checking isBuilding flag)
-
           // serialize the index description so we can read the "expireAfter"
           // attribute
           _builder.clear();
@@ -369,6 +384,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
             // don't let query runtime restrictions affect the lookup query
             aql::QueryOptions options;
             options.maxRuntime = 0.0;
+
             auto query = aql::Query::create(
                 transaction::StandaloneContext::Create(*vocbase),
                 aql::QueryString(::lookupQuery), bindVars, options);
@@ -409,92 +425,184 @@ class TtlThread final : public ServerThread<ArangodServer> {
               break;
             }
 
-            TRI_ASSERT(limitLeft >= found);
-            limitLeft -= found;
-            if (found < maxResultsPerQuery) {
+            if (found > limitLeft) {
+              limitLeft = 0;
+            } else {
+              limitLeft -= found;
+            }
+            if (found < maxResultsPerQuery ||
+                found > leftForCurrentCollection) {
               // no more documents to remove
               leftForCurrentCollection = 0;
             } else {
-              TRI_ASSERT(leftForCurrentCollection >= found);
               leftForCurrentCollection -= found;
             }
 
-            auto trx = std::make_unique<SingleCollectionTransaction>(
-                transaction::StandaloneContext::Create(*vocbase),
-                collection->name(), AccessMode::Type::WRITE);
+            if (ServerState::instance()->isDBServer() &&
+                collection->isRemoteSmartEdgeCollection()) {
+              // SmartGraph edge collection
+              TRI_ASSERT(collection->type() == TRI_COL_TYPE_EDGE);
 
-            Result res = trx->begin();
+              // look up cluster-wide collection name from shard
+              CollectionNameResolver resolver(collection->vocbase());
+              std::string cname = resolver.getCollectionName(collection->id());
 
-            if (res.fail()) {
-              if (!res.is(TRI_ERROR_ARANGO_READ_ONLY) &&
-                  !res.is(TRI_ERROR_ARANGO_CONFLICT) &&
-                  !res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
-                  !res.is(TRI_ERROR_LOCKED) &&
-                  !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
-                  !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
-                LOG_TOPIC("f211c", WARN, Logger::TTL)
-                    << "unexpected error during TTL document removal for "
-                       "collection '"
-                    << collection->name() << "': " << res.errorMessage();
+              auto& nf = server().getFeature<arangodb::NetworkFeature>();
+              network::ConnectionPool* pool = nf.pool();
+              if (pool == nullptr) {
+                break;
               }
-              break;
-            }
 
-            OperationOptions opOptions;
-            opOptions.ignoreRevs = false;
-            opOptions.waitForSync = false;
-            // opOptions.silent = true;
-
-            OperationResult opRes =
-                trx->remove(collection->name(), docsToRemove, opOptions);
-            if (opRes.fail()) {
-              LOG_TOPIC("86e90", WARN, Logger::TTL)
-                  << "could not remove " << found
-                  << " documents in TTL thread: "
-                  << opRes.result.errorMessage();
-              break;
-            }
-
-            bool doCommit = true;
-            size_t count = 0;
-            for (auto it : VPackArrayIterator(opRes.slice())) {
-              VPackSlice error = it.get(StaticStrings::Error);
-              if (!error.isTrue()) {
-                ++count;
-                continue;
+              if (coordinators.empty()) {
+                // no coordinator to send the request to
+                break;
               }
-              error = it.get(StaticStrings::ErrorNum);
-              if (error.isNumber()) {
-                auto code = ErrorCode{error.getNumericValue<int>()};
-                if (code != TRI_ERROR_ARANGO_READ_ONLY &&
-                    code != TRI_ERROR_ARANGO_CONFLICT &&
-                    code != TRI_ERROR_LOCKED) {
-                  LOG_TOPIC("86e91", WARN, Logger::TTL)
-                      << "could not remove " << found
-                      << " documents in TTL thread: "
-                      << it.get(StaticStrings::ErrorMessage).stringView();
-                  doCommit = false;
-                  break;
+
+              network::RequestOptions reqOptions;
+              reqOptions.param(StaticStrings::IgnoreRevsString, "false");
+              reqOptions.param(StaticStrings::WaitForSyncString, "false");
+              reqOptions.database = collection->vocbase().name();
+              reqOptions.timeout = network::Timeout(30.0);
+
+              network::Headers headers = network::addAuthorizationHeader({});
+
+              // pick next coordinator in list (round robin)
+              TRI_ASSERT(!coordinators.empty());
+              auto const& coordinator =
+                  coordinators[++coordinatorIndex % coordinators.size()];
+
+              // send batch document deletion request to the picked coordinator
+              std::string url = absl::StrCat(
+                  "/_api/document/", basics::StringUtils::urlEncode(cname));
+              auto f = network::sendRequestRetry(
+                  pool, "server:" + coordinator, fuerte::RestVerb::Delete, url,
+                  std::move(*queryResult.data->steal()), reqOptions, headers);
+              auto& val = f.get();
+              Result res = val.combinedResult();
+
+              if (res.fail()) {
+                // we can ignore these errors here, as they can be expected if
+                // some other operations concurrently modify/remove documents in
+                // the collection
+                if (!res.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                    !res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                    !res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_LOCKED) &&
+                    !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  LOG_TOPIC("f211d", WARN, Logger::TTL)
+                      << "unexpected error during TTL document removal for "
+                         "SmartGraph collection '"
+                      << cname << "': " << res.errorMessage();
+                }
+                break;
+              }
+
+              if (!val.slice().isArray()) {
+                LOG_TOPIC("2de75", WARN, Logger::TTL)
+                    << "unexpected response received during TTL document "
+                       "removal for "
+                       "SmartGraph collection '"
+                    << cname << "'";
+                break;
+              }
+
+              size_t count = 0;
+              for (auto it : VPackArrayIterator(val.slice())) {
+                VPackSlice error = it.get(StaticStrings::Error);
+                if (!error.isTrue()) {
+                  ++count;
+                  continue;
                 }
               }
-            }
 
-            if (!doCommit || count == 0) {
-              break;
-            }
+              stats.documentsRemoved += count;
+              LOG_TOPIC("2455f", INFO, Logger::TTL)
+                  << "TTL thread removed " << count
+                  << " documents for SmartGraph collection '" << cname << "'";
+            } else {
+              // single server or non-SmartGraph collection
+              auto trx = std::make_unique<SingleCollectionTransaction>(
+                  transaction::StandaloneContext::Create(*vocbase),
+                  collection->name(), AccessMode::Type::WRITE);
 
-            res = trx->finish(res);
-            if (res.fail()) {
-              LOG_TOPIC("86e92", WARN, Logger::TTL)
-                  << "unable to commit removal operation for " << count
-                  << " documents in TTL thread: " << res.errorMessage();
-              break;
-            }
+              Result res = trx->begin();
 
-            stats.documentsRemoved += count;
-            LOG_TOPIC("2455e", INFO, Logger::TTL)
-                << "TTL thread removed " << count
-                << " documents for collection '" << collection->name();
+              if (res.fail()) {
+                // we can ignore these errors here, as they can be expected if
+                // some other operations concurrently modify/remove documents in
+                // the collection
+                if (!res.is(TRI_ERROR_ARANGO_READ_ONLY) &&
+                    !res.is(TRI_ERROR_ARANGO_CONFLICT) &&
+                    !res.is(TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_LOCKED) &&
+                    !res.is(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                    !res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND)) {
+                  LOG_TOPIC("f211c", WARN, Logger::TTL)
+                      << "unexpected error during TTL document removal for "
+                         "collection '"
+                      << collection->name() << "': " << res.errorMessage();
+                }
+                break;
+              }
+
+              OperationOptions opOptions;
+              opOptions.ignoreRevs = false;
+              opOptions.waitForSync = false;
+              // opOptions.silent = true;
+
+              OperationResult opRes =
+                  trx->remove(collection->name(), docsToRemove, opOptions);
+              if (opRes.fail()) {
+                LOG_TOPIC("86e90", WARN, Logger::TTL)
+                    << "could not remove " << found
+                    << " documents in TTL thread: "
+                    << opRes.result.errorMessage();
+                break;
+              }
+
+              bool doCommit = true;
+              size_t count = 0;
+              for (auto it : VPackArrayIterator(opRes.slice())) {
+                VPackSlice error = it.get(StaticStrings::Error);
+                if (!error.isTrue()) {
+                  ++count;
+                  continue;
+                }
+                error = it.get(StaticStrings::ErrorNum);
+                if (error.isNumber()) {
+                  auto code = ErrorCode{error.getNumericValue<int>()};
+                  if (code != TRI_ERROR_ARANGO_READ_ONLY &&
+                      code != TRI_ERROR_ARANGO_CONFLICT &&
+                      code != TRI_ERROR_ARANGO_DOCUMENT_NOT_FOUND &&
+                      code != TRI_ERROR_LOCKED) {
+                    LOG_TOPIC("86e91", WARN, Logger::TTL)
+                        << "could not remove " << found
+                        << " documents in TTL thread: "
+                        << it.get(StaticStrings::ErrorMessage).stringView();
+                    doCommit = false;
+                    break;
+                  }
+                }
+              }
+
+              if (!doCommit || count == 0) {
+                break;
+              }
+
+              res = trx->finish(res);
+              if (res.fail()) {
+                LOG_TOPIC("86e92", WARN, Logger::TTL)
+                    << "unable to commit removal operation for " << count
+                    << " documents in TTL thread: " << res.errorMessage();
+                break;
+              }
+
+              stats.documentsRemoved += count;
+              LOG_TOPIC("2455e", INFO, Logger::TTL)
+                  << "TTL thread removed " << count
+                  << " documents for collection '" << collection->name() << "'";
+            }
           }
 
           // there can only be one TTL index per collection, so we can abort the
