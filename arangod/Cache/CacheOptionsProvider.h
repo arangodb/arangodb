@@ -51,7 +51,7 @@ struct CacheOptions {
   // it is set to 56% of the configured memory limit by default only because
   // of compatibility reasons. the value was set to 0.7 * 0.8 of the memory
   // limit, i.e. 0.56.
-  double highwaterMultiplier = 0.95;
+  double highwaterMultiplier = 0.56;
   // whether or not we want recent hit rates. if this is turned off,
   // we only get global hit rates over the entire lifetime of a cache
   bool enableWindowedStats = true;

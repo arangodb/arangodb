@@ -244,7 +244,7 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
       << "binding replication context " << id() << " to collection '" << cname
       << "'";
 
-  std::lock_guard writeLocker{_contextLock};
+  std::unique_lock<std::mutex> writeLocker{_contextLock};
 
   auto it = _iterators.find(cid);
   if (it != _iterators.end()) {  // nothing to do here
@@ -256,6 +256,12 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   uint64_t documentCountAdjustmentTicket = 0;
   auto* rcoll = static_cast<RocksDBMetaCollection*>(logical->getPhysical());
   if (_snapshot == nullptr) {
+    // we have to release the lock before we execute the co_await. the
+    // problem is that if we keep holding the lock, this coroutine may be
+    // resumed in a different thread, and it is UB to unlock a mutex in a
+    // different thread than the one it was acquired in
+    writeLocker.unlock();
+
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
     auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
@@ -268,11 +274,24 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
     } else {
       lockGuard.cancel();
     }
+
+    // re-acquire the mutex. we need it for checking and modifying _iterators.
+    writeLocker.lock();
+
+    it = _iterators.find(cid);
+    if (it !=
+        _iterators.end()) {  // someone else inserted the iterator in-between
+      co_return std::make_tuple(Result{}, it->second->logical->id(),
+                                it->second->numberDocuments);
+    }
+
     numberDocuments = rcoll->meta().numberDocuments();
     lazyCreateSnapshot();
   } else {  // fetch non-exclusive
     numberDocuments = rcoll->meta().numberDocuments();
   }
+
+  TRI_ASSERT(writeLocker.owns_lock());
   TRI_ASSERT(_snapshot != nullptr);
   TRI_ASSERT(_snapshot->snapshot() != nullptr);
   TRI_ASSERT(documentCountAdjustmentTicket == 0 ||

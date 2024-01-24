@@ -47,6 +47,7 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Slice.h>
 
 using namespace arangodb;
@@ -162,6 +163,8 @@ Future<network::Response> beginTransactionRequest(TransactionState& state,
   reqOpts.timeout = network::Timeout(lockTimeout + 5.0);
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
+  network::addUserParameter(reqOpts, state.username());
+
   auto* pool = state.vocbase().server().getFeature<NetworkFeature>().pool();
   network::Headers headers;
   headers.try_emplace(StaticStrings::TransactionId, std::to_string(tid.id()));
@@ -234,15 +237,6 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     return Result();
   }
 
-  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
-      commitGuard;
-  // If the transaction is not read-only, we want to acquire the transaction
-  // commit lock as read lock, read-only transactions can just proceed:
-  if (!state->isReadOnlyTransaction()) {
-    commitGuard.emplace(
-        transaction::ManagerFeature::manager()->getTransactionCommitGuard());
-  }
-
   // only commit managed transactions, and AQL leader transactions (on
   // DBServers)
   if (!ClusterTrxMethods::isElCheapo(*state) ||
@@ -251,6 +245,19 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     return Result();
   }
   TRI_ASSERT(!state->isDBServer() || !state->id().isFollowerTransactionId());
+
+  std::optional<arangodb::transaction::Manager::TransactionCommitGuard>
+      commitGuard;
+  // If the transaction is not read-only, we want to acquire the transaction
+  // commit lock as read lock, read-only transactions can just proceed.
+  // note that we only need to acquire the commit lock if the transaction
+  // is actually about to commit (i.e. no error happened) and not about
+  // to abort:
+  if (!state->isReadOnlyTransaction() &&
+      status == transaction::Status::COMMITTED) {
+    commitGuard.emplace(
+        transaction::ManagerFeature::manager()->getTransactionCommitGuard());
+  }
 
   network::RequestOptions reqOpts;
   // We intentionally choose the timeout to be 14 minutes on coordinators
@@ -269,7 +276,7 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   reqOpts.skipScheduler = api == transaction::MethodsApi::Synchronous;
 
   TransactionId tidPlus = state->id().child();
-  std::string const path = "/_api/transaction/" + std::to_string(tidPlus.id());
+  std::string const path = absl::StrCat("/_api/transaction/", tidPlus.id());
   if (state->isDBServer()) {
     // This is a leader replicating the transaction commit or abort and
     // we should tell the follower that this is a replication operation.

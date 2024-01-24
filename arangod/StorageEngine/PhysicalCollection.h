@@ -42,6 +42,7 @@
 #include <string_view>
 #include <type_traits>
 #include <vector>
+#include <span>
 
 namespace arangodb {
 namespace transaction {
@@ -196,6 +197,7 @@ class PhysicalCollection {
     bool readCache = true;
     bool fillCache = true;
     bool readOwnWrites = false;
+    bool countBytes = false;
   };
 
   virtual Result lookup(transaction::Methods* trx, std::string_view key,
@@ -206,6 +208,17 @@ class PhysicalCollection {
                         IndexIterator::DocumentCallback const& cb,
                         LookupOptions options,
                         StorageSnapshot const* snapshot = nullptr) const = 0;
+
+  using MultiDocumentCallback =
+      fu2::function<bool(Result, LocalDocumentId token,
+                         aql::DocumentData&& data, VPackSlice doc) const>;
+
+  /// @brief looks up multiple documents. A result value is passed in for each
+  /// read document. `data` and `doc` are only valid if the result is ok.
+  virtual Result lookup(transaction::Methods* trx,
+                        std::span<LocalDocumentId> tokens,
+                        MultiDocumentCallback const& cb,
+                        LookupOptions options) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,
@@ -244,6 +257,8 @@ class PhysicalCollection {
 
   virtual uint64_t placeRevisionTreeBlocker(TransactionId transactionId);
   virtual void removeRevisionTreeBlocker(TransactionId transactionId);
+
+  virtual bool cacheEnabled() const noexcept = 0;
 
  protected:
   explicit PhysicalCollection(LogicalCollection& collection);

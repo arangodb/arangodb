@@ -51,9 +51,12 @@ const createCollection = function (name) {
 
 const queryOptions = {
   optimizer: {
-    rules: ["-late-document-materialization"], // turn off late materialization
+    rules: [  // turn off all late materialization techniques
+        "-late-document-materialization",
+        "-batch-materialize-documents",
+    ],
   },
-  maxNumberOfPlans: 1
+  maxNumberOfPlans: 1,
 };
 
 const documentsA = Array.from({length: numDocuments})

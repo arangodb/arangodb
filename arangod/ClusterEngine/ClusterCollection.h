@@ -73,6 +73,8 @@ class ClusterCollection final : public PhysicalCollection {
   RevisionId revision(transaction::Methods* trx) const override;
   uint64_t numberDocuments(transaction::Methods* trx) const override;
 
+  bool cacheEnabled() const noexcept override;
+
   ////////////////////////////////////
   // -- SECTION Indexes --
   ///////////////////////////////////
@@ -116,6 +118,10 @@ class ClusterCollection final : public PhysicalCollection {
                 IndexIterator::DocumentCallback const& cb,
                 LookupOptions options,
                 StorageSnapshot const* snapshot = nullptr) const final;
+
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const final;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,

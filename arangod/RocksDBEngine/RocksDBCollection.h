@@ -104,7 +104,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
       transaction::Methods* trx, std::string_view key,
       std::pair<LocalDocumentId, RevisionId>& result) const override;
 
-  bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
+  bool lookupRevision(transaction::Methods* trx, velocypack::Slice key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
   Result lookup(transaction::Methods* trx, std::string_view key,
@@ -115,6 +115,10 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 IndexIterator::DocumentCallback const& cb,
                 LookupOptions options,
                 StorageSnapshot const* snapshot = nullptr) const override;
+
+  Result lookup(transaction::Methods* trx, std::span<LocalDocumentId> tokens,
+                MultiDocumentCallback const& cb,
+                LookupOptions options) const override;
 
   Result insert(transaction::Methods& trx,
                 IndexesSnapshot const& indexesSnapshot,
@@ -144,7 +148,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
                 velocypack::Slice previousDocument,
                 OperationOptions const& options) override;
 
-  bool cacheEnabled() const noexcept;
+  bool cacheEnabled() const noexcept override;
 
   bool hasDocuments() override;
 

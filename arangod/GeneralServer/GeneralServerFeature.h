@@ -66,6 +66,7 @@ class GeneralServerFeature final : public ArangodFeature {
   bool permanentRootRedirect() const noexcept;
   std::string redirectRootTo() const;
   std::string const& supportInfoApiPolicy() const noexcept;
+  std::string const& optionsApiPolicy() const noexcept;
   uint64_t compressResponseThreshold() const noexcept;
 
   std::shared_ptr<rest::RestHandlerFactory> handlerFactory() const;
@@ -122,6 +123,7 @@ class GeneralServerFeature final : public ArangodFeature {
   std::vector<std::string> _accessControlAllowOrigins;
   std::string _redirectRootTo;
   std::string _supportInfoApiPolicy;
+  std::string _optionsApiPolicy;
   std::shared_ptr<rest::RestHandlerFactory> _handlerFactory;
   std::unique_ptr<rest::AsyncJobManager> _jobManager;
   std::vector<std::unique_ptr<rest::GeneralServer>> _servers;

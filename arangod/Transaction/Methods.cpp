@@ -37,6 +37,7 @@
 #include "Basics/encoding.h"
 #include "Basics/system-compiler.h"
 #include "Basics/voc-errors.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
@@ -610,7 +611,8 @@ struct GetDocumentProcessor
         }
         return true;
       };
-      res = _collection.getPhysical()->lookup(&_methods, key, cb, {});
+      res = _collection.getPhysical()->lookup(&_methods, key, cb,
+                                              {.countBytes = true});
 
       if (conflict) {
         res.reset(TRI_ERROR_ARANGO_CONFLICT);
@@ -633,7 +635,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         _operationType(operationType),
         _needToFetchOldDocument(
             operationType == TRI_VOC_DOCUMENT_OPERATION_UPDATE ||
-            _indexesSnapshot.hasSecondaryIndex() || options.returnOld),
+            _indexesSnapshot.hasSecondaryIndex() || options.returnOld ||
+            !options.versionAttribute.empty()),
         _replicationVersion(collection.replicationVersion()) {
     // this call will populate replicationType and followers
     Result res = this->_methods.determineReplicationTypeAndFollowers(
@@ -916,7 +919,7 @@ struct RemoveProcessor : ReplicatedProcessorBase<RemoveProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -1063,26 +1066,57 @@ struct ModifyingProcessorBase : ReplicatedProcessorBase<Derived> {
     // no-op update: no values in the document are changed. in this case we
     // do not perform any update, but simply return. note: no-op updates are
     // not allowed if there are computed attributes.
-    bool isNoOpUpdate =
+    bool isNoOp =
         (value.length() <= 1 && isUpdate && !this->_options.isRestore &&
          this->_options.isSynchronousReplicationFrom.empty() &&
          _batchOptions.computedValues == nullptr);
+
+    if (this->_replicationType != Methods::ReplicationType::FOLLOWER &&
+        !this->_options.versionAttribute.empty()) {
+      // check document versions
+      std::optional<uint64_t> previousVersion;
+      std::optional<uint64_t> currentVersion;
+      if (VPackSlice previous =
+              previousDocument.get(this->_options.versionAttribute);
+          previous.isNumber()) {
+        try {
+          previousVersion = previous.getNumericValue<uint64_t>();
+        } catch (...) {
+          // no error reported from here
+        }
+      }
+      if (VPackSlice current = value.get(this->_options.versionAttribute);
+          current.isNumber()) {
+        try {
+          currentVersion = current.getNumericValue<uint64_t>();
+        } catch (...) {
+          // no error reported from here
+        }
+      }
+      if (previousVersion.has_value() && currentVersion.has_value() &&
+          *currentVersion <= *previousVersion) {
+        // attempt to update a document with an older version
+        isNoOp = true;
+        value = previousDocument;
+      }
+    }
 
     // merge old and new values
     Result res;
     if (isUpdate) {
       res = mergeObjectsForUpdate(
-          this->_methods, this->_collection, previousDocument, value,
-          isNoOpUpdate, previousRevisionId, newRevisionId, newDocumentBuilder,
-          this->_options, _batchOptions);
+          this->_methods, this->_collection, previousDocument, value, isNoOp,
+          previousRevisionId, newRevisionId, newDocumentBuilder, this->_options,
+          _batchOptions);
     } else {
       res = newObjectForReplace(
-          this->_methods, this->_collection, previousDocument, value,
-          newRevisionId, newDocumentBuilder, this->_options, _batchOptions);
+          this->_methods, this->_collection, previousDocument, value, isNoOp,
+          previousRevisionId, newRevisionId, newDocumentBuilder, this->_options,
+          _batchOptions);
     }
 
     if (res.ok()) {
-      if (isNoOpUpdate) {
+      if (isNoOp) {
         // shortcut. no need to do anything
         TRI_ASSERT(_batchOptions.computedValues == nullptr);
         TRI_ASSERT(previousRevisionId == newRevisionId);
@@ -1291,7 +1325,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         auto cb = IndexIterator::makeDocumentCallback(*previousDocumentBuilder);
         res = _collection.getPhysical()->lookup(
             &_methods, oldDocumentId, cb,
-            {.fillCache = false, .readOwnWrites = true});
+            {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
         if (res.ok()) {
           TRI_ASSERT(previousDocumentBuilder->slice().isObject());
@@ -1306,7 +1340,8 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
         TRI_ASSERT(res.fail() || _newDocumentBuilder->slice().isObject());
 
         if (res.ok() && oldRevisionId == newRevisionId &&
-            _overwriteMode == OperationOptions::OverwriteMode::Update) {
+            (_overwriteMode == OperationOptions::OverwriteMode::Update ||
+             _overwriteMode == OperationOptions::OverwriteMode::Replace)) {
           // did not actually update - intentionally do not fill
           // replicationData
           excludeFromReplication |= true;
@@ -1501,7 +1536,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
       auto cb = IndexIterator::makeDocumentCallback(*_previousDocumentBuilder);
       res = _collection.getPhysical()->lookup(
           &_methods, oldDocumentId, cb,
-          {.fillCache = false, .readOwnWrites = true});
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.fail()) {
         return res;
@@ -1547,7 +1582,7 @@ struct ModifyProcessor : ModifyingProcessorBase<ModifyProcessor> {
           key.stringView(), newRevisionId, oldRevisionId,
           _options.returnOld ? _previousDocumentBuilder.get() : nullptr,
           _options.returnNew ? _newDocumentBuilder.get() : nullptr);
-      if (newRevisionId == oldRevisionId && _isUpdate) {
+      if (newRevisionId == oldRevisionId) {
         excludeFromReplication = true;
       }
     }
@@ -1681,7 +1716,18 @@ bool transaction::Methods::removeStatusChangeCallback(
 }
 
 TRI_vocbase_t& transaction::Methods::vocbase() const {
+  TRI_ASSERT(_state);
   return _state->vocbase();
+}
+
+void transaction::Methods::setUsername(std::string_view name) {
+  TRI_ASSERT(_state);
+  _state->setUsername(name);
+}
+
+std::string_view transaction::Methods::username() const noexcept {
+  TRI_ASSERT(_state);
+  return _state->username();
 }
 
 // is this instance responsible for commit / abort
@@ -1696,11 +1742,13 @@ void transaction::Methods::addHint(transaction::Hints::Hint hint) noexcept {
 
 /// @brief whether or not the transaction consists of a single operation only
 bool transaction::Methods::isSingleOperationTransaction() const noexcept {
+  TRI_ASSERT(_state);
   return _state->isSingleOperation();
 }
 
 /// @brief get the status of the transaction
 transaction::Status transaction::Methods::status() const noexcept {
+  TRI_ASSERT(_state);
   return _state->status();
 }
 
@@ -1744,6 +1792,8 @@ transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
   // initialize the transaction. this can update _mainTransaction!
   _state = _transactionContext->acquireState(options, _mainTransaction);
   TRI_ASSERT(_state != nullptr);
+
+  setUsername(ExecContext::current().user());
 }
 
 transaction::Methods::Methods(std::shared_ptr<transaction::Context> ctx,
@@ -2108,7 +2158,8 @@ futures::Future<Result> transaction::Methods::documentFastPath(
     co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
   }
   auto cb = IndexIterator::makeDocumentCallback(result);
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 /// @brief return one document from a collection, fast path
@@ -2142,7 +2193,8 @@ futures::Future<Result> transaction::Methods::documentFastPathLocal(
 
   // We never want to see our own writes here, otherwise we could observe
   // documents which have been inserted by a currently running query.
-  co_return collection->getPhysical()->lookup(this, key, cb, {});
+  co_return collection->getPhysical()->lookup(this, key, cb,
+                                              {.countBytes = true});
 }
 
 namespace {
@@ -2252,6 +2304,18 @@ Result transaction::Methods::determineReplicationTypeAndFollowers(
     velocypack::Slice value, OperationOptions& options,
     ReplicationType& replicationType,
     std::shared_ptr<std::vector<ServerID> const>& followers) {
+  if (_state->isDBServer()) {
+    // This failure point is to test the case that a former leader has
+    // resigned in the meantime but still gets an insert request from
+    // a coordinator who does not know this yet. That is, the test sets
+    // the failure point on all servers, including the current leader.
+    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
+      if (operationName == "insert" && value.isObject() &&
+          value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
+        return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
+      }
+    }
+  }
   auto replicationVersion = collection.replicationVersion();
   if (replicationVersion == replication::Version::ONE) {
     return determineReplication1TypeAndFollowers(
@@ -2273,17 +2337,6 @@ Result transaction::Methods::determineReplication1TypeAndFollowers(
   TRI_ASSERT(followers == nullptr);
 
   if (_state->isDBServer()) {
-    // This failure point is to test the case that a former leader has
-    // resigned in the meantime but still gets an insert request from
-    // a coordinator who does not know this yet. That is, the test sets
-    // the failure point on all servers, including the current leader.
-    TRI_IF_FAILURE("documents::insertLeaderRefusal") {
-      if (operationName == "insert" && value.isObject() &&
-          value.hasKey("ThisIsTheRetryOnLeaderRefusalTest")) {
-        return {TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED};
-      }
-    }
-
     // Block operation early if we are not supposed to perform it:
     auto const& followerInfo = collection.followers();
     std::string theLeader = followerInfo->getLeader();
@@ -2409,9 +2462,74 @@ Result transaction::Methods::determineReplication2TypeAndFollowers(
   if (auto* context = dynamic_cast<transaction::ReplicatedContext*>(
           _transactionContext.get());
       context == nullptr) {
+    // We believe to be the leader
     options.silent = false;
     replicationType = ReplicationType::LEADER;
     followers = std::make_shared<std::vector<ServerID>>();
+
+    // This is a stunt to make sure the write concern can be fulfilled.
+    auto& vocbase = this->vocbase();
+    auto& clusterFeature = vocbase.server().getFeature<ClusterFeature>();
+    auto canReachWriteConcern = basics::catchToResultT([&]() {
+      auto stateId = collection.replicatedStateId();
+      auto& agencyCache = clusterFeature.agencyCache();
+
+      // Fetch replicated log participants
+      auto [participantsConfigQuery, raftIndex] = agencyCache.get(
+          fmt::format("Plan/ReplicatedLogs/{}/{}/participantsConfig",
+                      vocbase.name(), stateId));
+      if (participantsConfigQuery->isEmpty()) {
+        LOG_TOPIC("90e43", DEBUG, Logger::REPLICATED_STATE)
+            << "ParticipantsConfig of log " << stateId
+            << " is non-existent according to raftIndex " << raftIndex
+            << ", during transaction " << tid() << ", concerning shard "
+            << collection.name();
+        return false;
+      }
+      auto participantsConfig =
+          velocypack::deserialize<replication2::agency::ParticipantsConfig>(
+              participantsConfigQuery->slice());
+      auto wc = participantsConfig.config.effectiveWriteConcern;
+
+      // Fetch health information
+      auto [healthQuery, healthRaftIndex] =
+          agencyCache.get("Supervision/Health");
+      if (healthQuery->isEmpty() || !healthQuery->slice().isObject()) {
+        LOG_TOPIC("86e21", DEBUG, Logger::REPLICATED_STATE)
+            << "Health of participants is invalid according to raftIndex "
+            << healthRaftIndex << ", during transaction " << tid()
+            << ", concerning shard " << collection.name();
+        return false;
+      }
+
+      // The number of non-failed participants must satisfy the write concern.
+      std::size_t nonFailedParticipants{0};
+      for (auto& [pid, _] : participantsConfig.participants) {
+        auto health = healthQuery->slice().get(pid);
+        // Server can be removed from Health (health is none), as permanently
+        // gone In this case it has to be counted as failed participant
+        if (health.isObject() &&
+            health.get("Status").copyString() != "FAILED") {
+          ++nonFailedParticipants;
+        }
+      }
+
+      return nonFailedParticipants >= wc;
+    });
+
+    if (canReachWriteConcern.fail()) {
+      LOG_TOPIC("bdce1", DEBUG, Logger::REPLICATED_STATE)
+          << "Cannot reach write concern for transaction " << tid()
+          << ", concerning shard " << collection.name() << ": "
+          << canReachWriteConcern.result();
+    } else if (*canReachWriteConcern) {
+      return {};
+    }
+
+    if (clusterFeature.statusCodeFailedWriteConcern() == 403) {
+      return {TRI_ERROR_ARANGO_READ_ONLY};
+    }
+    return {TRI_ERROR_REPLICATION_WRITE_CONCERN_NOT_FULFILLED};
   } else {
     options.silent = true;
     replicationType = ReplicationType::FOLLOWER;
@@ -2741,6 +2859,7 @@ Future<OperationResult> transaction::Methods::truncateLocal(
       reqOpts.timeout = network::Timeout(600);
       reqOpts.param(StaticStrings::Compact,
                     (options.truncateCompact ? "true" : "false"));
+      network::addUserParameter(reqOpts, username());
 
       for (auto const& f : *followers) {
         // check following term id for the follower:
@@ -2756,8 +2875,8 @@ Future<OperationResult> transaction::Methods::truncateLocal(
                         ServerState::instance()->getId());
         } else {
           reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                        ServerState::instance()->getId() + "_" +
-                            basics::StringUtils::itoa(followingTermId));
+                        absl::StrCat(ServerState::instance()->getId(), "_",
+                                     followingTermId));
         }
         // reqOpts is copied deep in sendRequestRetry, so we are OK to
         // change it in the loop!
@@ -3197,8 +3316,41 @@ Future<Result> Methods::replicateOperations(
 
   TRI_IF_FAILURE("replicateOperations::skip") { return Result(); }
 
+  // index cache refilling...
+  bool const refill = std::invoke([&]() {
+    if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
+      // index cache refilling opt-out
+      return false;
+    }
+
+    // this attribute can have 3 values: default, true and false. only
+    // expose it when it is not set to "default"
+    auto& engine = vocbase()
+                       .server()
+                       .template getFeature<EngineSelectorFeature>()
+                       .engine();
+
+    return engine.autoRefillIndexCachesOnFollowers() &&
+           ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
+            (options.refillIndexCaches == RefillIndexCaches::kDefault &&
+             engine.autoRefillIndexCaches()));
+  });
+
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
+    if (refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+  TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
+    if (!refill) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   // replication2 is handled here
   if (collection->replicationVersion() == replication::Version::TWO) {
+    using namespace replication2::replicated_state::document;
+
     auto& rtc = static_cast<ReplicatedRocksDBTransactionCollection&>(
         transactionCollection);
     auto leaderState = rtc.leaderState();
@@ -3207,10 +3359,11 @@ Future<Result> Methods::replicateOperations(
         << "Tried to replicate an operation for a collection that is not a "
            "shard."
         << rtc.collectionName();
-    auto replicatedOp = replication2::replicated_state::document::
-        ReplicatedOperation::buildDocumentOperation(
-            operation, state()->id().asFollowerTransactionId(),
-            maybeShardID.get(), replicationData.sharedSlice());
+    auto operationOptions = ReplicatedOperation::DocumentOperation::Options{
+        .refillIndexCaches = refill};
+    auto replicatedOp = ReplicatedOperation::buildDocumentOperation(
+        operation, state()->id().asFollowerTransactionId(), maybeShardID.get(),
+        replicationData.sharedSlice(), operationOptions);
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),
@@ -3234,44 +3387,14 @@ Future<Result> Methods::replicateOperations(
   reqOpts.database = vocbase().name();
   reqOpts.param(StaticStrings::IsRestoreString, "true");
 
-  // index cache refilling...
-  if (options.refillIndexCaches == RefillIndexCaches::kDontRefill) {
-    // index cache refilling opt-out
-    reqOpts.param(StaticStrings::RefillIndexCachesString, "false");
+  reqOpts.param(StaticStrings::RefillIndexCachesString,
+                refill ? "true" : "false");
 
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  } else {
-    // this attribute can have 3 values: default, true and false. only
-    // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
+  network::addUserParameter(reqOpts, username());
 
-    bool const refill =
-        engine.autoRefillIndexCachesOnFollowers() &&
-        ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
-         (options.refillIndexCaches == RefillIndexCaches::kDefault &&
-          engine.autoRefillIndexCaches()));
-
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfTrue") {
-      if (refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    TRI_IF_FAILURE("RefillIndexCacheOnFollowers::failIfFalse") {
-      if (!refill) {
-        THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-      }
-    }
-    reqOpts.param(StaticStrings::RefillIndexCachesString,
-                  refill ? "true" : "false");
-  }
-
-  std::string url = "/_api/document/";
-  url.append(arangodb::basics::StringUtils::urlEncode(collection->name()));
+  std::string url = absl::StrCat(
+      "/_api/document/",
+      arangodb::basics::StringUtils::urlEncode(collection->name()));
 
   std::string_view opName = "unknown";
   arangodb::fuerte::RestVerb requestType = arangodb::fuerte::RestVerb::Illegal;
@@ -3365,9 +3488,9 @@ Future<Result> Methods::replicateOperations(
       reqOpts.param(StaticStrings::IsSynchronousReplicationString,
                     ServerState::instance()->getId());
     } else {
-      reqOpts.param(StaticStrings::IsSynchronousReplicationString,
-                    ServerState::instance()->getId() + "_" +
-                        basics::StringUtils::itoa(followingTermId));
+      reqOpts.param(
+          StaticStrings::IsSynchronousReplicationString,
+          absl::StrCat(ServerState::instance()->getId(), "_", followingTermId));
     }
     // reqOpts is copied deep in sendRequestRetry, so we are OK to
     // change it in the loop!

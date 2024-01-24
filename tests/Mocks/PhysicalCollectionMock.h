@@ -97,6 +97,10 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::IndexIterator::DocumentCallback const& cb,
       LookupOptions options,
       arangodb::StorageSnapshot const* snapshot) const final;
+  arangodb::Result lookup(arangodb::transaction::Methods* trx,
+                          std::span<arangodb::LocalDocumentId> tokens,
+                          MultiDocumentCallback const& cb,
+                          LookupOptions options) const final;
   arangodb::Result remove(arangodb::transaction::Methods& trx,
                           arangodb::IndexesSnapshot const& indexesSnapshot,
                           arangodb::LocalDocumentId previousDocumentId,
@@ -126,6 +130,8 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
                           arangodb::velocypack::Slice newDocument,
                           arangodb::OperationOptions const& options) override;
   arangodb::Result updateProperties(arangodb::velocypack::Slice slice) override;
+
+  bool cacheEnabled() const noexcept override { return false; }
 
  private:
   bool addIndex(std::shared_ptr<arangodb::Index> idx);

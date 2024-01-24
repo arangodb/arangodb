@@ -854,7 +854,7 @@ function check_edge_operationSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _from collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_can_not_create_edge_with_unknown__to_vertex_collection: function () {
@@ -864,7 +864,7 @@ function check_edge_operationSuite() {
       assertTrue(doc.parsedBody['error']);
       assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertMatch(/.*referenced _to collection 'MISSING' is not part of the graph.*/, doc.parsedBody['errorMessage'], doc);
-      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_should_not_replace_an_edge_in_case_the_collection_does_not_exist: function () {
@@ -1343,7 +1343,7 @@ const assertVertexCollectionNotKnown = (response) => {
   assertTrue(response.parsedBody.error);
   assertEqual(
     response.parsedBody.errorNum,
-    internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code
+    internal.errors.ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH.code
   );
 };
 
@@ -1467,7 +1467,7 @@ function check_error_codeSuite() {
       assertEqual(response.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
       assertTrue(response.parsedBody.error);
       assertEqual(response.parsedBody.code, internal.errors.ERROR_HTTP_NOT_FOUND.code);
-      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_REFERENCED_VERTEX_COLLECTION_NOT_USED.code);
+      assertEqual(response.parsedBody.errorNum, internal.errors.ERROR_GRAPH_COLLECTION_NOT_PART_OF_THE_GRAPH.code);
     },
 
     test_get_vertex_unknown: function () {

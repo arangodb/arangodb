@@ -38,6 +38,15 @@ struct IShardDistributionFactory {
   virtual ~IShardDistributionFactory() = default;
 
   /**
+   * @brief Check if the distribution is possible, ie., if the replicationFactor
+   * can be fulfilled with the number of available servers.
+   * Note: availableServers is an in/out parameter, because we might remove
+   * servers that have to be avoided
+   */
+  [[nodiscard]] virtual auto checkDistributionPossible(
+      std::vector<ServerID>& availableServers) -> Result = 0;
+
+  /**
    * @brief Plan shard -> [servers] mapping.
    * This has te be called once before we send the request to the agency.
    * It can be called again to select other servers in case the operation needs

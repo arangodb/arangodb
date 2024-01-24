@@ -312,8 +312,8 @@ void Manager::registerAQLTrx(std::shared_ptr<TransactionState> const& state) {
     if (!it.second) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_TRANSACTION_INTERNAL,
-          std::string("transaction ID ") + std::to_string(tid.id()) +
-              "' already used (while registering AQL trx)");
+          absl::StrCat("transaction ID ", tid.id(),
+                       "' already used (while registering AQL trx)"));
     }
   }
 }
@@ -465,9 +465,13 @@ Result Manager::prepareOptions(transaction::Options& options) {
     // replicate changes to followers. replication to followers is only done
     // once the locks have been acquired on the leader(s). so if there are any
     // locking issues, they are supposed to happen first on leaders, and not
-    // affect followers. that's why we can hard-code the lock timeout here to a
-    // rather low value on followers
-    constexpr double followerLockTimeout = 15.0;
+    // affect followers.
+    // Having said that, even on a follower it can happen that for example
+    // an index is finalized on a shard. And then the collection could be
+    // locked exclusively for some period of time. Therefore, we should not
+    // set the locking timeout too low here. We choose 5 minutes as a
+    // compromise:
+    constexpr double followerLockTimeout = 300.0;
     if (options.lockTimeout == 0.0 ||
         options.lockTimeout >= followerLockTimeout) {
       options.lockTimeout = followerLockTimeout;
@@ -716,9 +720,8 @@ futures::Future<Result> Manager::ensureManagedTrx(
     }
 
     co_return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                        std::string("transaction id ") +
-                            std::to_string(tid.id()) +
-                            " already used (before creating)");
+                        absl::StrCat("transaction id ", tid.id(),
+                                     " already used (before creating)"));
   }
 
   // no transaction with ID exists yet, so start a new transaction
@@ -768,9 +771,8 @@ futures::Future<Result> Manager::ensureManagedTrx(
     }
 
     co_return res.reset(TRI_ERROR_TRANSACTION_INTERNAL,
-                        std::string("transaction id ") +
-                            std::to_string(tid.id()) +
-                            " already used (while creating)");
+                        absl::StrCat("transaction id ", tid.id(),
+                                     " already used (while creating)"));
   }
 
   LOG_TOPIC("d6806", DEBUG, Logger::TRANSACTIONS)
@@ -823,10 +825,10 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     ManagedTrx& mtrx = it->second;
     if (mtrx.type == MetaType::Tombstone) {
       if (mtrx.finalStatus == transaction::Status::ABORTED) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_TRANSACTION_ABORTED,
-                                       "transaction " +
-                                           std::to_string(tid.id()) +
-                                           " has already been aborted");
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_TRANSACTION_ABORTED,
+            absl::StrCat("transaction ", tid.id(),
+                         " has already been aborted"));
       }
       return nullptr;
     }
@@ -887,9 +889,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       }
 
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_LOCKED, std::string("cannot read-lock, transaction ") +
-                                std::to_string(tid.id()) +
-                                " is already in use");
+          TRI_ERROR_LOCKED, absl::StrCat("cannot read-lock, transaction ",
+                                         tid.id(), " is already in use"));
     }
 
     locker.unlock();  // failure;
@@ -932,9 +933,8 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     }
     if (!ServerState::isDBServer(role) && now > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_LOCKED, std::string("cannot write-lock, transaction ") +
-                                std::to_string(tid.id()) +
-                                " is already in use");
+          TRI_ERROR_LOCKED, absl::StrCat("cannot write-lock, transaction ",
+                                         tid.id(), " is already in use"));
     } else if ((i % 32) == 0) {
       LOG_TOPIC("9e972", DEBUG, Logger::TRANSACTIONS)
           << "waiting on trx write-lock " << tid;
@@ -1073,7 +1073,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
   bool wasExpired = false;
   auto buildErrorMessage = [](TransactionId tid, transaction::Status status,
                               bool found) -> std::string {
-    std::string msg = "transaction " + std::to_string(tid.id());
+    std::string msg = absl::StrCat("transaction ", tid.id());
     if (found) {
       msg += " inaccessible";
     } else {
@@ -1131,9 +1131,9 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
       } else {
         operation = "abort";
       }
-      std::string msg = absl::StrCat("updating", hint, "transaction status on ",
-                                     operation, " failed. transaction ",
-                                     std::to_string(tid.id()), " is in use");
+      std::string msg =
+          absl::StrCat("updating", hint, "transaction status on ", operation,
+                       " failed. transaction ", tid.id(), " is in use");
       LOG_TOPIC("dfc30", DEBUG, Logger::TRANSACTIONS) << msg;
       return res.reset(TRI_ERROR_LOCKED, std::move(msg));
     }

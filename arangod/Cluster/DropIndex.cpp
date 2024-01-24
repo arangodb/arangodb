@@ -74,6 +74,17 @@ DropIndex::DropIndex(MaintenanceFeature& feature, ActionDescription const& d)
 
 DropIndex::~DropIndex() = default;
 
+void DropIndex::setState(ActionState state) {
+  if (_description.isRunEvenIfDuplicate() &&
+      (COMPLETE == state || FAILED == state) && _state != state) {
+    // calling unlockShard here is safe, because nothing before it
+    // can go throw. if some code is added before the unlock that
+    // can throw, it must be made sure that the unlock is always called
+    _feature.unlockShard(ShardID{_description.get(SHARD)});
+  }
+  ActionBase::setState(state);
+}
+
 bool DropIndex::first() {
   auto const& database = _description.get(DATABASE);
   auto const& shard = _description.get(SHARD);
@@ -102,7 +113,7 @@ bool DropIndex::first() {
         << "Dropping local index " << shard << "/" << id;
     auto res = std::invoke([&]() -> Result {
       if (vocbase->replicationVersion() == replication::Version::TWO) {
-        return dropIndexReplication2(col, index.sharedSlice());
+        return dropIndexReplication2(col, id);
       }
       return Indexes::drop(*col, index.slice()).get();
     });
@@ -122,9 +133,9 @@ bool DropIndex::first() {
 }
 
 auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
-                                      velocypack::SharedSlice index) noexcept
+                                      std::string indexIdStr) noexcept
     -> Result {
-  auto res = basics::catchToResult([&coll, index = std::move(index)]() mutable {
+  auto res = basics::catchToResult([&]() mutable {
     auto maybeShardID = ShardID::shardIdFromString(coll->name());
     if (ADB_UNLIKELY(maybeShardID.fail())) {
       // This will only throw if we take a real collection here and not a shard.
@@ -132,9 +143,19 @@ auto DropIndex::dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
                         << " which is not considered a shard";
       return maybeShardID.result();
     }
-    return coll->getDocumentStateLeader()
-        ->dropIndex(maybeShardID.get(), std::move(index))
-        .get();
+    auto const& shardId = maybeShardID.get();
+    auto res = basics::StringUtils::try_uint64(indexIdStr);
+    TRI_ASSERT(res.ok()) << fmt::format(
+        "Trying to drop index in shard {}, but id is not a number: {}", shardId,
+        indexIdStr);
+    if (!res.ok()) {
+      LOG_TOPIC("c2969", ERR, Logger::MAINTENANCE) << fmt::format(
+          "Trying to drop index in shard {}, but id is not a number: {}",
+          shardId, indexIdStr);
+      return res.result();
+    }
+    auto indexId = IndexId{res.get()};
+    return coll->getDocumentStateLeader()->dropIndex(shardId, indexId).get();
   });
 
   if (res.is(TRI_ERROR_REPLICATION_REPLICATED_LOG_NOT_THE_LEADER) ||

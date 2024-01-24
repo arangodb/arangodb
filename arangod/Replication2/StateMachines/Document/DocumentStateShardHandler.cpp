@@ -150,25 +150,22 @@ auto DocumentStateShardHandler::ensureIndex(
   return res;
 }
 
-auto DocumentStateShardHandler::dropIndex(
-    ShardID shard, velocypack::SharedSlice index) noexcept -> Result {
+auto DocumentStateShardHandler::dropIndex(ShardID shard,
+                                          IndexId indexId) noexcept -> Result {
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
             fmt::format("Error while dropping index: {}", col.errorMessage())};
   }
 
-  auto indexId = index.toString();
-  auto res =
-      _maintenance->executeDropIndex(std::move(col).get(), std::move(index));
+  auto res = _maintenance->executeDropIndex(std::move(col).get(), indexId);
   std::ignore = _maintenance->addDirty();
 
   if (res.fail()) {
     res = Result{res.errorNumber(),
                  fmt::format("Error: {}! Replicated log {} failed to drop "
                              "index on shard {}! Index: {}",
-                             res.errorMessage(), _gid, std::move(shard),
-                             std::move(indexId))};
+                             res.errorMessage(), _gid, shard, indexId.id())};
   }
   return res;
 }
@@ -241,6 +238,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
                                           "claims to be an inverted index";
         if (maybeInvertedIndex) {
           maybeInvertedIndex->commit(true);
+          maybeInvertedIndex->finishCreation();
         }
       }
       if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -251,6 +249,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
             << "Failed to downcast an index that claims to be a link index";
         if (maybeSearchLink) {
           maybeSearchLink->commit(true);
+          maybeSearchLink->finishCreation();
         }
       }
     }

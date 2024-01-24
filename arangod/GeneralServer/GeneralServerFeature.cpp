@@ -93,11 +93,14 @@
 #include "RestHandler/RestHandlerCreator.h"
 #include "RestHandler/RestImportHandler.h"
 #include "RestHandler/RestIndexHandler.h"
+#include "RestHandler/RestKeyGeneratorsHandler.h"
 #include "RestHandler/RestJobHandler.h"
 #include "RestHandler/RestLicenseHandler.h"
 #include "RestHandler/RestLogHandler.h"
 #include "RestHandler/RestLogInternalHandler.h"
 #include "RestHandler/RestMetricsHandler.h"
+#include "RestHandler/RestOptionsDescriptionHandler.h"
+#include "RestHandler/RestOptionsHandler.h"
 #include "RestHandler/RestQueryCacheHandler.h"
 #include "RestHandler/RestQueryHandler.h"
 #include "RestHandler/RestShutdownHandler.h"
@@ -114,6 +117,7 @@
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
@@ -185,6 +189,7 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
       _compressResponseThreshold(0),
       _redirectRootTo("/_admin/aardvark/index.html"),
       _supportInfoApiPolicy("admin"),
+      _optionsApiPolicy("jwt"),
       _numIoThreads(0),
       _requestBodySizeHttp1(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_http1{})),
@@ -275,6 +280,15 @@ batch processing.)");
                       std::unordered_set<std::string>{"disabled", "jwt",
                                                       "admin", "public"}))
       .setIntroducedIn(30900);
+
+  options
+      ->addOption("--server.options-api",
+                  "The policy for exposing the options API.",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_optionsApiPolicy,
+                      std::unordered_set<std::string>{"disabled", "jwt",
+                                                      "admin", "public"}))
+      .setIntroducedIn(31200);
 
   options->addSection("http", "HTTP server features");
 
@@ -402,7 +416,7 @@ void GeneralServerFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
         // "none" means no origins are allowed
         _accessControlAllowOrigins.clear();
         break;
-      } else if (!it.empty() && it.back() == '/') {
+      } else if (it.ends_with('/')) {
         // strip trailing slash
         it = it.substr(0, it.size() - 1);
       }
@@ -572,6 +586,10 @@ std::string GeneralServerFeature::redirectRootTo() const {
 
 std::string const& GeneralServerFeature::supportInfoApiPolicy() const noexcept {
   return _supportInfoApiPolicy;
+}
+
+std::string const& GeneralServerFeature::optionsApiPolicy() const noexcept {
+  return _optionsApiPolicy;
 }
 
 uint64_t GeneralServerFeature::compressResponseThreshold() const noexcept {
@@ -780,6 +798,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler("/_api/explain",
                      RestHandlerCreator<RestExplainHandler>::createNoData);
 
+  f.addPrefixHandler(
+      "/_api/key-generators",
+      RestHandlerCreator<RestKeyGeneratorsHandler>::createNoData);
+
   f.addPrefixHandler("/_api/query",
                      RestHandlerCreator<RestQueryHandler>::createNoData);
 
@@ -874,6 +896,14 @@ void GeneralServerFeature::defineRemainingHandlers(
                  RestHandlerCreator<RestTelemetricsHandler>::createNoData);
   }
 
+  if (_optionsApiPolicy != "disabled") {
+    f.addHandler("/_admin/options",
+                 RestHandlerCreator<RestOptionsHandler>::createNoData);
+    f.addHandler(
+        "/_admin/options-description",
+        RestHandlerCreator<RestOptionsDescriptionHandler>::createNoData);
+  }
+
   f.addHandler("/_admin/system-report",
                RestHandlerCreator<RestSystemReportHandler>::createNoData);
 
@@ -926,6 +956,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/metrics",
       RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/usage-metrics",
+      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData);
 
   f.addHandler(
       "/_admin/statistics-description",

@@ -844,8 +844,7 @@ bool Job::abortable(Node const& snapshot, std::string const& jobId) {
     return false;
   }
   std::string const& type = tmp_type.value();
-  if (type == "failedServer" || type == "failedLeader" ||
-      type == "activeFailover") {
+  if (type == "failedServer" || type == "failedLeader") {
     return false;
   } else if (type == "addFollower" || type == "moveShard" ||
              type == "cleanOutServer" || type == "resignLeadership") {
@@ -1040,6 +1039,19 @@ void Job::addPreconditionJobStillInPending(Builder& pre,
   {
     VPackObjectBuilder guard(&pre);
     pre.add("oldEmpty", VPackValue(false));
+  }
+}
+
+void Job::addPreconditionClonesStillExist(Builder& pre,
+                                          std::string_view database,
+                                          std::vector<shard_t> const& clones) {
+  for (auto const& shard : clones) {
+    pre.add(VPackValue(StringUtils::concatT("/Plan/Collections/", database, "/",
+                                            shard.collection)));
+    {
+      VPackObjectBuilder guard(&pre);
+      pre.add("oldEmpty", VPackValue(false));
+    }
   }
 }
 

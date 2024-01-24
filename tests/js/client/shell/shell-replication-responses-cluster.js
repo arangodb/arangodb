@@ -30,10 +30,19 @@ const _ = require('lodash');
 const db = arangodb.db;
 const { debugCanUseFailAt, debugClearFailAt, debugSetFailAt, getEndpointById, getUrlById, getEndpointsByType } = require('@arangodb/test-helper');
 const request = require('@arangodb/request');
+const isReplication2 = db._properties().replicationVersion === "2";
+const {ERROR_HTTP_NOT_ACCEPTABLE, ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE} = internal.errors;
 
 function followerResponsesSuite() {
   'use strict';
   const cn = 'UnitTestsCollection';
+
+  const assertIsReplication2FollowerResponse = (body) => {
+    const {error, code, errorNum} = body;
+    assertTrue(error, `Should get error response, instead got ${JSON.stringify(body)}`);
+    assertEqual(ERROR_HTTP_NOT_ACCEPTABLE.code, code, `Should get error response, instead got ${JSON.stringify(body)}`);
+    assertEqual(ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE.code, errorNum, `Should get error response, instead got ${JSON.stringify(body)}`);
+  };
 
   return {
 
@@ -68,8 +77,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication insert request
       response = request({
@@ -79,8 +92,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
     
     testUpdate: function () {
@@ -110,8 +127,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication update request
       response = request({
@@ -121,8 +142,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
     
     testRemove: function () {
@@ -152,8 +177,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual({}, response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
       
       // send multi document replication remove request
       response = request({
@@ -163,8 +192,12 @@ function followerResponsesSuite() {
         json: true
       });
 
-      // verify that response is empty
-      assertEqual([], response.json);
+      if (isReplication2) {
+        assertIsReplication2FollowerResponse(response.json);
+      } else {
+        // verify that response is empty
+        assertEqual({}, response.json);
+      }
     },
   };
 }

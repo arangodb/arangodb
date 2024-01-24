@@ -1,4 +1,16 @@
-import { Badge, Button, Grid, Stack } from "@chakra-ui/react";
+import {
+  Badge,
+  Button,
+  Flex,
+  Popover,
+  PopoverArrow,
+  PopoverBody,
+  PopoverCloseButton,
+  PopoverContent,
+  PopoverHeader,
+  PopoverTrigger,
+  Stack
+} from "@chakra-ui/react";
 import { ColumnDef, Table as TableType } from "@tanstack/react-table";
 import * as React from "react";
 import { FilterBar } from "./FilterBar";
@@ -18,37 +30,56 @@ export const FiltersList = <Data extends object>({
   const [currentFilterColumns, setCurrentFilterColumns] =
     React.useState<(ColumnDef<Data> | undefined)[]>(initialFilterColumns);
   return (
-    <Grid gridTemplateColumns="200px 1fr" gap="4">
-      <FilterButton
-        appliedFiltersCount={columnFilters.length}
-        onClick={() => setShowFilters(!showFilters)}
-        isSelected={showFilters}
-        onReset={() => {
-          table.resetColumnFilters();
-          setCurrentFilterColumns([]);
-        }}
-      />
-      <FilterBar<Data>
-        columns={columns}
-        table={table}
-        showFilters={showFilters}
-        currentFilterColumns={currentFilterColumns}
-        setCurrentFilterColumns={setCurrentFilterColumns}
-      />
-    </Grid>
+    <Popover
+      onClose={() => {
+        setShowFilters(false);
+      }}
+      isOpen={showFilters}
+      flip
+      placement="top-start"
+    >
+      <PopoverTrigger>
+        <Flex>
+          <FilterButton
+            appliedFiltersCount={columnFilters.length}
+            onClick={() => setShowFilters(!showFilters)}
+            isSelected={showFilters}
+          />
+        </Flex>
+      </PopoverTrigger>
+      <PopoverContent width="520px" padding="2">
+        <PopoverArrow />
+        <PopoverCloseButton top="3" />
+        <PopoverHeader>Filters</PopoverHeader>
+        <PopoverBody>
+          <Flex>
+            <FilterBar<Data>
+              columns={columns}
+              table={table}
+              showFilters={showFilters}
+              currentFilterColumns={currentFilterColumns}
+              setCurrentFilterColumns={setCurrentFilterColumns}
+              appliedFiltersCount={columnFilters.length}
+              onClear={() => {
+                table.resetColumnFilters();
+                setCurrentFilterColumns([]);
+              }}
+            />
+          </Flex>
+        </PopoverBody>
+      </PopoverContent>
+    </Popover>
   );
 };
 
 const FilterButton = ({
   onClick,
   isSelected,
-  appliedFiltersCount,
-  onReset
+  appliedFiltersCount
 }: {
   onClick: () => void;
   isSelected: boolean;
   appliedFiltersCount: number;
-  onReset: () => void;
 }) => {
   return (
     <Stack direction="row" alignItems="center">
@@ -60,38 +91,36 @@ const FilterButton = ({
         size="sm"
       >
         Filters
-        {appliedFiltersCount > 0 && (
-          <Badge
-            fontSize="xs"
-            width="4"
-            height="4"
-            display="flex"
-            alignItems="center"
-            justifyContent="center"
-            position="absolute"
-            right="-8px"
-            top="-8px"
-            backgroundColor="gray.900"
-            color="white"
-            borderRadius="20px"
-          >
-            {appliedFiltersCount}
-          </Badge>
-        )}
+        <FilterCountBadge appliedFiltersCount={appliedFiltersCount} />
       </Button>
-      {appliedFiltersCount > 0 && (
-        <Button
-          textTransform="uppercase"
-          onClick={() => {
-            onReset();
-          }}
-          variant="ghost"
-          size="xs"
-          colorScheme="blue"
-        >
-          Reset
-        </Button>
-      )}
     </Stack>
+  );
+};
+
+const FilterCountBadge = ({
+  appliedFiltersCount
+}: {
+  appliedFiltersCount: number | undefined;
+}) => {
+  if (!appliedFiltersCount) {
+    return null;
+  }
+  return (
+    <Badge
+      fontSize="xs"
+      width="4"
+      height="4"
+      display="flex"
+      alignItems="center"
+      justifyContent="center"
+      position="absolute"
+      right="-8px"
+      top="-8px"
+      backgroundColor="gray.900"
+      color="white"
+      borderRadius="20px"
+    >
+      {appliedFiltersCount}
+    </Badge>
   );
 };

@@ -614,6 +614,33 @@ class instanceManager {
     return ret;
   }
 
+  getFromPlan(path) {
+    let req = this.agencyConfig.agencyInstances[0].getAgent('/_api/agency/read', 'POST', `[["/arango/${path}"]]`);
+    if (req.code !== 200) {
+      throw new Error(`Failed to query agency [["/arango/${path}"]] : ${JSON.stringify(req)}`);
+    }
+    return JSON.parse(req["body"])[0];
+  }
+
+  removeServerFromAgency(serverId) {
+    // Make sure we remove the server
+    for (let i = 0; i < 10; ++i) {
+      const res = arango.POST_RAW("/_admin/cluster/removeServer", JSON.stringify(serverId));
+      if (res.code === 404 || res.code === 200) {
+        // Server is removed
+        return;
+      }
+      // Server could not be removed, give supervision some more time
+      // and then try again.
+      print("Wait for supervision to clear responsibilty of server");
+      require("internal").wait(0.2);
+    }
+    // If we reach this place the server could not be removed
+    // it is still responsible for shards, so a failover
+    // did not work out.
+    throw "Could not remove shutdown server";
+  }
+
   _checkServersGOOD() {
     let name = '';
     try {
@@ -1215,16 +1242,33 @@ class instanceManager {
         }
         let url = arangod.url;
         if (arangod.isRole(instanceRole.coordinator) && arangod.args["javascript.enabled"] !== "false") {
-          url += '/_admin/aardvark/index.html';
+          url += '/_api/foxx';
           httpOptions.method = 'GET';
         } else {
           url += '/_api/version';
           httpOptions.method = 'POST';
         }
         const reply = download(url, '', httpOptions);
+        if (!this.options.noStartStopLogs) {
+          print(`Server reply to ${url}: ${JSON.stringify(reply)}`);
+        }
         if (!reply.error && reply.code === 200) {
           arangod.upAndRunning = true;
           return true;
+        }
+        try {
+          if (reply.code === 403) {
+            let parsedBody = JSON.parse(reply.body);
+            if (parsedBody.errorNum === internal.errors.ERROR_SERVICE_API_DISABLED.code) {
+              if (!this.options.noStartStopLogs) {
+                print("service API disabled, continuing.");
+              }
+              arangod.upAndRunning = true;
+              return true;
+            }
+          }
+        } catch (e) {
+          print(RED + Date() + " failed to parse server reply: " + JSON.stringify(reply));
         }
 
         if (arangod.pid !== null && !arangod.checkArangoAlive()) {

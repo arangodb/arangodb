@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
   static std::string const RefillIndexCachesString;
+  static std::string const VersionAttributeString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
@@ -75,6 +76,7 @@ class StaticStrings {
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
+  static std::string const UserString;
 
   // dump headers
   static std::string const DumpAuthUser;
@@ -142,11 +144,13 @@ class StaticStrings {
   static std::string const IndexName;            // index name
   static std::string const IndexSparse;          // index sparsity marker
   static std::string const IndexStoredValues;    // index stored values
+  static std::string const IndexPrefixFields;    // index prefix fields (zkd)
   static std::string const IndexType;            // index type
   static std::string const IndexUnique;          // index uniqueness marker
   static std::string const IndexEstimates;       // index estimates flag
   static std::string const IndexLegacyPolygons;  // index legacyPolygons flag
   static std::string_view constexpr IndexLookahead{"lookahead"};
+  static std::string const IndexCreationError;  // index failed to create
 
   // static index names
   static std::string const IndexNameEdge;
@@ -393,6 +397,7 @@ class StaticStrings {
 
   // aql api strings
   static std::string const AqlDocumentCall;
+  static std::string const AqlFastPath;
   static std::string const AqlRemoteExecute;
   static std::string const AqlRemoteCallStack;
   static std::string const AqlRemoteLimit;

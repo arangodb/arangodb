@@ -222,6 +222,8 @@ OperationOptions ModificationExecutorHelpers::convertOptions(
   out.returnOld = (outVariableOld != nullptr);
   out.silent = !(out.returnNew || out.returnOld);
 
+  out.versionAttribute = in.versionAttribute;
+
   return out;
 }
 

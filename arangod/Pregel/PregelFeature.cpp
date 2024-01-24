@@ -47,6 +47,7 @@
 #include "Metrics/GaugeBuilder.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Pregel/AlgoRegistry.h"
 #include "Pregel/Algorithm.h"
 #include "Pregel/Conductor/Actor.h"
@@ -102,17 +103,6 @@ bool authorized(std::string const& user) {
     return true;
   }
   return (user == exec.user());
-}
-
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
 }
 
 }  // namespace
@@ -523,8 +513,6 @@ void PregelFeature::start() {
 }
 
 void PregelFeature::beginShutdown() {
-  TRI_ASSERT(isStopping());
-
   // Copy the _conductors and _workers maps here, because in the case of a
   // single server there is a lock order inversion.  This is because the
   // conductor code directly calls back into the feature while holding the
@@ -1037,7 +1025,7 @@ Result PregelFeature::toVelocyPack(TRI_vocbase_t& vocbase,
 
       auto f = network::sendRequestRetry(
           pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
-          VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+          VPackBuffer<uint8_t>{}, options, network::addAuthorizationHeader({}));
       futures.emplace_back(std::move(f));
     }
 

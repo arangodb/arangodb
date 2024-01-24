@@ -127,14 +127,14 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 }
 
 auto MaintenanceActionExecutor::executeDropIndex(
-    std::shared_ptr<LogicalCollection> col,
-    velocypack::SharedSlice index) noexcept -> Result {
+    std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
+    -> Result {
   auto res = basics::catchToResult(
-      [&]() { return methods::Indexes::drop(*col, index.slice()).get(); });
+      [&] { return methods::Indexes::dropDBServer(*col, indexId).get(); });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
-      << "Dropping local index " << index.toJson() << " of " << _vocbase.name()
-      << "/" << col->name() << ": " << res;
+      << "Dropping local index " << indexId << " of " << _vocbase.name() << "/"
+      << col->name() << ": " << res;
   return res;
 }
 

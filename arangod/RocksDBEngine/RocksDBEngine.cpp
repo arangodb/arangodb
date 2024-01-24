@@ -289,14 +289,12 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
-      _useEdgeCache(true),
       _verifySst(false),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
       _createShaFiles(false),
 #endif
-      _useRangeDeleteInWal(true),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -676,34 +674,10 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  options
-      ->addOption("--rocksdb.use-range-delete-in-wal",
-                  "Enable range delete markers in the write-ahead log (WAL). "
-                  "Potentially incompatible with older arangosync versions.",
-                  new BooleanParameter(&_useRangeDeleteInWal),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30903)
-      .setLongDescription(
-          R"(Controls whether the collection truncate operation
-in the cluster can use RangeDelete operations in RocksDB. Using RangeDeletes is
-fast and reduces the algorithmic complexity of the truncate operation to O(1),
-compared to O(n) for when this option is turned off (with n being the number of
-documents in the collection/shard).
-
-Previous versions of ArangoDB used RangeDeletes only on a single server, but
-never in a cluster. 
-
-The default value for this option is `true`, and you should only change this
-value in case of emergency. This option is only honored in the cluster.
-Single server and Active Failover deployments do not use RangeDeletes regardless
-of the value of this option.
-
-Note that it is not guaranteed that all truncate operations use a RangeDelete
-operation. For collections containing a low number of documents, the O(n)
-truncate method may still be used.)");
+  // range deletes are now always enabled
+  options->addObsoleteOption(
+      "--rocksdb.use-range-delete-in-wal",
+      "Enable range delete markers in the write-ahead log (WAL).", false);
 
   options
       ->addOption("--rocksdb.debug-logging",
@@ -722,16 +696,9 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
 
-  options
-      ->addOption("--rocksdb.edge-cache",
-                  "Whether to use the in-memory cache for edges",
-                  new BooleanParameter(&_useEdgeCache),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(31000);
+  options->addObsoleteOption("--rocksdb.edge-cache",
+                             "Whether to use the in-memory cache for edges",
+                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",
@@ -1143,7 +1110,8 @@ void RocksDBEngine::start() {
   addFamily(RocksDBColumnFamilyManager::Family::GeoIndex);
   addFamily(RocksDBColumnFamilyManager::Family::FulltextIndex);
   addFamily(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-  addFamily(RocksDBColumnFamilyManager::Family::ZkdIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiIndex);
+  addFamily(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
   bool dbExisted = checkExistingDB(cfFamilies);
 
@@ -1208,8 +1176,10 @@ void RocksDBEngine::start() {
       RocksDBColumnFamilyManager::Family::FulltextIndex, cfHandles[6]);
   RocksDBColumnFamilyManager::set(
       RocksDBColumnFamilyManager::Family::ReplicatedLogs, cfHandles[7]);
-  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::ZkdIndex,
+  RocksDBColumnFamilyManager::set(RocksDBColumnFamilyManager::Family::MdiIndex,
                                   cfHandles[8]);
+  RocksDBColumnFamilyManager::set(
+      RocksDBColumnFamilyManager::Family::MdiVPackIndex, cfHandles[9]);
   TRI_ASSERT(RocksDBColumnFamilyManager::get(
                  RocksDBColumnFamilyManager::Family::Definitions)
                  ->GetID() == 0);
@@ -1271,9 +1241,6 @@ void RocksDBEngine::start() {
         : _scheduler(server.getFeature<SchedulerFeature>().SCHEDULER) {}
 
     void operator()(fu2::unique_function<void() noexcept> func) override {
-      if (_scheduler->server().isStopping()) {
-        return;
-      }
       _scheduler->queue(RequestLane::CLUSTER_INTERNAL, std::move(func));
     }
 
@@ -1313,11 +1280,6 @@ void RocksDBEngine::start() {
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
-  }
-
-  if (!useEdgeCache()) {
-    LOG_TOPIC("46557", INFO, Logger::ENGINES)
-        << "in-memory cache for edges is disabled";
   }
 
   // to populate initial health check data
@@ -1998,10 +1960,26 @@ void RocksDBEngine::processCompactions() {
           _runningCompactions >= _maxParallelCompactions) {
         // nothing to do, or too much to do
         LOG_TOPIC("d5108", TRACE, Logger::ENGINES)
-            << "checking compactions. pending: " << _pendingCompactions.size()
+            << "not scheduling compactions. pending: "
+            << _pendingCompactions.size()
             << ", running: " << _runningCompactions;
         return;
       }
+      rocksdb::ColumnFamilyHandle* cfh =
+          _pendingCompactions.front().columnFamily();
+
+      if (!_runningCompactionsColumnFamilies.emplace(cfh).second) {
+        // a compaction is already running for the same column family.
+        // we don't want to schedule parallel compactions for the same column
+        // family because they can lead to shutdown issues (this is an issue of
+        // RocksDB).
+        LOG_TOPIC("ac8b9", TRACE, Logger::ENGINES)
+            << "not scheduling compactions. already have a compaction running "
+               "for column family '"
+            << cfh->GetName() << "', running: " << _runningCompactions;
+        return;
+      }
+
       // found something to do, now steal the item from the queue
       bounds = std::move(_pendingCompactions.front());
       _pendingCompactions.pop_front();
@@ -2015,10 +1993,11 @@ void RocksDBEngine::processCompactions() {
       // set it to running already, so that concurrent callers of this method
       // will not kick off additional jobs
       ++_runningCompactions;
-    }
 
-    LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
-        << "scheduling compaction for execution";
+      LOG_TOPIC("6ea1b", TRACE, Logger::ENGINES)
+          << "scheduling compaction in column family '" << cfh->GetName()
+          << "' for execution";
+    }
 
     scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
       if (server().isStopping()) {
@@ -2050,8 +2029,16 @@ void RocksDBEngine::processCompactions() {
       }
       // always count down _runningCompactions!
       WRITE_LOCKER(locker, _pendingCompactionsLock);
+
+      TRI_ASSERT(_runningCompactionsColumnFamilies.size() ==
+                 _runningCompactions);
+
       TRI_ASSERT(_runningCompactions > 0);
       --_runningCompactions;
+
+      TRI_ASSERT(
+          _runningCompactionsColumnFamilies.contains(bounds.columnFamily()));
+      _runningCompactionsColumnFamilies.erase(bounds.columnFamily());
     });
   }
 }
@@ -3284,7 +3271,8 @@ auto RocksDBEngine::makeLogStorageMethods(
 #else
   auto logPersistor =
       std::make_unique<replication2::storage::rocksdb::LogPersistor>(
-          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics);
+          logId, objectId, vocbaseId, _db, logCf, _logPersistor, _logMetrics,
+          this);
 #endif
   auto statePersistor =
       std::make_unique<replication2::storage::rocksdb::StatePersistor>(
@@ -3672,8 +3660,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addCf(RocksDBColumnFamilyManager::Family::VPackIndex);
   addCf(RocksDBColumnFamilyManager::Family::GeoIndex);
   addCf(RocksDBColumnFamilyManager::Family::FulltextIndex);
-  addCf(RocksDBColumnFamilyManager::Family::ZkdIndex);
+  addCf(RocksDBColumnFamilyManager::Family::MdiIndex);
   addCf(RocksDBColumnFamilyManager::Family::ReplicatedLogs);
+  addCf(RocksDBColumnFamilyManager::Family::MdiVPackIndex);
   builder.close();
 
   if (_throttleListener) {
@@ -4051,14 +4040,17 @@ bool RocksDBEngine::checkExistingDB(
         << "found existing column families: " << names;
     auto const replicatedLogsName = RocksDBColumnFamilyManager::name(
         RocksDBColumnFamilyManager::Family::ReplicatedLogs);
-    auto const zkdIndexName = RocksDBColumnFamilyManager::name(
-        RocksDBColumnFamilyManager::Family::ZkdIndex);
+    auto const mdiIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiIndex);
+    auto const mdiVPackIndexName = RocksDBColumnFamilyManager::name(
+        RocksDBColumnFamilyManager::Family::MdiVPackIndex);
 
     for (auto const& it : cfFamilies) {
       auto it2 = std::find(existingColumnFamilies.begin(),
                            existingColumnFamilies.end(), it.name);
       if (it2 == existingColumnFamilies.end()) {
-        if (it.name == replicatedLogsName || it.name == zkdIndexName) {
+        if (it.name == replicatedLogsName || it.name == mdiIndexName ||
+            it.name == mdiVPackIndexName) {
           LOG_TOPIC("293c3", INFO, Logger::STARTUP)
               << "column family " << it.name
               << " is missing and will be created.";

@@ -35,6 +35,7 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Futures/Future.h"
+#include "Metrics/MetricsFeature.h"
 #include "Transaction/Hints.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/Options.h"
@@ -47,6 +48,8 @@
 #include <atomic>
 #include <cstdint>
 #include <memory>
+#include <mutex>
+#include <shared_mutex>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -67,11 +70,8 @@
 struct TRI_vocbase_t;
 
 namespace arangodb {
+class CollectionNameResolver;
 struct ResourceMonitor;
-
-namespace aql {
-class QueryContext;
-}
 
 namespace transaction {
 class CounterGuard;
@@ -363,6 +363,27 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   std::shared_ptr<transaction::CounterGuard> counterGuard();
 
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string_view name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
+
+  void trackShardRequest(CollectionNameResolver const& resolver,
+                         std::string_view database, std::string_view shard,
+                         std::string_view user, AccessMode::Type accessMode,
+                         std::string_view context) noexcept;
+
+  void trackShardUsage(CollectionNameResolver const& resolver,
+                       std::string_view database, std::string_view shard,
+                       std::string_view user, AccessMode::Type accessMode,
+                       std::string_view context, size_t nBytes) noexcept;
+
  protected:
   virtual std::unique_ptr<TransactionCollection> createTransactionCollection(
       DataSourceId cid, AccessMode::Type accessType) = 0;
@@ -419,6 +440,8 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
 
   [[nodiscard]] auto findCollectionOrPos(DataSourceId cid) const
       -> std::variant<CollectionNotFound, CollectionFound>;
+
+  void publishShardMetrics(CollectionNameResolver const& resolver);
 
  protected:
   TRI_vocbase_t& _vocbase;  /// @brief vocbase for this transaction
@@ -479,6 +502,25 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   QueryAnalyzerRevisions _analyzersRevision;
 
   transaction::OperationOrigin const _operationOrigin;
+
+  metrics::MetricsFeature::UsageTrackingMode _usageTrackingMode;
+
+  /// @brief name of user who originated the transaction. may be empty.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc.
+  /// it should not be used for permission checks.
+  std::shared_mutex mutable _usernameLock;
+  std::string _username;
+
+  // protects _shardsBytesWritten and _shardsBytesRead
+  std::mutex mutable _shardsMetricsMutex;
+  // map from collection name (shard name) to number of bytes written
+  containers::FlatHashMap<std::string, size_t> _shardBytesWritten;
+  // map from collection name (shard name) to number of bytes read
+  containers::FlatHashMap<std::string, size_t> _shardBytesRead;
+  // number of times the metrics have been increased since the metrics
+  // were last published
+  size_t _shardBytesUnpublishedEvents = 0;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   std::shared_ptr<transaction::HistoryEntry> _historyEntry;

@@ -241,14 +241,14 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       // variables. we can get away with building a very simple expression
       // context
       _expressionContext = std::make_unique<SimpleDocumentExpressionContext>(
-          _trx, _query, _aqlFunctionsInternalCache,
-          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+          _trx, _query, _aqlFunctionsInternalCache, filterVars, _inputRow,
+          _outputVariable);
     } else {
       // filter condition refers to additional variables.
       // we have to use a more generic expression context
       _expressionContext = std::make_unique<GenericDocumentExpressionContext>(
-          _trx, _query, _aqlFunctionsInternalCache,
-          infos.getFilterVarsToRegister(), _inputRow, _outputVariable);
+          _trx, _query, _aqlFunctionsInternalCache, filterVars, _inputRow,
+          _outputVariable);
     }
   }
 
@@ -680,7 +680,8 @@ IndexIterator::CoveringCallback aql::getCallback(
         };
         context.getPhysical().lookup(
             context.getTrxPtr(), token, cb,
-            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites())});
+            {.readOwnWrites = static_cast<bool>(context.getReadOwnWrites()),
+             .countBytes = true});
       } else {
         OutputAqlItemRow& output = context.getOutputRow();
         InputAqlItemRow const& input = context.getInputRow();

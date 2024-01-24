@@ -135,8 +135,8 @@ class IndexNode : public ExecutionNode,
       ExecutionEngine& engine) const override;
 
   /// @brief clone ExecutionNode recursively
-  ExecutionNode* clone(ExecutionPlan* plan, bool withDependencies,
-                       bool withProperties) const override final;
+  ExecutionNode* clone(ExecutionPlan* plan,
+                       bool withDependencies) const override final;
 
   /// @brief replaces variables in the internals of the execution node
   /// replacements are { old variable id => new variable }
@@ -167,9 +167,12 @@ class IndexNode : public ExecutionNode,
   bool isLateMaterialized() const noexcept {
     TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
                 _outNonMaterializedIndVars.second.empty()) ||
-               !(_outNonMaterializedDocId == nullptr ||
-                 _outNonMaterializedIndVars.second.empty()));
-    return !_outNonMaterializedIndVars.second.empty();
+               _outNonMaterializedDocId != nullptr)
+        << std::boolalpha << "_outNonMaterializedDocId == nullptr = "
+        << (_outNonMaterializedDocId == nullptr)
+        << " _outNonMaterializedIndVars.second.empty() = "
+        << _outNonMaterializedIndVars.second.empty();
+    return _outNonMaterializedDocId != nullptr;
   }
 
   bool canApplyLateDocumentMaterializationRule() const {
@@ -215,6 +218,10 @@ class IndexNode : public ExecutionNode,
 
   std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
 
+  // returns the single index pointer if the IndexNode uses a single index,
+  // nullptr otherwise
+  [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder&,
@@ -230,10 +237,6 @@ class IndexNode : public ExecutionNode,
 
   /// @brief adds a UNIQUE() to a dynamic IN condition
   arangodb::aql::AstNode* makeUnique(AstNode*) const;
-
-  // returns the single index pointer if the IndexNode uses a single index,
-  // nullptr otherwise
-  [[nodiscard]] transaction::Methods::IndexHandle getSingleIndex() const;
 
   /// @brief the index
   std::vector<transaction::Methods::IndexHandle> _indexes;

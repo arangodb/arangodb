@@ -1714,34 +1714,11 @@ IResearchViewNode::Collections IResearchViewNode::collections() const {
 }
 
 aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
-                                             bool withDependencies,
-                                             bool withProperties) const {
+                                             bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  auto* outVariable = _outVariable;
-  auto* outSearchDocId = _outSearchDocId;
-  auto* outNonMaterializedDocId = _outNonMaterializedDocId;
-  auto outNonMaterializedViewVars = _outNonMaterializedViewVars;
-
-  if (withProperties) {
-    auto* vars = plan->getAst()->variables();
-    outVariable = vars->createVariable(outVariable);
-    if (outSearchDocId != nullptr) {
-      TRI_ASSERT(_outSearchDocId != nullptr);
-      outSearchDocId = vars->createVariable(outNonMaterializedDocId);
-    }
-    if (outNonMaterializedDocId != nullptr) {
-      outNonMaterializedDocId = vars->createVariable(outNonMaterializedDocId);
-    }
-    for (auto& columnFieldsVars : outNonMaterializedViewVars) {
-      for (auto& fieldVar : columnFieldsVars.second) {
-        fieldVar.var = vars->createVariable(fieldVar.var);
-      }
-    }
-  }
-
   auto node = std::make_unique<IResearchViewNode>(
-      *plan, _id, _vocbase, _view, *outVariable,
+      *plan, _id, _vocbase, _view, *_outVariable,
       const_cast<aql::AstNode*>(_filterCondition), nullptr,
       decltype(_scorers)(_scorers));
   node->_shards = _shards;
@@ -1750,17 +1727,17 @@ aql::ExecutionNode* IResearchViewNode::clone(aql::ExecutionPlan* plan,
   node->_immutableParts = _immutableParts;
   node->_sort = _sort;
   node->_optState = _optState;
-  if (outSearchDocId != nullptr) {
-    node->setSearchDocIdVar(*outSearchDocId);
+  if (_outSearchDocId != nullptr) {
+    node->setSearchDocIdVar(*_outSearchDocId);
   }
-  if (outNonMaterializedDocId != nullptr) {
-    node->setLateMaterialized(*outNonMaterializedDocId);
+  if (_outNonMaterializedDocId != nullptr) {
+    node->setLateMaterialized(*_outNonMaterializedDocId);
   }
   node->_noMaterialization = _noMaterialization;
-  node->_outNonMaterializedViewVars = std::move(outNonMaterializedViewVars);
+  node->_outNonMaterializedViewVars = _outNonMaterializedViewVars;
   node->_heapSort = _heapSort;
   node->_heapSortLimit = _heapSortLimit;
-  return cloneHelper(std::move(node), withDependencies, withProperties);
+  return cloneHelper(std::move(node), withDependencies);
 }
 
 bool IResearchViewNode::empty() const noexcept {

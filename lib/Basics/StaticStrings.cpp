@@ -65,6 +65,7 @@ std::string const StaticStrings::OverwriteCollectionPrefix(
 std::string const StaticStrings::IsSynchronousReplicationString(
     "isSynchronousReplication");
 std::string const StaticStrings::RefillIndexCachesString("refillIndexCaches");
+std::string const StaticStrings::VersionAttributeString("versionAttribute");
 std::string const StaticStrings::Group("group");
 std::string const StaticStrings::Namespace("namespace");
 std::string const StaticStrings::Prefix("prefix");
@@ -72,6 +73,7 @@ std::string const StaticStrings::Overwrite("overwrite");
 std::string const StaticStrings::OverwriteMode("overwriteMode");
 std::string const StaticStrings::Compact("compact");
 std::string const StaticStrings::DontWaitForCommit("dontWaitForCommit");
+std::string const StaticStrings::UserString("user");
 
 // dump headers
 std::string const StaticStrings::DumpAuthUser("x-arango-dump-auth-user");
@@ -144,10 +146,12 @@ std::string const StaticStrings::IndexIsBuilding("isBuilding");
 std::string const StaticStrings::IndexName("name");
 std::string const StaticStrings::IndexSparse("sparse");
 std::string const StaticStrings::IndexStoredValues("storedValues");
+std::string const StaticStrings::IndexPrefixFields("prefixFields");
 std::string const StaticStrings::IndexType("type");
 std::string const StaticStrings::IndexUnique("unique");
 std::string const StaticStrings::IndexEstimates("estimates");
 std::string const StaticStrings::IndexLegacyPolygons("legacyPolygons");
+std::string const StaticStrings::IndexCreationError("creationError");
 
 // static index names
 std::string const StaticStrings::IndexNameEdge("edge");
@@ -406,6 +410,7 @@ std::string const StaticStrings::BackupSearchToDeleteName(
 
 // aql api strings
 std::string const StaticStrings::AqlDocumentCall("x-arango-aql-document-aql");
+std::string const StaticStrings::AqlFastPath("x-arango-fast-path");
 std::string const StaticStrings::AqlRemoteExecute("execute");
 std::string const StaticStrings::AqlRemoteCallStack("callStack");
 std::string const StaticStrings::AqlRemoteLimit("limit");

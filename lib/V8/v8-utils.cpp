@@ -101,6 +101,7 @@
 #include "Logger/LogTopic.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
+#include "ProgramOptions/ProgramOptions.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/CommonDefines.h"
 #include "Rest/GeneralRequest.h"
@@ -298,11 +299,7 @@ static bool LoadJavaScriptFile(v8::Isolate* isolate, char const* filename,
 
   v8::TryCatch tryCatch(isolate);
 
-#ifdef V8_UPGRADE
   v8::ScriptOrigin scriptOrigin(isolate, name);
-#else
-  v8::ScriptOrigin scriptOrigin(name);
-#endif
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC, source, &scriptOrigin)
           .FromMaybe(v8::Local<v8::Script>());
@@ -356,13 +353,9 @@ static void JS_Options(v8::FunctionCallbackInfo<v8::Value> const& args) {
   TRI_GET_GLOBALS();
   V8SecurityFeature& v8security = v8g->_v8security;
 
-  auto filter = [&v8security, isolate](std::string const& name) {
-    if (name.find("passwd") != std::string::npos ||
-        name.find("password") != std::string::npos ||
-        name.find("secret") != std::string::npos) {
-      return false;
-    }
-    return v8security.shouldExposeStartupOption(isolate, name);
+  auto filter = [&v8security, isolate](std::string const& name) -> bool {
+    return options::ProgramOptions::defaultOptionsFilter(name) &&
+           v8security.shouldExposeStartupOption(isolate, name);
   };
 
   VPackBuilder builder = v8g->_server.options(filter);
@@ -466,11 +459,7 @@ static void JS_Parse(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-#ifdef V8_UPGRADE
   v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, filename));
-#else
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
-#endif
   v8::Handle<v8::Script> script =
       v8::Script::Compile(
           TRI_IGETC,
@@ -566,11 +555,7 @@ static void JS_ParseFile(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   v8::TryCatch tryCatch(isolate);
 
-#ifdef V8_UPGRADE
   v8::ScriptOrigin scriptOrigin(isolate, TRI_ObjectToString(context, args[0]));
-#else
-  v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, args[0]));
-#endif
   v8::Handle<v8::Script> script =
       v8::Script::Compile(TRI_IGETC,
                           TRI_V8_PAIR_STRING(isolate, content, (int)length),
@@ -1245,12 +1230,8 @@ static void JS_Execute(v8::FunctionCallbackInfo<v8::Value> const& args) {
   {
     v8::TryCatch tryCatch(isolate);
 
-#ifdef V8_UPGRADE
     v8::ScriptOrigin scriptOrigin(isolate,
                                   TRI_ObjectToString(context, filename));
-#else
-    v8::ScriptOrigin scriptOrigin(TRI_ObjectToString(context, filename));
-#endif
     script = v8::Script::Compile(context, TRI_ObjectToString(context, source),
                                  &scriptOrigin)
                  .FromMaybe(v8::Local<v8::Script>());
@@ -5559,13 +5540,8 @@ v8::Handle<v8::Value> TRI_ExecuteJavaScriptString(v8::Isolate* isolate,
   TRI_ASSERT(isolate->InContext());
   v8::Handle<v8::Context> context = isolate->GetCurrentContext();
 
-#ifdef V8_UPGRADE
   v8::ScriptOrigin scriptOrigin(
       isolate, TRI_V8_PAIR_STRING(isolate, name.data(), name.size()));
-#else
-  v8::ScriptOrigin scriptOrigin(
-      TRI_V8_PAIR_STRING(isolate, name.data(), name.size()));
-#endif
   v8::Handle<v8::Value> result;
   v8::Handle<v8::Script> script =
       v8::Script::Compile(

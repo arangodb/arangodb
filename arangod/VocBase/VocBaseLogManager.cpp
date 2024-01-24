@@ -122,10 +122,19 @@ auto VocBaseLogManager::updateReplicatedState(
 }
 
 void VocBaseLogManager::prepareDropAll() noexcept {
-  auto guard = _guardedData.getLockedGuard();
-  guard->resignAllWasCalled = true;
-  for (auto&& [id, val] : guard->statesAndLogs) {
-    if (auto res = basics::catchVoidToResult([&]() {
+  std::map<arangodb::replication2::LogId, GuardedData::StateAndLog>
+      statesAndLogs;
+  {
+    // We steal all logs from the _guardedData.
+    // We need to give up the guarded Log, and we also
+    // need to have the logs to be unreachable from now on.
+    auto guard = _guardedData.getLockedGuard();
+    guard->resignAllWasCalled = true;
+    statesAndLogs.swap(guard->statesAndLogs);
+    TRI_ASSERT(guard->statesAndLogs.empty());
+  }
+  for (auto&& [id, val] : statesAndLogs) {
+    if (auto res = basics::catchVoidToResult([&, &val = val]() {
           auto storage = resignAndDrop(val);
           storage.reset();
         });
@@ -136,52 +145,42 @@ void VocBaseLogManager::prepareDropAll() noexcept {
           << _vocbase.name() << " are being dropped " << id;
     }
   }
-  guard->statesAndLogs.clear();
 }
 
 auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
     -> arangodb::Result {
   LOG_CTX("658c6", DEBUG, _logContext) << "Dropping replicated state " << id;
-  StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
-  auto result = _guardedData.doUnderLock([&](GuardedData& data) {
-    if (auto iter = data.statesAndLogs.find(id);
-        iter != data.statesAndLogs.end()) {
-      auto resignRes = basics::catchToResultT(
-          [&]()
-              -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
-            return resignAndDrop(iter->second);
-          });
-      if (resignRes.fail()) {
-        LOG_CTX("18db5", ERR, _logContext)
-            << "failed to drop replicated log " << resignRes.result();
-        return resignRes.result();
-      }
 
-      // Now we may delete the persistent metadata.
-      auto storage = std::move(*resignRes);
-      auto res = engine.dropReplicatedState(_vocbase, storage);
-
-      if (res.fail()) {
-        TRI_ASSERT(storage != nullptr);
-        LOG_CTX("998cc", ERR, _logContext)
-            << "failed to drop replicated log " << res.errorMessage();
-        return res;
-      }
-      TRI_ASSERT(storage == nullptr);
-      data.statesAndLogs.erase(iter);
-
-      return Result();
-    }
-
-    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-  });
-
-  if (result.ok()) {
-    auto& feature = _server.getFeature<ReplicatedLogFeature>();
-    feature.metrics()->replicatedLogDeletionNumber->count();
+  auto stateAndLog = _guardedData.getLockedGuard()->stealReplicatedState(id);
+  if (stateAndLog.fail()) {
+    return stateAndLog.result();
   }
+  auto resignRes = basics::catchToResultT(
+      [&]() -> std::unique_ptr<replication2::storage::IStorageEngineMethods> {
+        return resignAndDrop(stateAndLog.get());
+      });
+  if (resignRes.fail()) {
+    LOG_CTX("18db5", ERR, _logContext)
+        << "failed to drop replicated log " << resignRes.result();
+    return resignRes.result();
+  }
+  // Now we may delete the persistent metadata.
+  auto storage = std::move(*resignRes);
+  StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
+  auto res = engine.dropReplicatedState(_vocbase, storage);
 
-  return result;
+  if (res.fail()) {
+    TRI_ASSERT(storage != nullptr);
+    LOG_CTX("998cc", ERR, _logContext)
+        << "failed to drop replicated log " << res.errorMessage();
+    return res;
+  }
+  TRI_ASSERT(storage == nullptr);
+
+  auto& feature = _server.getFeature<ReplicatedLogFeature>();
+  feature.metrics()->replicatedLogDeletionNumber->count();
+
+  return {};
 }
 
 auto VocBaseLogManager::resignAndDrop(GuardedData::StateAndLog& stateAndLog)
@@ -466,4 +465,15 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
   std::abort();
 } catch (...) {
   std::abort();
+}
+
+auto VocBaseLogManager::GuardedData::stealReplicatedState(
+    replication2::LogId id) -> ResultT<GuardedData::StateAndLog> {
+  if (auto iter = statesAndLogs.find(id); iter != statesAndLogs.end()) {
+    auto stateAndLog = std::move(iter->second);
+    statesAndLogs.erase(iter);
+    return stateAndLog;
+  } else {
+    return Result(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
+  }
 }

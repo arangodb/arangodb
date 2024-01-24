@@ -36,7 +36,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
-#include "Metrics/MetricsFeature.h"
+#include "Metrics/CounterBuilder.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -47,6 +47,7 @@
 #endif
 #include "Transaction/Methods.h"
 #include "Transaction/Options.h"
+#include "Utils/CollectionNameResolver.h"
 #include "Utils/ExecContext.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
@@ -57,6 +58,48 @@
 
 using namespace arangodb;
 
+DECLARE_COUNTER(arangodb_collection_leader_reads_total,
+                "Number of per-collection read requests on leaders");
+DECLARE_COUNTER(arangodb_collection_leader_writes_total,
+                "Number of per-collection write requests on leaders");
+DECLARE_COUNTER(arangodb_collection_requests_bytes_read_total,
+                "Number of per-collection bytes read on leaders and followers");
+DECLARE_COUNTER(
+    arangodb_collection_requests_bytes_written_total,
+    "Number of per-collection bytes written on leaders and followers");
+
+namespace {
+// build a dynamic shard-access metric with database/collection/shard,
+// and an optional user component.
+template<typename T>
+T getMetric(std::string_view database, std::string_view collection,
+            std::string_view shard, std::string_view user, bool includeUser) {
+  T metric;
+  // pre-allocation some storage space for labels, to avoid reallocations.
+  // bytes required for separation and quoting characters in each label.
+  // labels look like foo="abc",bar="xyz",baz="qux",...
+  // we will count 4 bytes overhead per label, although for the first
+  // label it is one byte too many
+  constexpr size_t overheadPerLabel = 4;
+  size_t requiredSpace =
+      overheadPerLabel + /*db*/ 2 + database.size() + overheadPerLabel +
+      /*collection*/ 10 + collection.size() + overheadPerLabel + /*shard*/ 5 +
+      shard.size() +
+      (includeUser ? overheadPerLabel + /*user*/ 4 + user.size() : 0);
+
+  metric.reserveSpaceForLabels(requiredSpace);
+
+  metric.addLabel("db", database);
+  metric.addLabel("collection", collection);
+  metric.addLabel("shard", shard);
+  if (includeUser) {
+    metric.addLabel("user", user);
+  }
+  return metric;
+}
+
+}  // namespace
+
 /// @brief transaction type
 TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
                                    transaction::Options const& options,
@@ -65,16 +108,45 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _operationOrigin(operationOrigin) {
-  // patch intermediateCommitCount for testing
+      _operationOrigin(operationOrigin),
+      // set usage tracking mode to disabled initially. this may be overriden
+      // below
+      _usageTrackingMode(
+          metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+// patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
+
+  if (isDBServer()) {
+    // only if we are on a DB server, the usage tracking mode is relevant, as we
+    // don't track on single servers or coordinators. we have to get the
+    // actually mode from the MetricsFeature, where it is initially configured.
+    _usageTrackingMode = _vocbase.server()
+                             .getFeature<metrics::MetricsFeature>()
+                             .usageTrackingMode();
+  }
+
+  // increase the reference counter for the underyling database, so that the
+  // database is protected against deletion while the TransactionState object
+  // is around.
+  _vocbase.forceUse();
 }
 
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
+
+  if (_usageTrackingMode !=
+          metrics::MetricsFeature::UsageTrackingMode::kDisabled &&
+      _shardBytesUnpublishedEvents > 0) {
+    // some metrics updates to publish...
+    try {
+      CollectionNameResolver resolver(_vocbase);
+      publishShardMetrics(resolver);
+    } catch (...) {
+    }
+  }
 
   // process collections in reverse order, free all collections
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
@@ -82,6 +154,10 @@ TransactionState::~TransactionState() {
     (*it)->releaseUsage();
     delete (*it);
   }
+
+  // decrease the reference counter for the database (reverting the increase
+  // we did in the constructor)
+  _vocbase.release();
 }
 
 /// @brief return the collection from a transaction
@@ -140,6 +216,212 @@ TransactionState::Cookie::ptr TransactionState::cookie(
 
 std::shared_ptr<transaction::CounterGuard> TransactionState::counterGuard() {
   return _counterGuard;
+}
+
+void TransactionState::trackShardRequest(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context) noexcept try {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
+  if (_usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // no tracking required
+    return;
+  }
+
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
+    return;
+  }
+
+  bool includeUser =
+      _usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
+
+  DataSourceId cid = resolver.getCollectionIdLocal(shard);
+  std::string collection = resolver.getCollectionNameCluster(cid);
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  if (AccessMode::isRead(accessMode)) {
+    // build metric for reads and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_leader_reads_total>(
+            database, collection, shard, user, includeUser));
+    metric.count();
+  } else {
+    // build metric for writes and increase it
+    auto& metric =
+        mf.addDynamic(getMetric<arangodb_collection_leader_writes_total>(
+            database, collection, shard, user, includeUser));
+    metric.count();
+  }
+
+  LOG_TOPIC("665e6", TRACE, Logger::FIXME)
+      << "tracking request for database '" << database << "', collection '"
+      << collection << "', shard '" << shard << "', user '" << user
+      << "', mode " << AccessMode::typeString(accessMode)
+      << ", context: " << context;
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
+}
+
+void TransactionState::trackShardUsage(
+    CollectionNameResolver const& resolver, std::string_view database,
+    std::string_view shard, std::string_view user, AccessMode::Type accessMode,
+    std::string_view context, size_t nBytes) noexcept try {
+  TRI_ASSERT(!database.empty());
+  TRI_ASSERT(!shard.empty());
+
+  if (_usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // no tracking required
+    return;
+  }
+
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
+
+  if (nBytes == 0) {
+    // nothing to be tracked. should normally not happen except for
+    // collection scans etc. that did not encounter any documents.
+    return;
+  }
+
+  if (user.empty()) {
+    // access via superuser JWT or authentication is turned off,
+    // or request is not instrumented to receive the current user
+    return;
+  }
+
+  bool publishUpdates = false;
+
+  size_t publishShardMetricsThreshold = 1000;
+  TRI_IF_FAILURE("alwaysPublishShardMetrics") {
+    publishShardMetricsThreshold = 1;
+  }
+
+  {
+    std::lock_guard<std::mutex> m(_shardsMetricsMutex);
+
+    if (AccessMode::isRead(accessMode)) {
+      _shardBytesRead[shard] += nBytes;
+    } else {
+      _shardBytesWritten[shard] += nBytes;
+    }
+
+    // only publish every 1000 read/write operations
+    publishUpdates =
+        ++_shardBytesUnpublishedEvents >= publishShardMetricsThreshold;
+  }
+
+  if (publishUpdates) {
+    publishShardMetrics(resolver);
+  }
+
+  LOG_TOPIC("d3599", TRACE, Logger::FIXME)
+      << "tracking access for database '" << database << "', shard '" << shard
+      << "', user '" << user << "', mode " << AccessMode::typeString(accessMode)
+      << ", context: " << context << ", nbytes: " << nBytes;
+
+} catch (...) {
+  // method can be called from destructors, we cannot throw here
+}
+
+void TransactionState::publishShardMetrics(
+    CollectionNameResolver const& resolver) {
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  bool includeUser =
+      _usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
+
+  auto user = username();
+
+  auto drainMap = [&](bool isRead, auto& map) {
+    for (auto& [shard, nBytes] : map) {
+      if (nBytes == 0) {
+        // don't spend any time on map entries that are 0 (after draining)
+        continue;
+      }
+      DataSourceId cid = resolver.getCollectionIdLocal(shard);
+      std::string collection = resolver.getCollectionNameCluster(cid);
+
+      // build metric for reads and increase it
+      if (isRead) {
+        auto& metric = mf.addDynamic(
+            getMetric<arangodb_collection_requests_bytes_read_total>(
+                _vocbase.name(), collection, shard, user, includeUser));
+        metric.count(nBytes);
+      } else {
+        auto& metric = mf.addDynamic(
+            getMetric<arangodb_collection_requests_bytes_written_total>(
+                _vocbase.name(), collection, shard, user, includeUser));
+        metric.count(nBytes);
+      }
+
+      // reset map entry back to 0
+      nBytes = 0;
+    }
+  };
+
+  std::lock_guard<std::mutex> m(_shardsMetricsMutex);
+
+  drainMap(/*isRead*/ true, _shardBytesRead);
+  drainMap(/*isRead*/ false, _shardBytesWritten);
+
+  _shardBytesUnpublishedEvents = 0;
+}
+
+void TransactionState::setUsername(std::string_view name) {
+  if (name.empty()) {
+    // no username to set here
+    return;
+  }
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // username already set
+      return;
+    }
+  }
+  // slow path: username not yet set. we need to protect this
+  // operation with a mutex so that other concurrent threads
+  // that try to read the username do not see any garbled
+  // value.
+  std::unique_lock lock(_usernameLock);
+  if (_username.empty()) {
+    // only set if still empty
+    _username = std::string{name};
+  }
+}
+
+std::string_view TransactionState::username() const noexcept {
+  {
+    std::shared_lock lock(_usernameLock);
+    if (!_username.empty()) {
+      // if username is already set, it will not change anymore,
+      // so we can return a view into the username string.
+      return _username;
+    }
+  }
+  // if the username was not yet set, some other thread may
+  // still set it concurrently. in this case it is not safe
+  // to return a view into the string, because the string may
+  // be modified later/concurrently.
+  return StaticStrings::Empty;
 }
 
 /// @brief add a collection to a transaction
@@ -387,7 +669,7 @@ Result TransactionState::checkCollectionPermission(
 
   // no need to check for superuser, cluster_sync tests break otherwise
   if (exec.isSuperuser()) {
-    return Result{};
+    return {};
   }
 
   auto level = exec.collectionAuthLevel(_vocbase.name(), cname);
@@ -401,14 +683,13 @@ Result TransactionState::checkCollectionPermission(
     if (accessType == AccessMode::Type::READ &&
         _options.skipInaccessibleCollections) {
       addInaccessibleCollection(cid, std::string{cname});
-      return Result();
+      return {};
     }
 #endif
 
-    return Result(TRI_ERROR_FORBIDDEN,
-                  std::string(TRI_errno_string(TRI_ERROR_FORBIDDEN)) + ": " +
-                      std::string{cname} + " [" +
-                      AccessMode::typeString(accessType) + "]");
+    return {TRI_ERROR_FORBIDDEN,
+            absl::StrCat(TRI_errno_string(TRI_ERROR_FORBIDDEN), ": ", cname,
+                         " [", AccessMode::typeString(accessType), "]")};
   } else {
     bool collectionWillWrite = AccessMode::isWriteOrExclusive(accessType);
 
@@ -417,14 +698,14 @@ Result TransactionState::checkCollectionPermission(
           << "User " << exec.user() << " has no write right for collection "
           << cname;
 
-      return Result(TRI_ERROR_ARANGO_READ_ONLY,
-                    std::string(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY)) +
-                        ": " + std::string{cname} + " [" +
-                        AccessMode::typeString(accessType) + "]");
+      return {
+          TRI_ERROR_ARANGO_READ_ONLY,
+          absl::StrCat(TRI_errno_string(TRI_ERROR_ARANGO_READ_ONLY), ": ",
+                       cname, " [", AccessMode::typeString(accessType), "]")};
     }
   }
 
-  return Result{};
+  return {};
 }
 
 /// @brief clear the query cache for all collections that were modified by

@@ -40,6 +40,7 @@
 #include "Cache/Manager.h"
 #include "Cache/TransactionalCache.h"
 #include "Cluster/ClusterMethods.h"
+#include "Replication2/Version.h"
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "CrashHandler/CrashHandler.h"
 #endif
@@ -767,7 +768,7 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
 
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
-      this->canUseRangeDeleteInWal() && _meta.numberDocuments() >= 32 * 1024) {
+      _meta.numberDocuments() >= 32 * 1024) {
     // optimized truncate, using DeleteRange operations.
     // this can only be used if the truncate is performed as a standalone
     // operation (i.e. not part of a larger transaction)
@@ -1035,7 +1036,7 @@ Result RocksDBCollection::doLookupKey(
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
-                                       VPackSlice const& key,
+                                       velocypack::Slice key,
                                        RevisionId& revisionId,
                                        ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(key.isString());
@@ -1047,6 +1048,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
   }
   return false;
 }
+
 Result RocksDBCollection::lookup(transaction::Methods* trx,
                                  std::string_view key,
                                  IndexIterator::DocumentCallback const& cb,
@@ -1085,6 +1087,12 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
         static_cast<ReadOwnWrites>(options.readOwnWrites),
         RocksDBTransactionState::toState(trx));
   }
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document read", ps.size());
+  }
   return res;
 }
 
@@ -1104,6 +1112,72 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
   }
 
   return lookupDocumentVPack(trx, token, cb, options, snapshot);
+}
+
+Result RocksDBCollection::lookup(transaction::Methods* trx,
+                                 std::span<LocalDocumentId> tokens,
+                                 MultiDocumentCallback const& cb,
+                                 LookupOptions options) const {
+  ::ReadTimeTracker timeTracker(
+      _statistics._readWriteMetrics,
+      [](TransactionStatistics::ReadWriteMetrics& metrics,
+         float time) noexcept { metrics.rocksdb_read_sec.count(time); });
+
+  RocksDBMethods* mthd =
+      RocksDBTransactionState::toMethods(trx, _logicalCollection.id());
+  auto* family = RocksDBColumnFamilyManager::get(
+      RocksDBColumnFamilyManager::Family::Documents);
+
+  constexpr auto keySize = 2 * sizeof(uint64_t);
+  std::string buffer;
+  buffer.resize(tokens.size() * keySize);
+
+  std::vector<rocksdb::Slice> keys;
+  keys.reserve(tokens.size());
+
+  RocksDBKey key;
+
+  for (std::size_t k = 0; k < tokens.size(); k++) {
+    auto docId = tokens[k];
+    key.constructDocument(objectId(), docId);
+    auto start = buffer.begin() + k * keySize;
+    std::copy(key.buffer()->begin(), key.buffer()->end(), start);
+    auto slice = rocksdb::Slice(std::string_view{start, start + keySize});
+    keys.push_back(slice);
+  }
+
+  std::vector<rocksdb::PinnableSlice> values;
+  values.resize(tokens.size());
+  std::vector<rocksdb::Status> statuses;
+  statuses.resize(tokens.size());
+  mthd->MultiGet(
+      *family, tokens.size(), keys.data(), values.data(), statuses.data(),
+      options.readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no);
+
+  size_t totalSize = 0;
+
+  for (std::size_t k = 0; k < tokens.size(); k++) {
+    if (!statuses[k].ok()) {
+      cb(rocksutils::convertStatus(statuses[k]), tokens[k], nullptr,
+         VPackSlice::noneSlice());
+    } else {
+      // TODO optimization for non-pinned slices
+      // for that we have leased strings for each value.
+      cb(Result{}, tokens[k], nullptr,
+         VPackSlice{reinterpret_cast<uint8_t const*>(values[k].data())});
+
+      totalSize += values[k].size();
+    }
+  }
+
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document multiget", totalSize);
+  }
+
+  return {};
 }
 
 Result RocksDBCollection::insert(transaction::Methods& trx,
@@ -1341,6 +1415,17 @@ void RocksDBCollection::figuresSpecific(
                 db, RocksDBKeyBounds::GeoIndex(rix->objectId()), snapshot,
                 true);
             break;
+          case Index::TRI_IDX_TYPE_ZKD_INDEX:
+          case Index::TRI_IDX_TYPE_MDI_INDEX:
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::MdiIndex(rix->objectId()), snapshot,
+                true);
+            break;
+          case Index::TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
+            count = rocksutils::countKeyRange(
+                db, RocksDBKeyBounds::MdiVPackIndex(rix->objectId()), snapshot,
+                true);
+            break;
           case Index::TRI_IDX_TYPE_HASH_INDEX:
           case Index::TRI_IDX_TYPE_SKIPLIST_INDEX:
           case Index::TRI_IDX_TYPE_TTL_INDEX:
@@ -1446,8 +1531,14 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   IndexingDisabler disabler(mthds, state->isSingleOperation());
 
   TRI_IF_FAILURE("RocksDBCollection::insertFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1470,25 +1561,26 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
       res.withError([&doc](result::Error& err) {
         TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
         err.appendErrorMessage("; key: ");
-        err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
       });
       TRI_ASSERT(false) << "insert: " << res.errorMessage()
                         << ", options: " << options;
     }
   }
 #endif
+  size_t const byteSize = static_cast<size_t>(doc.byteSize());
+
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+      key.ref(), rocksdb::Slice(doc.startAs<char>(), byteSize));
 
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1496,6 +1588,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   // we have successfully added a value to the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "single-document insert", byteSize);
 
   {
     bool needReversal = false;
@@ -1514,11 +1611,18 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::insertFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
@@ -1570,8 +1674,14 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   IndexingDisabler disabler(mthds, trx->isSingleOperationTransaction());
 
   TRI_IF_FAILURE("RocksDBCollection::removeFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1588,7 +1698,7 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1596,6 +1706,11 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document remove", key->size());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1618,11 +1733,18 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::removeFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
@@ -1660,9 +1782,9 @@ Result RocksDBCollection::modifyDocument(
                            _logicalCollection.name()));
     res.withError([&oldDoc, &newDoc](result::Error& err) {
       err.appendErrorMessage("; old key: ");
-      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).stringView());
       err.appendErrorMessage("; new key: ");
-      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).stringView());
     });
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("b28a9", ERR, Logger::ENGINES) << res.errorMessage();
@@ -1718,8 +1840,14 @@ Result RocksDBCollection::modifyDocument(
   invalidateCacheEntry(key.ref());
 
   TRI_IF_FAILURE("RocksDBCollection::modifyFail1") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1736,7 +1864,7 @@ Result RocksDBCollection::modifyDocument(
     res.withError([&newDoc](result::Error& err) {
       TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1746,8 +1874,14 @@ Result RocksDBCollection::modifyDocument(
   savepoint.tainted();
 
   TRI_IF_FAILURE("RocksDBCollection::modifyFail3") {
-    if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
-      return res.reset(TRI_ERROR_DEBUG);
+    if (_logicalCollection.replicationVersion() == replication::Version::ONE ||
+        _logicalCollection.isLeadingShard()) {
+      // in replication2 the modification operations on the follower MUST NOT
+      // fail if they do, we conclude that something else must have gone
+      // terribly wrong and therefore abort the process
+      if (RandomGenerator::interval(uint32_t(1000)) >= 995) {
+        return res.reset(TRI_ERROR_DEBUG);
+      }
     }
   }
 
@@ -1775,10 +1909,10 @@ Result RocksDBCollection::modifyDocument(
         TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
         err.appendErrorMessage("; old key: ");
         err.appendErrorMessage(
-            oldDoc.get(StaticStrings::KeyString).copyString());
+            oldDoc.get(StaticStrings::KeyString).stringView());
         err.appendErrorMessage("; new key: ");
         err.appendErrorMessage(
-            newDoc.get(StaticStrings::KeyString).copyString());
+            newDoc.get(StaticStrings::KeyString).stringView());
       });
       TRI_ASSERT(false) << "modify: " << res.errorMessage()
                         << ", options: " << options;
@@ -1786,12 +1920,12 @@ Result RocksDBCollection::modifyDocument(
   }
 #endif
 
-  s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(newDoc.startAs<char>(),
-                     static_cast<size_t>(newDoc.byteSize())));
+  size_t const byteSize = static_cast<size_t>(newDoc.byteSize());
+
+  s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref(),
+                          rocksdb::Slice(newDoc.startAs<char>(), byteSize));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1800,6 +1934,11 @@ Result RocksDBCollection::modifyDocument(
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document update/replace", byteSize);
 
   {
     bool needReversal = false;
@@ -1818,11 +1957,18 @@ Result RocksDBCollection::modifyDocument(
         return res.reset(TRI_ERROR_DEBUG);
       }
       TRI_IF_FAILURE("RocksDBCollection::modifyFail2") {
-        if (it == indexes.begin() &&
-            RandomGenerator::interval(uint32_t(1000)) >= 995) {
-          res.reset(TRI_ERROR_DEBUG);
-          // reverse(it); TODO(MBkkt) remove first part of condition
-          break;
+        if (_logicalCollection.replicationVersion() ==
+                replication::Version::ONE ||
+            _logicalCollection.isLeadingShard()) {
+          // in replication2 the modification operations on the follower MUST
+          // NOT fail if they do, we conclude that something else must have gone
+          // terribly wrong and therefore abort the process
+          if (it == indexes.begin() &&
+              RandomGenerator::interval(uint32_t(1000)) >= 995) {
+            res.reset(TRI_ERROR_DEBUG);
+            // reverse(it); TODO(MBkkt) remove first part of condition
+            break;
+          }
         }
       }
       auto& rIdx = basics::downCast<RocksDBIndex>(*it->get());
@@ -1867,6 +2013,11 @@ Result RocksDBCollection::lookupDocumentVPack(
     if (f.found()) {
       cb(token, nullptr,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
+
+      trx->state()->trackShardUsage(
+          *trx->resolver(), _logicalCollection.vocbase().name(),
+          _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+          "document lookup from cache", f.value()->size());
       return {};
     }
   }
@@ -1889,6 +2040,13 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
+  }
+
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
   }
 
   TRI_ASSERT(ps.size() > 0);
@@ -1969,17 +2127,6 @@ void RocksDBCollection::invalidateCacheEntry(RocksDBKey const& k) const {
       }
     } while (true);
   }
-}
-
-/// @brief can use non transactional range delete in write ahead log
-bool RocksDBCollection::canUseRangeDeleteInWal() const {
-  if (ServerState::instance()->isSingleServer()) {
-    return true;
-  }
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  return engine.useRangeDeleteInWal();
 }
 
 }  // namespace arangodb

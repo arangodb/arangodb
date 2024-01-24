@@ -3,7 +3,7 @@ import { Button, IconButton, ModalFooter, ModalHeader } from "@chakra-ui/react";
 import { CellContext } from "@tanstack/react-table";
 import { QueryInfo } from "arangojs/database";
 import React, { useEffect } from "react";
-import moment from "../../../../../frontend/js/lib/moment.min";
+import moment from "moment";
 import { Modal } from "../../../components/modal";
 import { ReactTable } from "../../../components/table/ReactTable";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";

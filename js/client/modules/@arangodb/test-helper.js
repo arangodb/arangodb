@@ -46,6 +46,7 @@ const inst = require('@arangodb/testutils/instance');
 const request = require('@arangodb/request');
 const arangosh = require('@arangodb/arangosh');
 const jsunity = require('jsunity');
+const { isCluster } = require('../../bootstrap/modules/internal');
 const arango = internal.arango;
 const db = internal.db;
 const {assertTrue, assertFalse, assertEqual} = jsunity.jsUnity.assertions;
@@ -108,7 +109,7 @@ exports.debugCanUseFailAt = function (endpoint) {
     let res = arango.GET_RAW('/_admin/debug/failat');
     return res.code === 200;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -123,7 +124,7 @@ exports.debugSetFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -137,7 +138,7 @@ exports.debugResetRaceControl = function (endpoint) {
     }
     return false;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -152,7 +153,7 @@ exports.debugRemoveFailAt = function (endpoint, failAt) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -166,7 +167,7 @@ exports.debugClearFailAt = function (endpoint) {
     }
     return true;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -183,7 +184,7 @@ exports.debugGetFailurePoints = function (endpoint) {
       return res.parsedBody;
     }
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
   return [];
 };
@@ -198,7 +199,7 @@ exports.getChecksum = function (endpoint, name) {
     }
     return res.parsedBody.checksum;
   } finally {
-    reconnectRetry(primaryEndpoint, "_system", "root", "");
+    reconnectRetry(primaryEndpoint, db._name(), "root", "");
   }
 };
 
@@ -511,7 +512,7 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 };
 
 exports.waitForEstimatorSync = function() {
-  arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
+  return arango.POST("/_admin/execute", "require('internal').waitForEstimatorSync();"); // make sure estimates are consistent
 };
 
 exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 0) {
@@ -624,8 +625,62 @@ exports.triggerMetrics = function () {
   require("internal").sleep(2);
 };
 
-exports.getAllMetricsFromEndpoints = function (roles = "") {
+exports.activateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
   
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugSetFailAt(ep, name));
+  });
+
+};
+
+exports.deactivateFailure = function (name) {
+  const isCluster = require("internal").isCluster();
+  let roles = [];
+  if (isCluster) {
+    roles.push("dbserver");
+    roles.push("coordinator");
+  } else {
+    roles.push("single");
+  }
+
+  roles.forEach(role => {
+    exports.getEndpointsByType(role).forEach(ep => exports.debugClearFailAt(ep, name));
+  });
+};
+
+exports.getMaxNumberOfShards = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxNumberOfShards;");
+};
+
+exports.getMaxReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').maxReplicationFactor;");
+};
+
+exports.getMinReplicationFactor = function () {
+  return arango.POST("/_admin/execute", "return require('internal').minReplicationFactor;");
+};
+
+exports.getDbPath = function () {
+  return arango.POST("/_admin/execute", `return require("internal").db._path();`);
+};
+
+exports.getResponsibleShardFromClusterInfo = function (vertexCollectionId, v) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleShard(${JSON.stringify(vertexCollectionId)}, ${JSON.stringify(v)})`);
+};
+
+exports.getResponsibleServersFromClusterInfo = function (arg) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getResponsibleServers(${JSON.stringify(arg)});`);
+};
+
+exports.getAllMetricsFromEndpoints = function (roles = "") {
   const isCluster = require("internal").isCluster();
   
   let res = [];
@@ -768,6 +823,31 @@ exports.uniqid = function  () {
   return JSON.parse(db._connection.POST("/_admin/execute?returnAsJSON=true", "return global.ArangoClusterInfo.uniqid()"));
 };
 
+exports.arangoClusterInfoFlush = function () {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.flush()`);
+};
+
+exports.arangoClusterInfoGetCollectionInfo = function (dbName, collName) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfo(${JSON.stringify(dbName)}, ${JSON.stringify(collName)})`);
+};
+
+exports.arangoClusterInfoGetCollectionInfoCurrent = function (dbName, collName, shard) {
+  return arango.POST("/_admin/execute", 
+    `return global.ArangoClusterInfo.getCollectionInfoCurrent(
+      ${JSON.stringify(dbName)}, 
+      ${JSON.stringify(collName)}, 
+      ${JSON.stringify(shard)})`);
+};
+
+exports.arangoClusterInfoGetAnalyzersRevision = function (dbName) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.getAnalyzersRevision(${JSON.stringify(dbName)})`);
+};
+
+exports.arangoClusterInfoWaitForPlanVersion = function (requiredVersion) {
+  return arango.POST("/_admin/execute", `return global.ArangoClusterInfo.waitForPlanVersion(${JSON.stringify(requiredVersion)})`);
+};
+
 exports.AQL_EXPLAIN = function(query, bindVars, options) {
   let stmt = db._createStatement(query);
   if (typeof bindVars === "object") {
@@ -788,8 +868,10 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     warnings: extra.warnings,
     profile: extra.profile,
     plan: extra.plan,
-    cached: cursor.cached};
+    cached: cursor.cached
+  };
 };
+
 exports.insertManyDocumentsIntoCollection 
   = function(db, coll, maker, limit, batchSize) {
   // This function uses the asynchronous API of `arangod` to quickly
@@ -843,7 +925,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];

@@ -2646,6 +2646,20 @@ class Root : public std::enable_shared_from_this<Root>, public Path {
               return Schema::make_shared(shared_from_this());
             }
 
+            class CacheEnabled
+                : public StaticComponent<CacheEnabled, Collection> {
+             public:
+              constexpr char const* component() const noexcept {
+                return "cacheEnabled";
+              }
+
+              using BaseType::StaticComponent;
+            };
+
+            std::shared_ptr<CacheEnabled const> cacheEnabled() const {
+              return CacheEnabled::make_shared(shared_from_this());
+            }
+
             class ComputedValues
                 : public StaticComponent<ComputedValues, Collection> {
              public:
