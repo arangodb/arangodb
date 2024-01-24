@@ -65,6 +65,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <random>
 #include <thread>
 
 using namespace arangodb;
@@ -283,7 +284,10 @@ class TtlThread final : public ServerThread<ArangodServer> {
       coordinators = ci.getCurrentCoordinators();
     }
 
-    constexpr size_t maxResultsPerQuery = 4000;
+    std::random_device rd;
+    std::mt19937 randGen(rd());
+
+    constexpr uint64_t maxResultsPerQuery = 4000;
 
     double const stamp = TRI_microtime();
     uint64_t limitLeft = properties.maxTotalRemoves;
@@ -296,7 +300,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
     // databases in the removals. the total amount of documents to remove
     // is limited, so a deterministic input could favor the first few
     // databases in the list.
-    std::random_shuffle(databases.begin(), databases.end());
+    std::shuffle(databases.begin(), databases.end(), randGen);
     for (auto const& name : databases) {
       if (!isActive()) {
         // feature deactivated (for example, due to running on current follower
@@ -319,7 +323,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
       // collections in the removals. the total amount of documents to remove
       // is limited, so a deterministic input could favor the first few
       // collections in the list.
-      std::random_shuffle(collections.begin(), collections.end());
+      std::shuffle(collections.begin(), collections.end(), randGen);
 
       for (auto const& collection : collections) {
         if (!isActive()) {
