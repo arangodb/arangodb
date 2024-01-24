@@ -300,7 +300,7 @@ TEST_F(TraverserCacheTest, it_should_insert_an_edge_into_a_result_builder) {
         EXPECT_EQ(edgeKey, edgeDocument.get("_key").copyString());
         return true;
       },
-      arangodb::ReadOwnWrites::no);
+      arangodb::ReadOwnWrites::no, /*countBytes*/ false);
   ASSERT_TRUE(called);
   ASSERT_TRUE(result.ok());
   ASSERT_NE(fetchedDocumentId, 0);

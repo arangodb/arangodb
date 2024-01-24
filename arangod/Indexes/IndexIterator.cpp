@@ -105,7 +105,7 @@ bool IndexIterator::nextDocumentImpl(DocumentCallback const& cb,
   return nextImpl(
       [this, &cb](LocalDocumentId const& token) {
         return _collection->getPhysical()
-            ->read(_trx, token, cb, _readOwnWrites)
+            ->read(_trx, token, cb, _readOwnWrites, /*countBytes*/ true)
             .ok();
       },
       limit);

@@ -1,0 +1,38 @@
+name: arangodb_collection_leader_writes_total
+introducedIn: "3.10.13"
+help: |
+  Number of write operation requests on leaders.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  This metric exposes the number of per-shard write operation requests on DB-Servers.
+  It is increased by AQL queries and single-/multi-document write operations.
+
+  An AQL query increases the counter exactly once for a shard that is involved
+  in the query in write-only or read-write mode, regardless if and how many
+  documents/edges are inserted or modified in the shard.
+
+  For every single- or multi-document write operation, the counter is
+  increased exactly once for each shard that is affected by the operation, even
+  if multiple documents are inserted, modified, or removed from the same shard.
+
+  For collection truncate operations, the counter is also increased exactly once for
+  each shard affected by the truncate.
+  
+  This metric is not exposed by default. It is only present if the startup option
+  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 
+  `enabled-per-shard-per-user`. With the former setting, the metric has different 
+  labels for each shard that was read from. With the latter setting, the metric 
+  has different labels for each combination of shard and user that accessed the shard.
+  The metric is only exposed on DB servers and not on Coordinators or single servers.
+  
+  Note that internal operations, such as internal queries executed for statistics
+  gathering, internal garbage collection, and TTL index cleanup are not counted in
+  these metrics. Additionally, all requests that use the superuser JWT for
+  authentication and that do not have a specific user set, are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with them,
+  so that the cluster must also be running with authentication turned on.

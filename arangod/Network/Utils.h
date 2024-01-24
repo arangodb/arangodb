@@ -33,6 +33,9 @@
 #include <velocypack/Buffer.h>
 #include <velocypack/Slice.h>
 
+#include <string>
+#include <unordered_map>
+
 namespace arangodb {
 namespace velocypack {
 class Builder;
@@ -44,6 +47,10 @@ class ClusterInfo;
 class NetworkFeature;
 
 namespace network {
+struct RequestOptions;
+
+Headers addAuthorizationHeader(
+    std::unordered_map<std::string, std::string> const& originalHeaders);
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
 ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
@@ -91,6 +98,9 @@ fuerte::RestVerb arangoRestVerbToFuerte(rest::RequestType);
 rest::RequestType fuerteRestVerbToArango(fuerte::RestVerb);
 
 void addSourceHeader(consensus::Agent* agent, fuerte::Request& req);
+
+/// @brief add "user" request parameter
+void addUserParameter(RequestOptions& reqOpts, std::string_view value);
 
 }  // namespace network
 }  // namespace arangodb

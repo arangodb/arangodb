@@ -1,0 +1,61 @@
+name: arangodb_collection_requests_bytes_written_total
+introducedIn: "3.10.13"
+help: |
+  Number of bytes written in write requests on DB-Servers.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  This metric exposes the per-shard number of bytes written by write operation
+  requests on DB-Servers, on both leaders and followers.
+  It is increased by AQL queries and single-/multi-document write operations.
+  The metric is first increased only the leader. With traditional replication,
+  the metric is also increased on followers for every replication request that 
+  the leader make to the followers. With the new replication protocol 
+  ("replication2"), the metric is not increased on followers.
+  
+  For every write operation, the metric is increased by the approximate
+  number of bytes written for the document or edge in question.
+  If an operation writes multiple documents/edges, it increases the counter
+  multiple times, each time with the approximate number of bytes written for the
+  particular document/edge.
+
+  An AQL query also increases the counter for every document or edge written,
+  each time with the approximate number of bytes written for document/edge.
+  
+  The numbers reported by this metric normally relate to the cumulated sizes of
+  documents/edges written. For remove operations, however, only a fixed number of
+  bytes is counted per removed document/edge. For truncate operations, the metrics
+  will be affected differently depending on how the truncate is executed internally.
+  For truncates on smaller shards, the truncate operation will be executed as the
+  removal of the individual documents in the shard. Thus the metric will also be
+  increased as if the documents were removed individually. Truncate operations on
+  larger shards however will be executed via a special operation in the storage
+  engine, which marks a whole range of documents as removed, but defers the actual
+  removal until much later (compaction process). If a truncate is executed like
+  this, the metric will not be increased at all.
+  Writes into secondary indexes are not counted at all.
+  The metric is also increased for transactions that are started but later aborted.
+  However, metrics updates may be buffered until the end of a transaction.
+
+  This metric is not exposed by default. It is only present if the startup option
+  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 
+  `enabled-per-shard-per-user`. With the former setting, the metric has different 
+  labels for each shard that was read from. With the latter setting, the metric 
+  has different labels for each combination of shard and user that accessed the shard.
+  The metric is only exposed on DB servers and not on Coordinators or single servers.
+  
+  Note that internal operations, such as internal queries executed for statistics
+  gathering, internal garbage collection, and TTL index cleanup are not counted in
+  these metrics. Additionally, all requests that use the superuser JWT for
+  authentication and that do not have a specific user set, are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with them,
+  so that the cluster must also be running with authentication turned on.
+  
+  Enabling this metric via the startup option will likely result in a small
+  latency overhead of few percent for write operations. The exact overhead depends on
+  several factors, such as the type of operation (single or multi-document operation),
+  replication factor, network latency etc.

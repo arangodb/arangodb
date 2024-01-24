@@ -480,9 +480,9 @@ void RocksDBCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> RocksDBCollection::createIndex(
+    VPackSlice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
@@ -644,9 +644,9 @@ std::shared_ptr<Index> RocksDBCollection::createIndex(VPackSlice info,
       }
 
       RocksDBFilePurgePreventer walKeeper(&engine);
-      res = buildIdx->fillIndexBackground(locker);
+      res = buildIdx->fillIndexBackground(locker, std::move(progress));
     } else {
-      res = buildIdx->fillIndexForeground();
+      res = buildIdx->fillIndexForeground(std::move(progress));
     }
     if (res.fail()) {
       return res;
@@ -1106,7 +1106,7 @@ Result RocksDBCollection::lookupKey(
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
-                                       VPackSlice const& key,
+                                       velocypack::Slice key,
                                        RevisionId& revisionId,
                                        ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(key.isString());
@@ -1128,7 +1128,8 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
 
 Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
                                IndexIterator::DocumentCallback const& cb,
-                               ReadOwnWrites readOwnWrites) const {
+                               ReadOwnWrites readOwnWrites,
+                               bool countBytes) const {
   TRI_IF_FAILURE("LogicalCollection::read") { return Result(TRI_ERROR_DEBUG); }
 
   ::ReadTimeTracker timeTracker(
@@ -1154,7 +1155,7 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
     }
 
     res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
-                              /*fillCache*/ true, readOwnWrites);
+                              /*fillCache*/ true, readOwnWrites, countBytes);
     if (res.ok()) {
       cb(documentId, VPackSlice(reinterpret_cast<uint8_t const*>(ps.data())));
     }
@@ -1168,7 +1169,8 @@ Result RocksDBCollection::read(transaction::Methods* trx, std::string_view key,
 Result RocksDBCollection::read(transaction::Methods* trx,
                                LocalDocumentId const& documentId,
                                IndexIterator::DocumentCallback const& cb,
-                               ReadOwnWrites readOwnWrites) const {
+                               ReadOwnWrites readOwnWrites,
+                               bool countBytes) const {
   ::ReadTimeTracker timeTracker(
       _statistics._readWriteMetrics,
       [](TransactionStatistics::ReadWriteMetrics& metrics,
@@ -1180,14 +1182,15 @@ Result RocksDBCollection::read(transaction::Methods* trx,
   }
 
   return lookupDocumentVPack(trx, documentId, cb, /*withCache*/ true,
-                             readOwnWrites);
+                             readOwnWrites, countBytes);
 }
 
 // read using a local document id
 bool RocksDBCollection::readDocument(transaction::Methods* trx,
                                      LocalDocumentId const& documentId,
                                      ManagedDocumentResult& result,
-                                     ReadOwnWrites readOwnWrites) const {
+                                     ReadOwnWrites readOwnWrites,
+                                     bool countBytes) const {
   ::ReadTimeTracker timeTracker(
       _statistics._readWriteMetrics,
       [](TransactionStatistics::ReadWriteMetrics& metrics,
@@ -1198,8 +1201,9 @@ bool RocksDBCollection::readDocument(transaction::Methods* trx,
   if (documentId.isSet()) {
     std::string* buffer = result.setManaged();
     rocksdb::PinnableSlice ps(buffer);
-    Result res = lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
-                                     /*fillCache*/ true, readOwnWrites);
+    Result res =
+        lookupDocumentVPack(trx, documentId, ps, /*readCache*/ true,
+                            /*fillCache*/ true, readOwnWrites, countBytes);
     if (res.ok()) {
       if (ps.IsPinned()) {
         buffer->assign(ps.data(), ps.size());
@@ -1550,11 +1554,13 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
     return res.reset(TRI_ERROR_DEBUG);
   }
 
+  size_t const byteSize = static_cast<size_t>(doc.byteSize());
+
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+      key.ref(), rocksdb::Slice(doc.startAs<char>(), byteSize));
+
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
@@ -1568,6 +1574,11 @@ Result RocksDBCollection::insertDocument(arangodb::transaction::Methods* trx,
   // we have successfully added a value to the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "single-document insert", byteSize);
 
   {
     bool needReversal = false;
@@ -1659,7 +1670,7 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1667,6 +1678,11 @@ Result RocksDBCollection::removeDocument(arangodb::transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document remove", key->size());
 
   {
     bool needReversal = false;
@@ -1781,7 +1797,7 @@ Result RocksDBCollection::modifyDocument(
     res.withError([&newDoc](result::Error& err) {
       TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1802,12 +1818,13 @@ Result RocksDBCollection::modifyDocument(
 
   key->constructDocument(objectId(), newDocumentId);
   TRI_ASSERT(key->containsLocalDocumentId(newDocumentId));
-  s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(newDoc.startAs<char>(),
-                     static_cast<size_t>(newDoc.byteSize())));
+
+  size_t const byteSize = static_cast<size_t>(newDoc.byteSize());
+
+  s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref(),
+                          rocksdb::Slice(newDoc.startAs<char>(), byteSize));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1816,6 +1833,11 @@ Result RocksDBCollection::modifyDocument(
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document update/replace", byteSize);
 
   {
     bool needReversal = false;
@@ -1867,7 +1889,8 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
                                          LocalDocumentId documentId,
                                          velocypack::Builder& builder,
                                          bool readCache, bool fillCache,
-                                         ReadOwnWrites readOwnWrites) const {
+                                         ReadOwnWrites readOwnWrites,
+                                         bool countBytes) const {
   TRI_ASSERT(trx.state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -1884,6 +1907,12 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
       builder.add(
           VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
       TRI_ASSERT(builder.slice().isObject());
+      if (countBytes) {
+        trx.state()->trackShardUsage(
+            *trx.resolver(), _logicalCollection.vocbase().name(),
+            _logicalCollection.name(), trx.username(), AccessMode::Type::READ,
+            "document lookup from cache", f.value()->size());
+      }
       return {};  // all good
     }
 
@@ -1910,6 +1939,13 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
     return rocksutils::convertStatus(s, rocksutils::document);
   }
 
+  if (countBytes) {
+    trx.state()->trackShardUsage(
+        *trx.resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx.username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
+  }
+
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
@@ -1929,7 +1965,7 @@ Result RocksDBCollection::lookupDocument(transaction::Methods& trx,
 arangodb::Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     rocksdb::PinnableSlice& ps, bool readCache, bool fillCache,
-    ReadOwnWrites readOwnWrites) const {
+    ReadOwnWrites readOwnWrites, bool countBytes) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
   Result res;
@@ -1947,6 +1983,12 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
       ps.PinSelf(
           rocksdb::Slice(reinterpret_cast<char const*>(f.value()->value()),
                          f.value()->valueSize()));
+      if (countBytes) {
+        trx->state()->trackShardUsage(
+            *trx->resolver(), _logicalCollection.vocbase().name(),
+            _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+            "document lookup from cache", f.value()->size());
+      }
       // TODO we could potentially use the PinSlice method ?!
       return {};  // all good
     }
@@ -1972,6 +2014,13 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
     return rocksutils::convertStatus(s, rocksutils::document);
   }
 
+  if (countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
+  }
+
   if (fillCache && useCache() && !lockTimeout) {
     TRI_ASSERT(_cache != nullptr);
     // write entry back to cache
@@ -1987,7 +2036,7 @@ arangodb::Result RocksDBCollection::lookupDocumentVPack(
 Result RocksDBCollection::lookupDocumentVPack(
     transaction::Methods* trx, LocalDocumentId const& documentId,
     IndexIterator::DocumentCallback const& cb, bool withCache,
-    ReadOwnWrites readOwnWrites) const {
+    ReadOwnWrites readOwnWrites, bool countBytes) const {
   TRI_ASSERT(trx->state()->isRunning());
   TRI_ASSERT(objectId() != 0);
 
@@ -2002,6 +2051,13 @@ Result RocksDBCollection::lookupDocumentVPack(
     if (f.found()) {
       cb(documentId,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
+
+      if (countBytes) {
+        trx->state()->trackShardUsage(
+            *trx->resolver(), _logicalCollection.vocbase().name(),
+            _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+            "document lookup from cache", f.value()->size());
+      }
       return {};
     }
   }
@@ -2018,6 +2074,13 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
+  }
+
+  if (countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
   }
 
   TRI_ASSERT(ps.size() > 0);

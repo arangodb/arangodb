@@ -129,7 +129,8 @@ Result fillIndexSingleThreaded(
     bool foreground, RocksDBMethods& batched, rocksdb::Options const& dbOptions,
     rocksdb::WriteBatchBase& batch, std::atomic<std::uint64_t>& docsProcessed,
     trx::BuilderTrx& trx, RocksDBIndex& ridx, rocksdb::Snapshot const* snap,
-    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it) {
+    rocksdb::DB* rootDB, std::unique_ptr<rocksdb::Iterator> it,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   Result res;
   uint64_t numDocsWritten = 0;
 
@@ -137,9 +138,11 @@ Result fillIndexSingleThreaded(
 
   auto rcoll = static_cast<RocksDBCollection*>(ridx.collection().getPhysical());
   auto bounds = RocksDBKeyBounds::CollectionDocuments(rcoll->objectId());
+  auto count = rcoll->numberDocuments(&trx);
   rocksdb::Slice upper(bounds.end());
 
   OperationOptions options;
+
   for (it->Seek(bounds.start()); it->Valid(); it->Next()) {
     TRI_ASSERT(it->key().compare(upper) < 0);
 
@@ -152,12 +155,31 @@ Result fillIndexSingleThreaded(
     }
     numDocsWritten++;
 
-    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
+    if (numDocsWritten > 0 &&
+        numDocsWritten % 1024 == 0) {  // commit buffered writes
+
       res = partiallyCommitInsertions(batch, rootDB, trxColl, docsProcessed,
                                       ridx, foreground);
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
+      }
+
+      if (count > 0) {
+        double p =
+            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+        ridx.progress(p);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("fillIndex::pause") {
+          while (true) {
+            TRI_IF_FAILURE("fillIndex::unpause") { break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        }
+#endif
+        if (progress != nullptr) {
+          (*progress)(p);
+        }
       }
 
       if (ridx.collection().vocbase().server().isStopping()) {
@@ -180,6 +202,10 @@ Result fillIndexSingleThreaded(
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
+    ridx.progress(100.0);  // Report ready
+    if (progress != nullptr) {
+      (*progress)(100.0);
+    }
     if (ridx.estimator() != nullptr) {
       ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
@@ -289,13 +315,15 @@ Result RocksDBBuilderIndex::remove(transaction::Methods& trx,
 
 // fast mode assuming exclusive access locked from outside
 template<bool foreground>
-static Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
-                        RocksDBMethods& batched, rocksdb::WriteBatchBase& batch,
-                        rocksdb::Snapshot const* snap,
-                        std::atomic<uint64_t>& docsProcessed, bool isUnique,
-                        size_t numThreads, uint64_t threadBatchSize,
-                        rocksdb::Options const& dbOptions,
-                        std::string const& idxPath) {
+
+static Result fillIndex(
+    rocksdb::DB* rootDB, RocksDBIndex& ridx, RocksDBMethods& batched,
+    rocksdb::WriteBatchBase& batch, rocksdb::Snapshot const* snap,
+    std::atomic<uint64_t>& docsProcessed, bool isUnique, size_t numThreads,
+    uint64_t threadBatchSize, rocksdb::Options const& dbOptions,
+    std::string const& idxPath,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress =
+        nullptr) {
   // fillindex can be non transactional, we just need to clean up
   TRI_ASSERT(rootDB != nullptr);
 
@@ -341,17 +369,19 @@ static Result fillIndex(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
   IndexFiller indexFiller(isUnique, foreground, numThreads, batched,
                           threadBatchSize, dbOptions, batch, docsProcessed, trx,
-                          ridx, snap, rootDB, std::move(it), idxPath);
+                          ridx, snap, rootDB, std::move(it), idxPath,
+                          std::move(progress));
   res = indexFiller.fillIndex();
 #else
   res = fillIndexSingleThreaded(foreground, batched, dbOptions, batch,
                                 docsProcessed, trx, ridx, snap, rootDB,
-                                std::move(it));
+                                std::move(it), std::move(progress));
 #endif
   return res;
 }
 
-Result RocksDBBuilderIndex::fillIndexForeground() {
+Result RocksDBBuilderIndex::fillIndexForeground(
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
@@ -379,10 +409,11 @@ Result RocksDBBuilderIndex::fillIndexForeground() {
     // WriteBatch
     rocksdb::WriteBatch batch(getBatchSize(_numDocsHint));
     RocksDBBatchedMethods methods(&batch);
-    res = ::fillIndex<true>(
-        db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
-        _numThreads, this->kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
+    res = ::fillIndex<true>(db, *internal, methods, batch, snap,
+                            std::ref(_docsProcessed), false, _numThreads,
+                            this->kThreadBatchSize,
+                            rocksdb::Options(_engine.rocksDBOptions(), {}),
+                            _engine.idxPath(), std::move(progress));
   }
 
   return res;
@@ -735,7 +766,9 @@ void RocksDBBuilderIndex::Locker::unlock() {
 }
 
 // Background index filler task
-Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
+Result RocksDBBuilderIndex::fillIndexBackground(
+    Locker& locker,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(locker.isLocked());
 
   RocksDBIndex* internal = _wrapped.get();
@@ -793,10 +826,11 @@ Result RocksDBBuilderIndex::fillIndexBackground(Locker& locker) {
     // WriteBatch
     rocksdb::WriteBatch batch(32 * 1024 * 1024);
     RocksDBBatchedMethods methods(&batch);
-    res = ::fillIndex<false>(
-        db, *internal, methods, batch, snap, std::ref(_docsProcessed), false,
-        _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
+    res = ::fillIndex<false>(db, *internal, methods, batch, snap,
+                             std::ref(_docsProcessed), false, _numThreads,
+                             kThreadBatchSize,
+                             rocksdb::Options(_engine.rocksDBOptions(), {}),
+                             _engine.idxPath(), std::move(progress));
   }
 
   if (res.fail()) {

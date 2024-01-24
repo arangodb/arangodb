@@ -1,0 +1,51 @@
+name: arangodb_collection_requests_bytes_read_total
+introducedIn: "3.10.13"
+help: |
+  Number of bytes read in read requests on DB-Servers.
+unit: number
+type: counter
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+description: |
+  This metric exposes the per-shard number of bytes read by read operation
+  requests on DB-Servers.
+  It is increased by AQL queries that read documents or edges and for single-
+  or multi-document read operations.
+  The metric is normally increased only on the leader, but it can also increase
+  on followers if "reads from followers" are enabled.
+
+  For every read operation, the metric is increased by the approximate
+  number of bytes read to retrieve the underlying document or edge data. This
+  is also true if a document or edge is served from an in-memory cache.
+  If an operation reads multiple documents/edges, it increases the counter
+  multiple times, each time with the approximate number of bytes read for the
+  particular document/edge.
+  
+  The numbers reported by this metric normally relate to the cumulated sizes of
+  documents/edges read.
+  The metric is also increased for transactions that are started but later
+  aborted. However, metrics updates may be buffered until the end of a transaction.
+  Note that the metric is not increased for secondary index point lookups or
+  scans, or for scans in a collection that iterate over documents but do not
+  read them.
+  
+  This metric is not exposed by default. It is only present if the startup option
+  `--server.export-shard-usage-metrics` is set to either `enabled-per-shard` or 
+  `enabled-per-shard-per-user`. With the former setting, the metric has different 
+  labels for each shard that was read from. With the latter setting, the metric 
+  has different labels for each combination of shard and user that accessed the shard.
+  The metric is only exposed on DB servers and not on Coordinators or single servers.
+  
+  Note that internal operations, such as internal queries executed for statistics
+  gathering, internal garbage collection, and TTL index cleanup are not counted in
+  these metrics. Additionally, all requests that use the superuser JWT for
+  authentication and that do not have a specific user set, are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with them,
+  so that the cluster must also be running with authentication turned on.
+
+  Enabling this metric via the startup option will likely result in a small
+  latency overhead of few percent for read operations. The exact overhead depends on
+  several factors, such as the type of operation (single or multi-document operation),
+  replication factor, network latency etc.
