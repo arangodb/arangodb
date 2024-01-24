@@ -17,6 +17,7 @@ export type AnalyzerTypes =
   | "geo_s2"
   | "minhash"
   | "multi_delimiter"
+  | "wildcard";
 
 type Feature = "frequency" | "norm" | "position";
 type Features = Feature[];
@@ -40,6 +41,27 @@ type MultiDelimiterState = {
   type: "multi_delimiter";
   properties: {
     delimiter: Array<string>;
+  };
+};
+
+type WildcardState = {
+  type: "wildcard";
+  properties: {
+    ngramSize: number;
+    analyzer?:
+      | IdentityState
+      | DelimiterState
+      | StemState
+      | NormState
+      | NGramState
+      | TextState
+      | AqlState
+      | StopwordsState
+      | CollationState
+      | SegmentationState
+      | NearestNeighborsState
+      | ClassificationState
+      | MultiDelimiterState;
   };
 };
 
@@ -246,6 +268,7 @@ export type AnalyzerTypeState =
   | GeoPointState
   | GeoS2State
   | MinHashState
+  | WildcardState
   | MultiDelimiterState;
 
 export type AnalyzerState = BaseAnalyzerState & AnalyzerTypeState;

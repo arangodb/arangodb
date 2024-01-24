@@ -20,7 +20,8 @@ export const TYPE_TO_LABEL_MAP: {
   geopoint: "GeoPoint",
   geo_s2: "Geo S2",
   minhash: "Min Hash",
-  multi_delimiter: "Multi Delimiter"
+  multi_delimiter: "Multi Delimiter",
+  wildcard: "Wildcard"
 };
 
 export const TYPE_TO_INITIAL_VALUES_MAP: {
@@ -168,6 +169,12 @@ export const TYPE_TO_INITIAL_VALUES_MAP: {
     type: "multi_delimiter",
     properties: {
       delimiter: []
+    }
+  },
+  wildcard: {
+    type: "wildcard",
+    properties: {
+      ngramSize: 2
     }
   }
 };

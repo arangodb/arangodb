@@ -18,11 +18,11 @@ import { SegmentationConfig } from "./forms/SegmentationConfig";
 import { StemConfig } from "./forms/StemConfig";
 import { StopwordsConfig } from "./forms/StopwordsConfig";
 import { TextConfig } from "./forms/TextConfig";
+import { WildcardConfig } from "./forms/WildcardConfig";
 
 const ANALYZER_TYPE_TO_CONFIG_MAP = {
   identity: null,
   delimiter: DelimiterConfig,
-  multi_delimiter: MultiDelimiterConfig,
   stem: StemConfig,
   norm: NormConfig,
   ngram: NgramConfig,
@@ -37,7 +37,9 @@ const ANALYZER_TYPE_TO_CONFIG_MAP = {
   geojson: GeoJSONConfig,
   geopoint: GeopointConfig,
   geo_s2: GeoS2Config,
-  minhash: MinHashConfig
+  minhash: MinHashConfig,
+  multi_delimiter: MultiDelimiterConfig,
+  wildcard: WildcardConfig
 };
 
 export const AnalyzerTypeForm = ({
