@@ -1,6 +1,9 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* Do not make AQL query runtime timeout affect TTL index background thread 
+  removal queries.
+
 * New API to show progress in background index creation.
 
 * Updated ArangoDB Starter to v0.18.0.
