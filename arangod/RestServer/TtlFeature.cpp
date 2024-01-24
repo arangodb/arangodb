@@ -45,6 +45,7 @@
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Network/types.h"
 #include "ProgramOptions/Parameters.h"
@@ -62,6 +63,7 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
