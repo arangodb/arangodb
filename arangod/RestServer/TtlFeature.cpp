@@ -549,7 +549,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
               OperationOptions opOptions;
               opOptions.ignoreRevs = false;
               opOptions.waitForSync = false;
-              // opOptions.silent = true;
 
               OperationResult opRes =
                   trx->remove(collection->name(), docsToRemove, opOptions);
