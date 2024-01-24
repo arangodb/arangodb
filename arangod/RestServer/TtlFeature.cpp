@@ -512,7 +512,6 @@ class TtlThread final : public ServerThread<ArangodServer> {
                 VPackSlice error = it.get(StaticStrings::Error);
                 if (!error.isTrue()) {
                   ++count;
-                  continue;
                 }
               }
 
