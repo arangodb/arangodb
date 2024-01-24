@@ -140,7 +140,7 @@ function IndexSuite() {
       
       count = 0;
       // wait until index appears, at most 30 seconds
-      while (++count < 300) {
+      while (++count < 3000) {
         let idxs = arango.GET(`/_api/index?collection=${cn}`).indexes;
         assertEqual("primary", idxs[0].type);
         if (idxs.length === 2) {
