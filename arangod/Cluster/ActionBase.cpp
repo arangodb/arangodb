@@ -170,11 +170,8 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  auto progress = _progress.load();
-  progress += 1.;
-  _progress.store(progress);
+  _progress.fetch_add(1.);
   _actionLastStat = secs_since_epoch();
-
 }  // ActionBase::incStats
 
 void ActionBase::endStats() {
@@ -285,7 +282,7 @@ arangodb::Result ActionBase::setProgress(double d) { return {}; }
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = 0.5;
+  progress = _progress.load();
   return {};
 }
 

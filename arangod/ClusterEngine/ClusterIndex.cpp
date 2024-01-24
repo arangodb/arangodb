@@ -169,66 +169,6 @@ void ClusterIndex::toVelocyPack(
     builder.close();
   }
 
-  if (inProgress()) {
-    double progress = 0;
-    double success = 0;
-    auto const shards = _collection.shardIds();
-    auto const body = VPackBuffer<uint8_t>();
-    auto* pool =
-        _collection.vocbase().server().getFeature<NetworkFeature>().pool();
-    std::vector<Future<network::Response>> futures;
-    futures.reserve(shards->size());
-    std::string const prefix = "/_api/index/";
-    network::RequestOptions reqOpts;
-    reqOpts.param("withHidden", "true");
-    // best effort. only displaying progress
-    reqOpts.timeout = network::Timeout(10.0);
-    for (auto const& shard : *shards) {
-      std::string const url =
-          prefix + shard.first + "/" + std::to_string(_iid.id());
-      futures.emplace_back(
-          network::sendRequestRetry(pool, "shard:" + shard.first,
-                                    fuerte::RestVerb::Get, url, body, reqOpts));
-    }
-    for (Future<network::Response>& f : futures) {
-      network::Response const& r = f.get();
-
-      // Only best effort accounting. If something breaks here, we just
-      // ignore the output. Account for what we can and move on.
-      if (r.fail()) {
-        LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
-            << "Communication error while collecting figures for collection "
-            << _collection.name() << " from " << r.destination;
-        continue;
-      }
-      VPackSlice resSlice = r.slice();
-      if (!resSlice.isObject() ||
-          !resSlice.get(StaticStrings::Error).isBoolean()) {
-        LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
-            << "Result of collecting figures for collection "
-            << _collection.name() << " from " << r.destination << " is invalid";
-        continue;
-      }
-      if (resSlice.get(StaticStrings::Error).getBoolean()) {
-        LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
-            << "Failed to collect figures for collection " << _collection.name()
-            << " from " << r.destination;
-        continue;
-      }
-      if (resSlice.get("progress").isNumber()) {
-        progress += resSlice.get("progress").getNumber<double>();
-        success++;
-      } else {
-        LOG_TOPIC("aeab4", INFO, Logger::CLUSTER)
-            << "No progress entry on index " << _iid.id() << "  from "
-            << r.destination << ": " << resSlice.toJson();
-      }
-    }
-    if (success) {
-      builder.add("progress", VPackValue(progress / success));
-    }
-  }
-
   for (auto pair : VPackObjectIterator(_info.slice())) {
     if (!pair.key.isEqualString(StaticStrings::IndexId) &&
         !pair.key.isEqualString(StaticStrings::IndexName) &&
@@ -539,33 +479,6 @@ ClusterIndex::coveredFields() const {
     default:
       return _fields;
   }
-}
-
-bool ClusterIndex::inProgress() const {
-  // If agency entry "isBuilding".
-  try {
-    auto const& vocbase = _collection.vocbase();
-    auto const& dbname = vocbase.name();
-    auto const cid = std::to_string(_collection.id().id());
-    auto const& agencyCache =
-        vocbase.server().getFeature<ClusterFeature>().agencyCache();
-    auto [acb, idx] =
-        agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
-            "Plan/Collections/" + basics::StringUtils::urlEncode(dbname) + "/" +
-            cid + "/indexes")});
-    auto slc = acb->slice()[0].get(std::vector<std::string>{
-        "arango", "Plan", "Collections", vocbase.name()});
-    if (slc.hasKey(std::vector<std::string>{cid, "indexes"})) {
-      slc = slc.get(std::vector<std::string>{cid, "indexes"});
-      for (auto const& index : VPackArrayIterator(slc)) {
-        if (index.get("id").stringView() == std::to_string(_iid.id())) {
-          return index.hasKey(StaticStrings::IndexIsBuilding);
-        }
-      }
-    }
-  } catch (...) {
-  }
-  return false;
 }
 
 bool ClusterIndex::supportsStreamInterface(

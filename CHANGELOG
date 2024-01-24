@@ -27,6 +27,8 @@ devel
   `rocksdb_block_cache_usage`. This also allows to better limit the total
   memory usage of RocksDB.
 
+* Index progress visibility for indexes, which are created in background
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * Added support for simple external versioning to document operations.
