@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
 * BTS-1660: When updating (PATCH request) edges with API Gharial and only
   specifying one of the two edge attributes `_from` or `_to` (not both),
   the content of the edge was not fully validated. This has been fixed now.

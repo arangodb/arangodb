@@ -454,6 +454,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     for (std::string const& hinted : hintedIndices) {
       std::shared_ptr<Index> matched;
       for (std::shared_ptr<Index> const& idx : indexes) {
+        if (idx->inProgress()) {
+          continue;
+        }
         if (idx->name() == hinted) {
           matched = idx;
           break;
@@ -477,6 +480,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   if (bestIndex == nullptr) {
     for (auto const& idx : indexes) {
+      if (idx->inProgress()) {
+        continue;
+      }
       if (!Index::onlyHintForced(idx->type())) {
         considerIndex(idx);
       }
@@ -1179,6 +1185,9 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
   // Give it a try
   if (std::exchange(isAllCoveredByIndex, false)) {
     for (auto& index : indexes) {
+      if (index->inProgress()) {
+        continue;
+      }
       if (readOwnWrites == ReadOwnWrites::yes &&
           index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         // inverted index does not support ReadOwnWrites
@@ -1295,6 +1304,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
         for (std::string const& hinted : hintedIndices) {
           std::shared_ptr<Index> matched;
           for (std::shared_ptr<Index> const& idx : indexes) {
+            if (idx->inProgress()) {
+              continue;
+            }
             if (idx->name() == hinted) {
               matched = idx;
               break;
@@ -1318,6 +1330,9 @@ bool getIndexForSortCondition(aql::Collection const& coll,
 
       if (bestIndex == nullptr) {
         for (auto const& idx : indexes) {
+          if (idx->inProgress()) {
+            continue;
+          }
           if (!Index::onlyHintForced(idx->type())) {
             considerIndex(idx);
           }
