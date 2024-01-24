@@ -96,7 +96,7 @@ function recoverySuite () {
       var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
       var expectedResultStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      var expectedResultNonStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
+      var expectedResultNonStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._id").toArray();
       const message = `Search with COUNT ${result[0]}, Collection COUNT ${expectedResult[0]}, SearchStoredValues: ${expectedResultStoredValues.length}. Search Not StoradeValues: ${expectedResultNonStoredValues} StoredValue _key values: ${JSON.stringify(expectedResultStoredValues.sort())}, not stored: ${JSON.stringify(expectedResultNonStoredValues.sort())}`;
       assertEqual(result[0], expectedResult[0], message);
       assertEqual(result[0], expectedResultStoredValues.length, message);
