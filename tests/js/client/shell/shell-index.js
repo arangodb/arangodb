@@ -100,15 +100,16 @@ function IndexSuite() {
             internal.debugSetFailAt("fillIndex::unpause");
             seenProgress = true;
           }
-          sleep(0.1);
-          if (++count > 4000) {
-            // Value intentionally high for ASAN runs, this is 100x slower
-            // than observed on an old machine with debug build!
-            assertFalse(true, "Did not see index finished in time! " + JSON.stringify(idx));
-          }
-        } else {
+        } else if (seenProgress) {
           assertFalse(idx.hasOwnProperty("isBuilding"));
           break;
+        }
+          
+        sleep(0.1);
+        if (++count > 4000) {
+          // Value intentionally high for ASAN runs, this is 100x slower
+          // than observed on an old machine with debug build!
+          assertFalse(true, "Did not see index finished in time! " + JSON.stringify(idx));
         }
       }
       assertTrue(seenProgress, "Never saw progress being reported!");
