@@ -1475,7 +1475,7 @@ function testSuite() {
             for (let i = 0; i < n; ++i) {
               c.insert({ value: i });
             }
-            
+
             let parsed = getParsedMetrics(db._name(), cn);
             assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
 
@@ -1484,27 +1484,18 @@ function testSuite() {
             
             parsed = getParsedMetrics(db._name(), cn);
             // total written should remain unchanged
-            assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50);
+            assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40, n * 50, true);
             assertTotalReadMetricsAreCounted(parsed, shards, n * 40, n * 50);
 
             // write into the collection
             trx.query(`FOR i IN 1..5000 INSERT {} INTO ${cn}`);
             
             parsed = getParsedMetrics(db._name(), cn);
-          
-            totalRead = 0;
-            totalWritten = 0;
-            shards.forEach((shard) => {
-              totalWritten += parsed.writes[shard];
-              totalRead += parsed.reads[shard];
-            });
-            assertTrue(totalWritten > n * 40 * replicationFactor + 5000 * 30 * replicationFactor, {parsed, replicationFactor, totalWritten});
-            assertTrue(totalWritten < n * 50 * replicationFactor + 5000 * 40 * replicationFactor, {parsed, replicationFactor, totalWritten});
-            
-            // total read should remain unchanged
-            assertTrue(totalRead > n * 40, {parsed, totalRead});
-            assertTrue(totalRead < n * 50, {parsed, totalRead});
 
+            // Count 5.000 times 30-40 bytes for the insert query
+            assertTotalWriteMetricsAreCounted(parsed, shards, replicationFactor, n * 40 + 5000 * 30, n * 50 + 5000 * 40, true);
+            // total read should remain unchanged
+            assertTotalReadMetricsAreCounted(parsed, shards, n * 40, n * 50);
           } finally {
             trx.abort();
           }
