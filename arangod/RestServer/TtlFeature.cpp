@@ -337,6 +337,10 @@ class TtlThread final : public ServerThread<ArangodServer> {
           if (index->type() != Index::TRI_IDX_TYPE_TTL_INDEX) {
             continue;
           }
+          if (index->isHidden()) {
+            // Filter out indexes that are currently still being built
+            continue;
+          }
 
           // serialize the index description so we can read the "expireAfter"
           // attribute
