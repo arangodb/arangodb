@@ -462,7 +462,7 @@ const replicatedStateFollowerSuite = function (dbParams) {
           const leader = Object.values(status.participants).find(({response:{role}}) => role === 'leader');
           const followers = Object.entries(status.participants).filter(([_,{response:{role}}]) => role === 'follower');
           const commitIndex = leader.response.local.commitIndex;
-          for ([id, follower] of followers) {
+          for (const [id, follower] of followers) {
             const appliedIndex = follower.response.local.appliedIndex;
             if (appliedIndex !== commitIndex) {
               return Error(`Applied index ${appliedIndex} of follower ${id} has not reached the commit index ${commitIndex}.`);
