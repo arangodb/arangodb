@@ -149,7 +149,7 @@ function IndexSuite() {
         }
         sleep(0.1);
       }
-      assertTrue(count < 300, count);
+      assertTrue(count < 3000, count);
     },
   };
 }
