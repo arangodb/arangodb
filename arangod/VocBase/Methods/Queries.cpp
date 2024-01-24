@@ -51,17 +51,6 @@ using namespace arangodb::methods;
 namespace {
 enum class QueriesMode { Current, Slow };
 
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
-
 arangodb::Result checkAuthorization(TRI_vocbase_t& vocbase, bool allDatabases) {
   Result res;
 
@@ -163,7 +152,7 @@ arangodb::Result getQueries(TRI_vocbase_t& vocbase, velocypack::Builder& out,
 
       auto f = network::sendRequestRetry(
           pool, "server:" + coordinator, fuerte::RestVerb::Get, url,
-          VPackBuffer<uint8_t>{}, options, buildHeaders());
+          VPackBuffer<uint8_t>{}, options, network::addAuthorizationHeader({}));
       futures.emplace_back(std::move(f));
     }
 
@@ -262,9 +251,10 @@ Result Queries::clearSlow(TRI_vocbase_t& vocbase, bool allDatabases,
         continue;
       }
 
-      auto f = network::sendRequestRetry(
-          pool, "server:" + coordinator, fuerte::RestVerb::Delete,
-          "/_api/query/slow", body, options, buildHeaders());
+      auto f = network::sendRequestRetry(pool, "server:" + coordinator,
+                                         fuerte::RestVerb::Delete,
+                                         "/_api/query/slow", body, options,
+                                         network::addAuthorizationHeader({}));
       futures.emplace_back(std::move(f));
     }
 

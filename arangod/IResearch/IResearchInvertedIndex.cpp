@@ -494,7 +494,7 @@ class IResearchInvertedIndexIterator final
           // iterator operates only one iresearch datastore
           return _collection->getPhysical()
               ->readFromSnapshot(_trx, token, cb, canReadOwnWrites(),
-                                 _snapshot.snapshot(0))
+                                 /*countBytes*/ true, _snapshot.snapshot(0))
               .ok();
         },
         limit);
