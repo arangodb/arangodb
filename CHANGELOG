@@ -12,9 +12,6 @@ v3.11.7 (XXXX-XX-XX)
   server, since we will also do not retry to create it at a later time.
   To avoid this, we add a new `indexId` label to the metric to make it unique.
 
-* Fixed a problem in ReadWriteLock which could prevent waiting readers from
-  being woken up, when a write lock acquire timed out.
-
 * Updated ArangoDB Starter to v0.18.0.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored
