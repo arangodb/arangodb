@@ -79,7 +79,9 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
       arangodb::LogicalCollection& collection) const override;
   virtual ErrorCode close() override;
   virtual std::shared_ptr<arangodb::Index> createIndex(
-      arangodb::velocypack::Slice info, bool restore, bool& created) override;
+      arangodb::velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> =
+          nullptr) override;
   virtual void deferDropCollection(
       std::function<bool(arangodb::LogicalCollection&)> const& callback)
       override;
@@ -116,20 +118,21 @@ class PhysicalCollectionMock : public arangodb::PhysicalCollection {
   virtual arangodb::Result read(
       arangodb::transaction::Methods*, std::string_view key,
       arangodb::IndexIterator::DocumentCallback const& cb,
-      arangodb::ReadOwnWrites) const override;
+      arangodb::ReadOwnWrites, bool countBytes) const override;
   virtual arangodb::Result read(
       arangodb::transaction::Methods* trx,
       arangodb::LocalDocumentId const& token,
       arangodb::IndexIterator::DocumentCallback const& cb,
-      arangodb::ReadOwnWrites) const override;
+      arangodb::ReadOwnWrites, bool countBytes) const override;
   virtual bool readDocument(arangodb::transaction::Methods* trx,
                             arangodb::LocalDocumentId const& token,
                             arangodb::ManagedDocumentResult& result,
-                            arangodb::ReadOwnWrites) const override;
+                            arangodb::ReadOwnWrites,
+                            bool countBytes) const override;
   virtual arangodb::Result lookupDocument(
       arangodb::transaction::Methods& trx, arangodb::LocalDocumentId token,
       arangodb::velocypack::Builder& builder, bool readCache, bool fillCache,
-      arangodb::ReadOwnWrites readOwnWrites) const override;
+      arangodb::ReadOwnWrites readOwnWrites, bool countBytes) const override;
   virtual arangodb::Result remove(
       arangodb::transaction::Methods& trx,
       arangodb::LocalDocumentId previousDocumentId,

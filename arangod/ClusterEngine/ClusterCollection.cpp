@@ -275,9 +275,9 @@ void ClusterCollection::prepareIndexes(
   TRI_ASSERT(!_indexes.empty());
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> ClusterCollection::createIndex(
+    velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // prevent concurrent dropping
@@ -359,7 +359,8 @@ Result ClusterCollection::lookupKey(
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+                               ReadOwnWrites /*readOwnWrites*/,
+                               bool /*countBytes*/) const {
   return Result(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -367,14 +368,17 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                LocalDocumentId const& /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+                               ReadOwnWrites /*readOwnWrites*/,
+                               bool /*countBytes*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-Result ClusterCollection::lookupDocument(
-    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
-    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
-    ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookupDocument(transaction::Methods& /*trx*/,
+                                         LocalDocumentId /*documentId*/,
+                                         velocypack::Builder& /*builder*/,
+                                         bool /*readCache*/, bool /*fillCache*/,
+                                         ReadOwnWrites /*readOwnWrites*/,
+                                         bool /*countBytes*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
@@ -382,7 +386,8 @@ Result ClusterCollection::lookupDocument(
 bool ClusterCollection::readDocument(transaction::Methods* /*trx*/,
                                      LocalDocumentId const& /*documentId*/,
                                      ManagedDocumentResult& /*result*/,
-                                     ReadOwnWrites /*readOwnWrites*/) const {
+                                     ReadOwnWrites /*readOwnWrites*/,
+                                     bool /*countBytes*/) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 

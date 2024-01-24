@@ -172,7 +172,6 @@ arangodb::Result Indexes::getAll(
       }
     }
     tmp.close();
-
   } else {
     std::shared_ptr<transaction::Methods> trx;
     if (inputTrx) {
@@ -309,9 +308,10 @@ arangodb::Result Indexes::getAll(
 /// @brief ensures an index, locally
 ////////////////////////////////////////////////////////////////////////////////
 
-static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
-                               VPackSlice definition, bool create,
-                               VPackBuilder& output) {
+static Result EnsureIndexLocal(
+    LogicalCollection* collection, VPackSlice definition, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(collection != nullptr);
 
   return arangodb::basics::catchVoidToResult([&]() -> void {
@@ -319,7 +319,7 @@ static Result EnsureIndexLocal(arangodb::LogicalCollection* collection,
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      idx = collection->createIndex(definition, created);
+      idx = collection->createIndex(definition, created, std::move(progress));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection->lookupIndex(definition);
@@ -356,8 +356,10 @@ Result Indexes::ensureIndexCoordinator(
       cluster.indexCreationTimeout());
 }
 
-Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
-                            bool create, VPackBuilder& output) {
+Result Indexes::ensureIndex(
+    LogicalCollection* collection, VPackSlice input, bool create,
+    VPackBuilder& output,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -500,7 +502,8 @@ Result Indexes::ensureIndex(LogicalCollection* collection, VPackSlice input,
       }
     }
   } else {
-    res = EnsureIndexLocal(collection, indexDef, create, output);
+    res = EnsureIndexLocal(collection, indexDef, create, output,
+                           std::move(progress));
   }
 
   ensureIndexResult = res.errorNumber();

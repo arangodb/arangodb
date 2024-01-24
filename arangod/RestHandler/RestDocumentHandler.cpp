@@ -266,6 +266,15 @@ RestStatus RestDocumentHandler::insertDocument() {
             "' with the required access mode.");
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        "insert");
+  }
+
   return waitForFuture(
       _activeTrx->insertAsync(cname, body, opOptions)
           .thenValue([=, this](OperationResult&& opres) {
@@ -387,6 +396,14 @@ RestStatus RestDocumentHandler::readSingleDocument(bool generateBody) {
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
     return RestStatus::DONE;
+  }
+
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), collection,
+        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
+        "read");
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {
@@ -588,6 +605,15 @@ RestStatus RestDocumentHandler::modifyDocument(bool isPatch) {
     return RestStatus::DONE;
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        isPatch ? "update" : "replace");
+  }
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
            nullptr ||
@@ -738,6 +764,15 @@ RestStatus RestDocumentHandler::removeDocument() {
     return RestStatus::DONE;
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        "remove");
+  }
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
            nullptr ||
@@ -832,6 +867,14 @@ RestStatus RestDocumentHandler::readManyDocuments() {
   VPackSlice const search = this->parseVPackBody(success);
   if (!success) {  // error message generated in parseVPackBody
     return RestStatus::DONE;
+  }
+
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
+        "read-multiple");
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {

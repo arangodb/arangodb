@@ -100,6 +100,7 @@
 #include "RestHandler/RestTransactionHandler.h"
 #include "RestHandler/RestTtlHandler.h"
 #include "RestHandler/RestUploadHandler.h"
+#include "RestHandler/RestUsageMetricsHandler.h"
 #include "RestHandler/RestUsersHandler.h"
 #include "RestHandler/RestVersionHandler.h"
 #include "RestHandler/RestViewHandler.h"
@@ -835,6 +836,10 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(
       "/_admin/metrics",
       RestHandlerCreator<arangodb::RestMetricsHandler>::createNoData);
+
+  f.addPrefixHandler(
+      "/_admin/usage-metrics",
+      RestHandlerCreator<arangodb::RestUsageMetricsHandler>::createNoData);
 
   f.addHandler(
       "/_admin/statistics-description",

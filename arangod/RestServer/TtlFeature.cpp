@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
@@ -336,9 +337,11 @@ class TtlThread final : public ServerThread<ArangodServer> {
               VPackValue(std::min(properties.maxCollectionRemoves, limitLeft)));
           bindVars->close();
 
+          aql::QueryOptions options;
+          options.maxRuntime = 0.0;
           auto query = aql::Query::create(
               transaction::StandaloneContext::Create(*vocbase),
-              aql::QueryString(::removeQuery), std::move(bindVars));
+              aql::QueryString(::removeQuery), std::move(bindVars), options);
           query->collections().add(collection->name(), AccessMode::Type::WRITE,
                                    aql::Collection::Hint::Shard);
           aql::QueryResult queryResult = query->executeSync();

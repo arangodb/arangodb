@@ -49,7 +49,9 @@ MetricsFeature::MetricsFeature(Server& server)
     : ArangodFeature{server, *this},
       _export{true},
       _exportReadWriteMetrics{false},
-      _ensureWhitespace{true} {
+      _ensureWhitespace{true},
+      _usageTrackingModeString{"disabled"},
+      _usageTrackingMode{UsageTrackingMode::kDisabled} {
   setOptional(false);
   startsAfter<LoggerFeature>();
   startsBefore<application_features::GreetingsFeaturePhase>();
@@ -91,19 +93,69 @@ void MetricsFeature::collectOptions(
 required to make the metrics output compatible with some processing tools, although "
 Prometheus itself doesn't need it.)")
       .setIntroducedIn(31006);
+
+  std::unordered_set<std::string> modes = {"disabled", "enabled-per-shard",
+                                           "enabled-per-shard-per-user"};
+  options
+      ->addOption(
+          "--server.export-shard-usage-metrics",
+          "Whether or not to export shard usage metrics.",
+          new options::DiscreteValuesParameter<options::StringParameter>(
+              &_usageTrackingModeString, modes),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnDBServer))
+      .setIntroducedIn(31013)
+      .setLongDescription(R"(This option can be used to make DB-Servers export
+detailed shard usage metrics.
+
+- By default, this option is set to `disabled` so that no shard usage metrics
+  are exported.
+
+- Set the option to `enabled-per-shard` to make DB-Servers collect per-shard
+  usage metrics whenever a shard is accessed.
+
+- Set this option to `enabled-per-shard-per-user` to make DB-Servers collect
+  usage metrics per shard and per user whenever a shard is accessed.
+
+Note that enabling shard usage metrics can produce a lot of metrics if there 
+are many shards and/or users in the system.)");
 }
 
 std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   auto metric = builder.build();
+  TRI_ASSERT(metric != nullptr);
   MetricKeyView key{metric->name(), metric->labels()};
   std::lock_guard lock{_mutex};
-  if (!_registry.try_emplace(key, metric).second) {
+  auto [it, inserted] = _registry.try_emplace(key, metric);
+  if (!inserted) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    std::string{builder.type()} + " " +
                                        std::string{builder.name()} +
                                        " already exists");
   }
-  return metric;
+  return (*it).second;
+}
+
+std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
+  auto metric = builder.build();
+  metric->setDynamic();
+  TRI_ASSERT(metric != nullptr);
+  MetricKeyView key{metric->name(), metric->labels()};
+  {
+    // happy path: check if metric already exists and if so, return it
+    std::shared_lock lock{_mutex};
+    if (auto it = _registry.find(key); it != _registry.end()) {
+      return (*it).second;
+    }
+  }
+  // slow path: create new metric under exclusive lock
+  std::lock_guard lock{_mutex};
+  // insertion can fail here because someone else concurrently inserted the
+  // metric. this is fine, because in that case we simply return that
+  // version.
+  auto [it, inserted] = _registry.try_emplace(key, metric);
+  return (*it).second;
 }
 
 Metric* MetricsFeature::get(MetricKeyView const& key) {
@@ -127,19 +179,40 @@ bool MetricsFeature::ensureWhitespace() const noexcept {
   return _ensureWhitespace;
 }
 
+MetricsFeature::UsageTrackingMode MetricsFeature::usageTrackingMode()
+    const noexcept {
+  return _usageTrackingMode;
+}
+
 void MetricsFeature::validateOptions(std::shared_ptr<options::ProgramOptions>) {
   if (_exportReadWriteMetrics) {
     serverStatistics().setupDocumentMetrics();
   }
+
+  // translate usage tracking mode string to enum value
+  if (_usageTrackingModeString == "enabled-per-shard") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShard;
+  } else if (_usageTrackingModeString == "enabled-per-shard-per-user") {
+    _usageTrackingMode = UsageTrackingMode::kEnabledPerShardPerUser;
+  } else {
+    _usageTrackingMode = UsageTrackingMode::kDisabled;
+  }
 }
 
-void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
+void MetricsFeature::toPrometheus(std::string& result,
+                                  MetricsParts metricsParts,
+                                  CollectMode mode) const {
   // minimize reallocs
   result.reserve(32768);
 
-  // QueryRegistryFeature
-  auto& q = server().getFeature<QueryRegistryFeature>();
-  q.updateMetrics();
+  if (metricsParts.includeStandardMetrics()) {
+    // QueryRegistryFeature only provides standard metrics.
+    // update only necessary if these metrics should be included
+    // in the output
+    auto& q = server().getFeature<QueryRegistryFeature>();
+    q.updateMetrics();
+  }
+
   bool hasGlobals = false;
   {
     auto lock = initGlobalLabels();
@@ -148,6 +221,15 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
     std::string_view curr;
     for (auto const& i : _registry) {
       TRI_ASSERT(i.second);
+      if (i.second->isDynamic()) {
+        if (!metricsParts.includeDynamicMetrics()) {
+          continue;
+        }
+      } else {
+        if (!metricsParts.includeStandardMetrics()) {
+          continue;
+        }
+      }
       curr = i.second->name();
       if (last != curr) {
         last = curr;
@@ -161,17 +243,22 @@ void MetricsFeature::toPrometheus(std::string& result, CollectMode mode) const {
       batch->toPrometheus(result, _globals, _ensureWhitespace);
     }
   }
-  auto& sf = server().getFeature<StatisticsFeature>();
-  auto time = std::chrono::duration<double, std::milli>(
-      std::chrono::system_clock::now().time_since_epoch());
-  sf.toPrometheus(result, time.count(), _ensureWhitespace);
-  auto& es = server().getFeature<EngineSelectorFeature>().engine();
-  if (es.typeName() == RocksDBEngine::kEngineName) {
-    es.getStatistics(result);
-  }
-  auto& cm = server().getFeature<ClusterMetricsFeature>();
-  if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-    cm.toPrometheus(result, _globals, _ensureWhitespace);
+
+  if (metricsParts.includeStandardMetrics()) {
+    auto& sf = server().getFeature<StatisticsFeature>();
+    auto time = std::chrono::duration<double, std::milli>(
+        std::chrono::system_clock::now().time_since_epoch());
+    sf.toPrometheus(result, time.count(), _ensureWhitespace);
+
+    auto& es = server().getFeature<EngineSelectorFeature>().engine();
+    if (es.typeName() == RocksDBEngine::kEngineName) {
+      es.getStatistics(result);
+    }
+
+    auto& cm = server().getFeature<ClusterMetricsFeature>();
+    if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
+      cm.toPrometheus(result, _globals, _ensureWhitespace);
+    }
   }
 }
 
@@ -192,7 +279,8 @@ constexpr auto kCoordinatorMetrics =
         "arangodb_search_consolidation_time",
     });
 
-void MetricsFeature::toVPack(velocypack::Builder& builder) const {
+void MetricsFeature::toVPack(velocypack::Builder& builder,
+                             MetricsParts metricsParts) const {
   builder.openArray(true);
   std::shared_lock lock{_mutex};
   for (auto const& i : _registry) {

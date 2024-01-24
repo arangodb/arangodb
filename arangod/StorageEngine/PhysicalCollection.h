@@ -135,8 +135,9 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
-                                             bool restore, bool& created) = 0;
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
 
   virtual bool dropIndex(IndexId iid) = 0;
 
@@ -178,24 +179,25 @@ class PhysicalCollection {
 
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   virtual Result lookupDocument(transaction::Methods& trx,
                                 LocalDocumentId token,
                                 velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+                                bool fillCache, ReadOwnWrites readOwnWrites,
+                                bool countBytes) const = 0;
 
   /// @brief read a documument referenced by token (internal method)
   virtual bool readDocument(transaction::Methods* trx,
                             LocalDocumentId const& token,
                             ManagedDocumentResult& result,
-                            ReadOwnWrites readOwnWrites) const = 0;
+                            ReadOwnWrites readOwnWrites,
+                            bool countBytes) const = 0;
 
   /**
    * @brief Perform document insert, may generate a '_key' value

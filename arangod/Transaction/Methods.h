@@ -166,10 +166,8 @@ class Methods {
   TRI_vocbase_t& vocbase() const;
 
   /// @brief return internals of transaction
-  inline TransactionState* state() const { return _state.get(); }
-  inline std::shared_ptr<TransactionState> const& stateShrdPtr() const {
-    return _state;
-  }
+  TransactionState* state() const noexcept { return _state.get(); }
+  std::shared_ptr<TransactionState> stateShrdPtr() const { return _state; }
 
   Result resolveId(char const* handle, size_t length,
                    std::shared_ptr<LogicalCollection>& collection,
@@ -180,10 +178,21 @@ class Methods {
     return _transactionContext;
   }
 
-  TEST_VIRTUAL inline transaction::Context* transactionContextPtr() const {
+  TEST_VIRTUAL transaction::Context* transactionContextPtr() const {
     TRI_ASSERT(_transactionContext != nullptr);
     return _transactionContext.get();
   }
+
+  /// @brief set name of user who originated the transaction. will
+  /// only be set if no user has been registered with the transaction yet.
+  /// this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  void setUsername(std::string_view name);
+
+  /// @brief return name of user who originated the transaction. may be
+  /// empty. this user name is informational only and can be used for logging,
+  /// metrics etc. it should not be used for permission checks.
+  std::string_view username() const noexcept;
 
   // is this instance responsible for commit / abort
   bool isMainTransaction() const { return _mainTransaction; }

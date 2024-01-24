@@ -24,9 +24,12 @@
 #include "RestIndexHandler.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "Futures/Utilities.h"
+#include "Network/Methods.h"
 #include "RestServer/VocbaseContext.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
@@ -44,6 +47,8 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
+#include <absl/strings/str_cat.h>
+
 namespace {
 bool startsWith(std::string const& str, std::string const& prefix) {
   if (str.size() < prefix.size()) {
@@ -55,6 +60,7 @@ bool startsWith(std::string const& str, std::string const& prefix) {
 
 using namespace arangodb;
 using namespace arangodb::basics;
+using namespace arangodb::futures;
 using namespace arangodb::rest;
 
 RestIndexHandler::RestIndexHandler(ArangodServer& server,
@@ -199,7 +205,120 @@ RestStatus RestIndexHandler::getIndexes() {
     tmp.add(StaticStrings::Error, VPackValue(false));
     tmp.add(StaticStrings::Code,
             VPackValue(static_cast<int>(ResponseCode::OK)));
-    tmp.add("indexes", indexes.slice());
+
+    if (ServerState::instance()->isCoordinator()) {
+      tmp.add(VPackValue("indexes"));
+      {
+        VPackArrayBuilder guard(&tmp);
+        for (auto const& i : VPackArrayIterator(indexes.slice())) {
+          tmp.add(i);
+        }
+        if (withHidden) {
+          std::string ap = absl::StrCat("Plan/Collections/", _vocbase.name(),
+                                        "/", coll->planId().id(), "/indexes");
+          auto& ac =
+              _vocbase.server().getFeature<ClusterFeature>().agencyCache();
+          auto [plannedIndexes, idx] = ac.get(ap);
+
+          try {  // this is a best effort progress display.
+            for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
+              if (pi.get("isBuilding").isTrue()) {
+                VPackObjectBuilder o(&tmp);
+                for (auto const& source : VPackObjectIterator(
+                         pi, /* useSequentialIterator */ true)) {
+                  tmp.add(source.key.stringView(), source.value);
+                }
+                std::string iid = pi.get("id").copyString();
+                double progress = 0;
+                auto const shards = coll->shardIds();
+                auto const body = VPackBuffer<uint8_t>();
+                auto* pool = coll->vocbase()
+                                 .server()
+                                 .getFeature<NetworkFeature>()
+                                 .pool();
+                std::vector<Future<network::Response>> futures;
+                futures.reserve(shards->size());
+                std::string const prefix = "/_api/index/";
+                network::RequestOptions reqOpts;
+                reqOpts.param("withHidden", withHidden ? "true" : "false");
+                reqOpts.database = _vocbase.name();
+                // best effort. only displaying progress
+                reqOpts.timeout = network::Timeout(10.0);
+                for (auto const& shard : *shards) {
+                  std::string const url =
+                      absl::StrCat(prefix, shard.first, "/", iid);
+                  futures.emplace_back(network::sendRequestRetry(
+                      pool, "shard:" + shard.first, fuerte::RestVerb::Get, url,
+                      body, reqOpts));
+                }
+                for (Future<network::Response>& f : futures) {
+                  network::Response const& r = f.get();
+
+                  // Only best effort accounting. If something breaks here, we
+                  // just ignore the output. Account for what we can and move
+                  // on.
+                  if (r.fail()) {
+                    LOG_TOPIC("afde4", INFO, Logger::CLUSTER)
+                        << "Communication error while fetching index data "
+                           "for collection "
+                        << coll->name() << " from " << r.destination;
+                    continue;
+                  }
+                  VPackSlice resSlice = r.slice();
+                  if (!resSlice.isObject() ||
+                      !resSlice.get(StaticStrings::Error).isBoolean()) {
+                    LOG_TOPIC("aabe4", INFO, Logger::CLUSTER)
+                        << "Result of collecting index data for collection "
+                        << coll->name() << " from " << r.destination
+                        << " is invalid";
+                    continue;
+                  }
+                  if (resSlice.get(StaticStrings::Error).getBoolean()) {
+                    // this can happen when the DB-Servers have not yet
+                    // started the creation of the index on a shard, for
+                    // example if the number of maintenance threads is low.
+                    auto errorNum = TRI_ERROR_NO_ERROR;
+                    if (VPackSlice errorNumSlice =
+                            resSlice.get(StaticStrings::ErrorNum);
+                        errorNumSlice.isNumber()) {
+                      errorNum = ::ErrorCode{errorNumSlice.getNumber<int>()};
+                    }
+                    // do not log an expected error such as "index not found",
+                    if (errorNum != TRI_ERROR_ARANGO_INDEX_NOT_FOUND) {
+                      LOG_TOPIC("a4bea", INFO, Logger::CLUSTER)
+                          << "Failed to collect index data for collection "
+                          << coll->name() << " from " << r.destination << ": "
+                          << resSlice.toJson();
+                    }
+                    continue;
+                  }
+                  if (resSlice.get("progress").isNumber()) {
+                    progress += resSlice.get("progress").getNumber<double>();
+                  } else {
+                    // Obviously, the index is already ready there.
+                    progress += 100.0;
+                    LOG_TOPIC("aeab4", DEBUG, Logger::CLUSTER)
+                        << "No progress entry on index " << iid << " from "
+                        << r.destination << ": " << resSlice.toJson()
+                        << " index already finished.";
+                  }
+                }
+                if (progress != 0) {
+                  // Don't show progress 0, this is in particular relevant
+                  // when isBackground is false, in which case no progress
+                  // is reported by design.
+                  tmp.add("progress", VPackValue(progress / shards->size()));
+                }
+              }
+            }
+          } catch (...) {
+          }  // best effort only
+        }
+      }
+    } else {
+      tmp.add("indexes", indexes.slice());
+    }
+
     tmp.add("identifiers", VPackValue(VPackValueType::Object));
     for (VPackSlice const& index : VPackArrayIterator(indexes.slice())) {
       VPackSlice id = index.get("id");

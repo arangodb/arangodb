@@ -604,6 +604,7 @@ set (LIB_ARANGO_METRICS_SOURCES
   Metrics/MetricsFeature.cpp
   Metrics/ClusterMetricsFeature.cpp
   RestHandler/RestMetricsHandler.cpp
+  RestHandler/RestUsageMetricsHandler.cpp
   )
 
 set(LIB_ARANGO_AGENCY_SOURCES
