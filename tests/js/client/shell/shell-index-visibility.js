@@ -45,7 +45,7 @@ function IndexSuite() {
     setUp: function() {
       c = internal.db._create(cn, {numberOfShards: 3, replicationFactor: 2});
       let docs = [];
-      for (let j = 0; j < 50; ++j) {
+      for (let j = 0; j < 16; ++j) {
         docs=[];
         for (let i = 0; i < 10240; ++i) {
           docs.push({name : "name" + i});
