@@ -1,6 +1,9 @@
 v3.11.7 (XXXX-XX-XX)
 --------------------
 
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored
