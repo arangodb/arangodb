@@ -46,7 +46,7 @@ function IndexSuite() {
       c = internal.db._create(cn, {numberOfShards: 3, replicationFactor: 2});
       let docs = [];
       for (let j = 0; j < 16; ++j) {
-        docs=[];
+        docs= [];
         for (let i = 0; i < 10240; ++i) {
           docs.push({name : "name" + i});
         }
@@ -64,18 +64,19 @@ function IndexSuite() {
 /// @brief test: indexes
 ////////////////////////////////////////////////////////////////////////////////
 
-    testIndexProgress : function () {
+    testIndexProgressIsReported : function () {
       internal.debugSetFailAt("fillIndex::pause");
-      let idxdesc = { name:"progress", type: "persistent", fields:["name"], inBackground: true};
+      let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
 
       let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
                                 {"x-arango-async": "store"}).headers["x-arango-async-id"];
       let count = 0;
       let progress = 0.0;
-      // Wait until the index is there (with withHidden):
       while (true) {
+        // Wait until the index is there (with withHidden):
         let idxs = arango.GET(`/_api/index?collection=${cn}&withHidden=true`).indexes;
         if (idxs.length > 1) {
+          assertEqual(idxs[1].name, "progress", idxs);
           break;
         }
         sleep(0.1);
@@ -112,9 +113,49 @@ function IndexSuite() {
       }
       assertTrue(seenProgress, "Never saw progress being reported!");
     },
+    
+    testIndexProgressIsNotReported : function () {
+      internal.debugSetFailAt("fillIndex::pause");
+      let idxdesc = { name: "progress", type: "persistent", fields: ["name"], inBackground: true};
+
+      let job = arango.POST_RAW(`/_api/index?collection=${cn}`, idxdesc,
+                                {"x-arango-async": "store"}).headers["x-arango-async-id"];
+      let count = 0;
+      // check for 5 seconds that the in-progress index does not appear in the result.
+      // using 5 elapsed seconds as the test's stop condition is not a guarantee that
+      // the in-flight index won't appear later, but we do not have a better stop
+      // condition for the test.
+      while (true) {
+        // do not use withHidden here!
+        let idxs = arango.GET(`/_api/index?collection=${cn}`).indexes;
+        assertTrue(1, idxs.length, idxs);
+        assertEqual("primary", idxs[0].type);
+        sleep(0.1);
+        if (++count > 50) {
+          break;
+        }
+      }
+            
+      internal.debugSetFailAt("fillIndex::unpause");
+      
+      count = 0;
+      // wait until index appears, at most 30 seconds
+      while (++count < 300) {
+        let idxs = arango.GET(`/_api/index?collection=${cn}`).indexes;
+        assertEqual("primary", idxs[0].type);
+        if (idxs.length === 2) {
+          assertEqual("progress", idxs[1].name);
+          break;
+        }
+        sleep(0.1);
+      }
+      assertTrue(count < 300, count);
+    },
   };
 }
 
-jsunity.run(IndexSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(IndexSuite);
+}
 
 return jsunity.done();
