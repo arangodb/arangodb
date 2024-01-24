@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
+#include "Aql/QueryOptions.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/ConditionLocker.h"
 #include "Basics/ConditionVariable.h"
