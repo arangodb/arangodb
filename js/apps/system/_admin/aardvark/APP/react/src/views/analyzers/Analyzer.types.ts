@@ -15,7 +15,8 @@ export type AnalyzerTypes =
   | "geojson"
   | "geopoint"
   | "geo_s2"
-  | "minhash";
+  | "minhash"
+  | "multi_delimiter"
 
 type Feature = "frequency" | "norm" | "position";
 type Features = Feature[];
@@ -32,6 +33,13 @@ type DelimiterState = {
   type: "delimiter";
   properties: {
     delimiter: string;
+  };
+};
+
+type MultiDelimiterState = {
+  type: "multi_delimiter";
+  properties: {
+    delimiter: Array<string>;
   };
 };
 
@@ -155,7 +163,8 @@ type PipelineState =
   | CollationState
   | SegmentationState
   | NearestNeighborsState
-  | ClassificationState;
+  | ClassificationState
+  | MultiDelimiterState;
 
 export type PipelineStates = {
   type: "pipeline";
@@ -213,7 +222,8 @@ export type MinHashState = {
       | CollationState
       | SegmentationState
       | NearestNeighborsState
-      | ClassificationState;
+      | ClassificationState
+      | MultiDelimiterState;
     numHashes?: number;
   };
 };
@@ -235,6 +245,7 @@ export type AnalyzerTypeState =
   | GeoJsonState
   | GeoPointState
   | GeoS2State
-  | MinHashState;
+  | MinHashState
+  | MultiDelimiterState;
 
 export type AnalyzerState = BaseAnalyzerState & AnalyzerTypeState;

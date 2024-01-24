@@ -9,6 +9,7 @@ import { GeoJSONConfig } from "./forms/GeoJSONConfig";
 import { GeopointConfig } from "./forms/GeopointConfig";
 import { GeoS2Config } from "./forms/GeoS2Config";
 import { MinHashConfig } from "./forms/MinHashConfig";
+import { MultiDelimiterConfig } from "./forms/MultiDelimiterConfig";
 import { NearestNeighborsConfig } from "./forms/NearestNeighborsConfig";
 import { NgramConfig } from "./forms/NgramConfig";
 import { NormConfig } from "./forms/NormConfig";
@@ -21,6 +22,7 @@ import { TextConfig } from "./forms/TextConfig";
 const ANALYZER_TYPE_TO_CONFIG_MAP = {
   identity: null,
   delimiter: DelimiterConfig,
+  multi_delimiter: MultiDelimiterConfig,
   stem: StemConfig,
   norm: NormConfig,
   ngram: NgramConfig,
