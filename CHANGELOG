@@ -15,6 +15,157 @@ v3.11.7 (XXXX-XX-XX)
 * Fixed a problem in ReadWriteLock which could prevent waiting readers from
   being woken up, when a write lock acquire timed out.
 
+* Updated ArangoDB Starter to v0.18.0.
+
+* BTS-1741: fix updates of values in unique persistent indexes with stored
+  values defined for them. When such an index value was updated, it was
+  possible that the stored value was not correctly updated, so that subsequent
+  reads of the index value would run into exceptions such as 
+  `Expecting type Array or Object`.
+
+* APM-828: Per collection/database/user monitoring.
+
+  This adds optional metrics for tracking per-shard requests on DB-Servers.
+  The exported metrics are:
+  - `arangodb_collection_leader_reads_total`: number of read requests on
+    leaders, per shard, and optionally also split by user.
+  - `arangodb_collection_leader_writes_total`: number of write requests on
+    leaders, per shard, and optionally also split by user.
+
+  The new startup option `--server.export-shard-usage-metrics` can be used to
+  opt in to these metrics. It can be set to one of the following values on
+  DB-Servers:
+  - `disabled`: no shard usage metrics are recorded nor exported. This is the
+    default value.
+  - `enabled-per-shard`: this will make DB-Servers collect per-shard usage
+    metrics.
+  - `enabled-per-shard-per-user`: this will make DB-Servers collect per-shard
+    and per-user metrics. This is more granular than `enabled-per-shard` but
+    can produce a lot of metrics.
+  
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
+
+  Whenever a shard is accessed in read or write mode by one of the following
+  operations, the metrics are populated dynamically, either with a per-user
+  label or not, depending on the above setting.
+  The metrics are retained in memory on DB-Servers. Removing databases,
+  collections or users that are already included in the metrics won't remove the
+  metrics for these databases, collections or users until the DB-Server is
+  restarted.
+
+  The following operations increase the metrics:
+  - AQL queries: an AQL query will increase the read or write counters exactly
+    once for each involved shard. For shards that are accessed in read/write
+    mode, only the write counter will be increased.
+  - Single-document insert, update, replace, and remove operations: for each
+    such operation, the write counter will be increased once for the affected
+    shard.
+  - Multi-document insert, update, replace, and remove operations: for each such
+    operation, the write counter will be increased once for each shard that is
+    affected by the operation. Note that this includes collection truncate
+    operations.
+  - Single- and multi-document read operations: for each such operation, the
+    read counter will be increased once for each shard that is affected by the
+    operation.
+
+  The metrics are increased when any of the above operations start, and they
+  are not decreased should an operation abort or if an operation does not
+  lead to any actual reads or writes.
+
+  Note that internal operations, such as internal queries executed for 
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
+
+  As there can be many of these dynamic metrics based on the number of shards
+  and/or users in the deployment, these metrics are turned off by default (see
+  above), and if turned on, are only exposed only via a new HTTP REST API
+  endpoint GET `/_admin/usage-metrics`. They are not exposed via the existing
+  metrics API endpoint GET `/_admin/metrics`.
+
+ Add additional metrics for tracking the number of bytes read or written per
+  shard on DB-Servers:
+
+  - `arangodb_collection_requests_bytes_read_total`:
+    This metric exposes the per-shard number of bytes read by read operation 
+    requests on DB-Servers. 
+    It is increased by AQL queries that read documents or edges and for single-
+    or multi-document read operations.
+    The metric is normally increased only on the leader, but it can also 
+    increase on followers if "reads from followers" are enabled.
+
+    For every read operation, the metric will be increased by the approximate 
+    number of bytes read to retrieve the underlying document or edge data. This
+    is also true if a document or edge is served from an in-memory cache.
+    If an operation reads multiple documents/edges, it will increase the 
+    counter multiple times, each time with the approximate number of bytes read
+    for the particular document/edge.
+    
+    The numbers reported by this metric normally relate to the cumulated sizes
+    of documents/edges read.
+    The metric is also increased for transactions that are started but later
+    aborted.
+    Note that the metric is not increased for secondary index point lookups or
+    scans, or for scans in a collection that iterate over documents but do not
+    read them.
+
+  - `arangodb_collection_requests_bytes_written_total`:
+    This metric exposes the per-shard number of bytes written by write operation
+    requests on DB-Servers, on both leaders and followers.
+    It is increased by AQL queries and single-/multi-document write operations.
+    The metric is first increased only the leader, but for every replication 
+    request to followers it is also increased on followers.
+    
+    For every write operation, the metric will be increased by the approximate 
+    number of bytes written for the document or edge in question. 
+    If an operation writes multiple documents/edges, it will increase the 
+    counter multiple times, each time with the approximate number of bytes 
+    written for the particular document/edge.
+
+    An AQL query will also increase the counter for every document or edge 
+    written, each time with the approximate number of bytes written for 
+    document/edge.
+    
+    The numbers reported by this metric normally relate to the cumulated sizes
+    of documents/edges written. For remove operations however only a fixed
+    number of bytes is counted per removed document/edge. For truncate 
+    operations, the metrics will be affected differently depending on how the
+    truncate is executed internally.
+    For truncates on smaller shards, the truncate operation will be executed as
+    the removal of the individual documents in the shard. Thus the metric will
+    also be increased as if the documents were removed individually. Truncate
+    operations on larger shards however will be executed via a special 
+    operation in the storage engine, which marks a whole range of documents as
+    removed, but defers the actual removal until much later (compaction 
+    process). If a truncate is executed like this, the metric will not be 
+    increased at all.
+    Writes into secondary indexes are not counted at all.
+
+    The metric is also increased for transactions that are started but later
+    aborted.
+  
+  These metrics are not exposed by default. It is only present if the startup 
+  option `--server.export-shard-usage-metrics` is set to either 
+  `enabled-per-shard` or `enabled-per-shard-per-user`. With the former setting,
+  the metric will have different labels for each shard that was read from. With
+  the latter setting, the metric will have different labels for each 
+  combination of shard and user that accessed the shard.
+  
+  If enabled, the metrics are only exposed on DB servers and not on 
+  Coordinators or single servers.
+  
+  Note that internal operations, such as internal queries executed for 
+  statistics gathering, internal garbage collection, and TTL index cleanup are
+  not counted in these metrics. Additionally, all requests that use the 
+  superuser JWT for authentication and that do not have a specific user set,
+  are not counted.
+  Requests are also only counted if they have an ArangoDB user associated with
+  them, so that the cluster must also be running with authentication turned on.
+
 * Validate that the attribute stored in the `smartGraphAttribute` of SmartGraph
   vertex collections exists and is not changed afterwards by update or replace
   operations. Previously the `smartGraphAttribute` value was checked only when

@@ -133,7 +133,7 @@ void SingleServerEdgeCursor::getDocAndRunCallback(
         }
         return true;
       },
-      ReadOwnWrites::no);
+      ReadOwnWrites::no, /*countBytes*/ true);
 }
 
 bool SingleServerEdgeCursor::advanceCursor(
@@ -310,7 +310,7 @@ void SingleServerEdgeCursor::readAll(EdgeCursor::Callback const& callback) {
                     callback(EdgeDocumentToken(cid, token), edgeDoc, cursorId);
                     return true;
                   },
-                  ReadOwnWrites::no)
+                  ReadOwnWrites::no, /*countBytes*/ true)
               .ok();
         });
       }

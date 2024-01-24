@@ -785,6 +785,7 @@ bool IResearchViewExecutorBase<Impl, ExecutionTraits>::writeRowImpl(
                           ->collection->getPhysical()
                           ->readFromSnapshot(&_trx, value.value().id,
                                              ctx.callback, ReadOwnWrites::no,
+                                             /*countBytes*/ true,
                                              *value.segment()->snapshot)
                           .ok())) {
       return false;
