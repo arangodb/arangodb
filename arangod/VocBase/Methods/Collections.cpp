@@ -1151,7 +1151,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
   StorageEngine& engine =
       vocbase.server().getFeature<EngineSelectorFeature>().engine();
 
-  auto idxs = coll.getIndexes();
+  auto idxs = coll.getPhysical()->getReadyIndexes();
   for (auto const& idx : idxs) {
     if (idx->canWarmup()) {
       engine.scheduleFullIndexRefill(vocbase.name(), coll.name(), idx->id());

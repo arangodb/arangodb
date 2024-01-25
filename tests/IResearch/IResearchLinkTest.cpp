@@ -50,6 +50,7 @@
 #include "RestServer/DatabasePathFeature.h"
 #include "RestServer/FlushFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/KeyGenerator.h"
@@ -255,7 +256,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
-                 logicalCollection->getIndexes().empty()));
+                 logicalCollection->getPhysical()->getReadyIndexes().empty()));
   }
 
   // valid link creation (explicit version)
@@ -330,7 +331,7 @@ TEST_F(IResearchLinkTest, test_defaults) {
     EXPECT_TRUE(figuresSlice.get("numSegments").isNumber());
     EXPECT_EQ(0, figuresSlice.get("numSegments").getNumber<size_t>());
     EXPECT_TRUE((logicalCollection->dropIndex(link->id()) &&
-                 logicalCollection->getIndexes().empty()));
+                 logicalCollection->getPhysical()->getReadyIndexes().empty()));
   }
 
   // ensure jSON is still valid after unload()

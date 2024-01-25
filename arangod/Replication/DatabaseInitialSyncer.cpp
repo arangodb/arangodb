@@ -256,7 +256,7 @@ arangodb::Result fetchRevisions(
 
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : collection.getIndexes()) {
+    for (auto const& idx : collection.getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;

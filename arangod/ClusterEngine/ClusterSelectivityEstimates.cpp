@@ -28,6 +28,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb {
@@ -88,7 +89,7 @@ IndexEstMap ClusterSelectivityEstimates::get(bool allowUpdate,
 
 void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
   // push new selectivity values into indexes' cache
-  auto indexes = _collection.getIndexes();
+  auto indexes = _collection.getPhysical()->getReadyIndexes();
 
   for (auto& idx : indexes) {
     auto it = estimates.find(std::to_string(idx->id().id()));
@@ -99,7 +100,7 @@ void ClusterSelectivityEstimates::set(IndexEstMap estimates) {
 
   double ttl = defaultTtl;
   // let selectivity estimates expire less often for system collections
-  if (!_collection.name().empty() && _collection.name()[0] == '_') {
+  if (_collection.name().starts_with('_')) {
     ttl = systemCollectionTtl;
   }
 

@@ -43,6 +43,7 @@
 #include "Basics/StaticStrings.h"
 #include "Containers/HashSet.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -140,7 +141,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto& trx = plan->getAst()->query().trxForOptimization();
           if (!trx.isInaccessibleCollection(
                   en->collection()->getCollection()->name())) {
-            indexes = en->collection()->getCollection()->getIndexes();
+            indexes = en->collection()
+                          ->getCollection()
+                          ->getPhysical()
+                          ->getReadyIndexes();
           }
 
           auto selectIndexIfPossible =
@@ -271,7 +275,10 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto& trx = plan->getAst()->query().trxForOptimization();
         if (!trx.isInaccessibleCollection(
                 en->collection()->getCollection()->name())) {
-          indexes = en->collection()->getCollection()->getIndexes();
+          indexes = en->collection()
+                        ->getCollection()
+                        ->getPhysical()
+                        ->getReadyIndexes();
         }
 
         auto selectIndexIfPossible =

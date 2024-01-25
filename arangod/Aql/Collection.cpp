@@ -31,6 +31,7 @@
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
@@ -277,7 +278,7 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
     coll->clusterIndexEstimates(true);
   }
 
-  std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
+  auto indexes = coll->getPhysical()->getReadyIndexes();
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();

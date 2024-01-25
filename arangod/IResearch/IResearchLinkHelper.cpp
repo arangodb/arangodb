@@ -45,6 +45,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -672,7 +673,7 @@ namespace iresearch {
 
 /*static*/ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
     LogicalCollection const& collection, LogicalView const& view) {
-  for (auto& index : collection.getIndexes()) {
+  for (auto& index : collection.getPhysical()->getAllIndexes()) {
     if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
       continue;  // not an IResearchLink
     }
@@ -897,7 +898,7 @@ namespace iresearch {
 /*static*/ bool IResearchLinkHelper::visit(
     LogicalCollection const& collection,
     std::function<bool(IResearchLink& link)> const& visitor) {
-  for (auto& index : collection.getIndexes()) {
+  for (auto& index : collection.getPhysical()->getAllIndexes()) {
     if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
       continue;  // not an IResearchLink
     }
