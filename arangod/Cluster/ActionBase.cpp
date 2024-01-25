@@ -275,7 +275,10 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
-arangodb::Result ActionBase::setProgress(double d) { return {}; }
+arangodb::Result ActionBase::setProgress(double d) {
+  _progress.store(d, std::memory_order_relaxed);
+  return {};
+}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the

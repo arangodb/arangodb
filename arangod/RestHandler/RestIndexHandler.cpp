@@ -52,8 +52,6 @@
 #include <velocypack/Collection.h>
 #include <velocypack/Iterator.h>
 
-#include <absl/strings/str_cat.h>
-
 using namespace arangodb;
 using namespace arangodb::basics;
 using namespace arangodb::futures;

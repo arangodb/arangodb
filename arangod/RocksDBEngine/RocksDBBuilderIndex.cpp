@@ -163,6 +163,14 @@ Result fillIndexSingleThreaded(
         double p =
             docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
         ridx.progress(p);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("fillIndex::pause") {
+          while (true) {
+            TRI_IF_FAILURE("fillIndex::unpause") { break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        }
+#endif
         if (progress != nullptr) {
           (*progress)(p);
         }
@@ -176,23 +184,6 @@ Result fillIndexSingleThreaded(
       // cppcheck-suppress identicalConditionAfterEarlyExit
       if (res.fail()) {
         break;
-      }
-
-      if (count > 0) {
-        double p =
-            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
-        ridx.progress(p);
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-        TRI_IF_FAILURE("fillIndex::pause") {
-          while (true) {
-            TRI_IF_FAILURE("fillIndex::unpause") { break; }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          }
-        }
-#endif
-        if (progress != nullptr) {
-          (*progress)(p);
-        }
       }
 
       if (ridx.collection().vocbase().server().isStopping()) {
@@ -852,10 +843,11 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
-    res = ::fillIndex<false>(
-        db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
-        _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
+    res = ::fillIndex<false>(db, *internal, methods, batch, snap,
+                             std::ref(_docsProcessed), true, _numThreads,
+                             kThreadBatchSize,
+                             rocksdb::Options(_engine.rocksDBOptions(), {}),
+                             _engine.idxPath(), std::move(progress));
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap
