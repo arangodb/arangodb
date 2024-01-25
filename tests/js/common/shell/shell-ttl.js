@@ -47,6 +47,11 @@ function TtlSuite () {
       numServers = Object.values(collection.shards(true)).filter(function(value, index, self) {
         return self.indexOf(value) === index;
       }).length;
+      if (numServers === 0) {
+        // SmartGraph edge collection. hard-code
+        numServers = 3;
+      }
+
       // if there are multiple servers involved, we increase by 4, in order to avoid continuing
       // in case the the *same* server reports multiple times. this would break the simple
       // "how many times did it run check" in case the jobs are executed in the following order:
@@ -62,9 +67,10 @@ function TtlSuite () {
       numServers = 1;
     }
 
+    tries *= 5;
     let stats;
     while (tries-- > 0) {
-      internal.wait(1, false);
+      internal.wait(0.25, false);
     
       stats = internal.ttlStatistics();
       if (stats.runs - oldRuns >= numServers) {
@@ -981,6 +987,133 @@ function TtlSuite () {
       oldStats = stats;
       stats = waitForNextRun(c, oldStats, 20);
       assertTrue(db._collection(cn).count() < oldCount || db._collection(cn).count() === 0);
+    },
+    
+    testRemovalsSmartGraphVertex : function () {
+      if (!internal.isCluster() || !internal.isEnterprise()) {
+        return;
+      }
+
+      const vn = "UnitTestsVertex";
+      const en = "UnitTestsEdge";
+      const gn = "UnitTestsGraph";
+
+      const graphs = require("@arangodb/smart-graph");
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
+
+      try {
+        internal.ttlProperties({ active: false });
+
+        // populate smart vertex collection
+        db[vn].ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+
+        // dt is one minute in the past
+        let dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
+        assertTrue(dt >= "2019-01-");
+
+        let docs = [];
+        for (let i = 0; i < 50000; ++i) {
+          docs.push({ _key: 'test' + (i % 10) + ':test' + i, testi: 'test' + (i % 10), dateCreated: dt, value: i });
+          if (docs.length === 5000) {
+            db[vn].insert(docs);
+            docs = [];
+          }
+        }
+      
+        let oldStats = internal.ttlStatistics();
+        let oldCount = 50000;  
+        assertEqual(db[vn].count(), oldCount);
+      
+        // reenable
+        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+    
+        let stats = waitForNextRun(db[vn], oldStats, 30);
+
+        // number of runs, deletions and limitReached must have changed
+        assertNotEqual(stats.runs, oldStats.runs);
+        assertTrue(stats.limitReached > oldStats.limitReached);
+        assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+        assertTrue(db._collection(vn).count() < oldCount);
+        oldCount = db._collection(vn).count();
+    
+        if (oldCount > 0) {
+          // wait again for next removal 
+          oldStats = stats;
+          stats = waitForNextRun(db[vn], oldStats, 30);
+
+          assertNotEqual(stats.runs, oldStats.runs);
+          assertTrue(stats.limitReached > oldStats.limitReached);
+          assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+          // wait again, as fetching the stats and acquiring the collection count is not atomic
+          oldStats = stats;
+          stats = waitForNextRun(db[vn], oldStats, 30);
+          assertTrue(db._collection(vn).count() < oldCount || db._collection(vn).count() === 0);
+        }
+      } finally {
+        graphs._drop(gn, true);
+      }
+    },
+    
+    testRemovalsSmartGraphEdge : function () {
+      if (!internal.isCluster() || !internal.isEnterprise()) {
+        return;
+      }
+
+      const vn = "UnitTestsVertex";
+      const en = "UnitTestsEdge";
+      const gn = "UnitTestsGraph";
+
+      const graphs = require("@arangodb/smart-graph");
+      graphs._create(gn, [graphs._relation(en, vn, vn)], null, { numberOfShards: 3, replicationFactor: 2, smartGraphAttribute: "testi" });
+
+      try {
+        internal.ttlProperties({ active: false });
+
+        // populate smart edge collection
+        let dt = new Date((new Date()).getTime() - 1000 * 60).toISOString();
+        db[en].ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
+        
+        let docs = [];
+        for (let i = 0; i < 50000; ++i) {
+          docs.push({ _from: vn + '/test' + i + ':test' + (i % 10), _to: vn + '/test' + ((i + 1) % 100) + ':test' + (i % 10), testi: i % 10, dateCreated: dt, value: i });
+          if (docs.length === 5000) {
+            db[en].insert(docs);
+            docs = [];
+          }
+        }
+              
+        let oldStats = internal.ttlStatistics();
+        let oldCount = 50000;
+        assertEqual(db[en].count(), oldCount);
+      
+        // reenable
+        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+    
+        let stats = waitForNextRun(db[en], oldStats, 30);
+
+        // number of runs, deletions and limitReached must have changed
+        assertNotEqual(stats.runs, oldStats.runs);
+        assertTrue(stats.limitReached > oldStats.limitReached);
+        assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+        assertTrue(db._collection(en).count() < oldCount);
+        oldCount = db._collection(en).count();
+    
+        if (oldCount > 0) {
+          // wait again for next removal 
+          oldStats = stats;
+          stats = waitForNextRun(db[en], oldStats, 30);
+
+          assertNotEqual(stats.runs, oldStats.runs);
+          assertTrue(stats.limitReached > oldStats.limitReached);
+          assertTrue(stats.documentsRemoved > oldStats.documentsRemoved);
+          // wait again, as fetching the stats and acquiring the collection count is not atomic
+          oldStats = stats;
+          stats = waitForNextRun(db[en], oldStats, 30);
+          assertTrue(db._collection(en).count() < oldCount || db._collection(en).count() === 0);
+        }
+      } finally {
+        graphs._drop(gn, true);
+      }
     },
   
   };
