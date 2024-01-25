@@ -32,9 +32,26 @@ if (getOptions === true) {
 
 const jsunity = require('jsunity');
 const db = require('@arangodb').db;
+const internal = require('internal');
 const { getDBServers, getCoordinators } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 
+// note: these tests will currently partially fail under replication2.
+// the reason is that the tests expect the bytes_written metrics to be
+// increased on followers, too.
+// this is actually the case with replication1, as replication requests
+// are sent to the followers along with all relevant information, so that
+// when the request is handled on the followers, the metrics can be 
+// increased normally.
+// with replication2 however, the leader does not send replication2 requests
+// to followers that result in normal document write operations. instead,
+// the replication requests from the leader are first written to the
+// replication log on the follower, and only eventually applied there.
+// when the replication log writes are applied on the follower, the 
+// information about which user initiated the operation is already lost.
+// this can be fixed by storing the user information in the replicated
+// log, and using it when the write operation is later applied on the
+// follower.
 function testSuite() {
   const baseName = "UnitTestsCollection";
   let nextCollectionId = 0;
@@ -177,6 +194,15 @@ function testSuite() {
   };
 
   return {
+    setUpAll : function () {
+      // set this failure point so that metrics updates are pushed immediately
+      internal.debugSetFailAt("alwaysPublishShardMetrics");
+    },
+      
+    tearDownAll : function () {
+      internal.debugRemoveFailAt("alwaysPublishShardMetrics");
+    },
+
     testDoesNotPolluteNormalMetricsAPI : function () {
       const cn = getUniqueCollectionName();
 
@@ -1627,5 +1653,7 @@ function testSuite() {
   };
 }
 
-jsunity.run(testSuite);
+if (internal.debugCanUseFailAt()) {
+  jsunity.run(testSuite);
+}
 return jsunity.done();

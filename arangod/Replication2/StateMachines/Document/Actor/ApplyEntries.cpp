@@ -246,10 +246,11 @@ template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
     ReplicatedOperation::DropShard const& op) -> Result {
   // We first have to abort all transactions for this shard.
-  // This stunt may seem unnecessary, as the leader counterpart takes care of
-  // this by replicating the abort operations. However, because we're currently
-  // replicating the "DropShard" operation first, "Abort" operations come later.
-  // Hence, we need to abort transactions manually for now.
+  // Note that after the entry is committed, locally all transactions on the
+  // leader for this shard will be aborted. This will also add log entries to
+  // abort these transactions; that is unnecessary, and we might want to avoid
+  // it in the future. However, it doesn't hurt, so for now it's low on the
+  // priority list.
   for (auto const& tid :
        this->state->handlers.transactionHandler->getTransactionsForShard(
            op.shard)) {
