@@ -159,22 +159,6 @@ Result fillIndexSingleThreaded(
 
     if (numDocsWritten > 0 &&
         numDocsWritten % 1024 == 0) {  // commit buffered writes
-      if (count > 0) {
-        double p =
-            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
-        ridx.progress(p);
-#ifdef ARANGODB_ENABLE_FAILURE_TESTS
-        TRI_IF_FAILURE("fillIndex::pause") {
-          while (true) {
-            TRI_IF_FAILURE("fillIndex::unpause") { break; }
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-          }
-        }
-#endif
-        if (progress != nullptr) {
-          (*progress)(p);
-        }
-      }
 
       res = partiallyCommitInsertions(batched, batch, rootDB, trxColl,
                                       docsProcessed, ridx, foreground);
@@ -199,6 +183,23 @@ Result fillIndexSingleThreaded(
         // collection dropped
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         break;
+      }
+
+      if (count > 0) {
+        double p =
+            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+        ridx.progress(p);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("fillIndex::pause") {
+          while (true) {
+            TRI_IF_FAILURE("fillIndex::unpause") { break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        }
+#endif
+        if (progress != nullptr) {
+          (*progress)(p);
+        }
       }
     }
   }

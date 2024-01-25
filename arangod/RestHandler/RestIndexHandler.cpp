@@ -213,7 +213,7 @@ RestStatus RestIndexHandler::getIndexes() {
 
       try {  // this is a best effort progress display.
         for (auto const& pi : VPackArrayIterator(plannedIndexes->slice())) {
-          if (pi.get("isBuilding").isTrue()) {
+          if (pi.get(StaticStrings::IndexIsBuilding).isTrue()) {
             VPackObjectBuilder o(&tmp);
             for (auto const& source :
                  VPackObjectIterator(pi, /* useSequentialIterator */ true)) {
@@ -262,7 +262,7 @@ RestStatus RestIndexHandler::getIndexes() {
                     << " is invalid";
                 continue;
               }
-              if (resSlice.get(StaticStrings::Error).getBoolean()) {
+              if (resSlice.get(StaticStrings::Error).isTrue()) {
                 // this can happen when the DB-Servers have not yet
                 // started the creation of the index on a shard, for
                 // example if the number of maintenance threads is low.

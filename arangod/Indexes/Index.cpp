@@ -574,7 +574,7 @@ void Index::toVelocyPack(
   auto const progress = _progress.load(std::memory_order_relaxed);
   if (progress > -1 && progress < 100) {
     builder.add("progress", VPackValue(progress));
-    builder.add("isBuilding", VPackValue(true));
+    builder.add(StaticStrings::IndexIsBuilding, VPackValue(true));
   }
 
   if (Index::hasFlag(flags, Index::Serialize::Figures)) {
