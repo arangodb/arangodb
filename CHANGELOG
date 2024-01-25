@@ -4,6 +4,15 @@ v3.11.7 (XXXX-XX-XX)
 * BTS-1751: Strange error message when executing a query while creating an 
   index in the background.
 
+* Reduce default amount of per-collection document removals by TTL background 
+  index creation thread from 1m to 100k in each iteration. This change gives
+  other collections a chance of being cleaned up as well.
+
+* Do not make AQL query runtime timeout affect TTL index background thread 
+  removal queries.
+
+* New API to show progress in background index creation.
+
 * Updated ArangoDB Starter to v0.18.0.
 
 * BTS-1741: fix updates of values in unique persistent indexes with stored
