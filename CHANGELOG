@@ -1,3 +1,10 @@
+v3.10.14 (XXXX-XX-XX)
+---------------------
+
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
+
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
@@ -9,9 +16,6 @@ v3.10.13 (XXXX-XX-XX)
   removal queries.
 
 * New API to show progress in background index creation.
-
-* BTS-1751: Strange error message when executing a query while creating an 
-  index in the background.
 
 * Updated ArangoDB Starter to v0.18.0.
 
