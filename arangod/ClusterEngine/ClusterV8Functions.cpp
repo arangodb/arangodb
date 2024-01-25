@@ -32,6 +32,7 @@
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "V8/v8-conv.h"
 #include "V8/v8-globals.h"
@@ -161,7 +162,7 @@ static void JS_EstimateCollectionSize(
   builder.add("documents", VPackValue(0));
   builder.add("indexes", VPackValue(VPackValueType::Object));
 
-  for (auto& i : collection->getIndexes()) {
+  for (auto const& i : collection->getPhysical()->getReadyIndexes()) {
     builder.add(std::to_string(i->id().id()), VPackValue(0));
   }
 

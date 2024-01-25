@@ -26,6 +26,7 @@
 #include "../Mocks/Servers.h"
 #include "../Mocks/StorageEngineMock.h"
 #include "IResearch/common.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/ManagerFeature.h"
 #include "GraphTestTools.h"
 
@@ -105,7 +106,7 @@ std::shared_ptr<Index> MockIndexHelpers::getEdgeIndexHandle(
       vocbase.lookupCollection(edgeCollectionName);
   TRI_ASSERT(coll != nullptr);    // no edge collection of this name
   TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
-  for (auto const& idx : coll->getIndexes()) {
+  for (auto const& idx : coll->getPhysical()->getAllIndexes()) {
     if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
       return idx;
     }
