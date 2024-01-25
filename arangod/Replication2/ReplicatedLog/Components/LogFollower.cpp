@@ -106,6 +106,23 @@ auto FollowerManager::getStatus() const -> LogStatus {
   auto mapping = storage->getTermIndexMapping();
   auto syncIndex = storage->getSyncIndex();
   auto [releaseIndex, lowestIndexToKeep] = compaction->getIndexes();
+  auto const stateStatus = stateHandle->getInternalStatus();
+  auto const appliedIndex = std::visit(
+      overload{
+          [&](replicated_state::Status::Follower const& status) {
+            using namespace replicated_state;
+            return std::visit(overload{
+                                  [&](Status::Follower::Constructed const& c) {
+                                    return c.appliedIndex;
+                                  },
+                                  [](auto const&) { return LogIndex{0}; },
+                              },
+                              status.value);
+          },
+          [](auto const&) { return LogIndex{0}; },
+
+      },
+      stateStatus.value);
   return LogStatus{FollowerStatus{
       .local =
           LogStatistics{
@@ -116,6 +133,7 @@ auto FollowerManager::getStatus() const -> LogStatus {
               .releaseIndex = releaseIndex,
               .syncIndex = syncIndex,
               .lowestIndexToKeep = lowestIndexToKeep,
+              .appliedIndex = appliedIndex,
           },
       .leader = termInfo->leader,
       .term = termInfo->term,
@@ -186,6 +204,22 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
 
   auto const localState =
       getLocalState(commitIndex, snapshotAvailable, stateStatus);
+  auto const appliedIndex = std::visit(
+      overload{
+          [&](replicated_state::Status::Follower const& status) {
+            using namespace replicated_state;
+            return std::visit(overload{
+                                  [&](Status::Follower::Constructed const& c) {
+                                    return c.appliedIndex;
+                                  },
+                                  [](auto const&) { return LogIndex{0}; },
+                              },
+                              status.value);
+          },
+          [](auto const&) { return LogIndex{0}; },
+
+      },
+      stateStatus.value);
 
   return QuickLogStatus{
       .role = ParticipantRole::kFollower,
@@ -200,6 +234,7 @@ auto FollowerManager::getQuickStatus() const -> QuickLogStatus {
               .releaseIndex = releaseIndex,
               .syncIndex = syncIndex,
               .lowestIndexToKeep = lowestIndexToKeep,
+              .appliedIndex = appliedIndex,
           },
       .leadershipEstablished = commitIndex.value > 0,
       .snapshotAvailable = snapshotAvailable,
