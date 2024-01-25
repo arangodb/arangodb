@@ -1,6 +1,10 @@
 v3.10.13 (XXXX-XX-XX)
 ---------------------
 
+* Reduce default amount of per-collection document removals by TTL background 
+  index creation thread from 1m to 100k in each iteration. This change gives
+  other collections a chance of being cleaned up as well.
+
 * Do not make AQL query runtime timeout affect TTL index background thread 
   removal queries.
 

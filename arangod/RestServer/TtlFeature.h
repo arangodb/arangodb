@@ -59,7 +59,7 @@ struct TtlProperties {
   static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
   uint64_t frequency = 30 * 1000;                     // milliseconds
   uint64_t maxTotalRemoves = 1000000;
-  uint64_t maxCollectionRemoves = 1000000;
+  uint64_t maxCollectionRemoves = 100000;
 
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
