@@ -53,8 +53,8 @@ class ClusterQuery : public Query {
                            velocypack::Slice collections,
                            velocypack::Slice variables,
                            velocypack::Slice snippets,
-                           velocypack::Slice traversals, std::string_view user,
-                           velocypack::Builder& answer,
+                           velocypack::Slice traversals,
+                           std::string const& user, velocypack::Builder& answer,
                            QueryAnalyzerRevisions const& analyzersRevision,
                            bool fastPathLocking);
 
