@@ -30,6 +30,7 @@
 #include "Cluster/ClusterMethods.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/LogicalCollection.h"
@@ -58,8 +59,7 @@ EdgeCollectionInfo::EdgeCollectionInfo(ResourceMonitor& monitor,
   _collection = _trx->documentCollection(_collectionName);
   TRI_ASSERT(_collection != nullptr);
 
-  for (std::shared_ptr<arangodb::Index> const& idx :
-       _collection->getIndexes()) {
+  for (auto const& idx : _collection->getPhysical()->getReadyIndexes()) {
     // we currently rely on an outbound edge index, but this could be changed to
     // use a different index in the future.
     if (idx->type() == arangodb::Index::TRI_IDX_TYPE_EDGE_INDEX) {
