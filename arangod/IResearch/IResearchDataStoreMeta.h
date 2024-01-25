@@ -70,7 +70,6 @@ struct IResearchDataStoreMeta {
   };
 
   bool operator==(IResearchDataStoreMeta const& other) const noexcept;
-  bool operator!=(IResearchDataStoreMeta const& other) const noexcept;
 
   bool init(velocypack::Slice slice, std::string& errorField,
             IResearchDataStoreMeta const& defaults, Mask* mask) noexcept;

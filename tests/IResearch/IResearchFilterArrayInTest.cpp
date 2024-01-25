@@ -1036,7 +1036,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -1624,7 +1624,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER [] ANY IN d.a RETURN d",
@@ -4293,7 +4293,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
     assertFilterSuccess(
         vocbase(),
@@ -4360,7 +4360,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array AT LEAST
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
 
     assertFilterSuccess(
@@ -4394,7 +4394,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array AT LEAST NOT
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
 
     assertFilterSuccess(vocbase(),
