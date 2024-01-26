@@ -453,7 +453,7 @@ TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
-void transaction::Methods::setUsername(std::string_view name) {
+void transaction::Methods::setUsername(std::string const& name) {
   TRI_ASSERT(_state);
   _state->setUsername(name);
 }
