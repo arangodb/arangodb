@@ -97,7 +97,7 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, std::string_view user,
+    VPackSlice snippets, VPackSlice traverserSlice, std::string const& user,
     VPackBuilder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
