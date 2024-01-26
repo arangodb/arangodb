@@ -125,6 +125,8 @@ class ExecContext : public RequestContext {
     return requested <= collectionAuthLevel(db, coll);
   }
 
+  std::unique_ptr<ExecContext> clone() const;
+
 #ifdef USE_ENTERPRISE
   virtual std::string clientAddress() const { return ""; }
   virtual std::string requestUrl() const { return ""; }
