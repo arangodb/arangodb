@@ -20,8 +20,11 @@ export const QueryTableView = ({
     result => result !== null && result !== undefined
   );
   if (!firstValidResult) {
+    // if there are no valid rows, everything is null or undefined
     return (
-      <Text padding="4">Could not produce a table, please check the JSON result tab</Text>
+      <Text padding="4">
+        Could not produce a table, please check the JSON result tab
+      </Text>
     );
   }
   const headers = Object.keys(firstValidResult);
@@ -46,6 +49,10 @@ export const QueryTableView = ({
               <Tr key={index}>
                 {headers.map((header, headerIndex) => {
                   if (row === null || row === undefined) {
+                    /**
+                     *  If any row is null, or undefined,
+                     *  we display it as in the first cell
+                     * */
                     if (headerIndex === 0) {
                       return (
                         <Td colSpan={headers.length} key={header}>
@@ -56,12 +63,10 @@ export const QueryTableView = ({
                     return null;
                   }
                   const value = row[header];
-                  if (typeof value === "string") {
-                    return <Td key={header}>{value}</Td>;
-                  }
+                  const isString = typeof value === "string";
                   return (
                     <Td whiteSpace="normal" key={header}>
-                      {JSON.stringify(value)}
+                      {isString ? value : JSON.stringify(value)}
                     </Td>
                   );
                 })}
