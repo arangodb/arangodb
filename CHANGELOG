@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-425: adds missing Analyzer types on web UI - "multi_delimiter" & "wildcard"
+
 * BTS-1660: When updating (PATCH request) edges with API Gharial and only
   specifying one of the two edge attributes `_from` or `_to` (not both),
   the content of the edge was not fully validated. This has been fixed now.
