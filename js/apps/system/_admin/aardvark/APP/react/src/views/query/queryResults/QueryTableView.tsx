@@ -3,6 +3,7 @@ import {
   TableContainer,
   Tbody,
   Td,
+  Text,
   Th,
   Thead,
   Tr
@@ -13,10 +14,19 @@ import { QueryResultType } from "../ArangoQuery.types";
 export const QueryTableView = ({
   queryResult
 }: {
-  queryResult: QueryResultType<{ [key: string]: any }[]>;
+  queryResult: QueryResultType<({ [key: string]: any } | null)[]>;
 }) => {
-  const firstRow = queryResult.result?.[0];
-  const headers = firstRow ? Object.keys(firstRow) : [];
+  const firstValidResult = queryResult.result?.find(
+    result => result !== null && result !== undefined
+  );
+  if (!firstValidResult) {
+    return (
+      <>
+        <Text>Could not produce a table, please check the JSON result tab</Text>
+      </>
+    );
+  }
+  const headers = Object.keys(firstValidResult);
   if (!headers.length) {
     return null;
   }
@@ -36,14 +46,24 @@ export const QueryTableView = ({
           {queryResult.result?.map((row, index) => {
             return (
               <Tr key={index}>
-                {headers.map(header => {
+                {headers.map((header, headerIndex) => {
+                  if (row === null || row === undefined) {
+                    if (headerIndex === 0) {
+                      return (
+                        <Td colSpan={headers.length} key={header}>
+                          {JSON.stringify(row)}
+                        </Td>
+                      );
+                    }
+                    return null;
+                  }
                   const value = row[header];
                   if (typeof value === "string") {
                     return <Td key={header}>{value}</Td>;
                   }
                   return (
                     <Td whiteSpace="normal" key={header}>
-                      {JSON.stringify(row[header])}
+                      {JSON.stringify(value)}
                     </Td>
                   );
                 })}
