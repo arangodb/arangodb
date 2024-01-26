@@ -21,9 +21,7 @@ export const QueryTableView = ({
   );
   if (!firstValidResult) {
     return (
-      <>
-        <Text>Could not produce a table, please check the JSON result tab</Text>
-      </>
+      <Text padding="4">Could not produce a table, please check the JSON result tab</Text>
     );
   }
   const headers = Object.keys(firstValidResult);
