@@ -1,5 +1,6 @@
 /* jshint -W051:true */
 /* eslint-disable */
+/* global arango */
 ;(function () {
   'use strict'
   /* eslint-enable */
