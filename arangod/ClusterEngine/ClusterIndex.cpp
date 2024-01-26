@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Agency/AsyncAgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -29,11 +28,8 @@
 #include "Cluster/ClusterFeature.h"
 #include "ClusterEngine/ClusterEngine.h"
 #include "ClusterIndex.h"
-#include "Futures/Utilities.h"
 #include "Indexes/SimpleAttributeEqualityMatcher.h"
 #include "Indexes/SortedIndexAttributeMatcher.h"
-#include "Logger/LogMacros.h"
-#include "Network/NetworkFeature.h"
 #include "RocksDBEngine/RocksDBMultiDimIndex.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "RocksDBEngine/RocksDBVPackIndex.h"
