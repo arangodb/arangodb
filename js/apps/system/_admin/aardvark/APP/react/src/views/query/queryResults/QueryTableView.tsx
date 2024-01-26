@@ -51,7 +51,7 @@ export const QueryTableView = ({
                   if (row === null || row === undefined) {
                     /**
                      *  If any row is null, or undefined,
-                     *  we display it as in the first cell
+                     *  we display it in the first cell
                      * */
                     if (headerIndex === 0) {
                       return (
