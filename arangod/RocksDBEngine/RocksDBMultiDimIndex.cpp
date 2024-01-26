@@ -863,10 +863,7 @@ RocksDBMdiIndexBase::RocksDBMdiIndexBase(IndexId iid, LogicalCollection& coll,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   coll.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   coll.vocbase().engine<RocksDBEngine>()),
       _storedValues(
           Index::parseFields(info.get(StaticStrings::IndexStoredValues),
                              /*allowEmpty*/ true, /*allowExpansion*/ false)),
@@ -991,9 +988,7 @@ void RocksDBMdiIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _collection.vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
@@ -1072,8 +1067,6 @@ RocksDBMdiIndex::RocksDBMdiIndex(IndexId iid, LogicalCollection& coll,
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &coll.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);

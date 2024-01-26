@@ -119,8 +119,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool isLocalCollection, bool isSystemName,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
-  bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  bool extendedNames = vocbase.extendedNames();
   if (auto res = CollectionNameValidator::validateName(
           allowSystem, extendedNames, info.name);
       res.fail()) {
@@ -1169,10 +1168,7 @@ Result Collections::rename(LogicalCollection& collection,
               "non-system collection name or vice versa"};
     }
 
-    bool extendedNames = collection.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNames();
+    bool extendedNames = collection.vocbase().extendedNames();
     if (auto res = CollectionNameValidator::validateName(
             isSystem, extendedNames, newName);
         res.fail()) {
@@ -1287,8 +1283,7 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.engine();
 
   auto idxs = coll.getIndexes();
   for (auto const& idx : idxs) {

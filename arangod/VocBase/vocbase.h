@@ -187,6 +187,12 @@ struct TRI_vocbase_t {
  public:
   arangodb::StorageEngine& engine() const noexcept { return _engine; }
 
+  auto extendedNames() const noexcept -> bool { return _extendedNames; }
+
+  auto versionTracker() noexcept -> arangodb::VersionTracker& {
+    return _versionTracker;
+  }
+
   template<typename As>
   As& engine() const noexcept
       requires(std::derived_from<As, arangodb::StorageEngine>) {

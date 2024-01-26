@@ -392,9 +392,7 @@ void RocksDBCollection::freeMemory() noexcept {
 
   RocksDBMetaCollection::freeMemory();
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.removeCollectionMapping(objectId());
 }
 

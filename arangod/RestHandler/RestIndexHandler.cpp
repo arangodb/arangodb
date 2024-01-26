@@ -460,8 +460,7 @@ RestStatus RestIndexHandler::dropIndex() {
 }
 
 RestStatus RestIndexHandler::syncCaches() {
-  StorageEngine& engine =
-      _vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.engine();
   engine.syncIndexCaches();
 
   generateResult(rest::ResponseCode::OK, VPackSlice::emptyObjectSlice());

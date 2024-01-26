@@ -1259,7 +1259,7 @@ Result IResearchDataStore::initDataStore(
                          index().id().id(), "'")};
   }
 
-  _engine = &server.getFeature<EngineSelectorFeature>().engine();
+  _engine = &index().collection().vocbase().engine();
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 

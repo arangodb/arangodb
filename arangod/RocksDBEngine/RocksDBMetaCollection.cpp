@@ -76,10 +76,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
-      _engine(collection.vocbase()
-                  .server()
-                  .getFeature<EngineSelectorFeature>()
-                  .engine<RocksDBEngine>()),
+      _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),

@@ -104,10 +104,8 @@ std::shared_ptr<Index> IResearchRocksDBInvertedIndexFactory::instantiate(
     });
 
     auto initRes = index->init(
-        definition, pathExists, [this]() -> irs::directory_attributes {
-          auto& selector = _server.getFeature<EngineSelectorFeature>();
-          TRI_ASSERT(selector.isRocksDB());
-          auto& engine = selector.engine<RocksDBEngine>();
+        definition, pathExists, [&collection]() -> irs::directory_attributes {
+          auto& engine = collection.vocbase().engine<RocksDBEngine>();
           auto* encryption = engine.encryptionProvider();
           if (encryption) {
             return irs::directory_attributes{

@@ -3319,10 +3319,7 @@ Future<Result> Methods::replicateOperations(
 
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
+    auto& engine = vocbase().engine();
 
     return engine.autoRefillIndexCachesOnFollowers() &&
            ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||

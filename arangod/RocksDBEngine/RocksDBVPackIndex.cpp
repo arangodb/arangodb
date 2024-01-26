@@ -1239,8 +1239,6 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &collection.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
