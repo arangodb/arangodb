@@ -46,6 +46,8 @@ class RevisionId;
 namespace graph {
 // TODO rename to GraphMethods
 
+enum class VertexValidationOrigin { DEFAULT, FROM_ATTRIBUTE, TO_ATTRIBUTE };
+
 class GraphOperations {
  private:
   Graph& _graph;
@@ -227,8 +229,15 @@ class GraphOperations {
       VPackSlice document, bool waitForSync, bool returnNew);
 
   Result checkEdgeCollectionAvailability(std::string const& edgeCollectionName);
+
+  /// @brief Validates the given vertex collection name and checks if it is
+  /// available or not. The enum VertexValidationOrigin is used to
+  /// differentiate between the origin of the vertex collection name.
+  /// If it set to either FROM_ATTRIBUTE or TO_ATTRIBUTE, the vertex collection
+  /// name is coming from an edge.
   Result checkVertexCollectionAvailability(
-      std::string const& vertexCollectionName);
+      std::string const& vertexCollectionName,
+      VertexValidationOrigin origin = VertexValidationOrigin::DEFAULT);
 
   bool hasROPermissionsFor(std::string const& collection) const;
   bool hasRWPermissionsFor(std::string const& collection) const;

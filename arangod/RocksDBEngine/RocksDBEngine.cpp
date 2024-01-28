@@ -289,14 +289,12 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _useThrottle(true),
       _useReleasedTick(false),
       _debugLogging(false),
-      _useEdgeCache(true),
       _verifySst(false),
 #ifdef USE_ENTERPRISE
       _createShaFiles(true),
 #else
       _createShaFiles(false),
 #endif
-      _useRangeDeleteInWal(true),
       _lastHealthCheckSuccessful(false),
       _dbExisted(false),
       _runningRebuilds(0),
@@ -676,34 +674,10 @@ on the write rate.)");
                          arangodb::options::Flags::Enterprise));
 #endif
 
-  options
-      ->addOption("--rocksdb.use-range-delete-in-wal",
-                  "Enable range delete markers in the write-ahead log (WAL). "
-                  "Potentially incompatible with older arangosync versions.",
-                  new BooleanParameter(&_useRangeDeleteInWal),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(30903)
-      .setLongDescription(
-          R"(Controls whether the collection truncate operation
-in the cluster can use RangeDelete operations in RocksDB. Using RangeDeletes is
-fast and reduces the algorithmic complexity of the truncate operation to O(1),
-compared to O(n) for when this option is turned off (with n being the number of
-documents in the collection/shard).
-
-Previous versions of ArangoDB used RangeDeletes only on a single server, but
-never in a cluster. 
-
-The default value for this option is `true`, and you should only change this
-value in case of emergency. This option is only honored in the cluster.
-Single server and Active Failover deployments do not use RangeDeletes regardless
-of the value of this option.
-
-Note that it is not guaranteed that all truncate operations use a RangeDelete
-operation. For collections containing a low number of documents, the O(n)
-truncate method may still be used.)");
+  // range deletes are now always enabled
+  options->addObsoleteOption(
+      "--rocksdb.use-range-delete-in-wal",
+      "Enable range delete markers in the write-ahead log (WAL).", false);
 
   options
       ->addOption("--rocksdb.debug-logging",
@@ -722,16 +696,9 @@ RocksDB's actions into the logfile written by ArangoDB (if the
 This option is turned off by default, but you can enable it for debugging
 RocksDB internals and performance.)");
 
-  options
-      ->addOption("--rocksdb.edge-cache",
-                  "Whether to use the in-memory cache for edges",
-                  new BooleanParameter(&_useEdgeCache),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnDBServer,
-                      arangodb::options::Flags::OnSingle,
-                      arangodb::options::Flags::Uncommon))
-      .setDeprecatedIn(31000);
+  options->addObsoleteOption("--rocksdb.edge-cache",
+                             "Whether to use the in-memory cache for edges",
+                             false);
 
   options
       ->addOption("--rocksdb.verify-sst",
@@ -1283,6 +1250,9 @@ void RocksDBEngine::start() {
   _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
       &server().getFeature<metrics::MetricsFeature>());
 
+#ifndef USE_CUSTOM_WAL
+  // When using the custom WAL implementation, we don't need to register a
+  // RocksDB sync listener.
   auto logPersistor =
       std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(
           RocksDBColumnFamilyManager::get(
@@ -1297,8 +1267,9 @@ void RocksDBEngine::start() {
     LOG_TOPIC("0a5df", WARN, Logger::REPLICATION2)
         << "In replication2 databases, setting waitForSync to false will not "
            "work correctly without a syncer thread. See the "
-           "--rocksdbsync-interval option.";
+           "--rocksdb.sync-interval option.";
   }
+#endif
 
   _settingsManager->retrieveInitialValues();
 
@@ -1313,11 +1284,6 @@ void RocksDBEngine::start() {
 
   if (!systemDatabaseExists()) {
     addSystemDatabase();
-  }
-
-  if (!useEdgeCache()) {
-    LOG_TOPIC("46557", INFO, Logger::ENGINES)
-        << "in-memory cache for edges is disabled";
   }
 
   // to populate initial health check data
@@ -3157,6 +3123,13 @@ std::unique_ptr<TRI_vocbase_t> RocksDBEngine::openExistingDatabase(
 
   // replicated states should be loaded before their respective shards
   if (vocbase->replicationVersion() == replication::Version::TWO) {
+    if (syncThread() == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ILLEGAL_OPTION,
+          "Automatic syncing must be enabled for replication "
+          "version 2. Please make sure the --rocksdb.sync-interval "
+          "option is set to a value greater than 0.");
+    }
     try {
       loadReplicatedStates(*vocbase);
     } catch (std::exception const& ex) {

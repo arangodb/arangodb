@@ -28,16 +28,16 @@ const jsunity = require("jsunity");
 const db = require("@arangodb").db;
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 
-function nestedJoinsTestSuite () {
+function nestedJoinsTestSuite() {
   const cn = "UnitTestsCollection";
 
   return {
-    setUpAll : function() {
+    setUpAll: function () {
       db._drop(cn);
       let c = db._create(cn);
-      let docs = []; 
+      let docs = [];
       for (let i = 0; i < 10 * 1000; ++i) {
-        docs.push({ value: i });
+        docs.push({value: i});
         if (docs.length === 2000) {
           c.insert(docs);
           docs = [];
@@ -46,35 +46,53 @@ function nestedJoinsTestSuite () {
       // also add strings
       docs = [];
       for (let i = 0; i < 10 * 1000; ++i) {
-        docs.push({ value: "this-is-a-longer-string-" + i });
+        docs.push({value: "this-is-a-longer-string-" + i});
         if (docs.length === 2000) {
           c.insert(docs);
           docs = [];
         }
       }
 
-      c.ensureIndex({ type: "persistent", fields: ["value"] });
+      c.ensureIndex({type: "persistent", fields: ["value"]});
     },
 
-    tearDownAll : function() {
+    tearDownAll: function () {
       db._drop(cn);
     },
 
-    testJoinWithRange : function () {
+    testJoinWithRange: function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
         const q = `FOR i IN 0..${max - 1} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value2`;
+        const stmt = {query: q, options: {optimizer: {rules: ["-batch-materialize-documents"]}}};
 
-        let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
+        let nodes = db._createStatement(stmt).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(1, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(normalize(["value2"]), normalize(nodes[0].projections));
+
+        let results = db._query(stmt).toArray();
+        assertEqual(max, results.length);
+      });
+    },
+
+    testJoinWithRangeLateMaterialize: function () {
+      [100, 1000, 10000].forEach((max) => {
+        const q = `FOR i IN 0..${max - 1} FOR doc IN ${cn} FILTER doc.value == i RETURN doc.value2`;
+
+        let nodes = db._createStatement(q).explain().plan.nodes
+            .filter((node) => node.type === 'IndexNode' || node.type === 'MaterializeNode');
+        assertEqual(2, nodes.length);
+        const [indexNode, materializeNode] = nodes;
+        assertEqual(1, indexNode.indexes.length);
+        assertEqual(normalize([]), normalize(indexNode.projections));
+        assertEqual(normalize(["value2"]), normalize(materializeNode.projections));
 
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
       });
     },
-    
-    testJoinWithCollectionEquality : function () {
+
+    testJoinWithCollectionEquality: function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
         const q = `FOR doc1 IN ${cn} FILTER doc1.value == ${max - 1} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
         let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
@@ -89,23 +107,42 @@ function nestedJoinsTestSuite () {
       });
     },
 
-    testJoinWithCollectionRange : function () {
+    testJoinWithCollectionRange: function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
         const q = `FOR doc1 IN ${cn} FILTER doc1.value < ${max} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
+        const stmt = {query: q, options: {optimizer: {rules: ["-batch-materialize-documents"]}}};
 
-        let nodes = db._createStatement(q).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
+        let nodes = db._createStatement(stmt).explain().plan.nodes.filter((node) => node.type === 'IndexNode');
         assertEqual(2, nodes.length);
         assertEqual(1, nodes[0].indexes.length);
         assertEqual(1, nodes[1].indexes.length);
         assertEqual(normalize(["value"]), normalize(nodes[0].projections));
         assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
 
+        let results = db._query(stmt).toArray();
+        assertEqual(max, results.length);
+      });
+    },
+
+    testJoinWithCollectionRangeLateMaterialize: function () {
+      [100, 1000, 10000].forEach((max) => {
+        const q = `FOR doc1 IN ${cn} FILTER doc1.value < ${max} FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
+
+        let nodes = db._createStatement(q).explain().plan.nodes
+            .filter((node) => node.type === 'IndexNode' || node.type === 'MaterializeNode');
+        assertEqual(3, nodes.length);
+        assertEqual(1, nodes[0].indexes.length);
+        assertEqual(1, nodes[1].indexes.length);
+        assertEqual(normalize(["value"]), normalize(nodes[0].projections));
+        assertEqual(normalize([]), normalize(nodes[1].projections));
+        assertEqual(normalize(["value2"]), normalize(nodes[2].projections));
+
         let results = db._query(q).toArray();
         assertEqual(max, results.length);
       });
     },
-    
-    testJoinWithCollectionStringEquality1 : function () {
+
+    testJoinWithCollectionStringEquality1: function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
         const q = `FOR doc1 IN ${cn} FILTER doc1.value == CONCAT('this-is-a-longer-string-', ${max - 1}) FOR doc2 IN ${cn} FILTER doc2.value == doc1.value RETURN doc2.value2`;
 
@@ -120,8 +157,8 @@ function nestedJoinsTestSuite () {
         assertEqual(1, results.length);
       });
     },
-    
-    testJoinWithCollectionStringEquality2 : function () {
+
+    testJoinWithCollectionStringEquality2: function () {
       [1, 10, 100, 1000, 10000].forEach((max) => {
         const q = `FOR doc1 IN ${cn} FILTER doc1.value == ${max - 1} FOR doc2 IN ${cn} FILTER doc2.value == CONCAT('this-is-a-longer-string-', doc1.value) RETURN doc2.value`;
 

@@ -74,8 +74,6 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief returns the request timeout for replication requests
   double requestTimeout() const;
 
-  double activeFailoverLeaderGracePeriod() const;
-
   /// @brief returns the connect timeout for replication requests
   /// this will return the provided value if the user has not adjusted the
   /// timeout via configuration. otherwise it will return the configured
@@ -87,9 +85,6 @@ class ReplicationFeature final : public ArangodFeature {
   /// timeout via configuration. otherwise it will return the configured
   /// timeout value
   double checkRequestTimeout(double value) const;
-
-  /// @brief automatic failover of replication using the agency
-  bool isActiveFailoverEnabled() const;
 
   bool syncByRevision() const noexcept;
 
@@ -111,12 +106,6 @@ class ReplicationFeature final : public ArangodFeature {
 
   void trackInventoryRequest() noexcept;
 
-  /// @brief set the x-arango-endpoint header
-  void setEndpointHeader(GeneralResponse*, arangodb::ServerState::Mode);
-
-  /// @brief fill a response object with correct response for a follower
-  void prepareFollowerResponse(GeneralResponse*, arangodb::ServerState::Mode);
-
   /// @brief get max document num for quick call to _api/replication/keys to get
   /// actual keys or only doc count
   uint64_t quickKeysLimit() const { return _quickKeysLimit; }
@@ -131,11 +120,6 @@ class ReplicationFeature final : public ArangodFeature {
   /// @brief request timeout for replication requests
   double _requestTimeout;
 
-  /// @brief  amount of time (in seconds) for which the current leader will
-  /// continue to assume its leadership even if it lost connection to the
-  /// agency (0 = unlimited)
-  double _activeFailoverLeaderGracePeriod;
-
   /// @brief whether or not the user-defined connect timeout is forced to be
   /// used this is true only if the user set the connect timeout at startup
   bool _forceConnectTimeout;
@@ -145,9 +129,6 @@ class ReplicationFeature final : public ArangodFeature {
   bool _forceRequestTimeout;
 
   bool _replicationApplierAutoStart;
-
-  /// Enable the active failover
-  bool _enableActiveFailover;
 
   /// Use the revision-based replication protocol
   bool _syncByRevision;

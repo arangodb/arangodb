@@ -68,6 +68,7 @@ class StaticStrings {
   static std::string const OverwriteCollectionPrefix;
   static std::string const IsSynchronousReplicationString;
   static std::string const RefillIndexCachesString;
+  static std::string const VersionAttributeString;
   static std::string const Group;
   static std::string const Namespace;
   static std::string const Prefix;
@@ -75,6 +76,7 @@ class StaticStrings {
   static std::string const OverwriteMode;
   static std::string const Compact;
   static std::string const DontWaitForCommit;
+  static std::string const UserString;
 
   // dump headers
   static std::string const DumpAuthUser;
@@ -363,6 +365,7 @@ class StaticStrings {
   static std::string const FirstIndex;
   static std::string const ReleaseIndex;
   static std::string const SyncIndex;
+  constexpr static std::string_view AppliedIndex = "appliedIndex";
   constexpr static std::string_view MessageId = "messageId";
   constexpr static std::string_view LogIndex = "logIndex";
   constexpr static std::string_view LogTerm = "logTerm";

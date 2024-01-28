@@ -59,7 +59,7 @@ struct TtlProperties {
   static constexpr uint64_t minFrequency = 1 * 1000;  // milliseconds
   uint64_t frequency = 30 * 1000;                     // milliseconds
   uint64_t maxTotalRemoves = 1000000;
-  uint64_t maxCollectionRemoves = 1000000;
+  uint64_t maxCollectionRemoves = 100000;
 
   void toVelocyPack(arangodb::velocypack::Builder& out, bool isActive) const;
   Result fromVelocyPack(arangodb::velocypack::Slice const& properties);
@@ -77,13 +77,6 @@ class TtlFeature final : public ArangodFeature {
   void beginShutdown() override final;
   void start() override final;
   void stop() override final;
-
-  /// @brief allow the TTL thread to run or not
-  /// this is not a user-facing method, but it is used by the active-failover
-  /// setup internally. the value is orthogonal to the value of _active, so it
-  /// is possible that allowRunning is true (leader in active failover setup)
-  /// but the user has set _active to false.
-  void allowRunning(bool value);
 
   /// @brief wait until the TTL thread has successfully stopped working
   void waitForThreadWork();
@@ -123,10 +116,6 @@ class TtlFeature final : public ArangodFeature {
   /// @brief protects _thread
   mutable std::mutex _threadMutex;
   std::unique_ptr<TtlThread> _thread;
-
-  /// @brief internal active flag, used by HeartbeatThread in active failover
-  /// setups the value is orthogonal to the user-facing _active flag
-  bool _allowRunning;
 
   /// @brief user-facing active flag, can be changed by end users
   bool _active;

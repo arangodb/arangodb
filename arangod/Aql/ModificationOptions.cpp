@@ -57,6 +57,11 @@ ModificationOptions::ModificationOptions(velocypack::Slice slice)
                                    : RefillIndexCaches::kDontRefill;
   }
 
+  if (velocypack::Slice s = obj.get(StaticStrings::VersionAttributeString);
+      s.isString()) {
+    versionAttribute = s.copyString();
+  }
+
   ignoreErrors =
       basics::VelocyPackHelper::getBooleanValue(obj, "ignoreErrors", false);
   ignoreDocumentNotFound = basics::VelocyPackHelper::getBooleanValue(
@@ -83,6 +88,11 @@ void ModificationOptions::toVelocyPack(velocypack::Builder& builder) const {
     // expose it when it is not set to "default"
     builder.add(StaticStrings::RefillIndexCachesString,
                 VPackValue(refillIndexCaches == RefillIndexCaches::kRefill));
+  }
+
+  if (!versionAttribute.empty()) {
+    builder.add(StaticStrings::VersionAttributeString,
+                VPackValue(versionAttribute));
   }
 
   if (overwriteMode != OperationOptions::OverwriteMode::Unknown) {

@@ -38,7 +38,7 @@ auto BlackHoleLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 }
 
 auto BlackHoleLeaderState::write(std::string_view data) -> LogIndex {
-  BlackHoleLogEntry entry{.value = std::string{data}};
+  auto entry = BlackHoleLogEntry::createFromString(data);
   return getStream()->insert(entry);
 }
 
@@ -57,6 +57,12 @@ auto BlackHoleLeaderState::release(LogIndex idx) const
     stream->release(idx);
     return {TRI_ERROR_NO_ERROR};
   });
+}
+
+auto BlackHoleLeaderState::insert(LogPayload payload, bool waitForSync)
+    -> LogIndex {
+  auto const& stream = getStream();
+  return stream->insert({std::move(payload)}, waitForSync);
 }
 
 auto BlackHoleFollowerState::acquireSnapshot(
@@ -99,7 +105,7 @@ operator()(
     streams::serializer_tag_t<replicated_state::black_hole::BlackHoleLogEntry>,
     velocypack::Slice s) const
     -> replicated_state::black_hole::BlackHoleLogEntry {
-  return replicated_state::black_hole::BlackHoleLogEntry{s.copyString()};
+  return replicated_state::black_hole::BlackHoleLogEntry::createFromSlice(s);
 }
 
 void replicated_state::EntrySerializer<
@@ -107,7 +113,7 @@ void replicated_state::EntrySerializer<
 operator()(
     streams::serializer_tag_t<replicated_state::black_hole::BlackHoleLogEntry>,
     black_hole::BlackHoleLogEntry const& e, velocypack::Builder& b) const {
-  b.add(velocypack::Value(e.value));
+  b.add(e.value.slice());
 }
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"

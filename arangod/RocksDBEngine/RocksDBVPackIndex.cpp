@@ -1692,7 +1692,8 @@ Result RocksDBVPackIndex::checkOperation(transaction::Methods& trx,
         // modifications always need to observe all changes
         // in order to validate uniqueness constraints
         auto readResult = _collection.getPhysical()->lookup(
-            &trx, docId, callback, {.readOwnWrites = true});
+            &trx, docId, callback,
+            {.readOwnWrites = true, .countBytes = false});
         if (readResult.fail()) {
           addErrorMsg(readResult);
           THROW_ARANGO_EXCEPTION(readResult);
@@ -1832,7 +1833,7 @@ Result RocksDBVPackIndex::insertUnique(
       // modifications always need to observe all changes
       // in order to validate uniqueness constraints
       auto readResult = _collection.getPhysical()->lookup(
-          &trx, docId, callback, {.readOwnWrites = true});
+          &trx, docId, callback, {.readOwnWrites = true, .countBytes = false});
       if (readResult.fail()) {
         addErrorMsg(readResult);
         THROW_ARANGO_EXCEPTION(readResult);
@@ -2016,6 +2017,8 @@ Result RocksDBVPackIndex::update(
                                 newDocumentId, newDoc, options, performChecks);
   }
 
+  TRI_ASSERT(_unique);
+
   if (!std::all_of(_fields.cbegin(), _fields.cend(), [&](auto const& path) {
         return ::attributesEqual(oldDoc, newDoc, path.begin(), path.end());
       })) {
@@ -2042,7 +2045,23 @@ Result RocksDBVPackIndex::update(
 
   auto cache = useCache();
 
-  RocksDBValue value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
+  RocksDBValue value = RocksDBValue::Empty(RocksDBEntryType::Placeholder);
+  if (_storedValuesPaths.empty()) {
+    value = RocksDBValue::UniqueVPackIndexValue(newDocumentId);
+  } else {
+    transaction::BuilderLeaser leased(&trx);
+    leased->openArray(true);
+    for (auto const& it : _storedValuesPaths) {
+      VPackSlice s = newDoc.get(it);
+      if (s.isNone()) {
+        s = VPackSlice::nullSlice();
+      }
+      leased->add(s);
+    }
+    leased->close();
+    value = RocksDBValue::UniqueVPackIndexValue(newDocumentId, leased->slice());
+  }
+  TRI_ASSERT(value.type() != RocksDBEntryType::Placeholder);
   for (auto const& key : elements) {
     rocksdb::Status s =
         mthds->Put(_cf, key, value.string(), /*assume_tracked*/ false);

@@ -851,6 +851,10 @@ ArangoCollection.prototype.save =
     }
     
     url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+    if (options.versionAttribute) {
+      url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+    }
 
     if (data === undefined || typeof data !== 'object') {
       throw new ArangoError({
@@ -1095,6 +1099,10 @@ ArangoCollection.prototype.replace = function (id, data, overwrite, waitForSync)
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {
@@ -1218,6 +1226,10 @@ ArangoCollection.prototype.update = function (id, data, overwrite, keepNull, wai
     url = appendBoolParameter(url, 'silent', options.silent);
   }
   url = appendBoolParameter(url, 'refillIndexCaches', options.refillIndexCaches, true);
+  
+  if (options.versionAttribute) {
+    url += '&versionAttribute=' + encodeURIComponent(options.versionAttribute); 
+  }
 
   let headers = buildTransactionHeaders(options, /*allowDirtyReads*/ false);
   if (rev !== null && !ignoreRevs) {

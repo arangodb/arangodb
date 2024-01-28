@@ -295,9 +295,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
 #ifdef ARANGODB_ROCKSDB8
       _prepopulateBlobCache(false),
 #endif
-      _reserveTableBuilderMemory(false),
-      _reserveTableReaderMemory(false),
-      _reserveFileMetadataMemory(false),
+      _reserveTableBuilderMemory(true),
+      _reserveTableReaderMemory(true),
+      _reserveFileMetadataMemory(true),
       _enforceBlockCacheSizeLimit(false),
       _cacheIndexAndFilterBlocks(true),
       _cacheIndexAndFilterBlocksWithHighPriority(
@@ -1568,6 +1568,11 @@ limited number of edge collections/shards/indexes.)");
         std::size_t index = static_cast<
             std::underlying_type<RocksDBColumnFamilyManager::Family>::type>(
             family);
+        auto introducedIn = 30800;
+        if (family == RocksDBColumnFamilyManager::Family::MdiVPackIndex ||
+            family == RocksDBColumnFamilyManager::Family::MdiIndex) {
+          introducedIn = 31200;
+        }
         options
             ->addOption("--rocksdb.max-write-buffer-number-" + name,
                         "If non-zero, overrides the value of "
@@ -1576,7 +1581,7 @@ limited number of edge collections/shards/indexes.)");
                         new UInt64Parameter(&_maxWriteBufferNumberCf[index]),
                         arangodb::options::makeDefaultFlags(
                             arangodb::options::Flags::Uncommon))
-            .setIntroducedIn(30800);
+            .setIntroducedIn(introducedIn);
       };
   for (auto family : families) {
     addMaxWriteBufferNumberCf(family);

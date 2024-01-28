@@ -53,7 +53,10 @@ export const ChakraCustomProvider = ({
             "input[type='number'], input[type='password'], input[type='number']:focus, input[type='password']:focus":
               {
                 height: "40px"
-              }
+              },
+            svg: {
+              overflow: "visible !important"
+            }
           }}
         />
         {children}

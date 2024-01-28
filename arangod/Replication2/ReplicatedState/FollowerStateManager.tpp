@@ -407,7 +407,9 @@ auto FollowerStateManager<S>::getInternalStatus() const -> Status::Follower {
   if (guard->_followerState == nullptr || guard->_stream->isResigned()) {
     return {Status::Follower::Resigned{}};
   } else {
-    return {Status::Follower::Constructed{}};
+    return {Status::Follower::Constructed{
+        .appliedIndex = guard->_lastAppliedPosition.index(),
+    }};
   }
 }
 

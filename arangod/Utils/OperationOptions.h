@@ -124,6 +124,9 @@ struct OperationOptions {
   // from the wrong leader.
   std::string isSynchronousReplicationFrom;
 
+  // name of attribute that contains a per-document version number (optional)
+  std::string versionAttribute;
+
   IndexOperationMode indexOperationMode = IndexOperationMode::normal;
 
   // INSERT ... OPTIONS { overwrite: true } behavior:

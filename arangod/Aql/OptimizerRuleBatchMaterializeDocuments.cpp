@@ -38,6 +38,27 @@ using EN = arangodb::aql::ExecutionNode;
 
 #define LOG_RULE LOG_DEVEL_IF(false)
 
+namespace {
+
+bool canUseIndex(std::shared_ptr<Index> const& indexHandle) {
+  if (auto type = indexHandle->type();
+      type == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+    LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
+             << "index type explicitly excluded.";
+    return false;
+  }
+
+  if (indexHandle->coveredFields().empty()) {
+    LOG_RULE << "INDEX " << indexHandle->id() << " FAILED: "
+             << "does not support covering call";
+    return false;
+  }
+
+  return true;
+}
+
+}  // namespace
+
 void arangodb::aql::batchMaterializeDocumentsRule(
     Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
     OptimizerRule const& rule) {
@@ -47,69 +68,66 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
   for (auto node : indexes) {
     TRI_ASSERT(node->getType() == EN::INDEX);
-    auto index = ExecutionNode::castTo<IndexNode*>(node);
+    auto indexNode = ExecutionNode::castTo<IndexNode*>(node);
 
-    if (index->isLateMaterialized()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "late materialized";
-      continue;
-    }
-    if (index->getIndexes().size() != 1) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "not covered by one index";
-      continue;
-    }
-    auto const& indexHandle = index->getIndexes()[0];
-
-    if (auto type = indexHandle->type();
-        type == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "index type explicitly excluded.";
+    if (indexNode->isLateMaterialized()) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+               << "already late materialized";
       continue;
     }
 
-    if (indexHandle->coveredFields().empty()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "does not support covering call";
+    const auto index = indexNode->getSingleIndex();
+    if (index == nullptr || !canUseIndex(index)) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+               << "not a single index in use or index not usable";
       continue;
     }
 
-    if (!index->projections().empty()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "has projections";
-      continue;
-    }
-    if (index->hasFilter()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
-               << "has post filter";
+    if (indexNode->projections().usesCoveringIndex()) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+               << "uses covering projections";
       continue;
     }
 
-    if (!index->canApplyLateDocumentMaterializationRule()) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+    if (indexNode->hasFilter() &&
+        !indexNode->filterProjections().usesCoveringIndex()) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+               << "has post filter, which is not covered";
+      continue;
+    }
+
+    if (!indexNode->canApplyLateDocumentMaterializationRule()) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
                << "no late materilize support";
       continue;
     }
-    if (index->canReadOwnWrites() == ReadOwnWrites::yes) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+    if (indexNode->canReadOwnWrites() == ReadOwnWrites::yes) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
                << "index has to read its own write - not supported";
       continue;
     }
 
-    if (index->estimateCost().estimatedNrItems < 100) {
-      LOG_RULE << "INDEX " << index->id() << " FAILED: "
+    if (indexNode->estimateCost().estimatedNrItems < 100) {
+      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
                << "estimated number of items too small";
       continue;
     }
 
-    LOG_RULE << "FOUND INDEX NODE " << index->id();
+    LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
-    index->setLateMaterialized(docIdVar, index->getIndexes()[0]->id(), {});
+    indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
+                                   {});
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
-        plan.get(), plan->nextId(), index->collection(), *docIdVar,
-        *index->outVariable());
-    plan->insertAfter(index, materialized);
+        plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
+        *indexNode->outVariable());
+    plan->insertAfter(indexNode, materialized);
+    if (!indexNode->projections().empty()) {
+      TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
+      TRI_ASSERT(!indexNode->projections().hasOutputRegisters());
+      // move projections from index node into materialize node
+      materialized->projections(std::move(indexNode->projections()));
+    }
     modified = true;
   }
 

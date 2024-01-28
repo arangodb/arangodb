@@ -40,6 +40,7 @@
 #include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
 #include "Replication/ReplicationFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/CpuUsageFeature.h"
@@ -67,19 +68,6 @@
 using namespace arangodb;
 using namespace arangodb::rest;
 using namespace std::literals;
-
-namespace {
-network::Headers buildHeaders() {
-  auto auth = AuthenticationFeature::instance();
-
-  network::Headers headers;
-  if (auth != nullptr && auth->isActive()) {
-    headers.try_emplace(StaticStrings::Authorization,
-                        "bearer " + auth->tokenCache().jwtToken());
-  }
-  return headers;
-}
-}  // namespace
 
 void SupportInfoBuilder::addDatabaseInfo(VPackBuilder& result,
                                          VPackSlice infoSlice,
@@ -240,16 +228,11 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
                             LogTimeFormats::TimeFormat::UTCDateString,
                             std::chrono::system_clock::now());
 
-  bool const isActiveFailover =
-      server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-  bool isReadOnly = ServerState::instance()->readOnly();
-  bool fanout = (ServerState::instance()->isCoordinator() ||
-                 (isActiveFailover && (!isTelemetricsReq || !isReadOnly))) &&
-                !isLocal;
+  bool fanout = ServerState::instance()->isCoordinator() && !isLocal;
 
   result.openObject();
 
-  if (isSingleServer && !isActiveFailover) {
+  if (isSingleServer) {
     result.add("deployment", VPackValue(VPackValueType::Object));
     if (isTelemetricsReq) {
       // it's single server, but we maintain the format the same as cluster
@@ -285,7 +268,7 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
       result.add("date", VPackValue(timeString));
     }
   } else {
-    // cluster or active failover
+    // cluster
     if (fanout) {
       result.add("deployment", VPackValue(VPackValueType::Object));
       if (isTelemetricsReq) {
@@ -307,16 +290,8 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
         TRI_GETENV("ARANGODB_STARTUP_MODE", envValue);
         result.add("startup_mode", VPackValue(envValue));
       }
-      if (isActiveFailover) {
-        TRI_ASSERT(!ServerState::instance()->isCoordinator());
-        result.add("type", VPackValue("active_failover"));
-        if (isTelemetricsReq) {
-          result.add("active_failover_leader", VPackValue(!isReadOnly));
-        }
-      } else {
-        TRI_ASSERT(ServerState::instance()->isCoordinator());
-        result.add("type", VPackValue("cluster"));
-      }
+      TRI_ASSERT(ServerState::instance()->isCoordinator());
+      result.add("type", VPackValue("cluster"));
 
       // build results for all servers
       // we come first!
@@ -359,7 +334,6 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
           ++dbServers;
         } else if (server.first.starts_with("SNGL")) {
           // SNGL counts as DB server here
-          TRI_ASSERT(isActiveFailover);
           ++dbServers;
         }
         if (server.first == ServerState::instance()->getId()) {
@@ -369,9 +343,10 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 
         std::string reqUrl =
             isTelemetricsReq ? "/_admin/telemetrics" : "/_admin/support-info";
-        auto f = network::sendRequestRetry(
-            pool, "server:" + server.first, fuerte::RestVerb::Get, reqUrl,
-            VPackBuffer<uint8_t>{}, options, ::buildHeaders());
+        auto f = network::sendRequestRetry(pool, "server:" + server.first,
+                                           fuerte::RestVerb::Get, reqUrl,
+                                           VPackBuffer<uint8_t>{}, options,
+                                           network::addAuthorizationHeader({}));
         futures.emplace_back(std::move(f));
       }
 
@@ -460,13 +435,9 @@ void SupportInfoBuilder::buildInfoMessage(VPackBuilder& result,
 void SupportInfoBuilder::buildHostInfo(VPackBuilder& result,
                                        ArangodServer& server,
                                        bool isTelemetricsReq) {
-  bool const isActiveFailover =
-      server.getFeature<ReplicationFeature>().isActiveFailoverEnabled();
-
   result.openObject();
 
-  if (isTelemetricsReq || ServerState::instance()->isRunningInCluster() ||
-      isActiveFailover) {
+  if (isTelemetricsReq || ServerState::instance()->isRunningInCluster()) {
     auto serverId = ServerState::instance()->getId();
     if (isTelemetricsReq) {
       bool isSingleServer = ServerState::instance()->isSingleServer();

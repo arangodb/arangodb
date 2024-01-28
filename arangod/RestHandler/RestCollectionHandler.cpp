@@ -27,6 +27,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
+#include "Cluster/ClusterMethods.h"
 #include "Cluster/MaintenanceFeature.h"
 #include "Cluster/MaintenanceStrings.h"
 #include "Cluster/ServerDefaults.h"
@@ -452,7 +453,19 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
                              /*showCount*/ CountType::None);
     co_return standardResponse();
   } else if (sub == "compact") {
-    coll->compact();
+    if (ServerState::instance()->isCoordinator()) {
+      auto& feature = server().getFeature<ClusterFeature>();
+      // while this call is technically blocking, the requests to the
+      // DB servers only schedule the compactions, but they do not
+      // block until they are completed.
+      auto res = compactOnAllDBServers(feature, _vocbase.name(), name);
+      if (res.fail()) {
+        generateError(res);
+        co_return RestStatus::DONE;
+      }
+    } else {
+      coll->compact();
+    }
 
     collectionRepresentation(name, /*showProperties*/ false,
                              /*showFigures*/ FiguresType::None,
@@ -534,6 +547,15 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandPut() {
       generateError(res);
       _activeTrx.reset();
       co_return RestStatus::DONE;
+    }
+
+    // track request only on leader
+    if (opts.isSynchronousReplicationFrom.empty() &&
+        ServerState::instance()->isDBServer()) {
+      _activeTrx->state()->trackShardRequest(
+          *_activeTrx->resolver(), _vocbase.name(), coll->name(),
+          _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+          "truncate");
     }
 
     OperationResult opres =
@@ -805,9 +827,10 @@ RestCollectionHandler::collectionRepresentationAsync(
 
 RestStatus RestCollectionHandler::standardResponse() {
   generateOk(rest::ResponseCode::OK, _builder);
-  _response->setHeaderNC(StaticStrings::Location,
-                         "/_db/" + StringUtils::urlEncode(_vocbase.name()) +
-                             _request->requestPath());
+  _response->setHeaderNC(
+      StaticStrings::Location,
+      absl::StrCat("/_db/", StringUtils::urlEncode(_vocbase.name()),
+                   _request->requestPath()));
   return RestStatus::DONE;
 }
 
