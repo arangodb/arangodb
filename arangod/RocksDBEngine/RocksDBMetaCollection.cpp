@@ -135,13 +135,13 @@ void RocksDBMetaCollection::unlockWrite() noexcept {
 /// @brief read locks a collection, with a timeout
 ErrorCode RocksDBMetaCollection::lockRead(double timeout) {
   TRI_IF_FAILURE("assertLockTimeoutLow") {
-    if (_logicalCollection.name() == "UnitTestsLockTimeout") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
       // In the test we expect that fast path locking is done with 2s timeout.
       TRI_ASSERT(timeout < 10);
     }
   }
   TRI_IF_FAILURE("assertLockTimeoutHigh") {
-    if (_logicalCollection.name() == "UnitTestsLockTimeout") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
       // In the test we expect that an lazy locking happens on the follower
       // with the default timeout of more than 2 seconds:
       TRI_ASSERT(timeout > 10);
