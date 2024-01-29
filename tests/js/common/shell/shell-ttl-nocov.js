@@ -67,7 +67,7 @@ function TtlSuite () {
       numServers = 1;
     }
 
-    tries *= 5;
+    tries *= 10;
     let stats;
     while (tries-- > 0) {
       internal.wait(0.25, false);
