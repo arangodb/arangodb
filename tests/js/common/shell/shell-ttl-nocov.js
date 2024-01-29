@@ -1074,7 +1074,7 @@ function TtlSuite () {
         db[en].ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
         
         let docs = [];
-        for (let i = 0; i < 50000; ++i) {
+        for (let i = 0; i < 60000; ++i) {
           docs.push({ _from: vn + '/test' + i + ':test' + (i % 10), _to: vn + '/test' + ((i + 1) % 100) + ':test' + (i % 10), testi: i % 10, dateCreated: dt, value: i });
           if (docs.length === 5000) {
             db[en].insert(docs);
@@ -1083,13 +1083,13 @@ function TtlSuite () {
         }
               
         let oldStats = internal.ttlStatistics();
-        let oldCount = 50000;
+        let oldCount = 60000;
         assertEqual(db[en].count(), oldCount);
       
         // reenable
-        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 4000, maxCollectionRemoves: 2000 });
     
-        let stats = waitForNextRun(db[en], oldStats, 30);
+        let stats = waitForNextRun(db[en], oldStats, 40);
 
         // number of runs, deletions and limitReached must have changed
         assertNotEqual(stats.runs, oldStats.runs);
@@ -1101,7 +1101,7 @@ function TtlSuite () {
         if (oldCount > 0) {
           // wait again for next removal 
           oldStats = stats;
-          stats = waitForNextRun(db[en], oldStats, 30);
+          stats = waitForNextRun(db[en], oldStats, 40);
 
           assertNotEqual(stats.runs, oldStats.runs);
           assertTrue(stats.limitReached > oldStats.limitReached);
