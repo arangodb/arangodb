@@ -36,6 +36,7 @@
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -396,7 +397,7 @@ futures::Future<futures::Unit> RestIndexHandler::getSelectivityEstimates() {
   }
 
   LogicalCollection* coll = trx->documentCollection(cName);
-  auto idxs = coll->getIndexes();
+  auto idxs = coll->getPhysical()->getReadyIndexes();
 
   VPackBuffer<uint8_t> buffer;
   VPackBuilder builder(buffer);

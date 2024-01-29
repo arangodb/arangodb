@@ -280,7 +280,7 @@ std::vector<std::shared_ptr<arangodb::Index>> Collection::indexes() const {
                                                /*tid*/ TransactionId::none());
   }
 
-  std::vector<std::shared_ptr<Index>> indexes = coll->getIndexes();
+  auto indexes = coll->getPhysical()->getReadyIndexes();
   indexes.erase(std::remove_if(indexes.begin(), indexes.end(),
                                [](std::shared_ptr<Index> const& x) {
                                  return x->isHidden();

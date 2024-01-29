@@ -2139,7 +2139,7 @@ Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   removeCollectionMapping(rcoll->objectId());
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  auto indexes = rcoll->getIndexes();
+  auto indexes = rcoll->getAllIndexes();
   TRI_ASSERT(!indexes.empty());
 
   for (auto const& idx : indexes) {
