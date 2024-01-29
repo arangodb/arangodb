@@ -692,6 +692,9 @@ void CrashHandler::setState(std::string_view state) {
 /// @brief set flag to kill process hard using SIGKILL, in order to circumvent
 /// core file generation etc.
 void CrashHandler::setHardKill() {
+#ifdef _WIN32
+  _set_abort_behavior(0, _CALL_REPORTFAULT);
+#endif
   ::killHard.store(true, std::memory_order_relaxed);
 }
 
