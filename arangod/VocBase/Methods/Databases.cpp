@@ -418,7 +418,7 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       auto& selector = server.getFeature<EngineSelectorFeature>();
       auto& engine = selector.engine<RocksDBEngine>();
       if (engine.syncThread() == nullptr) {
-        return Result(TRI_ERROR_ILLEGAL_OPTION,
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "
                       "option is set to a value greater than 0.");
