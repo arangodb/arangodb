@@ -47,7 +47,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature,
     : _feature(feature),
       _description(desc),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -56,7 +56,7 @@ ActionBase::ActionBase(MaintenanceFeature& feature, ActionDescription&& desc)
     : _feature(feature),
       _description(std::move(desc)),
       _state(READY),
-      _progress(0),
+      _progress(0.),
       _priority(desc.priority()) {
   init();
 }
@@ -170,9 +170,12 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  ++_progress;
+  // OSX clang cannot increment double very rare calls
+  {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    _progress = _progress + 1.0;
+  }
   _actionLastStat = secs_since_epoch();
-
 }  // ActionBase::incStats
 
 void ActionBase::endStats() {
@@ -204,7 +207,10 @@ void ActionBase::toVelocyPack(VPackBuilder& builder) const {
 
   builder.add("id", VPackValue(_id));
   builder.add("state", VPackValue(_state));
-  builder.add("progress", VPackValue(_progress));
+  {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    builder.add("progress", VPackValue(_progress));
+  }
 
   builder.add(
       "created",
@@ -276,12 +282,19 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
+arangodb::Result ActionBase::setProgress(double d) {
+  std::lock_guard<std::mutex> guard(_progressMutex);
+  _progress = d;
+  return {};
+}
+
 /**
  * progress() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = 0.5;
+  std::lock_guard<std::mutex> guard(_progressMutex);
+  progress = _progress;
   return {};
 }
 
