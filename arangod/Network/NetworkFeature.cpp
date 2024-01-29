@@ -65,15 +65,6 @@ using namespace arangodb::options;
 
 namespace arangodb {
 
-NetworkFeature::NetworkFeature(Server& server)
-    : NetworkFeature(server,
-                     network::ConnectionPool::Config{
-                         server.getFeature<metrics::MetricsFeature>()}) {
-  static_assert(
-      Server::isCreatedAfter<NetworkFeature, metrics::MetricsFeature>());
-  this->_numIOThreads = 2;  // override default
-}
-
 struct NetworkFeatureScale {
   static metrics::FixScale<double> scale() {
     return {0.0, 100.0, {1.0, 5.0, 15.0, 50.0}};
@@ -113,6 +104,15 @@ DECLARE_HISTOGRAM(
 DECLARE_GAUGE(arangodb_network_requests_in_flight, uint64_t,
               "Number of outgoing internal requests in flight");
 
+NetworkFeature::NetworkFeature(Server& server)
+    : NetworkFeature(server,
+                     network::ConnectionPool::Config{
+                         server.getFeature<metrics::MetricsFeature>()}) {
+  static_assert(
+      Server::isCreatedAfter<NetworkFeature, metrics::MetricsFeature>());
+  this->_numIOThreads = 2;  // override default
+}
+
 NetworkFeature::NetworkFeature(Server& server,
                                network::ConnectionPool::Config config)
     : ArangodFeature{server, *this},
@@ -138,7 +138,8 @@ NetworkFeature::NetworkFeature(Server& server,
       _sendDurations(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_send_duration{})),
       _responseDurations(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_network_response_duration{})) {
+          arangodb_network_response_duration{})),
+      _compressRequestThreshold(0) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -187,6 +188,22 @@ void NetworkFeature::collectOptions(
                   new options::UInt64Parameter(&_maxInFlight),
                   options::makeDefaultFlags(options::Flags::Uncommon))
       .setIntroducedIn(30800);
+
+  options
+      ->addOption("--network.compress-request-threshold",
+                  "The HTTP request body size from which on cluster-internal "
+                  "requests are "
+                  "transparently compressed.",
+                  new UInt64Parameter(&_compressRequestThreshold))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(Automatically compress outgoing HTTP requests in cluster-internal
+traffic with the deflate or gzip compression format.
+Compression will only happen if the size of the uncompressed request body exceeds 
+the threshold value controlled by this startup option,
+and if the request body size after compression is less than the original 
+request body size.
+Using the value 0 disables the automatic compression.")");
 }
 
 void NetworkFeature::validateOptions(
@@ -333,6 +350,10 @@ network::ConnectionPool* NetworkFeature::pool() const noexcept {
   return _poolPtr.load(std::memory_order_relaxed);
 }
 
+uint64_t NetworkFeature::compressRequestThreshold() const noexcept {
+  return _compressRequestThreshold;
+}
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void NetworkFeature::setPoolTesting(network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
@@ -361,6 +382,48 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  std::unique_ptr<fuerte::Request>&& req,
                                  RequestCallback&& cb) {
   TRI_ASSERT(req != nullptr);
+
+  if (!req->header.meta().contains(StaticStrings::AcceptEncoding)) {
+    req->header.addMeta(StaticStrings::AcceptEncoding,
+                        StaticStrings::EncodingDeflate);
+  }
+
+  bool didCompress = std::invoke([&]() {
+    uint64_t threshold = compressRequestThreshold();
+    if (threshold == 0) {
+      // opted out of compression by configuration
+      return false;
+    }
+
+    if (req->header.meta().contains(StaticStrings::ContentEncoding)) {
+      // Content-Encoding already set. better not overwrite it
+      return false;
+    }
+
+    auto& pfm = req->payloadForModification();
+    size_t bodySize = pfm.size();
+    if (bodySize < threshold) {
+      // request body size too small for compression
+      return false;
+    }
+
+    velocypack::Buffer<uint8_t> compressed;
+    if (encoding::zlibDeflate(pfm.data(), pfm.size(), compressed) !=
+        TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    if (compressed.size() >= bodySize) {
+      // compression did not provide any benefit. better leave it
+      return false;
+    }
+
+    pfm = std::move(compressed);
+    req->header.addMeta(StaticStrings::ContentEncoding,
+                        StaticStrings::EncodingDeflate);
+    return true;
+  });
+
   prepareRequest(pool, req);
   bool isFromPool = false;
   auto now = std::chrono::steady_clock::now();
@@ -384,7 +447,7 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   conn->sendRequest(
       std::move(req),
       [this, &pool, isFromPool,
-       handleContentEncoding = options.handleContentEncoding,
+       handleContentEncoding = options.handleContentEncoding || didCompress,
        cb = std::move(cb), endpoint = std::move(endpoint)](
           fuerte::Error err, std::unique_ptr<fuerte::Request> req,
           std::unique_ptr<fuerte::Response> res) {

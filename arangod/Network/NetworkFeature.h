@@ -88,6 +88,8 @@ class NetworkFeature final : public ArangodFeature {
   void retryRequest(std::shared_ptr<network::RetryableRequest>, RequestLane,
                     std::chrono::steady_clock::duration);
 
+  uint64_t compressRequestThreshold() const noexcept;
+
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
                       std::unique_ptr<fuerte::Request>& req);
@@ -134,6 +136,8 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
+
+  uint64_t _compressRequestThreshold;
 };
 
 }  // namespace arangodb

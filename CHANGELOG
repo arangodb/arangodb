@@ -1,6 +1,17 @@
 devel
 -----
 
+* Added startup option `--network.compress-request-threshold` to optionally
+  compress cluster-internal traffic.
+  If this option is set to a value greater than zero, all outgoing HTTP 
+  requests in cluster-internal traffic will be transparently compressed
+  with the deflate or gzip compression format.
+  Compression will only happen if the size of the uncompressed request body
+  exceeds the threshold value controlled by this startup option, and if the
+  request body size after compression is less than the original request body
+  size.
+  Using the value `0` disables the automatic compression.
+
 * BTS-1751: Strange error message when executing a query while creating an 
   index in the background.
 
