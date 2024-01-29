@@ -94,6 +94,7 @@ Options::Options(std::string_view pattern, AnalyzerPool const& analyzer,
     hasPos = analyzer.features().hasFeatures(irs::IndexFeatures::POS);
   }
   if (needsMatcher || !hasPos) {
+    TRI_ASSERT(ctx);
     matcher = ctx->buildLikeMatcher(pattern, true);
   }
 }
