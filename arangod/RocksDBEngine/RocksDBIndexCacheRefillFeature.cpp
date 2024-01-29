@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBIndexCacheRefillThread.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SchedulerFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Utils/DatabaseGuard.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
@@ -271,7 +272,7 @@ void RocksDBIndexCacheRefillFeature::buildStartupIndexRefillTasks() {
       methods::Collections::enumerate(
           &guard.database(),
           [&](std::shared_ptr<LogicalCollection> const& collection) {
-            auto indexes = collection->getIndexes();
+            auto indexes = collection->getPhysical()->getReadyIndexes();
             for (auto const& index : indexes) {
               if (!index->canWarmup()) {
                 // index not suitable for warmup
@@ -375,7 +376,7 @@ Result RocksDBIndexCacheRefillFeature::warmupIndex(
   auto releaser = scopeGuard(
       [&]() noexcept { guard.database().releaseCollection(c.get()); });
 
-  auto indexes = c->getIndexes();
+  auto indexes = c->getPhysical()->getReadyIndexes();
   for (auto const& index : indexes) {
     if (index->id() == iid) {
       // found the correct index

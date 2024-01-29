@@ -268,13 +268,46 @@ function CollectionPropertiesPropagationSuite() {
     
     testChangeWriteConcernForOther : function () {
       let c = db._create(other, { distributeShardsLike: proto });
-
-      try {
-        c.properties({ writeConcern: 1 });
-        fail();
-      } catch (err) {
-        assertEqual(internal.errors.ERROR_FORBIDDEN.code, err.errorNum);
+      
+      let p = db[proto].properties();
+      assertEqual(2, p.writeConcern, p);
+      
+      p = db[other].properties();
+      assertEqual(2, p.writeConcern, p);
+        
+      db[other].properties({ writeConcern: 1 });
+      
+      p = db[proto].properties();
+      const isReplicationTwo = db._properties().replicationVersion === "2";
+      assertEqual(isReplicationTwo ? 1 : 2, p.writeConcern, p);
+      
+      p = db[other].properties();
+      assertEqual(1, p.writeConcern, p);
+      
+      // shards will see the writeConcern update
+      let keys;
+      let tries = 15;
+      // propagation to DB servers is carried out by the
+      // maintenance. give it some time...
+      while (tries-- > 0) {
+        p = propertiesOnDBServers(db[other]);
+        keys = Object.keys(p);
+        assertTrue(keys.length > 0);
+        let found = 0;
+        keys.forEach((s) => {
+          if (p[s].writeConcern === 1) {
+            ++found;
+          }
+        });
+        if (found === keys.length) {
+          break;
+        }
+        internal.sleep(1);
       }
+        
+      keys.forEach((s) => {
+        assertEqual(1, p[s].writeConcern, {s, p});
+      });
     },
   };
 }
