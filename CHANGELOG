@@ -1,6 +1,9 @@
 devel
 -----
 
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
 * Updated ArangoDB Starter to v0.18.1-preview-1.
 
 * Reduce default amount of per-collection document removals by TTL background 
