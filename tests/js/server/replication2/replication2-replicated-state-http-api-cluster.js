@@ -24,7 +24,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertUndefined, fail} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
@@ -50,7 +50,7 @@ const collectionStatus = (database, collectionName) => {
   const res = request.get(`${url}/_db/${database}/_api/log/collection-status/${collectionName}`);
   lh.checkRequestResult(res);
   return res.json;
-}
+};
 
 const replicatedStateSuite = function (stateType) {
   const targetConfig = {
