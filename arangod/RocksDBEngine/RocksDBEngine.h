@@ -573,6 +573,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   RocksDBOptionsProvider const& _optionsProvider;
 
+  metrics::MetricsFeature& _metrics;
+
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
   /// default read options

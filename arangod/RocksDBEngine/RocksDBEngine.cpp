@@ -271,6 +271,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
     : StorageEngine(server, kEngineName, name(), Server::id<RocksDBEngine>(),
                     std::make_unique<RocksDBIndexFactory>(server)),
       _optionsProvider(optionsProvider),
+      _metrics(metrics),
       _db(nullptr),
       _walAccess(std::make_unique<RocksDBWalAccess>(*this)),
       _maxTransactionSize(transaction::Options::defaultMaxTransactionSize),
@@ -304,8 +305,7 @@ RocksDBEngine::RocksDBEngine(Server& server,
       _autoFlushMinWalFiles(20),
       _forceLittleEndianKeys(false),
       _metricsIndexEstimatorMemoryUsage(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_index_estimates_memory_usage{})),
+          metrics.add(arangodb_index_estimates_memory_usage{})),
       _metricsWalReleasedTickFlush(
           metrics.add(rocksdb_wal_released_tick_flush{})),
       _metricsWalSequenceLowerBound(
@@ -1214,8 +1214,7 @@ void RocksDBEngine::start() {
   _settingsManager = std::make_unique<RocksDBSettingsManager>(*this);
   _replicationManager = std::make_unique<RocksDBReplicationManager>(*this);
   _dumpManager = std::make_unique<RocksDBDumpManager>(
-      *this, server().getFeature<metrics::MetricsFeature>(),
-      server().getFeature<DumpLimitsFeature>().limits());
+      *this, _metrics, server().getFeature<DumpLimitsFeature>().limits());
   _walManager = std::make_shared<replication2::storage::wal::WalManager>(
       databasePathFeature.subdirectoryName("replicated-logs"));
 
@@ -1231,8 +1230,8 @@ void RocksDBEngine::start() {
     Scheduler* _scheduler;
   };
 
-  _logMetrics = std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(
-      &server().getFeature<metrics::MetricsFeature>());
+  _logMetrics =
+      std::make_shared<RocksDBAsyncLogWriteBatcherMetricsImpl>(&_metrics);
 
   auto logPersistor =
       std::make_shared<replication2::storage::rocksdb::AsyncLogWriteBatcher>(

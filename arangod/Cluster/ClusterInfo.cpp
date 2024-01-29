@@ -2249,8 +2249,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
                                  std::shared_ptr<LogicalCollection>>
 ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::unordered_map<std::string, std::shared_ptr<LogicalCollection>> result;
-  auto& clusterFeature = _server.getFeature<ClusterFeature>();
-  auto& agencyCache = clusterFeature.agencyCache();
+  auto& agencyCache = _clusterFeature.agencyCache();
 
   // TODO: Make this an AgencyPath object
   std::string collectionsPath = "Plan/Collections/" + database.name();
@@ -3062,7 +3061,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     std::vector<replication2::LogId> replicatedStates;
     std::set<CollectionID> collectionIds;
 
-    auto& agencyCache = _server.getFeature<ClusterFeature>().agencyCache();
+    auto& agencyCache = _clusterFeature.agencyCache();
     VPackBuilder groupsBuilder;
     std::ignore =
         agencyCache.get(groupsBuilder, "Plan/CollectionGroups/" + name);
@@ -5706,13 +5705,9 @@ futures::Future<Result> ClusterInfo::fetchAndWaitForCurrentVersion(
     network::Timeout timeout) const {
   // Save the applicationServer, not the ClusterInfo, in case of shutdown.
   return cluster::fetchCurrentVersion(timeout).thenValue(
-      [&applicationServer = server()](auto maybeCurrentVersion) {
+      [&clusterInfo = _clusterFeature.clusterInfo()](auto maybeCurrentVersion) {
         if (maybeCurrentVersion.ok()) {
           auto currentVersion = maybeCurrentVersion.get();
-
-          auto& clusterInfo =
-              applicationServer.getFeature<ClusterFeature>().clusterInfo();
-
           return clusterInfo.waitForCurrentVersion(currentVersion);
         } else {
           return futures::Future<Result>{maybeCurrentVersion.result()};
