@@ -2639,8 +2639,10 @@ void arangodb::aql::removeUnnecessaryCalculationsRule(
         // in this case we must not perform the replacements
         while (current != nullptr) {
           if (current->getType() == EN::COLLECT) {
-            if (ExecutionNode::castTo<CollectNode const*>(current)
-                    ->hasOutVariable()) {
+            CollectNode const* collectNode =
+                ExecutionNode::castTo<CollectNode const*>(current);
+            if (collectNode->hasOutVariable() &&
+                !collectNode->hasExpressionVariable()) {
               hasCollectWithOutVariable = true;
               break;
             }

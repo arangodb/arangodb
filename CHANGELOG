@@ -1,6 +1,17 @@
 devel
 -----
 
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
+* Updated ArangoDB Starter to v0.18.1-preview-1.
+
+* Reduce default amount of per-collection document removals by TTL background 
+  index creation thread from 1m to 100k in each iteration. This change gives
+  other collections a chance of being cleaned up as well.
+
+* FE-425: adds missing Analyzer types on web UI - "multi_delimiter" & "wildcard"
+
 * BTS-1660: When updating (PATCH request) edges with API Gharial and only
   specifying one of the two edge attributes `_from` or `_to` (not both),
   the content of the edge was not fully validated. This has been fixed now.
@@ -26,6 +37,8 @@ devel
   above RocksDB components in the RocksDB block cache and thus the metric
   `rocksdb_block_cache_usage`. This also allows to better limit the total
   memory usage of RocksDB.
+
+* Index progress visibility for indexes, which are created in background
 
 * Updated ArangoDB Starter to v0.18.0.
 
