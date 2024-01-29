@@ -41,6 +41,8 @@ const { getDBServers, deriveTestSuite } = require("@arangodb/test-helper");
 const request = require("@arangodb/request");
 const users = require("@arangodb/users");
 const crypto = require('@arangodb/crypto');
+const dh = require("@arangodb/testutils/document-state-helper");
+const lh = require("@arangodb/testutils/replicated-logs-helper");
 
 const jwt = crypto.jwtEncode(jwtSecret, {
   "server_id": "ABCD",
@@ -139,21 +141,44 @@ function BaseTestSuite(targetUser) {
   };
 
   const adjustWriteBounds = (lowerBound, upperBound, replicationFactor) => {
-    if (db._properties().replicationVersion === "2") {
-      // We only guarantee that the leader counts directly on write
-      // follower may be delayed, hence lower bound stays leader only.
-      // On the upper bound the follower may write the statistics, this
-      // is a race with the operation being applied asynchronously on followers.
-      upperBound *= replicationFactor;
-    } else {
+    const lowerBoundInclFollowers = lowerBound * replicationFactor;
+    upperBound *= replicationFactor;
+    if (db._properties().replicationVersion !== "2") {
       // Assert Write happen also on all followers
-      lowerBound *= replicationFactor;
-      upperBound *= replicationFactor;
+      lowerBound = lowerBoundInclFollowers;
     }
-    return [lowerBound, upperBound];
+    // On Replication 2We only guarantee that the leader counts directly on write
+    // follower may be delayed, hence lower bound stays leader only.
+    // On the upper bound the follower may write the statistics, this
+    // is a race with the operation being applied asynchronously on followers.
+    return [lowerBound, upperBound, lowerBoundInclFollowers];
   };
 
-  const assertReadMetricsAreCounted = (parsedMetrics, shard, replicationFactor, leaderLowerBound, leaderUpperBound) => {
+  const waitForReplicatedLogsToBeApplied = (logs) => {
+    for (const log of logs) {
+      lh.waitFor(() => {
+        const status = log.status();
+        const leader = Object.values(status.participants).find(({response:{role}}) => role === 'leader');
+        const followers = Object.entries(status.participants).filter(([_,{response:{role}}]) => role === 'follower');
+        const commitIndex = leader.response.local.commitIndex;
+        for (const [id, follower] of followers) {
+          const appliedIndex = follower.response.local.appliedIndex;
+          if (appliedIndex !== commitIndex) {
+            require("internal").print("Not yet reached");
+            return Error(`Applied index ${appliedIndex} of follower ${id} has not reached the commit index ${commitIndex}.`);
+          }
+        }
+        require("internal").print("Logs applied");
+        return true;
+      });
+    }
+  }
+
+  const assertReadMetricsAreCounted = (c, replicationFactor, leaderLowerBound, leaderUpperBound) => {
+    const parsedMetrics = getParsedMetrics(db._name(), c.name());
+    const {shards, shardsToLogs, logs} = dh.getCollectionShardsAndLogs(db, c, jwt);
+    assertEqual(1, shards.length);
+    const shard = shards[0];
     const readCounter = parsedMetrics.reads[shard];
     // Assert Reads only happen on leader
     assertTrue(readCounter > leaderLowerBound, `Expecting reads on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${leaderLowerBound} < ${leaderUpperBound}`);
@@ -162,9 +187,16 @@ function BaseTestSuite(targetUser) {
     // In the setup for the collection we had to perform some writes.
     // Just make sure they are counted properly here:
     const writeCounter = parsedMetrics.writes[shard];
-    const [writeLowerBound, writeUpperBound] = adjustWriteBounds(leaderLowerBound, leaderUpperBound, replicationFactor);
+    const [writeLowerBound, writeUpperBound, lowerBoundInclFollowers] = adjustWriteBounds(leaderLowerBound, leaderUpperBound, replicationFactor);
     assertTrue(writeCounter > writeLowerBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
     assertTrue(writeCounter < writeUpperBound, `Expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${writeLowerBound} < ${writeUpperBound}`);
+    if (db._properties().replicationVersion === "2") {
+      waitForReplicatedLogsToBeApplied(logs);
+      const parsedMetrics = getParsedMetrics(db._name(), c.name());
+      // If the follower has applied the log, we should see the count
+      assertTrue(writeCounter > lowerBoundInclFollowers, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
+      assertTrue(writeCounter < writeUpperBound, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
+    }
   };
 
   const assertWriteOnlyMetricsAreCounted = (parsedMetrics, shard, replicationFactor, leaderLowerBound, leaderUpperBound, canHaveReads = false) => {
@@ -260,9 +292,6 @@ function BaseTestSuite(targetUser) {
 
         let c = db._create(cn, {replicationFactor});
         try {
-          let shards = c.shards();
-          assertEqual(1, shards.length);
-
           // must insert first to read something back
           const n = 50;
           let docs = [];
@@ -274,9 +303,8 @@ function BaseTestSuite(targetUser) {
           for (let i = 0; i < n; ++i) {
             c.document("test" + i);
           }
-          
-          let parsed = getParsedMetrics(db._name(), cn);
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
+
+          assertReadMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -289,8 +317,6 @@ function BaseTestSuite(targetUser) {
 
         let c = db._create(cn, {replicationFactor});
         try {
-          let shards = c.shards();
-          assertEqual(1, shards.length);
 
           // must insert first to read something back
           const n = 50;
@@ -306,9 +332,8 @@ function BaseTestSuite(targetUser) {
           for (let i = 0; i < n; ++i) {
             c.document("test" + i);
           }
-          
-          let parsed = getParsedMetrics(db._name(), cn);
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40 + 0.95 * payloadLength, n * 50 + 1.05 * payloadLength);
+
+          assertReadMetricsAreCounted(c, replicationFactor, n * 40 + 0.95 * payloadLength, n * 50 + 1.05 * payloadLength);
         } finally {
           db._drop(cn);
         }
@@ -321,9 +346,6 @@ function BaseTestSuite(targetUser) {
 
         let c = db._create(cn, {replicationFactor});
         try {
-          let shards = c.shards();
-          assertEqual(1, shards.length);
-
           // must insert first to read something back
           const n = 20;
           let docs = [];
@@ -337,9 +359,8 @@ function BaseTestSuite(targetUser) {
             docs.push("test" + i);
           }
           c.document(docs);
-          
-          let parsed = getParsedMetrics(db._name(), cn);
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 40, n * 50);
+
+          assertReadMetricsAreCounted(c, replicationFactor, n * 40, n * 50);
         } finally {
           db._drop(cn);
         }
@@ -1123,30 +1144,24 @@ function BaseTestSuite(targetUser) {
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc._key`);
           }
-            
-          parsed = getParsedMetrics(db._name(), cn);
 
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 1050, n * 1150);
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // read data back via secondary indexes, but only return indexed value
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value1 == 'testmann${i}' RETURN doc.value1`);
           }
 
-          parsed = getParsedMetrics(db._name(), cn);
-
           // number of bytes read shouldn't have changed
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 1050, n * 1150);
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // try to read back non-existing values
           for (let i = 0; i < n; ++i) {
             db._query(`FOR doc IN ${cn} FILTER doc.value2 == 'fuchsbau${i}' RETURN doc`);
           }
 
-          parsed = getParsedMetrics(db._name(), cn);
-
           // number of bytes read shouldn't have changed
-          assertReadMetricsAreCounted(parsed, shards[0], replicationFactor, n * 1050, n * 1150);
+          assertReadMetricsAreCounted(c, replicationFactor, n * 1050, n * 1150);
           
           // remove all docs
           docs = [];
@@ -1155,7 +1170,7 @@ function BaseTestSuite(targetUser) {
           }
 
           c.remove(docs);
-          
+
           parsed = getParsedMetrics(db._name(), cn);
           
           // we assume 1050-1150 bytes written per document (for the insert) plus a few bytes for each remove
@@ -1699,4 +1714,5 @@ if (internal.debugCanUseFailAt()) {
   jsunity.run(TestUser1Suite);
   jsunity.run(TestUser2Suite);
 }
+
 return jsunity.done();
