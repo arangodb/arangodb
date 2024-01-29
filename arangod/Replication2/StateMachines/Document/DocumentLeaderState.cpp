@@ -768,22 +768,19 @@ auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
       ReplicatedOperation::buildDropIndexOperation(shard, indexId);
 
   auto trx = methods::Indexes::createTrxForDrop(*col);
+
+  // we do not need to hold the _guardedData lock here - replicateOperation will
+  // simply throw an exception if we have already resigned.
+
   // acquire an exclusive collection lock, so the DropIndex operation happens
   // in the log while no transaction is open
   auto beginRes = co_await trx->beginAsync();
 
   // replicate the DropIndex operation, but don't wait for it to be committed
   // yet
-  auto replication = co_await _guardedData.doUnderLock(
-      [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
-        if (data.didResign()) {
-          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                        "Leader resigned prior to DropIndex replication"};
-        }
+  auto replication = co_await replicateOperation(
+      op, ReplicationOptions{.waitForCommit = false, .waitForSync = true});
 
-        return replicateOperation(op, ReplicationOptions{.waitForCommit = false,
-                                                         .waitForSync = true});
-      });
   if (replication.fail()) {
     LOG_CTX("7c8bb", DEBUG, loggerContext)
         << "DropIndex operation failed to be replicated, will not be "
