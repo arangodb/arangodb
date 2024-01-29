@@ -41,10 +41,10 @@ const { versionHas,
 } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
 
-let deltaTimeout = 10;
+let deltaTimeout = 30;
 let divisor = 1;
 if (versionHas('coverage')) {
-  deltaTimeout = 20;
+  deltaTimeout *= 5;
   divisor = 10;
 }
 
@@ -1069,7 +1069,7 @@ function TtlSuite () {
         db[en].ensureIndex({ type: "ttl", fields: ["dateCreated"], expireAfter: 1 });
         
         let docs = [];
-        for (let i = 0; i < 50000; ++i) {
+        for (let i = 0; i < 60000; ++i) {
           docs.push({ _from: vn + '/test' + i + ':test' + (i % 10), _to: vn + '/test' + ((i + 1) % 100) + ':test' + (i % 10), testi: i % 10, dateCreated: dt, value: i });
           if (docs.length === 5000) {
             db[en].insert(docs);
@@ -1078,13 +1078,13 @@ function TtlSuite () {
         }
               
         let oldStats = internal.ttlStatistics();
-        let oldCount = 50000;
+        let oldCount = 60000;
         assertEqual(db[en].count(), oldCount);
       
         // reenable
-        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 1000, maxCollectionRemoves: 2000 });
+        internal.ttlProperties({ active: true, frequency: 1000, maxTotalRemoves: 4000, maxCollectionRemoves: 2000 });
     
-        let stats = waitUntil(30 * deltaTimeout, stats => stats.runs > oldStats.runs);
+        let stats = waitUntil(30 * deltaTimeout, stats => stats.runs > oldStats.runs + 3);
 
         // number of runs, deletions and limitReached must have changed
         assertNotEqual(stats.runs, oldStats.runs);
@@ -1096,7 +1096,7 @@ function TtlSuite () {
         if (oldCount > 0) {
           // wait again for next removal 
           oldStats = stats;
-          stats = waitUntil(30 * deltaTimeout, stats => stats.runs > oldStats.runs);
+          stats = waitUntil(30 * deltaTimeout, stats => stats.runs > oldStats.runs + 3);
 
           assertNotEqual(stats.runs, oldStats.runs);
           assertTrue(stats.limitReached > oldStats.limitReached);

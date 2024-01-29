@@ -2072,7 +2072,7 @@ arangodb::Result RocksDBEngine::dropCollection(TRI_vocbase_t& vocbase,
   }
 
   // delete indexes, RocksDBIndex::drop() has its own check
-  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getIndexes();
+  std::vector<std::shared_ptr<Index>> vecShardIndex = rcoll->getAllIndexes();
   TRI_ASSERT(!vecShardIndex.empty());
 
   for (auto& index : vecShardIndex) {

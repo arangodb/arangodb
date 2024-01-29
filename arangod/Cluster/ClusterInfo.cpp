@@ -1038,7 +1038,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     if (!isBuilding) {
-      auto indexes = collection->getIndexes();
+      auto indexes = collection->getPhysical()->getAllIndexes();
       // if the collection has a link to a view, there are dependencies between
       // collection objects and view objects. in this case, we need to disable
       // the collection caching optimization

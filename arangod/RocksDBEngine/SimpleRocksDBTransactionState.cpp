@@ -30,6 +30,7 @@
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <absl/strings/str_cat.h>
@@ -98,7 +99,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
     if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
       continue;
     }
-    auto indexes = trxCollection->collection()->getIndexes();
+    auto indexes = trxCollection->collection()->getPhysical()->getAllIndexes();
     for (auto const& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         // primary index is unique, but we can ignore it here.

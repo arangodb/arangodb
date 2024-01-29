@@ -2379,7 +2379,7 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, std::cref(ExecContext::current())) {}
+      _thread(&CallstackSplit::run, this, ExecContext::current().clone()) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2421,8 +2421,8 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    ExecContext const& execContext) {
-  ExecContextScope scope(&execContext);
+    std::unique_ptr<ExecContext> execContext) {
+  ExecContextScope scope(execContext.get());
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {

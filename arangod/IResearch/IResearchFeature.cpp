@@ -82,6 +82,7 @@
 #include "RocksDBEngine/RocksDBEngine.h"
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Methods.h"
@@ -343,7 +344,7 @@ bool upgradeArangoSearchLinkCollectionName(
       vocbase.server().getFeature<ClusterFeature>().clusterInfo();
   // persist collection names in links
   for (auto& collection : vocbase.collections(false)) {
-    auto indexes = collection->getIndexes();
+    auto indexes = collection->getPhysical()->getReadyIndexes();
     std::string clusterCollectionName;
     if (!collection->shardIds()->empty()) {
       unsigned tryCount{60};
