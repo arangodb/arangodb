@@ -29,15 +29,16 @@
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/IResearchRocksDBLink.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/VocBaseLogManager.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #ifdef USE_V8
 #include "Transaction/V8Context.h"
 #endif
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/VocBaseLogManager.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -223,7 +224,7 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
     // the same commit interval. They however can if we have a commit in between
     // the two. If we replay one log we know there can never be a duplicate
     // LocalDocumentID.
-    for (auto const& index : shard->getIndexes()) {
+    for (auto const& index : shard->getPhysical()->getReadyIndexes()) {
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index)
             .commit(true);

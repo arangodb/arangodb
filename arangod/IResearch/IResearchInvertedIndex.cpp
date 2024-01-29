@@ -23,10 +23,12 @@
 
 #include "IResearchInvertedIndex.h"
 
+#include "Aql/AqlFunctionsInternalCache.h"
 #include "AqlHelper.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Projections.h"
 #include "Aql/QueryCache.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/IResearchViewNode.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/DownCast.h"
@@ -270,6 +272,77 @@ class CoveringVector final : public IndexIteratorCoveringData {
   velocypack::ValueLength _length{0};
 };
 
+class InvertedIndexExpressionContext final : public aql::ExpressionContext {
+ public:
+  explicit InvertedIndexExpressionContext(
+      transaction::Methods& trx, aql::AqlFunctionsInternalCache& cache) noexcept
+      : _trx{trx}, _cache{cache} {}
+
+  icu::RegexMatcher* buildLikeMatcher(std::string_view expr,
+                                      bool caseInsensitive) final {
+    return _cache.buildLikeMatcher(expr, caseInsensitive);
+  }
+
+ private:
+  aql::AqlValue getVariableValue(aql::Variable const*, bool,
+                                 bool&) const final {
+    TRI_ASSERT(false);
+    return {};
+  }
+
+  void registerWarning(ErrorCode errorCode, std::string_view msg) final {
+    TRI_ASSERT(false);
+  }
+
+  void registerError(ErrorCode errorCode, std::string_view msg) final {
+    TRI_ASSERT(false);
+  }
+
+  icu::RegexMatcher* buildRegexMatcher(std::string_view expr,
+                                       bool caseInsensitive) final {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+  icu::RegexMatcher* buildSplitMatcher(aql::AqlValue splitExpression,
+                                       velocypack::Options const* opts,
+                                       bool& isEmptyExpression) final {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  arangodb::ValidatorBase* buildValidator(velocypack::Slice) final {
+    TRI_ASSERT(false);
+    return nullptr;
+  }
+
+  TRI_vocbase_t& vocbase() const final {
+    TRI_ASSERT(false);
+    return _trx.vocbase();
+  }
+
+  transaction::Methods& trx() const final {
+    TRI_ASSERT(false);
+    return _trx;
+  }
+
+  bool killed() const final {
+    TRI_ASSERT(false);
+    return false;
+  }
+
+  void setVariable(aql::Variable const* variable,
+                   velocypack::Slice value) final {
+    TRI_ASSERT(false);
+  }
+
+  void clearVariable(aql::Variable const* variable) noexcept final {
+    TRI_ASSERT(false);
+  }
+
+  transaction::Methods& _trx;
+  aql::AqlFunctionsInternalCache& _cache;
+};
+
 class IResearchInvertedIndexIteratorBase : public IndexIterator {
  public:
   IResearchInvertedIndexIteratorBase(
@@ -311,8 +384,12 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
 
     AnalyzerProvider analyzerProvider = makeAnalyzerProvider(*_indexMeta);
 
+    InvertedIndexExpressionContext expressionCtx{*_trx,
+                                                 _aqlFunctionsInternalCache};
+
     QueryContext const queryCtx{
         .trx = _trx,
+        .ctx = &expressionCtx,
         .index = &_snapshot,
         .ref = _variable,
         .fields = _indexMeta->_fields,
@@ -366,6 +443,7 @@ class IResearchInvertedIndexIteratorBase : public IndexIterator {
     }
   }
 
+  aql::AqlFunctionsInternalCache _aqlFunctionsInternalCache;
   MonitorManager _memory;
   irs::filter::prepared::ptr _filter;
   ViewSnapshot const& _snapshot;
@@ -949,45 +1027,39 @@ std::unique_ptr<IndexIterator> IResearchInvertedIndex::iteratorForCondition(
   auto resolveLateMaterialization =
       [&](auto&& factory) -> std::unique_ptr<IndexIterator> {
     if (opts.forLateMaterialization) {
-      return factory(std::false_type{});
+      return factory.template operator()<false>();
     } else {
-      return factory(std::true_type{});
+      return factory.template operator()<true>();
     }
   };
   if (node) {
     if (_meta._sort.empty()) {
       // FIXME: we should use non-sorted iterator in case we are not "covering"
       // SORT but options flag sorted is always true
-      return resolveLateMaterialization(
-          [&]<bool LateMaterialization>(
-              std::integral_constant<bool, LateMaterialization>) {
-            return std::make_unique<
-                IResearchInvertedIndexIterator<LateMaterialization>>(
-                monitor, collection, state, trx, node, &_meta, reference,
-                mutableConditionIdx);
-          });
+      return resolveLateMaterialization([&]<bool LateMaterialization>() {
+        return std::make_unique<
+            IResearchInvertedIndexIterator<LateMaterialization>>(
+            monitor, collection, state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      });
     } else {
-      return resolveLateMaterialization(
-          [&]<bool LateMaterialization>(
-              std::integral_constant<bool, LateMaterialization>) {
-            return std::make_unique<
-                IResearchInvertedIndexMergeIterator<LateMaterialization>>(
-                monitor, collection, state, trx, node, &_meta, reference,
-                mutableConditionIdx);
-          });
+      return resolveLateMaterialization([&]<bool LateMaterialization>() {
+        return std::make_unique<
+            IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+            monitor, collection, state, trx, node, &_meta, reference,
+            mutableConditionIdx);
+      });
     }
   } else {
     // sorting  case
     // we should not be called for sort optimization if our index is not sorted
     TRI_ASSERT(!_meta._sort.empty());
-    return resolveLateMaterialization(
-        [&]<bool LateMaterialization>(
-            std::integral_constant<bool, LateMaterialization>) {
-          return std::make_unique<
-              IResearchInvertedIndexMergeIterator<LateMaterialization>>(
-              monitor, collection, state, trx, node, &_meta, reference,
-              transaction::Methods::kNoMutableConditionIdx);
-        });
+    return resolveLateMaterialization([&]<bool LateMaterialization>() {
+      return std::make_unique<
+          IResearchInvertedIndexMergeIterator<LateMaterialization>>(
+          monitor, collection, state, trx, node, &_meta, reference,
+          transaction::Methods::kNoMutableConditionIdx);
+    });
   }
 }
 

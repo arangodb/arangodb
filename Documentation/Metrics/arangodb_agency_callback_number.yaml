@@ -10,16 +10,15 @@ complexity: advanced
 exposedBy:
   - coordinator
   - dbserver
-  - single
 description: |
   This metric reflects the current number of Agency callbacks being
   registered, including Agency cache callbacks.
   This metric was named `arangodb_agency_callback_count` in previous versions
   of ArangoDB.
-  Note that on single servers this metric only has a non-zero value
-  in the Active Failover deployment mode.
 threshold: |
-  This number is usually very low, something like `2` or `3`.
+  This number is usually low, between `10` or `20`. It can temporarily
+  increase while there are ongoing DDL operations in the cluster. The
+  number should go down again once the DDL operations have finished.
 troubleshoot: |
   If this number is considerably higher, this should be investigated.
   Please contact support.

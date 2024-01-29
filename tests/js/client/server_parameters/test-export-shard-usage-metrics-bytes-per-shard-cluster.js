@@ -1084,7 +1084,7 @@ function testSuite() {
         let c2 = db._create(getUniqueCollectionName(), {numberOfShards: 3, replicationFactor});
 
         try {
-          const n = 24;
+          const n = 64;
           const payload = Array(100).join("foo");
           db._query(`LET payload = '${payload}' FOR i IN 1..${n} INSERT {} INTO ${c1.name()} INSERT {payload} INTO ${c2.name()}`);
         
