@@ -55,6 +55,7 @@
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "RocksDBEngine/RocksDBValue.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/AccessMode.h"
@@ -306,7 +307,7 @@ IResearchRocksDBRecoveryHelper::makeRanges(uint64_t objectId) {
     }
   };
 
-  for (auto&& index : collection->getIndexes()) {
+  for (auto&& index : collection->getPhysical()->getReadyIndexes()) {
     TRI_ASSERT(index != nullptr);
     if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
       add(_indexes, basics::downCast<IResearchRocksDBInvertedIndex>(*index));

@@ -43,6 +43,7 @@
 #include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 using namespace arangodb;
@@ -139,13 +140,20 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           auto& trx = plan->getAst()->query().trxForOptimization();
           if (!trx.isInaccessibleCollection(
                   en->collection()->getCollection()->name())) {
-            indexes = en->collection()->getCollection()->getIndexes();
+            indexes = en->collection()
+                          ->getCollection()
+                          ->getPhysical()
+                          ->getReadyIndexes();
           }
 
           std::shared_ptr<Index> picked;
           auto selectIndexIfPossible =
               [&picked,
                &projections](std::shared_ptr<Index> const& idx) -> bool {
+            if (idx->inProgress()) {
+              // index is currently being built
+              return false;
+            }
             if (!idx->covers(projections)) {
               // index doesn't cover the projection
               return false;
@@ -198,6 +206,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
           }
 
           if (picked != nullptr) {
+            TRI_ASSERT(!picked->inProgress());
             // turn the EnumerateCollection node into an IndexNode now
             auto condition = std::make_unique<Condition>(plan->getAst());
             condition->normalize(plan.get());
@@ -264,12 +273,16 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         auto& trx = plan->getAst()->query().trxForOptimization();
         if (!trx.isInaccessibleCollection(
                 en->collection()->getCollection()->name())) {
-          indexes = en->collection()->getCollection()->getIndexes();
+          indexes = en->collection()
+                        ->getCollection()
+                        ->getPhysical()
+                        ->getReadyIndexes();
         }
 
         auto selectIndexIfPossible =
             [&picked](std::shared_ptr<Index> const& idx) -> bool {
           if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
+            TRI_ASSERT(!idx->inProgress());
             picked = idx;
             return true;
           }
@@ -305,6 +318,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
         if (picked != nullptr) {
           TRI_ASSERT(picked->type() ==
                      Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX);
+          TRI_ASSERT(!picked->inProgress());
           IndexIteratorOptions opts;
           opts.useCache = false;
           auto condition = std::make_unique<Condition>(plan->getAst());

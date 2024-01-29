@@ -49,6 +49,7 @@
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "RestServer/DatabaseFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
@@ -337,17 +338,16 @@ class TtlThread final : public ServerThread<ArangodServer> {
           continue;
         }
 
-        std::vector<std::shared_ptr<Index>> indexes = collection->getIndexes();
+        std::vector<std::shared_ptr<Index>> indexes =
+            collection->getPhysical()->getReadyIndexes();
 
         for (auto const& index : indexes) {
           // we are only interested in collections with TTL indexes
           if (index->type() != Index::TRI_IDX_TYPE_TTL_INDEX) {
             continue;
           }
-          if (index->isHidden()) {
-            // Filter out indexes that are currently still being built
-            continue;
-          }
+
+          TRI_ASSERT(!index->inProgress());
 
           // serialize the index description so we can read the "expireAfter"
           // attribute
