@@ -1045,19 +1045,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
           writeConcern != this->writeConcern()) {  // check if changed
-        if (!_sharding->distributeShardsLike().empty()) {
-          CollectionNameResolver resolver(vocbase());
-          std::string name = resolver.getCollectionNameCluster(DataSourceId{
-              basics::StringUtils::uint64(_sharding->distributeShardsLike())});
-          if (name.empty()) {
-            name = _sharding->distributeShardsLike();
-          }
-          return Result(
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat("Cannot change writeConcern, please change the "
-                           "writeConcern of the prototype collection '",
-                           name, "'"));
-        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
                         "not supported for SmartGraph edge collections");

@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow changing writeConcern of dependent collections.
+
+  Previously changing the `writeConcern` property of collections that also have
+  their `distributeShardsLike` property set was disallowed. This is now 
+  allowed.
+
 * BTS-1751: Strange error message when executing a query while creating an 
   index in the background.
 
