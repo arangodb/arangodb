@@ -1,6 +1,12 @@
 devel
 -----
 
+* Allow changing writeConcern of dependent collections.
+
+  Previously changing the `writeConcern` property of collections that also have
+  their `distributeShardsLike` property set was disallowed. This is now 
+  allowed.
+
 * Updated ArangoDB Starter to v0.18.1-preview-1.
 
 * Reduce default amount of per-collection document removals by TTL background 
