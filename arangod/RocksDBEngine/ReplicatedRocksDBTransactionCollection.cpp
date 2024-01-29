@@ -34,6 +34,7 @@
 #include "RocksDBEngine/RocksDBTransactionCollection.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <algorithm>
@@ -89,7 +90,7 @@ void ReplicatedRocksDBTransactionCollection::maybeDisableIndexing() {
   // single operation transaction or we are sure we are writing
   // unique keys
 
-  auto const indexes = collection()->getIndexes();
+  auto const indexes = collection()->getPhysical()->getAllIndexes();
 
   bool disableIndexing =
       !AccessMode::isWriteOrExclusive(accessType()) ||
