@@ -170,11 +170,8 @@ void ActionBase::startStats() {
 
 /// @brief show progress on Action, and when that progress occurred
 void ActionBase::incStats() {
-  auto progress = _progress.load();
-  progress += 1.;
-  _progress.store(progress);
+  _progress.fetch_add(1.);
   _actionLastStat = secs_since_epoch();
-
 }  // ActionBase::incStats
 
 void ActionBase::endStats() {
@@ -278,14 +275,17 @@ void ActionBase::result(ErrorCode errorNumber, std::string const& errorString) {
   _result.reset(errorNumber, errorString);
 }
 
-arangodb::Result ActionBase::setProgress(double d) { return {}; }
+arangodb::Result ActionBase::setProgress(double d) {
+  _progress.store(d, std::memory_order_relaxed);
+  return {};
+}
 
 /**
  * progress() operation is an expected future feature.  Not supported in the
  *  original ActionBase derivatives
  */
 arangodb::Result ActionBase::progress(double& progress) {
-  progress = 0.5;
+  progress = _progress.load();
   return {};
 }
 

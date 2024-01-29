@@ -1720,7 +1720,7 @@ TRI_vocbase_t& transaction::Methods::vocbase() const {
   return _state->vocbase();
 }
 
-void transaction::Methods::setUsername(std::string_view name) {
+void transaction::Methods::setUsername(std::string const& name) {
   TRI_ASSERT(_state);
   _state->setUsername(name);
 }
@@ -3093,8 +3093,9 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
   }
 
   if (nullptr == idx) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_BAD_PARAMETER,
-                                   "The index id cannot be empty.");
+    // should never happen
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "the index id cannot be empty");
   }
 
   // TODO: an extra optimizer rule could make this unnecessary
@@ -3102,8 +3103,15 @@ std::unique_ptr<IndexIterator> transaction::Methods::indexScanForCondition(
     return std::make_unique<EmptyIndexIterator>(&idx->collection(), this);
   }
 
-  // Now create the Iterator
   TRI_ASSERT(!idx->inProgress());
+  if (idx->inProgress()) {
+    // should never happen
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot use an index for querying that is currently being built");
+  }
+
+  // Now create the Iterator
   return idx->iteratorForCondition(monitor, this, condition, var, opts,
                                    readOwnWrites, mutableConditionIdx);
 }
