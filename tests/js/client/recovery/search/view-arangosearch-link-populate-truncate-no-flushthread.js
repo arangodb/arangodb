@@ -81,6 +81,7 @@ function recoverySuite () {
         // is fixed.
         return;
       }
+
       var v = db._view(vn);
       assertEqual(v.name(), vn);
       assertEqual(v.type(), 'arangosearch');

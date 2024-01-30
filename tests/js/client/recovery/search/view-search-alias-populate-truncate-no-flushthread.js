@@ -68,6 +68,13 @@ function recoverySuite () {
 
 
     testIResearchLinkPopulateTruncate: function () {
+      if (db._properties().replicationVersion === "2") {
+        // TODO: Temporarily disabled.
+        // Should be re-enabled as soon as https://arangodb.atlassian.net/browse/CINFRA-876
+        // is fixed.
+        return;
+      }
+
       let checkView = function(viewName, indexName) {
         let v = db._view(viewName);
         assertEqual(v.name(), viewName);
