@@ -169,6 +169,12 @@ ErrorCode VstResponse::gzipCompress(bool /*onlyIfSmaller*/) {
   return TRI_ERROR_INTERNAL;
 }
 
+ErrorCode VstResponse::lz4Compress(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
 void VstResponse::writeMessageHeader(VPackBuffer<uint8_t>& buffer) const {
   VPackBuilder builder(buffer);
   VPackArrayBuilder array(&builder, /*unindexed*/ true);

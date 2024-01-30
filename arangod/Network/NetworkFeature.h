@@ -30,6 +30,7 @@
 
 #include "Network/ConnectionPool.h"
 #include "Metrics/Fwd.h"
+#include "Rest/CommonDefines.h"
 #include "RestServer/arangod.h"
 #include "Scheduler/Scheduler.h"
 
@@ -89,6 +90,7 @@ class NetworkFeature final : public ArangodFeature {
                     std::chrono::steady_clock::duration);
 
   uint64_t compressRequestThreshold() const noexcept;
+  rest::EncodingType compressionType() const noexcept;
 
  protected:
   void prepareRequest(network::ConnectionPool const& pool,
@@ -138,6 +140,8 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
 
   uint64_t _compressRequestThreshold;
+  rest::EncodingType _compressionType;
+  std::string _compressionTypeLabel;
 };
 
 }  // namespace arangodb

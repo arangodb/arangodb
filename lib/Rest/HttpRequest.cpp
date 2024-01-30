@@ -944,6 +944,10 @@ EncodingType HttpRequest::parseAcceptEncoding(std::string_view value) const {
       // if we find "gzip", we return it
       return EncodingType::GZIP;
     }
+    if (current == StaticStrings::EncodingLz4) {
+      // if we find "lz4", we return it
+      return EncodingType::LZ4;
+    }
   }
   return EncodingType::UNSET;
 }

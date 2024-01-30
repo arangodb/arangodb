@@ -139,7 +139,9 @@ NetworkFeature::NetworkFeature(Server& server,
           arangodb_network_send_duration{})),
       _responseDurations(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_network_response_duration{})),
-      _compressRequestThreshold(0) {
+      _compressRequestThreshold(0),
+      _compressionType(rest::EncodingType::DEFLATE),
+      _compressionTypeLabel(StaticStrings::EncodingDeflate) {
   setOptional(true);
   startsAfter<ClusterFeature>();
   startsAfter<SchedulerFeature>();
@@ -192,18 +194,35 @@ void NetworkFeature::collectOptions(
   options
       ->addOption("--network.compress-request-threshold",
                   "The HTTP request body size from which on cluster-internal "
-                  "requests are "
-                  "transparently compressed.",
+                  "requests are transparently compressed.",
                   new UInt64Parameter(&_compressRequestThreshold))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Automatically compress outgoing HTTP requests in cluster-internal
-traffic with the deflate or gzip compression format.
+traffic with the deflate, gzip or lz4 compression format.
 Compression will only happen if the size of the uncompressed request body exceeds 
 the threshold value controlled by this startup option,
 and if the request body size after compression is less than the original 
 request body size.
 Using the value 0 disables the automatic compression.")");
+
+  std::unordered_set<std::string> types = {StaticStrings::EncodingGzip,
+                                           StaticStrings::EncodingDeflate,
+                                           StaticStrings::EncodingLz4};
+  options
+      ->addOption("--network.compression-method",
+                  "The compression method used for cluster-internal requests.",
+                  new DiscreteValuesParameter<StringParameter>(
+                      &_compressionTypeLabel, types))
+      .setIntroducedIn(31200)
+      .setLongDescription(
+          R"(
+The 'deflate' and 'gzip' compression methods are general purpose, but have
+significant CPU overhead for performing the compression work. 
+The 'lz4' compression method compresses slightly worse , but has a lot 
+lower CPU overhead for performing the compression.
+The compression method only matters if `--network.compress-request-threshold`
+is set to value greater than zero.)");
 }
 
 void NetworkFeature::validateOptions(
@@ -228,6 +247,19 @@ void NetworkFeature::validateOptions(
         << ::MinAllowedInFlight << " and " << ::MaxAllowedInFlight
         << ", clamping value";
     _maxInFlight = clamped;
+  }
+
+  if (_compressionTypeLabel == StaticStrings::EncodingGzip) {
+    _compressionType = rest::EncodingType::GZIP;
+  } else if (_compressionTypeLabel == StaticStrings::EncodingDeflate) {
+    _compressionType = rest::EncodingType::DEFLATE;
+  } else if (_compressionTypeLabel == StaticStrings::EncodingLz4) {
+    _compressionType = rest::EncodingType::LZ4;
+  } else {
+    LOG_TOPIC("339d5", FATAL, Logger::CONFIG)
+        << "invalid value for `--network.compression-type` ('"
+        << _compressionTypeLabel << "')";
+    FATAL_ERROR_EXIT();
   }
 }
 
@@ -354,6 +386,10 @@ uint64_t NetworkFeature::compressRequestThreshold() const noexcept {
   return _compressRequestThreshold;
 }
 
+rest::EncodingType NetworkFeature::compressionType() const noexcept {
+  return _compressionType;
+}
+
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void NetworkFeature::setPoolTesting(network::ConnectionPool* pool) {
   _poolPtr.store(pool, std::memory_order_release);
@@ -384,8 +420,19 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
   TRI_ASSERT(req != nullptr);
 
   if (!req->header.meta().contains(StaticStrings::AcceptEncoding)) {
-    req->header.addMeta(StaticStrings::AcceptEncoding,
-                        StaticStrings::EncodingDeflate);
+    auto type = compressionType();
+    if (type == rest::EncodingType::DEFLATE) {
+      req->header.addMeta(StaticStrings::AcceptEncoding,
+                          StaticStrings::EncodingDeflate);
+    } else if (type == rest::EncodingType::GZIP) {
+      req->header.addMeta(StaticStrings::AcceptEncoding,
+                          absl::StrCat(StaticStrings::EncodingGzip, ",",
+                                       StaticStrings::EncodingDeflate));
+    } else if (type == rest::EncodingType::LZ4) {
+      req->header.addMeta(StaticStrings::AcceptEncoding,
+                          absl::StrCat(StaticStrings::EncodingArangoLz4, ",",
+                                       StaticStrings::EncodingDeflate));
+    }
   }
 
   bool didCompress = std::invoke([&]() {
@@ -408,19 +455,51 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
     }
 
     velocypack::Buffer<uint8_t> compressed;
-    if (encoding::zlibDeflate(pfm.data(), pfm.size(), compressed) !=
-        TRI_ERROR_NO_ERROR) {
+    auto type = compressionType();
+    if (type == rest::EncodingType::DEFLATE) {
+      if (encoding::zlibDeflate(pfm.data(), pfm.size(), compressed) !=
+          TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (compressed.size() >= bodySize) {
+        // compression did not provide any benefit. better leave it
+        return false;
+      }
+
+      pfm = std::move(compressed);
+      req->header.addMeta(StaticStrings::ContentEncoding,
+                          StaticStrings::EncodingDeflate);
+    } else if (type == rest::EncodingType::GZIP) {
+      if (encoding::gzipCompress(pfm.data(), pfm.size(), compressed) !=
+          TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+
+      if (compressed.size() >= bodySize) {
+        // compression did not provide any benefit. better leave it
+        return false;
+      }
+
+      pfm = std::move(compressed);
+      req->header.addMeta(StaticStrings::ContentEncoding,
+                          StaticStrings::EncodingGzip);
+    } else if (type == rest::EncodingType::LZ4) {
+      if (encoding::lz4Compress(pfm.data(), pfm.size(), compressed) !=
+          TRI_ERROR_NO_ERROR) {
+        return false;
+      }
+      if (compressed.size() >= bodySize) {
+        // compression did not provide any benefit. better leave it
+        return false;
+      }
+
+      pfm = std::move(compressed);
+      req->header.addMeta(StaticStrings::ContentEncoding,
+                          StaticStrings::EncodingArangoLz4);
+    } else {
       return false;
     }
-
-    if (compressed.size() >= bodySize) {
-      // compression did not provide any benefit. better leave it
-      return false;
-    }
-
-    pfm = std::move(compressed);
-    req->header.addMeta(StaticStrings::ContentEncoding,
-                        StaticStrings::EncodingDeflate);
     return true;
   });
 
@@ -525,6 +604,19 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
           } else if (encoding == StaticStrings::EncodingDeflate) {
             velocypack::Buffer<uint8_t> uncompressed;
             auto r = encoding::zlibInflate(
+                reinterpret_cast<uint8_t const*>(res->payload().data()),
+                res->payload().size(), uncompressed);
+            if (r != TRI_ERROR_NO_ERROR) {
+              THROW_ARANGO_EXCEPTION(r);
+            }
+            // replace response body and remove "content-encoding"
+            // handler to prevent duplicate uncompression
+            res->setPayload(std::move(uncompressed), 0);
+            res->header.contentEncoding(fuerte::ContentEncoding::Identity);
+            res->header.removeMeta(StaticStrings::ContentEncoding);
+          } else if (encoding == StaticStrings::EncodingArangoLz4) {
+            velocypack::Buffer<uint8_t> uncompressed;
+            auto r = encoding::lz4Uncompress(
                 reinterpret_cast<uint8_t const*>(res->payload().data()),
                 res->payload().size(), uncompressed);
             if (r != TRI_ERROR_NO_ERROR) {

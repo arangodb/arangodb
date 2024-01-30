@@ -22,17 +22,22 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "EncodingUtils.h"
+#include "Basics/Endian.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/debugging.h"
 #include "Basics/voc-errors.h"
 
 #include <velocypack/Buffer.h>
 
+#include <string>
+#include <lz4.h>
 #include <zconf.h>
 #include <zlib.h>
 
 namespace {
 constexpr size_t maxUncompressedSize = 512 * 1024 * 1024;
+
+constexpr size_t lz4HeaderLength = 1 + sizeof(uint32_t);
 
 template<typename T>
 int uncompressStream(z_stream& strm, T& uncompressed) noexcept {
@@ -186,6 +191,47 @@ ErrorCode encoding::zlibInflate(uint8_t const* compressed,
 }
 
 template<typename T>
+ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
+                                  size_t compressedLength, T& uncompressed) {
+  if (compressedLength <= 5) {
+    // empty/bad input
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+
+  size_t initial = uncompressed.size();
+
+  uint32_t uncompressedSize;
+  memcpy(&uncompressedSize, compressed + 1, sizeof(uncompressedSize));
+  uncompressedSize = basics::bigToHost<uint32_t>(uncompressedSize);
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    uncompressed.resize(uncompressedSize);
+  } else if constexpr (std::is_same_v<T,
+                                      arangodb::velocypack::Buffer<uint8_t>>) {
+    uncompressed.reserve(uncompressedSize);
+  }
+
+  // uncompressed directly into the result
+  // this should not go wrong if we have a big enough output buffer.
+  int size = LZ4_decompress_safe(
+      reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength,
+      const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data())),
+      static_cast<int>(compressedLength - ::lz4HeaderLength),
+      static_cast<int>(uncompressedSize));
+  TRI_ASSERT(size > 0);
+  TRI_ASSERT(uncompressedSize == static_cast<size_t>(size));
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    uncompressed.resize(initial + uncompressedSize);
+  } else if constexpr (std::is_same_v<T,
+                                      arangodb::velocypack::Buffer<uint8_t>>) {
+    uncompressed.resetTo(initial + uncompressedSize);
+  }
+
+  return TRI_ERROR_NO_ERROR;
+}
+
+template<typename T>
 ErrorCode encoding::gzipCompress(uint8_t const* uncompressed,
                                  size_t uncompressedLength, T& compressed) {
   compressed.clear();
@@ -251,7 +297,66 @@ ErrorCode encoding::zlibDeflate(uint8_t const* uncompressed,
   }
 }
 
+template<typename T>
+ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
+                                size_t uncompressedLength, T& compressed) {
+  compressed.clear();
+  if (uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  int maxLength = LZ4_compressBound(static_cast<int>(uncompressedLength));
+  if (maxLength <= 0) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
+  // store compressed value.
+  // the compressed value is prepended by the following header:
+  // - byte 0: hard-coded to 0x01 (can be used as a version number later)
+  // - byte 1-4: uncompressed size, encoded as a uint32_t in big endian
+  // order
+  uint32_t originalLength = static_cast<uint32_t>(uncompressedLength);
+  uint32_t uncompressedSize = basics::hostToBig(originalLength);
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    compressed.resize(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
+    compressed[0] = 0x01U;  // version
+    memcpy(compressed.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
+  } else if constexpr (std::is_same_v<T,
+                                      arangodb::velocypack::Buffer<uint8_t>>) {
+    compressed.reserve(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
+    compressed.push_back(0x01U);  // version
+    memcpy(compressed.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
+  } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+    compressed.reserve(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
+    compressed.appendChar(0x01U);  // version
+    compressed.appendText(reinterpret_cast<char const*>(&uncompressedSize),
+                          sizeof(uncompressedSize));
+  }
+
+  // compress data into output buffer, starting at byte 5.
+  int compressedLength = LZ4_compress_fast(
+      reinterpret_cast<char const*>(uncompressed),
+      const_cast<char*>(
+          reinterpret_cast<char const*>(compressed.data() + ::lz4HeaderLength)),
+      static_cast<int>(uncompressedLength),
+      static_cast<int>(maxLength - ::lz4HeaderLength),
+      /*accelerationFactor*/ 1);
+  if (compressedLength > 0) {
+    if constexpr (std::is_same_v<T, std::string>) {
+      compressed.resize(compressedLength + ::lz4HeaderLength);
+    } else if constexpr (std::is_same_v<
+                             T, arangodb::velocypack::Buffer<uint8_t>>) {
+      compressed.resetTo(compressedLength + ::lz4HeaderLength);
+    } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+      compressed.increaseLength(compressedLength);
+    }
+    return TRI_ERROR_NO_ERROR;
+  }
+  return TRI_ERROR_INTERNAL;
+}
+
 // template instantiations
+
+// uncompress methods
 template ErrorCode
 encoding::gzipUncompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* compressed, size_t compressedLength,
@@ -278,6 +383,16 @@ template ErrorCode encoding::zlibInflate<std::string>(
     std::string& uncompressed);
 
 template ErrorCode
+encoding::lz4Uncompress<arangodb::velocypack::Buffer<uint8_t>>(
+    uint8_t const* compressed, size_t compressedLength,
+    arangodb::velocypack::Buffer<uint8_t>& uncompressed);
+
+template ErrorCode encoding::lz4Uncompress<arangodb::basics::StringBuffer>(
+    uint8_t const* compressed, size_t compressedLength,
+    arangodb::basics::StringBuffer& uncompressed);
+
+// compression methods
+template ErrorCode
 encoding::gzipCompress<arangodb::velocypack::Buffer<uint8_t>>(
     uint8_t const* uncompressed, size_t uncompressedLength,
     arangodb::velocypack::Buffer<uint8_t>& compressed);
@@ -297,4 +412,13 @@ template ErrorCode encoding::zlibDeflate<arangodb::basics::StringBuffer>(
 template ErrorCode encoding::zlibDeflate<std::string>(
     uint8_t const* uncompressed, size_t uncompressedLength,
     std::string& compressed);
+
+template ErrorCode encoding::lz4Compress<arangodb::velocypack::Buffer<uint8_t>>(
+    uint8_t const* uncompressed, size_t uncompressedLength,
+    arangodb::velocypack::Buffer<uint8_t>& compressed);
+
+template ErrorCode encoding::lz4Compress<arangodb::basics::StringBuffer>(
+    uint8_t const* uncompressed, size_t uncompressedLength,
+    arangodb::basics::StringBuffer& compressed);
+
 }  // namespace arangodb

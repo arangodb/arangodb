@@ -670,6 +670,17 @@ void RestHandler::compressResponse() {
       }
       break;
 
+    case rest::EncodingType::LZ4:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->lz4Compress(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingArangoLz4);
+      }
+      break;
+
     default:
       break;
   }

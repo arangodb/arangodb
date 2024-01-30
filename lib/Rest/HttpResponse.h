@@ -116,6 +116,10 @@ class HttpResponse : public GeneralResponse {
   // body
   ErrorCode gzipCompress(bool onlyIfSmaller) override;
 
+  // the body must already be set. lz4 compression is then run on the existing
+  // body
+  ErrorCode lz4Compress(bool onlyIfSmaller) override;
+
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,
                           bool resolveExternals);

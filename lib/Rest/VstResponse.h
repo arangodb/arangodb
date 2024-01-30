@@ -64,6 +64,7 @@ class VstResponse : public GeneralResponse {
   }
   ErrorCode zlibDeflate(bool onlyIfSmaller) override;
   ErrorCode gzipCompress(bool onlyIfSmaller) override;
+  ErrorCode lz4Compress(bool onlyIfSmaller) override;
 
   /// write VST response message header
   void writeMessageHeader(velocypack::Buffer<uint8_t>&) const;
