@@ -419,15 +419,17 @@ DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
 
 ClusterInfo::ClusterInfo(ArangodServer& server,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
-                         ErrorCode syncerShutdownCode)
+                         ErrorCode syncerShutdownCode,
+                         metrics::MetricsFeature& metrics)
     : _server(server),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _agency(server),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
-      _memoryUsage(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_internal_cluster_info_memory_usage{})),
+      _memoryUsage(metrics.add(arangodb_internal_cluster_info_memory_usage{})),
+      _lpTimer(metrics.add(arangodb_load_plan_runtime{})),
+      _lcTimer(metrics.add(arangodb_load_current_runtime{})),
       _resourceMonitor(_memoryUsage),
       _servers(_resourceMonitor),
       _serverAliases(_resourceMonitor),
@@ -467,11 +469,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server,
       _waitPlan(_resourceMonitor),
       _waitPlanVersion(_resourceMonitor),
       _waitCurrent(_resourceMonitor),
-      _waitCurrentVersion(_resourceMonitor),
-      _lpTimer(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_plan_runtime{})),
-      _lcTimer(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_load_current_runtime{})) {
+      _waitCurrentVersion(_resourceMonitor) {
   _uniqid._currentValue = 1ULL;
   _uniqid._upperValue = 0ULL;
   _uniqid._nextBatchStart = 1ULL;

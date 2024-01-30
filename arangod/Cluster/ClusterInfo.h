@@ -261,7 +261,8 @@ class ClusterInfo final {
 
   explicit ClusterInfo(ArangodServer& server,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
-                       ErrorCode syncerShutdownCode);
+                       ErrorCode syncerShutdownCode,
+                       metrics::MetricsFeature& metrics);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief shuts down library
@@ -1072,6 +1073,11 @@ class ClusterInfo final {
   ErrorCode const _syncerShutdownCode;
 
   metrics::Gauge<std::uint64_t>& _memoryUsage;
+  /// @brief histogram for loadPlan runtime
+  metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
+  /// @brief histogram for loadCurrent runtime
+  metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
+
   ClusterInfoResourceMonitor _resourceMonitor;
 
   // The servers, first all, we only need Current here:
@@ -1277,11 +1283,6 @@ class ClusterInfo final {
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrent;
   mutable std::mutex _waitCurrentVersionLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrentVersion;
-
-  /// @brief histogram for loadPlan runtime
-  metrics::Histogram<metrics::LogScale<float>>& _lpTimer;
-  /// @brief histogram for loadCurrent runtime
-  metrics::Histogram<metrics::LogScale<float>>& _lcTimer;
 };
 
 namespace cluster {
