@@ -12,6 +12,29 @@ devel
   size.
   Using the value `0` disables the automatic compression.
 
+* BTS-1733: prevent dropping of collection if the collection is part of an
+  existing graph.
+  This PR prevents the unintentional dropping of collections that are part of
+  any existing graph, so that graph definitions remain intact even if the user
+  attempts to drop a member collection.
+  This introduces a change in behavior: while previously it was allowed to drop
+  collections that were part of an existing graph, trying to do so will now
+  result in error `ERROR_GRAPH_MUST_NOT_DROP_COLLECTION` (error code `1942`
+  and error message `must not drop collection while part of graph` with more
+  specifics following).
+  This may require a change in client application code that drops individual
+  collections from graphs in order to clean up. The recommended way to drop
+  these collections is to drop the graph instead. Dropping the graph can
+  optionally also delete all associated collections of the graph. Even if this
+  flag is not used, collections that are not part of a graph definition anymore
+  can later be dropped regularly.
+
+* Allow changing writeConcern of dependent collections.
+
+  Previously changing the `writeConcern` property of collections that also have
+  their `distributeShardsLike` property set was disallowed. This is now 
+  allowed.
+
 * BTS-1751: Strange error message when executing a query while creating an 
   index in the background.
 

@@ -3860,8 +3860,7 @@ Result fromFuncLike(char const* funcName, irs::boolean_filter* filter,
       auto& wildcardFilter = append<wildcard::Filter>(*filter, filterCtx);
       wildcardFilter.boost(filterCtx.boost);
       *wildcardFilter.mutable_field() = std::move(name);
-      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool,
-                                           filterCtx.query.ctx};
+      *wildcardFilter.mutable_options() = {pattern, *analyzer._pool, ctx.ctx};
     } else {
       auto& wildcardFilter = append<irs::by_wildcard>(*filter, filterCtx);
       wildcardFilter.boost(filterCtx.boost);

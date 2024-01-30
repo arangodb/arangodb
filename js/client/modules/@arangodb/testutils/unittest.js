@@ -7,8 +7,9 @@ const internal = require('internal');
 const rp = require('@arangodb/testutils/result-processing');
 const cu = require('@arangodb/testutils/crash-utils');
 
-const unitTest = require('@arangodb/testutils/testing').unitTest;
-const optionsDefaults = require('@arangodb/testutils/testing').optionsDefaults;
+const testing = require('@arangodb/testutils/testing');
+const unitTest = testing.unitTest;
+const optionsDefaults = testing.optionsDefaults;
 const makeDirectoryRecursive = require('fs').makeDirectoryRecursive;
 const killRemainingProcesses = require('@arangodb/testutils/process-utils').killRemainingProcesses;
 const inspect = internal.inspect;
@@ -22,6 +23,10 @@ function main (argv) {
   // otherwise tests that depend on sort order/collation may
   // behave differently on different platforms
   internal.env.LC_ALL = "en_US.UTF-8";
+
+  if (argv.length >= 1 && argv[0] === '--dump-completions') {
+    return testing.dumpCompletions();
+  }
 
   start_pretty_print();
 

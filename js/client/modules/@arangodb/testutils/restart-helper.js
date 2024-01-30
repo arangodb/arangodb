@@ -38,6 +38,7 @@ const {
       server.suspended = true;
       server.restartOneInstance({
         'server.authentication': 'false',
+        'rocksdb.sync-interval': 100
       });
       server.suspended = false;
 

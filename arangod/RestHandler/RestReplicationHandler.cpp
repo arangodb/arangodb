@@ -166,7 +166,10 @@ auto handlingOfExistingCollection(TRI_vocbase_t& vocbase,
           co_return res;
         }
 
-        auto dropResult = methods::Collections::drop(*col, true, true);
+        CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                          .keepUserRights = true,
+                                          .allowDropGraphCollection = true};
+        auto dropResult = methods::Collections::drop(*col, dropOptions);
         if (dropResult.fail()) {
           if (dropResult.is(TRI_ERROR_FORBIDDEN) ||
               dropResult.is(
