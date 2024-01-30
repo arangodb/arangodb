@@ -118,6 +118,12 @@ ErrorCode GeneralResponseMock::gzipCompress(bool /*onlyIfSmaller*/) {
   return TRI_ERROR_INTERNAL;
 }
 
+ErrorCode GeneralResponseMock::lz4Compress(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
 // -----------------------------------------------------------------------------
 // --SECTION--                                                       END-OF-FILE
 // -----------------------------------------------------------------------------
