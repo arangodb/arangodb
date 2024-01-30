@@ -670,6 +670,15 @@ function unitTest (cases, options) {
   }
 }
 
+function dumpCompletions() {
+  loadTestSuites();
+  const result = {};
+  result.options = Object.keys(optionsDefaults).map(o => '--' + o).sort();
+  result.suites = allTests.concat('auto', 'find').sort();
+  print(JSON.stringify(result));
+  return 0;
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
@@ -677,3 +686,4 @@ exports.optionsDefaults = optionsDefaults;
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;
+exports.dumpCompletions = dumpCompletions;
