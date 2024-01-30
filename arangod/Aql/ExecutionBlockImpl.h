@@ -389,6 +389,8 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       bool abandoned;
     };
     std::atomic<State> _state{{Status::Pending, false}};
+    static_assert(decltype(_state)::is_always_lock_free == true);
+
     std::mutex mutable _lock;
     std::condition_variable mutable _bell;
     std::optional<PrefetchResult> _result;
