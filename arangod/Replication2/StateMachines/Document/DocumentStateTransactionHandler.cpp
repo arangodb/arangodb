@@ -131,7 +131,8 @@ auto DocumentStateTransactionHandler::applyOp(
                           ? AccessMode::Type::EXCLUSIVE
                           : AccessMode::Type::WRITE;
     TRI_ASSERT(_vocbase != nullptr) << op << " " << _gid;
-    trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType);
+    trx = _factory->createTransaction(*_vocbase, op.tid, op.shard, accessType,
+                                      op.userName);
     setTrx(op.tid, trx);
   }
 

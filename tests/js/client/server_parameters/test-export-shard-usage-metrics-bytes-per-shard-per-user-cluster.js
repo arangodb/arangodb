@@ -191,6 +191,7 @@ function BaseTestSuite(targetUser) {
     if (db._properties().replicationVersion === "2") {
       waitForReplicatedLogsToBeApplied(logs);
       const parsedMetrics = getParsedMetrics(db._name(), c.name());
+      const writeCounter = parsedMetrics.writes[shard];
       // If the follower has applied the log, we should see the count
       assertTrue(writeCounter > lowerBoundInclFollowers, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
       assertTrue(writeCounter < writeUpperBound, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
@@ -212,6 +213,7 @@ function BaseTestSuite(targetUser) {
     if (db._properties().replicationVersion === "2") {
       waitForReplicatedLogsToBeApplied(logs);
       const parsedMetrics = getParsedMetrics(db._name(), c.name());
+      const writeCounter = parsedMetrics.writes[shard];
       // If the follower has applied the log, we should see the count
       assertTrue(writeCounter > lowerBoundInclFollowers, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
       assertTrue(writeCounter < writeUpperBound, `After all log entries are applied expecting writes on shard ${shard} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
@@ -234,6 +236,10 @@ function BaseTestSuite(targetUser) {
     if (db._properties().replicationVersion === "2") {
       waitForReplicatedLogsToBeApplied(logs);
       const parsedMetrics = getParsedMetrics(db._name(), c.name());
+      let totalWritten = 0;
+      Object.keys(parsedMetrics.writes).forEach((shard) => {
+        totalWritten += parsedMetrics.writes[shard];
+      });
       // If the follower has applied the log, we should see the count
       assertTrue(totalWritten > lowerBoundInclFollowers, `After all log entries are applied expecting accumulated writes ${totalWritten} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
       assertTrue(totalWritten < writeUpperBound, `After all log entries are applied expecting accumulated writes ${totalWritten} on metrics ${JSON.stringify(parsedMetrics, null, 2)} to be between ${lowerBoundInclFollowers} < ${writeUpperBound}`);
