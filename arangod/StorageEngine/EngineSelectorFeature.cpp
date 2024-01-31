@@ -291,6 +291,7 @@ StorageEngine& EngineSelectorFeature::engine() {
 template<typename As, typename std::enable_if<
                           std::is_base_of<StorageEngine, As>::value, int>::type>
 As& EngineSelectorFeature::engine() {
+  TRI_ASSERT(dynamic_cast<As*>(_engine) != nullptr);
   return *static_cast<As*>(_engine);
 }
 template ClusterEngine& EngineSelectorFeature::engine<ClusterEngine>();
