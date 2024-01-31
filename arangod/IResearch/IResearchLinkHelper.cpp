@@ -152,7 +152,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
         auto* impl = basics::downCast<IResearchRocksDBLink>(link.get());
 #endif
         if (impl) {
-          return impl->commit();
+          return impl->commit().result();
         }
       }
     }
