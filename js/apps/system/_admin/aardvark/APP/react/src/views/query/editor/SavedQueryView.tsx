@@ -19,7 +19,7 @@ import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJ
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { download, downloadLocalData } from "../../../utils/downloadHelper";
+import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
 import { getQueryStorageKey } from "../queryHelper";
 import { AQLEditor } from "./AQLEditor";
