@@ -177,7 +177,6 @@ Result createSystemCollections(
   systemCollections.push_back(StaticStrings::AppsCollection);
   systemCollections.push_back(StaticStrings::AppBundlesCollection);
   systemCollections.push_back(StaticStrings::FrontendCollection);
-  systemCollections.push_back(StaticStrings::PregelCollection);
 
   TRI_IF_FAILURE("UpgradeTasks::CreateCollectionsExistsGraphAqlFunctions") {
     std::vector<CreateCollectionBody> testSystemCollectionsToCreate;
@@ -337,13 +336,6 @@ Result createSystemStatisticsCollections(
     }
   }
   return {TRI_ERROR_NO_ERROR};
-}
-
-Result createSystemPregelCollection(TRI_vocbase_t& vocbase) {
-  auto const& cname = StaticStrings::PregelCollection;
-  std::shared_ptr<LogicalCollection> col;
-  OperationOptions options{};
-  return Collections::createSystem(vocbase, options, cname, true, col);
 }
 
 Result createIndex(
@@ -545,26 +537,6 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
-}
-
-////////////////////////////////////////////////////////////////////////////////
-/// @brief creates '_pregel_queries' system collection
-////////////////////////////////////////////////////////////////////////////////
-bool UpgradeTasks::createHistoricPregelSystemCollection(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& /*upgradeParams*/) {
-  // This vector should after the call to ::createSystemCollections contain
-  // a LogicalCollection for *every* (required) system collection.
-  Result res = ::createSystemPregelCollection(vocbase);
-
-  if (res.fail()) {
-    LOG_TOPIC("2824f", ERR, Logger::STARTUP)
-        << "could not create Pregel system collection"
-        << ": error: " << res.errorMessage();
-    return false;
-  }
-
-  return true;
 }
 
 bool UpgradeTasks::addDefaultUserOther(

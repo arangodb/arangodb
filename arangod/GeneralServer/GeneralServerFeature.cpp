@@ -53,8 +53,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Pregel/REST/RestControlPregelHandler.h"
-#include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -686,10 +684,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                      RestHandlerCreator<RestBatchHandler>::createNoData);
 
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
-      RestHandlerCreator<RestControlPregelHandler>::createNoData);
-
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -807,9 +801,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
-
-  f.addPrefixHandler("/_api/pregel",
-                     RestHandlerCreator<RestPregelHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);

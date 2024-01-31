@@ -150,11 +150,6 @@ class AqlFunctionFeature;
 class OptimizerRulesFeature;
 
 }  // namespace aql
-namespace pregel {
-
-class PregelFeature;
-
-}  // namespace pregel
 namespace iresearch {
 
 class IResearchAnalyzerFeature;
@@ -281,7 +276,6 @@ using ArangodFeaturesList = TypeList<
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
-    pregel::PregelFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,

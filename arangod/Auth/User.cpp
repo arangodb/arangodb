@@ -570,8 +570,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       return auth::Level::NONE;
     } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (cname == StaticStrings::PregelCollection) {
-      return auth::Level::RW;
     } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }
