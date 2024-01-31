@@ -48,14 +48,15 @@
       'toolsets': ['host', 'target'],
       'conditions': [
         ['OS=="win"', {
-          'direct_dependent_settings': {
-            'msvs_precompiled_header': '<(V8_ROOT)/../msvs/v8_pch.h',
-            'msvs_precompiled_source': '<(V8_ROOT)/../msvs/v8_pch.cc',
-            'sources': [
-              '<(_msvs_precompiled_header)',
-              '<(_msvs_precompiled_source)',
-            ],
-          },
+# we disable PCH so we can use ccache
+#          'direct_dependent_settings': {
+#            'msvs_precompiled_header': '<(V8_ROOT)/../msvs/v8_pch.h',
+#            'msvs_precompiled_source': '<(V8_ROOT)/../msvs/v8_pch.cc',
+#            'sources': [
+#              '<(_msvs_precompiled_header)',
+#              '<(_msvs_precompiled_source)',
+#            ],
+#          },
         }],
       ],
     },  # v8_pch
