@@ -466,13 +466,14 @@ class IResearchAnalyzerFeatureTest
     ASSERT_NE(authFeature, nullptr);
     auto* userManager = authFeature->userManager();
     ASSERT_NE(userManager, nullptr);
-    arangodb::auth::UserMap userMap;
     auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
     user.grantCollection("testVocbase", "*", col);
+    arangodb::auth::UserMap userMap;
     userMap.emplace("testUser", std::move(user));
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                        // configuration from system database
+    userManager->setAuthInfo(
+        std::move(userMap));  // set user map to avoid loading
+                              // configuration from system database
   }
 
   std::unique_ptr<arangodb::ExecContext> getLoggedInContext() const {

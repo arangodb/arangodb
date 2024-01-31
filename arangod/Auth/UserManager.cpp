@@ -619,6 +619,7 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
 
 static Result RemoveUserInternal(ArangodServer& server,
                                  auth::User const& entry) {
+  TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
@@ -696,11 +697,20 @@ Result auth::UserManager::removeAllUsers() {
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
       auto const& oldEntry = pair->second;
-      res = RemoveUserInternal(_server, oldEntry);
-      if (!res.ok()) {
-        break;  // don't return still need to invalidate token cache
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      if (oldEntry.key().empty()) {
+        // we expect no empty usernames to ever occur, except when
+        // called from unit tests
+        ++pair;
+      } else
+#endif
+      {
+        res = RemoveUserInternal(_server, oldEntry);
+        if (!res.ok()) {
+          break;  // don't return still need to invalidate token cache
+        }
+        pair = _userCache.erase(pair);
       }
-      pair = _userCache.erase(pair);
     }
   }
 
