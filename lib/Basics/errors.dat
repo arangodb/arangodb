@@ -357,7 +357,6 @@ ERROR_TASK_NOT_FOUND,1852,"task not found","Will be raised when a task with the 
 
 ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid name is passed to the server."
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server."
-ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations - try increasing the value of 'maxIterations'","Will be raised when too many iterations are done in a graph traversal."
 ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised when an invalid filter result is returned in a graph traversal."
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
@@ -377,6 +376,7 @@ ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The co
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
 ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
+ERROR_GRAPH_MUST_NOT_DROP_COLLECTION,1942,"must not drop collection while part of graph","The collection must not be dropped while it is used as part of at least one graph definition."
 ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 ERROR_GRAPH_COLLECTION_IS_INITIAL,1945,"initial collection is not allowed to be removed manually","the collection is used as the initial collection of this graph and is not allowed to be removed manually."

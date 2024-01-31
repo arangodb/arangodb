@@ -127,12 +127,16 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   }
 
   // sparse must be identical if present
-  bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
-      lhs, StaticStrings::IndexSparse, false);
-  bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
-      rhs, StaticStrings::IndexSparse, false);
-  if (lhsSparse != rhsSparse) {
-    return false;
+  if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
+      Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
+      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type) {
+    bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
+        lhs, StaticStrings::IndexSparse, false);
+    bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
+        rhs, StaticStrings::IndexSparse, false);
+    if (lhsSparse != rhsSparse) {
+      return false;
+    }
   }
 
   VPackSlice value;

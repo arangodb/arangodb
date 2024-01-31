@@ -2312,15 +2312,15 @@ function transactionGraphSuite () {
     // //////////////////////////////////////////////////////////////////////////////
 
     tearDown: function () {
+      try {
+        G._drop('UnitTestsGraph');
+      } catch (err) {
+      }
       db._drop(cn1);
       c1 = null;
 
       db._drop(cn2);
       c2 = null;
-      try {
-        G._drop('UnitTestsGraph');
-      } catch (err) {
-      }
     },
 
     // //////////////////////////////////////////////////////////////////////////////

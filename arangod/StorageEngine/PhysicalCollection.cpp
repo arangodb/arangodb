@@ -48,6 +48,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+
 namespace arangodb {
 
 PhysicalCollection::PhysicalCollection(LogicalCollection& collection)
@@ -248,10 +250,22 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief hands out a list of indexes
-std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
+/// @brief get list of all indexes. this includes in-progress indexes and thus
+/// should be used with care
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getAllIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return {_indexes.begin(), _indexes.end()};
+}
+
+/// @brief get a list of "ready" indexes, that means all indexes which are
+/// not "in progress" anymore
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getReadyIndexes()
+    const {
+  std::vector<std::shared_ptr<Index>> result;
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  std::copy_if(_indexes.begin(), _indexes.end(), std::back_inserter(result),
+               [](auto const& idx) { return !idx->inProgress(); });
+  return result;
 }
 
 /// @brief get a snapshot of all indexes of the collection, with the read

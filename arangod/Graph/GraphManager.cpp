@@ -974,7 +974,9 @@ OperationResult GraphManager::removeGraph(Graph const& graph, bool waitForSync,
           methods::Collections::lookup(ctx()->vocbase(), cname, coll);
       if (found.ok()) {
         TRI_ASSERT(coll);
-        dropResult = arangodb::methods::Collections::drop(*coll, false);
+        CollectionDropOptions dropOptions{.allowDropSystem = false,
+                                          .allowDropGraphCollection = true};
+        dropResult = arangodb::methods::Collections::drop(*coll, dropOptions);
       }
 
       if (dropResult.fail()) {

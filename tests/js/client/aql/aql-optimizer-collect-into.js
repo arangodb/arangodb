@@ -373,6 +373,37 @@ function optimizerCollectExpressionTestSuite () {
       assertEqual(expectedResults, res);
     },
      
+    testCollectIntoAndCalculationRemoval : function () {
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs = i.value OPTIONS { method: 'hash' } SORT null RETURN { gender, docs }";
+
+      let nodes = db._createStatement(query).explain().plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      let ec = nodes.filter((n) => n.type === 'EnumerateCollectionNode')[0];
+      assertEqual(2, ec.projections.length);
+      assertEqual(1, nodes.filter((n) => n.type === 'CollectNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+      // we expect only a single calculation node in the plan, for calculating the return value
+      assertEqual(1, nodes.filter((n) => n.type === 'CalculationNode').length);
+      let cn = nodes.filter((n) => n.type === 'CalculationNode')[0];
+      assertEqual("object", cn.expression.type);
+    },
+    
+    testCollectIntoAndCalculationRemoval2 : function () {
+      const query = "FOR i IN " + c.name() + " COLLECT gender = i.gender INTO docs OPTIONS { method: 'hash' } SORT null RETURN { gender, docs }";
+      
+      let nodes = db._createStatement(query).explain().plan.nodes;
+      assertEqual(1, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
+      let ec = nodes.filter((n) => n.type === 'EnumerateCollectionNode')[0];
+      assertEqual(0, ec.projections.length);
+      assertEqual(1, nodes.filter((n) => n.type === 'CollectNode').length);
+      assertEqual(0, nodes.filter((n) => n.type === 'SortNode').length);
+      // we expect 2 calculation nodes in the plan, for calculating the return value and for the projection
+      assertEqual(2, nodes.filter((n) => n.type === 'CalculationNode').length);
+      let cn = nodes.filter((n) => n.type === 'CalculationNode')[0];
+      assertEqual("attribute access", cn.expression.type);
+      cn = nodes.filter((n) => n.type === 'CalculationNode')[1];
+      assertEqual("object", cn.expression.type);
+    },
   };
 }
 

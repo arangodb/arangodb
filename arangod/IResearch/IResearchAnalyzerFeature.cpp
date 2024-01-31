@@ -76,6 +76,7 @@
 #include "RestServer/SystemDatabaseFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/StandaloneContext.h"
@@ -726,7 +727,7 @@ bool analyzerInUse(ArangodServer& server, std::string_view dbName,
         return;
       }
 
-      for (auto const& index : collection->getIndexes()) {
+      for (auto const& index : collection->getPhysical()->getAllIndexes()) {
         if (!index || (Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type() &&
                        Index::TRI_IDX_TYPE_INVERTED_INDEX != index->type())) {
           continue;  // not an IResearchDataStore
