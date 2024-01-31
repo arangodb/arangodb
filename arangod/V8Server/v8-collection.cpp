@@ -1041,7 +1041,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = methods::Collections::drop(*collection, allowDropSystem);
+    CollectionDropOptions dropOptions{.allowDropSystem = allowDropSystem,
+                                      .allowDropGraphCollection = false};
+    auto res = methods::Collections::drop(*collection, dropOptions);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }

@@ -126,8 +126,13 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indexes
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
+  /// @brief get list of all indexes. this includes in-progress indexes and thus
+  /// should be used with care
+  std::vector<std::shared_ptr<Index>> getAllIndexes() const;
+
+  /// @brief get a list of "ready" indexes, that means all indexes which are
+  /// not "in progress" anymore
+  std::vector<std::shared_ptr<Index>> getReadyIndexes() const;
 
   /// @brief get a snapshot of all indexes of the collection, with the read
   /// lock on the list of indexes being held while the snapshot is active

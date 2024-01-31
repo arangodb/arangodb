@@ -158,7 +158,8 @@ futures::Future<OperationResult> GraphOperations::eraseEdgeDefinition(
           }
         }
 #endif
-        res = methods::Collections::drop(*coll, false);
+        CollectionDropOptions dropOptions{.allowDropGraphCollection = true};
+        res = methods::Collections::drop(*coll, dropOptions);
         if (res.fail()) {
           res = co_await trx.finishAsync(result.result);
           co_return OperationResult(res, options);
@@ -516,7 +517,8 @@ futures::Future<OperationResult> GraphOperations::eraseOrphanCollection(
       res = methods::Collections::lookup(_vocbase, cname, coll);
       if (res.ok()) {
         TRI_ASSERT(coll);
-        res = methods::Collections::drop(*coll, false);
+        CollectionDropOptions dropOptions{.allowDropGraphCollection = true};
+        res = methods::Collections::drop(*coll, dropOptions);
       }
       if (res.fail()) {
         co_return OperationResult(res, options);

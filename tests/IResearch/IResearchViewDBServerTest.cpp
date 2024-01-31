@@ -52,6 +52,7 @@
 #include "IResearch/IResearchLinkMeta.h"
 #include "IResearch/IResearchView.h"
 #include "RestServer/ViewTypesFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
@@ -582,7 +583,7 @@ TEST_F(IResearchViewDBServerTest, test_query) {
     EXPECT_FALSE(!viewImpl);
     arangodb::Result res = logicalview->properties(links->slice(), true, true);
     EXPECT_TRUE(res.ok());
-    EXPECT_FALSE(logicalCollection->getIndexes().empty());
+    EXPECT_FALSE(logicalCollection->getPhysical()->getAllIndexes().empty());
 
     // fill with test data
     {

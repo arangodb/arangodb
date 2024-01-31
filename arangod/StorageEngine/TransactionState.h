@@ -367,7 +367,7 @@ class TransactionState : public std::enable_shared_from_this<TransactionState> {
   /// only be set if no user has been registered with the transaction yet.
   /// this user name is informational only and can be used for logging,
   /// metrics etc. it should not be used for permission checks.
-  void setUsername(std::string_view name);
+  void setUsername(std::string const& name);
 
   /// @brief return name of user who originated the transaction. may be
   /// empty. this user name is informational only and can be used for logging,
