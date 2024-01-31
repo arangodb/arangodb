@@ -155,9 +155,19 @@ function testSuite() {
     }
   };
 
+  const getShardsAndLogs = (db, c) => {
+    if (db._properties().replicationVersion === "2") {
+      return dh.getCollectionShardsAndLogs(db, c);
+    }
+    return {
+      shards: c.shards(),
+      logs: []
+    };
+  };
+
   const assertReadMetricsAreCounted = (c, replicationFactor, leaderLowerBound, leaderUpperBound) => {
     const parsedMetrics = getParsedMetrics(db._name(), c.name());
-    const {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
+    const {shards, logs} = getShardsAndLogs(db, c);
     assertEqual(1, shards.length);
     const shard = shards[0];
     const readCounter = parsedMetrics.reads[shard];
@@ -183,7 +193,7 @@ function testSuite() {
 
   const assertWriteOnlyMetricsAreCounted = (c, replicationFactor, leaderLowerBound, leaderUpperBound, canHaveReads = false) => {
     const parsedMetrics = getParsedMetrics(db._name(), c.name());
-    const {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
+    const {shards, logs} = getShardsAndLogs(db, c);
     assertEqual(1, shards.length);
     const shard = shards[0];
     assertEqual(canHaveReads, parsedMetrics.hasOwnProperty("reads"), `${JSON.stringify(parsedMetrics, null, 2)} should ${canHaveReads ? "" : "not"} have a reads counter.`);
@@ -205,7 +215,7 @@ function testSuite() {
 
   const assertTotalWriteMetricsAreCounted = (c, replicationFactor, leaderLowerBound, leaderUpperBound, canHaveReads = false) => {
     const parsedMetrics = getParsedMetrics(db._name(), c.name());
-    const {shards, logs} = dh.getCollectionShardsAndLogs(db, c);
+    const {shards, logs} = getShardsAndLogs(db, c);
     assertEqual(parsedMetrics.hasOwnProperty("reads"), canHaveReads, `We do ${canHaveReads ? "" : "not"} expect to have reads. ${JSON.stringify(parsedMetrics)}`);
     assertTrue(parsedMetrics.hasOwnProperty("writes"), `${JSON.stringify(parsedMetrics)} should report writes`);
     assertEqual(shards.length, Object.keys(parsedMetrics.writes).length, `Did not found a metric entry for every shard, expecting: ${JSON.stringify(shards)} got: ${JSON.stringify(Object.keys(parsedMetrics.writes))}`);
@@ -231,7 +241,7 @@ function testSuite() {
 
   const assertTotalReadMetricsAreCounted = (c, leaderLowerBound, leaderUpperBound) => {
     const parsedMetrics = getParsedMetrics(db._name(), c.name());
-    const {shards} = dh.getCollectionShardsAndLogs(db, c);
+    const {shards} = getShardsAndLogs(db, c);
     assertEqual(shards.length, Object.keys(parsedMetrics.writes).length, `Did not found a metric entry for every shard, expecting: ${JSON.stringify(shards)} got: ${JSON.stringify(Object.keys(parsedMetrics.writes))}`);
     let totalReads = 0;
     assertTrue(parsedMetrics.hasOwnProperty("reads"), `${JSON.stringify(parsedMetrics)} should report reads`);
