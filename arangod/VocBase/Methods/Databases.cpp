@@ -404,7 +404,8 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       return res;
     }
 
-    if (createInfo.replicationVersion() == replication::Version::TWO) {
+    if (ServerState::instance()->isDBServer() &&
+        createInfo.replicationVersion() == replication::Version::TWO) {
       if (!replication2::EnableReplication2) {
         using namespace std::string_view_literals;
         auto const message =
