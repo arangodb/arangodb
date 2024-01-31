@@ -3784,6 +3784,18 @@ def _GenerateMSBuildProject(project, options, version, generator_flags, spec):
         },
     ]
 
+    ccache_path = os.environ.get("CCACHE_PATH", [])
+    ccache_toolset = [
+        [
+            "PropertyGroup",
+            {},
+            ["CLToolExe", "cl.exe"],
+            ["CLToolPath", ccache_path],
+            ["TrackFileAccess", "false"],
+            ["UseMultiToolTask", "true"],
+        ]
+    ]
+
     content += _GetMSBuildProjectConfigurations(configurations, spec)
     content += _GetMSBuildGlobalProperties(
         spec, version, project.guid, project_file_name
@@ -3821,6 +3833,9 @@ def _GenerateMSBuildProject(project, options, version, generator_flags, spec):
     if "arm64" in platforms and toolset == "target":
         content += import_marmasm_targets_section
     content += _GetMSBuildExtensionTargets(targets_files_of_rules)
+
+    if ccache_path:
+      content += ccache_toolset
 
     if spec.get("msvs_external_builder"):
         content += _GetMSBuildExternalBuilderTargets(spec)
