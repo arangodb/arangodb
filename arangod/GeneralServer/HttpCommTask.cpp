@@ -69,6 +69,15 @@ rest::RequestType llhttpToRequestType(llhttp_t* p) {
       return RequestType::ILLEGAL;
   }
 }
+
+static constexpr const char* vst10 = "VST/1.0\r\n\r\n";
+static constexpr const char* vst11 = "VST/1.1\r\n\r\n";
+static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+static constexpr size_t vstLen = 11;        // length of vst connection preface
+static constexpr size_t h2PrefaceLen = 24;  // length of h2 connection preface
+static constexpr size_t minHttpRequestLen =
+    18;  // min length of http 1.0 request
+
 }  // namespace
 
 template<SocketType T>
@@ -289,7 +298,7 @@ void HttpCommTask<T>::start() {
 
   asio_ns::post(
       this->_protocol->context.io_context, [self = this->shared_from_this()] {
-        static_cast<HttpCommTask<T>&>(*self.get()).checkH2UpgradePrefix();
+        static_cast<HttpCommTask<T>&>(*self.get()).checkProtocolUpgrade();
       });
 }
 
@@ -393,15 +402,8 @@ void HttpCommTask<T>::setIOTimeout() {
       }));
 }
 
-namespace {
-static constexpr const char* h2Preface = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-static constexpr size_t h2PrefaceLen = 24;  // length of h2 connection preface
-static constexpr size_t minHttpRequestLen =
-    18;  // min length of http 1.0 request
-}  // namespace
-
 template<SocketType T>
-void HttpCommTask<T>::checkH2UpgradePrefix() {
+void HttpCommTask<T>::checkProtocolUpgrade() {
   auto cb = [self = this->shared_from_this()](asio_ns::error_code const& ec,
                                               size_t nread) {
     auto& me = static_cast<HttpCommTask<T>&>(*self);
@@ -415,13 +417,21 @@ void HttpCommTask<T>::checkH2UpgradePrefix() {
     if (nread >= h2PrefaceLen &&
         std::equal(::h2Preface, ::h2Preface + h2PrefaceLen, bg,
                    bg + ptrdiff_t(h2PrefaceLen))) {
+      // http2 upgrade
       // do not remove preface here, H2CommTask will read it from buffer
       auto commTask = std::make_unique<H2CommTask<T>>(
           me._server, me._connectionInfo, std::move(me._protocol));
       commTask->setStatistics(1UL, me.stealRequestStatistics(1UL));
       me._server.registerTask(std::move(commTask));
       me.close(ec);
-      return;  // http2 upgrade
+      return;
+    }
+    if (nread >= vstLen &&
+        (std::equal(::vst10, ::vst10 + vstLen, bg, bg + ptrdiff_t(vstLen)) ||
+         std::equal(::vst11, ::vst11 + vstLen, bg, bg + ptrdiff_t(vstLen)))) {
+      // attempt to use VST 1.0 or VST 1.1
+      me.close(ec);
+      return;
     }
 
     me.asyncReadSome();  // continue reading
