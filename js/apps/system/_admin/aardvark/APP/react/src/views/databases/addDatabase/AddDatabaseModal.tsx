@@ -63,7 +63,9 @@ export const AddDatabaseModal = ({
       <Formik
         initialValues={initialValues}
         validationSchema={Yup.object({
-          name: Yup.string().required("Name is required")
+          name: Yup.string()
+            .required("Name is required")
+            .max(64, "Database name max length is 64 bytes.")
         })}
         onSubmit={handleSubmit}
       >
