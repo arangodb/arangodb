@@ -44,10 +44,6 @@
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 struct TestView : public arangodb::LogicalView {
   static constexpr auto typeInfo() noexcept {
@@ -133,12 +129,6 @@ class LogicalViewTest
                           false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ViewTypesFeature>(),
                           false);  // required for LogicalView::create(...)
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
 
     for (auto& f : features) {
       f.first.prepare();

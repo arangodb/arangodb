@@ -75,10 +75,6 @@
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 using namespace std::chrono_literals;
 
 // -----------------------------------------------------------------------------

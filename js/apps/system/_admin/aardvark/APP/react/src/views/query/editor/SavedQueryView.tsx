@@ -295,15 +295,6 @@ const SavedQueryBottomBar = () => {
   } = useDisclosure();
   const onDownload = () => {
     const storageKey = getQueryStorageKey();
-    if (window.frontendConfig.ldapEnabled) {
-      const data = localStorage.getItem(storageKey) || "[]";
-      downloadLocalData({
-        data,
-        fileName: `savedQueries-${window.frontendConfig.db}.json`,
-        type: "json"
-      });
-      return;
-    }
     download(`query/download/${window.App.currentUser || "root"}`);
   };
   return (

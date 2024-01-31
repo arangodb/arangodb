@@ -48,10 +48,6 @@
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 using namespace arangodb;
 
 static const VPackBuilder testDatabaseBuilder = dbArgsBuilder("testVocbase");
@@ -85,10 +81,6 @@ class PhysicalCollectionTest
     features.emplace_back(
         server.addFeature<arangodb::QueryRegistryFeature>());  // required for
                                                                // TRI_vocbase_t
-
-#if USE_ENTERPRISE
-    features.emplace_back(server.addFeature<arangodb::LdapFeature>());
-#endif
 
     for (auto& f : features) {
       f.get().prepare();

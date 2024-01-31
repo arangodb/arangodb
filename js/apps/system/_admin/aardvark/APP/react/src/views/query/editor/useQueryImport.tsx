@@ -90,16 +90,7 @@ export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
         }) as QueryType[];
         setIsUploading(true);
         // if auth is preset, upload via aardvark server
-        if (!window.frontendConfig.ldapEnabled) {
-          await uploadToServer({
-            sanitizedQueries,
-            onSuccess: handleSuccess,
-            onFailure: handleFailure
-          });
-          return;
-        }
-        // if no ldap, upload to localstorage
-        await onSaveQueryList({
+        await uploadToServer({
           sanitizedQueries,
           onSuccess: handleSuccess,
           onFailure: handleFailure

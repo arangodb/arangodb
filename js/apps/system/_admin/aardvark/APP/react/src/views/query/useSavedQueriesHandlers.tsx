@@ -130,11 +130,6 @@ const patchQueries = async ({
     currentUser = 'root';
   }
 
-  if (window.frontendConfig.ldapEnabled) {
-    localStorage.setItem(storageKey, JSON.stringify(queries));
-    onSuccess();
-    return Promise.resolve();
-  }
   const currentDB = getCurrentDB();
   try {
     await currentDB.route().request({

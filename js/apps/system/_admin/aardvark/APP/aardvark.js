@@ -70,12 +70,8 @@ router.get('/config.js', function (req, res) {
   const scriptName = req.get('x-script-name');
   const basePath = req.trustProxy && scriptName || '';
   const isEnterprise = internal.isEnterprise();
-  let ldapEnabled = false;
-  if (isEnterprise) {
-    if (internal.ldapEnabled()) {
-      ldapEnabled = true;
-    }
-  }
+  // hard-coded to false since 3.12
+  const ldapEnabled = false;
   res.send(
     `var frontendConfig = ${JSON.stringify({
       basePath: basePath,
