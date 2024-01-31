@@ -47,11 +47,11 @@ function BaseRequestSuite () {
   var buildUrl = function (append, base) {
     base = base === false ? '' : '/_admin/echo';
     append = append || '';
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + base + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + base + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + '/_not-there' + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + '/_not-there' + append;
   };
 
   return {
