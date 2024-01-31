@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { mutate } from "swr";
 import { getAardvarkRouteForCurrentDb } from "../../../utils/arangoClient";
-import { useQueryContext } from "../QueryContextProvider";
 import { QueryType } from "./useFetchUserSavedQueries";
 
 const useReadFile = () => {
