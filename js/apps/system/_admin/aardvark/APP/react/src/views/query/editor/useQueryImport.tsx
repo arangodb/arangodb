@@ -60,7 +60,6 @@ const uploadToServer = async ({
 };
 export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const { onSaveQueryList } = useQueryContext();
   const { onReadFile } = useReadFile();
   const handleSuccess = async () => {
     await mutate("/savedQueries");
