@@ -1,6 +1,5 @@
 import useSWR from "swr";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { getQueryStorageKey } from "../queryHelper";
 export type QueryType = {
   name: string;
   value: string;
@@ -11,7 +10,6 @@ export type QueryType = {
 };
 
 export const useFetchUserSavedQueries = () => {
-  const storageKey = getQueryStorageKey();
   const fetchUser = async () => {
     // so we need to fetch from localStorage
     const currentUser = window.App.currentUser || "root";

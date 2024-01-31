@@ -21,7 +21,6 @@ import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
 import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
-import { getQueryStorageKey } from "../queryHelper";
 import { AQLEditor } from "./AQLEditor";
 import { DeleteQueryModal } from "./DeleteQueryModal";
 import { ImportQueryModal } from "./ImportQueryModal";
@@ -294,7 +293,6 @@ const SavedQueryBottomBar = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
   const onDownload = () => {
-    const storageKey = getQueryStorageKey();
     download(`query/download/${window.App.currentUser || "root"}`);
   };
   return (
