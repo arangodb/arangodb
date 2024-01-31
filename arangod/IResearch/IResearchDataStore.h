@@ -45,12 +45,9 @@
 #include <filesystem>
 
 namespace arangodb {
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 namespace replication2::replicated_state::document {
 class DocumentStateShardHandler;
-}
-#endif
+}  // namespace replication2::replicated_state::document
 struct FlushSubscription;
 class DatabasePathFeature;
 class StorageEngine;
@@ -324,9 +321,8 @@ class IResearchDataStore {
  protected:
   friend struct CommitTask;
   friend struct ConsolidationTask;
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  friend class arangodb::replication2::replicated_state::document::DocumentStateShardHandler;
-#endif
+  friend class replication2::replicated_state::document::
+      DocumentStateShardHandler;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief the underlying iresearch data store
