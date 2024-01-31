@@ -2502,6 +2502,11 @@ void IResearchAnalyzerFeature::prepare() {
 
   // load all static analyzers
   _analyzers = getStaticAnalyzers();
+
+  // register analyzer functions
+  if (server().hasFeature<aql::AqlFunctionFeature>()) {
+    addFunctions(server().getFeature<aql::AqlFunctionFeature>());
+  }
 }
 
 Result IResearchAnalyzerFeature::removeFromCollection(
@@ -2788,11 +2793,6 @@ void IResearchAnalyzerFeature::start() {
     }
   }
 #endif
-  // register analyzer functions
-  if (server().hasFeature<aql::AqlFunctionFeature>()) {
-    addFunctions(server().getFeature<aql::AqlFunctionFeature>());
-  }
-
   if (server().hasFeature<ClusterFeature>() &&
       server().hasFeature<SchedulerFeature>() &&  // Mostly for tests without
                                                   // scheduler
