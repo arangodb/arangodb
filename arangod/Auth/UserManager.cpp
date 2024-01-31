@@ -619,7 +619,6 @@ VPackBuilder auth::UserManager::serializeUser(std::string const& user) {
 
 static Result RemoveUserInternal(ArangodServer& server,
                                  auth::User const& entry) {
-  TRI_ASSERT(!entry.key().empty());
   auto vocbase = getSystemDatabase(server);
 
   if (vocbase == nullptr) {
