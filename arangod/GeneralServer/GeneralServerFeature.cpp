@@ -157,14 +157,10 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
                   "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
                   "Body size of HTTP/2 requests");
-DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
-DECLARE_COUNTER(arangodb_vst_connections_total,
-                "Total number of VST connections");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
@@ -195,14 +191,10 @@ GeneralServerFeature::GeneralServerFeature(Server& server)
           arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_request_body_size_vst{})),
       _http1Connections(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_http1_connections_total{})),
       _http2Connections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_http2_connections_total{})),
-      _vstConnections(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_vst_connections_total{})) {
+          arangodb_http2_connections_total{})) {
   static_assert(
       Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
 

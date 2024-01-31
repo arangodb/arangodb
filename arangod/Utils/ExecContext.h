@@ -99,7 +99,7 @@ class ExecContext : public RequestContext {
 
   /// @brief Authentication level on database selected in the current
   ///        request scope. Should almost always contain something,
-  ///        if this thread originated in v8 or from HTTP / VST
+  ///        if this thread originated in v8 or from HTTP
   auth::Level databaseAuthLevel() const noexcept { return _databaseAuthLevel; }
 
   /// @brief returns true if auth level is above or equal `requested`

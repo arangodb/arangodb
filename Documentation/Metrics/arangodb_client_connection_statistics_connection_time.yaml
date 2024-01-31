@@ -16,4 +16,4 @@ description: |
   point when the connection was established until it was closed. Smaller
   numbers indicate that there is not a lot of load and/or that connections
   are not reused for multiple requests. Consider using keep-alive header
-  or HTTP/2 or VST.
+  or HTTP/2.

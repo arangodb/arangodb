@@ -76,19 +76,11 @@ function error_handlingSuite () {
       let cmd = "/_api/document//123456";
       let doc = arango.DELETE_RAW(cmd);
       
-      if (arango.protocol() === 'vst') {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_NOT_FOUND.code, doc);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_ARANGO_DATA_SOURCE_NOT_FOUND.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_NOT_FOUND.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      } else {
-        assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
-        assertTrue(doc.parsedBody['error']);
-        assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
-        assertEqual(doc.headers['content-type'], contentType);
-      }
+      assertEqual(doc.code, internal.errors.ERROR_HTTP_BAD_PARAMETER.code, doc);
+      assertTrue(doc.parsedBody['error']);
+      assertEqual(doc.parsedBody['errorNum'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.parsedBody['code'], internal.errors.ERROR_HTTP_BAD_PARAMETER.code);
+      assertEqual(doc.headers['content-type'], contentType);
     },
 
     test_returns_an_error_if_collection_identifier_is_unknown: function() {

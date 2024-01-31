@@ -215,8 +215,6 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/PathMatch.h
   Rest/Version.cpp
-  Rest/VstRequest.cpp
-  Rest/VstResponse.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp

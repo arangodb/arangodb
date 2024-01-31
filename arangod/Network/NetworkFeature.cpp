@@ -168,7 +168,7 @@ void NetworkFeature::collectOptions(
       "communication.",
       new BooleanParameter(&_verifyHosts));
 
-  std::unordered_set<std::string> protos = {"", "http", "http2", "h2", "vst"};
+  std::unordered_set<std::string> protos = {"", "http", "http2", "h2"};
 
   // starting with 3.9, we will hard-code the protocol for cluster-internal
   // communication
@@ -241,8 +241,6 @@ void NetworkFeature::prepare() {
     config.protocol = fuerte::ProtocolType::Http;
   } else if (_protocol == "http2" || _protocol == "h2") {
     config.protocol = fuerte::ProtocolType::Http2;
-  } else if (_protocol == "vst") {
-    config.protocol = fuerte::ProtocolType::Vst;
   }
 
   if (config.protocol != fuerte::ProtocolType::Http) {

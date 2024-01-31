@@ -52,24 +52,44 @@ RestBatchHandler::~RestBatchHandler() = default;
 RestStatus RestBatchHandler::execute() {
   _response->setAllowCompression(rest::ResponseCompressionType::kNoCompression);
 
-  switch (_response->transportType()) {
-    case Endpoint::TransportType::HTTP: {
-      return executeHttp();
-    }
-    case Endpoint::TransportType::VST:
-    default: {
-      return executeVst();
-    }
-  }
-  // should never get here
-  TRI_ASSERT(false);
-  return RestStatus::DONE;
-}
+  // extract the request type
+  auto const type = _request->requestType();
 
-RestStatus RestBatchHandler::executeVst() {
-  generateError(rest::ResponseCode::METHOD_NOT_ALLOWED, TRI_ERROR_NO_ERROR,
-                "The RestBatchHandler is not supported for this protocol!");
-  return RestStatus::DONE;
+  if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
+    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
+                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
+    return RestStatus::DONE;
+  }
+
+  // invalid content-type or boundary sent
+  if (!getBoundary(_boundary)) {
+    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
+                  "invalid content-type or boundary received");
+    return RestStatus::DONE;
+  }
+
+  LOG_TOPIC("b03fa", TRACE, arangodb::Logger::REPLICATION)
+      << "boundary of multipart-message is '" << _boundary << "'";
+
+  _errors = 0;
+
+  // create the response
+  resetResponse(rest::ResponseCode::OK);
+  _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
+
+  // http required here
+  std::string_view bodyStr = _request->rawPayload();
+
+  // setup some auxiliary structures to parse the multipart message
+  _multipartMessage =
+      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
+                       bodyStr.data() + bodyStr.size()};
+
+  _helper.message = _multipartMessage;
+  _helper.searchStart = _multipartMessage.messageStart;
+
+  // and wait for completion
+  return executeNextHandler() ? RestStatus::WAITING : RestStatus::DONE;
 }
 
 void RestBatchHandler::processSubHandlerResult(RestHandler const& handler) {
@@ -261,56 +281,11 @@ bool RestBatchHandler::executeNextHandler() {
   return true;
 }
 
-RestStatus RestBatchHandler::executeHttp() {
-  TRI_ASSERT(_response->transportType() == Endpoint::TransportType::HTTP);
-
-  // extract the request type
-  auto const type = _request->requestType();
-
-  if (type != rest::RequestType::POST && type != rest::RequestType::PUT) {
-    generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
-                  TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
-  }
-
-  // invalid content-type or boundary sent
-  if (!getBoundary(_boundary)) {
-    generateError(rest::ResponseCode::BAD, TRI_ERROR_HTTP_BAD_PARAMETER,
-                  "invalid content-type or boundary received");
-    return RestStatus::DONE;
-  }
-
-  LOG_TOPIC("b03fa", TRACE, arangodb::Logger::REPLICATION)
-      << "boundary of multipart-message is '" << _boundary << "'";
-
-  _errors = 0;
-
-  // create the response
-  resetResponse(rest::ResponseCode::OK);
-  _response->setContentType(_request->header(StaticStrings::ContentTypeHeader));
-
-  // http required here
-  std::string_view bodyStr = _request->rawPayload();
-
-  // setup some auxiliary structures to parse the multipart message
-  _multipartMessage =
-      MultipartMessage{_boundary.data(), _boundary.size(), bodyStr.data(),
-                       bodyStr.data() + bodyStr.size()};
-
-  _helper.message = _multipartMessage;
-  _helper.searchStart = _multipartMessage.messageStart;
-
-  // and wait for completion
-  return executeNextHandler() ? RestStatus::WAITING : RestStatus::DONE;
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief extract the boundary from the body of a multipart message
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestBatchHandler::getBoundaryBody(std::string& result) {
-  TRI_ASSERT(_response->transportType() == Endpoint::TransportType::HTTP);
-
   std::string_view bodyStr = _request->rawPayload();
   char const* p = bodyStr.data();
   char const* e = p + bodyStr.size();

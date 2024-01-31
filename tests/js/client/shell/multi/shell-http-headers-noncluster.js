@@ -36,11 +36,8 @@ function headersSingleSuite () {
     testSingle: function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.hasOwnProperty("headers"));
-      if (arango.protocol() !== 'vst') {
-        // VST does not send this header, never
-        assertTrue(result.headers.hasOwnProperty("server"), result);
-        assertEqual("ArangoDB", result.headers["server"]);
-      }
+      assertTrue(result.headers.hasOwnProperty("server"), result);
+      assertEqual("ArangoDB", result.headers["server"]);
     },
   };
 }
