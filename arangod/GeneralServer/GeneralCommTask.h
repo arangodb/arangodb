@@ -64,8 +64,6 @@ class GeneralCommTask : public CommTask {
 
   std::shared_ptr<AsioSocket<T>> _protocol;
 
-  GeneralServerFeature& _generalServerFeature;
-
   bool _reading;
   bool _writing;
 

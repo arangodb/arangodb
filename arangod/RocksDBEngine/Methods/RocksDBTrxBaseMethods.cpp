@@ -486,9 +486,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   TRI_IF_FAILURE("TransactionChaos::randomSync") {
     if (RandomGenerator::interval(uint32_t(1000)) > 950) {
-      auto& selector =
-          _state->vocbase().server().getFeature<EngineSelectorFeature>();
-      auto& engine = selector.engine<RocksDBEngine>();
+      auto& engine = _state->vocbase().engine<RocksDBEngine>();
       auto* sm = engine.settingsManager();
       if (sm) {
         sm->sync(/*force*/ true);
@@ -548,9 +546,7 @@ Result RocksDBTrxBaseMethods::doCommitImpl() {
 
   // wait for sync if required
   if (_state->waitForSync()) {
-    auto& selector =
-        _state->vocbase().server().getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine<RocksDBEngine>();
+    auto& engine = _state->vocbase().engine<RocksDBEngine>();
     if (engine.syncThread()) {
       // we do have a sync thread
       return engine.syncThread()->syncWal();

@@ -147,6 +147,7 @@ bool queueTimeViolated(GeneralRequest const& req) {
 
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
+      _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
       _auth(AuthenticationFeature::instance()) {
@@ -380,9 +381,7 @@ void CommTask::finishExecution(GeneralResponse& res,
   }
 
   // add "x-arango-queue-time-seconds" header
-  if (_server.server()
-          .getFeature<GeneralServerFeature>()
-          .returnQueueTimeHeader()) {
+  if (_generalServerFeature.returnQueueTimeHeader()) {
     TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
     res.setHeaderNC(
         StaticStrings::XArangoQueueTimeSeconds,
@@ -429,7 +428,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));
 
@@ -711,8 +710,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   if (jobId != nullptr) {
-    auto& jobManager =
-        _server.server().getFeature<GeneralServerFeature>().jobManager();
+    auto& jobManager = _generalServerFeature.jobManager();
     try {
       // This will throw if a soft shutdown is already going on on a
       // coordinator. But this can also throw if we have an
@@ -848,9 +846,8 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 
   // if the request asks to allow credentials, we'll check against the
   // configured allowed list of origins
-  auto const& gs = _server.server().getFeature<GeneralServerFeature>();
   std::vector<std::string> const& accessControlAllowOrigins =
-      gs.accessControlAllowOrigins();
+      _generalServerFeature.accessControlAllowOrigins();
 
   if (!accessControlAllowOrigins.empty()) {
     if (accessControlAllowOrigins[0] == "*") {
@@ -990,8 +987,7 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
   auto decode = [&](std::string const& header,
                     std::string const& encoding) -> Result {
     if (this->_auth->isActive() && !req.authenticated() &&
-        !_server.server()
-             .getFeature<GeneralServerFeature>()
+        !_generalServerFeature
              .handleContentEncodingForUnauthenticatedRequests()) {
       return {TRI_ERROR_FORBIDDEN,
               "support for handling Content-Encoding headers is turned off for "

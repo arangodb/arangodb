@@ -791,7 +791,7 @@ auto ensureIndexCoordinatorReplication2Inner(
     return collectionFromTarget.state();
   }
 
-  auto& engine = server.getFeature<EngineSelectorFeature>().engine();
+  auto& engine = collection.vocbase().engine();
   VPackSlice indexes = collectionFromTarget.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());
@@ -998,7 +998,7 @@ Result ensureIndexCoordinatorInner(LogicalCollection const& collection,
     return collectionFromPlan.state();
   }
 
-  auto& engine = server.getFeature<EngineSelectorFeature>().engine();
+  auto& engine = collection.vocbase().engine();
   VPackSlice indexes = collectionFromPlan.indexes();
   for (auto const& other : VPackArrayIterator(indexes)) {
     TRI_ASSERT(other.isObject());

@@ -1093,7 +1093,8 @@ AnalyzerPool::CacheType::ptr AnalyzerPool::get() const noexcept {
 }
 
 IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
-    : ArangodFeature{server, *this} {
+    : ArangodFeature{server, *this},
+      _databaseFeature(server.getFeature<arangodb::DatabaseFeature>()) {
   setOptional(true);
 #ifdef USE_V8
   startsAfter<application_features::V8FeaturePhase>();
@@ -1257,7 +1258,7 @@ Result IResearchAnalyzerFeature::emplaceAnalyzer(
   // validate analyzer name
   auto split = splitAnalyzerName(name);
 
-  bool extendedNames = server().getFeature<DatabaseFeature>().extendedNames();
+  bool extendedNames = _databaseFeature.extendedNames();
   if (auto res =
           AnalyzerNameValidator::validateName(extendedNames, split.second);
       res.fail()) {
@@ -1497,7 +1498,7 @@ Result IResearchAnalyzerFeature::removeAllAnalyzers(
       return cleanupResult;
     }
   }
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = vocbase.engine();
   TRI_ASSERT(!engine.inRecovery());
   if (!analyzerModificationTrx) {
     // no modification transaction. Just truncate
@@ -1611,7 +1612,7 @@ Result IResearchAnalyzerFeature::bulkEmplace(
       return res;
     }
 
-    auto& engine = server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = vocbase.engine();
     TRI_ASSERT(!engine.inRecovery());
 
     WRITE_LOCKER(lock, _mutex);
@@ -1981,9 +1982,8 @@ Result IResearchAnalyzerFeature::cleanupAnalyzersCollection(
               database, "'")};
     }
 
-    auto& dbFeature = server().getFeature<DatabaseFeature>();
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-    auto vocbase = dbFeature.useDatabase(database);
+    auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {};  // database might not have come up yet
@@ -2084,8 +2084,6 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
                          database, "'")};
   }
 
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-
   try {
     // '_analyzers'/'_lastLoad' can be asynchronously read
     WRITE_LOCKER(lock, _mutex);
@@ -2113,7 +2111,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
         }
       };
 
-      dbFeature.enumerateDatabases(visitor);
+      _databaseFeature.enumerateDatabases(visitor);
 
       // make copy since original removed
       containers::FlatHashSet<std::string> unseen;
@@ -2157,8 +2155,7 @@ Result IResearchAnalyzerFeature::loadAnalyzers(
     auto& engine = server().getFeature<EngineSelectorFeature>().engine();
     auto itr = _lastLoad.find(database);
 
-    auto vocbase = dbFeature.useDatabase(database);
-
+    auto vocbase = _databaseFeature.useDatabase(database);
     if (!vocbase) {
       if (engine.inRecovery()) {
         return {};  // database might not have come up yet
@@ -2457,8 +2454,7 @@ std::string IResearchAnalyzerFeature::normalize(
 
 AnalyzersRevision::Ptr IResearchAnalyzerFeature::getAnalyzersRevision(
     std::string_view vocbaseName, bool forceLoadPlan /* = false */) const {
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto vocbase = dbFeature.useDatabase(
+  auto vocbase = _databaseFeature.useDatabase(
       vocbaseName.empty() ? arangodb::StaticStrings::SystemDatabase
                           : vocbaseName);
   if (vocbase) {
@@ -2512,8 +2508,7 @@ void IResearchAnalyzerFeature::prepare() {
 Result IResearchAnalyzerFeature::removeFromCollection(
     std::string_view name, std::string_view vocbase,
     transaction::OperationOrigin operationOrigin) {
-  auto& dbFeature = server().getFeature<DatabaseFeature>();
-  auto voc = dbFeature.useDatabase(vocbase);
+  auto voc = _databaseFeature.useDatabase(vocbase);
   if (!voc) {
     return {
         TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -2686,9 +2681,7 @@ Result IResearchAnalyzerFeature::remove(
       }
       _analyzers.erase(itr);
     } else {
-      auto& dbFeature = server().getFeature<DatabaseFeature>();
-
-      auto vocbase = dbFeature.useDatabase(split.first);
+      auto vocbase = _databaseFeature.useDatabase(split.first);
 
       if (!vocbase) {
         return {TRI_ERROR_ARANGO_DATABASE_NOT_FOUND,
@@ -2831,8 +2824,6 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
   TRI_IF_FAILURE("FailStoreAnalyzer") { return {TRI_ERROR_DEBUG}; }
 
   try {
-    auto& dbFeature = server().getFeature<DatabaseFeature>();
-
     if (irs::IsNull(pool.type())) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat("failure to persist arangosearch analyzer '",
@@ -2850,7 +2841,7 @@ Result IResearchAnalyzerFeature::storeAnalyzer(
     }
 
     auto const split = splitAnalyzerName(pool.name());
-    auto vocbase = dbFeature.useDatabase(split.first);
+    auto vocbase = _databaseFeature.useDatabase(split.first);
 
     if (!vocbase) {
       return {TRI_ERROR_INTERNAL,

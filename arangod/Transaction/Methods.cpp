@@ -757,10 +757,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      StorageEngine& engine = this->_collection.vocbase()
-                                  .server()
-                                  .template getFeature<EngineSelectorFeature>()
-                                  .engine();
+      StorageEngine& engine = this->_collection.vocbase().engine();
 
       bool isMock = (engine.typeName() == "Mock");
 #else
@@ -1425,10 +1422,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      StorageEngine& engine = _collection.vocbase()
-                                  .server()
-                                  .getFeature<EngineSelectorFeature>()
-                                  .engine();
+      StorageEngine& engine = _collection.vocbase().engine();
 
       bool isMock = (engine.typeName() == "Mock");
 #else
@@ -3333,10 +3327,7 @@ Future<Result> Methods::replicateOperations(
 
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
+    auto& engine = vocbase().engine();
 
     return engine.autoRefillIndexCachesOnFollowers() &&
            ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||

@@ -31,6 +31,8 @@ struct TRI_vocbase_t;
 
 namespace arangodb {
 
+class StorageEngine;
+
 /// @brief replication applier for a single database
 class DatabaseReplicationApplier final : public ReplicationApplier {
   friend class DatabaseTailingSyncer;
