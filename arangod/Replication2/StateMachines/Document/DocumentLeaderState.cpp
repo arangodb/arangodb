@@ -663,11 +663,23 @@ auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
   });
 }
 
+// TODO There are some pieces missing:
+//      - The CreateIndexOperation should be forwarded to
+//        RocksDBCollection::createIndex, instead of being recreated there.
+//      - The LogIndex replicated during RocksDBCollection::createIndex should
+//        be returned here, so it can be released.
+//      - The future returned by RocksDBCollection::createIndex should also be
+//        propagated to here, so we don't block the thread.
 auto DocumentLeaderState::createIndex(
     ShardID shard, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
   auto sharedIndexInfo = VPackBuilder{indexInfo}.sharedSlice();
+  // Note that this ReplicatedOperation will only be used to call
+  // createIndex, but will not be replicated; instead, a new one will be created
+  // during RocksDBCollection::createIndex. It will actually be different,
+  // because it will work with a normalized `indexInfo` parameter; however, as
+  // that one is used for the index creation, it should not create any problems.
   auto op = ReplicatedOperation::buildCreateIndexOperation(
       shard, sharedIndexInfo, std::move(progress));
 
@@ -688,72 +700,24 @@ auto DocumentLeaderState::createIndex(
   //   If the undo operation is successful, there's no reason to crash
   //   the server.
 
-  auto localIndexCreation = Result{};
-  auto replicationFuture = _guardedData.doUnderLock(
-      [op = std::move(op), &localIndexCreation, self = shared_from_this()](
-          auto& data) mutable -> futures::Future<ResultT<LogIndex>> {
+  auto localIndexCreation = _guardedData.doUnderLock(
+      [op = std::move(op), self = shared_from_this()](auto& data) mutable {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
                         "Leader resigned prior to index creation"};
         }
 
-        localIndexCreation = data.transactionHandler->applyEntry(op);
-        if (localIndexCreation.fail()) {
-          return localIndexCreation;
-        }
-
-        return self->replicateOperation(
-            std::move(op),
-            ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+        return data.transactionHandler->applyEntry(std::move(op));
       });
   auto indexId = helpers::extractId(sharedIndexInfo.slice());
   TRI_ASSERT(indexId != IndexId::none() or localIndexCreation.fail());
-  return std::move(replicationFuture)
-      .thenValue([self = shared_from_this(),
-                  localIndexCreation = std::move(localIndexCreation), shard,
-                  indexId](auto&& result) mutable -> Result {
-        if (result.fail()) {
-          if (localIndexCreation.ok()) {
-            LOG_CTX("384bf", INFO, self->loggerContext)
-                << "CreateIndex operation was applied locally, but the "
-                   "leader failed to replicate it, will undo: "
-                << result.result();
+  if (localIndexCreation.fail()) {
+    return localIndexCreation;
+  }
 
-            self->_guardedData.doUnderLock([&self, shard,
-                                            indexId](auto& data) mutable {
-              if (data.didResign()) {
-                LOG_CTX("44bc0", ERR, self->loggerContext)
-                    << "The leader created an index locally, but then "
-                       "resigned, before it could replicate it. It is now "
-                       "unsafe to undo this operation, because this server "
-                       "might already be a follower. We'll attempt it, but "
-                       "note that it may have unwanted side effects.";
-              }
-
-              auto op =
-                  ReplicatedOperation::buildDropIndexOperation(shard, indexId);
-              auto undoRes = data.transactionHandler->applyEntry(op);
-              if (self->_errorHandler->handleOpResult(op, undoRes).fail()) {
-                LOG_CTX("6b460", FATAL, self->loggerContext)
-                    << "Failed to undo CreateIndex operation on the "
-                       "leader, after replication failure, undo result:"
-                    << undoRes;
-                TRI_ASSERT(false) << undoRes;
-                FATAL_ERROR_EXIT();
-              }
-            });
-          }
-          return result.result();
-        }
-
-        auto logIndex = result.get();
-        if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-          LOG_CTX("3deea", ERR, self->loggerContext)
-              << "Failed to call release on index " << logIndex << ": "
-              << releaseRes;
-        }
-        return {};
-      });
+  // We should release the log index now, but we don't have it. Shouldn't be a
+  // problem though, releasing the next log entry will release this with it.
+  return Result{};
 }
 
 auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
