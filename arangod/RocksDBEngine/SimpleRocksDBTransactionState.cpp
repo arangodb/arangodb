@@ -29,6 +29,7 @@
 #include "RocksDBEngine/Methods/RocksDBSingleOperationTrxMethods.h"
 #include "RocksDBEngine/Methods/RocksDBTrxMethods.h"
 #include "RocksDBEngine/RocksDBTransactionMethods.h"
+#include "StorageEngine/PhysicalCollection.h"
 
 using namespace arangodb;
 
@@ -94,7 +95,7 @@ void SimpleRocksDBTransactionState::maybeDisableIndexing() {
     if (!AccessMode::isWriteOrExclusive(trxCollection->accessType())) {
       continue;
     }
-    auto indexes = trxCollection->collection()->getIndexes();
+    auto indexes = trxCollection->collection()->getPhysical()->getAllIndexes();
     for (auto const& idx : indexes) {
       if (idx->type() == Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX) {
         // primary index is unique, but we can ignore it here.

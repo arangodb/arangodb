@@ -53,6 +53,7 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
@@ -214,7 +215,7 @@ struct MockGraphDatabase {
         vocbase.lookupCollection(name);
     TRI_ASSERT(coll != nullptr);    // no edge collection of this name
     TRI_ASSERT(coll->type() == 3);  // Is not an edge collection
-    for (auto const& idx : coll->getIndexes()) {
+    for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
       if (idx->type() == Index::TRI_IDX_TYPE_EDGE_INDEX) {
         return idx;
       }

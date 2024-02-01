@@ -265,13 +265,6 @@ class LogicalCollection : public LogicalDataSource {
   /// @brief flushes the current index selectivity estimates
   void flushClusterIndexEstimates();
 
-  /// @brief return all indexes of the collection
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
-
-  void getIndexesVPack(
-      velocypack::Builder&,
-      std::function<bool(Index const*, uint8_t&)> const& filter) const;
-
   /// @brief a method to skip certain documents in AQL write operations,
   /// this is only used in the Enterprise Edition for SmartGraphs
   virtual bool skipForAqlWrite(velocypack::Slice document,

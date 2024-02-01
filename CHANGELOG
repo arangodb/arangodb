@@ -1,6 +1,9 @@
 v3.10.14 (XXXX-XX-XX)
 ---------------------
 
+* BTS-1751: Strange error message when executing a query while creating an index
+  in the background.
+
 * Fix: we cannot update a link, but have to drop and recreate it. Until now,
   this new index had the same set of labels as the old one. However, on
   followers (and with replication2 also on the leader), the DropIndex and

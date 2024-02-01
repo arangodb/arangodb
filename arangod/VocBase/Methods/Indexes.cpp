@@ -39,6 +39,7 @@
 #include "Indexes/IndexFactory.h"
 #include "RestServer/DatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Hints.h"
@@ -144,15 +145,15 @@ arangodb::Result Indexes::getAll(
                    .getFeature<ClusterFeature>()
                    .clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner,
-                       [withHidden, flags](arangodb::Index const* idx,
-                                           decltype(flags)& indexFlags) {
-                         if (withHidden || !idx->isHidden()) {
-                           indexFlags = flags;
-                           return true;
-                         }
-                         return false;
-                       });
+    c->getPhysical()->getIndexesVPack(
+        tmpInner, [withHidden, flags](arangodb::Index const* idx,
+                                      decltype(flags)& indexFlags) {
+          if (withHidden || !idx->isHidden()) {
+            indexFlags = flags;
+            return true;
+          }
+          return false;
+        });
 
     tmp.openArray();
     for (VPackSlice s : VPackArrayIterator(tmpInner.slice())) {
@@ -192,10 +193,9 @@ arangodb::Result Indexes::getAll(
     }
 
     // get list of indexes
-    auto indexes = collection->getIndexes();
-
+    auto indexes = collection->getPhysical()->getAllIndexes();
     tmp.openArray(true);
-    for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
+    for (auto const& idx : indexes) {
       if (!withHidden && idx->isHidden()) {
         continue;
       }

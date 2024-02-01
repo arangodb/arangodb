@@ -50,6 +50,8 @@
 #include <velocypack/Iterator.h>
 #include <velocypack/Slice.h>
 
+#include <algorithm>
+
 namespace arangodb {
 
 PhysicalCollection::PhysicalCollection(LogicalCollection& collection,
@@ -194,10 +196,31 @@ void PhysicalCollection::removeRevisionTreeBlocker(TransactionId) {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-/// @brief hands out a list of indexes
-std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes() const {
+/// @brief get list of all indexes. this includes in-progress indexes and thus
+/// should be used with care
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getAllIndexes() const {
   RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
   return {_indexes.begin(), _indexes.end()};
+}
+
+/// @brief get a list of "ready" indexes, that means all indexes which are
+/// not "in progress" anymore
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getReadyIndexes()
+    const {
+  return getIndexes([](auto const& idx) { return idx.inProgress(); });
+}
+
+/// @brief get a list of indexes for which the filter function returns false
+std::vector<std::shared_ptr<Index>> PhysicalCollection::getIndexes(
+    std::function<bool(Index const&)> const& filter) const {
+  std::vector<std::shared_ptr<Index>> result;
+  RECURSIVE_READ_LOCKER(_indexesLock, _indexesLockWriteOwner);
+  std::copy_if(_indexes.begin(), _indexes.end(), std::back_inserter(result),
+               [&](auto const& idx) {
+                 TRI_ASSERT(idx != nullptr);
+                 return !filter(*idx);
+               });
+  return result;
 }
 
 void PhysicalCollection::getIndexesVPack(

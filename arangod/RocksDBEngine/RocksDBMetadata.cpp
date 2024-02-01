@@ -41,6 +41,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -493,7 +494,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimatorType* est = idx->estimator();
@@ -645,7 +646,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   }
 
   // Step 3. load the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index> const& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {

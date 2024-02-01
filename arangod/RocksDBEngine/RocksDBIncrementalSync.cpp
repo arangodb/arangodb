@@ -434,7 +434,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // determine number of unique indexes. we may need it later
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : coll->getIndexes()) {
+    for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
