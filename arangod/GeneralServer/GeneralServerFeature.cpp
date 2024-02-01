@@ -452,15 +452,6 @@ void GeneralServerFeature::prepare() {
     _enableTelemetrics = false;
   }
 
-  if (!server().options()->processingResult().touched(
-          "http-return-queue-time-header") &&
-      (ServerState::instance()->isAgent() ||
-       ServerState::instance()->isDBServer())) {
-    // turn off returning queue time response header if not explicitly
-    // requested. this saves traffic for each response of agents and DB servers
-    _returnQueueTimeHeader = false;
-  }
-
   _jobManager = std::make_unique<AsyncJobManager>();
 
   // create an initial, very stripped-down RestHandlerFactory.

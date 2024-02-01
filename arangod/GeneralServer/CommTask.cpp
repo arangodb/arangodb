@@ -150,7 +150,8 @@ CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
       _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
-      _auth(AuthenticationFeature::instance()) {
+      _auth(AuthenticationFeature::instance()),
+      _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics.SET_START();
 }
@@ -172,16 +173,28 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
 
-  if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
-    bool found;
-    std::string const& source =
-        req.header(StaticStrings::ClusterCommSource, found);
-    if (found) {  // log request source in cluster for debugging
-      LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
-          << "\"request-source\",\"" << (void*)this << "\",\"" << source
-          << "\"";
+  _requestSource = req.header(StaticStrings::ClusterCommSource);
+  LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
+      << "\"request-source\",\"" << (void*)this << "\",\"" << _requestSource
+      << "\"";
+
+  _isUserRequest = std::invoke([&]() {
+    auto role = ServerState::instance()->getRole();
+    if (ServerState::isSingleServer(role)) {
+      // single server is always user-facing
+      return true;
     }
-  }
+    if (ServerState::isAgent(role) || ServerState::isDBServer(role)) {
+      // agents and DB servers are never user-facing
+      return false;
+    }
+
+    TRI_ASSERT(ServerState::isCoordinator(role));
+    // coordinators are only user-facing if the request is not a
+    // cluster-internal request
+    return !ServerState::isCoordinatorId(_requestSource) &&
+           !ServerState::isDBServerId(_requestSource);
+  });
 
   // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
@@ -340,8 +353,9 @@ CommTask::Flow CommTask::prepareExecution(
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
   if (res.transportType() == Endpoint::TransportType::HTTP &&
-      ServerState::instance()->isSingleServerOrCoordinator()) {
-    // CORS response handling
+      this->_isUserRequest) {
+    // CORS response handling - only needed on user facing coordinators
+    // or single servers
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
       // access-control-allow-origin header now
@@ -378,17 +392,17 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
     res.setHeaderNCIfNotSet(StaticStrings::HSTS,
                             "max-age=31536000 ; includeSubDomains");
-  }
 
-  // add "x-arango-queue-time-seconds" header
-  if (_generalServerFeature.returnQueueTimeHeader()) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    res.setHeaderNC(
-        StaticStrings::XArangoQueueTimeSeconds,
-        std::to_string(
-            static_cast<double>(
-                SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
-            1000.0));
+    // add "x-arango-queue-time-seconds" header
+    if (_generalServerFeature.returnQueueTimeHeader()) {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      res.setHeaderNC(
+          StaticStrings::XArangoQueueTimeSeconds,
+          std::to_string(
+              static_cast<double>(SchedulerFeature::SCHEDULER
+                                      ->getLastLowPriorityDequeueTime()) /
+              1000.0));
+    }
   }
 }
 
