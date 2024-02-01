@@ -61,8 +61,8 @@ const waitFor = function (checkFn, maxTries = 240, onErrorCallback) {
   }
 };
 
-const readAgencyValueAt = function (key) {
-  const response = clientHelper.agency.get(key);
+const readAgencyValueAt = function (key, jwtBearerToken) {
+  const response = clientHelper.agency.get(key, jwtBearerToken);
   const path = ['arango', ...key.split('/').filter(i => i)];
   let result = response;
   for (const p of path) {
@@ -695,13 +695,13 @@ const dumpLogHead = function (logId, limit=1000) {
   return log.head(limit);
 };
 
-const getShardsToLogsMapping = function (dbName, colId) {
-  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`);
+const getShardsToLogsMapping = function (dbName, colId, jwtBearerToken) {
+  const colPlan = readAgencyValueAt(`Plan/Collections/${dbName}/${colId}`, jwtBearerToken);
   let mapping = {};
   if (colPlan.hasOwnProperty("groupId")) {
     const groupId = colPlan.groupId;
     const shards = colPlan.shardsR2;
-    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`);
+    const colGroup = readAgencyValueAt(`Plan/CollectionGroups/${dbName}/${groupId}`, jwtBearerToken);
     const shardSheaves = colGroup.shardSheaves;
     for (let idx = 0; idx < shards.length; ++idx) {
       mapping[shards[idx]] = shardSheaves[idx].replicatedLog;
