@@ -111,7 +111,8 @@ IResearchDataStore::Stats IResearchLinkCoordinator::stats() const {
   auto labels = absl::StrCat(  // clang-format off
       "db=\"", getDbName(), "\","
       "view=\"", getViewId(), "\","
-      "collection=\"", getCollectionName(), "\"");  // clang-format on
+      "collection=\"", getCollectionName(), "\","
+      "index_id=\"", static_cast<Index const&>(*this).id().id(), "\"");  // clang-format on
   return {
       metrics.get<std::uint64_t>("arangodb_search_num_docs", labels),
       metrics.get<std::uint64_t>("arangodb_search_num_live_docs", labels),

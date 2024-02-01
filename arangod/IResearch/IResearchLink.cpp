@@ -99,15 +99,17 @@ T getMetric(IResearchLink const& link) {
   metric.addLabel("db", link.getDbName());
   metric.addLabel("view", link.getViewId());
   metric.addLabel("collection", link.getCollectionName());
+  metric.addLabel("index_id", std::to_string(link.id().id()));
   metric.addLabel("shard", link.getShardName());
   return metric;
 }
 
 std::string getLabels(IResearchLink const& link) {
-  return "db=\"" + link.getDbName() +                     //
-         "\",view=\"" + link.getViewId() +                //
-         "\",collection=\"" + link.getCollectionName() +  //
-         "\",shard=\"" + link.getShardName() + "\"";
+  return absl::StrCat("db=\"", link.getDbName(),                     //
+                      "\",view=\"", link.getViewId(),                //
+                      "\",collection=\"", link.getCollectionName(),  //
+                      "\",index_id=\"", link.id().id(),              //
+                      "\",shard=\"", link.getShardName(), "\"");
 }
 
 Result linkWideCluster(LogicalCollection const& logical, IResearchView* view) {
