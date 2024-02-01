@@ -2521,7 +2521,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics1) {
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
     auto iid = static_cast<unsigned long long>(_link->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[2000];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2596,7 +2596,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
     auto iid = static_cast<unsigned long long>(_link->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[2000];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2635,7 +2635,7 @@ TEST_F(IResearchLinkMetricsTest, WriteAndMetrics2) {
   {
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
     auto iid = static_cast<unsigned long long>(_link->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[2000];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2674,7 +2674,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
     auto iid = static_cast<unsigned long long>(_link->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[2000];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
@@ -2702,7 +2702,7 @@ TEST_F(IResearchLinkMetricsTest, LinkAndMetics) {
 
     auto cid = static_cast<unsigned long long>(_logicalCollection->id().id());
     auto iid = static_cast<unsigned long long>(_link->id().id());
-    char expectedData[1000];  // clang-format off
+    char expectedData[2000];  // clang-format off
     std::sprintf(expectedData,
       "# HELP arangodb_search_num_docs Number of documents\n"
       "# TYPE arangodb_search_num_docs gauge\n"
