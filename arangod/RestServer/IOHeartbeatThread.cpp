@@ -50,8 +50,10 @@ DECLARE_COUNTER(arangodb_ioheartbeat_delays_total,
 /// operation on the database volume regularly. We need visibility in
 /// production if IO is slow or not possible at all.
 IOHeartbeatThread::IOHeartbeatThread(Server& server,
-                                     metrics::MetricsFeature& metricsFeature)
+                                     metrics::MetricsFeature& metricsFeature,
+                                     DatabasePathFeature& databasePathFeature)
     : ServerThread<ArangodServer>(server, "IOHeartbeat"),
+      _databasePathFeature(databasePathFeature),
       _exeTimeHistogram(metricsFeature.add(arangodb_ioheartbeat_duration{})),
       _failures(metricsFeature.add(arangodb_ioheartbeat_failures_total{})),
       _delays(metricsFeature.add(arangodb_ioheartbeat_delays_total{})) {}
@@ -59,9 +61,8 @@ IOHeartbeatThread::IOHeartbeatThread(Server& server,
 IOHeartbeatThread::~IOHeartbeatThread() { shutdown(); }
 
 void IOHeartbeatThread::run() {
-  auto& databasePathFeature = server().getFeature<DatabasePathFeature>();
   std::string testFilePath = basics::FileUtils::buildFilename(
-      databasePathFeature.directory(), "TestFileIOHeartbeat");
+      _databasePathFeature.directory(), "TestFileIOHeartbeat");
   std::string testFileContent = "This is just an I/O test.\n";
 
   LOG_TOPIC("66665", DEBUG, Logger::ENGINES) << "IOHeartbeatThread: running...";

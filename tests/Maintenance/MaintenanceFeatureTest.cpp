@@ -37,6 +37,7 @@
 #include "Cluster/ClusterTypes.h"
 #include "Metrics/MetricsFeature.h"
 #include "Mocks/Servers.h"
+#include "Replication/ReplicationFeature.h"
 #include "RestServer/UpgradeFeature.h"
 
 #include "MaintenanceFeatureMock.h"
@@ -197,17 +198,20 @@ class MaintenanceFeatureTestUnthreaded : public ::testing::Test {
   std::chrono::system_clock::time_point noTime;
   MaintenanceFeatureTestUnthreaded()
       : baseTime(std::chrono::system_clock::now()) {}
-};
 
-TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
+  void SetUp() override {
+    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+        std::true_type{});
+    as.addFeature<arangodb::metrics::MetricsFeature>();
+  }
+
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::true_type{});
+  arangodb::ArangodServer as{po, nullptr};
+};
 
+TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -236,14 +240,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_ok) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
-
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -275,13 +271,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_0_times_fail) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -312,13 +301,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_ok) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -352,13 +334,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_1_time_fail) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -391,13 +366,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_2_times_ok) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -430,13 +398,6 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_ok) {
 }
 
 TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
   TestMaintenanceFeature tf(as);
   tf.setSecondsActionsBlock(0);  // disable retry wait for now
 
@@ -469,16 +430,20 @@ TEST_F(MaintenanceFeatureTestUnthreaded, iterate_action_100_times_fail) {
               tf._recentAction->getDoneTime());
 }
 
-TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
-  std::vector<Expected> pre_thread, post_thread;
-
+struct MaintenanceFeatureTestThreaded : ::testing::Test {
   std::shared_ptr<arangodb::options::ProgramOptions> po =
       std::make_shared<arangodb::options::ProgramOptions>(
           "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+  arangodb::ArangodServer as{po, nullptr};
+
+  void SetUp() override {
+    as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
+        std::false_type{});
+    as.addFeature<arangodb::metrics::MetricsFeature>();
+  }
+};
+
+TEST_F(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -506,6 +471,8 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
   ASSERT_TRUE(tf._recentAction->result().ok());
+
+  std::vector<Expected> pre_thread, post_thread;
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 1, FAILED, 100});
 
@@ -558,16 +525,7 @@ TEST(MaintenanceFeatureTestThreaded, populate_action_queue_and_validate) {
 #endif
 }
 
-TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
-  std::vector<Expected> pre_thread, post_thread;
-
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -595,6 +553,8 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
   ASSERT_TRUE(tf._recentAction->result().ok());
+
+  std::vector<Expected> pre_thread, post_thread;
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 0, COMPLETE, 100});
   // The following is somehow expected, but it is not possible since we
@@ -623,16 +583,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_preaction) {
 #endif
 }
 
-TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
-  std::vector<Expected> pre_thread, post_thread;
-
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+TEST_F(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -660,6 +611,7 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
   ASSERT_TRUE(tf._recentAction->result().ok());
+  std::vector<Expected> pre_thread, post_thread;
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 0, COMPLETE, 100});
   // The following is somehow expected, but it is not possible since we
@@ -688,18 +640,8 @@ TEST(MaintenanceFeatureTestThreaded, action_that_generates_a_postaction) {
 #endif
 }
 
-TEST(MaintenanceFeatureTestThreaded,
-     priority_queue_should_be_able_to_process_fast_tracked_action) {
-  std::vector<Expected> pre_thread, post_thread;
-
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+TEST_F(MaintenanceFeatureTestThreaded,
+       priority_queue_should_be_able_to_process_fast_tracked_action) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -741,16 +683,7 @@ TEST(MaintenanceFeatureTestThreaded,
 #endif
 }
 
-TEST(MaintenanceFeatureTestThreaded, action_delete) {
-  std::vector<Expected> pre_thread, post_thread;
-
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+TEST_F(MaintenanceFeatureTestThreaded, action_delete) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -778,6 +711,7 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
   ASSERT_TRUE(tf._recentAction->result().ok());
+  std::vector<Expected> pre_thread, post_thread;
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 0, FAILED, 0});
 
@@ -803,17 +737,8 @@ TEST(MaintenanceFeatureTestThreaded, action_delete) {
 #endif
 }
 
-TEST(MaintenanceFeatureTestThreaded,
-     populate_action_queue_reschedule_and_validate) {
-  std::vector<Expected> pre_thread, post_thread;
-
-  std::shared_ptr<arangodb::options::ProgramOptions> po =
-      std::make_shared<arangodb::options::ProgramOptions>(
-          "test", std::string(), std::string(), "path");
-  arangodb::ArangodServer as(po, nullptr);
-  as.addFeature<arangodb::metrics::MetricsFeature>();
-  as.addFeature<arangodb::application_features::GreetingsFeaturePhase>(
-      std::false_type{});
+TEST_F(MaintenanceFeatureTestThreaded,
+       populate_action_queue_reschedule_and_validate) {
   TestMaintenanceFeature& tf =
       as.addFeature<arangodb::MaintenanceFeature, TestMaintenanceFeature>();
 
@@ -849,6 +774,7 @@ TEST(MaintenanceFeatureTestThreaded,
   ASSERT_TRUE(
       result.ok());  // has not executed, ok() is about parse and list add
   ASSERT_TRUE(tf._recentAction->result().ok());
+  std::vector<Expected> pre_thread, post_thread;
   pre_thread.push_back({1, 0, READY, 0});
   post_thread.push_back({1, 1, FAILED, 1});
   post_thread.push_back({2, 1, FAILED, 1});

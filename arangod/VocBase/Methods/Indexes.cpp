@@ -174,10 +174,7 @@ futures::Future<arangodb::Result> Indexes::getIndex(
   }
 
   if (hasName && !name.empty()) {
-    bool extendedNames = collection.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNames();
+    bool extendedNames = collection.vocbase().extendedNames();
     if (auto res = IndexNameValidator::validateName(extendedNames, name);
         res.fail()) {
       co_return res;
@@ -492,10 +489,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
   }
 
   VPackBuilder normalized;
-  StorageEngine& engine = collection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
       input, normalized, create, collection.vocbase());
 
@@ -659,10 +653,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   // reset the collection identifier
   std::string collectionName;
 
-  bool extendedNames = collection.vocbase()
-                           .server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNames();
+  bool extendedNames = collection.vocbase().extendedNames();
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {

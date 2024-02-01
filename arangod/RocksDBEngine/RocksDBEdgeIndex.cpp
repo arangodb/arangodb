@@ -268,12 +268,9 @@ class RocksDBEdgeIndexLookupIterator final : public IndexIterator {
     _resourceMonitor.decreaseMemoryUsage(_memoryUsage);
 
     // report compression metrics to storage engine
-    _collection->vocbase()
-        .server()
-        .getFeature<EngineSelectorFeature>()
-        .engine<RocksDBEngine>()
-        .addCacheMetrics(_totalCachedSizeInitial, _totalCachedSizeEffective,
-                         _totalInserts, _totalCompressed, _totalEmptyInserts);
+    _collection->vocbase().engine<RocksDBEngine>().addCacheMetrics(
+        _totalCachedSizeInitial, _totalCachedSizeEffective, _totalInserts,
+        _totalCompressed, _totalEmptyInserts);
   }
 
   std::string_view typeName() const noexcept final {
@@ -728,10 +725,7 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
               .getFeature<CacheManagerFeature>()
               .manager(),
           /*engine*/
-          collection.vocbase()
-              .server()
-              .getFeature<EngineSelectorFeature>()
-              .engine<RocksDBEngine>()),
+          collection.vocbase().engine<RocksDBEngine>()),
       _directionAttr(attr),
       _isFromIndex(attr == StaticStrings::FromString),
       _forceCacheRefill(collection.vocbase()
@@ -749,8 +743,6 @@ RocksDBEdgeIndex::RocksDBEdgeIndex(IndexId iid, LogicalCollection& collection,
     // We activate the estimator only on DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &collection.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
@@ -1181,12 +1173,9 @@ void RocksDBEdgeIndex::warmupInternal(transaction::Methods* trx,
   LOG_TOPIC("99a29", DEBUG, Logger::ENGINES) << "loaded n: " << n;
 
   // report compression metrics to storage engine
-  _collection.vocbase()
-      .server()
-      .getFeature<EngineSelectorFeature>()
-      .engine<RocksDBEngine>()
-      .addCacheMetrics(totalCachedSizeInitial, totalCachedSizeEffective,
-                       totalInserts, totalCompressed, /*totalEmpty*/ 0);
+  _collection.vocbase().engine<RocksDBEngine>().addCacheMetrics(
+      totalCachedSizeInitial, totalCachedSizeEffective, totalInserts,
+      totalCompressed, /*totalEmpty*/ 0);
 }
 
 // ===================== Helpers ==================

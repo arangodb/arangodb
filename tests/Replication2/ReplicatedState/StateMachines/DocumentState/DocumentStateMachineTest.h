@@ -96,7 +96,7 @@ struct DocumentStateMachineTest : testing::Test {
     using namespace replicated_state::document;
 
     return DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
-        op, TransactionId{tid}, shardId, velocypack::SharedSlice())};
+        op, TransactionId{tid}, shardId, velocypack::SharedSlice(), "root")};
   }
 
   auto createRealTransactionHandler()

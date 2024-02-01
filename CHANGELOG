@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-320: Database name maximum length validation during input.
+
 * BTS-1733: prevent dropping of collection if the collection is part of an
   existing graph.
   This PR prevents the unintentional dropping of collections that are part of

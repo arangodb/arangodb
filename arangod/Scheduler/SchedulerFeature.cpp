@@ -95,9 +95,11 @@ struct SchedulerFeature::AsioHandler {
   std::shared_ptr<asio_ns::signal_set> _hangupSignals;
 };
 
-SchedulerFeature::SchedulerFeature(Server& server)
+SchedulerFeature::SchedulerFeature(Server& server,
+                                   metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _scheduler(nullptr),
+      _metricsFeature(metrics),
       _asioHandler(std::make_unique<AsioHandler>()) {
   setOptional(false);
   startsAfter<GreetingsFeaturePhase>();
@@ -348,7 +350,8 @@ void SchedulerFeature::prepare() {
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads);
+      _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
+      _metricsFeature);
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif
