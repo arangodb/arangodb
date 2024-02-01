@@ -13,7 +13,7 @@ v3.10.14 (XXXX-XX-XX)
   To avoid this, we add a new `indexId` label to the metric to make it unique.
 
 
-v3.10.13 (XXXX-XX-XX)
+v3.10.13 (2024-01-26)
 ---------------------
 
 * Reduce default amount of per-collection document removals by TTL background 
