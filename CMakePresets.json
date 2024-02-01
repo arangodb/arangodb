@@ -150,7 +150,7 @@
       "inherits": [
         "pr",
         "community",
-				"no-v8"
+        "no-v8"
       ],
       "displayName": "PR Build ArangoDB Community Edition (without V8)"
     },
@@ -167,7 +167,7 @@
       "inherits": [
         "pr",
         "enterprise",
-				"no-v8"
+        "no-v8"
       ],
       "displayName": "PR Build ArangoDB Enterprise Edition (without V8)"
     },
@@ -219,10 +219,26 @@
       "displayName": "Build ArangoDB Community Edition (TSAN Build)"
     },
     {
+      "name": "community-pr-tsan",
+      "inherits": [
+        "tsan",
+        "community-pr"
+      ],
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
+    },
+    {
       "name": "enterprise-developer-tsan",
       "inherits": [
         "tsan",
         "enterprise-developer"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
+    },
+    {
+      "name": "enterprise-pr-tsan",
+      "inherits": [
+        "tsan",
+        "enterprise-pr"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
@@ -235,10 +251,26 @@
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
     },
     {
+      "name": "community-pr-asan-ubsan",
+      "inherits": [
+        "asan-ubsan",
+        "community-pr"
+      ],
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
+    },
+    {
       "name": "enterprise-developer-asan-ubsan",
       "inherits": [
         "asan-ubsan",
         "enterprise-developer"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "enterprise-pr-asan-ubsan",
+      "inherits": [
+        "asan-ubsan",
+        "enterprise-pr"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
@@ -309,16 +341,32 @@
       "configurePreset": "community-developer-tsan"
     },
     {
+      "name": "community-pr-tsan",
+      "configurePreset": "community-pr-tsan"
+    },
+    {
       "name": "enterprise-developer-tsan",
       "configurePreset": "enterprise-developer-tsan"
+    },
+    {
+      "name": "enterprise-pr-tsan",
+      "configurePreset": "enterprise-pr-tsan"
     },
     {
       "name": "community-developer-asan-ubsan",
       "configurePreset": "community-developer-asan-ubsan"
     },
     {
+      "name": "community-pr-asan-ubsan",
+      "configurePreset": "community-pr-asan-ubsan"
+    },
+    {
       "name": "enterprise-developer-asan-ubsan",
       "configurePreset": "enterprise-developer-asan-ubsan"
+    },
+    {
+      "name": "enterprise-pr-asan-ubsan",
+      "configurePreset": "enterprise-pr-asan-ubsan"
     },
     {
       "name": "community-developer-coverage",
