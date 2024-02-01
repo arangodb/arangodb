@@ -339,6 +339,8 @@ def add_cppcheck_job(workflow, build_job):
 def add_build_job(workflow, build_config, overrides=None):
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
+    if build_config.sanitizer != "":
+        preset += f"-{build_config.sanitizer}"
     suffix = "" if build_config.sanitizer == "" else f"-{build_config.sanitizer}"
     name = f"build-{edition}-{build_config.arch}{suffix}"
     params = {
