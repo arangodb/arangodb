@@ -52,6 +52,8 @@
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb::application_features;
 using namespace arangodb::velocypack;
 using namespace std::chrono;
@@ -845,7 +847,9 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   // Send request
   VPackBufferUInt8 buffer;
-  buffer.append(VPackSlice::emptyArraySlice().begin(), 1);
+  VPackBuilder builder(buffer);
+  builder.add(VPackSlice::emptyArraySlice());
+
   auto ac = AgentCallback{this, followerId, 0, 0};
 
   network::RequestOptions reqOpts;
@@ -887,7 +891,7 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
   diff = TRI_microtime() - now;
   if (diff > 0.01) {
     LOG_TOPIC("cfb7b", DEBUG, Logger::AGENCY)
-        << "Logging of a line took more than 1/100 of a second, this is bad:"
+        << "Logging of a line took more than 1/100 of a second, this is bad: "
         << diff;
   }
 }
@@ -2006,8 +2010,8 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   if (!slice.isObject()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_AGENCY_MALFORMED_GOSSIP_MESSAGE,
-        std::string("Gossip message must be an object. Incoming type is ") +
-            slice.typeName());
+        absl::StrCat("Gossip message must be an object. Incoming type is ",
+                     slice.typeName()));
   }
 
   if (slice.hasKey(StaticStrings::Error)) {
@@ -2201,10 +2205,6 @@ query_t Agent::gossip(VPackSlice slice, bool isCallback, size_t version) {
   }
 
   return out;
-}
-
-void Agent::resetRAFTTimes(double minTimeout, double maxTimeout) {
-  _config.pingTimes(minTimeout, maxTimeout);
 }
 
 void Agent::ready(bool b) {

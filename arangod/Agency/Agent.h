@@ -281,9 +281,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
   /// @brief Set readyness for RAFT
   void ready(bool b);
 
-  /// @brief Reset RAFT timeout intervals
-  void resetRAFTTimes(double minTimeout, double maxTimeout);
-
   /// @brief How long back did I take over leadership, result in seconds
   int64_t leaderFor() const;
 

@@ -1103,7 +1103,8 @@ void HeartbeatThread::sendServerStateAsync() {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
           server().getFeature<EngineSelectorFeature>().engine().healthCheck();
-      hd.toVelocyPack(builder);
+      // intentionally dont transmit details so we can save a bit of traffic
+      hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
     builder.close();
