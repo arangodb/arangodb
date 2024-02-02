@@ -22,6 +22,7 @@ export const WildcardConfig = ({
           isDisabled={isDisabled}
           name={`${basePropertiesPath}.ngramSize`}
           label="Ngram size"
+          inputProps={{ type: "number" }}
         />
       </Grid>
       <AnalyzerField name={`${basePropertiesPath}.analyzer`} />

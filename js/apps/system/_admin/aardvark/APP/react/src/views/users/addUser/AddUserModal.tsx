@@ -13,6 +13,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { CreateUserValues } from "./CreateUser.types";
 
 const addUserFields = {
@@ -96,16 +97,16 @@ const putUser = async ({
     const currentDB = getCurrentDB();
     const route = currentDB.route("_api/user");
     const info = await route.post(userOptions);
-    window.arangoHelper.arangoNotification(
-      "User",
-      `Successfully created the user: ${userOptions.user}`
-    );
+    notifySuccess(`Successfully created the user: ${userOptions.user}`);
     mutate("/users");
     onSuccess();
     return info;
   } catch (e: any) {
-    const errorMessage = e.response.body.errorMessage;
-    window.arangoHelper.arangoError("Could not create user", errorMessage);
+    const errorMessage = e?.response?.body?.errorMessage || e.message;
+    const finalMessage = errorMessage
+      ? `Could not create user: ${errorMessage}`
+      : `Could not create user`;
+    notifyError(finalMessage);
   }
 };
 

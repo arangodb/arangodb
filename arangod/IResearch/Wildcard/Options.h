@@ -52,7 +52,6 @@ struct Options {
 
   // TODO(MBkkt) implement this when we will make filter caching
   bool operator==(const Options& rhs) const noexcept { return false; }
-  size_t hash() const noexcept { return 0; }
 
   Options() noexcept = default;
   Options(Options&&) noexcept = default;

@@ -52,9 +52,7 @@ futures::Future<Result> SimpleRocksDBTransactionState::beginTransaction(
     co_return res;
   }
 
-  auto& selector = vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = vocbase().engine<RocksDBEngine>().db();
 
   TRI_ASSERT(_rocksMethods == nullptr);
 
@@ -229,11 +227,7 @@ SimpleRocksDBTransactionState::createTransactionCollection(
 }
 
 rocksdb::SequenceNumber SimpleRocksDBTransactionState::prepare() {
-  auto& engine = vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db = vocbase().engine<RocksDBEngine>().db();
 
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
 

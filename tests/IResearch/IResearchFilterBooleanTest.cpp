@@ -196,7 +196,7 @@ TEST_F(IResearchFilterBooleanTest, Ternary) {
                               arangodb::aql::AqlValueHintInt{1})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -1404,7 +1404,7 @@ TEST_F(IResearchFilterBooleanTest, UnaryNot) {
   // array in expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER not [] == '1' RETURN d",

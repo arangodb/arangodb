@@ -197,7 +197,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "LET x={} FOR d IN collection FILTER x.a.b RETURN d",
@@ -212,7 +212,7 @@ TEST_F(IResearchFilterFunctionTest, AttributeAccess) {
     ctx.vars.emplace("x", arangodb::aql::AqlValue(obj->slice()));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -290,7 +290,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // string empty value == false
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN collection FILTER '' RETURN d",
                         expected);
@@ -302,7 +302,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     ctx.vars.emplace("x", arangodb::aql::AqlValue(arangodb::aql::AqlValue("")));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "LET x='' FOR d IN collection FILTER x RETURN d",
@@ -335,7 +335,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // false
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN collection FILTER false RETURN d",
                         expected);
@@ -348,7 +348,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
                               arangodb::aql::AqlValueHintBool{false})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "LET x=false FOR d IN collection FILTER x RETURN d",
@@ -358,7 +358,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // null == value
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN collection FILTER null RETURN d",
                         expected);
@@ -390,7 +390,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // zero numeric value
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0 RETURN d",
                         expected);
@@ -403,7 +403,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
                               arangodb::aql::AqlValueHintInt{0})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "LET x=0 FOR d IN collection FILTER x RETURN d",
@@ -413,7 +413,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
   // zero floating value
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN collection FILTER 0.0 RETURN d",
                         expected);
@@ -426,7 +426,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
                               arangodb::aql::AqlValueHintDouble{0.0})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "LET x=0.0 FOR d IN collection FILTER x RETURN d",
@@ -536,7 +536,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
         "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(), "LET numVal=2 FOR d IN collection FILTER numVal-2 RETURN d",
@@ -550,7 +550,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
         "numVal", arangodb::aql::AqlValue(arangodb::aql::AqlValueHintInt(2)));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -566,7 +566,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
 
     irs::Or expected;
     auto& root = expected.add<irs::And>();
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
     root.add<irs::all>();
 
     assertFilterSuccess(
@@ -606,7 +606,7 @@ TEST_F(IResearchFilterFunctionTest, ValueReference) {
     irs::Or expected;
     auto& root = expected.add<irs::And>();
     root.boost(0.75);
-    root.add<irs::empty>();
+    root.add<irs::Empty>();
     root.add<irs::all>();
 
     assertFilterSuccess(
@@ -658,7 +658,7 @@ TEST_F(IResearchFilterFunctionTest, SystemFunctions) {
                               arangodb::aql::AqlValueHintInt{0})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(), "LET x=0 FOR d IN collection FILTER TO_BOOL(x) RETURN d",
@@ -687,7 +687,7 @@ TEST_F(IResearchFilterFunctionTest, SystemFunctions) {
                               arangodb::aql::AqlValueHintInt{0})));
 
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -4164,7 +4164,7 @@ TEST_F(IResearchFilterFunctionTest, Phrase) {
     opts->push_back<irs::by_term_options>().term =
         irs::ViewCast<irs::byte_type>(std::string_view("n"));
     {
-      auto& part = opts->push_back<irs::by_edit_distance_filter_options>();
+      auto& part = opts->push_back<irs::by_edit_distance_options>();
       part.max_distance = 1;
       part.with_transpositions = true;
       part.provider = &arangodb::iresearch::getParametricDescription;

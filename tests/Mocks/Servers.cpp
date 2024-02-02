@@ -71,6 +71,8 @@
 #include "Mocks/StorageEngineMock.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/ReplicationFeature.h"
+#include "Replication2/ReplicatedLog/ReplicatedLogFeature.h"
+#include "Replication2/ReplicatedState/ReplicatedStateFeature.h"
 #include "Rest/Version.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -185,7 +187,8 @@ static void SetupV8Phase(MockServer& server) {
   SetupCommunicationFeaturePhase(server);
 #ifdef USE_V8
   server.addFeature<V8FeaturePhase>(false);
-  server.addFeature<V8DealerFeature>(false);
+  server.addFeature<V8DealerFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<V8SecurityFeature>(false);
 #endif
 }
@@ -193,7 +196,8 @@ static void SetupV8Phase(MockServer& server) {
 static void SetupAqlPhase(MockServer& server) {
   SetupV8Phase(server);
   server.addFeature<AqlFeaturePhase>(false);
-  server.addFeature<QueryRegistryFeature>(false);
+  server.addFeature<QueryRegistryFeature>(
+      false, server.template getFeature<arangodb::metrics::MetricsFeature>());
   server.addFeature<TemporaryStorageFeature>(false);
 
   server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(true);
@@ -386,7 +390,10 @@ MockMetricsServer::MockMetricsServer(bool start) : MockServer() {
 MockV8Server::MockV8Server(bool start) : MockServer() {
   // setup required application features
   SetupV8Phase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
 
   if (start) {
     MockV8Server::startFeatures();
@@ -458,8 +465,12 @@ std::shared_ptr<aql::Query> MockAqlServer::createFakeQuery(
 
 MockRestServer::MockRestServer(bool start) : MockServer() {
   SetupV8Phase(*this);
-  addFeature<QueryRegistryFeature>(false);
-  addFeature<NetworkFeature>(false);
+  addFeature<QueryRegistryFeature>(
+      false, getFeature<arangodb::metrics::MetricsFeature>());
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
   if (start) {
     MockRestServer::startFeatures();
   }
@@ -514,13 +525,16 @@ MockClusterServer::MockClusterServer(bool useAgencyMockPool,
 
   addFeature<UpgradeFeature>(false, &_dummy, std::vector<size_t>{});
   addFeature<ServerSecurityFeature>(false);
+  addFeature<replication2::replicated_state::ReplicatedStateAppFeature>(false);
+  addFeature<ReplicatedLogFeature>(false);
 
   network::ConnectionPool::Config config(
       _server.getFeature<metrics::MetricsFeature>());
   config.numIOThreads = 1;
   config.maxOpenConnections = 8;
   config.verifyHosts = false;
-  addFeature<NetworkFeature>(true, config);
+  addFeature<NetworkFeature>(
+      true, _server.getFeature<metrics::MetricsFeature>(), config);
 }
 
 MockClusterServer::~MockClusterServer() {
@@ -987,6 +1001,9 @@ network::ConnectionPool* MockCoordinator::getPool() { return _pool.get(); }
 
 MockRestAqlServer::MockRestAqlServer() {
   SetupAqlPhase(*this);
-  addFeature<NetworkFeature>(false);
+  addFeature<NetworkFeature>(
+      false, _server.getFeature<metrics::MetricsFeature>(),
+      network::ConnectionPool::Config(
+          _server.getFeature<metrics::MetricsFeature>()));
   MockRestAqlServer::startFeatures();
 }

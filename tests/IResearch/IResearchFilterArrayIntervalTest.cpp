@@ -815,7 +815,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query") << queryString);
       irs::Or expected;
       if (operation.first.find("ANY") != std::string::npos) {
-        expected.add<irs::empty>();
+        expected.add<irs::Empty>();
       } else {
         expected.add<irs::all>();
       }

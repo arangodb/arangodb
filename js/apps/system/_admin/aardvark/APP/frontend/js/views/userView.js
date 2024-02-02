@@ -237,6 +237,9 @@
       toDelete.destroy({wait: true});
 
       window.App.navigate('#users', {trigger: true});
+      window.arangoHelper.arangoNotification(
+        'User "' + username + '" deleted.'
+      );
     },
 
     submitEditCurrentUserProfile: function () {

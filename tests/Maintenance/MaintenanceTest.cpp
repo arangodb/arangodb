@@ -559,7 +559,8 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
     // need to construct this after adding the MetricsFeature to the application
     // server
     engine = std::make_unique<arangodb::RocksDBEngine>(
-        as, as.template getFeature<arangodb::RocksDBOptionFeature>());
+        as, as.template getFeature<arangodb::RocksDBOptionFeature>(),
+        as.template getFeature<arangodb::metrics::MetricsFeature>());
     selector.setEngineTesting(engine.get());
   }
 

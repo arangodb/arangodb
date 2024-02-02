@@ -319,12 +319,11 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -346,10 +345,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -371,10 +366,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -394,10 +385,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -418,10 +405,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -464,12 +447,11 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
       ->get<BooleanParameter>("default-language-check")
       ->set("false");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -491,10 +473,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -516,10 +494,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -539,10 +513,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -563,10 +533,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -611,12 +577,11 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -643,10 +608,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -668,10 +629,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -691,10 +648,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -715,10 +668,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -763,12 +712,11 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
       ->get<BooleanParameter>("default-language-check")
       ->set("false");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -795,10 +743,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -820,10 +764,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -843,10 +783,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -867,10 +803,6 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -913,12 +845,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -940,10 +871,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -965,10 +892,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -988,10 +911,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1012,10 +931,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1058,12 +973,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
       ->get<BooleanParameter>("default-language-check")
       ->set("false");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1085,10 +999,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1110,10 +1020,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1133,10 +1039,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1157,10 +1059,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1201,11 +1099,12 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
       .options()
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
+
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1223,9 +1122,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1243,9 +1139,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1262,9 +1155,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1282,9 +1172,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1324,12 +1211,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1351,10 +1237,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1376,10 +1258,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1399,10 +1277,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1423,10 +1297,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1470,12 +1340,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1497,10 +1366,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1522,10 +1387,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1545,10 +1406,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1569,10 +1426,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1616,12 +1469,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1643,10 +1495,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1668,10 +1516,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1691,10 +1535,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1715,10 +1555,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1761,12 +1597,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1788,10 +1623,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(icuParameter.data())
@@ -1813,10 +1644,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1836,10 +1663,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -1860,10 +1683,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1907,12 +1726,11 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1938,10 +1756,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -1967,10 +1781,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -1997,10 +1807,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -2021,10 +1827,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2069,12 +1871,11 @@ TEST_F(ArangoLanguageFeatureTest,
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2100,10 +1901,6 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2129,10 +1926,6 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -2159,10 +1952,6 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -2183,10 +1972,6 @@ TEST_F(ArangoLanguageFeatureTest,
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2230,12 +2015,11 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2261,10 +2045,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2290,10 +2070,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -2320,10 +2096,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with another parameter and with another lang
     server.server()
         .options()
@@ -2344,10 +2116,6 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2391,12 +2159,11 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
       ->get<BooleanParameter>("default-language-check")
       ->set("true");
 
+  auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
+  auto& langCheckFeature = server.getFeature<arangodb::LanguageCheckFeature>();
+
   // Assume that it is first launch of server
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2422,10 +2189,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -2451,10 +2214,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with another parameter and with another lang
     server.server()
         .options()
@@ -2481,10 +2240,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     // Now we try to launch server with same parameter but with normalized lang
     server.server()
         .options()
@@ -2511,10 +2266,6 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
-    auto& langFeature = server.getFeature<arangodb::LanguageFeature>();
-    auto& langCheckFeature =
-        server.getFeature<arangodb::LanguageCheckFeature>();
-
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())

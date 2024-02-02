@@ -516,9 +516,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
 
   // _from, _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -687,9 +685,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -791,9 +787,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {

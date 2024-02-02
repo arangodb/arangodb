@@ -641,7 +641,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // empty array
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -1595,7 +1595,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -1709,7 +1709,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
         auto begin = root.begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -2008,7 +2008,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER [] in [1,2,3] RETURN d",
@@ -3293,7 +3293,7 @@ TEST_F(IResearchFilterInTest, BinaryIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(), "FOR d IN myView FILTER [] in 4..5 RETURN d",
                         expected, &ExpressionContextMock::EMPTY);
@@ -4929,7 +4929,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -5050,7 +5050,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
         auto begin = orNode->begin();
 
         // 1st filter
-        { EXPECT_EQ(irs::empty(), **begin); }
+        { EXPECT_EQ(irs::Empty(), **begin); }
 
         // 2nd filter
         {
@@ -5218,7 +5218,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER 4 not in [1,2,3,4] RETURN d",
@@ -6522,7 +6522,7 @@ TEST_F(IResearchFilterInTest, BinaryNotIn) {
   // false expression
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN myView FILTER 4 not in 4..5 RETURN d",

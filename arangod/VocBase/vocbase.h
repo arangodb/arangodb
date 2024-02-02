@@ -23,8 +23,9 @@
 
 #pragma once
 
-#include <cstddef>
 #include <atomic>
+#include <concepts>
+#include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
@@ -41,6 +42,7 @@
 #include "Containers/FlatHashMap.h"
 #include "Replication2/Version.h"
 #include "RestServer/arangod.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/TransactionId.h"
 #include "VocBase/VocbaseInfo.h"
@@ -103,6 +105,7 @@ class LogicalView;
 struct CreateCollectionBody;
 class ReplicationClientsProgressTracker;
 class StorageEngine;
+class VersionTracker;
 struct VocBaseLogManager;
 }  // namespace arangodb
 
@@ -123,13 +126,17 @@ struct TRI_vocbase_t {
   friend class arangodb::StorageEngine;
 
   explicit TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(arangodb::CreateDatabaseInfo&& info,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
   TEST_VIRTUAL ~TRI_vocbase_t();
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
  protected:
   struct MockConstruct {
   } constexpr static mockConstruct = {};
-  explicit TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info);
+  TRI_vocbase_t(MockConstruct, arangodb::CreateDatabaseInfo&& info,
+                arangodb::StorageEngine& engine,
+                arangodb::VersionTracker& versionTracker, bool extendedNames);
 #endif
 
  private:
@@ -140,6 +147,9 @@ struct TRI_vocbase_t {
   TRI_vocbase_t& operator=(TRI_vocbase_t const&) = delete;
 
   arangodb::ArangodServer& _server;
+  arangodb::StorageEngine& _engine;
+  arangodb::VersionTracker& _versionTracker;
+  bool const _extendedNames;  // TODO - move this into CreateDatabaseInfo
 
   arangodb::CreateDatabaseInfo _info;
 
@@ -175,6 +185,20 @@ struct TRI_vocbase_t {
       _replicationClients;
 
  public:
+  arangodb::StorageEngine& engine() const noexcept { return _engine; }
+
+  auto extendedNames() const noexcept -> bool { return _extendedNames; }
+
+  auto versionTracker() noexcept -> arangodb::VersionTracker& {
+    return _versionTracker;
+  }
+
+  template<typename As>
+  As& engine() const noexcept
+      requires(std::derived_from<As, arangodb::StorageEngine>) {
+    return static_cast<As&>(_engine);
+  }
+
   std::shared_ptr<arangodb::VocBaseLogManager> _logManager;
 
  public:

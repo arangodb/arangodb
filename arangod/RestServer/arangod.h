@@ -211,13 +211,13 @@ using ArangodFeaturesList = TypeList<
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
 #ifdef USE_V8
     ConsoleFeature,
 #endif
     CpuUsageFeature,
-    DatabaseFeature,
     DatabasePathFeature,
     DumpLimitsFeature,
     HttpEndpointProvider,

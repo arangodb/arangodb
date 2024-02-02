@@ -126,7 +126,8 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server)
+V8DealerFeature::V8DealerFeature(Server& server,
+                                 metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -145,18 +146,14 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _stopping(false),
       _gcFinished(false),
       _dynamicExecutorCreationBlockers(0),
-      _executorsCreationTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_creation_time_msec_total{})),
-      _executorsCreated(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_created_total{})),
-      _executorsDestroyed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_destroyed_total{})),
-      _executorsEntered(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_entered_total{})),
-      _executorsExited(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_exited_total{})),
-      _executorsEnterFailures(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_enter_failures_total{})) {
+      _executorsCreationTime(
+          metrics.add(arangodb_v8_context_creation_time_msec_total{})),
+      _executorsCreated(metrics.add(arangodb_v8_context_created_total{})),
+      _executorsDestroyed(metrics.add(arangodb_v8_context_destroyed_total{})),
+      _executorsEntered(metrics.add(arangodb_v8_context_entered_total{})),
+      _executorsExited(metrics.add(arangodb_v8_context_exited_total{})),
+      _executorsEnterFailures(
+          metrics.add(arangodb_v8_context_enter_failures_total{})) {
   static_assert(
       Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
 
