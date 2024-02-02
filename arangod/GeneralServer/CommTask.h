@@ -167,11 +167,21 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
  protected:
   GeneralServer& _server;
+  GeneralServerFeature& _generalServerFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;
   std::chrono::milliseconds _keepAliveTimeout;
   AuthenticationFeature* _auth;
+
+  // contains value of "x-arango-source"
+  std::string _requestSource;
+  // whether or not the request was originated by a user (true)
+  // or if it is a cluster-internal request (false).
+  // we use this flag to save some reduce verbosity of responses
+  // (verbose user-facing HTTP response headers) in
+  // cluster-internal-only traffic.
+  bool _isUserRequest;
 };
 }  // namespace rest
 }  // namespace arangodb

@@ -30,8 +30,12 @@ namespace arangodb::replication2::replicated_state::document {
 
 ReplicatedOperation::DocumentOperation::DocumentOperation(
     TransactionId tid, ShardID shard, velocypack::SharedSlice payload,
-    std::optional<Options> options)
-    : tid{tid}, shard{shard}, payload{std::move(payload)}, options(options) {}
+    std::optional<Options> options, std::string_view userName)
+    : tid{tid},
+      shard{shard},
+      payload{std::move(payload)},
+      userName{userName},
+      options(options) {}
 
 template<typename... Args>
 ReplicatedOperation::ReplicatedOperation(std::in_place_t,
@@ -63,10 +67,11 @@ auto ReplicatedOperation::buildAbortOperation(TransactionId tid) noexcept
   return ReplicatedOperation{std::in_place, Abort{tid}};
 }
 
-auto ReplicatedOperation::buildTruncateOperation(TransactionId tid,
-                                                 ShardID shard) noexcept
+auto ReplicatedOperation::buildTruncateOperation(
+    TransactionId tid, ShardID shard, std::string_view userName) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{std::in_place, Truncate{tid, shard}};
+  return ReplicatedOperation{std::in_place,
+                             Truncate{tid, shard, std::string{userName}}};
 }
 
 auto ReplicatedOperation::buildCreateShardOperation(
@@ -106,10 +111,11 @@ auto ReplicatedOperation::buildDropIndexOperation(ShardID shard,
 
 auto ReplicatedOperation::buildDocumentOperation(
     TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
-    velocypack::SharedSlice payload,
+    velocypack::SharedSlice payload, std::string_view userName,
     std::optional<DocumentOperation::Options> options) noexcept
     -> ReplicatedOperation {
-  auto documentOp = DocumentOperation(tid, shard, std::move(payload), options);
+  auto documentOp =
+      DocumentOperation(tid, shard, std::move(payload), options, userName);
   switch (op) {
     case TRI_VOC_DOCUMENT_OPERATION_INSERT:
       return ReplicatedOperation{std::in_place, Insert{std::move(documentOp)}};

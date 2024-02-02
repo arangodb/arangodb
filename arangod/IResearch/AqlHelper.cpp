@@ -617,10 +617,6 @@ bool attributeAccessEqual(aql::AstNode const* lhs, aql::AstNode const* rhs,
       return type == rhs.type && strVal == rhs.strVal && iVal == rhs.iVal;
     }
 
-    bool operator!=(const NodeValue& rhs) const noexcept {
-      return !(*this == rhs);
-    }
-
     iresearch::ScopedAqlValue aqlValue;
     std::string_view strVal;
     int64_t iVal;

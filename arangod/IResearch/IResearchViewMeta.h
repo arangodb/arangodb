@@ -115,7 +115,6 @@ struct IResearchViewMeta : public IResearchDataStoreMeta {
   void storeFull(IResearchViewMeta&& other) noexcept;
 
   bool operator==(IResearchViewMeta const& other) const noexcept;
-  bool operator!=(IResearchViewMeta const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief return default IResearchViewMeta values
@@ -181,7 +180,6 @@ struct IResearchViewMetaState {
   IResearchViewMetaState& operator=(IResearchViewMetaState const& other);
 
   bool operator==(IResearchViewMetaState const& other) const noexcept;
-  bool operator!=(IResearchViewMetaState const& other) const noexcept;
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchViewMeta with values from a JSON description

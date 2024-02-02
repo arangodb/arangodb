@@ -36,8 +36,15 @@ function headersSingleSuite () {
     testSingle: function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.hasOwnProperty("headers"));
+        
       assertTrue(result.headers.hasOwnProperty("server"), result);
       assertEqual("ArangoDB", result.headers["server"]);
+      
+      ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+        assertTrue(result.headers.hasOwnProperty(h), {h, result});
+      });
+        
+      assertTrue(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
     },
   };
 }

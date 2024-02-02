@@ -830,7 +830,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     // add "Server" response header
-    if (!seenServerHeader) {
+    if (!seenServerHeader && this->_isUserRequest) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});

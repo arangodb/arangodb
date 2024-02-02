@@ -60,7 +60,8 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
                     public AgentInterface {
  public:
   /// @brief Construct with program options
-  explicit Agent(ArangodServer& server, config_t const&);
+  Agent(ArangodServer& server, metrics::MetricsFeature& metrics,
+        config_t const&);
 
   /// @brief Clean up
   ~Agent();
@@ -279,9 +280,6 @@ class Agent final : public arangodb::ServerThread<ArangodServer>,
 
   /// @brief Set readyness for RAFT
   void ready(bool b);
-
-  /// @brief Reset RAFT timeout intervals
-  void resetRAFTTimes(double minTimeout, double maxTimeout);
 
   /// @brief How long back did I take over leadership, result in seconds
   int64_t leaderFor() const;

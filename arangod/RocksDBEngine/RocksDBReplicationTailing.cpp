@@ -406,10 +406,8 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
       _removedDocRid = RevisionId::none();
 
       uint64_t objectId = RocksDBKey::objectId(key);
-      auto dbCollPair = _vocbase->server()
-                            .getFeature<EngineSelectorFeature>()
-                            .engine<RocksDBEngine>()
-                            .mapObjectToCollection(objectId);
+      auto dbCollPair =
+          _vocbase->engine<RocksDBEngine>().mapObjectToCollection(objectId);
       TRI_voc_tick_t const dbid = dbCollPair.first;
       DataSourceId const cid = dbCollPair.second;
       if (!shouldHandleCollection(dbid, cid)) {
@@ -454,10 +452,7 @@ class WALParser final : public rocksdb::WriteBatch::Handler {
     TRI_ASSERT(_state != SINGLE_REMOVE || _currentTrxId.empty());
 
     uint64_t objectId = RocksDBKey::objectId(key);
-    auto triple = _vocbase->server()
-                      .getFeature<EngineSelectorFeature>()
-                      .engine<RocksDBEngine>()
-                      .mapObjectToIndex(objectId);
+    auto triple = _vocbase->engine<RocksDBEngine>().mapObjectToIndex(objectId);
     TRI_voc_tick_t const dbid = std::get<0>(triple);
     DataSourceId const cid = std::get<1>(triple);
     if (!shouldHandleCollection(dbid, cid)) {
@@ -691,9 +686,7 @@ RocksDBReplicationResult rocksutils::tailWal(TRI_vocbase_t* vocbase,
   uint64_t lastScannedTick = tickStart;
 
   // prevent purging of WAL files while we are in here
-  auto& engine = vocbase->server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = vocbase->engine<RocksDBEngine>();
   RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
 
   // LOG_TOPIC("89157", WARN, Logger::FIXME) << "1. Starting tailing: tickStart

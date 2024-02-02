@@ -757,10 +757,7 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
     auto intermediateCommit = futures::makeFuture(res);
     if (res.ok()) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      StorageEngine& engine = this->_collection.vocbase()
-                                  .server()
-                                  .template getFeature<EngineSelectorFeature>()
-                                  .engine();
+      StorageEngine& engine = this->_collection.vocbase().engine();
 
       bool isMock = (engine.typeName() == "Mock");
 #else
@@ -778,7 +775,8 @@ struct ReplicatedProcessorBase : GenericProcessor<Derived> {
         // Now replicate the good operations on all followers:
         return this->_methods
             .replicateOperations(this->_trxColl, _followers, this->_options,
-                                 *this->_replicationData, _operationType)
+                                 *this->_replicationData, _operationType,
+                                 this->_methods.username())
             .thenValue([options = this->_options,
                         errs = std::move(errorCounter),
                         resultData = std::move(resDocs)](Result&& res) mutable {
@@ -1425,10 +1423,7 @@ struct InsertProcessor : ModifyingProcessorBase<InsertProcessor> {
       }
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-      StorageEngine& engine = _collection.vocbase()
-                                  .server()
-                                  .getFeature<EngineSelectorFeature>()
-                                  .engine();
+      StorageEngine& engine = _collection.vocbase().engine();
 
       bool isMock = (engine.typeName() == "Mock");
 #else
@@ -2821,9 +2816,10 @@ Future<OperationResult> transaction::Methods::truncateLocal(
         << "Tried to replicate an operation for a collection that is not a "
            "shard."
         << trxColl->collectionName() << " in collection: " << collectionName;
-    auto operation = replication2::replicated_state::document::
-        ReplicatedOperation::buildTruncateOperation(
-            state()->id().asFollowerTransactionId(), maybeShardID.get());
+    auto operation =
+        replication2::replicated_state::document::ReplicatedOperation::
+            buildTruncateOperation(state()->id().asFollowerTransactionId(),
+                                   maybeShardID.get(), username());
     // Should finish immediately, because we are not waiting the operation to be
     // committed in the replicated log
     auto replicationFut = leaderState->replicateOperation(
@@ -3310,7 +3306,7 @@ Future<Result> Methods::replicateOperations(
     TransactionCollection& transactionCollection,
     std::shared_ptr<const std::vector<ServerID>> const& followerList,
     OperationOptions const& options, velocypack::Builder const& replicationData,
-    TRI_voc_document_operation_e operation) {
+    TRI_voc_document_operation_e operation, std::string_view userName) {
   auto const& collection = transactionCollection.collection();
   TRI_ASSERT(followerList != nullptr);
 
@@ -3333,10 +3329,7 @@ Future<Result> Methods::replicateOperations(
 
     // this attribute can have 3 values: default, true and false. only
     // expose it when it is not set to "default"
-    auto& engine = vocbase()
-                       .server()
-                       .template getFeature<EngineSelectorFeature>()
-                       .engine();
+    auto& engine = vocbase().engine();
 
     return engine.autoRefillIndexCachesOnFollowers() &&
            ((options.refillIndexCaches == RefillIndexCaches::kRefill) ||
@@ -3371,7 +3364,7 @@ Future<Result> Methods::replicateOperations(
         .refillIndexCaches = refill};
     auto replicatedOp = ReplicatedOperation::buildDocumentOperation(
         operation, state()->id().asFollowerTransactionId(), maybeShardID.get(),
-        replicationData.sharedSlice(), operationOptions);
+        replicationData.sharedSlice(), userName, operationOptions);
     // Should finish immediately
     auto replicationFut = leaderState->replicateOperation(
         std::move(replicatedOp),

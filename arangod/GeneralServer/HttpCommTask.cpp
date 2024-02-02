@@ -678,7 +678,7 @@ void HttpCommTask<T>::sendResponse(std::unique_ptr<GeneralResponse> baseRes,
   }
 
   // add "Server" response header
-  if (!seenServerHeader) {
+  if (!seenServerHeader && this->_isUserRequest) {
     _header.append(std::string_view("Server: ArangoDB\r\n"));
   }
 

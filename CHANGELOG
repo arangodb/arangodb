@@ -1,6 +1,46 @@
 devel
 -----
 
+* Save some traffic in cluster-internal requests:
+
+  - Remove disk usage metrics from heartbeat messages (`freeDiskSpaceBytes` and
+    `freeDiskSpacePercent`), as these are not processed by the agency 
+    supervision at all.
+  - Do not return `id` and `endpoint` attributes in responses to empty 
+    appendEntries requests in the agency, as these attributes are not picked up
+    by the response message handler.
+  - Do not include `x-arango-source` HTTP header in any outgoing requests that
+    the agency makes to other servers.
+  - Do not include `x-arango-hlc` HTTP header in heartbeat messages to the 
+    agency's transient store.
+  - Do not return the following HTTP response headers in cluster-internal 
+    traffic:
+    - `x-arango-queue-time-seconds`
+    - `x-content-type-options`
+    - `content-security-policy`
+    - `cache-control`
+    - `pragma`
+    - `expires`
+    - `strict-transport-security`
+    - `server`
+
+    The following responses **do not count** as cluster internal traffic, so 
+    that the mentioned HTTP response headers are fully retained for them:
+    - responses by single server instances.
+    - responses by coordinators if the `x-arango-source` HTTP header was not
+      set in the request.
+
+    The following responses count as cluster-internal traffic, so the HTTP
+    response headers will be removed:
+    - all responses by agents and DB servers, regardless from where the 
+      requests were initiated.
+    - all responses from coordinators, if the `x-arango-source` HTTP header was
+      set in the request and is set to the id of a coordinator or DB server.
+
+* FE-409: add deletion success notifications in views on web UI.
+
+* FE-320: Database name maximum length validation during input.
+
 * BTS-1733: prevent dropping of collection if the collection is part of an
   existing graph.
   This PR prevents the unintentional dropping of collections that are part of

@@ -65,6 +65,7 @@ struct RequestMeta {
   clock::time_point startTime;
   uint64_t requestId;
   bool skipScheduler;
+  bool sendHLCHeader;
   unsigned tries;
 
   [[nodiscard]] bool isRetryOnNoResponse() const {
@@ -296,6 +297,7 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
         network::RequestOptions opts;
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
+        opts.sendHLCHeader = meta.sendHLCHeader;
         opts.handleContentEncoding = true;
         opts.parameters = meta.params;
 
@@ -469,7 +471,8 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::sendWithFailover(
              _manager,
              RequestMeta({timeout, method, type, url, std::move(clientIds),
                           headers, std::move(params), clock::now(), requestId,
-                          _skipScheduler || _manager.getSkipScheduler(), 0}),
+                          _skipScheduler || _manager.getSkipScheduler(),
+                          /*sendHLCHeader*/ true, 0}),
              std::move(body))
       .then([requestId](futures::Try<AsyncAgencyCommResult>&& e) {
         if (e.hasException()) {
@@ -691,6 +694,7 @@ AsyncAgencyComm::FutureResult AsyncAgencyComm::setTransientValue(
   meta.url = AGENCY_URL_TRANSIENT;
   meta.timeout = opts.timeout;
   meta.skipScheduler = opts.skipScheduler;
+  meta.sendHLCHeader = opts.sendHLCHeader;
   meta.startTime = clock::now();
   meta.tries = 0;
   return agencyAsyncSend(_manager, std::move(meta), std::move(transaction));
