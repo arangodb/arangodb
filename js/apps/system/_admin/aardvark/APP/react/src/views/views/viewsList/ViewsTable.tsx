@@ -72,7 +72,11 @@ export const ViewsTable = () => {
         table={tableInstance}
         emptyStateMessage="No views found"
         onRowSelect={row => {
-          history.push(`/view/${row.original.name}`);
+          const href = createEncodedUrl({
+            path: "view",
+            value: row.original.name
+          });
+          history.push(href);
         }}
       />
     </Stack>

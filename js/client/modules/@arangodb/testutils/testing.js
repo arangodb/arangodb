@@ -184,7 +184,6 @@ const optionsDefaults = {
   'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
-  'replicationVersion': '1',
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
