@@ -443,7 +443,7 @@ def main():
     """entrypoint"""
     try:
         args = parse_arguments()
-        if not args.sanitizer in ["", "tsan", "asan-ubsan"]:
+        if not args.sanitizer in ["", "tsan", "alubsan"]:
             raise Exception(
                 f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
