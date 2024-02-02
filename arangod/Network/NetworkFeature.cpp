@@ -186,7 +186,11 @@ void NetworkFeature::collectOptions(
       ->addOption("--network.compress-request-threshold",
                   "The HTTP request body size from which on cluster-internal "
                   "requests are transparently compressed.",
-                  new UInt64Parameter(&_compressRequestThreshold))
+                  new UInt64Parameter(&_compressRequestThreshold),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Automatically compress outgoing HTTP requests in cluster-internal
@@ -204,7 +208,11 @@ Using the value 0 disables the automatic compression.")");
       ->addOption("--network.compression-method",
                   "The compression method used for cluster-internal requests.",
                   new DiscreteValuesParameter<StringParameter>(
-                      &_compressionTypeLabel, types))
+                      &_compressionTypeLabel, types),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnCoordinator))
       .setIntroducedIn(31200)
       .setLongDescription(
           R"(Setting this option to 'none' will disable compression for
@@ -259,7 +267,7 @@ void NetworkFeature::validateOptions(
     _compressionType = CompressionType::kNone;
   } else {
     LOG_TOPIC("339d5", FATAL, Logger::CONFIG)
-        << "invalid value for `--network.compression-type` ('"
+        << "invalid value for `--network.compression-method` ('"
         << _compressionTypeLabel << "')";
     FATAL_ERROR_EXIT();
   }
