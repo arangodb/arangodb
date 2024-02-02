@@ -63,7 +63,7 @@ bool ClusterEngine::Mocking = false;
 // create the storage engine
 ClusterEngine::ClusterEngine(Server& server)
     : StorageEngine(server, EngineName, name(), Server::id<ClusterEngine>(),
-                    std::make_unique<ClusterIndexFactory>(server)),
+                    std::make_unique<ClusterIndexFactory>(server, *this)),
       _actualEngine(nullptr) {
   setOptional(true);
 }
@@ -197,7 +197,7 @@ VPackBuilder ClusterEngine::getReplicationApplierConfiguration(
 
 std::unique_ptr<TRI_vocbase_t> ClusterEngine::openDatabase(
     arangodb::CreateDatabaseInfo&& info, bool /*isUpgrade*/) {
-  return std::make_unique<TRI_vocbase_t>(std::move(info));
+  return createDatabase(std::move(info));
 }
 
 Result ClusterEngine::dropDatabase(TRI_vocbase_t& database) {

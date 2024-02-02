@@ -608,11 +608,9 @@ futures::Future<ResultT<TransactionId>> Manager::createManagedTrx(
                           : TransactionId::createCoordinator();
 
   auto maybeState = basics::catchToResultT([&] {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options,
-                                         operationOrigin);
+    return vocbase.engine().createTransactionState(vocbase, tid, options,
+                                                   operationOrigin);
   });
   if (!maybeState.ok()) {
     co_return std::move(maybeState).result();
@@ -731,11 +729,9 @@ futures::Future<Result> Manager::ensureManagedTrx(
   }
 
   auto maybeState = basics::catchToResultT([&] {
-    StorageEngine& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
     // now start our own transaction
-    return engine.createTransactionState(vocbase, tid, options,
-                                         operationOrigin);
+    return vocbase.engine().createTransactionState(vocbase, tid, options,
+                                                   operationOrigin);
   });
   if (!maybeState.ok()) {
     co_return std::move(maybeState).result();

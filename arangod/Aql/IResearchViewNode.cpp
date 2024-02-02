@@ -2136,11 +2136,7 @@ std::unique_ptr<aql::ExecutionBlock> IResearchViewNode::createBlock(
   bool const heapsort = !_heapSort.empty();
   bool const emitSearchDoc = executorInfos.searchDocIdRegId().isValid();
 #ifdef USE_ENTERPRISE
-  auto& engineSelectorFeature =
-      _vocbase.server().getFeature<EngineSelectorFeature>();
-  bool const encrypted =
-      engineSelectorFeature.isRocksDB() &&
-      engineSelectorFeature.engine<RocksDBEngine>().isEncryptionEnabled();
+  bool const encrypted = _vocbase.engine<RocksDBEngine>().isEncryptionEnabled();
 #endif
 
   auto const executorIdx =

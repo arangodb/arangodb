@@ -67,7 +67,7 @@ bool includeStartsWithInLevenshtein(irs::boolean_filter* filter,
             // last optimization effort - we can't fulfill this conjunction.
             // make it empty
             filter->clear();
-            filter->add<irs::empty>();
+            filter->add<irs::Empty>();
             return true;
           }
         }

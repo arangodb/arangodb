@@ -74,9 +74,7 @@ void PhysicalCollection::flushClusterIndexEstimates() {
 void PhysicalCollection::prepareIndexes(velocypack::Slice indexesSlice) {
   TRI_ASSERT(indexesSlice.isArray());
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine();
+  auto& engine = _logicalCollection.vocbase().engine();
 
   std::vector<std::shared_ptr<Index>> indexes;
   {
@@ -424,10 +422,7 @@ Result PhysicalCollection::dropIndex(IndexId iid) {
   }
 
   Result res = basics::catchToResult([&]() -> Result {
-    auto& selector = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>();
-    auto& engine = selector.engine();
+    auto& engine = _logicalCollection.vocbase().engine();
     bool const inRecovery = engine.inRecovery();
 
     std::shared_ptr<arangodb::Index> toRemove;

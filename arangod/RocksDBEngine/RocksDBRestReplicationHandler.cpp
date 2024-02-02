@@ -298,8 +298,7 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
 
   auto data = builder.slice();
 
-  auto& engine =
-      server().getFeature<EngineSelectorFeature>().engine<RocksDBEngine>();
+  auto& engine = _vocbase.engine<RocksDBEngine>();
   uint64_t const latest = engine.db()->GetLatestSequenceNumber();
 
   if (result.fail()) {

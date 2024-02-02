@@ -4222,8 +4222,7 @@ AstNode* Ast::createNode(AstNodeType type) {
 /// @brief validate the name of the given datasource
 /// in case validation fails, will throw an exception
 void Ast::validateDataSourceName(std::string_view name, bool validateStrict) {
-  bool extendedNames =
-      _query.vocbase().server().getFeature<DatabaseFeature>().extendedNames();
+  bool extendedNames = _query.vocbase().extendedNames();
 
   // common validation
   if (name.empty() || validateStrict) {

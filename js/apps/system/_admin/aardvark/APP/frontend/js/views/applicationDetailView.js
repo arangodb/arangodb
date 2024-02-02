@@ -384,6 +384,9 @@
             if (!err && result.error === false) {
               window.modalView.hide();
               window.App.navigate('services', {trigger: true});
+              window.arangoHelper.arangoNotification(
+                "Service deleted."
+              );
             }
           });
         }.bind(this))

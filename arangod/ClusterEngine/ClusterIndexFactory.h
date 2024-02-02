@@ -29,8 +29,9 @@ namespace arangodb {
 
 class ClusterIndexFactory final : public IndexFactory {
  public:
-  static void linkIndexFactories(ArangodServer& server, IndexFactory& factory);
-  explicit ClusterIndexFactory(ArangodServer&);
+  static void linkIndexFactories(ArangodServer& server, IndexFactory& factory,
+                                 ClusterEngine& engine);
+  explicit ClusterIndexFactory(ArangodServer&, ClusterEngine& engine);
   ~ClusterIndexFactory() = default;
 
   // normalize definition
@@ -52,6 +53,9 @@ class ClusterIndexFactory final : public IndexFactory {
   void prepareIndexes(
       LogicalCollection& col, velocypack::Slice indexesSlice,
       std::vector<std::shared_ptr<Index>>& indexes) const override;
+
+ private:
+  ClusterEngine& _engine;
 };
 
 }  // namespace arangodb

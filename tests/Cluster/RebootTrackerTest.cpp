@@ -31,6 +31,7 @@
 
 #include "Cluster/RebootTracker.h"
 #include "Logger/Logger.h"
+#include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
 
@@ -146,7 +147,9 @@ class RebootTrackerTest
       : mockApplicationServer(),
         scheduler(std::make_unique<SupervisedScheduler>(
             mockApplicationServer.server(), 2, 64, 128, 1024 * 1024, 4096, 4096,
-            128, 0.0, 42)) {}
+            128, 0.0, 42,
+            mockApplicationServer.server()
+                .template getFeature<arangodb::metrics::MetricsFeature>())) {}
 #if (_MSC_VER >= 1)
 #pragma warning(pop)
 #endif

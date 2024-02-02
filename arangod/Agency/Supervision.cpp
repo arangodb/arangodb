@@ -200,7 +200,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(ArangodServer& server)
+Supervision::Supervision(ArangodServer& server,
+                         metrics::MetricsFeature& metrics)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
@@ -217,14 +218,11 @@ Supervision::Supervision(ArangodServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_msec{})),
-      _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
+          metrics.add(arangodb_agency_supervision_runtime_msec{})),
+      _supervision_runtime_wait_for_sync_msec(metrics.add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_failed_server_counter(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_failed_server_total{})) {}
+          metrics.add(arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() { shutdown(); }
 
