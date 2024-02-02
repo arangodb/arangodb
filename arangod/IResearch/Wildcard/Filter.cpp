@@ -149,10 +149,12 @@ class Query : public irs::filter::prepared {
                                                std::move(columnIt));
   }
 
-  void visit(const irs::SubReader& segment, irs::PreparedStateVisitor& visitor,
-             irs::score_t boost) const final {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  void visit(const irs::SubReader&, irs::PreparedStateVisitor&,
+             irs::score_t) const final {
+    // NOOP
   }
+
+  irs::score_t boost() const noexcept final { return irs::kNoBoost; }
 
  private:
   icu::RegexMatcher* _matcher{};
@@ -162,6 +164,7 @@ class Query : public irs::filter::prepared {
 
 irs::filter::prepared::ptr Filter::prepare(
     const irs::PrepareContext& ctx) const {
+  auto boostCtx = ctx.Boost(boost());
   auto& parts = options().parts;
   auto size = parts.size();
   prepared::ptr p;
@@ -175,7 +178,7 @@ irs::filter::prepared::ptr Filter::prepare(
         THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DEBUG,
                                        "term instead of prefix");
       }
-      p = irs::by_term::prepare(ctx, field(), token);
+      p = irs::by_term::prepare(boostCtx, field(), token);
     } else {
       TRI_IF_FAILURE("wildcard::Filter::dissallowPrefix") {
         THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -185,7 +188,7 @@ irs::filter::prepared::ptr Filter::prepare(
       if (token.back() == 0xFF) {
         token = irs::kEmptyStringView<irs::byte_type>;
       }
-      p = irs::by_prefix::prepare(ctx, field(), token,
+      p = irs::by_prefix::prepare(boostCtx, field(), token,
                                   FilterConstants::DefaultScoringTermsLimit);
     }
   } else if (size == 1 && options().hasPos) {
@@ -193,7 +196,7 @@ irs::filter::prepared::ptr Filter::prepare(
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_DEBUG,
                                      "phrase instead of prefix");
     }
-    p = irs::by_phrase::Prepare(ctx, field(), std::move(parts[0]));
+    p = irs::by_phrase::Prepare(boostCtx, field(), std::move(parts[0]));
   }
 
   if (p) {
@@ -232,7 +235,7 @@ irs::filter::prepared::ptr Filter::prepare(
     size = queries.size();
   }
   auto conjunction = irs::memory::make_tracked<irs::AndQuery>(ctx.memory);
-  conjunction->prepare(ctx, irs::ScoreMergeType::kSum, std::move(queries),
+  conjunction->prepare(boostCtx, irs::ScoreMergeType::kSum, std::move(queries),
                        size);
   return irs::memory::make_tracked<Query>(ctx.memory, options().matcher,
                                           field(), std::move(conjunction));
