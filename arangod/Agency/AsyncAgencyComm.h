@@ -189,6 +189,7 @@ class AsyncAgencyCommManager final {
 
 struct SetTransientOptions {
   bool skipScheduler = false;
+  bool sendHLCHeader = false;
   network::Timeout timeout = std::chrono::seconds{20};
 };
 
