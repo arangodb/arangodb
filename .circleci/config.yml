@@ -26,7 +26,7 @@ parameters:
     default: "g++"
   sanitizer:
     type: string
-    default: "" # should be empty, "tsan" or "asan-ubsan"
+    default: "" # should be empty, "tsan" or "alubsan"
 
 # our defined job, and its steps
 jobs:

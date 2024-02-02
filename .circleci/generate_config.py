@@ -445,7 +445,7 @@ def main():
         args = parse_arguments()
         if not args.sanitizer in ["", "tsan", "asan-ubsan"]:
             raise Exception(
-                f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'asan-ubsan'"
+                f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
             )
         tests = read_definitions(args.definitions)
         # if args.validate_only:
