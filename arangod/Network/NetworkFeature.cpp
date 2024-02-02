@@ -739,7 +739,7 @@ bool NetworkFeature::compressRequestBody(network::RequestOptions const& opts,
     pfm = std::move(compressed);
     req.header.addMeta(StaticStrings::ContentEncoding,
                        StaticStrings::EncodingDeflate);
-  } else if (compressionType == CompressionType::kLz4) {
+  } else if (compressionType == CompressionType::kGzip) {
     if (encoding::gzipCompress(pfm.data(), pfm.size(), compressed) !=
         TRI_ERROR_NO_ERROR) {
       return false;
@@ -758,6 +758,7 @@ bool NetworkFeature::compressRequestBody(network::RequestOptions const& opts,
         TRI_ERROR_NO_ERROR) {
       return false;
     }
+
     if (compressed.size() >= bodySize) {
       // compression did not provide any benefit. better leave it
       return false;
