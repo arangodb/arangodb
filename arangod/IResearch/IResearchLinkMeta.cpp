@@ -652,7 +652,7 @@ IResearchLinkMeta::IResearchLinkMeta()
 
 bool IResearchLinkMeta::operator==(
     IResearchLinkMeta const& other) const noexcept {
-  if (FieldMeta::operator!=(other)) {
+  if (static_cast<FieldMeta const&>(*this) != other) {
     return false;
   }
 
