@@ -266,6 +266,9 @@ jobs:
                   - utils
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
+                  - tsan_arangodb_suppressions.txt
+                  - ubsan_arangodb_suppressions.txt
+                  - lsan_arangodb_suppressions.txt
 
   run-linux-tests:
     docker:
@@ -299,6 +302,13 @@ jobs:
           no_output_timeout: 20m
           command: |
             mkdir work
+            if [ << pipline.parameters.sanitizer >> = "alubsan" ]; then
+              export ASAN_OPTIONS="log_exe_name=true:log_path=/work/aulsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=/work/aulsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=/work/aulsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
+            elif [ << pipline.parameters.sanitizer >> = "tsan" ]; then
+              export TSAN_OPTIONS="log_exe_name=true:log_path=/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
+            fi
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
             python3 scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
