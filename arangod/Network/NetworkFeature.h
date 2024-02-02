@@ -24,7 +24,10 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <mutex>
+#include <string>
+#include <string_view>
 
 #include <fuerte/requests.h>
 
@@ -100,6 +103,9 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void injectAcceptEncodingHeader(fuerte::Request& req);
+  bool compressRequestBody(fuerte::Request& req);
+
   // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;

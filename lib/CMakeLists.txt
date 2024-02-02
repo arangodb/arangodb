@@ -242,6 +242,7 @@ target_link_libraries(arango
          arango_static_strings
          arango_crashhandler
          velocypack
+         fuerte
          linenoise-ng
          date_interface
          ${SYSTEM_LIBRARIES}

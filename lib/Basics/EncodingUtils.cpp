@@ -52,7 +52,17 @@ int uncompressStream(z_stream& strm, T& uncompressed) noexcept {
   int ret = Z_DATA_ERROR;
 
   try {
-    uncompressed.reserve(static_cast<size_t>(strm.total_out));
+    if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+      // non-throwing variant of reserve(): check return value
+      auto res = uncompressed.reserve(static_cast<size_t>(strm.total_out));
+      if (res != TRI_ERROR_NO_ERROR) {
+        return Z_MEM_ERROR;
+      }
+    } else {
+      // throwing variant of reserve()
+      uncompressed.reserve(static_cast<size_t>(strm.total_out));
+    }
+    // reserve() was successful if we get here
 
     do {
       strm.next_out = reinterpret_cast<Bytef*>(outbuffer);
@@ -193,39 +203,52 @@ ErrorCode encoding::zlibInflate(uint8_t const* compressed,
 template<typename T>
 ErrorCode encoding::lz4Uncompress(uint8_t const* compressed,
                                   size_t compressedLength, T& uncompressed) {
-  if (compressedLength <= 5) {
-    // empty/bad input
+  if (compressedLength <= ::lz4HeaderLength) {
+    // empty/bad input.
     return TRI_ERROR_BAD_PARAMETER;
   }
 
   size_t initial = uncompressed.size();
 
-  uint32_t uncompressedSize;
-  memcpy(&uncompressedSize, compressed + 1, sizeof(uncompressedSize));
-  uncompressedSize = basics::bigToHost<uint32_t>(uncompressedSize);
+  uint32_t uncompressedLength;
+  // uncompressed size is encoded in bytes 1-4, starting from offset 0,
+  // encoded as a uint32_t in big endian format
+  memcpy(&uncompressedLength, compressed + 1, sizeof(uncompressedLength));
+  uncompressedLength = basics::bigToHost<uint32_t>(uncompressedLength);
 
-  if constexpr (std::is_same_v<T, std::string>) {
-    uncompressed.resize(uncompressedSize);
-  } else if constexpr (std::is_same_v<T,
-                                      arangodb::velocypack::Buffer<uint8_t>>) {
-    uncompressed.reserve(uncompressedSize);
+  if (uncompressedLength == 0 ||
+      uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
+    // uncompressed size is larger than what LZ4 can actually compress.
+    // suspicious!
+    return TRI_ERROR_BAD_PARAMETER;
   }
 
-  // uncompressed directly into the result
-  // this should not go wrong if we have a big enough output buffer.
+  if constexpr (std::is_same_v<T, std::string>) {
+    uncompressed.resize(uncompressedLength);
+  } else if constexpr (std::is_same_v<T,
+                                      arangodb::velocypack::Buffer<uint8_t>>) {
+    uncompressed.reserve(uncompressedLength);
+  }
+
+  // uncompress directly into the result
+  // this should not go wrong because we have a big enough output buffer.
   int size = LZ4_decompress_safe(
       reinterpret_cast<char const*>(compressed) + ::lz4HeaderLength,
       const_cast<char*>(reinterpret_cast<char const*>(uncompressed.data())),
       static_cast<int>(compressedLength - ::lz4HeaderLength),
-      static_cast<int>(uncompressedSize));
+      static_cast<int>(uncompressedLength));
   TRI_ASSERT(size > 0);
-  TRI_ASSERT(uncompressedSize == static_cast<size_t>(size));
+  TRI_ASSERT(size < LZ4_MAX_INPUT_SIZE);
+  TRI_ASSERT(uncompressedLength == static_cast<size_t>(size));
+  if (size <= 0 || size >= LZ4_MAX_INPUT_SIZE) {
+    return TRI_ERROR_BAD_PARAMETER;
+  }
 
   if constexpr (std::is_same_v<T, std::string>) {
-    uncompressed.resize(initial + uncompressedSize);
+    uncompressed.resize(initial + uncompressedLength);
   } else if constexpr (std::is_same_v<T,
                                       arangodb::velocypack::Buffer<uint8_t>>) {
-    uncompressed.resetTo(initial + uncompressedSize);
+    uncompressed.resetTo(initial + uncompressedLength);
   }
 
   return TRI_ERROR_NO_ERROR;
@@ -300,6 +323,8 @@ ErrorCode encoding::zlibDeflate(uint8_t const* uncompressed,
 template<typename T>
 ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
                                 size_t uncompressedLength, T& compressed) {
+  TRI_ASSERT(uncompressedLength > 0);
+
   compressed.clear();
   if (uncompressedLength >= static_cast<size_t>(LZ4_MAX_INPUT_SIZE)) {
     return TRI_ERROR_BAD_PARAMETER;
@@ -314,25 +339,29 @@ ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
   // - byte 1-4: uncompressed size, encoded as a uint32_t in big endian
   // order
   uint32_t originalLength = static_cast<uint32_t>(uncompressedLength);
-  uint32_t uncompressedSize = basics::hostToBig(originalLength);
+  originalLength = basics::hostToBig(originalLength);
 
   if constexpr (std::is_same_v<T, std::string>) {
     compressed.resize(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
     compressed[0] = 0x01U;  // version
-    memcpy(compressed.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
+    memcpy(compressed.data() + 1, &originalLength, sizeof(originalLength));
   } else if constexpr (std::is_same_v<T,
                                       arangodb::velocypack::Buffer<uint8_t>>) {
     compressed.reserve(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
     compressed.push_back(0x01U);  // version
-    memcpy(compressed.data() + 1, &uncompressedSize, sizeof(uncompressedSize));
+    memcpy(compressed.data() + 1, &originalLength, sizeof(originalLength));
   } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
-    compressed.reserve(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
+    auto res =
+        compressed.reserve(static_cast<size_t>(maxLength) + ::lz4HeaderLength);
+    if (res != TRI_ERROR_NO_ERROR) {
+      return res;
+    }
     compressed.appendChar(0x01U);  // version
-    compressed.appendText(reinterpret_cast<char const*>(&uncompressedSize),
-                          sizeof(uncompressedSize));
+    compressed.appendText(reinterpret_cast<char const*>(&originalLength),
+                          sizeof(originalLength));
   }
 
-  // compress data into output buffer, starting at byte 5.
+  // compress data into output buffer. writes start at byte 5.
   int compressedLength = LZ4_compress_fast(
       reinterpret_cast<char const*>(uncompressed),
       const_cast<char*>(
@@ -340,18 +369,21 @@ ErrorCode encoding::lz4Compress(uint8_t const* uncompressed,
       static_cast<int>(uncompressedLength),
       static_cast<int>(maxLength - ::lz4HeaderLength),
       /*accelerationFactor*/ 1);
-  if (compressedLength > 0) {
-    if constexpr (std::is_same_v<T, std::string>) {
-      compressed.resize(compressedLength + ::lz4HeaderLength);
-    } else if constexpr (std::is_same_v<
-                             T, arangodb::velocypack::Buffer<uint8_t>>) {
-      compressed.resetTo(compressedLength + ::lz4HeaderLength);
-    } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
-      compressed.increaseLength(compressedLength);
-    }
-    return TRI_ERROR_NO_ERROR;
+
+  if (compressedLength <= 0) {
+    return TRI_ERROR_INTERNAL;
   }
-  return TRI_ERROR_INTERNAL;
+
+  if constexpr (std::is_same_v<T, std::string>) {
+    compressed.resize(compressedLength + ::lz4HeaderLength);
+  } else if constexpr (std::is_same_v<T,
+                                      arangodb::velocypack::Buffer<uint8_t>>) {
+    compressed.resetTo(compressedLength + ::lz4HeaderLength);
+  } else if constexpr (std::is_same_v<T, arangodb::basics::StringBuffer>) {
+    compressed.increaseLength(compressedLength);
+  }
+
+  return TRI_ERROR_NO_ERROR;
 }
 
 // template instantiations

@@ -200,13 +200,13 @@ Using the value 0 disables the automatic compression.")");
                       &_compressionTypeLabel, types))
       .setIntroducedIn(31200)
       .setLongDescription(
-          R"(
-The 'deflate' and 'gzip' compression methods are general purpose, but have
-significant CPU overhead for performing the compression work. 
-The 'lz4' compression method compresses slightly worse , but has a lot 
-lower CPU overhead for performing the compression.
+          R"(The 'deflate' and 'gzip' compression methods are general purpose, 
+but have significant CPU overhead for performing the compression work. 
+The 'lz4' compression method compresses slightly worse, but has a lot lower 
+CPU overhead for performing the compression.
 The compression method only matters if `--network.compress-request-threshold`
-is set to value greater than zero.)");
+is set to value greater than zero. If the threshold is set to value of 0,
+then no compression is performed.)");
 }
 
 void NetworkFeature::validateOptions(
@@ -403,91 +403,12 @@ void NetworkFeature::sendRequest(network::ConnectionPool& pool,
                                  RequestCallback&& cb) {
   TRI_ASSERT(req != nullptr);
 
-  if (!req->header.meta().contains(StaticStrings::AcceptEncoding)) {
-    auto type = compressionType();
-    if (type == rest::EncodingType::DEFLATE) {
-      req->header.addMeta(StaticStrings::AcceptEncoding,
-                          StaticStrings::EncodingDeflate);
-    } else if (type == rest::EncodingType::GZIP) {
-      req->header.addMeta(StaticStrings::AcceptEncoding,
-                          absl::StrCat(StaticStrings::EncodingGzip, ",",
-                                       StaticStrings::EncodingDeflate));
-    } else if (type == rest::EncodingType::LZ4) {
-      req->header.addMeta(StaticStrings::AcceptEncoding,
-                          absl::StrCat(StaticStrings::EncodingArangoLz4, ",",
-                                       StaticStrings::EncodingDeflate));
-    }
-  }
+  injectAcceptEncodingHeader(*req);
 
-  bool didCompress = std::invoke([&]() {
-    uint64_t threshold = compressRequestThreshold();
-    if (threshold == 0) {
-      // opted out of compression by configuration
-      return false;
-    }
-
-    if (req->header.meta().contains(StaticStrings::ContentEncoding)) {
-      // Content-Encoding already set. better not overwrite it
-      return false;
-    }
-
-    auto& pfm = req->payloadForModification();
-    size_t bodySize = pfm.size();
-    if (bodySize < threshold) {
-      // request body size too small for compression
-      return false;
-    }
-
-    velocypack::Buffer<uint8_t> compressed;
-    auto type = compressionType();
-    if (type == rest::EncodingType::DEFLATE) {
-      if (encoding::zlibDeflate(pfm.data(), pfm.size(), compressed) !=
-          TRI_ERROR_NO_ERROR) {
-        return false;
-      }
-
-      if (compressed.size() >= bodySize) {
-        // compression did not provide any benefit. better leave it
-        return false;
-      }
-
-      pfm = std::move(compressed);
-      req->header.addMeta(StaticStrings::ContentEncoding,
-                          StaticStrings::EncodingDeflate);
-    } else if (type == rest::EncodingType::GZIP) {
-      if (encoding::gzipCompress(pfm.data(), pfm.size(), compressed) !=
-          TRI_ERROR_NO_ERROR) {
-        return false;
-      }
-
-      if (compressed.size() >= bodySize) {
-        // compression did not provide any benefit. better leave it
-        return false;
-      }
-
-      pfm = std::move(compressed);
-      req->header.addMeta(StaticStrings::ContentEncoding,
-                          StaticStrings::EncodingGzip);
-    } else if (type == rest::EncodingType::LZ4) {
-      if (encoding::lz4Compress(pfm.data(), pfm.size(), compressed) !=
-          TRI_ERROR_NO_ERROR) {
-        return false;
-      }
-      if (compressed.size() >= bodySize) {
-        // compression did not provide any benefit. better leave it
-        return false;
-      }
-
-      pfm = std::move(compressed);
-      req->header.addMeta(StaticStrings::ContentEncoding,
-                          StaticStrings::EncodingArangoLz4);
-    } else {
-      return false;
-    }
-    return true;
-  });
+  bool didCompress = compressRequestBody(*req);
 
   prepareRequest(pool, req);
+
   bool isFromPool = false;
   auto now = std::chrono::steady_clock::now();
   auto conn = pool.leaseConnection(endpoint, isFromPool);
@@ -710,6 +631,107 @@ void NetworkFeature::retryRequest(
   }
   // if we get here and haven't canceled cancelGuard,
   // the request will be automatically canceled
+}
+
+void NetworkFeature::injectAcceptEncodingHeader(fuerte::Request& req) {
+  // inject "Accept-Encoding" header into the request if it was not
+  // already set.
+  if (req.header.meta().contains(StaticStrings::AcceptEncoding)) {
+    // header already set in original request
+    return;
+  }
+
+  auto type = compressionType();
+  if (type == rest::EncodingType::DEFLATE) {
+    // if cluster-internal compression type is set to "deflate", add
+    // "accept-encoding: deflate" header
+    req.header.addMeta(StaticStrings::AcceptEncoding,
+                       StaticStrings::EncodingDeflate);
+  } else if (type == rest::EncodingType::GZIP) {
+    // if cluster-internal compression type is set to "gzip", add
+    // "accept-encoding: gzip, deflate" header. we leave "deflate" in
+    // as a general fallback
+    req.header.addMeta(StaticStrings::AcceptEncoding,
+                       absl::StrCat(StaticStrings::EncodingGzip, ",",
+                                    StaticStrings::EncodingDeflate));
+  } else if (type == rest::EncodingType::LZ4) {
+    // if cluster-internal compression type is set to "lz4", add
+    // "accept-encoding: lz4, deflate" header. we leave "deflate" in
+    // as a general fallback
+    req.header.addMeta(StaticStrings::AcceptEncoding,
+                       absl::StrCat(StaticStrings::EncodingArangoLz4, ",",
+                                    StaticStrings::EncodingDeflate));
+  }
+}
+
+bool NetworkFeature::compressRequestBody(fuerte::Request& req) {
+  uint64_t threshold = compressRequestThreshold();
+  if (threshold == 0) {
+    // opted out of compression by configuration
+    return false;
+  }
+
+  if (req.header.meta().contains(StaticStrings::ContentEncoding)) {
+    // Content-Encoding already set. better not overwrite it
+    return false;
+  }
+
+  auto& pfm = req.payloadForModification();
+  size_t bodySize = pfm.size();
+  if (bodySize < threshold) {
+    // request body size too small for compression
+    return false;
+  }
+
+  velocypack::Buffer<uint8_t> compressed;
+  auto type = compressionType();
+  if (type == rest::EncodingType::DEFLATE) {
+    if (encoding::zlibDeflate(pfm.data(), pfm.size(), compressed) !=
+        TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    if (compressed.size() >= bodySize) {
+      // compression did not provide any benefit. better leave it
+      return false;
+    }
+
+    pfm = std::move(compressed);
+    req.header.addMeta(StaticStrings::ContentEncoding,
+                       StaticStrings::EncodingDeflate);
+  } else if (type == rest::EncodingType::GZIP) {
+    if (encoding::gzipCompress(pfm.data(), pfm.size(), compressed) !=
+        TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+
+    if (compressed.size() >= bodySize) {
+      // compression did not provide any benefit. better leave it
+      return false;
+    }
+
+    pfm = std::move(compressed);
+    req.header.addMeta(StaticStrings::ContentEncoding,
+                       StaticStrings::EncodingGzip);
+  } else if (type == rest::EncodingType::LZ4) {
+    if (encoding::lz4Compress(pfm.data(), pfm.size(), compressed) !=
+        TRI_ERROR_NO_ERROR) {
+      return false;
+    }
+    if (compressed.size() >= bodySize) {
+      // compression did not provide any benefit. better leave it
+      return false;
+    }
+
+    pfm = std::move(compressed);
+    req.header.addMeta(StaticStrings::ContentEncoding,
+                       StaticStrings::EncodingArangoLz4);
+  } else {
+    // unknown compression type
+    return false;
+  }
+
+  return true;
 }
 
 }  // namespace arangodb
