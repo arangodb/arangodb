@@ -200,6 +200,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
     network::RequestOptions opts;
     opts.timeout = meta.timeout;
     opts.skipScheduler = meta.skipScheduler;
+    // never compress requests to the agency, so that we do not spend too much
+    // CPU on compression/decompression. some agent instances run with a very
+    // low number of cores (even fractions of physical cores), so we cannot
+    // waste too much CPU resources there.
+    opts.allowCompression = false;
 
     auto future = network::sendRequest(man.pool(), endpoint, meta.method,
                                        "/_api/agency/inquire", std::move(query),
@@ -302,6 +307,11 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
         opts.timeout = meta.timeout;
         opts.skipScheduler = meta.skipScheduler;
         opts.handleContentEncoding = true;
+        // never compress requests to the agency, so that we do not spend too
+        // much CPU on compression/decompression. some agent instances run with
+        // a very low number of cores (even fractions of physical cores), so we
+        // cannot waste too much CPU resources there.
+        opts.allowCompression = false;
         opts.parameters = meta.params;
 
         auto requestId = meta.requestId;

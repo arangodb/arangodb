@@ -756,6 +756,12 @@ void Agent::sendAppendEntriesRPC() {
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       network::RequestOptions reqOpts;
+      reqOpts.skipScheduler = true;
+      // never compress requests to the agency, so that we do not spend too much
+      // CPU on compression/decompression. some agent instances run with a very
+      // low number of cores (even fractions of physical cores), so we cannot
+      // waste too much CPU resources there.
+      reqOpts.allowCompression = false;
       reqOpts.timeout = network::Timeout(150);
       reqOpts.param("term", std::to_string(t))
           .param("leaderId", id())
@@ -844,6 +850,11 @@ void Agent::sendEmptyAppendEntriesRPC(std::string const& followerId) {
 
   network::RequestOptions reqOpts;
   reqOpts.skipScheduler = true;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout =
       network::Timeout(3 * _config.minPing() * _config.timeoutMult());
   reqOpts.param("term", std::to_string(_constituent.term()))

@@ -1,16 +1,29 @@
 devel
 -----
 
-* Added startup option `--network.compress-request-threshold` to optionally
-  compress cluster-internal traffic.
-  If this option is set to a value greater than zero, all outgoing HTTP 
-  requests in cluster-internal traffic will be transparently compressed
-  with the deflate or gzip compression format.
-  Compression will only happen if the size of the uncompressed request body
-  exceeds the threshold value controlled by this startup option, and if the
-  request body size after compression is less than the original request body
+* Added startup options `--network.compression-method` and 
+  `--network.compress-request-threshold` to optionally compress relevant
+  cluster-internal traffic.
+
+  If `--network.compression-method` is set to 'none', then no compression will
+  be performed. To enable compression for cluster-internal requests, set this 
+  option to either 'deflate', 'gzip', 'lz4' or 'auto'.
+  The 'deflate' and 'gzip' compression methods are general purpose, but can
+  have significant CPU overhead for performing the compression work.
+  The 'lz4' compression method compresses slightly worse, but has a lot lower 
+  CPU overhead for performing the compression.
+  The 'auto' compression method will use 'deflate' by default, and 'lz4' for
+  requests which have a size that is at least 3 times the configured threshold
   size.
-  Using the value `0` disables the automatic compression.
+  The compression method only matters if `--network.compress-request-threshold`
+  is set to value greater than zero. This option configures a threshold value
+  from which on the outgoing requests will be compressed. If the threshold is 
+  set to value of 0, then no compression will be performed. If the threshold
+  is set to a value greater than 0, then the size of the request body will be
+  compared against the threshold value, and compression will happen if the
+  uncompressed request body size exceeds the threshold value.
+  The threshold can thus be used to avoid futile compression attempts for too
+  small requests.
 
 * FE-409: add deletion success notifications in views on web UI.
 

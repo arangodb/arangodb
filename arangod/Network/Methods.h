@@ -150,6 +150,8 @@ struct RequestOptions {
   // uncompress responses that have the `Content-Encoding: gzip|deflate` header
   // set.
   bool handleContentEncoding = true;
+  // allow to compress the request
+  bool allowCompression = true;
   RequestLane continuationLane = RequestLane::CONTINUATION;
 
   // Normally this is empty, if it is set to the ID of a server in the
