@@ -758,7 +758,6 @@ void Agent::sendAppendEntriesRPC() {
           << "Setting _earliestPackage to now + 30s for id " << followerId;
 
       network::RequestOptions reqOpts;
-      reqOpts.skipScheduler = true;
       // never compress requests to the agency, so that we do not spend too much
       // CPU on compression/decompression. some agent instances run with a very
       // low number of cores (even fractions of physical cores), so we cannot
