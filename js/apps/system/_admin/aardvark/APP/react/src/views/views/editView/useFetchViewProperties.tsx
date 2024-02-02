@@ -3,14 +3,12 @@ import { useEffect, useState } from "react";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
 
 import useSWR from "swr";
-import { encodeHelper } from "../../../utils/encodeHelper";
 import { ViewPropertiesType } from "../View.types";
 
 export function useFetchViewProperties(name: string) {
   const [view, setView] = useState<ViewPropertiesType | undefined>();
-  const { encoded: encodedName } = encodeHelper(name);
   const { data, error, isLoading } = useSWR(
-    `/view/${encodedName}/properties`,
+    `/view/${name}/properties`,
     path => getApiRouteForCurrentDB().get(path),
     {
       revalidateOnFocus: false
