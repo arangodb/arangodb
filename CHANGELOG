@@ -25,6 +25,10 @@ devel
   The threshold can thus be used to avoid futile compression attempts for too
   small requests.
 
+  Compression for all agency traffic is turned off regardless of the settings 
+  of these options.
+  This is important so that the agent instances do not get overwhelmed by the
+  potential extra CPU utilization caused by compression/decompression.
 * Save some traffic in cluster-internal requests:
 
   - Remove disk usage metrics from heartbeat messages (`freeDiskSpaceBytes` and
