@@ -62,7 +62,7 @@ COPY --from=v8 /opt/v8/lib /opt/v8/lib
 COPY --from=v8 /opt/v8/include /opt/v8/include
 COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
 
-# Build openssl library in specific versions and with static
+# Build openssl and openldap libraries in specific versions and with static
 # libraries, install with prefix /opt:
 
 COPY ./tools/* /tools/
