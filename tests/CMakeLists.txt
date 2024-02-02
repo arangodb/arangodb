@@ -195,6 +195,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/RebootTrackerTest.cpp
   Cluster/ShardAutoRebalancerTest.cpp
   Cluster/ShardIDTest.cpp
+  Cluster/ServerStateTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp

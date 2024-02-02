@@ -27,7 +27,6 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <atomic>
 #include <memory>

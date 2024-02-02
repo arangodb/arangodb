@@ -72,26 +72,11 @@ struct GeoFilterOptions : GeoFilterOptionsBase {
     return type == rhs.type && shape.equals(rhs.shape);
   }
 
-  template<typename H>
-  friend H AbslHashValue(H h, GeoFilterOptions const& self) noexcept {
-    auto* region = self.shape.region();
-    TRI_ASSERT(region != nullptr);
-    std::vector<S2CellId> cells;
-    region->GetCellUnionBound(&cells);
-    for (auto cell : cells) {
-      h = H::combine(std::move(h), cell);
-    }
-    return H::combine(std::move(h), cells.size(), self.type);
-  }
-
-  // TODO(MBkkt) remove it
-  size_t hash() const noexcept { return absl::Hash<GeoFilterOptions>{}(*this); }
-
   GeoFilterType type{GeoFilterType::INTERSECTS};
   geo::ShapeContainer shape;
 };
 
-class GeoFilter final : public irs::filter_base<GeoFilterOptions> {
+class GeoFilter final : public irs::FilterWithField<GeoFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoFilter";
@@ -109,23 +94,12 @@ struct GeoDistanceFilterOptions : GeoFilterOptionsBase {
     return origin == rhs.origin && range == rhs.range;
   }
 
-  template<typename H>
-  friend H AbslHashValue(H h, GeoDistanceFilterOptions const& self) noexcept {
-    // TODO(MBkkt) remove ".hash()"
-    return H::combine(std::move(h), self.range.hash(), self.origin);
-  }
-
-  // TODO(MBkkt) remove it
-  size_t hash() const noexcept {
-    return absl::Hash<GeoDistanceFilterOptions>{}(*this);
-  }
-
   S2Point origin;
   irs::search_range<double> range;
 };
 
 class GeoDistanceFilter final
-    : public irs::filter_base<GeoDistanceFilterOptions> {
+    : public irs::FilterWithField<GeoDistanceFilterOptions> {
  public:
   static constexpr std::string_view type_name() noexcept {
     return "arangodb::iresearch::GeoDistanceFilter";

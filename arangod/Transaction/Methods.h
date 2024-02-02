@@ -433,7 +433,7 @@ class Methods {
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
+      TRI_voc_document_operation_e operation, std::string_view userName);
 
  private:
   // perform a (deferred) intermediate commit if required

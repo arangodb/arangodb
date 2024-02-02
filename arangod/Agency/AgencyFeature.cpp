@@ -36,6 +36,7 @@
 #include "IResearch/IResearchFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
 #ifdef USE_V8
@@ -408,7 +409,7 @@ void AgencyFeature::prepare() {
   }
 
   _agent = std::make_unique<consensus::Agent>(
-      server(),
+      server(), server().getFeature<metrics::MetricsFeature>(),
       consensus::config_t(
           _recoveryId, _size, _minElectionTimeout, _maxElectionTimeout,
           endpoint, _agencyEndpoints, _supervision, _supervisionTouched,

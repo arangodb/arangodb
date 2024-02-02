@@ -162,8 +162,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   static constexpr std::string_view name() noexcept { return "RocksDBEngine"; }
 
   // create the storage engine
-  explicit RocksDBEngine(Server& server,
-                         RocksDBOptionsProvider const& optionsProvider);
+  RocksDBEngine(Server& server, RocksDBOptionsProvider const& optionsProvider,
+                metrics::MetricsFeature& metrics);
   ~RocksDBEngine();
 
   // inherited from ApplicationFeature
@@ -572,6 +572,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
       -> std::unique_ptr<replication2::storage::IStorageEngineMethods>;
 
   RocksDBOptionsProvider const& _optionsProvider;
+
+  metrics::MetricsFeature& _metrics;
 
   /// single rocksdb database used in this storage engine
   rocksdb::TransactionDB* _db;
