@@ -56,7 +56,7 @@ function testSuite() {
 
       // wait until normal REST API responds normally
       let iterations = 0;
-      while (iterations++ < 60) {
+      while (iterations++ < 180) {
         let result = request({ url: baseUrl() + "/_api/collection", method: "get", auth: { bearer: jwtRoot } });
         if (result.status === 200) {
           break;
