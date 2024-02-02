@@ -94,7 +94,11 @@ bool DropCollection::first() {
       if (vocbase.replicationVersion() == replication::Version::TWO) {
         result(dropCollectionReplication2(shard, coll));
       } else {
-        result(Collections::drop(*coll, false));
+        // both flags should not be necessary here, as we are only dealing with
+        // shard names here and not actual cluster-wide collection names
+        CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                          .allowDropGraphCollection = true};
+        result(Collections::drop(*coll, dropOptions));
       }
 
       // it is safe here to clear our replication failure statistics even

@@ -392,9 +392,7 @@ void RocksDBCollection::freeMemory() noexcept {
 
   RocksDBMetaCollection::freeMemory();
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.removeCollectionMapping(objectId());
 }
 
@@ -455,6 +453,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  auto& engine = vocbase.engine<RocksDBEngine>();
 
   DatabaseGuard dbGuard(vocbase);
   CollectionGuard guard(&vocbase, _logicalCollection.id());
@@ -463,9 +462,6 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
   if (!co_await locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
-
-  auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
 
   {
     // Step 1. Check for existing matching index
@@ -669,9 +665,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // the write-lock on all indexes is still held. this is not called
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   TRI_ASSERT(!engine.inRecovery());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
@@ -722,11 +716,9 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   }
 
   if (batchId != 0) {
-    EngineSelectorFeature& selector = _logicalCollection.vocbase()
-                                          .server()
-                                          .getFeature<EngineSelectorFeature>();
-    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-    RocksDBReplicationManager* manager = engine.replicationManager();
+    RocksDBReplicationManager* manager = _logicalCollection.vocbase()
+                                             .engine<RocksDBEngine>()
+                                             .replicationManager();
 
     RocksDBReplicationContextGuard ctx = manager->find(batchId);
     if (ctx) {
@@ -794,10 +786,7 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
     return Result(TRI_ERROR_DEBUG);
   }
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
   TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
@@ -1316,21 +1305,17 @@ bool RocksDBCollection::cacheEnabled() const noexcept {
 }
 
 bool RocksDBCollection::hasDocuments() {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-  return rocksutils::hasKeys(engine.db(), bounds, /*snapshot*/ nullptr, true);
+  return rocksutils::hasKeys(
+      _logicalCollection.vocbase().engine<RocksDBEngine>().db(), bounds,
+      /*snapshot*/ nullptr, true);
 }
 
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
     bool details, arangodb::velocypack::Builder& builder) {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db =
+      _logicalCollection.vocbase().engine<RocksDBEngine>().db();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
   rocksdb::Range r(bounds.start(), bounds.end());
 
@@ -1363,7 +1348,8 @@ void RocksDBCollection::figuresSpecific(
 
   if (details) {
     // engine-specific stuff here
-    RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
+    RocksDBFilePurgePreventer purgePreventer(
+        _logicalCollection.vocbase().engine<RocksDBEngine>().disallowPurging());
 
     rocksdb::DB* rootDB = db->GetRootDB();
 

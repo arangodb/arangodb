@@ -48,6 +48,15 @@ namespace transaction {
 class Methods;
 }
 
+struct CollectionDropOptions {
+  // allow dropping system collection
+  bool allowDropSystem = false;
+  // flag if we want to keep access rights in-place
+  bool keepUserRights = false;
+  // allow dropping collections that are part of a graph
+  bool allowDropGraphCollection = false;
+};
+
 namespace methods {
 
 /// Common code for collection REST handler and v8-collections
@@ -138,10 +147,7 @@ struct Collections {
 
   static arangodb::Result drop(           // drop collection
       arangodb::LogicalCollection& coll,  // collection to drop
-      bool allowDropSystem,               // allow dropping system collection
-      bool keepUserRights =
-          false  // flag if we want to keep access rights in-place
-  );
+      arangodb::CollectionDropOptions options);
 
   static futures::Future<Result> warmup(TRI_vocbase_t& vocbase,
                                         LogicalCollection const& coll);

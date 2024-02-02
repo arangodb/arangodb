@@ -166,7 +166,7 @@ auto VocBaseLogManager::dropReplicatedState(arangodb::replication2::LogId id)
   }
   // Now we may delete the persistent metadata.
   auto storage = std::move(*resignRes);
-  StorageEngine& engine = _server.getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = _vocbase.engine();
   auto res = engine.dropReplicatedState(_vocbase, storage);
 
   if (res.fail()) {
@@ -282,7 +282,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedState(
         std::shared_ptr<replication2::replicated_state::ReplicatedStateBase>> {
   using namespace arangodb::replication2;
   using namespace arangodb::replication2::replicated_state;
-  StorageEngine& engine = server.getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.engine();
 
   {
     VPackBufferUInt8 buffer;

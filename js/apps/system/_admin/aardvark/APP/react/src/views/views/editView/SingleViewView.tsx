@@ -1,19 +1,18 @@
 import { Spinner } from "@chakra-ui/react";
 import React from "react";
+import { useCustomHashMatch } from "../../../utils/useCustomHashMatch";
 import { useDisableNavBar } from "../../../utils/useDisableNavBar";
 import { useGlobalStyleReset } from "../../../utils/useGlobalStyleReset";
 import { ArangoSearchViewSettings } from "../arangoSearchView/ArangoSearchViewSettings";
 import { SearchAliasViewSettings } from "../searchAliasView/SearchAliasViewSettings";
-import { useFetchViewProperties } from "./useFetchViewProperties";
 import {
   ArangoSearchViewPropertiesType,
   SearchAliasViewPropertiesType
 } from "../View.types";
-import { useRouteMatch } from "react-router-dom";
+import { useFetchViewProperties } from "./useFetchViewProperties";
 
 export const SingleViewView = () => {
-  const { params } = useRouteMatch<{ viewName: string }>();
-  const { viewName: name } = params;
+  const name = useCustomHashMatch("#view/");
   const { view, isLoading } = useFetchViewProperties(name);
   useDisableNavBar();
   useGlobalStyleReset();

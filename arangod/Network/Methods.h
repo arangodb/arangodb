@@ -146,6 +146,9 @@ struct RequestOptions {
   bool retryNotFound = false;
   // do not use Scheduler queue
   bool skipScheduler = false;
+  // send x-arango-hlc header with outgoing request, so that that peer can
+  // update its own HLC value to at least the value of our HLC
+  bool sendHLCHeader = true;
   // transparently handle content-encoding. enabling this will automatically
   // uncompress responses that have the `Content-Encoding: gzip|deflate` header
   // set.

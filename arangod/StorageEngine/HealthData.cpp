@@ -43,7 +43,7 @@ using namespace arangodb;
     if (VPackSlice msg = slice.get("message"); msg.isString()) {
       message = msg.copyString();
     }
-    result.res.reset(code, message);
+    result.res.reset(code, std::move(message));
 
     if (VPackSlice bg = slice.get("backgroundError"); bg.isBoolean()) {
       result.backgroundError = bg.getBoolean();
@@ -63,14 +63,17 @@ using namespace arangodb;
   return result;
 }
 
-void arangodb::HealthData::toVelocyPack(velocypack::Builder& builder) const {
+void arangodb::HealthData::toVelocyPack(velocypack::Builder& builder,
+                                        bool withDetails) const {
   builder.add("health", VPackValue(VPackValueType::Object));
   builder.add("status", VPackValue(res.ok() ? "GOOD" : "BAD"));
   if (res.fail()) {
     builder.add("message", VPackValue(res.errorMessage()));
   }
   builder.add("backgroundError", VPackValue(backgroundError));
-  builder.add("freeDiskSpaceBytes", VPackValue(freeDiskSpaceBytes));
-  builder.add("freeDiskSpacePercent", VPackValue(freeDiskSpacePercent));
+  if (withDetails) {
+    builder.add("freeDiskSpaceBytes", VPackValue(freeDiskSpaceBytes));
+    builder.add("freeDiskSpacePercent", VPackValue(freeDiskSpacePercent));
+  }
   builder.close();
 }

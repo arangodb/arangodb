@@ -1,5 +1,6 @@
 /* jshint -W051:true */
 /* eslint-disable */
+/* global arango */
 ;(function () {
   'use strict'
   /* eslint-enable */
@@ -129,13 +130,18 @@
     return 'http' + endpoint.substr(pos);
   };
   
-  exports.debugClearFailAt = function(failAt) {
+  exports.debugClearFailAt = function(failAt, jwtBearerToken) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
-      let res = request.delete({
-        url: endpointToURL(a.endpoint) + '/_admin/debug/failat' + (failAt === undefined ? '' : '/' + failAt),
-        body: ""});
+      const req = {
+        url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + (failAt === undefined ? '' : '/' + failAt),
+        body: ""
+      };
+      if (jwtBearerToken) {
+        req.auth = { bearer: jwtBearerToken };
+      }
+      let res = request.delete(req);
       if (res.status !== 200) {
         throw "Error removing failure point";
       }
@@ -145,13 +151,19 @@
   // On server side the API with failurePointName is called removeFailAt
   exports.debugRemoveFailAt = exports.debugClearFailAt;
   
-  exports.debugSetFailAt = function(failAt) {
+  exports.debugSetFailAt = function(failAt, jwtBearerToken) {
     const request = require('@arangodb/request');
     const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
     instanceInfo.arangods.forEach((a) => {
-      let res = request.put({
+      const req = {
         url: endpointToURL(a.endpoint) + '/_admin/debug/failat/' + failAt,
-        body: ""});
+        body: ""
+      };
+      if (jwtBearerToken) {
+        req.auth = { bearer: jwtBearerToken };
+      }
+      let res = request.put(req);
+
       if (res.status !== 200) {
         throw "Error setting failure point";
       }
@@ -172,16 +184,14 @@
   
   
   exports.debugCanUseFailAt = function() {
-    const request = require('@arangodb/request');
-    const instanceInfo = JSON.parse(exports.env.INSTANCEINFO);
-    let res = request.get({
-      url: endpointToURL(instanceInfo.arangods[0].endpoint) + '/_admin/debug/failat',
-      body: ""
-    });
-    if (res.status !== 200) {
+    const res = arango.GET_RAW("_admin/debug/failat");
+    if (res.code !== 200) {
+      if (res.code === 401) {
+        throw `Error asking for failure point.`;
+      }
       return false;
     }
-    return res.body === "true";
+    return res.parsedBody === true;
   };
   
   // //////////////////////////////////////////////////////////////////////////////

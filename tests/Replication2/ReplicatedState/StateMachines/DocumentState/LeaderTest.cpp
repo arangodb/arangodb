@@ -121,7 +121,7 @@ TEST_F(DocumentStateLeaderTest,
                          ReplicatedOperation::buildDocumentOperation(
                              TRI_VOC_DOCUMENT_OPERATION_INSERT,
                              TransactionId{tid}.asFollowerTransactionId(),
-                             shardId, velocypack::SharedSlice()),
+                             shardId, velocypack::SharedSlice(), "root"),
                          ReplicationOptions{})
                      .get();
       EXPECT_TRUE(res.ok()) << res.result();
@@ -284,7 +284,7 @@ TEST_F(DocumentStateLeaderTest,
   operation = ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT,
       TransactionId{5}.asFollowerTransactionId(), shardId,
-      velocypack::SharedSlice());
+      velocypack::SharedSlice(), "root");
   EXPECT_TRUE(leaderState->needsReplication(operation));
 
   operation = ReplicatedOperation::buildCommitOperation(

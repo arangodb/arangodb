@@ -140,13 +140,6 @@ class Features {
            _fieldFeatures == rhs._fieldFeatures;
   }
 
-  //////////////////////////////////////////////////////////////////////////////
-  /// @brief compare features for inequality
-  //////////////////////////////////////////////////////////////////////////////
-  constexpr bool operator!=(Features const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   bool hasFeatures(irs::IndexFeatures test) const noexcept {
     return (test == (_indexFeatures & test));
   }
@@ -224,7 +217,6 @@ class AnalyzerPool : private irs::util::noncopyable {
   }
 
   bool operator==(AnalyzerPool const& rhs) const;
-  bool operator!=(AnalyzerPool const& rhs) const { return !(*this == rhs); }
 
   // definition to be stored in _analyzers collection or shown to the end user
   void toVelocyPack(velocypack::Builder& builder, bool forPersistence = false);
@@ -591,6 +583,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
   std::function<void(bool)> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
+  DatabaseFeature& _databaseFeature;
 };
 
 }  // namespace iresearch

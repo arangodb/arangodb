@@ -258,7 +258,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : collection.getIndexes()) {
+    for (auto const& idx : collection.getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -1576,11 +1576,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
   // now we can fetch the complete chunk information from the leader
   try {
-    return coll->vocbase()
-        .server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .handleSyncKeys(*this, *coll, keysId.copyString());
+    return coll->vocbase().engine().handleSyncKeys(*this, *coll,
+                                                   keysId.copyString());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

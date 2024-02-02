@@ -41,11 +41,9 @@ function runSetup () {
   var c = db._create(cn);
 
   db._dropView(vn);
-  db._createView(vn, 'arangosearch', {});
+  var meta = { links: { [cn]: { includeAllFields: true } }, storedValues: ["_key"] };
+  db._createView(vn, 'arangosearch', meta);
 
-  var meta = { links: { [cn]: { includeAllFields: true } } };
-  db._view(vn).properties(meta);
-  
   internal.wal.flush(true, true);
   internal.debugSetFailAt("RocksDBBackgroundThread::run");
   internal.wait(2); // make sure failure point takes effect
@@ -83,14 +81,20 @@ function recoverySuite () {
         // is fixed.
         return;
       }
+
       var v = db._view(vn);
       assertEqual(v.name(), vn);
       assertEqual(v.type(), 'arangosearch');
       var p = v.properties().links;
       assertTrue(p.hasOwnProperty(cn));
       var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResultStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(result[0], expectedResult[0]);
+      var expectedResultNonStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._id").toArray();
+      const message = `Search with COUNT ${result[0]}, Collection COUNT ${expectedResult[0]}, SearchStoredValues: ${expectedResultStoredValues.length}. Search Not StoradeValues: ${expectedResultNonStoredValues.length} StoredValue _key values: ${JSON.stringify(expectedResultStoredValues.sort())}, not stored: ${JSON.stringify(expectedResultNonStoredValues.sort())}`;
+      assertEqual(result[0], expectedResult[0], message);
+      assertEqual(result[0], expectedResultStoredValues.length, message);
+      assertEqual(result[0], expectedResultNonStoredValues.length, message);
     }
  };
 }
