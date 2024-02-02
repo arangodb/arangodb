@@ -223,9 +223,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   headers.erase(StaticStrings::Connection);
 
   if (headers.find(StaticStrings::Authorization) == headers.end()) {
-    // No authorization header is set, this is in particular the case if this
-    // request is coming in with VelocyStream, where the authentication happens
-    // once at the beginning of the connection and not with every request.
+    // No authorization header is set.
     // In this case, we have to produce a proper JWT token as authorization:
     auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {

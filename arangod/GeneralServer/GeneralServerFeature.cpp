@@ -190,7 +190,6 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _numIoThreads(0),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(metrics.add(arangodb_request_body_size_vst{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
       _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
   static_assert(
