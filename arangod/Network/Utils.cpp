@@ -365,8 +365,12 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+#if 0
   } else if (state->isAgent() && agent != nullptr) {
+    // note: header intentionally not sent to save cluster-internal
+    // traffic
     req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
+#endif
   }
 }
 
