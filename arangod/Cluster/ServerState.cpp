@@ -169,19 +169,22 @@ ServerState::~ServerState() = default;
 ServerState* ServerState::instance() noexcept { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the server is from a coordinator
+/// @brief whether or not the id is from a coordinator
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::isCoordinatorId(std::string_view id) noexcept {
-  return id.starts_with("CRDN-");
+bool ServerState::isCoordinatorId(std::string_view id) {
+  // intended to be a cheap validation, and intentionally not using
+  return id.starts_with("CRDN-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
-/// @brief whether or not the server is from a DB server
+/// @brief whether or not the id is from a DB server
 ////////////////////////////////////////////////////////////////////////////////
 
-bool ServerState::isDBServerId(std::string_view id) noexcept {
-  return id.starts_with("PRMR-");
+bool ServerState::isDBServerId(std::string_view id) {
+  return id.starts_with("PRMR-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

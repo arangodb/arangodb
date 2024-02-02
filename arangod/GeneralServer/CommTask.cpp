@@ -174,7 +174,7 @@ CommTask::Flow CommTask::prepareExecution(
   }
 
   _requestSource = req.header(StaticStrings::ClusterCommSource);
-  LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
+  LOG_TOPIC_IF("e5db9", DEBUG, Logger::REQUESTS, !_requestSource.empty())
       << "\"request-source\",\"" << (void*)this << "\",\"" << _requestSource
       << "\"";
 

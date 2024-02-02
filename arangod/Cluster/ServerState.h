@@ -82,11 +82,11 @@ class ServerState {
   /// @brief create the (sole) instance
   static ServerState* instance() noexcept;
 
-  /// @brief whether or not the server is from a coordinator
-  static bool isCoordinatorId(std::string_view id) noexcept;
+  /// @brief whether or not the id is from a coordinator
+  static bool isCoordinatorId(std::string_view id);
 
-  /// @brief whether or not the server is from a DB server
-  static bool isDBServerId(std::string_view id) noexcept;
+  /// @brief whether or not the id is from a DB server
+  static bool isDBServerId(std::string_view id);
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
