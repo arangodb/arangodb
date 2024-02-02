@@ -56,7 +56,8 @@ template<class Inspector>
 auto inspect(Inspector& f, ReplicatedOperation::DocumentOperation& x) {
   return f.object(x).fields(f.field("tid", x.tid), f.field("shard", x.shard),
                             f.field("payload", x.payload),
-                            f.field("options", x.options));
+                            f.field("options", x.options),
+                            f.field("username", x.userName));
 }
 
 template<class Inspector>

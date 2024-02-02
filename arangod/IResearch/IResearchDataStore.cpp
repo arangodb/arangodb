@@ -789,18 +789,20 @@ Result IResearchDataStore::cleanupUnsafeImpl() {
   return {};
 }
 
-Result IResearchDataStore::commit(bool wait /*= true*/) {
+ResultT<IResearchDataStore::CommitResult> IResearchDataStore::commit(
+    bool wait /*= true*/) {
   auto linkLock = _asyncSelf->lock();  // '_dataStore' can be async modified
   if (!linkLock) {
     // the current link is no longer valid (checked after ReadLock acquisition)
-    return {TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
-            absl::StrCat("failed to lock ArangoSearch index '",
-                         index().id().id(), "' while committing it")};
+    return Result{TRI_ERROR_ARANGO_INDEX_HANDLE_BAD,
+                  absl::StrCat("failed to lock ArangoSearch index '",
+                               index().id().id(), "' while committing it")};
   }
   return commit(linkLock, wait);
 }
 
-Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
+ResultT<IResearchDataStore::CommitResult> IResearchDataStore::commit(
+    LinkLock& linkLock, bool wait) {
   TRI_ASSERT(linkLock);
   TRI_ASSERT(linkLock->_dataStore);
 
@@ -822,7 +824,9 @@ Result IResearchDataStore::commit(LinkLock& linkLock, bool wait) {
     linkLock->_cleanupIntervalCount = 0;
     std::ignore = linkLock->cleanupUnsafe();
   }
-
+  if (result.ok()) {
+    return code;
+  }
   return result;
 }
 
@@ -1259,7 +1263,7 @@ Result IResearchDataStore::initDataStore(
                          index().id().id(), "'")};
   }
 
-  _engine = &server.getFeature<EngineSelectorFeature>().engine();
+  _engine = &index().collection().vocbase().engine();
 
   _dataStore._path = getPersistedPath(dbPathFeature, *this);
 

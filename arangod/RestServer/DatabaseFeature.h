@@ -46,6 +46,8 @@ class ApplicationServer;
 }  // namespace application_features
 class IOHeartbeatThread;
 class LogicalCollection;
+class StorageEngine;
+
 namespace velocypack {
 class Builder;
 class Slice;
@@ -59,7 +61,8 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   /// @brief database manager thread main loop
   /// the purpose of this thread is to physically remove directories of
   /// databases that have been dropped
-  explicit DatabaseManagerThread(Server& server);
+  DatabaseManagerThread(Server&, DatabaseFeature& databaseFeature,
+                        StorageEngine& engine);
   ~DatabaseManagerThread() final;
 
   void run() final;
@@ -69,6 +72,11 @@ class DatabaseManagerThread final : public ServerThread<ArangodServer> {
   static constexpr unsigned long waitTime() {
     return static_cast<unsigned long>(500U * 1000U);
   }
+  DatabaseFeature& _databaseFeature;
+  StorageEngine& _engine;
+#ifdef USE_V8
+  V8DealerFeature& _dealer;
+#endif
 };
 
 class DatabaseFeature final : public ArangodFeature {
@@ -119,7 +127,7 @@ class DatabaseFeature final : public ArangodFeature {
   //////////////////////////////////////////////////////////////////////////////
   Result registerPostRecoveryCallback(std::function<Result()>&& callback);
 
-  VersionTracker* versionTracker() { return &_versionTracker; }
+  VersionTracker& versionTracker() { return _versionTracker; }
 
   /// @brief get the ids of all local databases
   std::vector<TRI_voc_tick_t> getDatabaseIds(bool includeSystem);
@@ -248,6 +256,9 @@ class DatabaseFeature final : public ArangodFeature {
   /// maintains a global counter that is increased on every modification
   /// (addition, removal, change) of database objects
   VersionTracker _versionTracker;
+
+  StorageEngine* _engine = nullptr;
+  ReplicationFeature* _replicationFeature = nullptr;
 };
 
 }  // namespace arangodb

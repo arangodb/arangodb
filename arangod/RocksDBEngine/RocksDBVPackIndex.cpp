@@ -1207,10 +1207,7 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
                        .getFeature<CacheManagerFeature>()
                        .manager(),
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       _forceCacheRefill(collection.vocbase()
                             .server()
                             .getFeature<RocksDBIndexCacheRefillFeature>()
@@ -1242,8 +1239,6 @@ RocksDBVPackIndex::RocksDBVPackIndex(IndexId iid, LogicalCollection& collection,
     // And only on single servers and DBServers
     _estimator = std::make_unique<RocksDBCuckooIndexEstimatorType>(
         &collection.vocbase()
-             .server()
-             .getFeature<EngineSelectorFeature>()
              .engine<RocksDBEngine>()
              .indexEstimatorMemoryUsageMetric(),
         RocksDBIndex::ESTIMATOR_SIZE);
@@ -2837,10 +2832,8 @@ void RocksDBVPackIndex::recalculateEstimates() {
   TRI_ASSERT(_estimator != nullptr);
   _estimator->clear();
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db =
+      _collection.vocbase().engine<RocksDBEngine>().db();
   rocksdb::SequenceNumber seq = db->GetLatestSequenceNumber();
 
   auto bounds = getBounds();

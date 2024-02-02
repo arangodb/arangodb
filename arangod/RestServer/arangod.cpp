@@ -25,6 +25,7 @@
 
 #include <string_view>
 #include <type_traits>
+#include "RestServer/DatabaseFeature.h"
 #ifdef _WIN32
 #include <iostream>
 #endif
@@ -98,8 +99,17 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
           return std::make_unique<CheckVersionFeature>(server, &ret,
                                                        kNonServerFeatures);
         },
+        [](auto& server, TypeTag<ClusterUpgradeFeature>) {
+          return std::make_unique<ClusterUpgradeFeature>(
+              server, server.template getFeature<arangodb::DatabaseFeature>());
+        },
         [&name](auto& server, TypeTag<ConfigFeature>) {
           return std::make_unique<ConfigFeature>(server, name);
+        },
+        [](auto& server, TypeTag<GeneralServerFeature>) {
+          return std::make_unique<GeneralServerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<InitDatabaseFeature>) {
           return std::make_unique<InitDatabaseFeature>(server,
@@ -108,9 +118,32 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
         },
+        [](auto& server, TypeTag<NetworkFeature>) {
+          auto& metrics =
+              server.template getFeature<arangodb::metrics::MetricsFeature>();
+          return std::make_unique<NetworkFeature>(
+              server, metrics, network::ConnectionPool::Config{metrics});
+        },
+        [](auto& server, TypeTag<QueryRegistryFeature>) {
+          return std::make_unique<QueryRegistryFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<ReplicationMetricsFeature>) {
+          return std::make_unique<ReplicationMetricsFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
         [](auto& server, TypeTag<RocksDBEngine>) {
           return std::make_unique<RocksDBEngine>(
-              server, server.template getFeature<RocksDBOptionFeature>());
+              server,
+              server.template getFeature<arangodb::RocksDBOptionFeature>(),
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
+        },
+        [](auto& server, TypeTag<SchedulerFeature>) {
+          return std::make_unique<SchedulerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
 #ifdef USE_V8
         [&ret](auto& server, TypeTag<ScriptFeature>) {
@@ -147,6 +180,11 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [&ret](auto& server, TypeTag<UpgradeFeature>) {
           return std::make_unique<UpgradeFeature>(server, &ret,
                                                   kNonServerFeatures);
+        },
+        [&](auto& server, TypeTag<V8DealerFeature>) {
+          return std::make_unique<V8DealerFeature>(
+              server,
+              server.template getFeature<arangodb::metrics::MetricsFeature>());
         },
         [](auto& server, TypeTag<HttpEndpointProvider>) {
           return std::make_unique<EndpointFeature>(server);

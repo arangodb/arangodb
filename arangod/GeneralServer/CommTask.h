@@ -167,6 +167,7 @@ class CommTask : public std::enable_shared_from_this<CommTask> {
 
  protected:
   GeneralServer& _server;
+  GeneralServerFeature& _generalServerFeature;
   ConnectionInfo _connectionInfo;
 
   ConnectionStatistics::Item _connectionStatistics;

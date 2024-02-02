@@ -276,7 +276,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo));
+  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.versionTracker(),
+                        databaseFeature.extendedNames());
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
@@ -404,7 +405,8 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       return res;
     }
 
-    if (createInfo.replicationVersion() == replication::Version::TWO) {
+    if (ServerState::instance()->isDBServer() &&
+        createInfo.replicationVersion() == replication::Version::TWO) {
       if (!replication2::EnableReplication2) {
         using namespace std::string_view_literals;
         auto const message =
@@ -418,7 +420,7 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       auto& selector = server.getFeature<EngineSelectorFeature>();
       auto& engine = selector.engine<RocksDBEngine>();
       if (engine.syncThread() == nullptr) {
-        return Result(TRI_ERROR_ILLEGAL_OPTION,
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
                       "Automatic syncing must be enabled for replication "
                       "version 2. Please make sure the --rocksdb.sync-interval "
                       "option is set to a value greater than 0.");

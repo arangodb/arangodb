@@ -80,7 +80,8 @@ auto DocumentStateHandlersFactory::createTransactionHandler(
 
 auto DocumentStateHandlersFactory::createTransaction(
     TRI_vocbase_t& vocbase, TransactionId tid, ShardID const& shard,
-    AccessMode::Type accessType) -> std::shared_ptr<IDocumentStateTransaction> {
+    AccessMode::Type accessType, std::string_view userName)
+    -> std::shared_ptr<IDocumentStateTransaction> {
   auto options = transaction::Options();
   options.isFollowerTransaction = true;
   options.allowImplicitCollectionsForWrite = true;
@@ -98,6 +99,7 @@ auto DocumentStateHandlersFactory::createTransaction(
 
   // TODO Why is GLOBAL_MANAGED necessary?
   methods->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+  methods->setUsername(std::string{userName});
 
   auto res = methods->begin();
   if (res.fail()) {

@@ -288,9 +288,9 @@ const getSingleLogId = function (database, collection) {
   return {logId, shardId};
 };
 
-const getCollectionShardsAndLogs = function (db, collection) {
+const getCollectionShardsAndLogs = function (db, collection, jwtBearerToken) {
   const shards = collection.shards();
-  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id);
+  const shardsToLogs = lh.getShardsToLogsMapping(db._name(), collection._id, jwtBearerToken);
   const logs = shards.map(shardId => db._replicatedLog(shardsToLogs[shardId]));
   return {shards, shardsToLogs, logs};
 };

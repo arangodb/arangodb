@@ -174,10 +174,7 @@ futures::Future<arangodb::Result> Indexes::getIndex(
   }
 
   if (hasName && !name.empty()) {
-    bool extendedNames = collection.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNames();
+    bool extendedNames = collection.vocbase().extendedNames();
     if (auto res = IndexNameValidator::validateName(extendedNames, name);
         res.fail()) {
       co_return res;
@@ -236,15 +233,15 @@ futures::Future<arangodb::Result> Indexes::getAll(
                    .getFeature<ClusterFeature>()
                    .clusterInfo();
     auto c = ci.getCollection(databaseName, cid);
-    c->getIndexesVPack(tmpInner,
-                       [withHidden, flags](arangodb::Index const* idx,
-                                           decltype(flags)& indexFlags) {
-                         if (withHidden || !idx->isHidden()) {
-                           indexFlags = flags;
-                           return true;
-                         }
-                         return false;
-                       });
+    c->getPhysical()->getIndexesVPack(
+        tmpInner, [withHidden, flags](arangodb::Index const* idx,
+                                      decltype(flags)& indexFlags) {
+          if (withHidden || !idx->isHidden()) {
+            indexFlags = flags;
+            return true;
+          }
+          return false;
+        });
 
     tmp.openArray();
     for (VPackSlice s : VPackArrayIterator(tmpInner.slice())) {
@@ -281,10 +278,9 @@ futures::Future<arangodb::Result> Indexes::getAll(
     }
 
     // get list of indexes
-    auto indexes = collection.getIndexes();
-
+    auto indexes = collection.getPhysical()->getAllIndexes();
     tmp.openArray(true);
-    for (std::shared_ptr<arangodb::Index> const& idx : indexes) {
+    for (auto const& idx : indexes) {
       if (!withHidden && idx->isHidden()) {
         continue;
       }
@@ -493,10 +489,7 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
   }
 
   VPackBuilder normalized;
-  StorageEngine& engine = collection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine();
+  StorageEngine& engine = collection.vocbase().engine();
   auto res = engine.indexFactory().enhanceIndexDefinition(
       input, normalized, create, collection.vocbase());
 
@@ -660,10 +653,7 @@ Result Indexes::extractHandle(arangodb::LogicalCollection const& collection,
   // reset the collection identifier
   std::string collectionName;
 
-  bool extendedNames = collection.vocbase()
-                           .server()
-                           .getFeature<DatabaseFeature>()
-                           .extendedNames();
+  bool extendedNames = collection.vocbase().extendedNames();
 
   // extract the index identifier from a string
   if (val.isString() || val.isNumber()) {

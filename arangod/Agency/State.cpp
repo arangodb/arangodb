@@ -66,19 +66,17 @@ DECLARE_GAUGE(arangodb_agency_client_lookup_table_size, uint64_t,
               "Current number of entries in agency client id lookup table");
 
 /// Constructor:
-State::State(ArangodServer& server)
-    : _server(server),
-      _agent(nullptr),
+State::State(metrics::MetricsFeature& metrics)
+    : _agent(nullptr),
       _vocbase(nullptr),
       _ready(false),
       _collectionsLoaded(false),
       _nextCompactionAfter(0),
       _lastCompactionAt(0),
       _cur(0),
-      _log_size(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_log_size_bytes{})),
-      _clientIdLookupCount(_server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_agency_client_lookup_table_size{})) {}
+      _log_size(metrics.add(arangodb_agency_log_size_bytes{})),
+      _clientIdLookupCount(
+          metrics.add(arangodb_agency_client_lookup_table_size{})) {}
 
 /// Default dtor
 State::~State() = default;

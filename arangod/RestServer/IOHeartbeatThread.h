@@ -39,7 +39,8 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   IOHeartbeatThread(IOHeartbeatThread const&) = delete;
   IOHeartbeatThread& operator=(IOHeartbeatThread const&) = delete;
 
-  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature);
+  explicit IOHeartbeatThread(Server&, metrics::MetricsFeature& metricsFeature,
+                             DatabasePathFeature& databasePathFeature);
   ~IOHeartbeatThread();
 
   void run() override;
@@ -59,6 +60,7 @@ class IOHeartbeatThread final : public ServerThread<ArangodServer> {
   std::mutex _mutex;
   std::condition_variable _cv;  // for waiting with wakeup
 
+  DatabasePathFeature& _databasePathFeature;
   metrics::Histogram<metrics::LogScale<double>>& _exeTimeHistogram;
   metrics::Counter& _failures;
   metrics::Counter& _delays;

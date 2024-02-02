@@ -45,10 +45,15 @@ using namespace arangodb;
 using namespace arangodb::cache;
 using namespace arangodb::tests::mocks;
 
-TEST(CachePlainCacheTest, test_basic_cache_creation) {
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+struct CachePlainCacheTest : testing::Test {
+  CachePlainCacheTest() : sharedPRNG(server.getFeature<SharedPRNGFeature>()) {}
+
   MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+  SharedPRNGFeature& sharedPRNG;
+};
+
+TEST_F(CachePlainCacheTest, test_basic_cache_creation) {
+  auto postFn = [](std::function<void()>) -> bool { return false; };
   CacheOptions co;
   co.cacheSize = 1024 * 1024;
   Manager manager(sharedPRNG, postFn, co);
@@ -66,11 +71,9 @@ TEST(CachePlainCacheTest, test_basic_cache_creation) {
   manager.destroyCache(std::move(cache2));
 }
 
-TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
+TEST_F(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
   Manager manager(sharedPRNG, postFn, co);
@@ -122,11 +125,9 @@ TEST(CachePlainCacheTest, check_that_insertion_works_as_expected) {
   manager.destroyCache(std::move(cache));
 }
 
-TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
+TEST_F(CachePlainCacheTest, test_that_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
   Manager manager(sharedPRNG, postFn, co);
@@ -188,15 +189,15 @@ TEST(CachePlainCacheTest, test_that_removal_works_as_expected) {
   manager.destroyCache(std::move(cache));
 }
 
-TEST(CachePlainCacheTest,
-     verify_that_cache_can_indeed_grow_when_it_runs_out_of_space_LongRunning) {
+TEST_F(
+    CachePlainCacheTest,
+    verify_that_cache_can_indeed_grow_when_it_runs_out_of_space_LongRunning) {
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
   Manager manager(sharedPRNG, postFn, co);
@@ -219,15 +220,14 @@ TEST(CachePlainCacheTest,
   manager.destroyCache(std::move(cache));
 }
 
-TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
+TEST_F(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
   auto postFn = [&scheduler](std::function<void()> fn) -> bool {
     scheduler.post(fn);
     return true;
   };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+
   CacheOptions co;
   co.cacheSize = 1024 * 1024 * 1024;
   Manager manager(sharedPRNG, postFn, co);
@@ -324,11 +324,10 @@ TEST(CachePlainCacheTest, test_behavior_under_mixed_load_LongRunning) {
   RandomGenerator::shutdown();
 }
 
-TEST(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
+TEST_F(CachePlainCacheTest, test_hit_rate_statistics_reporting) {
   std::uint64_t cacheLimit = 256 * 1024;
   auto postFn = [](std::function<void()>) -> bool { return false; };
-  MockMetricsServer server;
-  SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
+
   CacheOptions co;
   co.cacheSize = 4 * cacheLimit;
   Manager manager(sharedPRNG, postFn, co);

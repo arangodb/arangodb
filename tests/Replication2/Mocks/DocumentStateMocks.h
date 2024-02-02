@@ -185,7 +185,8 @@ struct MockDocumentStateHandlersFactory
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
       createTransaction,
-      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type),
+      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type,
+       std::string_view),
       (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
