@@ -236,4 +236,5 @@ class StorageEngineMock : public arangodb::StorageEngine {
  private:
   TRI_voc_tick_t _releasedTick;
   std::atomic_uint64_t _engineTick{100};
+  arangodb::VersionTracker _versionTracker;
 };

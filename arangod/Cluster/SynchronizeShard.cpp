@@ -130,6 +130,8 @@ SynchronizeShard::SynchronizeShard(MaintenanceFeature& feature,
                                    ActionDescription const& desc)
     : ActionBase(feature, desc),
       ShardDefinition(desc.get(DATABASE), desc.get(SHARD)),
+      _networkFeature(feature.server().getFeature<NetworkFeature>()),
+      _clusterFeature(feature.server().getFeature<ClusterFeature>()),
       _followingTermId(0),
       _tailingUpperBoundTick(0),
       _initialDocCountOnLeader(0),
@@ -408,8 +410,7 @@ static Result cancelReadLockOnLeader(network::ConnectionPool* pool,
 
 arangodb::Result SynchronizeShard::collectionCountOnLeader(
     std::string const& leaderEndpoint, uint64_t& docCountOnLeader) {
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
+  network::ConnectionPool* pool = _networkFeature.pool();
   network::RequestOptions options;
   options.database = getDatabase();
   options.timeout = network::Timeout(60);
@@ -569,9 +570,8 @@ Result SynchronizeShard::startReadLockOnLeader(std::string const& endpoint,
   TRI_ASSERT(timeout > 0);
   // Read lock id
   rlid = 0;
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
-  Result result =
+  network::ConnectionPool* pool = _networkFeature.pool();
+  arangodb::Result result =
       getReadLockId(pool, endpoint, getDatabase(), clientId, timeout, rlid);
   if (!result.ok()) {
     LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
@@ -591,7 +591,7 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
     std::chrono::time_point<std::chrono::steady_clock> endTime,
     std::shared_ptr<arangodb::LogicalCollection> const& col, VPackSlice config,
     std::shared_ptr<DatabaseTailingSyncer> tailingSyncer, VPackBuilder& sy,
-    bool syncByRevision) {
+    bool syncByRevision, AgencyCache& agencyCache) {
   auto& vocbase = col->vocbase();
   auto database = vocbase.name();
 
@@ -622,8 +622,6 @@ static arangodb::ResultT<SyncerId> replicationSynchronize(
         return tailingSyncer->inheritFromInitialSyncer(syncer);
       });
 
-  auto& agencyCache =
-      job.feature().server().getFeature<ClusterFeature>().agencyCache();
   ReplicationTimeoutFeature& timeouts =
       job.feature().server().getFeature<ReplicationTimeoutFeature>();
 
@@ -833,11 +831,9 @@ bool SynchronizeShard::first() {
       std::string const url = "/_api/replication/revisions/tree";
 
       // send out the request
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
+      network::ConnectionPool* pool = _networkFeature.pool();
 
-      auto& clusterInfo =
-          _feature.server().getFeature<ClusterFeature>().clusterInfo();
+      auto& clusterInfo = _clusterFeature.clusterInfo();
       auto ep = clusterInfo.getServerEndpoint(leader);
       auto future = network::sendRequest(pool, ep, fuerte::RestVerb::Post, url,
                                          std::move(buffer), reqOpts);
@@ -918,8 +914,7 @@ bool SynchronizeShard::first() {
                        absl::StrCat(shortName, ":", std::string{shard}));
   }
 
-  auto& clusterInfo =
-      _feature.server().getFeature<ClusterFeature>().clusterInfo();
+  auto& clusterInfo = _clusterFeature.clusterInfo();
   auto const ourselves = arangodb::ServerState::instance()->getId();
   auto startTime = std::chrono::system_clock::now();
   auto const startTimeStr = timepointToString(startTime);
@@ -1191,7 +1186,7 @@ bool SynchronizeShard::first() {
       VPackBuilder builder;
       ResultT<SyncerId> syncRes = replicationSynchronize(
           *this, _endTimeForAttempt, collection, config.slice(), tailingSyncer,
-          builder, syncByRevision);
+          builder, syncByRevision, _clusterFeature.agencyCache());
 
       auto const endTime = std::chrono::system_clock::now();
 
@@ -1392,8 +1387,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       try {
         // Always cancel the read lock.
         // Reported seperately
-        NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-        network::ConnectionPool* pool = nf.pool();
+        network::ConnectionPool* pool = _networkFeature.pool();
         auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,
                                           clientId, 60.0);
         if (!res.ok()) {
@@ -1443,8 +1437,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     }
 
     // Stop the read lock again:
-    NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-    network::ConnectionPool* pool = nf.pool();
+    network::ConnectionPool* pool = _networkFeature.pool();
 
     auto lockElapsed = std::chrono::steady_clock::now() - lockAcquisitionTime;
 
@@ -1514,8 +1507,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     try {
       // Always cancel the read lock.
       // Reported seperately
-      NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-      network::ConnectionPool* pool = nf.pool();
+      network::ConnectionPool* pool = _networkFeature.pool();
       auto res = cancelReadLockOnLeader(pool, ep, getDatabase(), lockJobId,
                                         clientId, 60.0);
       if (!res.ok()) {
@@ -1564,8 +1556,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
             getDatabase(), "/", collection.name(), ": ", res.errorMessage())};
   }
 
-  NetworkFeature& nf = _feature.server().getFeature<NetworkFeature>();
-  network::ConnectionPool* pool = nf.pool();
+  network::ConnectionPool* pool = _networkFeature.pool();
   res =
       addShardFollower(pool, ep, getDatabase(), getShard(), lockJobId, clientId,
                        syncerId, _clientInfoString, 60.0, _docCountAtEnd);
@@ -1585,10 +1576,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
     // on the leader while we are recalculating the counts
     readLockGuard.fire();
 
-    ++collection.vocbase()
-          .server()
-          .getFeature<ClusterFeature>()
-          .followersWrongChecksumCounter();
+    ++_clusterFeature.followersWrongChecksumCounter();
 
     // recalculate collection count on follower
     LOG_TOPIC("29384", INFO, Logger::MAINTENANCE)
@@ -1768,11 +1756,7 @@ void SynchronizeShard::setState(ActionState state) {
     // some 10 min later. If however v is an actual positive integer, we'll wait
     // for it to sync in out ClusterInfo cache through loadCurrent.
     if (v > 0) {
-      _feature.server()
-          .getFeature<ClusterFeature>()
-          .clusterInfo()
-          .waitForCurrentVersion(v)
-          .wait();
+      _clusterFeature.clusterInfo().waitForCurrentVersion(v).wait();
     }
     _feature.incShardVersion(getShard());
   }

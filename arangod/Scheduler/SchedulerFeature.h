@@ -37,7 +37,7 @@ class SchedulerFeature final : public ArangodFeature {
 
   static Scheduler* SCHEDULER;
 
-  explicit SchedulerFeature(Server& server);
+  SchedulerFeature(Server& server, metrics::MetricsFeature& metrics);
   ~SchedulerFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -70,6 +70,7 @@ class SchedulerFeature final : public ArangodFeature {
   double _unavailabilityQueueFillGrade = 0.75;
 
   std::unique_ptr<Scheduler> _scheduler;
+  metrics::MetricsFeature& _metricsFeature;
 
   struct AsioHandler;
   std::unique_ptr<AsioHandler> _asioHandler;

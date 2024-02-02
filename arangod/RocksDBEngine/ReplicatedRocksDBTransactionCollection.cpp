@@ -51,8 +51,7 @@ ReplicatedRocksDBTransactionCollection::
 
 Result ReplicatedRocksDBTransactionCollection::beginTransaction() {
   auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
-  auto& selector = trx->vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = trx->vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
 
   if (trx->isReadOnlyTransaction()) {
@@ -174,10 +173,7 @@ auto ReplicatedRocksDBTransactionCollection::leaderState() -> std::shared_ptr<
 
 rocksdb::SequenceNumber ReplicatedRocksDBTransactionCollection::prepare() {
   auto* trx = static_cast<RocksDBTransactionState*>(_transaction);
-  auto& engine = trx->vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = trx->vocbase().engine<RocksDBEngine>();
   rocksdb::TransactionDB* db = engine.db();
   rocksdb::SequenceNumber preSeq = db->GetLatestSequenceNumber();
   rocksdb::SequenceNumber seq = prepareTransaction(_transaction->id());

@@ -106,19 +106,23 @@ CreateDatabaseInfo createExpressionVocbaseInfo(ArangodServer& server) {
 std::unique_ptr<TRI_vocbase_t> calculationVocbase;
 }  // namespace
 
-DatabaseManagerThread::DatabaseManagerThread(Server& server)
-    : ServerThread<ArangodServer>(server, "DatabaseManager") {}
+DatabaseManagerThread::DatabaseManagerThread(Server& server,
+                                             DatabaseFeature& databaseFeature,
+                                             StorageEngine& engine)
+    : ServerThread<ArangodServer>(server, "DatabaseManager"),
+      _databaseFeature(databaseFeature),
+      _engine(engine)
+#ifdef USE_V8
+      ,
+      _dealer(server.getFeature<V8DealerFeature>())
+#endif
+{
+}
 
 DatabaseManagerThread::~DatabaseManagerThread() { shutdown(); }
 
 void DatabaseManagerThread::run() {
-  auto& feature = server().getFeature<DatabaseFeature>();
-#ifdef USE_V8
-  auto& dealer = server().getFeature<V8DealerFeature>();
-#endif
   int cleanupCycles = 0;
-
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   while (true) {
     try {
@@ -126,8 +130,8 @@ void DatabaseManagerThread::run() {
       // the end of this scope
       std::unique_ptr<TRI_vocbase_t> database;
       {
-        std::lock_guard lock{feature._databasesMutex};
-        auto& dropped = feature._droppedDatabases;
+        std::lock_guard lock{_databaseFeature._databasesMutex};
+        auto& dropped = _databaseFeature._droppedDatabases;
         // check if we have to drop some database
         for (auto it = dropped.begin(), end = dropped.end(); it != end; ++it) {
           TRI_ASSERT(*it != nullptr);
@@ -160,20 +164,20 @@ void DatabaseManagerThread::run() {
 
         auto* queryRegistry = QueryRegistryFeature::registry();
 #ifdef USE_V8
-        if (dealer.isEnabled() || queryRegistry != nullptr) {
+        if (_dealer.isEnabled() || queryRegistry != nullptr) {
 #else
         if (queryRegistry != nullptr) {
 #endif
           // TODO(MBkkt) Why shouldn't we remove database data
           //  if exists database with same name?
-          std::lock_guard lockCreate{feature._databaseCreateLock};
+          std::lock_guard lockCreate{_databaseFeature._databaseCreateLock};
           // there is single thread which removes databases, so it's safe
-          auto* same = feature.lookupDatabase(database->name());
+          auto* same = _databaseFeature.lookupDatabase(database->name());
           TRI_ASSERT(same == nullptr || same->id() != database->id());
           if (same == nullptr) {
 #ifdef USE_V8
-            if (dealer.isEnabled()) {
-              dealer.cleanupDatabase(*database);
+            if (_dealer.isEnabled()) {
+              _dealer.cleanupDatabase(*database);
             }
 #endif
             if (queryRegistry != nullptr) {
@@ -183,7 +187,7 @@ void DatabaseManagerThread::run() {
         }
 
         try {
-          r = engine.dropDatabase(*database);
+          r = _engine.dropDatabase(*database);
           if (!r.ok()) {
             LOG_TOPIC("fb244", ERR, Logger::FIXME)
                 << "dropping database '" << database->name()
@@ -218,7 +222,7 @@ void DatabaseManagerThread::run() {
         if (++cleanupCycles >= 10) {
           cleanupCycles = 0;
 
-          auto databases = feature._databases.load();
+          auto databases = _databaseFeature._databases.load();
 
           bool force = isStopping();
           for (auto& p : *databases) {
@@ -390,8 +394,10 @@ void DatabaseFeature::validateOptions(
 }
 
 void DatabaseFeature::initCalculationVocbase(ArangodServer& server) {
+  auto& df = server.getFeature<DatabaseFeature>();
   calculationVocbase =
-      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server));
+      std::make_unique<TRI_vocbase_t>(createExpressionVocbaseInfo(server),
+                                      df.versionTracker(), df.extendedNames());
 }
 
 void DatabaseFeature::start() {
@@ -403,9 +409,8 @@ void DatabaseFeature::start() {
 #endif
 
   // scan all databases
-  velocypack::Builder builder;
-  auto& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.getDatabases(builder);
+  VPackBuilder builder;
+  _engine->getDatabases(builder);
 
   TRI_ASSERT(builder.slice().isArray());
 
@@ -424,7 +429,8 @@ void DatabaseFeature::start() {
   }
 
   // start database manager thread
-  _databaseManager = std::make_unique<DatabaseManagerThread>(server());
+  _databaseManager =
+      std::make_unique<DatabaseManagerThread>(server(), *this, *_engine);
 
   if (!_databaseManager->start()) {
     LOG_TOPIC("7eb06", FATAL, Logger::FIXME)
@@ -438,7 +444,8 @@ void DatabaseFeature::start() {
        ServerState::instance()->isAgent()) &&
       _performIOHeartbeat) {
     _ioHeartbeatThread = std::make_unique<IOHeartbeatThread>(
-        server(), server().getFeature<metrics::MetricsFeature>());
+        server(), server().getFeature<metrics::MetricsFeature>(),
+        server().getFeature<DatabasePathFeature>());
     if (!_ioHeartbeatThread->start()) {
       LOG_TOPIC("7eb07", FATAL, Logger::FIXME)
           << "could not start IO check thread";
@@ -490,8 +497,7 @@ void DatabaseFeature::stop() {
   aql::QueryCache::instance()->properties(p);
   aql::QueryCache::instance()->invalidate();
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-  engine.cleanupReplicationContexts();
+  _engine->cleanupReplicationContexts();
 
   if (ServerState::instance()->isCoordinator()) {
     return;
@@ -601,14 +607,17 @@ void DatabaseFeature::unprepare() {
 }
 
 void DatabaseFeature::prepare() {
+  _engine = &server().getFeature<EngineSelectorFeature>().engine();
+  if (server().hasFeature<ReplicationFeature>()) {
+    _replicationFeature = &server().getFeature<ReplicationFeature>();
+  }
+
   // need this to make calculation analyzer available in database links
   initCalculationVocbase(server());
 }
 
 void DatabaseFeature::recoveryDone() {
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  TRI_ASSERT(!engine.inRecovery());
+  TRI_ASSERT(!_engine->inRecovery());
 
   // '_pendingRecoveryCallbacks' will not change because
   // !StorageEngine.inRecovery()
@@ -646,18 +655,15 @@ void DatabaseFeature::recoveryDone() {
     // iterate over all databases
     TRI_ASSERT(vocbase != nullptr);
 
-    if (vocbase->replicationApplier() &&
-        server().hasFeature<ReplicationFeature>()) {
-      server().getFeature<ReplicationFeature>().startApplier(vocbase);
+    if (vocbase->replicationApplier() && _replicationFeature) {
+      _replicationFeature->startApplier(vocbase);
     }
   }
 }
 
 Result DatabaseFeature::registerPostRecoveryCallback(
     std::function<Result()>&& callback) {
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
-
-  if (!engine.inRecovery()) {
+  if (!_engine->inRecovery()) {
     return callback();  // if no engine then can't be in recovery
   }
 
@@ -694,7 +700,6 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   std::unique_ptr<TRI_vocbase_t> vocbase;
 
   // create database in storage engine
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   {
     // the create lock makes sure no one else is creating a database
@@ -723,7 +728,7 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
     }
 
     // createDatabase must return a valid database or throw
-    vocbase = engine.createDatabase(std::move(info));
+    vocbase = _engine->createDatabase(std::move(info));
     TRI_ASSERT(vocbase != nullptr);
 
     if (!ServerState::instance()->isCoordinator()) {
@@ -752,10 +757,9 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
 #endif
     }
 
-    if (!engine.inRecovery()) {
-      if (!ServerState::instance()->isCoordinator() &&
-          server().hasFeature<ReplicationFeature>()) {
-        server().getFeature<ReplicationFeature>().startApplier(vocbase.get());
+    if (!_engine->inRecovery()) {
+      if (!ServerState::instance()->isCoordinator() && _replicationFeature) {
+        _replicationFeature->startApplier(vocbase.get());
       }
 
       // increase reference counter
@@ -776,15 +780,13 @@ Result DatabaseFeature::createDatabase(CreateDatabaseInfo&& info,
   // write marker into log
   Result res;
 
-  if (!engine.inRecovery()) {
-    res = engine.writeCreateDatabaseMarker(dbId, markerBuilder.slice());
+  if (!_engine->inRecovery()) {
+    res = _engine->writeCreateDatabaseMarker(dbId, markerBuilder.slice());
   }
 
   result = vocbase.release();
 
-  if (versionTracker() != nullptr) {
-    versionTracker()->track("create database");
-  }
+  versionTracker().track("create database");
 
   return res;
 }
@@ -795,7 +797,6 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     return TRI_ERROR_FORBIDDEN;
   }
 
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
   auto res = TRI_ERROR_NO_ERROR;
   {
     std::lock_guard lock{_databasesMutex};
@@ -869,14 +870,12 @@ ErrorCode DatabaseFeature::dropDatabase(std::string_view name) {
     } catch (...) {
     }
 
-    res = engine.prepareDropDatabase(*vocbase).errorNumber();
+    res = _engine->prepareDropDatabase(*vocbase).errorNumber();
   }
   // must not use the database after here, as it may now be
   // deleted by the DatabaseManagerThread!
 
-  if (versionTracker() != nullptr) {
-    versionTracker()->track("drop database");
-  }
+  versionTracker().track("drop database");
 
   return res;
 }
@@ -1118,12 +1117,9 @@ TRI_vocbase_t& DatabaseFeature::getCalculationVocbase() {
 
 void DatabaseFeature::stopAppliers() {
   // stop the replication appliers so all replication transactions can end
-  if (!server().hasFeature<ReplicationFeature>()) {
+  if (_replicationFeature == nullptr) {
     return;
   }
-
-  ReplicationFeature& replicationFeature =
-      server().getFeature<ReplicationFeature>();
 
   std::lock_guard lock{_databasesMutex};
   auto databases = _databases.load();
@@ -1132,7 +1128,7 @@ void DatabaseFeature::stopAppliers() {
     TRI_vocbase_t* vocbase = p.second;
     TRI_ASSERT(vocbase != nullptr);
     if (!ServerState::instance()->isCoordinator()) {
-      replicationFeature.stopApplier(vocbase);
+      _replicationFeature->stopApplier(vocbase);
     }
   }
 }
@@ -1162,8 +1158,6 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
 #ifdef USE_V8
   auto& dealer = server().getFeature<V8DealerFeature>();
 #endif
-
-  StorageEngine& engine = server().getFeature<EngineSelectorFeature>().engine();
 
   auto r = TRI_ERROR_NO_ERROR;
 
@@ -1251,7 +1245,7 @@ ErrorCode DatabaseFeature::iterateDatabases(velocypack::Slice databases) {
       }
     }
 
-    auto database = engine.openDatabase(std::move(info), _upgrade);
+    auto database = _engine->openDatabase(std::move(info), _upgrade);
 
     if (!ServerState::isCoordinator(role) && !ServerState::isAgent(role)) {
       try {
