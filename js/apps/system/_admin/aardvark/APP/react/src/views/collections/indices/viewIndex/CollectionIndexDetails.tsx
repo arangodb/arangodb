@@ -11,6 +11,7 @@ import React from "react";
 import { useRouteMatch } from "react-router-dom";
 import { ControlledJSONEditor } from "../../../../components/jsonEditor/ControlledJSONEditor";
 import { Modal, ModalBody, ModalFooter } from "../../../../components/modal";
+import { useCustomHashMatch } from "../../../../utils/useCustomHashMatch";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { TYPE_TO_LABEL_MAP } from "../CollectionIndicesHelpers";
 import { DeleteIndexModal } from "../DeleteIndexModal";
@@ -24,7 +25,7 @@ export const CollectionIndexDetails = () => {
   const { indexId } = match?.params || {};
   // need to use winodw.location.hash here instead of useRouteMatch because
   // useRouteMatch does not work with hash router
-  const fromUrl = window.location.hash.split("#cIndices/")[1];
+  const fromUrl = useCustomHashMatch("#cIndices/");
   const collectionNameFromUrl = fromUrl.split("/")[0];
   const decodedCollectionNameFromUrl = decodeURIComponent(
     collectionNameFromUrl
