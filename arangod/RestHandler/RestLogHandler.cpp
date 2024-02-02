@@ -326,6 +326,13 @@ RestStatus RestLogHandler::handleGetRequest(
     return handleGet(methods);
   }
 
+  if (suffixes.size() == 2) {
+    if (suffixes[0] == "collection-status") {
+      CollectionID cid{suffixes[1]};
+      return handleGetCollectionStatus(methods, std::move(cid));
+    }
+  }
+
   LogId logId{basics::StringUtils::uint64(suffixes[0])};
 
   if (suffixes.size() == 1) {
@@ -589,6 +596,16 @@ RestStatus RestLogHandler::handleGetGlobalStatus(
   });
 
   return waitForFuture(methods.getGlobalStatus(logId, specSource)
+                           .thenValue([this](auto&& status) {
+                             VPackBuilder buffer;
+                             status.toVelocyPack(buffer);
+                             generateOk(rest::ResponseCode::OK, buffer.slice());
+                           }));
+}
+
+RestStatus RestLogHandler::handleGetCollectionStatus(
+    replication2::ReplicatedLogMethods const& methods, CollectionID cid) {
+  return waitForFuture(methods.getCollectionStatus(std::move(cid))
                            .thenValue([this](auto&& status) {
                              VPackBuilder buffer;
                              status.toVelocyPack(buffer);
