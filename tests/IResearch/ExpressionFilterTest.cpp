@@ -76,10 +76,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
@@ -284,12 +280,6 @@ struct IResearchExpressionFilterTest
             .first;
     feature.collectOptions(server.options());
     feature.validateOptions(server.options());
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
-#endif
 
     for (auto& f : features) {
       f.first.prepare();

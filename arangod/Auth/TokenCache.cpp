@@ -138,12 +138,7 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationBasic(
       auth::TokenCache::Entry res = it->second;
       // and now give up on the read-lock
       guard.unlock();
-
-      // LDAP rights might need to be refreshed
-      if (!_userManager->refreshUser(res.username())) {
-        return res;
-      }
-      // fallthrough intentional here
+      return res;
     }
   }
 
@@ -197,10 +192,6 @@ auth::TokenCache::Entry auth::TokenCache::checkAuthenticationJWT(
         LOG_TOPIC("65e15", TRACE, Logger::AUTHENTICATION)
             << "JWT Token expired";
         return auth::TokenCache::Entry::Unauthenticated();
-      }
-      if (_userManager != nullptr) {
-        // LDAP rights might need to be refreshed
-        _userManager->refreshUser(entry->username());
       }
       return *entry;
     }
