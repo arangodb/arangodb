@@ -33,9 +33,6 @@
 #include <vector>
 
 namespace arangodb {
-namespace transaction {
-class Methods;
-}
 
 namespace aql {
 
@@ -121,7 +118,7 @@ class ConstrainedSortExecutor {
   size_t _rowsRead;
   size_t _skippedAfter;
   SharedAqlItemBlockPtr _heapBuffer;
-  std::unique_ptr<ConstrainedLessThan> _cmpHeap;  // in pointer to avoid
+  std::unique_ptr<ConstrainedLessThan> _cmpHeap;
   RegIdFlatSetStack _regsToKeep;
   RegIdSet _outputRegister = {};
   OutputAqlItemRow _heapOutputRow;

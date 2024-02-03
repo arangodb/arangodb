@@ -211,7 +211,10 @@ ExecutorState ConstrainedSortExecutor::consumeInput(
     if (_returnNext == 0) {
       // Only once sort the rows again, s.t. the
       // contained list of elements is in the right ordering.
-      std::sort(_rows.begin(), _rows.end(), *_cmpHeap);
+      // we can get away with std::heap_sort() here as _rows
+      // already satisfies the heap property. this is less
+      // expensive than using the full-blown std::sort()
+      std::sort_heap(_rows.begin(), _rows.end(), *_cmpHeap);
     }
   }
   return inputRange.upstreamState();
