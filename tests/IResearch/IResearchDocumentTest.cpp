@@ -72,10 +72,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 
 using IResearchLinkIterator =

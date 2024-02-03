@@ -162,7 +162,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/RClone/RCloneFeature.h"
 #include "Enterprise/Ssl/SslServerFeatureEE.h"

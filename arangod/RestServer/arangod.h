@@ -128,7 +128,6 @@ class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
 class AuditFeature;
-class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
@@ -291,7 +290,6 @@ using ArangodFeaturesList = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature,
-    LdapFeature,
     LicenseFeature,
     RCloneFeature,
     HotBackupFeature,

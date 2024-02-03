@@ -486,7 +486,7 @@ function translateTestList(cases, options) {
       }
     }
   }
-  // Expand meta tests like ldap, all
+  // Expand meta tests like "all"
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {

@@ -57,16 +57,14 @@ helper.removeAllUsers();
 helper.generateAllUsers();
 
 describe('User Rights Management', () => {
-  if (!helper.isLdapEnabledExternal()) {
-    it('should check if all users are created', () => {
-      helper.switchUser('root', '_system');
-      expect(userSet.size).to.be.greaterThan(0); 
-      expect(userSet.size).to.equal(helper.userCount);
-      for (let name of userSet) {
-        expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
-      }
-    });
-  }
+  it('should check if all users are created', () => {
+    helper.switchUser('root', '_system');
+    expect(userSet.size).to.be.greaterThan(0); 
+    expect(userSet.size).to.equal(helper.userCount);
+    for (let name of userSet) {
+      expect(users.document(name), `Could not find user: ${name}`).to.not.be.undefined;
+    }
+  });
 
   it('should test rights for', () => {
     expect(userSet.size).to.be.greaterThan(0); 
@@ -106,23 +104,11 @@ describe('User Rights Management', () => {
               if (!rootTestCollection(false)) {
                 db._create(testColName);
                 if (colLevel['none'].has(name)) {
-                  if (helper.isLdapEnabledExternal()) {
-                    users.grantCollection(':role:' + name, dbName, testColName, 'none');
-                  } else {
-                    users.grantCollection(name, dbName, testColName, 'none');
-                  }
+                  users.grantCollection(name, dbName, testColName, 'none');
                 } else if (colLevel['ro'].has(name)) {
-                  if (helper.isLdapEnabledExternal()) {
-                    users.grantCollection(':role:' + name, dbName, testColName, 'ro');
-                  } else {
-                    users.grantCollection(name, dbName, testColName, 'ro');
-                  }
+                  users.grantCollection(name, dbName, testColName, 'ro');
                 } else if (colLevel['rw'].has(name)) {
-                  if (helper.isLdapEnabledExternal()) {
-                    users.grantCollection(':role:' + name, dbName, testColName, 'rw');
-                  } else {
-                    users.grantCollection(name, dbName, testColName, 'rw');
-                  }
+                  users.grantCollection(name, dbName, testColName, 'rw');
                 }
               }
               helper.switchUser(name, dbName);

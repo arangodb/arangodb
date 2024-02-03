@@ -77,10 +77,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 using iterator = std::vector<irs::filter::ptr>::const_iterator;
 
 namespace {
