@@ -59,7 +59,6 @@
 #include "VocBase/vocbase.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 

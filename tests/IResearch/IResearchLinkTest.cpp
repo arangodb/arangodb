@@ -61,10 +61,6 @@
 using namespace std::chrono_literals;
 namespace fs = std::filesystem;
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 REGISTER_COMPRESSION(irs::compression::mock::test_compressor,
                      &irs::compression::mock::test_compressor::compressor,
                      &irs::compression::mock::test_compressor::decompressor);

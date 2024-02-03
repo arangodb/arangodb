@@ -105,7 +105,6 @@
 
 #if USE_ENTERPRISE
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/StorageEngine/HotBackupFeature.h"
 #endif
@@ -161,7 +160,6 @@ static void SetupDatabaseFeaturePhase(MockServer& server) {
 
 #if USE_ENTERPRISE
   // required for AuthenticationFeature with USE_ENTERPRISE
-  server.addFeature<LdapFeature>(false);
   server.addFeature<LicenseFeature>(false);
   server.addFeature<EncryptionFeature>(false);
 #endif

@@ -74,10 +74,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 extern const char* ARGV0;  // defined in main.cpp
 
 namespace {
