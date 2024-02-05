@@ -81,7 +81,8 @@
         "USE_JEMALLOC": "Off",
         "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread",
-        "CMAKE_C_FLAGS": "-fsanitize=thread"
+        "CMAKE_C_FLAGS": "-fsanitize=thread",
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
@@ -91,7 +92,8 @@
         "USE_JEMALLOC": "Off",
         "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
-        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment"
+        "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
