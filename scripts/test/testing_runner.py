@@ -669,8 +669,6 @@ class TestingRunner:
             if parallelity == 1:
                 parallelity = 4
             args += ["--cluster", "true", "--dumpAgencyOnError", "true"]
-        if "ldap" in test["flags"] and not "LDAPHOST" in os.environ:
-            return
 
         if "buckets" in params and not self.cfg.small_machine:
             num_buckets = int(params["buckets"])

@@ -59,7 +59,6 @@
 #include "VocBase/vocbase.h"
 
 #if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
 #endif
 
@@ -272,9 +271,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -303,9 +300,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // authorzed (RW user)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -417,9 +412,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -450,9 +443,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -559,9 +550,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -590,9 +579,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -703,9 +690,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -738,9 +723,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -781,9 +764,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -902,9 +883,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (RO user database)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       userManager->setAuthInfo(userMap);  // set user map to avoid loading
@@ -935,9 +914,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -978,9 +955,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RW);
       user.grantCollection(vocbase.name(), "testView",
@@ -1104,9 +1079,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1146,9 +1119,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1272,9 +1243,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // not authorized (failed detailed toVelocyPack(...))
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1316,9 +1285,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1439,9 +1406,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(
@@ -1487,9 +1452,7 @@ TEST_F(V8ViewsTest, test_auth) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantDatabase(vocbase.name(), arangodb::auth::Level::RO);
       user.grantCollection(

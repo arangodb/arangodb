@@ -182,10 +182,14 @@ auto prepareRequest(ConnectionPool* pool, RestVerb type, std::string path,
     req->header.acceptType(options.acceptType);
   }
 
-  TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
-  req->header.addMeta(
-      StaticStrings::HLCHeader,
-      arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
+  if (options.sendHLCHeader) {
+    // add x-arango-hlc header to outgoing request, so that the peer
+    // can update its own HLC value to at least the value of our own HLC
+    TRI_voc_tick_t timeStamp = TRI_HybridLogicalClock();
+    req->header.addMeta(
+        StaticStrings::HLCHeader,
+        arangodb::basics::HybridLogicalClock::encodeTimeStamp(timeStamp));
+  }
 
   consensus::Agent* agent = nullptr;
   if (pool && pool->config().clusterInfo) {

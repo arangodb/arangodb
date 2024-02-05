@@ -47,10 +47,6 @@ DatabaseFeaturePhase::DatabaseFeaturePhase(ArangodServer& server)
   startsAfter<SystemDatabaseFeature, ArangodServer>();
   startsAfter<transaction::ManagerFeature, ArangodServer>();
   startsAfter<ViewTypesFeature, ArangodServer>();
-
-  if constexpr (ArangodServer::contains<LdapFeature>()) {
-    startsAfter<LdapFeature, ArangodServer>();
-  }
 }
 
 }  // namespace arangodb::application_features

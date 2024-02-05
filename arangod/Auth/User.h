@@ -45,8 +45,7 @@ class User {
   friend class UserManager;
 
  public:
-  static User newUser(std::string const& user, std::string const& pass,
-                      auth::Source source);
+  static User newUser(std::string const& user, std::string const& pass);
   static User fromDocument(velocypack::Slice const&);
 
  private:
@@ -65,7 +64,6 @@ class User {
   std::string const& passwordSalt() const { return _passwordSalt; }
   std::string const& passwordHash() const { return _passwordHash; }
   bool isActive() const { return _active; }
-  auth::Source source() const { return _source; }
 
   bool checkPassword(std::string const& password) const;
   void updatePassword(std::string const& password);
@@ -150,7 +148,6 @@ class User {
   std::string _key;
   RevisionId _rev;
   bool _active = true;
-  auth::Source _source = auth::Source::Local;
 
   std::string _username;
   std::string _passwordMethod;
@@ -161,7 +158,7 @@ class User {
   velocypack::Builder _userData;
   velocypack::Builder _configData;
 
-  /// Time when user was loaded from DB / LDAP
+  /// Time when user was loaded from DB
   double _loaded;
 
 #ifdef USE_ENTERPRISE

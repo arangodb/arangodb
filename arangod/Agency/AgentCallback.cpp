@@ -52,10 +52,11 @@ bool AgentCallback::operator()(arangodb::network::Response const& r) const {
     bool success = false;
     term_t otherTerm = 0;
 
-    if (body.hasKey("success") && body.get("success").isBoolean() &&
-        body.hasKey("term") && body.get("term").isNumber()) {
-      success = body.get("success").isTrue();
-      otherTerm = body.get("term").getNumber<term_t>();
+    if (VPackSlice successSlice = body.get("success"),
+        termSlice = body.get("term");
+        successSlice.isBoolean() && termSlice.isNumber()) {
+      success = successSlice.isTrue();
+      otherTerm = termSlice.getNumber<term_t>();
     } else {
       LOG_TOPIC("1b7bb", DEBUG, Logger::AGENCY)
           << "Bad callback message received: " << body.toJson();

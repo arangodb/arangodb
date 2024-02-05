@@ -312,10 +312,6 @@ void VstCommTask<T>::processMessage(velocypack::Buffer<uint8_t> buffer,
       req->setAuthenticated(_authToken.authenticated());
       req->setUser(_authToken.username());
       req->setAuthenticationMethod(_authMethod);
-      if (_authToken.authenticated() && this->_auth->userManager() != nullptr) {
-        // if we don't call checkAuthentication we need to refresh
-        this->_auth->userManager()->refreshUser(this->_authToken.username());
-      }
       stat.SET_REQUEST_TYPE(req->requestType());
 
       // Separate superuser traffic:

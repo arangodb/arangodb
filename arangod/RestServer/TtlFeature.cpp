@@ -332,7 +332,7 @@ class TtlThread final : public ServerThread<ArangodServer> {
         }
 
         if (ServerState::instance()->isDBServer() &&
-            !collection->followers()->getLeader().empty()) {
+            !collection->isLeadingShard()) {
           // we are a follower for this shard. do not remove any data here, but
           // let the leader carry out the removal and replicate it
           continue;
