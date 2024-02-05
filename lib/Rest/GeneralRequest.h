@@ -138,8 +138,6 @@ class GeneralRequest {
 
   uint64_t messageId() const { return _messageId; }
 
-  virtual Endpoint::TransportType transportType() = 0;
-
   // get value from headers map. The key must be lowercase.
   std::string const& header(std::string const& key) const;
   std::string const& header(std::string const& key, bool& found) const;

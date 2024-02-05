@@ -229,11 +229,6 @@ RocksDBRestReplicationHandler::handleCommandBatch() {
 }
 
 void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
-
   // determine start and end tick
   TRI_voc_tick_t tickStart = 0;
   TRI_voc_tick_t tickEnd = UINT64_MAX;
@@ -340,29 +335,22 @@ void RocksDBRestReplicationHandler::handleCommandLoggerFollow() {
                          result.minTickIncluded() ? "true" : "false");
 
   if (length > 0) {
-    if (useVst) {
-      for (auto message : arangodb::velocypack::ArrayIterator(data)) {
-        _response->addPayload(VPackSlice(message),
-                              trxContext->getVPackOptions(), true);
-      }
-    } else {
-      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
 
-      if (httpResponse == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid response type");
-      }
+    if (httpResponse == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
+    }
 
-      basics::StringBuffer& buffer = httpResponse->body();
-      basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-      // note: we need the CustomTypeHandler here
-      velocypack::Dumper dumper(&adapter, trxContext->getVPackOptions());
-      for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
-        dumper.dump(marker);
-        httpResponse->body().appendChar('\n');
-        // LOG_TOPIC("2c0b2", INFO, Logger::REPLICATION) <<
-        // marker.toJson(trxContext->getVPackOptions());
-      }
+    basics::StringBuffer& buffer = httpResponse->body();
+    basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+    // note: we need the CustomTypeHandler here
+    velocypack::Dumper dumper(&adapter, trxContext->getVPackOptions());
+    for (auto marker : arangodb::velocypack::ArrayIterator(data)) {
+      dumper.dump(marker);
+      httpResponse->body().appendChar('\n');
+      // LOG_TOPIC("2c0b2", INFO, Logger::REPLICATION) <<
+      // marker.toJson(trxContext->getVPackOptions());
     }
   }
 
@@ -851,22 +839,17 @@ void RocksDBRestReplicationHandler::handleCommandDump() {
         StaticStrings::ReplicationHeaderLastIncluded,
         StringUtils::itoa((dump.length() == 0) ? 0 : res.includedTick));
 
-    if (_request->transportType() == Endpoint::TransportType::HTTP) {
-      auto response = dynamic_cast<HttpResponse*>(_response.get());
-      if (response == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid response type");
-      }
-
-      // transfer ownership of the buffer contents
-      response->body().set(dump.stringBuffer());
-
-      // avoid double freeing
-      TRI_StealStringBuffer(dump.stringBuffer());
-    } else {
-      _response->addRawPayload(std::string_view(dump.data(), dump.length()));
-      _response->setGenerateBody(true);
+    auto response = dynamic_cast<HttpResponse*>(_response.get());
+    if (response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
     }
+
+    // transfer ownership of the buffer contents
+    response->body().set(dump.stringBuffer());
+
+    // avoid double freeing
+    TRI_StealStringBuffer(dump.stringBuffer());
   }
 
   _response->setAllowCompression(

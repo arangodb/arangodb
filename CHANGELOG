@@ -29,6 +29,7 @@ devel
   of these options.
   This is important so that the agent instances do not get overwhelmed by the
   potential extra CPU utilization caused by compression/decompression.
+
 * Save some traffic in cluster-internal requests:
 
   - Remove disk usage metrics from heartbeat messages (`freeDiskSpaceBytes` and

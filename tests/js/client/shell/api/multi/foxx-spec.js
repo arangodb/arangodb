@@ -16,8 +16,7 @@ const errors = arangodb.errors;
 const db = arangodb.db;
 const aql = arangodb.aql;
 const _ = require("lodash");
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:');
-const isVst = arango.getEndpoint().match('^vst://') !== null;
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:');
 
 function loadFoxxIntoZip(path) {
   let zip = utils.zipDirectory(path);
@@ -124,12 +123,7 @@ describe('FoxxApi commit', function () {
       Object.keys(headers).forEach(function(key) {
         let value = headers[key];
         if (key === 'origin') {
-          if (arango.getEndpoint().match(/^vst:/)) {
-            // GeneralServer/HttpCommTask.cpp handles this, not implemented for vst
-            expect(body['origin']).to.equal(origin);
-          } else {
-            expect(result.headers['access-control-allow-origin']).to.equal(origin);
-          }
+          expect(result.headers['access-control-allow-origin']).to.equal(origin);
         }
         expect(body[key]).to.equal(headers[key]);
         
@@ -207,67 +201,29 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
     
     result = arango.GET_RAW('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
-    if (!isVst) {
-      // doesn't work with vst..
-      arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+    arango.GET_RAW('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
 
-      arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
-    }
+    arango.GET_RAW('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = arango.GET_RAW('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');
@@ -316,67 +272,29 @@ describe('FoxxApi commit', function () {
     expect(result).to.have.property('parsedBody');
 
     result = proxy('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/_api/version', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-object-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-array-deflate', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
     
     result = proxy('/test/encode-object-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/test/encode-array-gzip', {'accept-encoding': 'gzip'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
-    if (!isVst) {
-      // doesn't work with vst..
-      proxy('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
+    proxy('/test/encode-array-base64encode', {'accept-encoding': 'base64'});
 
-      proxy('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
-    }
+    proxy('/test/encode-object-base64encode', {'accept-encoding': 'base64'});
 
     result = proxy('/_api/version', {'accept-encoding': 'deflate'});
-    if (!isVst) {
-      // no transparent compression support in VST atm.
-      expect(result.body).to.be.instanceof(Buffer);
-    } else {
-      expect(result).to.have.property('parsedBody');
-    }
+    expect(result.body).to.be.instanceof(Buffer);
 
     result = proxy('/_api/version', {'accept-encoding': 'gzip'});
     expect(result).to.have.property('parsedBody');

@@ -48,7 +48,6 @@ class EndpointList {
   bool add(std::string const& specification, int backlogSize,
            bool reuseAddress);
   std::vector<std::string> all() const;
-  std::vector<std::string> all(Endpoint::TransportType transport) const;
   void apply(std::function<void(std::string const&, Endpoint&)> const& cb);
   bool hasSsl() const;
   void dump() const;

@@ -63,7 +63,7 @@ ClientFeature::ClientFeature(ApplicationServer& server,
     : HttpEndpointProvider(server, registration, name()),
       _comm{comm},
       _console{},
-      _endpoints{Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP)},
+      _endpoints{Endpoint::defaultEndpoint()},
       _maxNumEndpoints(maxNumEndpoints),
       _databaseName(StaticStrings::SystemDatabase),
       _username("root"),
@@ -111,8 +111,8 @@ void ClientFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
   if (isArangosh) {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
-        "Use http+ssl:// or vst+ssl:// as schema to connect to an SSL-secured "
-        "server endpoint, otherwise http+tcp://, vst+tcp:// or unix://.";
+        "Use http+ssl:// as schema to connect to an SSL-secured "
+        "server endpoint, otherwise http+tcp:// or unix://.";
   } else {
     endpointHelp =
         "The endpoint to connect to. Use 'none' to start without a server. "
@@ -311,8 +311,7 @@ void ClientFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
     std::for_each(
         _endpoints.begin(), _endpoints.end(), [](auto const& endpoint) {
           if (!endpoint.empty() && (endpoint != "none") &&
-              (endpoint !=
-               Endpoint::defaultEndpoint(Endpoint::TransportType::HTTP))) {
+              (endpoint != Endpoint::defaultEndpoint())) {
             std::unique_ptr<Endpoint> ep(Endpoint::clientFactory(endpoint));
             if (ep != nullptr && ep->isBroadcastBind()) {
               LOG_TOPIC("701fb", FATAL, arangodb::Logger::FIXME)

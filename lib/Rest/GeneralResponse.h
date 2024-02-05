@@ -96,8 +96,6 @@ class GeneralResponse {
     return _contentTypeRequested;
   }
 
-  virtual arangodb::Endpoint::TransportType transportType() = 0;
-
  protected:
   explicit GeneralResponse(ResponseCode, uint64_t mid);
 

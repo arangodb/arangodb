@@ -19,9 +19,8 @@ import { ControlledJSONEditor } from "../../../components/jsonEditor/ControlledJ
 import { ReactTable } from "../../../components/table/ReactTable";
 import { TableControl } from "../../../components/table/TableControl";
 import { useSortableReactTable } from "../../../components/table/useSortableReactTable";
-import { download, downloadLocalData } from "../../../utils/downloadHelper";
+import { download } from "../../../utils/downloadHelper";
 import { useQueryContext } from "../QueryContextProvider";
-import { getQueryStorageKey } from "../queryHelper";
 import { AQLEditor } from "./AQLEditor";
 import { DeleteQueryModal } from "./DeleteQueryModal";
 import { ImportQueryModal } from "./ImportQueryModal";
@@ -294,16 +293,6 @@ const SavedQueryBottomBar = () => {
     onClose: onCloseImportModal
   } = useDisclosure();
   const onDownload = () => {
-    const storageKey = getQueryStorageKey();
-    if (window.frontendConfig.ldapEnabled) {
-      const data = localStorage.getItem(storageKey) || "[]";
-      downloadLocalData({
-        data,
-        fileName: `savedQueries-${window.frontendConfig.db}.json`,
-        type: "json"
-      });
-      return;
-    }
     download(`query/download/${window.App.currentUser || "root"}`);
   };
   return (

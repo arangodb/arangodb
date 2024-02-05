@@ -73,7 +73,7 @@ function dumpIntegrationSuite() {
   assertTrue(fs.isFile(arangodump), "arangodump not found!");
 
   let addConnectionArgs = function (args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
     if (args.indexOf("--all-databases") === -1) {

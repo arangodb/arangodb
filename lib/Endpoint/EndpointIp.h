@@ -35,7 +35,7 @@ struct addrinfo;
 namespace arangodb {
 class EndpointIp : public Endpoint {
  protected:
-  EndpointIp(DomainType, EndpointType, TransportType, EncryptionType, int, bool,
+  EndpointIp(DomainType, EndpointType, EncryptionType, int, bool,
              std::string const&, uint16_t const);
 
  public:
@@ -43,7 +43,6 @@ class EndpointIp : public Endpoint {
 
  public:
   static uint16_t const _defaultPortHttp;
-  static uint16_t const _defaultPortVst;
   static char const* _defaultHost;
 
  private:

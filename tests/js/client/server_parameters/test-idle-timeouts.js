@@ -57,14 +57,6 @@ function testSuite() {
       assertEqual(10, result.length);
     },
     
-    testKeepAliveTimeoutVst : function() {
-      connectWith("vst");
-      // the query should succeed despite it running longer than the configured 
-      // connection timeout
-      let result = db._query("FOR i IN 1..10 RETURN SLEEP(1)").toArray();
-      assertEqual(10, result.length);
-    },
-    
     testKeepAliveTimeoutHttp2 : function() {
       connectWith("h2");
       // the query should succeed despite it running longer than the configured 

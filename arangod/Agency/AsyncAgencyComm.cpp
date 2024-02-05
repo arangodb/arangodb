@@ -257,11 +257,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncInquiry(
         case Error::QueueCapacityExceeded:
           // retry the request after a timeout
           return agencyAsyncInquiry(man, std::move(meta), std::move(body));
-
-        case Error::VstUnauthorized:
-          // unrecoverable error
-          return futures::makeFuture(
-              AsyncAgencyCommResult{result.error, result.stealResponse()});
       }
 
       ADB_UNREACHABLE;
@@ -425,12 +420,6 @@ arangodb::AsyncAgencyComm::FutureResult agencyAsyncSend(
                   return ::agencyAsyncSend(man, std::move(meta),
                                            std::move(result.request())
                                                .moveBuffer());  // retry always
-                }
-
-                case Error::VstUnauthorized: {
-                  // unrecoverable error
-                  return futures::makeFuture(AsyncAgencyCommResult{
-                      result.error, result.stealResponse()});
                 }
               }
 

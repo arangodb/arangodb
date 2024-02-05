@@ -90,10 +90,6 @@
 #include "VocBase/Methods/Indexes.h"
 #include "velocypack/Slice.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 
 struct TestIndex : public arangodb::Index {
@@ -471,14 +467,14 @@ class IResearchAnalyzerFeatureTest
     ASSERT_NE(authFeature, nullptr);
     auto* userManager = authFeature->userManager();
     ASSERT_NE(userManager, nullptr);
-    arangodb::auth::UserMap userMap;
-    auto user = arangodb::auth::User::newUser("testUser", "testPW",
-                                              arangodb::auth::Source::LDAP);
+    auto user = arangodb::auth::User::newUser("testUser", "testPW");
     user.grantDatabase("testVocbase", db);
     user.grantCollection("testVocbase", "*", col);
+    arangodb::auth::UserMap userMap;
     userMap.emplace("testUser", std::move(user));
-    userManager->setAuthInfo(userMap);  // set user map to avoid loading
-                                        // configuration from system database
+    userManager->setAuthInfo(
+        std::move(userMap));  // set user map to avoid loading
+                              // configuration from system database
   }
 
   std::unique_ptr<arangodb::ExecContext> getLoggedInContext() const {

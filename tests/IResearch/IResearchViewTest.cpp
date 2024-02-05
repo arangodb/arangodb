@@ -95,10 +95,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 
 #ifdef USE_ENTERPRISE
@@ -2040,9 +2036,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
     // https://github.com/arangodb/backlog/issues/459
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -2062,9 +2056,7 @@ TEST_F(IResearchViewTest, test_drop_with_link) {
     // authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7206,9 +7198,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7240,9 +7230,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7375,9 +7363,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7401,9 +7387,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7487,9 +7471,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7520,9 +7502,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7615,9 +7595,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7648,9 +7626,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7732,9 +7708,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7758,9 +7732,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -7845,9 +7817,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7878,9 +7848,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -7973,9 +7941,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -8006,9 +7972,7 @@ TEST_F(IResearchViewTest, test_update_overwrite) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -9992,9 +9956,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10026,9 +9988,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10161,9 +10121,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10187,9 +10145,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection",
@@ -10274,9 +10230,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10307,9 +10261,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10402,9 +10354,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) not authorised (NONE collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",
@@ -10435,9 +10385,7 @@ TEST_F(IResearchViewTest, test_update_partial) {
     // subsequent update (overwrite) authorised (RO collection)
     {
       arangodb::auth::UserMap userMap;
-      auto& user = userMap
-                       .emplace("", arangodb::auth::User::newUser(
-                                        "", "", arangodb::auth::Source::LDAP))
+      auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                        .first->second;
       user.grantCollection(
           vocbase.name(), "testCollection0",

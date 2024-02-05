@@ -172,7 +172,6 @@ add_library(arango STATIC
   Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
-  Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
   Basics/NumberUtils.cpp
@@ -214,8 +213,6 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/PathMatch.h
   Rest/Version.cpp
-  Rest/VstRequest.cpp
-  Rest/VstResponse.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp

@@ -99,10 +99,6 @@ class HttpResponse : public GeneralResponse {
     return _body->reserve(size);
   }
 
-  arangodb::Endpoint::TransportType transportType() override final {
-    return arangodb::Endpoint::TransportType::HTTP;
-  }
-
   std::unique_ptr<basics::StringBuffer> stealBody() {
     std::unique_ptr<basics::StringBuffer> body(std::move(_body));
     return body;

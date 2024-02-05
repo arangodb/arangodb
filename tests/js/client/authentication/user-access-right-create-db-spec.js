@@ -138,10 +138,9 @@ describe('User Rights Management', () => {
             });
             it('create database with user directly given', () => {
               if (systemLevel['rw'].has(name)) {
-                let ldap = helper.isLdapEnabledExternal();
                 // options empty, because there are not options at the moment
                 var options = {};
-                var users = [{username: ldap ? ":role:" + name : name}];
+                var users = [{username: name}];
                 // User needs rw on _system
                 db._createDatabase(testDBName, options, users);
                 expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');
@@ -156,10 +155,9 @@ describe('User Rights Management', () => {
             });
             it('create database with multiple users directly given', () => {
               if (systemLevel['rw'].has(name)) {
-                let ldap = helper.isLdapEnabledExternal();
                 // options empty, because there are not options at the moment
                 var options = {};
-                var users = [{username: 'root'}, {username: ldap ? ":role:" + name : name}];
+                var users = [{username: 'root'}, {username: name}];
                 // User needs rw on _system
                 db._createDatabase(testDBName, options, users);
                 expect(rootTestDB()).to.equal(true, 'DB creation reported success, but DB was not found afterwards.');

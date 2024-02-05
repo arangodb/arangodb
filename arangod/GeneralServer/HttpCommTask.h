@@ -71,7 +71,7 @@ class HttpCommTask final : public GeneralCommTask<T> {
   static bool transferEncodingContainsChunked(HttpCommTask<T>& commTask,
                                               std::string const& encoding);
 
-  void checkVSTPrefix();
+  void checkProtocolUpgrade();
 
   void processRequest();
   void doProcessRequest();
