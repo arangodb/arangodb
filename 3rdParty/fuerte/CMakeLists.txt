@@ -15,8 +15,6 @@ add_library(fuerte STATIC
   src/message.cpp
   src/requests.cpp
   src/types.cpp
-  src/vst.cpp
-  src/VstConnection.cpp
   src/connection.cpp)
 
 # TODO: This is not enough to link fuerte on its own

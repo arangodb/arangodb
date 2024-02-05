@@ -144,8 +144,6 @@ MessageType intToMessageType(int integral) {
       return MessageType::Request;
     case 2:
       return MessageType::Response;
-    case 3:
-      return MessageType::ResponseUnfinished;
     case 1000:
       return MessageType::Authentication;
     default:
@@ -164,9 +162,6 @@ std::string to_string(MessageType type) {
 
     case MessageType::Response:
       return "response";
-
-    case MessageType::ResponseUnfinished:  // needed for vst
-      return "unfinised response";
 
     case MessageType::Authentication:
       return "authentication";
@@ -201,9 +196,6 @@ std::string to_string(ProtocolType type) {
     case ProtocolType::Http:
     case ProtocolType::Http2:
       return "http";
-
-    case ProtocolType::Vst:
-      return "vst";
   }
 
   return "undefined";
@@ -350,9 +342,6 @@ std::string to_string(Error error) {
       return "Error while writing";
     case Error::ConnectionCanceled:
       return "Connection was locally canceled";
-
-    case Error::VstUnauthorized:
-      return "Cannot authorize on VST connection";
 
     case Error::ProtocolError:
       return "Error: invalid server response";

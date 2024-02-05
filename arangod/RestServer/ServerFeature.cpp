@@ -104,13 +104,6 @@ another mode.)");
                                    arangodb::options::Flags::Uncommon));
 #endif
 
-  // add several obsoleted options here
-  options->addSection("vst", "VelocyStream protocol", "", true, true);
-  options->addObsoleteOption("--vst.maxsize",
-                             "maximal size (in bytes) "
-                             "for a VelocyPack chunk",
-                             true);
-
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
   options->addObsoleteOption(

@@ -29,11 +29,10 @@
 
 using namespace arangodb;
 
-EndpointIpV4::EndpointIpV4(EndpointType type, TransportType transport,
-                           EncryptionType encryption, int listenBacklog,
-                           bool reuseAddress, std::string const& host,
-                           uint16_t const port)
-    : EndpointIp(DomainType::IPV4, type, transport, encryption, listenBacklog,
+EndpointIpV4::EndpointIpV4(EndpointType type, EncryptionType encryption,
+                           int listenBacklog, bool reuseAddress,
+                           std::string const& host, uint16_t const port)
+    : EndpointIp(DomainType::IPV4, type, encryption, listenBacklog,
                  reuseAddress, host, port) {}
 
 bool EndpointIpV4::isBroadcastBind() const { return host() == "0.0.0.0"; }

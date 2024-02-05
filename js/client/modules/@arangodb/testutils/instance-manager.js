@@ -1374,16 +1374,10 @@ class instanceManager {
     }
     return true;
   }
-  /// make arangosh use HTTP, VST or HTTP2 according to option
+  /// make arangosh use HTTP, HTTP2 according to option
   findEndpoint() {
     let endpoint = this.endpoint;
-    if (this.options.vst) {
-      if (this.options.protocol === 'ssl') {
-        endpoint = endpoint.replace(/.*\/\//, 'vst+ssl://');
-      } else {
-        endpoint = endpoint.replace(/.*\/\//, 'vst://');
-      }
-    } else if (this.options.http2) {
+    if (this.options.http2) {
       if (this.options.protocol === 'ssl') {
         endpoint = endpoint.replace(/.*\/\//, 'h2+ssl://');
       } else {
