@@ -241,6 +241,7 @@ jobs:
           command: |
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
+            find build/ -iname *.o.d -delete || true
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -255,8 +256,8 @@ jobs:
                 root: .
                 paths:
                   - build/compile_commands.json
+                  - build/bin
                   - CMakePresets.json
-                  - build/
                   - scripts/
                   - js/
                   - enterprise/js
@@ -343,7 +344,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install -r scripts/toolbox/requirements.txt
+            pip install -r scripts/toolbox/requirements.txt --break-system-packages
       - run:
           name: Run HotBackup tests
           command: |

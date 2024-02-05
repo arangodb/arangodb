@@ -265,8 +265,12 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     if not size in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception(f"Invalid resource class size {size}")
 
-    if size == "small" and build_config.sanitizer != "":
-        size = "medium"  # sanitizer builds need more resources
+    if build_config.sanitizer != "":
+        # sanitizer builds need more resources
+        if size == "small":
+            size = "medium"
+        elif size == "medium":
+            size = "medium+"
 
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
