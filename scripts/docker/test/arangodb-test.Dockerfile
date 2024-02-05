@@ -1,4 +1,4 @@
-FROM ubuntu:22.04
+FROM ubuntu:23.10
 MAINTAINER hackers@arangodb.com
 
 ARG arch
@@ -8,8 +8,8 @@ RUN apt-get update && \
     apt-get autoremove -y --purge && \
     apt-get clean -y && \
     rm -rf /var/lib/apt/lists/*
-   
-RUN pip install psutil py7zr
+
+RUN pip install psutil py7zr --break-system-packages
 
 RUN apt-get remove -y gcc python3-dev && \
     apt-get clean -y
