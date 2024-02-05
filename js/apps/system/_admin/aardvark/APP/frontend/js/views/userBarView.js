@@ -78,15 +78,6 @@
           var currentUser = null;
           if (username !== false) {
             var continueFunc = function () {
-              if (frontendConfig.ldapEnabled) {
-                self.userCollection.add({
-                  name: window.App.currentUser,
-                  user: window.App.currentUser,
-                  username: window.App.currentUser,
-                  active: true,
-                  img: undefined
-                });
-              }
               currentUser = self.userCollection.findWhere({user: username});
               currentUser.set({loggedIn: true});
               name = currentUser.get('extra').name;

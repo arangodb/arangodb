@@ -132,9 +132,6 @@ struct FieldMeta {
   FieldMeta& operator=(FieldMeta&&) = default;
 
   bool operator==(FieldMeta const& rhs) const noexcept;
-  bool operator!=(FieldMeta const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize FieldMeta with values from a JSON description
@@ -282,9 +279,6 @@ struct IResearchLinkMeta : public FieldMeta {
   IResearchLinkMeta& operator=(IResearchLinkMeta const& other) = default;
 
   bool operator==(IResearchLinkMeta const& rhs) const noexcept;
-  bool operator!=(IResearchLinkMeta const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
 
   ////////////////////////////////////////////////////////////////////////////////
   /// @brief initialize IResearchLinkMeta with values from a JSON description

@@ -1226,11 +1226,8 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(vocbase.server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine<RocksDBEngine>()
-                   .db()
-                   ->NewIterator(_readOptions, cf));
+    iter.reset(
+        vocbase.engine<RocksDBEngine>().db()->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(_bounds.start());
     currentTick = 1;

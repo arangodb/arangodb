@@ -39,7 +39,7 @@ function runSetup () {
 
   db._drop(cn);
   var c = db._create(cn);
-  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true });
+  var i1 = c.ensureIndex({ type: "inverted", name: "i1", includeAllFields:true, storedValues: ["_key"] });
   var meta = { indexes: [ { index: i1.name, collection: cn } ] };
 
   db._dropView(vn);
@@ -86,9 +86,14 @@ function recoverySuite () {
       };
       checkView(vn, "i1");
 
-      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var result = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} COLLECT WITH COUNT INTO length RETURN length").toArray();
+      var expectedResultStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._key").toArray();
       var expectedResult = db._query("FOR doc IN " + cn + " FILTER doc.c >= 0 COLLECT WITH COUNT INTO length RETURN length").toArray();
-      assertEqual(expectedResult[0], result[0]);
+      var expectedResultNonStoredValues = db._query("FOR doc IN " + vn + " SEARCH doc.c >= 0 OPTIONS {waitForSync: true} RETURN doc._id").toArray();
+      const message = `Search with COUNT ${result[0]}, Collection COUNT ${expectedResult[0]}, SearchStoredValues: ${expectedResultStoredValues.length}. Search Not StoradeValues: ${expectedResultNonStoredValues.length} StoredValue _key values: ${JSON.stringify(expectedResultStoredValues.sort())}, not stored: ${JSON.stringify(expectedResultNonStoredValues.sort())}`;
+      assertEqual(result[0], expectedResult[0], message);
+      assertEqual(result[0], expectedResultStoredValues.length, message);
+      assertEqual(result[0], expectedResultNonStoredValues.length, message);
     }
  };
 }

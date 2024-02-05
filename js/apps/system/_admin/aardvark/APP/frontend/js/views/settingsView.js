@@ -52,7 +52,10 @@
               arangoHelper.arangoError('Could not drop collection: ' + data.responseJSON.errorMessage);
             },
             success: function () {
-              window.App.navigate('#collections', {trigger: true});
+              window.App.navigate('#collections', { trigger: true });
+              window.arangoHelper.arangoNotification(
+                "Collection successfully dropped"
+              );
             }
           }
         );

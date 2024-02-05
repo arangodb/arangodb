@@ -314,9 +314,7 @@
         });
         window.checkVersion();
 
-        this.userConfig = new window.UserConfig({
-          ldapEnabled: frontendConfig.ldapEnabled
-        });
+        this.userConfig = new window.UserConfig({});
         this.userConfig.fetch();
 
         this.documentsView = new window.DocumentsView({

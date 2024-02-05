@@ -24,11 +24,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
-const {assertEqual, assertTrue, assertUndefined} = jsunity.jsUnity.assertions;
+const {assertEqual, assertTrue, assertUndefined, fail} = jsunity.jsUnity.assertions;
 const arangodb = require("@arangodb");
 const _ = require('lodash');
 const db = arangodb.db;
 const lh = require("@arangodb/testutils/replicated-logs-helper");
+const dh = require("@arangodb/testutils/document-state-helper");
+const ch = require("@arangodb/testutils/collection-groups-helper");
 const lpreds = require("@arangodb/testutils/replicated-logs-predicates");
 const request = require('@arangodb/request');
 const {waitFor} = require("@arangodb/testutils/replicated-logs-helper");
@@ -39,6 +41,13 @@ const {setLeader, unsetLeader} = lh;
 const dropState = (database, logId) => {
   const url = lh.getServerUrl(_.sample(lh.coordinators));
   const res = request.delete(`${url}/_db/${database}/_api/log/${logId}`);
+  lh.checkRequestResult(res);
+  return res.json;
+};
+
+const collectionStatus = (database, collectionName) => {
+  const url = lh.getServerUrl(_.sample(lh.coordinators));
+  const res = request.get(`${url}/_db/${database}/_api/log/collection-status/${collectionName}`);
   lh.checkRequestResult(res);
   return res.json;
 };
@@ -322,6 +331,60 @@ const replicatedStateSuite = function (stateType) {
   };
 };
 
+const replicatedStateCollectionStatusSuite = function () {
+  const collectionName = "replicated-state-collection-status";
+  let collection = null;
+  let shards = null;
+  let shardsToLogs = null;
+
+  const {setUpAll, tearDownAll, setUpAnd, tearDownAnd} =
+    lh.testHelperFunctions(database, {replicationVersion: "2"});
+
+  return {
+    setUpAll,
+    tearDownAll,
+    setUp: setUpAnd(() => {
+      collection = db._create(collectionName, {"numberOfShards": 2, "writeConcern": 2, "replicationFactor": 3});
+      ({shards, shardsToLogs} = dh.getCollectionShardsAndLogs(db, collection));
+    }),
+    tearDown: tearDownAnd(() => {
+      if (collection !== null) {
+        db._drop(collection.name());
+      }
+      collection = null;
+    }),
+
+    testStatusNonExistingCollection: function () {
+      try {
+        collectionStatus(database, `${collectionName}foobar`);
+        fail("Expected collectionStatus to fail");
+      } catch (e) {
+        assertEqual(404, e.code);
+      }
+    },
+
+    testStatusExistingCollection: function () {
+      let status = collectionStatus(database, collectionName);
+      assertEqual(200, status.code);
+      assertEqual(status.result.allCollectionsInGroup, [collectionName]);
+      assertTrue(_.isEqual(_.sortBy(status.result.collectionShards.map((shard) => `s${shard}`)), _.sortBy(shards)));
+      let colAgency = ch.readCollection(database, collection._id);
+      assertEqual(status.result.groupId, colAgency.plan.groupId);
+      let logsToShards = {};
+      for (let shard in shardsToLogs) {
+        logsToShards[shardsToLogs[shard]] = shard;
+        assertEqual(status.result.logs[shardsToLogs[shard]]["shards"], [shard]);
+      }
+      assertEqual(Object.keys(status.result.logs).length, Object.keys(logsToShards).length);
+      for (let log in logsToShards) {
+        assertTrue("snapshots" in status.result.logs[log]);
+        assertTrue("globalStatus" in status.result.logs[log]);
+      }
+    }
+  };
+};
+
+
 const suiteWithState = function (stateType) {
   return function () {
     return replicatedStateSuite(stateType);
@@ -329,4 +392,5 @@ const suiteWithState = function (stateType) {
 };
 
 jsunity.run(suiteWithState("black-hole"));
+jsunity.run(replicatedStateCollectionStatusSuite);
 return jsunity.done();

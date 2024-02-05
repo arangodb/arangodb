@@ -33,10 +33,6 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/ManagerFeature.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include "Mocks/Servers.h"
 
 namespace arangodb {

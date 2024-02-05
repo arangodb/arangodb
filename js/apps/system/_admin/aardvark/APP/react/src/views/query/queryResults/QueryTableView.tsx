@@ -3,6 +3,7 @@ import {
   TableContainer,
   Tbody,
   Td,
+  Text,
   Th,
   Thead,
   Tr
@@ -13,10 +14,20 @@ import { QueryResultType } from "../ArangoQuery.types";
 export const QueryTableView = ({
   queryResult
 }: {
-  queryResult: QueryResultType<{ [key: string]: any }[]>;
+  queryResult: QueryResultType<({ [key: string]: any } | null)[]>;
 }) => {
-  const firstRow = queryResult.result?.[0];
-  const headers = firstRow ? Object.keys(firstRow) : [];
+  const firstValidResult = queryResult.result?.find(
+    result => result !== null && result !== undefined
+  );
+  if (!firstValidResult) {
+    // if there are no valid rows, everything is null or undefined
+    return (
+      <Text padding="4">
+        Could not produce a table, please check the JSON result tab
+      </Text>
+    );
+  }
+  const headers = Object.keys(firstValidResult);
   if (!headers.length) {
     return null;
   }
@@ -36,14 +47,26 @@ export const QueryTableView = ({
           {queryResult.result?.map((row, index) => {
             return (
               <Tr key={index}>
-                {headers.map(header => {
-                  const value = row[header];
-                  if (typeof value === "string") {
-                    return <Td key={header}>{value}</Td>;
+                {headers.map((header, headerIndex) => {
+                  if (row === null || row === undefined) {
+                    /**
+                     *  If any row is null, or undefined,
+                     *  we display it in the first cell
+                     * */
+                    if (headerIndex === 0) {
+                      return (
+                        <Td colSpan={headers.length} key={header}>
+                          {JSON.stringify(row)}
+                        </Td>
+                      );
+                    }
+                    return null;
                   }
+                  const value = row[header];
+                  const isString = typeof value === "string";
                   return (
                     <Td whiteSpace="normal" key={header}>
-                      {JSON.stringify(row[header])}
+                      {isString ? value : JSON.stringify(value)}
                     </Td>
                   );
                 })}

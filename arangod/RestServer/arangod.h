@@ -128,7 +128,6 @@ class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
 class AuditFeature;
-class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
@@ -212,13 +211,13 @@ using ArangodFeaturesList = TypeList<
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
 #ifdef USE_V8
     ConsoleFeature,
 #endif
     CpuUsageFeature,
-    DatabaseFeature,
     DatabasePathFeature,
     DumpLimitsFeature,
     HttpEndpointProvider,
@@ -297,7 +296,6 @@ using ArangodFeaturesList = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature,
-    LdapFeature,
     LicenseFeature,
     RCloneFeature,
     HotBackupFeature,

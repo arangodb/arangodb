@@ -46,13 +46,7 @@ struct ExpressionCompilationContext {
     return ast == rhs.ast && node == rhs.node;
   }
 
-  bool operator!=(ExpressionCompilationContext const& rhs) const noexcept {
-    return !(*this == rhs);
-  }
-
   explicit operator bool() const noexcept { return ast && node; }
-
-  size_t hash() const noexcept;
 
   aql::Ast* ast{};
   std::shared_ptr<aql::AstNode> node{};
@@ -77,7 +71,7 @@ struct ExpressionExecutionContext final : irs::attribute {
 };
 
 // User-side filter based on arbitrary ArangoDB `Expression`.
-class ByExpression final : public irs::filter {
+class ByExpression final : public irs::FilterWithBoost {
  public:
   static const std::string_view type_name() noexcept {
     return "arangodb::iresearch::ByExpression";
@@ -96,8 +90,6 @@ class ByExpression final : public irs::filter {
 
   irs::filter::prepared::ptr prepare(
       irs::PrepareContext const& ctx) const final;
-
-  size_t hash() const noexcept final;
 
   ExpressionCompilationContext const& context() const noexcept { return _ctx; }
 

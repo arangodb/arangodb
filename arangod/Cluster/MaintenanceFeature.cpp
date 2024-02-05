@@ -157,6 +157,10 @@ arangodb::Result arangodb::maintenance::collectionCount(
 
 MaintenanceFeature::MaintenanceFeature(Server& server)
     : ArangodFeature{server, *this},
+      // in the unit tests we can have cases where we have no ClusterFeature
+      _clusterFeature(server.hasFeature<ClusterFeature>()
+                          ? &server.getFeature<ClusterFeature>()
+                          : nullptr),
       _forceActivation(false),
       _resignLeadershipOnShutdown(false),
       _firstRun(true),
@@ -180,6 +184,9 @@ MaintenanceFeature::MaintenanceFeature(Server& server)
   startsAfter<metrics::MetricsFeature>();
 
   setOptional(true);
+#ifndef ARANGODB_USE_GOOGLE_TESTS
+  ADB_PROD_ASSERT(_clusterFeature != nullptr);
+#endif
 }
 
 MaintenanceFeature::~MaintenanceFeature() { stop(); }
@@ -391,7 +398,7 @@ void MaintenanceFeature::beginShutdown() {
     };
 
     // create common shared memory with jobid
-    auto& ci = server().getFeature<ClusterFeature>().clusterInfo();
+    auto& ci = _clusterFeature->clusterInfo();
     auto shared = std::make_shared<callback_data>(ci.uniqid());
 
     AgencyComm am(server());
@@ -421,7 +428,7 @@ void MaintenanceFeature::beginShutdown() {
 
     auto endtime = startTime + timeout;
 
-    auto checkAgencyPathExists = [cf = &server().getFeature<ClusterFeature>()](
+    auto checkAgencyPathExists = [&cf = _clusterFeature](
                                      std::string const& path,
                                      uint64_t jobId) -> bool {
       try {
@@ -1189,11 +1196,11 @@ void MaintenanceFeature::proceed() {
 }
 
 void MaintenanceFeature::addDirty(std::string const& database) {
-  server().getFeature<ClusterFeature>().addDirty(database);
+  _clusterFeature->addDirty(database);
 }
 void MaintenanceFeature::addDirty(
     containers::FlatHashSet<std::string> const& databases, bool callNotify) {
-  server().getFeature<ClusterFeature>().addDirty(databases, callNotify);
+  _clusterFeature->addDirty(databases, callNotify);
 }
 
 containers::FlatHashSet<std::string> MaintenanceFeature::pickRandomDirty(
@@ -1225,8 +1232,7 @@ void MaintenanceFeature::refillToCheck() {
 
 containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
     containers::FlatHashSet<std::string> const& more) {
-  auto& clusterFeature = server().getFeature<ClusterFeature>();
-  auto ret = clusterFeature.dirty();  // plan & current in first run
+  auto ret = _clusterFeature->dirty();  // plan & current in first run
   if (_firstRun) {
     auto all = allDatabases();
     ret.insert(std::make_move_iterator(all.begin()),
@@ -1241,7 +1247,7 @@ containers::FlatHashSet<std::string> MaintenanceFeature::dirty(
 }
 
 std::unordered_set<std::string> MaintenanceFeature::allDatabases() const {
-  return server().getFeature<ClusterFeature>().allDatabases();
+  return _clusterFeature->allDatabases();
 }
 
 size_t MaintenanceFeature::lastNumberOfDatabases() const {
@@ -1272,7 +1278,7 @@ bool MaintenanceFeature::hasAction(ActionState state, ShardID const& shardId,
 }
 
 bool MaintenanceFeature::isDirty(std::string const& dbName) const {
-  return server().getFeature<ClusterFeature>().isDirty(dbName);
+  return _clusterFeature->isDirty(dbName);
 }
 
 bool MaintenanceFeature::lockShard(

@@ -57,8 +57,7 @@ namespace arangodb::iresearch {
 struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                 VPackSlice definition, bool isUserRequest) const final {
-    auto& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = vocbase.engine();
     auto properties = definition.isObject()
                           ? definition
                           : velocypack::Slice::emptyObjectSlice();
@@ -527,8 +526,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
 }
 
 void IResearchView::open() {
-  auto& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = vocbase().engine();
   _inRecovery = engine.inRecovery();
 }
 

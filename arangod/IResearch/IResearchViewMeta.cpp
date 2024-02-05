@@ -118,11 +118,6 @@ bool IResearchViewMeta::operator==(
   return true;
 }
 
-bool IResearchViewMeta::operator!=(
-    IResearchViewMeta const& other) const noexcept {
-  return !(*this == other);
-}
-
 IResearchViewMeta const& IResearchViewMeta::DEFAULT() {
   static const IResearchViewMeta meta;
 
@@ -351,11 +346,6 @@ bool IResearchViewMetaState::operator==(
   }
 
   return true;
-}
-
-bool IResearchViewMetaState::operator!=(
-    IResearchViewMetaState const& other) const noexcept {
-  return !(*this == other);
 }
 
 bool IResearchViewMetaState::init(VPackSlice slice, std::string& errorField,
