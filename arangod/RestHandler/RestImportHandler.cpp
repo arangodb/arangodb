@@ -101,32 +101,16 @@ RestStatus RestImportHandler::execute() {
       // extract the import type
       std::string const& documentType = _request->value("type", found);
 
-      switch (_response->transportType()) {
-        case Endpoint::TransportType::HTTP: {
-          if (_request->contentType() == arangodb::ContentType::VPACK) {
-            createFromVPack(documentType);
-          } else if (found &&
-                     (documentType == "documents" || documentType == "array" ||
-                      documentType == "list" || documentType == "auto")) {
-            createFromJson(documentType);
-          } else {
-            // CSV
-            createFromKeyValueList();
-          }
-          break;
-        }
-        case Endpoint::TransportType::VST: {
-          if (found &&
-              (documentType == "documents" || documentType == "array" ||
-               documentType == "list" || documentType == "auto")) {
-            createFromVPack(documentType);
-          } else {
-            generateNotImplemented("ILLEGAL " + IMPORT_PATH);
-          }
-          break;
-        }
+      if (_request->contentType() == arangodb::ContentType::VPACK) {
+        createFromVPack(documentType);
+      } else if (found &&
+                 (documentType == "documents" || documentType == "array" ||
+                  documentType == "list" || documentType == "auto")) {
+        createFromJson(documentType);
+      } else {
+        // CSV
+        createFromKeyValueList();
       }
-      /////////////////////////////////////////////////////////////////////////////////
     } break;
 
     default:

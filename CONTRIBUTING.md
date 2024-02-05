@@ -1008,7 +1008,7 @@ parameters will overrule global and default values.
 
 Running the same testsuite twice with different and shared parameters would look like this:
 
-    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"vst":true,"suffix":"vst"}]'
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"http":true,"suffix":"http"}]'
 
 
 #### Running Foxx Tests with a Fake Foxx Repo

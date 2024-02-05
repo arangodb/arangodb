@@ -58,8 +58,6 @@ function checkMetricsMoveSuite() {
       let http1ReqSum = getMetric("arangodb_request_body_size_http1_sum");
       let http2ReqCount = getMetric("arangodb_request_body_size_http2_count");
       let http2ReqSum = getMetric("arangodb_request_body_size_http2_sum");
-      let vstReqCount = getMetric("arangodb_request_body_size_vst_count");
-      let vstReqSum = getMetric("arangodb_request_body_size_vst_sum");
       // Do a few requests:
       for (let i = 0; i < 10; ++i) {
         let res = arango.GET_RAW("/_api/version");
@@ -75,15 +73,6 @@ function checkMetricsMoveSuite() {
       let http1ReqSum2 = getMetric("arangodb_request_body_size_http1_sum");
       let http2ReqCount2 = getMetric("arangodb_request_body_size_http2_count");
       let http2ReqSum2 = getMetric("arangodb_request_body_size_http2_sum");
-      let vstReqCount2 = getMetric("arangodb_request_body_size_vst_count");
-      let vstReqSum2 = getMetric("arangodb_request_body_size_vst_sum");
-      if (arango.protocol() === "vst") {
-        assertNotEqual(vstReqCount, vstReqCount2);
-        assertNotEqual(vstReqSum, vstReqSum2);
-      } else {
-        assertEqual(vstReqCount, vstReqCount2);
-        assertEqual(vstReqSum, vstReqSum2);
-      }
       if (arango.protocol() === "http") {
         assertNotEqual(http1ReqCount, http1ReqCount2);
         assertNotEqual(http1ReqSum, http1ReqSum2);
@@ -217,15 +206,12 @@ function checkMetricsMoveSuite() {
       // I have not found a reliable way to trigger a new connection from
       // `arangosh`. `arango.reconnect` does not work since it is caching
       // connections and the request timeout is not honored for HTTP/2
-      // and VST by fuerte. The idle timeout runs into an assertion failure.
+      // by fuerte. The idle timeout runs into an assertion failure.
       // Therefore, we must be content here to check that the connection
       // count is non-zero for the currently underlying protocol:
       if (arango.protocol() === "http2") {
         let http2ConnCount = getMetric("arangodb_http2_connections_total");
         assertNotEqual(0, http2ConnCount);
-      } else if (arango.protocol() === "vst") {
-        let vstConnCount = getMetric("arangodb_vst_connections_total");
-        assertNotEqual(0, vstConnCount);
       } else if (arango.protocol() === "http") {
         let httpConnCount = getMetric("arangodb_http1_connections_total");
         assertNotEqual(0, httpConnCount);

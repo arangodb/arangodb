@@ -130,10 +130,6 @@ RestStatus RestUploadHandler::execute() {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool RestUploadHandler::parseMultiPart(char const*& body, size_t& length) {
-  if (_request->transportType() != Endpoint::TransportType::HTTP) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid request type");
-  }
-
   std::string_view bodyPtr = _request->rawPayload();
   char const* beg = bodyPtr.data();
   char const* end = beg + bodyPtr.size();

@@ -72,7 +72,7 @@ function getEndpointById(id) {
 const runShell = function (args, prefix) {
   let options = internal.options();
 
-  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+  let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
   let moreArgs = {
     'javascript.startup-directory': options['javascript.startup-directory'],
     'server.endpoint': endpoint,

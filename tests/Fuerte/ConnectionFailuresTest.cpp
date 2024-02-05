@@ -63,12 +63,6 @@ TEST(ConnectionFailureTest, CannotResolveHttp) {
                             "http://thishostmustnotexist.arangodb.com:8529");
 }
 
-TEST(ConnectionFailureTest, CannotResolveVst) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop,
-                            "vst://thishostmustnotexist.arangodb.com:8529");
-}
-
 // CannotConnect tests try to make a connection to a host with a valid name
 // but a wrong port.
 TEST(ConnectionFailureTest, CannotConnectHttp) {
@@ -79,9 +73,4 @@ TEST(ConnectionFailureTest, CannotConnectHttp) {
 TEST(ConnectionFailureTest, CannotConnectHttp2) {
   f::EventLoopService loop;
   tryToConnectExpectFailure(loop, "h2://localhost:8629");
-}
-
-TEST(ConnectionFailureTest, CannotConnectVst) {
-  f::EventLoopService loop;
-  tryToConnectExpectFailure(loop, "vst://localhost:8629");
 }

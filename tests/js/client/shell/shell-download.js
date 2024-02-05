@@ -43,11 +43,11 @@ function DownloadSuite () {
   var tempName;
 
   var buildUrl = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_admin/echo" + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + "/_admin/echo" + append;
   };
   
   var buildUrlBroken = function (append) {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:').replace(/^h2:/, 'http:') + "/_not-there" + append;
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^h2:/, 'http:') + "/_not-there" + append;
   };
 
   return {

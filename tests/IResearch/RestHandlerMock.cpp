@@ -65,10 +65,6 @@ void GeneralRequestMock::setData(VPackSlice slice) {
   _payload.add(slice);
 }
 
-arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
-}
-
 GeneralResponseMock::GeneralResponseMock(
     arangodb::ResponseCode code /*= arangodb::ResponseCode::OK*/
     )
@@ -100,10 +96,6 @@ void GeneralResponseMock::reset(arangodb::ResponseCode code) {
   _headers.clear();
   _payload.clear();
   _responseCode = code;
-}
-
-arangodb::Endpoint::TransportType GeneralResponseMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
 }
 
 ErrorCode GeneralResponseMock::zlibDeflate(bool /*onlyIfSmaller*/) {

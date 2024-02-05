@@ -37,7 +37,7 @@ namespace stats {
 
 enum RequestStatisticsSource { USER, SUPERUSER, ALL };
 
-enum class GroupType { System, Client, ClientUser, Http, Vst, Server };
+enum class GroupType { System, Client, ClientUser, Http, Server };
 
 std::string fromGroupType(stats::GroupType);
 
