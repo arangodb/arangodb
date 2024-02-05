@@ -7,6 +7,9 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:2"
+  test-docker-image:
+    type: string
+    default: arangodb/test-ubuntu:22.04-6c4e824d8d2
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
@@ -266,7 +269,7 @@ jobs:
 
   run-linux-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.build-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -316,7 +319,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.build-docker-image >>
     parameters:
       size:
         type: string
