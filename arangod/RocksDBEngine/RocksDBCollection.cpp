@@ -88,6 +88,7 @@
 #include "VocBase/voc-types.h"
 
 #include <absl/strings/str_cat.h>
+#include <Replication2/StateMachines/Document/DocumentLeaderState.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
@@ -605,12 +606,43 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
       co_return res;
     }
 
-    // always (re-)lock to avoid inconsistencies
-    co_await locker.lock();
+    ADB_PROD_ASSERT(locker.isLocked())
+        << "Internal error: lock already gone during index creation";
 
     syncIndexOnCreate(*newIdx);
 
     inventoryLocker.lock();
+
+    // step 4½. replicate index creation
+    if (vocbase.replicationVersion() == replication::Version::TWO) {
+      auto documentStateLeader =
+          _logicalCollection.getDocumentState()->getLeader();
+      if (documentStateLeader != nullptr) {
+        auto maybeShardID =
+            ShardID::shardIdFromString(_logicalCollection.name());
+        if (ADB_UNLIKELY(maybeShardID.fail())) {
+          // This will only throw if we take a real collection here and not a
+          // shard.
+          TRI_ASSERT(false) << "Tried to ensure index on Collection "
+                            << _logicalCollection.name()
+                            << " which is not considered a shard.";
+          THROW_ARANGO_EXCEPTION(maybeShardID.result());
+        }
+        auto const shardId = maybeShardID.get();
+
+        auto op = replication2::replicated_state::document::
+            ReplicatedOperation::buildCreateIndexOperation(
+                shardId, VPackBuilder{info}.sharedSlice(), std::move(progress));
+        auto replicationFuture = documentStateLeader->replicateOperation(
+            std::move(op),
+            replication2::replicated_state::document::ReplicationOptions{
+                .waitForCommit = true, .waitForSync = true});
+        auto replicationResult = co_await std::move(replicationFuture);
+        if (!replicationResult.ok()) {
+          THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
+        }
+      }
+    }
 
     // Step 5. register in index list
     {
