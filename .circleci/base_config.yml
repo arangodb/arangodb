@@ -256,8 +256,8 @@ jobs:
                 root: .
                 paths:
                   - build/compile_commands.json
-                  - build/bin
                   - CMakePresets.json
+                  - build/
                   - scripts/
                   - js/
                   - enterprise/js
