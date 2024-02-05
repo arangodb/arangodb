@@ -34,7 +34,7 @@ function headerWithChunkedEncodingSuite() {
   'use strict';
 
   var baseUrl = function() {
-    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+    return arango.getEndpoint().replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
   };
 
   // all requests with chunked encoding must not contain a content-length, so it cannot be added to the header

@@ -188,8 +188,8 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
 #endif
 
 EndpointSrv::EndpointSrv(std::string const& specification)
-    : Endpoint(DomainType::SRV, EndpointType::CLIENT, TransportType::HTTP,
-               EncryptionType::NONE, specification, 0) {}
+    : Endpoint(DomainType::SRV, EndpointType::CLIENT, EncryptionType::NONE,
+               specification, 0) {}
 
 EndpointSrv::~EndpointSrv() = default;
 

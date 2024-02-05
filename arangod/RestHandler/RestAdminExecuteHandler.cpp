@@ -174,23 +174,8 @@ RestStatus RestAdminExecuteHandler::execute() {
         }
 
         _response->setResponseCode(rest::ResponseCode::SERVER_ERROR);
-        switch (_response->transportType()) {
-          case Endpoint::TransportType::HTTP: {
-            _response->setContentType(rest::ContentType::TEXT);
-            _response->addRawPayload(errorMessage);
-            break;
-          }
-          case Endpoint::TransportType::VST: {
-            VPackBuffer<uint8_t> buffer;
-            VPackBuilder builder(buffer);
-            builder.add(VPackValuePair(
-                reinterpret_cast<uint8_t const*>(errorMessage.data()),
-                errorMessage.size()));
-            _response->setContentType(rest::ContentType::VPACK);
-            _response->setPayload(std::move(buffer));
-            break;
-          }
-        }
+        _response->setContentType(rest::ContentType::TEXT);
+        _response->addRawPayload(errorMessage);
       } else {
         // all good!
         bool returnAsJSON = _request->parsedValue("returnAsJSON", false);

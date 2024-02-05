@@ -40,14 +40,12 @@ namespace arangodb {
 
 class Endpoint {
  public:
-  enum class TransportType { HTTP, VST };
   enum class EndpointType { SERVER, CLIENT };
   enum class EncryptionType { NONE = 0, SSL };
   enum class DomainType { UNKNOWN = 0, UNIX, IPV4, IPV6, SRV };
 
  protected:
-  Endpoint(DomainType, EndpointType, TransportType, EncryptionType,
-           std::string const&, int);
+  Endpoint(DomainType, EndpointType, EncryptionType, std::string const&, int);
 
  public:
   virtual ~Endpoint() = default;
@@ -58,11 +56,10 @@ class Endpoint {
   static Endpoint* serverFactory(std::string const&, int, bool reuseAddress);
   static Endpoint* clientFactory(std::string const&);
   static Endpoint* factory(EndpointType type, std::string const&, int, bool);
-  static std::string defaultEndpoint(TransportType);
+  static std::string defaultEndpoint();
 
  public:
   bool operator==(Endpoint const&) const;
-  TransportType transport() const { return _transport; }
   EndpointType type() const { return _type; }
   EncryptionType encryption() const { return _encryption; }
   std::string specification() const { return _specification; }
@@ -90,7 +87,6 @@ class Endpoint {
  protected:
   DomainType _domainType;
   EndpointType _type;
-  TransportType _transport;
   EncryptionType _encryption;
   std::string _specification;
   int _listenBacklog;
@@ -99,7 +95,6 @@ class Endpoint {
   TRI_socket_t _socket;
 };
 
-std::ostream& operator<<(std::ostream&, Endpoint::TransportType);
 std::ostream& operator<<(std::ostream&, Endpoint::EndpointType);
 std::ostream& operator<<(std::ostream&, Endpoint::EncryptionType);
 std::ostream& operator<<(std::ostream&, Endpoint::DomainType);

@@ -500,7 +500,7 @@ function telemetricsShellReconnectGraphTestsuite() {
       let file = fs.getTempFile() + "-telemetrics";
       fs.write(file, `(function() { const x = 0;})();`);
       let options = internal.options();
-      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+      let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
       const args = {
         'javascript.startup-directory': options['javascript.startup-directory'],
         'server.endpoint': endpoint,

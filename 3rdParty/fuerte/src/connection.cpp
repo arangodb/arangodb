@@ -74,7 +74,7 @@ std::unique_ptr<Response> Connection::sendRequest(
 std::string Connection::endpoint() const {
   std::string endpoint;
   endpoint.reserve(32);
-  // http/vst
+  // http
   endpoint.append(fuerte::to_string(_config._protocolType));
   endpoint.push_back('+');
   // tcp/ssl/unix

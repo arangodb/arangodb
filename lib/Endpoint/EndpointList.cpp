@@ -80,34 +80,6 @@ std::vector<std::string> EndpointList::all() const {
   return result;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief return all typed endpoints
-////////////////////////////////////////////////////////////////////////////////
-
-std::vector<std::string> EndpointList::all(
-    Endpoint::TransportType transport) const {
-  std::string_view prefix;
-
-  switch (transport) {
-    case Endpoint::TransportType::HTTP:
-      prefix = "http+";
-      break;
-
-    case Endpoint::TransportType::VST:
-      prefix = "vst+";
-      break;
-  }
-
-  std::vector<std::string> result;
-  for (auto& it : _endpoints) {
-    if (it.first.starts_with(prefix)) {
-      result.emplace_back(it.first);
-    }
-  }
-
-  return result;
-}
-
 void EndpointList::apply(
     std::function<void(std::string const&, Endpoint&)> const& cb) {
   for (auto& it : _endpoints) {
@@ -122,8 +94,7 @@ void EndpointList::apply(
 
 bool EndpointList::hasSsl() const {
   for (auto& it : _endpoints) {
-    if (it.first.starts_with("http+ssl://") ||
-        it.first.starts_with("vst+ssl://")) {
+    if (it.first.starts_with("http+ssl://")) {
       return true;
     }
   }

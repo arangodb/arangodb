@@ -44,8 +44,8 @@ using namespace arangodb::basics;
 
 EndpointUnixDomain::EndpointUnixDomain(EndpointType type, int listenBacklog,
                                        std::string const& path)
-    : Endpoint(DomainType::UNIX, type, TransportType::HTTP,
-               EncryptionType::NONE, "http+unix://" + path, listenBacklog),
+    : Endpoint(DomainType::UNIX, type, EncryptionType::NONE,
+               "http+unix://" + path, listenBacklog),
       _path(path) {}
 
 EndpointUnixDomain::~EndpointUnixDomain() {

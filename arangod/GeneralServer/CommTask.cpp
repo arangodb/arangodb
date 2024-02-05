@@ -352,8 +352,7 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
-  if (res.transportType() == Endpoint::TransportType::HTTP &&
-      this->_isUserRequest) {
+  if (this->_isUserRequest) {
     // CORS response handling - only needed on user facing coordinators
     // or single servers
     if (!origin.empty()) {

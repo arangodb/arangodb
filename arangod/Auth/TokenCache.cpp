@@ -87,7 +87,7 @@ std::string auth::TokenCache::jwtSecret() const {
   return _jwtActiveSecret;  // intentional copy
 }
 
-// public called from {H2,Http,Vst}CommTask.cpp
+// public called from {H2,Http}CommTask.cpp
 // should only lock if required, otherwise we will serialize all
 // requests whether we need to or not
 auth::TokenCache::Entry auth::TokenCache::checkAuthentication(
