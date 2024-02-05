@@ -13,13 +13,13 @@ v3.11.8 (XXXX-XX-XX)
   To avoid this, we add a new `indexId` label to the metric to make it unique.
 
 
-v3.11.7 (XXXX-XX-XX)
+v3.11.7 (2024-01-29)
 --------------------
 
-* BTS-1751: Strange error message when executing a query while creating an 
-  index in the background.
+* BTS-1751: Strange error message when executing a query while creating an index
+  in the background.
 
-* Reduce default amount of per-collection document removals by TTL background 
+* Reduce default amount of per-collection document removals by TTL background
   index creation thread from 1m to 100k in each iteration. This change gives
   other collections a chance of being cleaned up as well.
 
