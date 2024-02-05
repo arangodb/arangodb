@@ -142,7 +142,7 @@ if [ "$POOLSZ" == "" ]; then
 fi
 
 if [ "$TRANSPORT" == "ssl" ]; then
-  SSLKEYFILE="--ssl.keyfile UnitTests/server.pem"
+  SSLKEYFILE="--ssl.keyfile etc/testing/server.pem"
   CURL="curl --insecure -ks https://"
 else
   SSLKEYFILE=""
