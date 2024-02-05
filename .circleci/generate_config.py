@@ -271,6 +271,8 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
             size = "medium"
         elif size == "medium":
             size = "medium+"
+        elif size == "medium+":
+            size = "large"
 
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
