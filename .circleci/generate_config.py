@@ -261,8 +261,12 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     if suffix:
         suite_name += f"-{suffix}"
 
-    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
-        raise Exception("Invalid resource class size " + test["size"])
+    size = test["size"]
+    if not size in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
+        raise Exception(f"Invalid resource class size {size}")
+
+    if size == "small" and build_config.sanitizer != "":
+        size = "medium"  # sanitizer builds need more resources
 
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
@@ -272,7 +276,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_size(test["size"], build_config.arch),
+        "size": get_size(size, build_config.arch),
         "cluster": cluster,
         "requires": [build_job],
     }
