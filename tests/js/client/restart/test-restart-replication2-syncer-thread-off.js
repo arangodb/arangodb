@@ -87,6 +87,10 @@ function testSuite() {
     },
 
     testRestartReplicationAndCreate: function () {
+      if (db._properties().replicationVersion === "2") {
+        // This test is not applicable if there are already existing replication2 databases.
+        return;
+      }
       db._createDatabase(databaseNameR1, {'replicationVersion': '1'});
 
       enableMaintenanceMode();
