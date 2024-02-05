@@ -114,6 +114,13 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
         [](auto& server, TypeTag<LoggerFeature>) {
           return std::make_unique<LoggerFeature>(server, true);
         },
+        [](auto& server, TypeTag<metrics::MetricsFeature>) {
+          return std::make_unique<metrics::MetricsFeature>(
+              server, server.template getFeature<QueryRegistryFeature>(),
+              server.template getFeature<StatisticsFeature>(),
+              server.template getFeature<EngineSelectorFeature>(),
+              server.template getFeature<metrics::ClusterMetricsFeature>());
+        },
         [](auto& server, TypeTag<NetworkFeature>) {
           auto& metrics =
               server.template getFeature<arangodb::metrics::MetricsFeature>();

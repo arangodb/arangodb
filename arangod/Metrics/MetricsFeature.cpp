@@ -46,8 +46,16 @@
 
 namespace arangodb::metrics {
 
-MetricsFeature::MetricsFeature(Server& server)
+MetricsFeature::MetricsFeature(Server& server,
+                               QueryRegistryFeature& queryRegistryFeature,
+                               StatisticsFeature& statisticsFeature,
+                               EngineSelectorFeature& engineSelectorFeature,
+                               ClusterMetricsFeature& clusterMetricsFeature)
     : ArangodFeature{server, *this},
+      _queryRegistryFeature(queryRegistryFeature),
+      _statisticsFeature(statisticsFeature),
+      _engineSelectorFeature(engineSelectorFeature),
+      _clusterMetricsFeature(clusterMetricsFeature),
       _export{true},
       _exportReadWriteMetrics{false},
       _ensureWhitespace{true},
@@ -208,8 +216,7 @@ void MetricsFeature::toPrometheus(std::string& result,
     // QueryRegistryFeature only provides standard metrics.
     // update only necessary if these metrics should be included
     // in the output
-    auto& q = server().getFeature<QueryRegistryFeature>();
-    q.updateMetrics();
+    _queryRegistryFeature.updateMetrics();
   }
 
   bool hasGlobals = false;
@@ -245,21 +252,19 @@ void MetricsFeature::toPrometheus(std::string& result,
 
   if (metricsParts.includeStandardMetrics()) {
     // StatisticsFeature only provides standard metrics
-    auto& sf = server().getFeature<StatisticsFeature>();
     auto time = std::chrono::duration<double, std::milli>(
         std::chrono::system_clock::now().time_since_epoch());
-    sf.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
+    _statisticsFeature.toPrometheus(result, time.count(), _globals, _ensureWhitespace);
 
     // Storage engine only provides standard metrics
-    auto& es = server().getFeature<EngineSelectorFeature>().engine();
+    auto& es = _engineSelectorFeature.engine();
     if (es.typeName() == RocksDBEngine::kEngineName) {
       es.toPrometheus(result, _globals, _ensureWhitespace);
     }
 
     // ClusterMetricsFeature only provides standard metrics
-    auto& cm = server().getFeature<ClusterMetricsFeature>();
-    if (hasGlobals && cm.isEnabled() && mode != CollectMode::Local) {
-      cm.toPrometheus(result, _globals, _ensureWhitespace);
+    if (hasGlobals && _clusterMetricsFeature.isEnabled() && mode != CollectMode::Local) {
+      _clusterMetricsFeature.toPrometheus(result, _globals, _ensureWhitespace);
     }
 
     // agency node metrics only provide standard metrics
