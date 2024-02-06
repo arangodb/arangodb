@@ -110,7 +110,6 @@ std::string const StaticStrings::JobsCollection("_jobs");
 std::string const StaticStrings::AppsCollection("_apps");
 std::string const StaticStrings::AppBundlesCollection("_appbundles");
 std::string const StaticStrings::FrontendCollection("_frontend");
-std::string const StaticStrings::PregelCollection("_pregel_queries");
 std::string const StaticStrings::StatisticsCollection("_statistics");
 std::string const StaticStrings::Statistics15Collection("_statistics15");
 std::string const StaticStrings::StatisticsRawCollection("_statisticsRaw");
@@ -265,8 +264,10 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
+std::string const StaticStrings::EncodingArangoLz4("x-arango-lz4");
 std::string const StaticStrings::EncodingDeflate("deflate");
 std::string const StaticStrings::EncodingGzip("gzip");
+std::string const StaticStrings::EncodingLz4("lz4");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");

@@ -222,8 +222,9 @@ asio_ns::const_buffer Request::payload() const {
 
 size_t Request::payloadSize() const {
   if (header.contentEncoding() == ContentEncoding::Deflate ||
-      header.contentEncoding() == ContentEncoding::Gzip) {
-    // when the request body is deflate- or gzip-encoded,
+      header.contentEncoding() == ContentEncoding::Gzip ||
+      header.contentEncoding() == ContentEncoding::Lz4) {
+    // when the request body is deflate-, gzip- or lz4-encoded,
     // it is not ok to call byteSize() because the request
     // body is not velocypack anymore.
     return _payload.size();

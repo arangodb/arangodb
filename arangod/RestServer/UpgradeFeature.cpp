@@ -157,8 +157,7 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
       }
     };
 
-    server().forceDisableFeatures(std::array{
-        Server::id<GreetingsFeature>(), Server::id<pregel::PregelFeature>()});
+    server().forceDisableFeatures(std::array{Server::id<GreetingsFeature>()});
     disableDaemonAndSupervisor();
   } else {
     server().forceDisableFeatures(_nonServerFeatures);

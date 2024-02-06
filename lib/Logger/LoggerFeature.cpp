@@ -168,7 +168,6 @@ available:
 - `database`: The name of the database.
 - `username`: The name of the user.
 - `url`: The endpoint path.
-- `pregelID`: The ID of the Pregel job.
 
 The format to enable or disable a parameter is `<parameter>=<bool>`, or
 `<parameter>` to enable it. You can specify the option multiple times to

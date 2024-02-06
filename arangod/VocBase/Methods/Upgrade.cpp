@@ -258,14 +258,6 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
 
-  // Note: Added with ArangoDB version 3.11
-  addTask(upgradeFeature, "createHistoricPregelSystemCollection",
-          "creates the pregel system collection",
-          /*system*/ Flags::DATABASE_ALL,
-          /*cluster*/ Flags::CLUSTER_NONE,
-          /*database*/ DATABASE_INIT | DATABASE_UPGRADE | DATABASE_EXISTING,
-          &UpgradeTasks::createHistoricPregelSystemCollection);
-
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
   //       instead they get their cache populated from coordinators

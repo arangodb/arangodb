@@ -148,6 +148,11 @@ void Inception::gossip() {
   long waitInterval = 250000;
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = network::Timeout(1);
 
   while (!this->isStopping() && !_agent.isStopping()) {
@@ -291,6 +296,11 @@ bool Inception::restartingActiveAgent() {
   network::RequestOptions reqOpts;
   reqOpts.timeout = network::Timeout(2);
   reqOpts.skipScheduler = true;  // hack to speed up future.get()
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
 
   seconds const timeout(3600);
   long waitInterval(500000);

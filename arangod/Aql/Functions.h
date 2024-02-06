@@ -503,8 +503,6 @@ AqlValue CollectionCount(arangodb::aql::ExpressionContext*, AstNode const&,
                          VPackFunctionParametersView);
 AqlValue VarianceSample(arangodb::aql::ExpressionContext*, AstNode const&,
                         VPackFunctionParametersView);
-AqlValue PregelResult(arangodb::aql::ExpressionContext*, AstNode const&,
-                      VPackFunctionParametersView);
 AqlValue VariancePopulation(arangodb::aql::ExpressionContext*, AstNode const&,
                             VPackFunctionParametersView);
 AqlValue StdDevSample(arangodb::aql::ExpressionContext*, AstNode const&,
