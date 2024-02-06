@@ -1,6 +1,8 @@
 devel
 -----
 
+* Analyzers restored after hot backup
+
 * Save some traffic in cluster-internal requests:
 
   - Remove disk usage metrics from heartbeat messages (`freeDiskSpaceBytes` and
