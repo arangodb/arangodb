@@ -333,7 +333,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install -r scripts/toolbox/requirements.txt
+            pip install -r scripts/toolbox/requirements.txt --break-system-packages
       - run:
           name: Run HotBackup tests
           command: |
