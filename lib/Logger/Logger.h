@@ -183,7 +183,6 @@ class Logger {
   static LogTopic MAINTENANCE;
   static LogTopic MEMORY;
   static LogTopic MMAP;
-  static LogTopic PREGEL;
   static LogTopic QUERIES;
   static LogTopic REPLICATION;
   static LogTopic REPLICATION2;

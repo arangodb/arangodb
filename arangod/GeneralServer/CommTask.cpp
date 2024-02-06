@@ -1037,6 +1037,19 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
       // this prevents duplicate decoding
       req.removeHeader(header);
       return {};
+    } else if (encoding == StaticStrings::EncodingArangoLz4) {
+      VPackBuffer<uint8_t> dst;
+      if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
+          r != TRI_ERROR_NO_ERROR) {
+        return {
+            r,
+            "a decoding error occurred while handling Content-Encoding: lz4"};
+      }
+      req.setPayload(std::move(dst));
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
+      return {};
     }
     // unknown encoding. let it through without modifying the request body.
     return {};

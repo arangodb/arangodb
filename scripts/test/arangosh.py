@@ -35,10 +35,10 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         my_env["TMP"] = str(params["temp_dir"])
         return my_env
 
-    def get_memory_limit_arg():
+    def get_memory_limit_arg(self):
         if os.path.isfile("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
             with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
-                args = args + ["--memory", str(int(limit.read()))]
+                return ["--memory", str(int(limit.read()))]
 
     def run_testing(
         self,

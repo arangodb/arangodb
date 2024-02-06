@@ -15,6 +15,7 @@ target_link_libraries(arango_replication2
         arango_network # NetworkWorkAttachedFollower
         arangoserver # RestHandler, arango_rocksdb
         arango_futures
+        arango_actor
         fmt
         immer)
 

@@ -219,7 +219,6 @@ target_link_libraries(arangoserver
   arango_iresearch
   arango_metrics
   arango_network
-  arango_pregel
   arango_replication
   arango_storage_engine
   arango_utils

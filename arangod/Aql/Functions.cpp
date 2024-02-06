@@ -47,6 +47,7 @@
 #include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Containers/FlatHashSet.h"
 #include "Geo/Ellipsoid.h"
 #include "Geo/GeoJson.h"
@@ -58,10 +59,6 @@
 #include "IResearch/VelocyPackHelper.h"
 #include "Indexes/Index.h"
 #include "Logger/Logger.h"
-#include "Pregel/Conductor/Conductor.h"
-#include "Pregel/ExecutionNumber.h"
-#include "Pregel/PregelFeature.h"
-#include "Pregel/Worker/Worker.h"
 #include "Random/UniformCharacter.h"
 #include "Rest/Version.h"
 #include "RestServer/SystemDatabaseFeature.h"
@@ -9366,80 +9363,6 @@ AqlValue functions::IsSameCollection(ExpressionContext* expressionContext,
   registerWarning(expressionContext, AFN,
                   TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH);
   return AqlValue(AqlValueHintNull());
-}
-
-AqlValue functions::PregelResult(ExpressionContext* expressionContext,
-                                 AstNode const&,
-                                 VPackFunctionParametersView parameters) {
-  static char const* AFN = "PREGEL_RESULT";
-
-  AqlValue arg1 = extractFunctionParameterValue(parameters, 0);
-  if (!arg1.isNumber() && !arg1.isString()) {
-    THROW_ARANGO_EXCEPTION_PARAMS(
-        TRI_ERROR_QUERY_FUNCTION_ARGUMENT_TYPE_MISMATCH, AFN);
-  }
-  bool withId = false;
-  AqlValue arg2 = extractFunctionParameterValue(parameters, 1);
-  if (arg2.isBoolean()) {
-    withId = arg2.slice().getBool();
-  }
-
-  auto execNr =
-      arangodb::pregel::ExecutionNumber{static_cast<uint64_t>(arg1.toInt64())};
-  auto& server = expressionContext->trx().vocbase().server();
-  if (!server.hasFeature<pregel::PregelFeature>()) {
-    registerWarning(expressionContext, AFN, TRI_ERROR_FAILED);
-    return AqlValue(AqlValueHintEmptyArray());
-  }
-  pregel::PregelFeature& feature = server.getFeature<pregel::PregelFeature>();
-
-  VPackBuffer<uint8_t> buffer;
-  VPackBuilder builder(buffer);
-  if (ServerState::instance()->isCoordinator()) {
-    auto c = feature.conductor(execNr);
-    if (!c) {
-      // check for actor run
-      auto pregelResults = feature.getResults(execNr);
-      if (!pregelResults.ok()) {
-        registerWarning(expressionContext, AFN, pregelResults.errorNumber());
-        return AqlValue(AqlValueHintEmptyArray());
-      }
-      {
-        VPackArrayBuilder ab(&builder);
-        builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
-      }
-    } else {
-      c->collectAQLResults(builder, withId);
-    }
-  } else {
-    std::shared_ptr<pregel::IWorker> worker = feature.worker(execNr);
-    if (!worker) {
-      // check for actor run
-      auto pregelResults = feature.getResults(execNr);
-      if (!pregelResults.ok()) {
-        registerWarning(expressionContext, AFN, pregelResults.errorNumber());
-        return AqlValue(AqlValueHintEmptyArray());
-      }
-      {
-        VPackArrayBuilder ab(&builder);
-        builder.add(VPackArrayIterator(pregelResults.get().results.slice()));
-      }
-    } else {
-      auto results = worker->aqlResult(withId);
-      {
-        VPackArrayBuilder ab(&builder);
-        builder.add(VPackArrayIterator(results.results.slice()));
-      }
-    }
-  }
-
-  if (builder.isEmpty()) {
-    return AqlValue(AqlValueHintEmptyArray());
-  }
-  TRI_ASSERT(builder.slice().isArray());
-
-  // move the buffer into
-  return AqlValue(std::move(buffer));
 }
 
 AqlValue functions::Assert(ExpressionContext* expressionContext, AstNode const&,
