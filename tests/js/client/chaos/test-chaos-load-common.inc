@@ -430,7 +430,7 @@ function BaseChaosSuite(testOpts) {
         let query = (...args) => db._query(...args);
         let trx = null;
         
-        const logAllOps = false; // can be set to true for debugging purposes
+        const logAllOps = true; // can be set to true for debugging purposes
         const log = (msg) => {
           if (logAllOps) {
             if (trx) {
