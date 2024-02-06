@@ -8,7 +8,7 @@ parameters:
   default-enterprise-branch:
     type: string
     default: "devel"
-  rebuild-docker-images:
+  rebuild-test-docker-images:
     type: boolean
     default: false
   enterprise-commit:
