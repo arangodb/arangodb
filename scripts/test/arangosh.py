@@ -35,6 +35,11 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         my_env["TMP"] = str(params["temp_dir"])
         return my_env
 
+    def get_memory_limit_arg():
+        if os.path.isfile("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
+            with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
+                args = args + ["--memory", str(int(limit.read()))]
+
     def run_testing(
         self,
         testcase,
@@ -87,6 +92,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
                 "--coreAbort",
                 "true",
             ]
+            + self.get_memory_limit_arg()
             + testing_args
         )
         logging.info(run_cmd)
@@ -103,4 +109,3 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
         delete_logfile_params(params)
         ret["error"] = params["error"]
         return ret
-    
