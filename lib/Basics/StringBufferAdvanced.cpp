@@ -69,6 +69,22 @@ ErrorCode arangodb::basics::StringBuffer::gzipCompress(bool onlyIfSmaller) {
   return code;
 }
 
+ErrorCode arangodb::basics::StringBuffer::lz4Compress(bool onlyIfSmaller) {
+  arangodb::basics::StringBuffer compressed;
+
+  ErrorCode code = arangodb::encoding::lz4Compress(
+      reinterpret_cast<uint8_t const*>(data()), size(), compressed);
+
+  if (code == TRI_ERROR_NO_ERROR) {
+    if (onlyIfSmaller && compressed.size() >= size()) {
+      code = TRI_ERROR_DISABLED;
+    } else {
+      swap(&compressed);
+    }
+  }
+  return code;
+}
+
 /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
 ErrorCode arangodb::basics::StringBuffer::zlibInflate(
     arangodb::basics::StringBuffer& out, size_t skip) {
@@ -99,6 +115,22 @@ ErrorCode arangodb::basics::StringBuffer::gzipUncompress(
   }
 
   return arangodb::encoding::gzipUncompress(p, length, out);
+}
+
+/// @brief uncompress the buffer into StringBuffer out, using lz4 uncompress
+ErrorCode arangodb::basics::StringBuffer::lz4Uncompress(
+    arangodb::basics::StringBuffer& out, size_t skip) {
+  uint8_t const* p = reinterpret_cast<uint8_t const*>(data());
+  size_t length = size();
+
+  if (length < skip) {
+    length = 0;
+  } else {
+    p += skip;
+    length -= skip;
+  }
+
+  return arangodb::encoding::lz4Uncompress(p, length, out);
 }
 
 ////////////////////////////////////////////////////////////////////////////////

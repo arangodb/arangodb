@@ -25,7 +25,6 @@
 #include "GeneralServer/GeneralServerFeature.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SoftShutdownFeature.h"
 #include "Scheduler/Scheduler.h"
@@ -115,7 +114,6 @@ void SoftShutdownTracker::initiateSoftShutdown() {
   _server.initiateSoftShutdown();
   // Currently, these are:
   //   - the GeneralServerFeature for its JobManager
-  //   - the PregelFeature
 
   // And initiate our checker to watch numbers:
   queueShutdownChecker(_workItemMutex, _workItem, _checkFunc);
@@ -157,7 +155,6 @@ void SoftShutdownTracker::toVelocyPack(
   builder.add("transactions", VPackValue(status.transactions));
   builder.add("pendingJobs", VPackValue(status.pendingJobs));
   builder.add("doneJobs", VPackValue(status.doneJobs));
-  builder.add("pregelConductors", VPackValue(status.pregelConductors));
   builder.add("lowPrioOngoingRequests",
               VPackValue(status.lowPrioOngoingRequests));
   builder.add("lowPrioQueuedRequests",
@@ -187,10 +184,6 @@ SoftShutdownTracker::Status SoftShutdownTracker::getStatus() const {
   auto& jobManager = generalServerFeature.jobManager();
   std::tie(status.pendingJobs, status.doneJobs) =
       jobManager.getNrPendingAndDone();
-
-  // Get number of active Pregel conductors on this coordinator:
-  auto& pregelFeature = _server.getFeature<pregel::PregelFeature>();
-  status.pregelConductors = pregelFeature.numberOfActiveConductors();
 
   // Get number of ongoing and queued requests from scheduler:
   std::tie(status.lowPrioOngoingRequests, status.lowPrioQueuedRequests) =
