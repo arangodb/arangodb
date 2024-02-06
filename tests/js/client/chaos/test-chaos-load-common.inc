@@ -553,10 +553,12 @@ function BaseChaosSuite(testOpts) {
             trx = null;
           } catch (e) {
             if (require("@arangodb").errors.ERROR_TRANSACTION_NOT_FOUND.code === e.errorNum) {
+              log(`aborting trx abort/commit loop because trx was not found`);
               break;
             }
             // due to contention we could have a lock timeout here
             if (require("@arangodb").errors.ERROR_LOCKED.code !== e.errorNum) {
+              log(`aborting trx abort/commit loop because of unexpected error ${JSON.stringify(e)}`);
               throw e;
             }
             log("unable to " + (willAbort ? "abort" : "commit") + " transaction: " + String(e));
