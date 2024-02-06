@@ -108,7 +108,7 @@ jobs:
           command: |
             cd scripts/docker/test
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
-      # TODO
+      # TODO - commit the tag file to the repository
       # - run:
       #     name: Update TagFile
       #     command: |
@@ -121,7 +121,7 @@ jobs:
       #       git push origin HEAD:$CIRCLE_BRANCH
 
 workflows:
-  build-docker-images:
+  build-test-docker-images:
     jobs:
       - build-test-docker-image:
           resource-class: arm.large
@@ -134,7 +134,7 @@ workflows:
           arch: amd64
 
       - build-test-docker-manifest:
-          name: build-build-docker-manifest
+          name: build-test-docker-image-manifest
           requires:
             - aarch64-test-docker-image
             - x64-test-docker-image
