@@ -522,8 +522,7 @@ exports.waitForShardsInSync = function (cn, timeout, minimumRequiredFollowers = 
   let start = internal.time();
   while (true) {
     if (internal.time() - start > timeout) {
-      assertTrue(false, Date() + " Shards were not getting in sync in time, giving up!");
-      return;
+      assertTrue(false, `${Date()} Shards for collection '${cn}' were not getting in sync in time, giving up!`);
     }
     let shardDistribution = arango.GET("/_admin/cluster/shardDistribution");
     assertFalse(shardDistribution.error);
