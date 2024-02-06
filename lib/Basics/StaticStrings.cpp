@@ -265,8 +265,10 @@ std::string const StaticStrings::MimeTypeVPack("application/x-velocypack");
 std::string const StaticStrings::MultiPartContentType("multipart/form-data");
 
 // accept-encodings
+std::string const StaticStrings::EncodingArangoLz4("x-arango-lz4");
 std::string const StaticStrings::EncodingDeflate("deflate");
 std::string const StaticStrings::EncodingGzip("gzip");
+std::string const StaticStrings::EncodingLz4("lz4");
 
 std::string const StaticStrings::Body("body");
 std::string const StaticStrings::ParsedBody("parsedBody");

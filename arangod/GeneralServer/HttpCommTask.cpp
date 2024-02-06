@@ -563,7 +563,7 @@ void HttpCommTask<T>::doProcessRequest() {
     return;  // prepareExecution sends the error message
   }
 
-  // gzip-uncompress / zlib-deflate
+  // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*_request); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD,
                             _request->contentTypeResponse(), 1,

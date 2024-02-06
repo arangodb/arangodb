@@ -909,6 +909,8 @@ void SimpleHttpClient::processBody() {
     _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
   } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
     _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
+  } else if (_result->getEncodingType() == rest::EncodingType::LZ4) {
+    _readBuffer.lz4Uncompress(_result->getBody(), _readBufferOffset);
   } else {
     // body is not compressed
     // Note that if we are here, then
@@ -1030,6 +1032,8 @@ void SimpleHttpClient::processChunkedBody() {
       _readBuffer.zlibInflate(_result->getBody(), _readBufferOffset);
     } else if (_result->getEncodingType() == rest::EncodingType::GZIP) {
       _readBuffer.gzipUncompress(_result->getBody(), _readBufferOffset);
+    } else if (_result->getEncodingType() == rest::EncodingType::LZ4) {
+      _readBuffer.lz4Uncompress(_result->getBody(), _readBufferOffset);
     } else {
       _result->getBody().appendText(_readBuffer.c_str() + _readBufferOffset,
                                     static_cast<size_t>(_nextChunkedSize));
