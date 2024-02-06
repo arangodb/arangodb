@@ -206,12 +206,6 @@ std::ostream& operator<<(std::ostream& o,
 }
 
 DBServerAgencySyncResult DBServerAgencySync::execute() {
-  TRI_IF_FAILURE("DBServer::Maintenance::Off") {
-    DBServerAgencySyncResult result;
-    result.success = false;
-    result.errorMessage = "Maintenance is disabled for test";
-    return result;
-  }
   // default to system database
   using namespace std::chrono;
   using clock = std::chrono::steady_clock;
