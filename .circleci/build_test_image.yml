@@ -60,27 +60,27 @@ jobs:
       - run:
           name: Build Docker Image
           command: |
-            cd /home/circleci/project/scripts/docker/test/linux
+            cd /home/circleci/project/scripts/docker/test
             /bin/sh build-image.sh << parameters.image >> << parameters.arch >>
       - run:
           name: Determine Docker Tag
           command: |
-            cd /home/circleci/project/scripts/docker/build/linux
+            cd /home/circleci/project/scripts/docker/test
             /bin/sh determine-tag.sh << parameters.image >> << parameters.arch >> | tee << parameters.arch >>-tag.txt
       - run:
           name: Tag Docker Image
           command: |
-            cd /home/circleci/project/scripts/docker/build/linux
+            cd /home/circleci/project/scripts/docker/test
             docker tag << parameters.image >>:latest-<< parameters.arch >> <<parameters.image >>:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - run:
           name: Push Docker Image
           command: |
-            cd /home/circleci/project/scripts/docker/build/linux
+            cd /home/circleci/project/scripts/docker/test
             docker push << parameters.image >>:$(cat << parameters.arch >>-tag.txt)-<< parameters.arch >>
       - persist_to_workspace:
           root: .
           paths:
-            - scripts/docker/test/linux/*-tag.txt
+            - scripts/docker/test/*-tag.txt
 
   build-test-docker-manifest:
     docker:
@@ -106,14 +106,14 @@ jobs:
       - run:
           name: Build manifest
           command: |
-            cd scripts/docker/test/linux
+            cd scripts/docker/test
             ./build-manifest.sh << parameters.image >> $(cat amd64-tag.txt)
       # TODO
       # - run:
       #     name: Update TagFile
       #     command: |
       #       ssh-keyscan github.com >> ~/.ssh/known_hosts
-      #       cp scripts/docker/build/linux/amd64-tag.txt BUILD_DOCKER_TAG
+      #       cp scripts/docker/test/amd64-tag.txt BUILD_DOCKER_TAG
       #       git config user.email "build-automation@arangodb.biz"
       #       git config user.name "CircleCI Docker Image Builder"
       #       git add BUILD_DOCKER_TAG
