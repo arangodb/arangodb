@@ -109,9 +109,10 @@ struct DocumentFactory {
                          std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<DocumentFollowerState>;
 
-  auto constructLeader(std::unique_ptr<DocumentCore> core,
-                       std::shared_ptr<streams::ProducerStream<DocumentState>>
-                           stream) -> std::shared_ptr<DocumentLeaderState>;
+  auto constructLeader(
+      std::unique_ptr<DocumentCore> core,
+      std::shared_ptr<streams::ProducerStream<DocumentState>> stream)
+      -> std::shared_ptr<DocumentLeaderState>;
 
   auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier,
                      DocumentCoreParameters) -> std::unique_ptr<DocumentCore>;

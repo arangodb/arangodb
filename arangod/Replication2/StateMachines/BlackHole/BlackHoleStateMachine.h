@@ -118,13 +118,15 @@ struct BlackHoleFollowerState
 struct BlackHoleCore {};
 
 struct BlackHoleFactory {
-  auto constructFollower(std::unique_ptr<BlackHoleCore> core,
+  auto constructFollower(
+      std::unique_ptr<BlackHoleCore> core,
       std::shared_ptr<streams::Stream<BlackHoleState>> stream,
       std::shared_ptr<IScheduler> scheduler)
       -> std::shared_ptr<BlackHoleFollowerState>;
-  auto constructLeader(std::unique_ptr<BlackHoleCore> core,
-                       std::shared_ptr<streams::ProducerStream<BlackHoleState>>
-                           stream) -> std::shared_ptr<BlackHoleLeaderState>;
+  auto constructLeader(
+      std::unique_ptr<BlackHoleCore> core,
+      std::shared_ptr<streams::ProducerStream<BlackHoleState>> stream)
+      -> std::shared_ptr<BlackHoleLeaderState>;
   auto constructCore(TRI_vocbase_t&, GlobalLogIdentifier const&)
       -> std::unique_ptr<BlackHoleCore>;
 };

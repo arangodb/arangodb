@@ -89,8 +89,8 @@ template<typename S>
 struct ProducerStream : Stream<S> {
   using EntryType =
       typename replicated_state::ReplicatedStateTraits<S>::EntryType;
-  virtual auto insert(EntryType const&,
-                      bool waitForSync = false) -> LogIndex = 0;
+  virtual auto insert(EntryType const&, bool waitForSync = false)
+      -> LogIndex = 0;
 };
 
 /**

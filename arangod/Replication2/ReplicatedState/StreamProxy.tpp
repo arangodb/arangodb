@@ -63,9 +63,8 @@ MetadataTransactionImpl<T>::MetadataTransactionImpl(
 }
 
 template<typename T>
-auto MetadataTransactionImpl<T>::
-    destruct() && -> std::unique_ptr<
-                      replicated_log::IStateMetadataTransaction> {
+auto MetadataTransactionImpl<T>::destruct() && -> std::unique_ptr<
+    replicated_log::IStateMetadataTransaction> {
   auto builder = velocypack::Builder();
   velocypack::serialize(builder, _metadata);
   _trx->get().slice = builder.sharedSlice();
