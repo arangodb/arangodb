@@ -44,7 +44,6 @@
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/LogScale.h"
 #include "Metrics/MetricsFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "Replication/GlobalReplicationApplier.h"
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
@@ -1103,7 +1102,8 @@ void HeartbeatThread::sendServerStateAsync() {
       // use storage engine health self-assessment and send it to agency too
       arangodb::HealthData hd =
           server().getFeature<EngineSelectorFeature>().engine().healthCheck();
-      hd.toVelocyPack(builder);
+      // intentionally dont transmit details so we can save a bit of traffic
+      hd.toVelocyPack(builder, /*withDetails*/ false);
     }
 
     builder.close();

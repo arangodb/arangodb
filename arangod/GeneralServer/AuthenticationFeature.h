@@ -51,9 +51,6 @@ class AuthenticationFeature final : public ArangodFeature {
   bool authenticationUnixSockets() const { return _authenticationUnixSockets; }
   bool authenticationSystemOnly() const { return _authenticationSystemOnly; }
 
-  /// Enable or disable standalone authentication
-  bool localAuthentication() const noexcept { return _localAuthentication; }
-
   /// @return Cache to deal with authentication tokens
   auth::TokenCache& tokenCache() const noexcept {
     TRI_ASSERT(_authCache);
@@ -87,7 +84,6 @@ class AuthenticationFeature final : public ArangodFeature {
   std::unique_ptr<auth::TokenCache> _authCache;
   bool _authenticationUnixSockets;
   bool _authenticationSystemOnly;
-  bool _localAuthentication;
   bool _active;
   double _authenticationTimeout;
   double _sessionTimeout;

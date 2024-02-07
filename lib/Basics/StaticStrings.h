@@ -106,7 +106,6 @@ class StaticStrings {
   static std::string const AppsCollection;
   static std::string const AppBundlesCollection;
   static std::string const FrontendCollection;
-  static std::string const PregelCollection;
   static std::string const StatisticsCollection;
   static std::string const Statistics15Collection;
   static std::string const StatisticsRawCollection;
@@ -246,8 +245,10 @@ class StaticStrings {
   static std::string const MultiPartContentType;
 
   // encodings
+  static std::string const EncodingArangoLz4;
   static std::string const EncodingDeflate;
   static std::string const EncodingGzip;
+  static std::string const EncodingLz4;
 
   // arangosh result body
   static std::string const Body;

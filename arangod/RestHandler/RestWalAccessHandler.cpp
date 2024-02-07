@@ -295,9 +295,6 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   auto guard = scopeGuard([&rf]() noexcept { rf.trackTailingEnd(); });
 
-  bool const useVst =
-      (_request->transportType() == Endpoint::TransportType::VST);
-
   WalAccess::Filter filter;
   if (!parseFilter(filter)) {
     return;
@@ -341,42 +338,28 @@ void RestWalAccessHandler::handleCommandTail(WalAccess const* wal) {
 
   size_t length = 0;
 
-  if (useVst) {
-    result = wal->tail(
-        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
-          length++;
-
-          if (vocbase != nullptr) {  // database drop has no vocbase
-            prepOpts(*vocbase);
-          }
-
-          _response->addPayload(marker, &opts, true);
-        });
-  } else {
-    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-    TRI_ASSERT(httpResponse);
-    if (httpResponse == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "invalid response type");
-    }
-    basics::StringBuffer& buffer = httpResponse->body();
-    basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
-    // note: we need the CustomTypeHandler here
-    VPackDumper dumper(&adapter, &opts);
-    result = wal->tail(
-        filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
-          length++;
-
-          if (vocbase != nullptr) {  // database drop has no vocbase
-            prepOpts(*vocbase);
-          }
-
-          dumper.dump(marker);
-          buffer.appendChar('\n');
-          // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
-          // marker.toJson(&opts);
-        });
+  HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+  TRI_ASSERT(httpResponse);
+  if (httpResponse == nullptr) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "invalid response type");
   }
+  basics::StringBuffer& buffer = httpResponse->body();
+  basics::VPackStringBufferAdapter adapter(buffer.stringBuffer());
+  // note: we need the CustomTypeHandler here
+  VPackDumper dumper(&adapter, &opts);
+  result = wal->tail(
+      filter, chunkSize, [&](TRI_vocbase_t* vocbase, VPackSlice marker) {
+        length++;
+
+        if (vocbase != nullptr) {  // database drop has no vocbase
+          prepOpts(*vocbase);
+        }
+
+        dumper.dump(marker);
+        buffer.appendChar('\n');
+        // LOG_TOPIC("cda47", INFO, Logger::REPLICATION) <<
+        // marker.toJson(&opts);
+      });
 
   if (result.fail()) {
     generateError(std::move(result).result());

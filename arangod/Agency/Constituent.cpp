@@ -470,6 +470,11 @@ void Constituent::callElection() {
   network::ConnectionPool* cp = nf.pool();
 
   network::RequestOptions reqOpts;
+  // never compress requests to the agency, so that we do not spend too much
+  // CPU on compression/decompression. some agent instances run with a very
+  // low number of cores (even fractions of physical cores), so we cannot
+  // waste too much CPU resources there.
+  reqOpts.allowCompression = false;
   reqOpts.timeout = timeout;
   reqOpts.param("term", std::to_string(savedTerm))
       .param("candidateId", _id)

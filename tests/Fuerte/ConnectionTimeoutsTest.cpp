@@ -130,8 +130,6 @@ void performRequests(fu::ProtocolType pt) {
 
 }  // namespace
 
-TEST(RequestTimeout, VelocyStream) { ::performRequests(fu::ProtocolType::Vst); }
-
 TEST(RequestTimeout, HTTP) { ::performRequests(fu::ProtocolType::Http); }
 
 TEST(RequestTimeout, HTTP2) { ::performRequests(fu::ProtocolType::Http2); }

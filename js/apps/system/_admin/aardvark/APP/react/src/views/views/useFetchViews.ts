@@ -37,9 +37,7 @@ export const useFetchViews = () => {
         setViews(newViews);
       }
     };
-    if (!window.frontendConfig.ldapEnabled) {
-      window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", callback);
-    }
+    window.arangoHelper.syncAndReturnUnfinishedAardvarkJobs("view", callback);
   };
 
   useEffect(() => {

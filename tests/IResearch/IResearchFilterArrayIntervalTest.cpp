@@ -74,10 +74,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 static const VPackBuilder systemDatabaseBuilder = dbArgsBuilder();
 static const VPackSlice systemDatabaseArgs = systemDatabaseBuilder.slice();
 
@@ -819,7 +815,7 @@ TEST_F(IResearchFilterArrayIntervalTest, Interval) {
       SCOPED_TRACE(testing::Message("Query") << queryString);
       irs::Or expected;
       if (operation.first.find("ANY") != std::string::npos) {
-        expected.add<irs::empty>();
+        expected.add<irs::Empty>();
       } else {
         expected.add<irs::all>();
       }

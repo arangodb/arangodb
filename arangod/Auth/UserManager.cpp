@@ -74,10 +74,6 @@ arangodb::SystemDatabaseFeature::ptr getSystemDatabase(
   return server.getFeature<arangodb::SystemDatabaseFeature>().use();
 }
 
-bool isRole(std::string const& name) noexcept {
-  return name.starts_with(":role:");
-}
-
 }  // namespace
 
 using namespace arangodb;
@@ -85,28 +81,11 @@ using namespace arangodb::basics;
 using namespace arangodb::velocypack;
 using namespace arangodb::rest;
 
-#ifndef USE_ENTERPRISE
 auth::UserManager::UserManager(ArangodServer& server)
     : _server(server),
       _globalVersion(1),
       _internalVersion(0),
       _usersInitialized(false) {}
-#else
-auth::UserManager::UserManager(ArangodServer& server)
-    : _server(server),
-      _globalVersion(1),
-      _internalVersion(0),
-      _usersInitialized(false),
-      _authHandler(nullptr) {}
-
-auth::UserManager::UserManager(ArangodServer& server,
-                               std::unique_ptr<auth::Handler> handler)
-    : _server(server),
-      _globalVersion(1),
-      _internalVersion(0),
-      _usersInitialized(false),
-      _authHandler(std::move(handler)) {}
-#endif
 
 // Parse the users
 static auth::UserMap ParseUsers(VPackSlice const& slice) {
@@ -114,13 +93,6 @@ static auth::UserMap ParseUsers(VPackSlice const& slice) {
   auth::UserMap result;
   for (VPackSlice const& authSlice : VPackArrayIterator(slice)) {
     VPackSlice s = authSlice.resolveExternal();
-
-    if (s.get("source").isString() && s.get("source").stringView() == "LDAP") {
-      LOG_TOPIC("18ee8", TRACE, arangodb::Logger::CONFIG)
-          << "LDAP: skip user in collection _users: "
-          << s.get("user").stringView();
-      continue;
-    }
 
     // we also need to insert inactive users into the cache here
     // otherwise all following update/replace/remove operations on the
@@ -246,18 +218,10 @@ void auth::UserManager::loadFromDB() {
 
         {  // cannot invalidate token cache while holding _userCache write lock
           WRITE_LOCKER(writeGuard, _userCacheLock);  // must be second
-          // never delete non-local users
           for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
-            if (pair->second.source() == auth::Source::Local) {
-              pair = _userCache.erase(pair);
-            } else {
-              pair++;
-            }
+            pair = _userCache.erase(pair);
           }
           _userCache.insert(usermap.begin(), usermap.end());
-#ifdef USE_ENTERPRISE
-          applyRolesToAllUsers();
-#endif
         }
       }
       _internalVersion.store(tmp);
@@ -286,17 +250,6 @@ void auth::UserManager::loadFromDB() {
 // this method can only be called by users with access to the _system collection
 Result auth::UserManager::storeUserInternal(auth::User const& entry,
                                             bool replace) {
-  if (entry.source() != auth::Source::Local) {
-    return Result(TRI_ERROR_USER_EXTERNAL);
-  }
-  if (!::isRole(entry.username()) && entry.username() != "root") {
-    AuthenticationFeature* af = AuthenticationFeature::instance();
-    TRI_ASSERT(af != nullptr);
-    if (af != nullptr && !af->localAuthentication()) {
-      return Result(TRI_ERROR_BAD_PARAMETER, "Local users are disabled");
-    }
-  }
-
   VPackBuilder data = entry.toVPackBuilder();
   bool hasKey = data.slice().hasKey(StaticStrings::KeyString);
   bool hasRev = data.slice().hasKey(StaticStrings::RevString);
@@ -355,18 +308,6 @@ Result auth::UserManager::storeUserInternal(auth::User const& entry,
         _userCache.try_emplace(entry.username(),
                                auth::User::fromDocument(userDoc));
       }
-#ifdef USE_ENTERPRISE
-      if (::isRole(entry.username())) {
-        for (UserMap::value_type& pair : _userCache) {
-          if (pair.second.source() != auth::Source::Local &&
-              pair.second.roles().find(entry.username()) !=
-                  pair.second.roles().end()) {
-            pair.second._dbAccess.clear();
-            applyRoles(pair.second);
-          }
-        }
-      }
-#endif
     } else if (res.is(TRI_ERROR_ARANGO_CONFLICT)) {
       // user was outdated, we should trigger a reload
       triggerLocalReload();
@@ -402,8 +343,8 @@ void auth::UserManager::createRootUser() {
     // to the "_system" database, otherwise things break
     auto& initDatabaseFeature = _server.getFeature<InitDatabaseFeature>();
 
-    auth::User user = auth::User::newUser(
-        "root", initDatabaseFeature.defaultPassword(), auth::Source::Local);
+    auth::User user =
+        auth::User::newUser("root", initDatabaseFeature.defaultPassword());
     user.setActive(true);
     user.grantDatabase(StaticStrings::SystemDatabase, auth::Level::RW);
     user.grantCollection(StaticStrings::SystemDatabase, "*", auth::Level::RW);
@@ -525,12 +466,9 @@ Result auth::UserManager::storeUser(bool replace, std::string const& username,
     auth::User const& oldEntry = it->second;
     oldKey = oldEntry.key();
     oldRev = oldEntry.rev();
-    if (oldEntry.source() != auth::Source::Local) {
-      return TRI_ERROR_USER_EXTERNAL;
-    }
   }
 
-  auth::User user = auth::User::newUser(username, pass, auth::Source::Local);
+  auth::User user = auth::User::newUser(username, pass);
   user.setActive(active);
   if (extras.isObject() && !extras.isEmptyObject()) {
     user.setUserData(VPackBuilder(extras));
@@ -557,9 +495,6 @@ Result auth::UserManager::enumerateUsers(
   {  // users are later updated with rev ID for consistency
     READ_LOCKER(readGuard, _userCacheLock);
     for (UserMap::value_type& it : _userCache) {
-      if (it.second.source() != auth::Source::Local) {
-        continue;
-      }
       auth::User user = it.second;  // copy user object
       TRI_ASSERT(!user.key().empty() && user.rev().isSet());
       if (func(user)) {
@@ -617,8 +552,6 @@ Result auth::UserManager::updateUser(std::string const& name,
   UserMap::iterator it = _userCache.find(name);
   if (it == _userCache.end()) {
     return TRI_ERROR_USER_NOT_FOUND;
-  } else if (it->second.source() != auth::Source::Local) {
-    return TRI_ERROR_USER_EXTERNAL;
   }
 
   LOG_TOPIC("574c5", DEBUG, Logger::AUTHENTICATION) << "Updating user " << name;
@@ -741,9 +674,6 @@ Result auth::UserManager::removeUser(std::string const& user) {
   }
 
   auth::User const& oldEntry = it->second;
-  if (oldEntry.source() != auth::Source::Local) {
-    return TRI_ERROR_USER_EXTERNAL;
-  }
   Result res = RemoveUserInternal(_server, oldEntry);
   if (res.ok()) {
     _userCache.erase(it);
@@ -767,14 +697,19 @@ Result auth::UserManager::removeAllUsers() {
 
     for (auto pair = _userCache.cbegin(); pair != _userCache.cend();) {
       auto const& oldEntry = pair->second;
-      if (oldEntry.source() == auth::Source::Local) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+      if (oldEntry.key().empty()) {
+        // we expect no empty usernames to ever occur, except when
+        // called from unit tests
+        ++pair;
+      } else
+#endif
+      {
         res = RemoveUserInternal(_server, oldEntry);
         if (!res.ok()) {
           break;  // don't return still need to invalidate token cache
         }
         pair = _userCache.erase(pair);
-      } else {
-        pair++;
       }
     }
   }
@@ -785,7 +720,7 @@ Result auth::UserManager::removeAllUsers() {
 
 bool auth::UserManager::checkPassword(std::string const& username,
                                       std::string const& password) {
-  if (username.empty() || ::isRole(username)) {
+  if (username.empty()) {
     return false;  // we cannot authenticate during bootstrap
   }
 
@@ -794,31 +729,12 @@ bool auth::UserManager::checkPassword(std::string const& username,
   READ_LOCKER(readGuard, _userCacheLock);
   UserMap::iterator it = _userCache.find(username);
 
-  // using local users might be forbidden
-  AuthenticationFeature* af = AuthenticationFeature::instance();
-  if (it != _userCache.end() && (it->second.source() == auth::Source::Local)) {
-    if (af != nullptr && !af->localAuthentication()) {
-      LOG_TOPIC("d3220", DEBUG, Logger::AUTHENTICATION)
-          << "Local users are forbidden";
-      return false;
-    }
+  if (it != _userCache.end()) {
     auth::User const& user = it->second;
     if (user.isActive()) {
       return user.checkPassword(password);
     }
   }
-
-#ifdef USE_ENTERPRISE
-  bool userCached = it != _userCache.end();
-  if (!userCached && _authHandler == nullptr) {
-    // nothing more to do here
-    return false;
-  }
-  // handle authentication with external system
-  if (!userCached || (it->second.source() != auth::Source::Local)) {
-    return checkPasswordExt(username, password, userCached, readGuard);
-  }
-#endif
 
   return false;
 }

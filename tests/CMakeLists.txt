@@ -195,6 +195,7 @@ set(ARANGODB_TESTS_SOURCES
   Cluster/RebootTrackerTest.cpp
   Cluster/ShardAutoRebalancerTest.cpp
   Cluster/ShardIDTest.cpp
+  Cluster/ServerStateTest.cpp
   Containers/EnumerateTest.cpp
   Containers/HashSetTest.cpp
   Containers/MerkleTreeTest.cpp
@@ -225,7 +226,6 @@ set(ARANGODB_TESTS_SOURCES
   RestHandler/RestDocumentHandlerTest.cpp
   RestHandler/RestUsersHandlerTest.cpp
   RestHandler/RestViewHandlerTest.cpp
-  RestHandler/VstResponseTest.cpp
   RestServer/FlushFeatureTest.cpp
   RestServer/LanguageFeatureTest.cpp
   Restore/CollectionRestoreOrder.cpp
@@ -313,8 +313,6 @@ target_link_libraries(arangodbtests
   arango_tests_graph
   arango_tests_futures
   arango_tests_zkd
-  arango_tests_pregel
-  arango_tests_pregel_graphstore
   arango_tests_actor
   arango_tests_inspection
   arango_inspection_test_helper
@@ -397,6 +395,5 @@ foreach(ELEMENT ${IRESEARCH_LIB_RESOURCES})
 endforeach()
 
 add_subdirectory(Actor)
-add_subdirectory(Pregel)
 add_subdirectory(sepp)
 add_subdirectory(VocBase/Properties)

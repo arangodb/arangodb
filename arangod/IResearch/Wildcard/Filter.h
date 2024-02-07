@@ -29,7 +29,7 @@
 
 namespace arangodb::iresearch::wildcard {
 
-class Filter final : public irs::filter_base<Options> {
+class Filter final : public irs::FilterWithField<Options> {
  public:
   prepared::ptr prepare(const irs::PrepareContext& ctx) const final;
 };

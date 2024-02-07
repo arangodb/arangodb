@@ -68,10 +68,6 @@ std::string to_string(Message& message) {
   if (message.type() == MessageType::Request) {
     Request const& req = static_cast<Request const&>(message);
 
-    if (req.header.version()) {
-      ss << "version: " << req.header.version() << std::endl;
-    }
-
     ss << "type: request" << std::endl;
 
     if (!req.header.database.empty()) {
@@ -107,10 +103,6 @@ std::string to_string(Message& message) {
     }
   } else if (message.type() == MessageType::Response) {
     Response const& res = static_cast<Response const&>(message);
-
-    if (res.header.version()) {
-      ss << "version: " << res.header.version() << std::endl;
-    }
 
     ss << "type: response" << std::endl;
     if (res.header.responseCode != StatusUndefined) {

@@ -21,7 +21,6 @@ known_flags = {
     "!full": "this test is only executed in non-full tests",
     "gtest": "only the gtest are to be executed",
     "sniff": "whether tcpdump / ngrep should be used",
-    "ldap": "ldap",
     "enterprise": "this tests is only executed with the enterprise version",
     "!windows": "test is excluded from ps1 output",
     "!mac": "test is excluded when launched on MacOS",

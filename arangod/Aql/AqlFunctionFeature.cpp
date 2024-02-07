@@ -554,10 +554,6 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::CheckDocument});  // not deterministic and not cacheable
   add({"COLLECTION_COUNT", ".h", Function::makeFlags(FF::CanReadDocuments),
        &functions::CollectionCount});  // not deterministic and not cacheable
-  add({"PREGEL_RESULT", ".|.",
-       Function::makeFlags(FF::CanReadDocuments, FF::CanRunOnDBServerCluster,
-                           FF::CanRunOnDBServerOneShard),
-       &functions::PregelResult});  // not deterministic and not cacheable
   add({"ASSERT", ".,.",
        Function::makeFlags(FF::CanRunOnDBServerCluster,
                            FF::CanRunOnDBServerOneShard, FF::CanUseInAnalyzer),

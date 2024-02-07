@@ -211,11 +211,11 @@ class GeoQuery : public irs::filter::prepared {
  public:
   GeoQuery(GeoStates&& states, irs::bstring&& stats, Parser&& parser,
            Acceptor&& acceptor, irs::score_t boost) noexcept
-      : prepared{boost},
-        _states{std::move(states)},
+      : _states{std::move(states)},
         _stats{std::move(stats)},
         _parser{std::move(parser)},
-        _acceptor{std::move(acceptor)} {}
+        _acceptor{std::move(acceptor)},
+        _boost{boost} {}
 
   irs::doc_iterator::ptr execute(irs::ExecutionContext const& ctx) const final {
     // get term state for the specified reader
@@ -257,11 +257,14 @@ class GeoQuery : public irs::filter::prepared {
     // NOOP
   }
 
+  irs::score_t boost() const noexcept final { return _boost; }
+
  private:
   GeoStates _states;
   irs::bstring _stats;
   IRS_NO_UNIQUE_ADDRESS Parser _parser;
   IRS_NO_UNIQUE_ADDRESS Acceptor _acceptor;
+  irs::score_t _boost;
 };
 
 struct VPackParser {

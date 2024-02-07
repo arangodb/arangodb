@@ -34,7 +34,7 @@
 namespace arangodb { namespace fuerte { inline namespace v1 {
 // Connection is the base class for a connection between a client
 // and a server.
-// Different protocols (HTTP, VST) are implemented in derived classes.
+// Different protocols (HTTP) are implemented in derived classes.
 // For details of the setup see the top of src/GeneralConnection.h .
 class Connection : public std::enable_shared_from_this<Connection> {
   friend class ConnectionBuilder;
@@ -121,7 +121,7 @@ class ConnectionBuilder {
   std::string host() const { return _conf._host; }
   std::string port() const { return _conf._port; }
 
-  /// @brief takes url in the form (http|vst)[s]://(ip|hostname):port
+  /// @brief takes url in the form (http)[s]://(ip|hostname):port
   /// also supports the syntax "http+tcp://", "http+unix://" etc
   ConnectionBuilder& endpoint(std::string const& spec);
 
@@ -208,13 +208,6 @@ class ConnectionBuilder {
   /// @brief protocol type
   ProtocolType protocolType() const { return _conf._protocolType; }
   void protocolType(ProtocolType pt) { _conf._protocolType = pt; }
-
-  // Set the VST version to use (VST only)
-  vst::VSTVersion vstVersion() const { return _conf._vstVersion; }
-  ConnectionBuilder& vstVersion(vst::VSTVersion c) {
-    _conf._vstVersion = c;
-    return *this;
-  }
 
   /// upgrade http1.1 to http2 connection (not necessary)
   ConnectionBuilder& upgradeHttp1ToHttp2(bool c) {

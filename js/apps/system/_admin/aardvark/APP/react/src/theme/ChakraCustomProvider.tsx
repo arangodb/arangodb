@@ -56,6 +56,10 @@ export const ChakraCustomProvider = ({
               },
             svg: {
               overflow: "visible !important"
+            },
+            ".chakra-toast__inner button[aria-label='Close']": {
+              top: "12px !important",
+              right: "12px !important"
             }
           }}
         />

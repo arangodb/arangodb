@@ -53,8 +53,6 @@
 #include "Metrics/CounterBuilder.h"
 #include "Metrics/HistogramBuilder.h"
 #include "Metrics/MetricsFeature.h"
-#include "Pregel/REST/RestControlPregelHandler.h"
-#include "Pregel/REST/RestPregelHandler.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
@@ -157,14 +155,10 @@ DECLARE_HISTOGRAM(arangodb_request_body_size_http1, RequestBodySizeScale,
                   "Body size of HTTP/1.1 requests");
 DECLARE_HISTOGRAM(arangodb_request_body_size_http2, RequestBodySizeScale,
                   "Body size of HTTP/2 requests");
-DECLARE_HISTOGRAM(arangodb_request_body_size_vst, RequestBodySizeScale,
-                  "Body size of VST requests");
 DECLARE_COUNTER(arangodb_http1_connections_total,
                 "Total number of HTTP/1.1 connections");
 DECLARE_COUNTER(arangodb_http2_connections_total,
                 "Total number of HTTP/2 connections");
-DECLARE_COUNTER(arangodb_vst_connections_total,
-                "Total number of VST connections");
 DECLARE_GAUGE(arangodb_requests_memory_usage, std::uint64_t,
               "Memory consumed by incoming requests");
 
@@ -194,10 +188,8 @@ GeneralServerFeature::GeneralServerFeature(Server& server,
       _numIoThreads(0),
       _requestBodySizeHttp1(metrics.add(arangodb_request_body_size_http1{})),
       _requestBodySizeHttp2(metrics.add(arangodb_request_body_size_http2{})),
-      _requestBodySizeVst(metrics.add(arangodb_request_body_size_vst{})),
       _http1Connections(metrics.add(arangodb_http1_connections_total{})),
-      _http2Connections(metrics.add(arangodb_http2_connections_total{})),
-      _vstConnections(metrics.add(arangodb_vst_connections_total{})) {
+      _http2Connections(metrics.add(arangodb_http2_connections_total{})) {
   static_assert(
       Server::isCreatedAfter<GeneralServerFeature, metrics::MetricsFeature>());
 
@@ -681,10 +673,6 @@ void GeneralServerFeature::defineRemainingHandlers(
   f.addPrefixHandler(RestVocbaseBaseHandler::BATCH_PATH,
                      RestHandlerCreator<RestBatchHandler>::createNoData);
 
-  f.addPrefixHandler(
-      RestVocbaseBaseHandler::CONTROL_PREGEL_PATH,
-      RestHandlerCreator<RestControlPregelHandler>::createNoData);
-
   auto queryRegistry = QueryRegistryFeature::registry();
   f.addPrefixHandler(
       RestVocbaseBaseHandler::CURSOR_PATH,
@@ -802,9 +790,6 @@ void GeneralServerFeature::defineRemainingHandlers(
 
   f.addPrefixHandler("/_api/query-cache",
                      RestHandlerCreator<RestQueryCacheHandler>::createNoData);
-
-  f.addPrefixHandler("/_api/pregel",
-                     RestHandlerCreator<RestPregelHandler>::createNoData);
 
   f.addPrefixHandler("/_api/wal",
                      RestHandlerCreator<RestWalAccessHandler>::createNoData);

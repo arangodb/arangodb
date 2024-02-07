@@ -201,7 +201,7 @@ std::ostream& operator<<(std::ostream& os, by_ngram_similarity const& filter) {
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, empty const&) {
+std::ostream& operator<<(std::ostream& os, Empty const&) {
   os << "EMPTY[]";
   return os;
 }
@@ -277,10 +277,10 @@ std::ostream& operator<<(std::ostream& os, filter const& filter) {
     return os << static_cast<by_prefix const&>(filter);
   } else if (type == irs::type<ByNestedFilter>::id()) {
     return os << static_cast<ByNestedFilter const&>(filter);
-  } else if (type == irs::type<irs::by_column_existence>::id()) {
+  } else if (type == irs::type<by_column_existence>::id()) {
     return os << static_cast<by_column_existence const&>(filter);
-  } else if (type == irs::type<empty>::id()) {
-    return os << static_cast<empty const&>(filter);
+  } else if (type == irs::type<Empty>::id()) {
+    return os << static_cast<Empty const&>(filter);
   } else if (type == irs::type<arangodb::iresearch::ByExpression>::id()) {
     return os << "ByExpression";
   } else {
@@ -886,13 +886,13 @@ void assertExpressionFilter(
                     .ok());
     EXPECT_EQ(expected, actual) << to_string(expected) << "\n"
                                 << to_string(actual);
-    EXPECT_EQ(boost, (*actual.begin())->boost());
+    EXPECT_EQ(boost, (*actual.begin())->BoostImpl());
   }
 }
 
 static bool assertFilterBoostImpl(irs::filter const& expected,
                                   irs::filter const& actual) {
-  if (expected.boost() != actual.boost()) {
+  if (expected.BoostImpl() != actual.BoostImpl()) {
     return false;
   }
   auto* expectedBooleanFilter =

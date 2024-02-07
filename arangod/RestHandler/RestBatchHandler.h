@@ -68,8 +68,6 @@ class RestBatchHandler : public RestVocbaseBaseHandler {
   RequestLane lane() const override final { return RequestLane::CLIENT_SLOW; }
 
  private:
-  RestStatus executeHttp();
-  RestStatus executeVst();
   // extract the boundary from the body of a multipart message
   bool getBoundaryBody(std::string&);
 

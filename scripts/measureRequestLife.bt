@@ -104,38 +104,3 @@ usdt:build/bin/arangod:arangod:H2CommTaskAfterAsyncWrite* {
   }
   @ProcessStream = 0;
 }
-
-usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
-  @ProcessMessage = nsecs;
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskSendResponse* {
-  @SendResponse = nsecs;
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskBeforeAsyncWrite* {
-  @BeforeAsyncWrite = nsecs;
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
-  $t = nsecs;
-  if (@ProcessMessage != 0 && @ExecuteRequest != 0) {
-      printf("%lld %lld %lld %lld %lld %lld ",
-             $t - @START,
-             @PrepareExecution - @ProcessMessage,
-             @ExecuteRequest - @PrepareExecution,
-             @HandleRequestSync - @ExecuteRequest,
-             @ExecuteEngine - @HandleRequestSync,
-             @SendResponse - @ExecuteEngine);
-      printf("%lld %lld %lld\n",
-             @BeforeAsyncWrite - @SendResponse,
-             $t - @BeforeAsyncWrite,
-             $t - @ProcessMessage);
-      @Total = hist($t - @ProcessMessage);
-  } else {
-      printf("%lld AfterAsyncWrite\n", $t - @START);
-  }
-  @ProcessMessage = 0;
-  @ExecuteRequest = 0;
-}
-
