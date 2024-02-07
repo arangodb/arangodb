@@ -2473,7 +2473,8 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
   TRI_ASSERT(!_result);
   _stack = stack;
   // intentionally do not reset _firstFailure
-  auto old = _state.exchange({Status::Pending, false});
+  auto old =
+      _state.exchange({Status::Pending, false}, std::memory_order_release);
   TRI_ASSERT(old.status == Status::Consumed);
   // if the task was abandoned, we want to reschedule it!
   return old.abandoned;
@@ -2481,14 +2482,15 @@ bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
+  std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
+  if (_state.load().status == Status::Finished) {
     return;
   }
-  std::unique_lock<std::mutex> guard(_lock);
+
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire).status == Status::Finished;
+    return _state.load().status == Status::Finished;
   });
 }
 
@@ -2496,9 +2498,9 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
     Status status, std::memory_order memoryOrder) noexcept {
   auto state = _state.load(std::memory_order_relaxed);
-  while (not _state.compare_exchange_weak(
-      state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
+  while (not _state.compare_exchange_weak(state, {status, state.abandoned}))
     ;
+  ;
 }
 
 template<class Executor>
@@ -2538,9 +2540,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
 
     TRI_ASSERT(_result.has_value());
 
-    // (3) - this release-store synchronizes with the acquire-load (1, 2)
-    updateStatus(Status::Finished, std::memory_order_release);
-
     wakeupWaiter();
   }
 }
@@ -2551,7 +2550,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::setFailure(Result&& res) {
   if (_firstFailure.ok()) {
     _firstFailure = std::move(res);
   }
-  discard(/*isFinished*/ true);
+  _result.reset();
   wakeupWaiter();
 }
 
@@ -2560,6 +2559,8 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
   // need to temporarily lock the mutex to enforce serialization with the
   // waiting thread
   _lock.lock();
+  // (3) - this release-store synchronizes with the acquire-load (1, 2)
+  updateStatus(Status::Finished, std::memory_order_release);
   _lock.unlock();
 
   _bell.notify_one();
