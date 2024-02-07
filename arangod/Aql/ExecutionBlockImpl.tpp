@@ -2501,7 +2501,6 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
   while (not _state.compare_exchange_weak(
       state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
     ;
-  ;
 }
 
 template<class Executor>
