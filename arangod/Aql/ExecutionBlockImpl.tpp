@@ -2490,7 +2490,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
 
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load().status == Status::Finished;
+    return _state.load(std::memory_order_acquire).status == Status::Finished;
   });
 }
 
