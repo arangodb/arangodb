@@ -555,7 +555,7 @@ bool upgradeSingleServerArangoSearchView0_1(
 
     // recreate view
     res = arangodb::iresearch::IResearchView::factory().create(
-        view, vocbase, builder.slice(), true);
+        view, vocbase, builder.slice(), false);
 
     if (!res.ok()) {
       LOG_TOPIC("f8d20", WARN, arangodb::iresearch::TOPIC)

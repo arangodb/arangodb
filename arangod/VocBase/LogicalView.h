@@ -158,7 +158,8 @@ class LogicalView : public LogicalDataSource {
 
  private:
   LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-              TRI_vocbase_t& vocbase, velocypack::Slice definition);
+              TRI_vocbase_t& vocbase, velocypack::Slice definition,
+              bool isUserRequest);
 
   std::pair<ViewType, std::string_view> _typeInfo;
 };
