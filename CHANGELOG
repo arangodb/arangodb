@@ -1,6 +1,9 @@
 devel
 -----
 
+
+* ES-1892: Fix hot restores missing user defined analyzers.
+
 * Added startup options `--network.compression-method` and 
   `--network.compress-request-threshold` to optionally compress relevant
   cluster-internal traffic.
