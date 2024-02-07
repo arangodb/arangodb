@@ -64,14 +64,48 @@ Result safeCall(Func&& func) {
   }
 }
 
+bool readIsSystem(velocypack::Slice definition) {
+  if (!definition.isObject()) {
+    return false;
+  }
+  auto name = basics::VelocyPackHelper::getStringValue(
+      definition, StaticStrings::DataSourceName, StaticStrings::Empty);
+  if (!NameValidator::isSystemName(name)) {
+    return false;
+  }
+  // same condition as in LogicalCollection
+  return basics::VelocyPackHelper::getBooleanValue(
+      definition, StaticStrings::DataSourceSystem, false);
+}
+
 }  // namespace
 
 // @brief Constructor used in coordinator case.
 // The Slice contains the part of the plan that
 // is relevant for this view
 LogicalView::LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-                         TRI_vocbase_t& vocbase, velocypack::Slice definition)
-    : LogicalDataSource(*this, vocbase, definition),
+                         TRI_vocbase_t& vocbase, velocypack::Slice definition,
+                         bool isUserRequest)
+    : LogicalDataSource{*this,
+                        vocbase,
+                        isUserRequest
+                            ? DataSourceId::none()
+                            : DataSourceId{basics::VelocyPackHelper::
+                                               extractIdValue(definition)},
+                        basics::VelocyPackHelper::getStringValue(
+                            definition, StaticStrings::DataSourceGuid, ""),
+                        isUserRequest
+                            ? DataSourceId::none()
+                            : DataSourceId{basics::VelocyPackHelper::
+                                               stringUInt64(definition.get(
+                                                   StaticStrings::
+                                                       DataSourcePlanId))},
+                        basics::VelocyPackHelper::getStringValue(
+                            definition, StaticStrings::DataSourceName, ""),
+                        readIsSystem(definition),
+                        basics::VelocyPackHelper::getBooleanValue(
+                            definition, StaticStrings::DataSourceDeleted,
+                            false)},
       _typeInfo{std::move(typeInfo)} {
   // ensure that the 'definition' was used as the configuration source
   if (!definition.isObject()) {
