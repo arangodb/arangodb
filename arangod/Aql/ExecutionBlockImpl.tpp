@@ -2498,7 +2498,8 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
     Status status, std::memory_order memoryOrder) noexcept {
   auto state = _state.load(std::memory_order_relaxed);
-  while (not _state.compare_exchange_weak(state, {status, state.abandoned}))
+  while (not _state.compare_exchange_weak(
+      state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
     ;
   ;
 }
