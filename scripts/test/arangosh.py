@@ -38,7 +38,13 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
     def get_memory_limit_arg(self):
         if os.path.isfile("/sys/fs/cgroup/memory/memory.limit_in_bytes"):
             with open("/sys/fs/cgroup/memory/memory.limit_in_bytes") as limit:
-                return ["--memory", str(int(limit.read()))]
+                memory = ["--memory", str(int(limit.read()))]
+                if os.environ.get("SAN_MODE") != "":
+                    # sanitizer builds need more resources, but the sanitizer
+                    # allocations are not considered in the memory accounting,
+                    # so we reduce the memory assigned to all the instances by half
+                    memory //= 2
+                return memory
 
     def run_testing(
         self,
@@ -95,7 +101,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             + self.get_memory_limit_arg()
             + testing_args
         )
-        logging.info(run_cmd)
+        logging.info("Starting arangosh with the following arguments: ", run_cmd)
         params = make_logfile_params(verbose, logfile, self.cfg.trace, temp_dir)
         ret = self.run_monitored(
             self.cfg.bin_dir / "arangosh",
