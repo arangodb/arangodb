@@ -2560,7 +2560,7 @@ void ExecutionBlockImpl<Executor>::PrefetchTask::wakeupWaiter() noexcept {
   // waiting thread
   _lock.lock();
   // (3) - this release-store synchronizes with the acquire-load (1, 2)
-  updateStatus(Status::Finished, std::memory_order_release);
+  _state.store({Status::Finished, true}, std::memory_order_release);
   _lock.unlock();
 
   _bell.notify_one();
