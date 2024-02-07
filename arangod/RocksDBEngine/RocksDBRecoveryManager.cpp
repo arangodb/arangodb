@@ -564,7 +564,7 @@ class WBReader final : public rocksdb::WriteBatch::Handler {
             _currentSequence, RevisionId::none(),
             -static_cast<int64_t>(currentCount));
       }
-      for (std::shared_ptr<arangodb::Index> const& idx : coll->getIndexes()) {
+      for (auto const& idx : coll->getReadyIndexes()) {
         RocksDBIndex* ridx = static_cast<RocksDBIndex*>(idx.get());
         RocksDBCuckooIndexEstimatorType* est = ridx->estimator();
         TRI_ASSERT(ridx->type() != Index::TRI_IDX_TYPE_EDGE_INDEX || est);

@@ -1038,7 +1038,7 @@ ClusterInfo::CollectionWithHash ClusterInfo::buildCollection(
     collection = vocbase.createCollectionObject(data, /*isAStub*/ true);
     TRI_ASSERT(collection != nullptr);
     if (!isBuilding) {
-      auto indexes = collection->getIndexes();
+      auto indexes = collection->getPhysical()->getAllIndexes();
       // if the collection has a link to a view, there are dependencies between
       // collection objects and view objects. in this case, we need to disable
       // the collection caching optimization
@@ -6888,6 +6888,8 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
        plan.get({"arango", "Plan", "Databases"})},
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
+      {"Plan/Analyzers", AgencyValueOperationType::SET,
+       plan.get({"arango", "Plan", "Analyzers"})},
       {"Plan/Views", AgencyValueOperationType::SET,
        plan.get({"arango", "Plan", "Views"})},
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
