@@ -2484,7 +2484,7 @@ template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   std::unique_lock<std::mutex> guard(_lock);
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load().status == Status::Finished) {
+  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
     return;
   }
 
