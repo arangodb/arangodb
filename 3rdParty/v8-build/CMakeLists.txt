@@ -465,13 +465,13 @@ else ()
   )
 
   # only here for debugging. enable when needed
-  # message("V8 cc: ${CMAKE_C_COMPILER}")
-  # message("V8 cxx: ${CMAKE_CXX_COMPILER}")
-  # message("V8 gyp args: ${V8_GYP_ARGS}")
-  # message("V8 cflags: ${V8_CFLAGS}")
-  # message("V8 cxxflags: ${V8_CXXFLAGS}")
-  # message("V8 compile args: ${V8_COMPILE_ARGS}")
-  # message("V8 ldflags: ${V8_LDFLAGS}")
+  message("V8 cc: ${CMAKE_C_COMPILER}")
+  message("V8 cxx: ${CMAKE_CXX_COMPILER}")
+  message("V8 gyp args: ${V8_GYP_ARGS}")
+  message("V8 cflags: ${V8_CFLAGS}")
+  message("V8 cxxflags: ${V8_CXXFLAGS}")
+  message("V8 compile args: ${V8_COMPILE_ARGS}")
+  message("V8 ldflags: ${V8_LDFLAGS}")
 
   list(APPEND V8_COMPILE_TARGETS icui18n icuuc icustubdata v8_libbase v8_libplatform v8_snapshot)
   ExternalProject_Add(v8_build
