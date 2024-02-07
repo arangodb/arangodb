@@ -73,7 +73,7 @@ class V8DealerFeature final : public ArangodFeature {
 
   static constexpr std::string_view name() noexcept { return "V8Dealer"; }
 
-  explicit V8DealerFeature(Server& server);
+  V8DealerFeature(Server& server, metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) final;

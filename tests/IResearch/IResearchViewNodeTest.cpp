@@ -75,6 +75,7 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/DatabaseGuard.h"
@@ -84,10 +85,6 @@
 #endif
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalView.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 namespace {
 
@@ -4118,7 +4115,7 @@ class IResearchViewBlockTest
     meta._includeAllFields = true;
     {
       auto doc = arangodb::velocypack::Parser::fromJson("{ \"key\": 1 }");
-      auto indexes = collection0->getIndexes();
+      auto indexes = collection0->getPhysical()->getAllIndexes();
       EXPECT_FALSE(indexes.empty());
       auto* l = static_cast<arangodb::iresearch::IResearchLinkMock*>(
           indexes[0].get());

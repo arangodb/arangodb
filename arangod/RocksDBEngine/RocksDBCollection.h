@@ -27,7 +27,6 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <atomic>
 #include <memory>
@@ -104,7 +103,7 @@ class RocksDBCollection final : public RocksDBMetaCollection {
       transaction::Methods* trx, std::string_view key,
       std::pair<LocalDocumentId, RevisionId>& result) const override;
 
-  bool lookupRevision(transaction::Methods* trx, velocypack::Slice const& key,
+  bool lookupRevision(transaction::Methods* trx, velocypack::Slice key,
                       RevisionId& revisionId, ReadOwnWrites) const;
 
   Result lookup(transaction::Methods* trx, std::string_view key,

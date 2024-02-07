@@ -69,24 +69,3 @@ usdt:build/bin/arangod:arangod:H2CommTaskAfterAsyncWrite* {
   printf("%llu H2CommTask::AfterAsyncWritten this=%llx\n",
          (nsecs-@START)/1000, arg0);
 }
-
-usdt:build/bin/arangod:arangod:VstCommTaskProcess* {
-  printf("%llu VstCommTask::processMessage this=%llx\n", (nsecs-@START)/1000,
-         arg0);
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskSendResponse* {
-  printf("%llu VstCommTask::sendResponse this=%llx\n",
-         (nsecs-@START)/1000, arg0);
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskBeforeAsyncWrite* {
-  printf("%llu VstCommTask::BeforeAsyncWrite this=%llx\n",
-         (nsecs-@START)/1000, arg0);
-}
-
-usdt:build/bin/arangod:arangod:VstCommTaskAfterAsyncWrite* {
-  printf("%llu VstCommTask::AfterAsyncWritten this=%llx\n",
-         (nsecs-@START)/1000, arg0);
-}
-

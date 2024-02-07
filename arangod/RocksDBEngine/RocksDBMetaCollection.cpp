@@ -76,10 +76,7 @@ RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
       _exclusiveLock(_schedulerWrapper),
-      _engine(collection.vocbase()
-                  .server()
-                  .getFeature<EngineSelectorFeature>()
-                  .engine<RocksDBEngine>()),
+      _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
       _revisionTreeApplied(0),
@@ -512,10 +509,7 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
           << ": caught exception during revision tree serialization: "
           << ex.what();
 
-      auto& engine = _logicalCollection.vocbase()
-                         .server()
-                         .getFeature<EngineSelectorFeature>()
-                         .engine<RocksDBEngine>();
+      auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
       auto* db = engine.db();
 
       rocksdb::WriteOptions wo;
@@ -1086,10 +1080,7 @@ void RocksDBMetaCollection::rebuildRevisionTree(
           ->GetComparator();
   rocksdb::Slice const end = documentBounds.end();
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   auto* db = engine.db();
 
   std::vector<std::uint64_t> revisions;
@@ -1709,6 +1700,19 @@ void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+  TRI_IF_FAILURE("assertLockTimeoutLow") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that fast path locking is done with 2s timeout.
+      TRI_ASSERT(timeout < 10);
+    }
+  }
+  TRI_IF_FAILURE("assertLockTimeoutHigh") {
+    if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
+      // In the test we expect that an lazy locking happens on the follower
+      // with the default timeout of more than 2 seconds:
+      TRI_ASSERT(timeout > 10);
+    }
+  }
   return doLock(timeout, AccessMode::Type::READ);
 }
 
@@ -1837,10 +1841,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::RevisionTreeAccessor(
   TRI_ASSERT(_depth == revisionTreeDepth);
   TRI_ASSERT(_tree != nullptr);
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
 }
 
@@ -1848,10 +1849,7 @@ RocksDBMetaCollection::RevisionTreeAccessor::~RevisionTreeAccessor() {
   TRI_ASSERT((_tree == nullptr && !_compressed.empty()) ||
              (_tree != nullptr && _compressed.empty()));
 
-  auto& engine = _logicalCollection.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   if (_tree != nullptr) {
     engine.trackRevisionTreeMemoryDecrease(_tree->memoryUsage());
   } else if (!_compressed.empty()) {
@@ -1937,10 +1935,7 @@ void RocksDBMetaCollection::RevisionTreeAccessor::corrupt(uint64_t count,
   // not _remove_ data
   _tree->corrupt(count, hash);
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage() - oldMemoryUsage);
 }
 #endif
@@ -2015,10 +2010,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::hibernate(bool force) {
   if (_compressed.size() * 2 < _tree->memoryUsage()) {
     // compression ratio ok.
     // remove tree from memory. now we only have _compressed
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeHibernation();
     engine.trackRevisionTreeMemoryIncrease(_compressed.size());
     engine.trackRevisionTreeMemoryDecrease(oldMemoryUsage);
@@ -2069,10 +2062,8 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
                                      "unable to uncompress tree");
     }
 
-    RocksDBEngine& engine = _logicalCollection.vocbase()
-                                .server()
-                                .getFeature<EngineSelectorFeature>()
-                                .engine<RocksDBEngine>();
+    RocksDBEngine& engine =
+        _logicalCollection.vocbase().engine<RocksDBEngine>();
     engine.trackRevisionTreeResurrection();
     engine.trackRevisionTreeMemoryIncrease(_tree->memoryUsage());
     engine.trackRevisionTreeMemoryDecrease(_compressed.size());

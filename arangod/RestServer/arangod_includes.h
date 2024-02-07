@@ -87,7 +87,6 @@
 #include "Metrics/ClusterMetricsFeature.h"
 #include "Metrics/MetricsFeature.h"
 #include "Network/NetworkFeature.h"
-#include "Pregel/PregelFeature.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "Random/RandomFeature.h"
 #include "Replication/ReplicationFeature.h"
@@ -163,7 +162,6 @@
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/License/LicenseFeature.h"
 #include "Enterprise/RClone/RCloneFeature.h"
 #include "Enterprise/Ssl/SslServerFeatureEE.h"

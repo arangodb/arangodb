@@ -71,10 +71,7 @@ class ServerState {
     STARTUP = 1,
     /// reject almost all requests
     MAINTENANCE = 2,
-    /// status unclear, client must try again
-    TRYAGAIN = 3,
-    /// redirect to lead server if possible
-    REDIRECT = 4,
+
     INVALID = 255,  // this mode is used to indicate shutdown
   };
 
@@ -84,6 +81,12 @@ class ServerState {
 
   /// @brief create the (sole) instance
   static ServerState* instance() noexcept;
+
+  /// @brief whether or not the id is from a coordinator
+  static bool isCoordinatorId(std::string_view id);
+
+  /// @brief whether or not the id is from a DB server
+  static bool isDBServerId(std::string_view id);
 
   /// @brief get the string representation of a role
   static std::string roleToString(RoleEnum);
@@ -97,41 +100,41 @@ class ServerState {
   static std::string roleToAgencyKey(RoleEnum role);
 
   /// @brief convert a string to a role
-  static RoleEnum stringToRole(std::string_view);
+  static RoleEnum stringToRole(std::string_view) noexcept;
 
   /// @brief get the string representation of a state
   static std::string stateToString(StateEnum);
 
   /// @brief convert a string representation to a state
-  static StateEnum stringToState(std::string_view);
+  static StateEnum stringToState(std::string_view) noexcept;
 
   /// @brief get the string representation of a mode
   static std::string modeToString(Mode);
 
   /// @brief convert a string representation to a mode
-  static Mode stringToMode(std::string_view);
+  static Mode stringToMode(std::string_view) noexcept;
 
   /// @brief atomically load current server mode
-  static Mode mode();
+  static Mode mode() noexcept;
 
   /// @brief sets server mode, returns previously held
   /// value (performs atomic read-modify-write operation)
-  static Mode setServerMode(Mode mode);
+  static Mode setServerMode(Mode mode) noexcept;
 
   /// @brief checks maintenance mode
-  static bool isStartupOrMaintenance();
+  static bool isStartupOrMaintenance() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnly();
+  static bool readOnly() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnlyByLicense();
+  static bool readOnlyByLicense() noexcept;
 
   /// @brief should not allow DDL operations / transactions
-  static bool readOnlyByAPI();
+  static bool readOnlyByAPI() noexcept;
 
   /// @brief set server read-only
-  static bool setReadOnly(ReadOnlyMode);
+  static bool setReadOnly(ReadOnlyMode) noexcept;
 
   static void reset();
 

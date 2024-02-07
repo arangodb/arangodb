@@ -81,6 +81,8 @@ class RestLogHandler : public RestVocbaseBaseHandler {
       replication2::ReplicatedLogMethods const& methods, replication2::LogId);
   RestStatus handleGetGlobalStatus(
       replication2::ReplicatedLogMethods const& methods, replication2::LogId);
+  RestStatus handleGetCollectionStatus(
+      replication2::ReplicatedLogMethods const& methods, CollectionID cid);
   RestStatus handleGetLog(replication2::ReplicatedLogMethods const& methods,
                           replication2::LogId);
   RestStatus handleGetEntry(replication2::ReplicatedLogMethods const& methods,

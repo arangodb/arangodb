@@ -70,7 +70,8 @@ struct IDocumentStateHandlersFactory {
       -> std::unique_ptr<IDocumentStateTransactionHandler> = 0;
   virtual auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
                                  ShardID const& shard,
-                                 AccessMode::Type accessType)
+                                 AccessMode::Type accessType,
+                                 std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> = 0;
   virtual auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> = 0;
@@ -99,7 +100,8 @@ class DocumentStateHandlersFactory
       std::shared_ptr<IDocumentStateShardHandler> shardHandler)
       -> std::unique_ptr<IDocumentStateTransactionHandler> override;
   auto createTransaction(TRI_vocbase_t& vocbase, TransactionId tid,
-                         ShardID const& shard, AccessMode::Type accessType)
+                         ShardID const& shard, AccessMode::Type accessType,
+                         std::string_view userName)
       -> std::shared_ptr<IDocumentStateTransaction> override;
   auto createNetworkHandler(GlobalLogIdentifier gid)
       -> std::shared_ptr<IDocumentStateNetworkHandler> override;

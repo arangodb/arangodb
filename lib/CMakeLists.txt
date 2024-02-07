@@ -148,7 +148,6 @@ add_library(arango STATIC
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}
-  ${LIB_ASM_SOURCES}
   ApplicationFeatures/ApplicationFeaturePhase.cpp
   ApplicationFeatures/BumpFileDescriptorsFeature.cpp
   ApplicationFeatures/CommunicationFeaturePhase.cpp
@@ -173,7 +172,6 @@ add_library(arango STATIC
   Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
-  Basics/LdapUrlParser.cpp
   Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
   Basics/NumberUtils.cpp
@@ -215,8 +213,6 @@ add_library(arango STATIC
   Rest/HttpResponse.cpp
   Rest/PathMatch.h
   Rest/Version.cpp
-  Rest/VstRequest.cpp
-  Rest/VstResponse.cpp
   SimpleHttpClient/ClientConnection.cpp
   SimpleHttpClient/ConnectionCache.cpp
   SimpleHttpClient/GeneralClientConnection.cpp
@@ -243,6 +239,7 @@ target_link_libraries(arango
          arango_static_strings
          arango_crashhandler
          velocypack
+         fuerte
          linenoise-ng
          date_interface
          ${SYSTEM_LIBRARIES}
@@ -271,6 +268,7 @@ target_include_directories(arango PUBLIC ${BUILD_DIR})
 
 target_include_directories(arango SYSTEM PUBLIC ${OPENSSL_INCLUDE_DIR})
 target_include_directories(arango SYSTEM PUBLIC ${ICU_INCLUDE_DIR})
+target_include_directories(arango SYSTEM PUBLIC ${Lz4_INCLUDE_DIR})
 
 target_link_libraries(arango PUBLIC rocksdb_interface)
 target_link_libraries(arango PUBLIC zlib_interface)
@@ -283,7 +281,8 @@ add_dependencies(arango v8_build)
 add_dependencies(arango snappy)
 target_link_libraries(arango PUBLIC snappy)
 
-set(SNAPPY_INCLUDE_DIR "${SNAPPY_SOURCE_DIR};${SNAPPY_BUILD_DIR}" CACHE PATH "relation to snappy")
+add_dependencies(arango lz4_static)
+target_link_libraries(arango PUBLIC lz4_static)
 
 if (USE_LIBUNWIND)
   target_link_libraries(arango PUBLIC ${LIBUNWIND_LIB})

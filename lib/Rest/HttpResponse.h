@@ -99,10 +99,6 @@ class HttpResponse : public GeneralResponse {
     return _body->reserve(size);
   }
 
-  arangodb::Endpoint::TransportType transportType() override final {
-    return arangodb::Endpoint::TransportType::HTTP;
-  }
-
   std::unique_ptr<basics::StringBuffer> stealBody() {
     std::unique_ptr<basics::StringBuffer> body(std::move(_body));
     return body;
@@ -115,6 +111,10 @@ class HttpResponse : public GeneralResponse {
   // the body must already be set. gzip compression is then run on the existing
   // body
   ErrorCode gzipCompress(bool onlyIfSmaller) override;
+
+  // the body must already be set. lz4 compression is then run on the existing
+  // body
+  ErrorCode lz4Compress(bool onlyIfSmaller) override;
 
   void addPayloadInternal(uint8_t const* data, size_t length,
                           velocypack::Options const* options,

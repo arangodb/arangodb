@@ -126,7 +126,8 @@ DECLARE_COUNTER(arangodb_v8_context_enter_failures_total,
 DECLARE_COUNTER(arangodb_v8_context_entered_total, "V8 context enter events");
 DECLARE_COUNTER(arangodb_v8_context_exited_total, "V8 context exit events");
 
-V8DealerFeature::V8DealerFeature(Server& server)
+V8DealerFeature::V8DealerFeature(Server& server,
+                                 metrics::MetricsFeature& metrics)
     : ArangodFeature{server, *this},
       _gcFrequency(60.0),
       _gcInterval(2000),
@@ -145,18 +146,14 @@ V8DealerFeature::V8DealerFeature(Server& server)
       _stopping(false),
       _gcFinished(false),
       _dynamicExecutorCreationBlockers(0),
-      _executorsCreationTime(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_creation_time_msec_total{})),
-      _executorsCreated(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_created_total{})),
-      _executorsDestroyed(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_destroyed_total{})),
-      _executorsEntered(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_entered_total{})),
-      _executorsExited(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_exited_total{})),
-      _executorsEnterFailures(server.getFeature<metrics::MetricsFeature>().add(
-          arangodb_v8_context_enter_failures_total{})) {
+      _executorsCreationTime(
+          metrics.add(arangodb_v8_context_creation_time_msec_total{})),
+      _executorsCreated(metrics.add(arangodb_v8_context_created_total{})),
+      _executorsDestroyed(metrics.add(arangodb_v8_context_destroyed_total{})),
+      _executorsEntered(metrics.add(arangodb_v8_context_entered_total{})),
+      _executorsExited(metrics.add(arangodb_v8_context_exited_total{})),
+      _executorsEnterFailures(
+          metrics.add(arangodb_v8_context_enter_failures_total{})) {
   static_assert(
       Server::isCreatedAfter<V8DealerFeature, metrics::MetricsFeature>());
 
@@ -692,8 +689,9 @@ void V8DealerFeature::copyInstallationFiles() {
     // needed in release builds
     std::string const versionAppendix = std::regex_replace(
         rest::Version::getServerVersion(), std::regex("-.*$"), "");
-    std::string const eslintPath =
-        FileUtils::buildFilename("js", "node", "node_modules", "eslint");
+    std::string const uiNodeModulesPath =
+        FileUtils::buildFilename("js", "apps", "system", "_admin", "aardvark",
+                                 "APP", "react", "node_modules");
 
     // .bin directories could be harmful, and .map files are large and
     // unnecessary
@@ -702,7 +700,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
     size_t copied = 0;
 
-    auto filter = [&eslintPath, &binDirectory,
+    auto filter = [&uiNodeModulesPath, &binDirectory,
                    &copied](std::string const& filename) -> bool {
       if (filename.ends_with(".map")) {
         // filename ends with ".map". filter it out!
@@ -715,9 +713,7 @@ void V8DealerFeature::copyInstallationFiles() {
 
       std::string normalized = filename;
       FileUtils::normalizePath(normalized);
-      if ((normalized.size() >= eslintPath.size() &&
-           normalized.compare(normalized.size() - eslintPath.size(),
-                              eslintPath.size(), eslintPath) == 0)) {
+      if (normalized.ends_with(uiNodeModulesPath)) {
         // filter it out!
         return true;
       }
@@ -1247,11 +1243,7 @@ V8Executor* V8DealerFeature::enterExecutor(
   }
 
   double const startTime = TRI_microtime();
-#ifdef V8_UPGRADE
   TRI_ASSERT(v8::Isolate::TryGetCurrent() == nullptr);
-#else
-  TRI_ASSERT(v8::Isolate::GetCurrent() == nullptr);
-#endif
   V8Executor* executor = nullptr;
 
   // look for a free executor
@@ -1998,11 +1990,7 @@ Result V8ExecutorGuard::runInContext(
 V8ConditionalExecutorGuard::V8ConditionalExecutorGuard(
     TRI_vocbase_t* vocbase, JavaScriptSecurityContext const& securityContext)
     : _vocbase(vocbase),
-#ifdef V8_UPGRADE
       _isolate(v8::Isolate::TryGetCurrent()),
-#else
-      _isolate(v8::Isolate::GetCurrent()),
-#endif
       _executor(nullptr) {
   TRI_ASSERT(vocbase != nullptr);
   if (_isolate == nullptr) {

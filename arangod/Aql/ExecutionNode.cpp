@@ -3091,7 +3091,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr);
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {});
 
   return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3114,7 +3114,10 @@ MaterializeRocksDBNode::MaterializeRocksDBNode(
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(ExecutionPlan* plan,
                                                arangodb::velocypack::Slice base)
-    : MaterializeNode(plan, base), CollectionAccessingNode(plan, base) {}
+    : MaterializeNode(plan, base),
+      CollectionAccessingNode(plan, base),
+      _projections(Projections::fromVelocyPack(
+          plan->getAst(), base, plan->getAst()->query().resourceMonitor())) {}
 
 void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
                                             unsigned flags) const {
@@ -3124,6 +3127,10 @@ void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
   // add collection information
   CollectionAccessingNode::toVelocyPack(nodes, flags);
   nodes.add(kMaterializeNodeInLocalDocIdParam, true);
+
+  if (!_projections.empty()) {
+    _projections.toVelocyPack(nodes);
+  }
 }
 
 std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
@@ -3151,8 +3158,9 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection());
+  auto executorInfos =
+      MaterializerExecutorInfos(inNmDocIdRegId, outDocumentRegId,
+                                engine.getQuery(), collection(), _projections);
 
   return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));

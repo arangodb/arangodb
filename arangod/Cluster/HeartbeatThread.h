@@ -134,12 +134,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   void runDBServer();
 
   //////////////////////////////////////////////////////////////////////////////
-  /// @brief heartbeat main loop, single server version
-  //////////////////////////////////////////////////////////////////////////////
-
-  void runSingleServer();
-
-  //////////////////////////////////////////////////////////////////////////////
   /// @brief handles a plan change, coordinator case
   //////////////////////////////////////////////////////////////////////////////
 
@@ -189,7 +183,6 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
       arangodb::velocypack::Slice foxxQueueVersion);
 #endif
 
- private:
   //////////////////////////////////////////////////////////////////////////////
   /// @brief update the local agent pool from the slice
   //////////////////////////////////////////////////////////////////////////////
@@ -331,6 +324,7 @@ class HeartbeatThread : public ServerThread<ArangodServer>,
   /// @brief Sync job
   DBServerAgencySync _agencySync;
 
+  ClusterFeature& _clusterFeature;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _heartbeat_send_time_ms;
   metrics::Counter& _heartbeat_failure_counter;
 };

@@ -39,7 +39,8 @@ class ReplicationMetricsFeature final : public ArangodFeature {
     return "ReplicationMetrics";
   }
 
-  explicit ReplicationMetricsFeature(Server& server);
+  explicit ReplicationMetricsFeature(Server& server,
+                                     metrics::MetricsFeature& metrics);
 
   struct InitialSyncStats {
     explicit InitialSyncStats(ReplicationMetricsFeature& feature,

@@ -5,7 +5,6 @@ import {
   QueryType,
   useFetchUserSavedQueries
 } from "./editor/useFetchUserSavedQueries";
-import { getQueryStorageKey } from "./queryHelper";
 
 export const useSavedQueriesHandlers = ({
   queryValue,
@@ -122,7 +121,6 @@ const patchQueries = async ({
   queries: QueryType[];
   onSuccess: () => void;
 }) => {
-  const storageKey = getQueryStorageKey();
   let currentUser = window.App.currentUser;
   const frontendConfig = window.frontendConfig;
   
@@ -130,11 +128,6 @@ const patchQueries = async ({
     currentUser = 'root';
   }
 
-  if (window.frontendConfig.ldapEnabled) {
-    localStorage.setItem(storageKey, JSON.stringify(queries));
-    onSuccess();
-    return Promise.resolve();
-  }
   const currentDB = getCurrentDB();
   try {
     await currentDB.route().request({

@@ -516,9 +516,7 @@ Result mergeObjectsForUpdate(Methods& trx, LogicalCollection& collection,
 
   // _from, _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     if (fromSlice.isNone()) {
       fromSlice = oldValue.get(StaticStrings::FromString);
@@ -687,9 +685,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = value.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -769,6 +765,7 @@ Result newObjectForInsert(Methods& trx, LogicalCollection& collection,
 /// set
 Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
                            VPackSlice oldValue, VPackSlice newValue,
+                           bool isNoOpReplace, RevisionId previousRevisionId,
                            RevisionId& revisionId, VPackBuilder& builder,
                            OperationOptions const& options,
                            BatchOptions& batchOptions) {
@@ -790,9 +787,7 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
 
   // _from and _to
   if (collection.type() == TRI_COL_TYPE_EDGE) {
-    auto& server = trx.vocbase().server();
-    bool extendedNames = server.hasFeature<DatabaseFeature>() &&
-                         server.getFeature<DatabaseFeature>().extendedNames();
+    bool extendedNames = trx.vocbase().extendedNames();
 
     VPackSlice fromSlice = newValue.get(StaticStrings::FromString);
     if (!isValidEdgeAttribute(fromSlice, extendedNames)) {
@@ -812,7 +807,13 @@ Result newObjectForReplace(Methods& trx, LogicalCollection& collection,
 
   // _rev
   bool handled = false;
-  if (options.isRestore) {
+  if (isNoOpReplace) {
+    // an replace that doesn't update anything - reuse revision id
+    char ridBuffer[basics::maxUInt64StringSize];
+    b->add(StaticStrings::RevString, previousRevisionId.toValuePair(ridBuffer));
+    revisionId = previousRevisionId;
+    handled = true;
+  } else if (options.isRestore) {
     // copy revision id verbatim
     s = newValue.get(StaticStrings::RevString);
     if (s.isString()) {

@@ -428,7 +428,7 @@ void H2Connection<SocketType::Tcp>::sendHttp1UpgradeRequest() {
       });
 }
 
-// socket connection is up (with optional SSL), now initiate the VST protocol.
+// socket connection is up (with optional SSL), now initiate the H2 protocol.
 template <>
 void H2Connection<SocketType::Ssl>::finishConnect() {
   FUERTE_LOG_HTTPTRACE << "finishInitialization (h2)\n";

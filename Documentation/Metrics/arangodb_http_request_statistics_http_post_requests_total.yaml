@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of HTTP (or VST) **POST**
+  This counter reflects the total number of HTTP **POST**
   requests which have hit this particular instance of `arangod`.
   
   Note that this counter is ever growing during the lifetime of the

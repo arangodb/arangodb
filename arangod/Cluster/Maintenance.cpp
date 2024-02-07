@@ -37,6 +37,7 @@
 #include "Cluster/ResignShardLeadership.h"
 #include "Indexes/Index.h"
 #include "Inspection/VPack.h"
+#include "IResearch/IResearchCommon.h"
 #include "Logger/LogContextKeys.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -83,6 +84,12 @@ static VPackValue const VP_SET("set");
 
 static std::string_view const PRIMARY("primary");
 static std::string_view const EDGE("edge");
+
+namespace {
+bool isViewIndex(std::string_view indexType) noexcept {
+  return indexType == iresearch::StaticStrings::ViewArangoSearchType;
+}
+};  // namespace
 
 static int indexOf(VPackSlice const& slice, std::string const& val) {
   if (slice.isArray()) {
@@ -274,20 +281,16 @@ static bool isReplication2Leader(ShardID const& shname,
   if (it != std::end(localShardsToLogs)) {
     auto logId = it->second;
     auto logStatus = localLogs.find(logId);
-    if (logStatus == std::end(localLogs)) {
-      // NOTE: We would like to guarantee that the log exists, but we cannot
-      // do that right now, we can eventually have the log removed by the
-      // maintenance before the shard is dropped. Also note: The Log could be
-      // stolen from the lookup map for shard and log deletion where there is a
-      // small time-window, where the shard and log still exist, but are not
-      // listed.
-      LOG_TOPIC("c1d8d", WARN, Logger::MAINTENANCE)
-          << "Replicated log " << logId << " not found. Since the shard "
-          << shname << " exists, so must the log";
-      return false;
+    // NOTE: We would like to guarantee that the log exists, but we cannot
+    // do that right now, we can eventually have the log removed by the
+    // maintenance before the shard is dropped. Also note: The Log could be
+    // stolen from the lookup map for shard and log deletion where there is a
+    // small time-window, where the shard and log still exist, but are not
+    // listed.
+    if (logStatus != std::end(localLogs)) {
+      return logStatus->second.status.role ==
+             replication2::replicated_log::ParticipantRole::kLeader;
     }
-    return logStatus->second.status.role ==
-           replication2::replicated_log::ParticipantRole::kLeader;
   }
   return false;
 }
@@ -443,6 +446,15 @@ static void handlePlanShard(
             // these actions to run in parallel to others and to similar ones.
             // Note however, that new index jobs are intentionally not
             // discovered when the shard is locked for maintenance.
+            auto indexTypeName =
+                index.get(StaticStrings::IndexType).copyString();
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be created in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(indexTypeName);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
@@ -451,11 +463,11 @@ static void handlePlanShard(
                     {DATABASE, dbname},
                     {COLLECTION, colname},
                     {SHARD, shname},
-                    {StaticStrings::IndexType,
-                     index.get(StaticStrings::IndexType).copyString()},
+                    {StaticStrings::IndexType, std::move(indexTypeName)},
                     {FIELDS, index.get(FIELDS).toJson()},
                     {ID, index.get(ID).copyString()}},
-                INDEX_PRIORITY, false, std::make_shared<VPackBuilder>(index)));
+                INDEX_PRIORITY, doLockShard,
+                std::make_shared<VPackBuilder>(index)));
           }
         }
       }
@@ -589,6 +601,15 @@ static void handleLocalShard(
           } else {
             // Note that drop index actions are exempt from locking, since we
             // want that they can run in parallel.
+            // Exception are SearchIndexes, as they can conflict on attached
+            // views during update.
+            // For replication2 there is a race on modify link, the DBServer can
+            // witness drop and create of the index at the same time. With this
+            // flag we serialize ViewIndex drop, and create on the same shard.
+            // All other indexes can still be dropped in parallel.
+            bool doLockShard =
+                replicationVersion == replication::Version::TWO &&
+                isViewIndex(type);
             makeDirty.insert(dbname);
             callNotify = true;
             actions.emplace_back(std::make_shared<ActionDescription>(
@@ -596,7 +617,7 @@ static void handleLocalShard(
                                                    {DATABASE, dbname},
                                                    {SHARD, shname},
                                                    {"index", id}},
-                INDEX_PRIORITY, false));
+                INDEX_PRIORITY, doLockShard));
           }
         }
       }

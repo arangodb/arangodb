@@ -26,11 +26,14 @@
 #include "Agency/AgencyFeature.h"
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Auth/TokenCache.h"
 #include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
+#include "Basics/StaticStrings.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
@@ -38,8 +41,22 @@
 
 #include <fuerte/types.h>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
+
+Headers addAuthorizationHeader(
+    std::unordered_map<std::string, std::string> const& originalHeaders) {
+  auto auth = AuthenticationFeature::instance();
+
+  network::Headers headers;
+  if (auth != nullptr && auth->isActive()) {
+    headers.try_emplace(StaticStrings::Authorization,
+                        "bearer " + auth->tokenCache().jwtToken());
+  }
+  for (auto const& header : originalHeaders) {
+    headers.try_emplace(header.first, header.second);
+  }
+  return headers;
+}
 
 ErrorCode resolveDestination(NetworkFeature const& feature,
                              DestinationId const& dest,
@@ -222,9 +239,6 @@ ErrorCode toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::WriteError:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-
-    case fuerte::Error::VstUnauthorized:
-      return TRI_ERROR_FORBIDDEN;
   }
 
   return TRI_ERROR_INTERNAL;
@@ -348,10 +362,22 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+#if 0
   } else if (state->isAgent() && agent != nullptr) {
+    // note: header intentionally not sent to save cluster-internal
+    // traffic
     req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
+#endif
   }
 }
 
-}  // namespace network
-}  // namespace arangodb
+void addUserParameter(RequestOptions& reqOpts, std::string_view value) {
+  if (!value.empty()) {
+    // if no user name is set, we cannot add it to the request options
+    // as a URL parameter, because they will assert that the provided
+    // value is non-empty
+    reqOpts.param(StaticStrings::UserString, value);
+  }
+}
+
+}  // namespace arangodb::network

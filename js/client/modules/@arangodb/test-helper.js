@@ -681,7 +681,6 @@ exports.getResponsibleServersFromClusterInfo = function (arg) {
 };
 
 exports.getAllMetricsFromEndpoints = function (roles = "") {
-  
   const isCluster = require("internal").isCluster();
   
   let res = [];
@@ -755,7 +754,7 @@ exports.getAgentEndpoints = function () {
   return exports.getEndpoints(inst.instanceRole.agent);
 };
 
-const callAgency = function (operation, body) {
+const callAgency = function (operation, body, jwtBearerToken) {
   // Memoize the agents
   const getAgents = (function () {
     let agents;
@@ -768,11 +767,15 @@ const callAgency = function (operation, body) {
   }());
   const agents = getAgents();
   assertTrue(agents.length > 0, 'No agents present');
-  const res = request.post({
-    url: `${agents[0]}/_api/agency/${operation}`,
-    body: JSON.stringify(body),
-    timeout: 300,
-  });
+  const req = {
+      url: `${agents[0]}/_api/agency/${operation}`,
+      body: JSON.stringify(body),
+      timeout: 300,
+  };
+  if (jwtBearerToken) {
+      req.auth = { bearer: jwtBearerToken };
+  }
+  const res = request.post(req);
   assertTrue(res instanceof request.Response);
   assertTrue(res.hasOwnProperty('statusCode'), JSON.stringify(res));
   assertEqual(res.statusCode, 200, JSON.stringify(res));
@@ -782,41 +785,43 @@ const callAgency = function (operation, body) {
 
 // client-side API compatible to global.ArangoAgency
 exports.agency = {
-  get: function (key) {
+  get: function (key, jwtBearerToken) {
     const res = callAgency('read', [[
       `/arango/${key}`,
-    ]]);
+    ]], jwtBearerToken);
     return res[0];
   },
 
-  set: function (path, value) {
-    callAgency('write', [[{
+  set: function (path, value, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'set',
         'new': value,
       },
-    }]]);
+    }]], jwtBearerToken);
   },
 
-  remove: function (path) {
-    callAgency('write', [[{
+  remove: function(path, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'delete'
       },
-    }]]);
+    }]], jwtBearerToken);
   },
 
   call: callAgency,
-  transact: (body) => callAgency("transact", body),
 
-  increaseVersion: function (path) {
-    callAgency('write', [[{
+  transact: function (body, jwtBearerToken) {
+    return callAgency("transact", body, jwtBearerToken);
+  },
+
+  increaseVersion: function (path, jwtBearerToken) {
+    return callAgency('write', [[{
       [`/arango/${path}`]: {
         'op': 'increment',
       },
-    }]]);
+    }]], jwtBearerToken);
   },
-
   // TODO implement the rest...
 };
 
@@ -869,8 +874,10 @@ exports.AQL_EXECUTE = function(query, bindVars, options) {
     warnings: extra.warnings,
     profile: extra.profile,
     plan: extra.plan,
-    cached: cursor.cached};
+    cached: cursor.cached
+  };
 };
+
 exports.insertManyDocumentsIntoCollection 
   = function(db, coll, maker, limit, batchSize) {
   // This function uses the asynchronous API of `arangod` to quickly
@@ -924,7 +931,7 @@ exports.insertManyDocumentsIntoCollection
       }
     }
     if ((done && l.length > 0) || l.length >= batchSize) {
-      jobs.push(arango.POST_RAW(`/_db/${db}/_api/document/${coll}`,
+      jobs.push(arango.POST_RAW(`/_db/${encodeURIComponent(db)}/_api/document/${encodeURIComponent(coll)}`,
                                 l, {"x-arango-async": "store"})
          .headers["x-arango-async-id"]);
       l = [];

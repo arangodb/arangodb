@@ -192,6 +192,8 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   arangodb::OperationOptions opOptions(_context);
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+  opOptions.versionAttribute =
+      _request->value(StaticStrings::VersionAttributeString);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.waitForSync =
@@ -272,6 +274,15 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
         absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
                      "' does not contain collection '", cname,
                      "' with the required access mode."));
+  }
+
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        "insert");
   }
 
   OperationResult opres =
@@ -394,6 +405,14 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
     co_return;
   }
 
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), collection,
+        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
+        "read");
+  }
+
   if (_activeTrx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
   }
@@ -507,6 +526,8 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
 
   extractStringParameter(StaticStrings::IsSynchronousReplicationString,
                          opOptions.isSynchronousReplicationFrom);
+  opOptions.versionAttribute =
+      _request->value(StaticStrings::VersionAttributeString);
   opOptions.isRestore =
       _request->parsedValue(StaticStrings::IsRestoreString, false);
   opOptions.ignoreRevs =
@@ -594,6 +615,15 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     co_return;
+  }
+
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        isPatch ? "update" : "replace");
   }
 
   if (ServerState::instance()->isDBServer() &&
@@ -743,6 +773,15 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
     co_return;
   }
 
+  // track request only on leader
+  if (opOptions.isSynchronousReplicationFrom.empty() &&
+      ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
+        "remove");
+  }
+
   if (ServerState::instance()->isDBServer() &&
       (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
            nullptr ||
@@ -826,6 +865,14 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
     co_return;
+  }
+
+  // track request on both leader and follower (in case of dirty-read requests)
+  if (ServerState::instance()->isDBServer()) {
+    _activeTrx->state()->trackShardRequest(
+        *_activeTrx->resolver(), _vocbase.name(), cname,
+        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
+        "read-multiple");
   }
 
   if (_activeTrx->state()->options().allowDirtyReads) {

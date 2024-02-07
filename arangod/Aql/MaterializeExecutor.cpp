@@ -44,6 +44,10 @@ MaterializeRocksDBExecutor::MaterializeRocksDBExecutor(Fetcher&, Infos& infos)
     : MaterializeExecutorBase(infos),
       _collection(infos.collection()->getCollection()->getPhysical()) {
   TRI_ASSERT(_collection != nullptr);
+
+  TRI_ASSERT(_infos.projections().empty() ||
+             !_infos.projections().hasOutputRegisters())
+      << "Materialize Executor does not support new style projections yet";
 }
 
 std::tuple<ExecutorState, NoStats, AqlCall>
@@ -85,16 +89,27 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
                   " for collection ",
                   _infos.collection()->name(), ": ", result.errorMessage()));
         }
-        if (data) {
-          output.moveValueInto(docOutReg, *inputRowIterator, &data);
+        if (auto const& proj = _infos.projections(); !proj.empty()) {
+          _projectionsBuilder.clear();
+          _projectionsBuilder.openObject(true);
+          proj.toVelocyPackFromDocument(_projectionsBuilder, doc, &_trx);
+          _projectionsBuilder.close();
+
+          output.moveValueInto(docOutReg, *inputRowIterator,
+                               _projectionsBuilder.slice());
         } else {
-          output.moveValueInto(docOutReg, *inputRowIterator, doc);
+          if (data) {
+            output.moveValueInto(docOutReg, *inputRowIterator, &data);
+          } else {
+            output.moveValueInto(docOutReg, *inputRowIterator, doc);
+          }
         }
+
         ++inputRowIterator;
         output.advanceRow();
         return true;
       },
-      {});
+      {.countBytes = true});
   TRI_ASSERT(inputRowIterator == _inputRows.end());
 
   _docIds.clear();
@@ -103,8 +118,10 @@ MaterializeRocksDBExecutor::produceRows(AqlItemBlockInputRange& inputRange,
 }
 
 MaterializeSearchExecutor::MaterializeSearchExecutor(Fetcher&, Infos& infos)
-    : MaterializeExecutorBase(infos),
-      _buffer(infos.query().resourceMonitor()) {}
+    : MaterializeExecutorBase(infos), _buffer(infos.query().resourceMonitor()) {
+  TRI_ASSERT(infos.projections().empty())
+      << "MaterializeSearchExecutor does not yet support projections";
+}
 
 void MaterializeSearchExecutor::Buffer::fill(AqlItemBlockInputRange& inputRange,
                                              RegisterId searchDocRegId) {

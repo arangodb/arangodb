@@ -155,10 +155,7 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
           info, StaticStrings::WaitForSyncString, false)),
       _syncByRevision(determineSyncByRevision()),
       _countCache(/*ttl*/ system() ? 900.0 : 180.0),
-      _physical(vocbase.server()
-                    .getFeature<EngineSelectorFeature>()
-                    .engine()
-                    .createPhysicalCollection(*this, info)) {
+      _physical(vocbase.engine().createPhysicalCollection(*this, info)) {
 
   TRI_IF_FAILURE("disableRevisionsAsDocumentIds") {
     _usesRevisionsAsDocumentIds = false;
@@ -563,18 +560,6 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
-  return getPhysical()->getIndexes();
-}
-
-void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result,
-    std::function<bool(Index const*,
-                       std::underlying_type<Index::Serialize>::type&)> const&
-        filter) const {
-  getPhysical()->getIndexesVPack(result, filter);
-}
-
 bool LogicalCollection::allowUserKeys() const noexcept {
   return _allowUserKeys;
 }
@@ -612,10 +597,8 @@ Result LogicalCollection::rename(std::string&& newName) {
 
   // Okay we can finally rename safely
   try {
-    StorageEngine& engine =
-        vocbase().server().getFeature<EngineSelectorFeature>().engine();
     name(std::move(newName));
-    engine.changeCollection(vocbase(), *this);
+    vocbase().engine().changeCollection(vocbase(), *this);
     ++_v8CacheVersion;
   } catch (basics::Exception const& ex) {
     // Engine Rename somehow failed. Reset to old name
@@ -648,18 +631,19 @@ Result LogicalCollection::drop() {
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.openObject();
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](arangodb::Index const* idx,
-                             decltype(Index::makeFlags())& flags) {
-    // we have to exclude the primary and edge index for dump / restore
-    switch (idx->type()) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX:
-        return false;
-      default:
-        flags = Index::makeFlags(Index::Serialize::Inventory);
-        return !idx->isHidden();
-    }
-  });
+  getPhysical()->getIndexesVPack(
+      result,
+      [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+        // we have to exclude the primary and edge index for dump / restore
+        switch (idx->type()) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+            return false;
+          default:
+            flags = Index::makeFlags(Index::Serialize::Inventory);
+            return !idx->isHidden();
+        }
+      });
   result.add("parameters", VPackValue(VPackValueType::Object));
   toVelocyPackIgnore(
       result,
@@ -709,7 +693,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
+  getPhysical()->getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
@@ -789,7 +773,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     }
     return false;
   };
-  getIndexesVPack(build, filter);
+  getPhysical()->getIndexesVPack(build, filter);
 
   // Schema
   build.add(VPackValue(StaticStrings::Schema));
@@ -939,8 +923,6 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
     return Result(TRI_ERROR_INTERNAL,
                   "failed to find a storage engine while updating collection");
   }
-  auto& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
 
   std::lock_guard guard{_infoLock};  // prevent simultaneous updates
 
@@ -1056,19 +1038,7 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
            (ServerState::instance()->isSingleServer() &&
             (isSatellite() || isSmart()))) &&
           writeConcern != this->writeConcern()) {  // check if changed
-        if (!_sharding->distributeShardsLike().empty()) {
-          CollectionNameResolver resolver(vocbase());
-          std::string name = resolver.getCollectionNameCluster(DataSourceId{
-              basics::StringUtils::uint64(_sharding->distributeShardsLike())});
-          if (name.empty()) {
-            name = _sharding->distributeShardsLike();
-          }
-          return Result(
-              TRI_ERROR_FORBIDDEN,
-              absl::StrCat("Cannot change writeConcern, please change the "
-                           "writeConcern of the prototype collection '",
-                           name, "'"));
-        } else if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
+        if (_type == TRI_COL_TYPE_EDGE && isSmart()) {
           return Result(TRI_ERROR_NOT_IMPLEMENTED,
                         "Changing writeConcern "
                         "not supported for SmartGraph edge collections");
@@ -1137,12 +1107,8 @@ Result LogicalCollection::properties(velocypack::Slice slice) {
                                                                 *this);
   }
 
-  engine.changeCollection(vocbase(), *this);
-
-  auto& df = vocbase().server().getFeature<DatabaseFeature>();
-  if (df.versionTracker() != nullptr) {
-    df.versionTracker()->track("change collection");
-  }
+  vocbase().engine().changeCollection(vocbase(), *this);
+  vocbase().versionTracker().track("change collection");
 
   return {};
 }
@@ -1174,10 +1140,7 @@ futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
   auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
                                              std::move(progress));
   if (idx) {
-    auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("create index");
-    }
+    vocbase().versionTracker().track("create index");
   }
   co_return idx;
 }
@@ -1191,10 +1154,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
   Result res = _physical->dropIndex(iid);
 
   if (res.ok()) {
-    auto& df = vocbase().server().getFeature<DatabaseFeature>();
-    if (df.versionTracker() != nullptr) {
-      df.versionTracker()->track("drop index");
-    }
+    vocbase().versionTracker().track("drop index");
   }
 
   return res;
@@ -1206,10 +1166,7 @@ Result LogicalCollection::dropIndex(IndexId iid) {
 void LogicalCollection::persistPhysicalCollection() {
   // Coordinators are not allowed to have local collections!
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
-
-  StorageEngine& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
-  engine.createCollection(vocbase(), *this);
+  vocbase().engine().createCollection(vocbase(), *this);
 }
 
 basics::ReadWriteLock& LogicalCollection::statusLock() noexcept {

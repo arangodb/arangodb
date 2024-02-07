@@ -32,7 +32,7 @@
 
 namespace arangodb {
 class ClusterInfo;
-class RocksDBEngine;
+class RocksDBDumpManager;
 
 class RestDumpHandler : public RestVocbaseBaseHandler {
  public:
@@ -58,7 +58,7 @@ class RestDumpHandler : public RestVocbaseBaseHandler {
 
   Result validateRequest();
 
-  RocksDBEngine& _engine;
+  RocksDBDumpManager* _dumpManager = nullptr;
   ClusterInfo& _clusterInfo;
 };
 }  // namespace arangodb

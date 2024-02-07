@@ -258,7 +258,7 @@ TEST_F(DocumentStateFollowerTest,
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, shardId,
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ASSERT_DEATH_CORE_FREE(
       std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
@@ -471,10 +471,10 @@ TEST_F(DocumentStateFollowerTest,
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, ShardID{1},
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
-      velocypack::SharedSlice()));
+      velocypack::SharedSlice(), "root"));
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   res = follower->applyEntries(std::move(entryIterator));
   ASSERT_TRUE(res.get().ok());

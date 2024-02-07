@@ -77,10 +77,6 @@
 #endif
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 using iterator = std::vector<irs::filter::ptr>::const_iterator;
 
 namespace {
@@ -1036,7 +1032,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(
         vocbase(),
@@ -1624,7 +1620,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
 
     assertFilterSuccess(vocbase(),
                         "FOR d IN collection FILTER [] ANY IN d.a RETURN d",
@@ -4293,7 +4289,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array ANY
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
     assertFilterSuccess(
         vocbase(),
@@ -4360,7 +4356,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array AT LEAST
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
 
     assertFilterSuccess(
@@ -4394,7 +4390,7 @@ TEST_F(IResearchFilterArrayInTest, BinaryNotIn) {
   // empty array AT LEAST NOT
   {
     irs::Or expected;
-    expected.add<irs::empty>();
+    expected.add<irs::Empty>();
     expected.boost(2.5);
 
     assertFilterSuccess(vocbase(),

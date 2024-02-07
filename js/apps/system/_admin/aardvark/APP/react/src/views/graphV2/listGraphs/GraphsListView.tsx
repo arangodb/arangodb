@@ -1,6 +1,8 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Box, Button, Heading, Stack, useDisclosure } from "@chakra-ui/react";
+import {
+  Box, useDisclosure
+} from "@chakra-ui/react";
 import React from "react";
+import { ListHeader } from "../../../components/table/ListHeader";
 import { AddGraphModal } from "../addGraph/AddGraphModal";
 import { GraphsListProvider } from "./GraphsListContext";
 import { GraphsModeProvider } from "./GraphsModeContext";
@@ -23,16 +25,10 @@ export const GraphsListView = () => {
 
 const GraphListViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   return (
-    <Stack direction="row" marginBottom="4" alignItems="center">
-      <Heading size="lg">Graphs</Heading>
-      <Button
-        size="sm"
-        leftIcon={<AddIcon />}
-        colorScheme="green"
-        onClick={onOpen}
-      >
-        Add graph
-      </Button>
-    </Stack>
+    <ListHeader
+      onButtonClick={onOpen}
+      heading="Graphs"
+      buttonText="Add graph"
+    />
   );
 };

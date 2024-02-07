@@ -43,12 +43,12 @@ class DropIndex : public ActionBase {
 
   virtual ~DropIndex();
 
+  void setState(ActionState state) override final;
   virtual bool first() override final;
 
  private:
   static auto dropIndexReplication2(std::shared_ptr<LogicalCollection>& coll,
-                                    velocypack::SharedSlice index) noexcept
-      -> Result;
+                                    std::string indexId) noexcept -> Result;
 };
 
 }  // namespace maintenance

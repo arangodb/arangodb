@@ -62,8 +62,13 @@ auto MaintenanceActionExecutor::executeCreateCollection(
 
 auto MaintenanceActionExecutor::executeDropCollection(
     std::shared_ptr<LogicalCollection> col) noexcept -> Result {
-  auto res = basics::catchToResult(
-      [&]() { return methods::Collections::drop(*col, false); });
+  auto res = basics::catchToResult([&]() {
+    // both flags should not be necessary here, as we are only dealing with
+    // shard names here and not actual cluster-wide collection names
+    CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                      .allowDropGraphCollection = true};
+    return methods::Collections::drop(*col, dropOptions);
+  });
 
   LOG_CTX("accd8", DEBUG, _loggerContext)
       << "Dropping local collection " << _vocbase.name() << "/" << col->name()
@@ -127,14 +132,14 @@ auto MaintenanceActionExecutor::executeCreateIndex(
 }
 
 auto MaintenanceActionExecutor::executeDropIndex(
-    std::shared_ptr<LogicalCollection> col,
-    velocypack::SharedSlice index) noexcept -> Result {
+    std::shared_ptr<LogicalCollection> col, IndexId indexId) noexcept
+    -> Result {
   auto res = basics::catchToResult(
-      [&]() { return methods::Indexes::drop(*col, index.slice()).get(); });
+      [&] { return methods::Indexes::dropDBServer(*col, indexId).get(); });
 
   LOG_CTX("e155f", DEBUG, _loggerContext)
-      << "Dropping local index " << index.toJson() << " of " << _vocbase.name()
-      << "/" << col->name() << ": " << res;
+      << "Dropping local index " << indexId << " of " << _vocbase.name() << "/"
+      << col->name() << ": " << res;
   return res;
 }
 

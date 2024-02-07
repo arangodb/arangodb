@@ -34,7 +34,7 @@ struct DocumentStateTransactionHandlerTest : DocumentStateMachineTest {
   auto createDocumentOperation(TRI_voc_document_operation_e operationType,
                                TransactionId tid) {
     return ReplicatedOperation::buildDocumentOperation(
-        operationType, tid, shardId, velocypack::SharedSlice());
+        operationType, tid, shardId, velocypack::SharedSlice(), "root");
   }
 
   auto createTransactionHandler() {
@@ -54,8 +54,9 @@ TEST_F(
   auto op = createDocumentOperation(TRI_VOC_DOCUMENT_OPERATION_UPDATE, tid);
 
   // Create transaction for the first time.
-  EXPECT_CALL(*handlersFactoryMock,
-              createTransaction(_, tid, shardId, AccessMode::Type::WRITE))
+  EXPECT_CALL(
+      *handlersFactoryMock,
+      createTransaction(_, tid, shardId, AccessMode::Type::WRITE, "root"))
       .Times(1);
   auto res = transactionHandler.applyEntry(op);
   EXPECT_TRUE(res.ok()) << res;
@@ -63,7 +64,7 @@ TEST_F(
   EXPECT_EQ(transactionHandler.getUnfinishedTransactions().size(), 1);
 
   // Use an existing transaction ID and expect the transaction to be reused.
-  EXPECT_CALL(*handlersFactoryMock, createTransaction(_, _, _, _)).Times(0);
+  EXPECT_CALL(*handlersFactoryMock, createTransaction(_, _, _, _, _)).Times(0);
   res = transactionHandler.applyEntry(op);
   EXPECT_TRUE(res.ok()) << res;
   Mock::VerifyAndClearExpectations(handlersFactoryMock.get());
@@ -112,7 +113,7 @@ TEST_F(DocumentStateTransactionHandlerTest,
   auto op = createDocumentOperation(TRI_VOC_DOCUMENT_OPERATION_INSERT, tid);
 
   // Expect the transaction to be created and applied successfully
-  EXPECT_CALL(*handlersFactoryMock, createTransaction(_, tid, shardId, _))
+  EXPECT_CALL(*handlersFactoryMock, createTransaction(_, tid, shardId, _, _))
       .Times(1);
   EXPECT_CALL(*transactionMock, apply).Times(1);
   auto result = transactionHandler.applyEntry(op);

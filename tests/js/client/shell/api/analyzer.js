@@ -173,6 +173,19 @@ function testSuite() {
       assertEqual(result.code, 201);
     },
 
+    testAnalyzerCreateMultiDelimited : function() {
+      let body = JSON.stringify({
+        type : "multi_delimiter",
+        name : name,
+        properties : { delimiter : ["❤", "foo"] } ,
+      });
+
+
+      let result = arango.POST_RAW("/_api/analyzer", body);
+      assertFalse(result.error);
+      assertEqual(result.code, 201);
+    },
+
     testAnalyzerCreateNgram : function() {
       let body = JSON.stringify({
         type : "ngram",

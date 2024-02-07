@@ -32,6 +32,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Transaction/Manager.h"
+#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <Futures/Future.h>
@@ -454,7 +455,7 @@ auto DocumentLeaderState::getAssociatedShardList() const
         << "Tried to produce shard list on Database Server for a collection "
            "that is not a shard "
         << shardId->name();
-    shardIds.emplace_back(std::move(maybeShardId.get()));
+    shardIds.emplace_back(maybeShardId.get());
   }
   return shardIds;
 }
@@ -464,7 +465,7 @@ auto DocumentLeaderState::createShard(ShardID shard,
                                       velocypack::SharedSlice properties)
     -> futures::Future<Result> {
   auto op = ReplicatedOperation::buildCreateShardOperation(
-      std::move(shard), collectionType, std::move(properties));
+      shard, collectionType, std::move(properties));
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -495,8 +496,17 @@ auto DocumentLeaderState::createShard(ShardID shard,
 
           // Some errors can be safely ignored, even though the operation has
           // been already replicated.
-          if (self->_errorHandler->handleOpResult(op.operation, applyEntryRes)
-                  .fail()) {
+          if (auto res = self->_errorHandler->handleOpResult(op.operation,
+                                                             applyEntryRes);
+              res.fail()) {
+            if (res.is(TRI_ERROR_SHUTTING_DOWN)) {
+              LOG_CTX("e07a8", DEBUG, self->loggerContext)
+                  << "CreateShard operation failed on the leader, due to the "
+                     "server shutting down. CreateShard log entry will not be "
+                     "released.";
+              return TRI_ERROR_NO_ERROR;
+            }
+
             LOG_CTX("d11f0", FATAL, self->loggerContext)
                 << "CreateShard operation failed on the leader, after being "
                    "replicated to followers: "
@@ -554,8 +564,8 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
   });
 
   // Apply locally
-  return std::move(fut).thenValue([self = shared_from_this(),
-                                   shard = std::move(shard), op = std::move(op),
+  return std::move(fut).thenValue([self = shared_from_this(), shard = shard,
+                                   op = std::move(op),
                                    trxLock = std::move(trxLock.get())](
                                       auto&& result) mutable {
     if (result.fail()) {
@@ -564,7 +574,7 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
     auto logIndex = result.get();
 
     return self->_guardedData.doUnderLock(
-        [logIndex, self, op = std::move(op), shard = std::move(shard),
+        [logIndex, self, op = std::move(op), shard = shard,
          trxLock = std::move(trxLock)](auto& data) mutable -> Result {
           if (data.didResign()) {
             return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
@@ -581,6 +591,14 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
               << " after collection properties update";
 
           if (applyEntryRes.fail()) {
+            if (applyEntryRes.is(TRI_ERROR_SHUTTING_DOWN)) {
+              LOG_CTX("34bab", DEBUG, self->loggerContext)
+                  << "ModifyShard operation failed on the leader, due to the "
+                     "server shutting down. ModifyShard log entry will not be "
+                     "released.";
+              return TRI_ERROR_NO_ERROR;
+            }
+
             LOG_CTX("b5e46", FATAL, self->loggerContext)
                 << "ModifyShard operation failed on the leader, after being "
                    "replicated to followers: "
@@ -612,61 +630,79 @@ auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
         op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
   });
 
-  return std::move(fut).thenValue([self = shared_from_this(),
-                                   shard = std::move(shard),
+  return std::move(fut).thenValue([self = shared_from_this(), shard = shard,
                                    op = std::move(op)](auto&& result) mutable {
     if (result.fail()) {
       return result.result();
     }
     auto logIndex = result.get();
 
-    return self->_guardedData.doUnderLock(
-        [self, logIndex, op = std::move(op),
-         shard = std::move(shard)](auto& data) -> Result {
-          if (data.didResign()) {
-            return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-          }
+    return self->_guardedData.doUnderLock([self, logIndex, op = std::move(op),
+                                           shard =
+                                               shard](auto& data) -> Result {
+      if (data.didResign()) {
+        return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+      }
 
-          // This will release the shard lock. Currently ongoing snapshot
-          // transfers will not suffer from it, they will simply stop receiving
-          // batches for this shard. Later, when they start applying entries, it
-          // is going to be dropped anyway.
-          self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
+      // This will release the shard lock. Currently ongoing snapshot
+      // transfers will not suffer from it, they will simply stop receiving
+      // batches for this shard. Later, when they start applying entries, it
+      // is going to be dropped anyway.
+      self->_snapshotHandler.getLockedGuard().get()->giveUpOnShard(shard);
 
-          // Note that any active transactions will be aborted automatically by
-          // `TRI_vocbase_t::dropCollection`. This causes the leader to
-          // replicate abort operations and release the log indexes associated
-          // with these transactions.
-          auto&& localDropShard = data.transactionHandler->applyEntry(op);
+      // Note that any active transactions will be aborted automatically by
+      // `TRI_vocbase_t::dropCollection`. This causes the leader to
+      // replicate abort operations and release the log indexes associated
+      // with these transactions.
+      auto&& localDropShard = data.transactionHandler->applyEntry(op);
 
-          // Some errors can be safely ignored, even though the operation has
-          // been already replicated.
-          auto errorHandlerResult =
-              self->_errorHandler->handleOpResult(op, localDropShard);
-          if (errorHandlerResult.fail()) {
-            LOG_CTX("6865f", FATAL, self->loggerContext)
-                << "DropShard operation failed on the leader, after being "
-                   "replicated to followers: "
-                << localDropShard;
-            TRI_ASSERT(false) << localDropShard;
-            FATAL_ERROR_EXIT();
-          }
+      // Some errors can be safely ignored, even though the operation has
+      // been already replicated.
+      auto errorHandlerResult =
+          self->_errorHandler->handleOpResult(op, localDropShard);
+      if (errorHandlerResult.fail()) {
+        if (errorHandlerResult.is(TRI_ERROR_SHUTTING_DOWN)) {
+          LOG_CTX("732c0", DEBUG, self->loggerContext)
+              << "DropShard operation failed on the leader, due to the server "
+                 "shutting down. DropShard log entry will not be released.";
+          return TRI_ERROR_NO_ERROR;
+        }
 
-          if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-            LOG_CTX("6856b", ERR, self->loggerContext)
-                << "Failed to call release on index " << logIndex << ": "
-                << releaseRes;
-          }
-          return localDropShard;
-        });
+        LOG_CTX("6865f", FATAL, self->loggerContext)
+            << "DropShard operation failed on the leader, after being "
+               "replicated to followers: "
+            << localDropShard;
+        TRI_ASSERT(false) << localDropShard;
+        FATAL_ERROR_EXIT();
+      }
+
+      if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
+        LOG_CTX("6856b", ERR, self->loggerContext)
+            << "Failed to call release on index " << logIndex << ": "
+            << releaseRes;
+      }
+      return localDropShard;
+    });
   });
 }
 
+// TODO There are some pieces missing:
+//      - The CreateIndexOperation should be forwarded to
+//        RocksDBCollection::createIndex, instead of being recreated there.
+//      - The LogIndex replicated during RocksDBCollection::createIndex should
+//        be returned here, so it can be released.
+//      - The future returned by RocksDBCollection::createIndex should also be
+//        propagated to here, so we don't block the thread.
 auto DocumentLeaderState::createIndex(
     ShardID shard, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
   auto sharedIndexInfo = VPackBuilder{indexInfo}.sharedSlice();
+  // Note that this ReplicatedOperation will only be used to call
+  // createIndex, but will not be replicated; instead, a new one will be created
+  // during RocksDBCollection::createIndex. It will actually be different,
+  // because it will work with a normalized `indexInfo` parameter; however, as
+  // that one is used for the index creation, it should not create any problems.
   auto op = ReplicatedOperation::buildCreateIndexOperation(
       shard, sharedIndexInfo, std::move(progress));
 
@@ -687,139 +723,101 @@ auto DocumentLeaderState::createIndex(
   //   If the undo operation is successful, there's no reason to crash
   //   the server.
 
-  auto localIndexCreation = Result{};
-  auto replicationFuture = _guardedData.doUnderLock(
-      [op = std::move(op), &localIndexCreation, self = shared_from_this()](
-          auto& data) mutable -> futures::Future<ResultT<LogIndex>> {
+  auto localIndexCreation = _guardedData.doUnderLock(
+      [op = std::move(op), self = shared_from_this()](auto& data) mutable {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
                         "Leader resigned prior to index creation"};
         }
 
-        localIndexCreation = data.transactionHandler->applyEntry(op);
-        if (localIndexCreation.fail()) {
-          return localIndexCreation;
-        }
-
-        return self->replicateOperation(
-            std::move(op),
-            ReplicationOptions{.waitForCommit = true, .waitForSync = true});
+        return data.transactionHandler->applyEntry(std::move(op));
       });
-  return std::move(replicationFuture)
-      .thenValue([self = shared_from_this(),
-                  localIndexCreation = std::move(localIndexCreation),
-                  shard = std::move(shard),
-                  indexInfo = std::move(sharedIndexInfo)](
-                     auto&& result) mutable -> Result {
-        if (result.fail()) {
-          if (localIndexCreation.ok()) {
-            LOG_CTX("384bf", INFO, self->loggerContext)
-                << "CreateIndex operation was applied locally, but the "
-                   "leader failed to replicate it, will undo: "
-                << result.result();
+  auto indexId = helpers::extractId(sharedIndexInfo.slice());
+  TRI_ASSERT(indexId != IndexId::none() or localIndexCreation.fail());
+  if (localIndexCreation.fail()) {
+    return localIndexCreation;
+  }
 
-            self->_guardedData.doUnderLock(
-                [&self, shard = std::move(shard),
-                 indexInfo = std::move(indexInfo)](auto& data) mutable {
-                  if (data.didResign()) {
-                    LOG_CTX("44bc0", ERR, self->loggerContext)
-                        << "The leader created an index locally, but then "
-                           "resigned, before it could replicate it. It is now "
-                           "unsafe to undo this operation, because this server "
-                           "might already be a follower. We'll attempt it, but "
-                           "note that it may have unwanted side effects.";
-                  }
-
-                  auto op = ReplicatedOperation::buildDropIndexOperation(
-                      std::move(shard), std::move(indexInfo));
-                  auto undoRes = data.transactionHandler->applyEntry(op);
-                  if (self->_errorHandler->handleOpResult(op, undoRes).fail()) {
-                    LOG_CTX("6b460", FATAL, self->loggerContext)
-                        << "Failed to undo CreateIndex operation on the "
-                           "leader, after replication failure, undo result:"
-                        << undoRes;
-                    TRI_ASSERT(false) << undoRes;
-                    FATAL_ERROR_EXIT();
-                  }
-                });
-          }
-          return result.result();
-        }
-
-        auto logIndex = result.get();
-        if (auto releaseRes = self->release(logIndex); releaseRes.fail()) {
-          LOG_CTX("3deea", ERR, self->loggerContext)
-              << "Failed to call release on index " << logIndex << ": "
-              << releaseRes;
-        }
-        return {};
-      });
+  // We should release the log index now, but we don't have it. Shouldn't be a
+  // problem though, releasing the next log entry will release this with it.
+  return Result{};
 }
 
-auto DocumentLeaderState::dropIndex(ShardID shard,
-                                    velocypack::SharedSlice indexInfo)
+auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
     -> futures::Future<Result> {
-  // While dropping an index, there's no way to undo the operation, in case of
-  // failure. Therefore, we first make sure the replication is successful, then
-  // apply the operation locally. In case the local operation fails, but the
-  // result indicates that the index is gone anyway, there's no need to crash.
-  ReplicatedOperation op = ReplicatedOperation::buildDropIndexOperation(
-      std::move(shard), std::move(indexInfo));
+  auto res = _shardHandler->lookupShard(shard);
+  if (!res.ok()) {
+    co_return std::move(res).result();
+  }
+  auto&& col = res.get();
 
-  auto replication = _guardedData.doUnderLock(
-      [&](auto& data) -> futures::Future<ResultT<LogIndex>> {
-        if (data.didResign()) {
-          return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
-                        "Leader resigned prior to DropIndex replication"};
-        }
+  ReplicatedOperation op =
+      ReplicatedOperation::buildDropIndexOperation(shard, indexId);
 
-        return replicateOperation(
-            op, ReplicationOptions{.waitForCommit = true, .waitForSync = true});
-      });
+  auto trx = methods::Indexes::createTrxForDrop(*col);
 
-  return std::move(replication)
-      .thenValue([self = shared_from_this(),
-                  op = std::move(op)](auto&& result) mutable {
-        if (result.fail()) {
-          LOG_CTX("7c8bb", DEBUG, self->loggerContext)
-              << "DropIndex operation failed to be replicated, will not be "
-                 "applied locally on the leader: "
-              << result.result();
-          return result.result();
-        }
-        auto logIndex = result.get();
+  // we do not need to hold the _guardedData lock here - replicateOperation will
+  // simply throw an exception if we have already resigned.
 
-        return self->_guardedData.doUnderLock(
-            [logIndex, self, op = std::move(op)](auto& data) mutable -> Result {
-              if (data.didResign()) {
-                return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
-              }
+  // acquire an exclusive collection lock, so the DropIndex operation happens
+  // in the log while no transaction is open
+  auto beginRes = co_await trx->beginAsync();
 
-              auto localIndexRemoval = data.transactionHandler->applyEntry(op);
+  // replicate the DropIndex operation, but don't wait for it to be committed
+  // yet
+  auto replication = co_await replicateOperation(
+      op, ReplicationOptions{.waitForCommit = false, .waitForSync = true});
 
-              // Some errors can be safely ignored, even though the operation
-              // has been already replicated.
-              auto errorHandlerResult =
-                  self->_errorHandler->handleOpResult(op, localIndexRemoval);
-              if (errorHandlerResult.fail()) {
-                LOG_CTX("5c321", FATAL, self->loggerContext)
-                    << "DropIndex operation failed on the leader, after being "
-                       "replicated to followers: "
-                    << localIndexRemoval;
-                TRI_ASSERT(false) << localIndexRemoval;
-                FATAL_ERROR_EXIT();
-              }
+  if (replication.fail()) {
+    LOG_CTX("7c8bb", DEBUG, loggerContext)
+        << "DropIndex operation failed to be replicated, will not be "
+           "applied locally on the leader: "
+        << replication.result();
+    co_return replication.result();
+  }
+  // release the lock
+  trx.reset();
 
-              if (auto releaseRes = self->release(logIndex);
-                  releaseRes.fail()) {
-                LOG_CTX("57877", ERR, self->loggerContext)
-                    << "Failed to call release on index " << logIndex << ": "
-                    << releaseRes;
-              }
+  auto logIndex = replication.get();
+  // wait for commit
+  co_await getStream()->waitFor(logIndex);
 
-              return localIndexRemoval;
-            });
-      });
+  // Now drop the index.
+  co_return _guardedData.doUnderLock([&](auto& data) mutable -> Result {
+    if (data.didResign()) {
+      return TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED;
+    }
+
+    auto localIndexRemoval = data.transactionHandler->applyEntry(op);
+
+    // Some errors can be safely ignored, even though the operation
+    // has been already replicated.
+    auto errorHandlerResult =
+        _errorHandler->handleOpResult(op, localIndexRemoval);
+    if (errorHandlerResult.fail()) {
+      if (errorHandlerResult.is(TRI_ERROR_SHUTTING_DOWN)) {
+        LOG_CTX("4eb88", DEBUG, loggerContext)
+            << "DropIndex operation failed on the leader, due to the "
+               "server shutting down. DropIndex log entry will not be "
+               "released.";
+        return TRI_ERROR_NO_ERROR;
+      }
+
+      LOG_CTX("5c321", FATAL, loggerContext)
+          << "DropIndex operation failed on the leader, after being "
+             "replicated to followers: "
+          << localIndexRemoval;
+      TRI_ASSERT(false) << localIndexRemoval;
+      FATAL_ERROR_EXIT();
+    }
+
+    if (auto releaseRes = release(logIndex); releaseRes.fail()) {
+      LOG_CTX("57877", ERR, loggerContext) << "Failed to call release on index "
+                                           << logIndex << ": " << releaseRes;
+    }
+
+    return localIndexRemoval;
+  });
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

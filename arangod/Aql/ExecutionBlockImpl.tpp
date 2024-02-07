@@ -527,7 +527,11 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      _prefetchTask->waitFor();
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
     }
     THROW_ARANGO_EXCEPTION(_firstFailure);
   } catch (std::exception const& ex) {
@@ -540,7 +544,11 @@ ExecutionBlockImpl<Executor>::execute(AqlCallStack const& stack) {
         << printBlockInfo()
         << " local statemachine failed with exception: " << ex.what();
     if (_prefetchTask && !_prefetchTask->isConsumed()) {
-      _prefetchTask->waitFor();
+      if (!_prefetchTask->tryClaim()) {
+        _prefetchTask->waitFor();
+      } else {
+        _prefetchTask->discard(/*isFinished*/ false);
+      }
     }
     // Rewire the error, to be consistent with potentially next caller.
     THROW_ARANGO_EXCEPTION(_firstFailure);
@@ -946,47 +954,52 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       // we can only use async prefetching if the call does not use a limit.
       // this is because otherwise the prefetching could lead to an overfetching
       // of data.
+      bool shouldSchedule = false;
       if (_prefetchTask == nullptr) {
-        _prefetchTask = std::make_shared<PrefetchTask>();
+        _prefetchTask = std::make_shared<PrefetchTask>(*this, ctx.stack);
+        shouldSchedule = true;
       } else {
-        _prefetchTask->reset();
+        shouldSchedule = _prefetchTask->rearmForNextCall(ctx.stack);
       }
 
       // TODO - we should avoid flooding the queue with too many tasks as that
       // can significantly delay processing of user REST requests.
+      // At the moment we may spawn one task per execution node
 
-      bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
-          RequestLane::INTERNAL_LOW,
-          [block = this, task = _prefetchTask, stack = ctx.stack]() mutable {
-            if (!task->tryClaim()) {
-              return;
-            }
-            // task is a copy of the PrefetchTask shared_ptr, and we will only
-            // attempt to execute the task if we successfully claimed the task.
-            // i.e., it does not matter if this task lingers around in the
-            // scheduler queue even after the execution block has been
-            // destroyed, because in this case we will not be able to claim the
-            // task and simply return early without accessing the block.
-            try {
-              task->execute(*block, stack);
-            } catch (basics::Exception const& ex) {
-              task->setFailure(
-                  {ex.code(),
-                   absl::StrCat(ex.what(), " [node #",
-                                block->getPlanNode()->id().id(), ": ",
-                                block->getPlanNode()->getTypeString(), "]")});
-            } catch (std::exception const& ex) {
-              task->setFailure(
-                  {TRI_ERROR_INTERNAL,
-                   absl::StrCat(ex.what(), " [node #",
-                                block->getPlanNode()->id().id(), ": ",
-                                block->getPlanNode()->getTypeString(), "]")});
-            }
-          });
+      if (shouldSchedule) {
+        bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
+            RequestLane::INTERNAL_LOW,
+            [block = this, task = _prefetchTask]() mutable {
+              if (!task->tryClaimOrAbandon()) {
+                return;
+              }
+              // task is a copy of the PrefetchTask shared_ptr, and we will only
+              // attempt to execute the task if we successfully claimed the
+              // task. i.e., it does not matter if this task lingers around in
+              // the scheduler queue even after the execution block has been
+              // destroyed, because in this case we will not be able to claim
+              // the task and simply return early without accessing the block.
+              try {
+                task->execute();
+              } catch (basics::Exception const& ex) {
+                task->setFailure(
+                    {ex.code(),
+                     absl::StrCat(ex.what(), " [node #",
+                                  block->getPlanNode()->id().id(), ": ",
+                                  block->getPlanNode()->getTypeString(), "]")});
+              } catch (std::exception const& ex) {
+                task->setFailure(
+                    {TRI_ERROR_INTERNAL,
+                     absl::StrCat(ex.what(), " [node #",
+                                  block->getPlanNode()->id().id(), ": ",
+                                  block->getPlanNode()->getTypeString(), "]")});
+              }
+            });
 
-      if (!queued) {
-        // clear prefetch task
-        _prefetchTask.reset();
+        if (!queued) {
+          // clear prefetch task
+          _prefetchTask.reset();
+        }
       }
     }
 
@@ -2405,42 +2418,94 @@ ExecutionBlockImpl<Executor>::ExecutionContext::ExecutionContext(
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::isConsumed() const noexcept {
-  return _state.load(std::memory_order_relaxed) == State::Consumed;
+  return _state.load(std::memory_order_relaxed).status == Status::Consumed;
 }
 
 template<class Executor>
 bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaim() noexcept {
-  auto expected = State::Pending;
-  return _state.load(std::memory_order_relaxed) == expected &&
-         _state.compare_exchange_strong(expected, State::InProgress,
-                                        std::memory_order_relaxed);
+  auto state = _state.load(std::memory_order_relaxed);
+  while (true) {
+    if (state.status != Status::Pending) {
+      return false;
+    }
+    if (_state.compare_exchange_strong(state,
+                                       {Status::InProgress, state.abandoned},
+                                       std::memory_order_relaxed)) {
+      return true;
+    }
+  }
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::reset() noexcept {
+bool ExecutionBlockImpl<Executor>::PrefetchTask::tryClaimOrAbandon() noexcept {
+  auto state = _state.load(std::memory_order_relaxed);
+  while (true) {
+    // this function is only called from the scheduled task, and we must only
+    // schedule one task at a time, so this task must not be abandoned yet!
+    TRI_ASSERT(state.abandoned == false);
+    if (state.status != Status::Pending) {
+      // task is not longer pending, so let's try to abandon it
+      // Note: if we fail here it is possible that the task is already rearmed
+      // and reset to pending, so we can retry to claim it in the next
+      // iteration.
+      if (_state.compare_exchange_weak(
+              state, {.status = state.status, .abandoned = true},
+              std::memory_order_relaxed)) {
+        // we successfully abandoned the task, so we can return false to
+        // indicate that we must not work on this task
+        return false;
+      }
+    } else {
+      TRI_ASSERT(state.status == Status::Pending);
+      if (_state.compare_exchange_weak(
+              state, {.status = Status::InProgress, .abandoned = false},
+              std::memory_order_acquire)) {
+        // successfully claimed the task!
+        return true;
+      }
+    }
+  }
+}
+
+template<class Executor>
+bool ExecutionBlockImpl<Executor>::PrefetchTask::rearmForNextCall(
+    AqlCallStack const& stack) {
   TRI_ASSERT(!_result);
-  _state.store(State::Pending);
+  _stack = stack;
   // intentionally do not reset _firstFailure
+  auto old = _state.exchange({Status::Pending, false});
+  TRI_ASSERT(old.status == Status::Consumed);
+  // if the task was abandoned, we want to reschedule it!
+  return old.abandoned;
 }
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::PrefetchTask::waitFor() const noexcept {
   // (1) - this acquire-load synchronizes with the release-store (3)
-  if (_state.load(std::memory_order_acquire) == State::Finished) {
+  if (_state.load(std::memory_order_acquire).status == Status::Finished) {
     return;
   }
   std::unique_lock<std::mutex> guard(_lock);
   _bell.wait(guard, [this]() {
     // (2) - this acquire-load synchronizes with the release-store (3)
-    return _state.load(std::memory_order_acquire) == State::Finished;
+    return _state.load(std::memory_order_acquire).status == Status::Finished;
   });
+}
+
+template<class Executor>
+void ExecutionBlockImpl<Executor>::PrefetchTask::updateStatus(
+    Status status, std::memory_order memoryOrder) noexcept {
+  auto state = _state.load(std::memory_order_relaxed);
+  while (not _state.compare_exchange_weak(
+      state, {status, state.abandoned}, memoryOrder, std::memory_order_relaxed))
+    ;
 }
 
 template<class Executor>
 auto ExecutionBlockImpl<Executor>::PrefetchTask::discard(
     bool isFinished) noexcept -> void {
   _result.reset();
-  _state.store(isFinished ? State::Finished : State::Consumed,
+  updateStatus(isFinished ? Status::Finished : Status::Consumed,
                std::memory_order_release);
 }
 
@@ -2448,8 +2513,9 @@ template<class Executor>
 auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
     -> PrefetchResult {
   TRI_ASSERT(_result || _firstFailure.fail())
-      << "prefetch task state: " << (int)_state.load(std::memory_order_relaxed);
-  _state.store(State::Consumed, std::memory_order_relaxed);
+      << "prefetch task state: "
+      << (int)_state.load(std::memory_order_relaxed).status;
+  updateStatus(Status::Consumed, std::memory_order_relaxed);
   if (_firstFailure.fail()) {
     _result.reset();
     THROW_ARANGO_EXCEPTION(_firstFailure);
@@ -2460,21 +2526,20 @@ auto ExecutionBlockImpl<Executor>::PrefetchTask::stealResult()
 }
 
 template<class Executor>
-void ExecutionBlockImpl<Executor>::PrefetchTask::execute(
-    ExecutionBlockImpl& block, AqlCallStack& stack) {
+void ExecutionBlockImpl<Executor>::PrefetchTask::execute() {
   if constexpr (std::is_same_v<Fetcher, MultiDependencySingleRowFetcher> ||
                 executorHasSideEffects<Executor>) {
     TRI_ASSERT(false);
   } else {
-    TRI_ASSERT(_state.load() == State::InProgress);
+    TRI_ASSERT(_state.load().status == Status::InProgress);
     TRI_ASSERT(!_result);
 
-    _result = block.fetcher().execute(stack);
+    _result = _block.fetcher().execute(_stack);
 
     TRI_ASSERT(_result.has_value());
 
     // (3) - this release-store synchronizes with the acquire-load (1, 2)
-    _state.store(State::Finished, std::memory_order_release);
+    updateStatus(Status::Finished, std::memory_order_release);
 
     wakeupWaiter();
   }
@@ -2504,7 +2569,7 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, std::cref(ExecContext::current())) {}
+      _thread(&CallstackSplit::run, this, ExecContext::current().clone()) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2546,8 +2611,8 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    ExecContext const& execContext) {
-  ExecContextScope scope(&execContext);
+    std::unique_ptr<ExecContext> execContext) {
+  ExecContextScope scope(execContext.get());
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {

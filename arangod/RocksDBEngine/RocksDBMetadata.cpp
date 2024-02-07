@@ -42,6 +42,7 @@
 #include "RocksDBEngine/RocksDBIndex.h"
 #include "RocksDBEngine/RocksDBSettingsManager.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
@@ -405,10 +406,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   // store original applied seq
   stats.originalAppliedSeq = appliedSeq;
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   std::string const context = coll.vocbase().name() + "/" + coll.name();
 
   rocksdb::SequenceNumber const maxCommitSeq = committableSeq(appliedSeq);
@@ -495,7 +493,7 @@ Result RocksDBMetadata::serializeMeta(rocksdb::WriteBatch& batch,
   }
 
   // Step 3. store the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index>& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     RocksDBCuckooIndexEstimatorType* est = idx->estimator();
@@ -578,10 +576,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   RocksDBCollection* rcoll =
       static_cast<RocksDBCollection*>(coll.getPhysical());
 
-  auto& engine = coll.vocbase()
-                     .server()
-                     .getFeature<EngineSelectorFeature>()
-                     .engine<RocksDBEngine>();
+  auto& engine = coll.vocbase().engine<RocksDBEngine>();
   rocksdb::SequenceNumber globalSeq =
       engine.settingsManager()->earliestSeqNeeded();
 
@@ -647,7 +642,7 @@ Result RocksDBMetadata::deserializeMeta(rocksdb::DB* db,
   }
 
   // Step 3. load the index estimates
-  auto indexes = coll.getIndexes();
+  auto indexes = coll.getPhysical()->getReadyIndexes();
   for (std::shared_ptr<arangodb::Index> const& index : indexes) {
     RocksDBIndex* idx = static_cast<RocksDBIndex*>(index.get());
     if (idx->estimator() == nullptr) {

@@ -128,7 +128,6 @@ class DaemonFeature;
 class SupervisorFeature;
 class WindowsServiceFeature;
 class AuditFeature;
-class LdapFeature;
 class LicenseFeature;
 class RCloneFeature;
 class HotBackupFeature;
@@ -150,11 +149,6 @@ class AqlFunctionFeature;
 class OptimizerRulesFeature;
 
 }  // namespace aql
-namespace pregel {
-
-class PregelFeature;
-
-}  // namespace pregel
 namespace iresearch {
 
 class IResearchAnalyzerFeature;
@@ -212,13 +206,13 @@ using ArangodFeaturesList = TypeList<
     CacheManagerFeature,
     CheckVersionFeature,
     ClusterFeature,
+    DatabaseFeature,
     ClusterUpgradeFeature,
     ConfigFeature,
 #ifdef USE_V8
     ConsoleFeature,
 #endif
     CpuUsageFeature,
-    DatabaseFeature,
     DatabasePathFeature,
     DumpLimitsFeature,
     HttpEndpointProvider,
@@ -281,7 +275,6 @@ using ArangodFeaturesList = TypeList<
     ViewTypesFeature,
     aql::AqlFunctionFeature,
     aql::OptimizerRulesFeature,
-    pregel::PregelFeature,
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
@@ -297,7 +290,6 @@ using ArangodFeaturesList = TypeList<
 #endif
 #ifdef USE_ENTERPRISE
     AuditFeature,
-    LdapFeature,
     LicenseFeature,
     RCloneFeature,
     HotBackupFeature,

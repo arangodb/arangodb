@@ -20,7 +20,6 @@
 /// @author Jan Christoph Uhde
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <fuerte/detail/vst.h>
 #include <fuerte/helper.h>
 #include <fuerte/message.h>
 #include <velocypack/Validator.h>
@@ -178,32 +177,16 @@ ContentType Request::acceptType() const { return header.acceptType(); }
 
 //// add payload add VelocyPackData
 void Request::addVPack(VPackSlice const slice) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(slice.start(), slice.byteSize());
-#endif
-
   header.contentType(ContentType::VPack);
   _payload.append(slice.start(), slice.byteSize());
 }
 
 void Request::addVPack(VPackBuffer<uint8_t> const& buffer) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
-#endif
   header.contentType(ContentType::VPack);
   _payload.append(buffer);
 }
 
 void Request::addVPack(VPackBuffer<uint8_t>&& buffer) {
-#ifdef FUERTE_CHECKED_MODE
-  // FUERTE_LOG_ERROR << "Checking data that is added to the message: " <<
-  // std::endl;
-  vst::parser::validateAndCount(buffer.data(), buffer.byteSize());
-#endif
   header.contentType(ContentType::VPack);
   _payload = std::move(buffer);
 }
@@ -239,8 +222,9 @@ asio_ns::const_buffer Request::payload() const {
 
 size_t Request::payloadSize() const {
   if (header.contentEncoding() == ContentEncoding::Deflate ||
-      header.contentEncoding() == ContentEncoding::Gzip) {
-    // when the request body is deflate- or gzip-encoded,
+      header.contentEncoding() == ContentEncoding::Gzip ||
+      header.contentEncoding() == ContentEncoding::Lz4) {
+    // when the request body is deflate-, gzip- or lz4-encoded,
     // it is not ok to call byteSize() because the request
     // body is not velocypack anymore.
     return _payload.size();

@@ -48,10 +48,6 @@ class HttpRequest final : public GeneralRequest {
 
   ~HttpRequest();
 
-  Endpoint::TransportType transportType() override {
-    return Endpoint::TransportType::HTTP;
-  }
-
   std::string const& cookieValue(std::string const& key) const;
   std::string const& cookieValue(std::string const& key, bool& found) const;
   std::unordered_map<std::string, std::string> cookieValues() const {

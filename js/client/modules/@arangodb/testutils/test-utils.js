@@ -127,11 +127,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     }
   }
 
-  if ((testname.indexOf('-novst') !== -1) && options.vst) {
-    whichFilter.filter = 'skip when invoked with vst';
-    return false;
-  }
-
   if (testname.indexOf('-timecritical') !== -1 && options.skipTimeCritical) {
     whichFilter.filter = 'timecritical';
     return false;

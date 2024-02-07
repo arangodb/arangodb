@@ -91,10 +91,9 @@ and security, as well as further query capabilities.
   setup using **OneShard** deployments.
 - Increase fault tolerance with **Datacenter-to-Datacenter Replication** and
   and create incremental **Hot Backups** without downtime.
-- Enable highly secure work with **Encryption 360**, **LDAP integration**,
-  enhanced **Data Masking**, and detailed **Auditing**.
-- Perform **parallel graph traversals** and graph analytics with
-  **Pregel** for cluster deployments.
+- Enable highly secure work with **Encryption 360**, enhanced **Data Masking**, 
+  and detailed **Auditing**.
+- Perform **parallel graph traversals**.
 - Use ArangoSearch **search highlighting** and **nested search** for advanced
   information retrieval.
 

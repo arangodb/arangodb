@@ -1129,7 +1129,6 @@ function ComputedValuesAfterCreateCollectionTestSuite() {
         `TOKENS("foo bar", 'text_en')`,
         `WITHIN(${cn}, @doc.latitude, @doc.longitude, 123)`, 
         `WITHIN_RECTANGLE(${cn}, @doc.latitude, @doc.longitude, @doc.latitude, @doc.longitude)`, 
-        `PREGEL_RESULT("abc", true)`
       ];
       specialFunctions.forEach((el) => {
         try {

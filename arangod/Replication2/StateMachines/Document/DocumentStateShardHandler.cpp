@@ -29,15 +29,16 @@
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchRocksDBInvertedIndex.h"
 #include "IResearch/IResearchRocksDBLink.h"
-#include "VocBase/vocbase.h"
-#include "VocBase/LogicalCollection.h"
-#include "VocBase/VocBaseLogManager.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
 #ifdef USE_V8
 #include "Transaction/V8Context.h"
 #endif
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/vocbase.h"
+#include "VocBase/LogicalCollection.h"
+#include "VocBase/VocBaseLogManager.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
@@ -150,25 +151,22 @@ auto DocumentStateShardHandler::ensureIndex(
   return res;
 }
 
-auto DocumentStateShardHandler::dropIndex(
-    ShardID shard, velocypack::SharedSlice index) noexcept -> Result {
+auto DocumentStateShardHandler::dropIndex(ShardID shard,
+                                          IndexId indexId) noexcept -> Result {
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
             fmt::format("Error while dropping index: {}", col.errorMessage())};
   }
 
-  auto indexId = index.toString();
-  auto res =
-      _maintenance->executeDropIndex(std::move(col).get(), std::move(index));
+  auto res = _maintenance->executeDropIndex(std::move(col).get(), indexId);
   std::ignore = _maintenance->addDirty();
 
   if (res.fail()) {
     res = Result{res.errorNumber(),
                  fmt::format("Error: {}! Replicated log {} failed to drop "
                              "index on shard {}! Index: {}",
-                             res.errorMessage(), _gid, std::move(shard),
-                             std::move(indexId))};
+                             res.errorMessage(), _gid, shard, indexId.id())};
   }
   return res;
 }
@@ -226,34 +224,33 @@ auto DocumentStateShardHandler::prepareShardsForLogReplay() noexcept -> void {
     // the same commit interval. They however can if we have a commit in between
     // the two. If we replay one log we know there can never be a duplicate
     // LocalDocumentID.
-    for (auto const& index : shard->getIndexes()) {
+    for (auto const& index : shard->getPhysical()->getReadyIndexes()) {
       if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index)
-            .commit(true);
+        auto& idx =
+            basics::downCast<iresearch::IResearchRocksDBInvertedIndex>(*index);
+        TRI_ASSERT(!idx._isCreation) << "Inverted index still in creation mode";
+        auto res = idx.commit(true);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(res.ok()) << "Failed to do first Inverted index commit";
+        res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do second Inverted index commit";
+        TRI_ASSERT(res.get() ==
+                   iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
+            << "Inverted index still has changes after first commit.";
+#endif
       } else if (index->type() == Index::TRI_IDX_TYPE_IRESEARCH_LINK) {
-        basics::downCast<iresearch::IResearchRocksDBLink>(*index).commit(true);
-      }
-      if (index->type() == Index::IndexType::TRI_IDX_TYPE_INVERTED_INDEX) {
-        auto maybeInvertedIndex =
-            std::dynamic_pointer_cast<iresearch::IResearchInvertedIndex>(index);
-        // Assert here is good enough, if this fails the index will be ignored.
-        TRI_ASSERT(maybeInvertedIndex) << "Failed to downcast an index that "
-                                          "claims to be an inverted index";
-        if (maybeInvertedIndex) {
-          maybeInvertedIndex->commit(true);
-          maybeInvertedIndex->finishCreation();
-        }
-      }
-      if (index->type() == Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
-        auto maybeSearchLink =
-            std::dynamic_pointer_cast<iresearch::IResearchRocksDBLink>(index);
-        // Assert here is good enough, if this fails the index will be ignored.
-        TRI_ASSERT(maybeSearchLink)
-            << "Failed to downcast an index that claims to be a link index";
-        if (maybeSearchLink) {
-          maybeSearchLink->commit(true);
-          maybeSearchLink->finishCreation();
-        }
+        auto& idx = basics::downCast<iresearch::IResearchRocksDBLink>(*index);
+        TRI_ASSERT(!idx._isCreation)
+            << "Search link index still in creation mode";
+        auto res = idx.commit(true);
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+        TRI_ASSERT(res.ok()) << "Failed to do first Link index commit";
+        res = idx.commit(true);
+        TRI_ASSERT(res.ok()) << "Failed to do second Link index commit";
+        TRI_ASSERT(res.get() ==
+                   iresearch::IResearchDataStore::CommitResult::NO_CHANGES)
+            << "Link index still has changes after first commit.";
+#endif
       }
     }
   }

@@ -136,8 +136,9 @@ Result removeRevisions(transaction::Methods& trx, LogicalCollection& collection,
       auto documentId = LocalDocumentId::create(rid);
 
       tempBuilder->clear();
-      res = physical->lookup(&trx, documentId, callback,
-                             {.fillCache = false, .readOwnWrites = true});
+      res = physical->lookup(
+          &trx, documentId, callback,
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (res.ok()) {
         res = physical->remove(trx, indexesSnapshot, documentId, rid,
@@ -233,8 +234,9 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
       auto [documentId, revisionId] = lookupResult;
 
       tempBuilder->clear();
-      r = physical->lookup(&trx, documentId, callback,
-                           {.fillCache = false, .readOwnWrites = true});
+      r = physical->lookup(
+          &trx, documentId, callback,
+          {.fillCache = false, .readOwnWrites = true, .countBytes = false});
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
@@ -256,7 +258,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
 
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : collection.getIndexes()) {
+    for (auto const& idx : collection.getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -415,7 +417,7 @@ Result fetchRevisions(NetworkFeature& netFeature, transaction::Methods& trx,
                   ->lookup(&trx, LocalDocumentId{rid.id()},
                            [](LocalDocumentId, aql::DocumentData&&,
                               VPackSlice) { return true; },
-                           {.readOwnWrites = true})
+                           {.readOwnWrites = true, .countBytes = false})
                   .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);
@@ -1574,11 +1576,8 @@ Result DatabaseInitialSyncer::fetchCollectionSyncByKeys(
 
   // now we can fetch the complete chunk information from the leader
   try {
-    return coll->vocbase()
-        .server()
-        .getFeature<EngineSelectorFeature>()
-        .engine()
-        .handleSyncKeys(*this, *coll, keysId.copyString());
+    return coll->vocbase().engine().handleSyncKeys(*this, *coll,
+                                                   keysId.copyString());
   } catch (basics::Exception const& ex) {
     return Result(ex.code(), ex.what());
   } catch (std::exception const& ex) {

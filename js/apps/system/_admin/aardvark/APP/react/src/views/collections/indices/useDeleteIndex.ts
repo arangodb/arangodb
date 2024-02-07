@@ -1,4 +1,5 @@
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { notifySuccess } from "../../../utils/notifications";
 
 export const useDeleteIndex = ({ collectionId }: { collectionId: string }) => {
   const onDeleteIndex = ({
@@ -34,9 +35,7 @@ const handleSuccess = ({
     desc: "Removing Index",
     collection: collectionId
   });
-  window.arangoHelper.arangoNotification(
-    `Index deletion in progress (ID: ${id})`
-  );
+  notifySuccess(`Index deletion in progress (ID: ${id})`);
   onSuccess();
 };
 const postDeleteIndex = async ({

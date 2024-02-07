@@ -23,7 +23,6 @@
 
 #include "Supervision.h"
 
-#include "Agency/ActiveFailoverJob.h"
 #include "Agency/AddFollower.h"
 #include "Agency/Agent.h"
 #include "Agency/CleanOutServer.h"
@@ -201,7 +200,8 @@ struct HealthRecord {
 // This is initialized in AgencyFeature:
 std::string Supervision::_agencyPrefix = "/arango";
 
-Supervision::Supervision(ArangodServer& server)
+Supervision::Supervision(ArangodServer& server,
+                         metrics::MetricsFeature& metrics)
     : arangodb::Thread(server, "Supervision"),
       _agent(nullptr),
       _snapshot(nullptr),
@@ -218,14 +218,11 @@ Supervision::Supervision(ArangodServer& server)
       _upgraded(false),
       _nextServerCleanup(),
       _supervision_runtime_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_msec{})),
-      _supervision_runtime_wait_for_sync_msec(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
+          metrics.add(arangodb_agency_supervision_runtime_msec{})),
+      _supervision_runtime_wait_for_sync_msec(metrics.add(
+          arangodb_agency_supervision_runtime_wait_for_replication_msec{})),
       _supervision_failed_server_counter(
-          server.getFeature<metrics::MetricsFeature>().add(
-              arangodb_agency_supervision_failed_server_total{})) {}
+          metrics.add(arangodb_agency_supervision_failed_server_total{})) {}
 
 Supervision::~Supervision() { shutdown(); }
 
@@ -500,10 +497,8 @@ void handleOnStatusSingle(Agent* agent, Node const& snapshot,
       persisted.status == Supervision::HEALTH_STATUS_BAD &&
       transisted.status == Supervision::HEALTH_STATUS_FAILED) {
     if (!snapshot.has(failedServerPath)) {
-      envelope = std::make_shared<VPackBuilder>();
-      ActiveFailoverJob(snapshot, agent, std::to_string(jobId), "supervision",
-                        serverID)
-          .create(envelope);
+      TRI_ASSERT(false) << "we should only get here in active failover case, "
+                           "which is disabled";
     }
   }
 }
@@ -923,11 +918,6 @@ bool Supervision::doChecks() {
              "Coordinators");
   LOG_TOPIC("aadeb", TRACE, Logger::SUPERVISION) << "Checking coordinators...";
   check(ServerState::roleToAgencyListKey(ServerState::ROLE_COORDINATOR));
-  TRI_ASSERT(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE) ==
-             "Singles");
-  LOG_TOPIC("aadec", TRACE, Logger::SUPERVISION)
-      << "Checking single servers (active failover)...";
-  check(ServerState::roleToAgencyListKey(ServerState::ROLE_SINGLE));
   LOG_TOPIC("aaded", TRACE, Logger::SUPERVISION) << "Server checks done.";
 
   return true;

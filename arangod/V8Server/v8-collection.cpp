@@ -223,6 +223,12 @@ static void getOperationOptionsFromObject(v8::Isolate* isolate,
         isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
                      .FromMaybe(v8::Local<v8::Value>()));
   }
+  TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+  if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+    options.versionAttribute = TRI_ObjectToString(
+        isolate, optionsObject->Get(context, VersionAttributeKey)
+                     .FromMaybe(v8::Local<v8::Value>()));
+  }
   TRI_GET_GLOBAL_STRING(CompactKey);
   if (TRI_HasProperty(context, isolate, optionsObject, CompactKey)) {
     options.truncateCompact =
@@ -1035,7 +1041,9 @@ static void JS_DropVocbaseCol(v8::FunctionCallbackInfo<v8::Value> const& args) {
   }
 
   try {
-    auto res = methods::Collections::drop(*collection, allowDropSystem);
+    CollectionDropOptions dropOptions{.allowDropSystem = allowDropSystem,
+                                      .allowDropGraphCollection = false};
+    auto res = methods::Collections::drop(*collection, dropOptions);
     if (res.fail()) {
       TRI_V8_THROW_EXCEPTION(res);
     }
@@ -1885,6 +1893,12 @@ static void InsertVocbaseCol(v8::Isolate* isolate,
           isolate, optionsObject->Get(context, IsSynchronousReplicationKey)
                        .FromMaybe(v8::Local<v8::Value>()));
     }
+    TRI_GET_GLOBAL_STRING(VersionAttributeKey);
+    if (TRI_HasProperty(context, isolate, optionsObject, VersionAttributeKey)) {
+      options.versionAttribute = TRI_ObjectToString(
+          isolate, optionsObject->Get(context, VersionAttributeKey)
+                       .FromMaybe(v8::Local<v8::Value>()));
+    }
   } else {
     options.waitForSync =
         ExtractBooleanArgument(isolate, args, optsIdx + 1, false);
@@ -2375,12 +2389,6 @@ static void JS_CompletionsVocbase(
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_path()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_parse()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStart()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStatus()"))
-      .FromMaybe(false);
-  result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_pregelStop()"))
       .FromMaybe(false);
   result->Set(context, j++, TRI_V8_ASCII_STRING(isolate, "_profileQuery()"))
       .FromMaybe(false);

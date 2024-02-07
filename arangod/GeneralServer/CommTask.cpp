@@ -147,9 +147,11 @@ bool queueTimeViolated(GeneralRequest const& req) {
 
 CommTask::CommTask(GeneralServer& server, ConnectionInfo info)
     : _server(server),
+      _generalServerFeature(server.server().getFeature<GeneralServerFeature>()),
       _connectionInfo(std::move(info)),
       _connectionStatistics(acquireConnectionStatistics()),
-      _auth(AuthenticationFeature::instance()) {
+      _auth(AuthenticationFeature::instance()),
+      _isUserRequest(true) {
   TRI_ASSERT(_auth != nullptr);
   _connectionStatistics.SET_START();
 }
@@ -171,18 +173,30 @@ CommTask::Flow CommTask::prepareExecution(
     return Flow::Abort;
   }
 
-  if (Logger::isEnabled(arangodb::LogLevel::DEBUG, Logger::REQUESTS)) {
-    bool found;
-    std::string const& source =
-        req.header(StaticStrings::ClusterCommSource, found);
-    if (found) {  // log request source in cluster for debugging
-      LOG_TOPIC("e5db9", DEBUG, Logger::REQUESTS)
-          << "\"request-source\",\"" << (void*)this << "\",\"" << source
-          << "\"";
-    }
-  }
+  _requestSource = req.header(StaticStrings::ClusterCommSource);
+  LOG_TOPIC_IF("e5db9", DEBUG, Logger::REQUESTS, !_requestSource.empty())
+      << "\"request-source\",\"" << (void*)this << "\",\"" << _requestSource
+      << "\"";
 
-  // Step 2: Handle server-modes, i.e. bootstrap/ Active-Failover / DC2DC stunts
+  _isUserRequest = std::invoke([&]() {
+    auto role = ServerState::instance()->getRole();
+    if (ServerState::isSingleServer(role)) {
+      // single server is always user-facing
+      return true;
+    }
+    if (ServerState::isAgent(role) || ServerState::isDBServer(role)) {
+      // agents and DB servers are never user-facing
+      return false;
+    }
+
+    TRI_ASSERT(ServerState::isCoordinator(role));
+    // coordinators are only user-facing if the request is not a
+    // cluster-internal request
+    return !ServerState::isCoordinatorId(_requestSource) &&
+           !ServerState::isDBServerId(_requestSource);
+  });
+
+  // Step 2: Handle server-modes, i.e. bootstrap / DC2DC stunts
   std::string const& path = req.requestPath();
 
   bool allowEarlyConnections = _server.allowEarlyConnections();
@@ -248,64 +262,6 @@ CommTask::Flow CommTask::prepareExecution(
             ResponseCode::SERVICE_UNAVAILABLE, req.contentTypeResponse(),
             req.messageId(), TRI_ERROR_HTTP_SERVICE_UNAVAILABLE,
             "service unavailable due to startup or maintenance mode");
-        return Flow::Abort;
-      }
-      break;
-    }
-    case ServerState::Mode::REDIRECT: {
-      bool found = false;
-      std::string const& val =
-          req.header(StaticStrings::AllowDirtyReads, found);
-      if (found && StringUtils::boolean(val)) {
-        break;  // continue with auth check
-      }
-    }
-      [[fallthrough]];
-    case ServerState::Mode::TRYAGAIN: {
-      bool allowReconnect = false;
-      TRI_IF_FAILURE("CommTask::allowReconnectRequests") {
-        // allow special requests that are necessary to reconnect to an endpoint
-        // from inside tests. these are currently:
-        // - GET /_api/version
-        // - GET /_api/database/current
-        // we need to allow such requests from a specific test even in TRYAGAIN
-        // mode. these are normally disallowed even in TRYAGAIN mode.
-        allowReconnect = true;
-      }
-      // the following paths are allowed on followers in active failover
-      if (!path.starts_with("/_admin/shutdown") &&
-          !path.starts_with("/_admin/cluster/health") &&
-          !path.starts_with("/_admin/cluster/maintenance") &&
-          path != "/_admin/compact" && !path.starts_with("/_admin/license") &&
-          !path.starts_with("/_admin/debug/") &&
-          !path.starts_with("/_admin/log") &&
-          !path.starts_with("/_admin/metrics") &&
-          !path.starts_with("/_admin/server/") &&
-          !path.starts_with("/_admin/status") &&
-          !path.starts_with("/_admin/statistics") &&
-          !path.starts_with("/_admin/support-info") &&
-          !path.starts_with("/_admin/telemetrics") &&
-          !path.starts_with("/_api/agency/agency-callbacks") &&
-          !(req.requestType() == RequestType::GET &&
-            path.starts_with("/_api/collection")) &&
-          !path.starts_with("/_api/cluster/") &&
-          path != "/_api/database/current" &&
-          !path.starts_with("/_api/engine/stats") &&
-          !path.starts_with("/_api/replication") &&
-          !path.starts_with("/_api/ttl/statistics") &&
-          !(req.requestType() == RequestType::GET && path == "/_api/user") &&
-          (mode == ServerState::Mode::TRYAGAIN ||
-           !path.starts_with("/_api/version")) &&
-          !path.starts_with("/_api/wal") &&
-          !(allowReconnect && (path.starts_with("/_api/version") ||
-                               path.starts_with("/_api/database/current")))) {
-        LOG_TOPIC("a5119", TRACE, arangodb::Logger::FIXME)
-            << "Redirect/Try-again: refused path: " << path;
-        std::unique_ptr<GeneralResponse> res =
-            createResponse(ResponseCode::SERVICE_UNAVAILABLE, req.messageId());
-        auto& rf = _server.server().getFeature<ReplicationFeature>();
-        rf.prepareFollowerResponse(res.get(), mode);
-        sendResponse(std::move(res), RequestStatistics::Item());
         return Flow::Abort;
       }
       break;
@@ -396,18 +352,9 @@ CommTask::Flow CommTask::prepareExecution(
 /// Must be called from sendResponse, before response is rendered
 void CommTask::finishExecution(GeneralResponse& res,
                                std::string const& origin) const {
-  ServerState::Mode mode = ServerState::mode();
-  if (mode == ServerState::Mode::REDIRECT ||
-      mode == ServerState::Mode::TRYAGAIN) {
-    auto& rf = _server.server().getFeature<ReplicationFeature>();
-    rf.setEndpointHeader(&res, mode);
-  }
-  if (mode == ServerState::Mode::REDIRECT) {
-    res.setHeaderNC(StaticStrings::PotentialDirtyRead, "true");
-  }
-  if (res.transportType() == Endpoint::TransportType::HTTP &&
-      ServerState::instance()->isSingleServerOrCoordinator()) {
-    // CORS response handling
+  if (this->_isUserRequest) {
+    // CORS response handling - only needed on user facing coordinators
+    // or single servers
     if (!origin.empty()) {
       // the request contained an Origin header. We have to send back the
       // access-control-allow-origin header now
@@ -444,19 +391,17 @@ void CommTask::finishExecution(GeneralResponse& res,
     res.setHeaderNCIfNotSet(StaticStrings::Expires, "0");
     res.setHeaderNCIfNotSet(StaticStrings::HSTS,
                             "max-age=31536000 ; includeSubDomains");
-  }
 
-  // add "x-arango-queue-time-seconds" header
-  if (_server.server()
-          .getFeature<GeneralServerFeature>()
-          .returnQueueTimeHeader()) {
-    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-    res.setHeaderNC(
-        StaticStrings::XArangoQueueTimeSeconds,
-        std::to_string(
-            static_cast<double>(
-                SchedulerFeature::SCHEDULER->getLastLowPriorityDequeueTime()) /
-            1000.0));
+    // add "x-arango-queue-time-seconds" header
+    if (_generalServerFeature.returnQueueTimeHeader()) {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      res.setHeaderNC(
+          StaticStrings::XArangoQueueTimeSeconds,
+          std::to_string(
+              static_cast<double>(SchedulerFeature::SCHEDULER
+                                      ->getLastLowPriorityDequeueTime()) /
+              1000.0));
+    }
   }
 }
 
@@ -496,7 +441,7 @@ void CommTask::executeRequest(std::unique_ptr<GeneralRequest> request,
 
   // create a handler, this takes ownership of request and response
   auto& server = _server.server();
-  auto factory = server.getFeature<GeneralServerFeature>().handlerFactory();
+  auto factory = _generalServerFeature.handlerFactory();
   auto handler =
       factory->createHandler(server, std::move(request), std::move(response));
 
@@ -778,8 +723,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
 
   if (jobId != nullptr) {
-    auto& jobManager =
-        _server.server().getFeature<GeneralServerFeature>().jobManager();
+    auto& jobManager = _generalServerFeature.jobManager();
     try {
       // This will throw if a soft shutdown is already going on on a
       // coordinator. But this can also throw if we have an
@@ -915,9 +859,8 @@ bool CommTask::allowCorsCredentials(std::string const& origin) const {
 
   // if the request asks to allow credentials, we'll check against the
   // configured allowed list of origins
-  auto const& gs = _server.server().getFeature<GeneralServerFeature>();
   std::vector<std::string> const& accessControlAllowOrigins =
-      gs.accessControlAllowOrigins();
+      _generalServerFeature.accessControlAllowOrigins();
 
   if (!accessControlAllowOrigins.empty()) {
     if (accessControlAllowOrigins[0] == "*") {
@@ -1057,8 +1000,7 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
   auto decode = [&](std::string const& header,
                     std::string const& encoding) -> Result {
     if (this->_auth->isActive() && !req.authenticated() &&
-        !_server.server()
-             .getFeature<GeneralServerFeature>()
+        !_generalServerFeature
              .handleContentEncodingForUnauthenticatedRequests()) {
       return {TRI_ERROR_FORBIDDEN,
               "support for handling Content-Encoding headers is turned off for "
@@ -1089,6 +1031,19 @@ Result CommTask::handleContentEncoding(GeneralRequest& req) {
         return {r,
                 "a decoding error occurred while handling Content-Encoding: "
                 "deflate"};
+      }
+      req.setPayload(std::move(dst));
+      // as we have decoded, remove the encoding header.
+      // this prevents duplicate decoding
+      req.removeHeader(header);
+      return {};
+    } else if (encoding == StaticStrings::EncodingArangoLz4) {
+      VPackBuffer<uint8_t> dst;
+      if (ErrorCode r = arangodb::encoding::lz4Uncompress(src, len, dst);
+          r != TRI_ERROR_NO_ERROR) {
+        return {
+            r,
+            "a decoding error occurred while handling Content-Encoding: lz4"};
       }
       req.setPayload(std::move(dst));
       // as we have decoded, remove the encoding header.

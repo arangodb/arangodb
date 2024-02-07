@@ -79,7 +79,6 @@ class SoftShutdownTracker
     uint64_t transactions{0};
     uint64_t pendingJobs{0};
     uint64_t doneJobs{0};
-    uint64_t pregelConductors{0};
     uint64_t lowPrioOngoingRequests{0};
     uint64_t lowPrioQueuedRequests{0};
 
@@ -91,7 +90,7 @@ class SoftShutdownTracker
     bool allClear() const noexcept {
       return AQLcursors == 0 && transactions == 0 && pendingJobs == 0 &&
              doneJobs == 0 && lowPrioOngoingRequests == 0 &&
-             lowPrioQueuedRequests == 0 && pregelConductors == 0;
+             lowPrioQueuedRequests == 0;
     }
   };
 

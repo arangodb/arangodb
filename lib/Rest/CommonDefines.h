@@ -86,7 +86,7 @@ enum class ResponseCompressionType {
   kAllowCompression
 };
 
-enum class EncodingType { DEFLATE, GZIP, UNSET };
+enum class EncodingType { DEFLATE, GZIP, LZ4, UNSET };
 
 enum class AuthenticationMethod : uint8_t { BASIC = 1, JWT = 2, NONE = 0 };
 

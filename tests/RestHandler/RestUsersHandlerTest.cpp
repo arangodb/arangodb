@@ -51,10 +51,6 @@
 #include "VocBase/LogicalView.h"
 #include "VocBase/vocbase.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 namespace {
 
 struct TestView : public arangodb::LogicalView {

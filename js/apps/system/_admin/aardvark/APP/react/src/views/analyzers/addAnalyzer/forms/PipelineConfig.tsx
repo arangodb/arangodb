@@ -16,7 +16,7 @@ import { useAnalyzersContext } from "../../AnalyzersContext";
 const ANALYZER_TYPE_OPTIONS = TYPE_TO_LABEL_MAP
   ? (Object.keys(TYPE_TO_LABEL_MAP)
       .map(type => {
-        const excludedTypes = ["pipeline", "geo_s2", "geojson", "geopoint", "minhash"];
+        const excludedTypes = ["pipeline", "geo_s2", "geojson", "geopoint", "minhash", "wildcard"];
         if (excludedTypes.includes(type)) return null;
         return {
           value: type,
