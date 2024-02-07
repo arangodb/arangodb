@@ -268,9 +268,9 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     if build_config.sanitizer != "":
         # sanitizer builds need more resources
         if size == "small":
-            size = "medium"
-        elif size == "medium" or size == "medium+":
             size = "large"
+        elif size == "medium" or size == "medium+":
+            size = "xlarge"
 
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
