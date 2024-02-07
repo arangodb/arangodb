@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2024-2024 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,41 +17,20 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Dr. Frank Celler
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
-#pragma once
+#include "StateMetadataTransaction.h"
 
-#ifdef _WIN32
+namespace arangodb::replication2::replicated_log {
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1
-#endif
+StateMetadataTransaction::StateMetadataTransaction(
+    std::unique_ptr<IStateInfoTransaction> trx)
+    : trx(std::move(trx)) {}
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
+auto StateMetadataTransaction::get() noexcept
+    -> IStateMetadataTransaction::DataType& {
+  return trx->get().stateOwnedMetadata;
+}
 
-// Windows debug mode also seems to define DEBUG preproc symbol
-#undef DEBUG
-
-#endif
-
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-#define TEST_VIRTUAL virtual
-#else
-#define TEST_VIRTUAL
-#endif
-
-namespace arangodb {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-inline constexpr bool maintainerMode = true;
-#else
-inline constexpr bool maintainerMode = false;
-#endif
-}  // namespace arangodb
-
-#ifdef sleep
-#undef sleep
-#endif
-#define sleep ERROR_USE_std_this_thread_sleep_for
+}  // namespace arangodb::replication2::replicated_log

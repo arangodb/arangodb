@@ -27,6 +27,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
+#include "Replication2/StateMachines/Document/LowestSafeIndexesForReplay.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 
 #include "Actor/LocalActorPID.h"
@@ -57,7 +58,7 @@ struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
   explicit DocumentFollowerState(
-      std::unique_ptr<DocumentCore> core,
+      std::unique_ptr<DocumentCore> core, std::shared_ptr<Stream> stream,
       std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
       std::shared_ptr<IScheduler> scheduler);
 
@@ -117,6 +118,8 @@ struct DocumentFollowerState
 
   std::shared_ptr<actor::LocalRuntime> _runtime;
   actor::LocalActorPID _applyEntriesActor;
+
+  Guarded<LowestSafeIndexesForReplay> _lowestSafeIndexesForReplay;
 };
 
 }  // namespace arangodb::replication2::replicated_state::document

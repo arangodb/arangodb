@@ -48,6 +48,8 @@ namespace replicated_state {
 template<typename S>
 struct FollowerStateManager;
 template<typename S>
+struct LeaderStateManager;
+template<typename S>
 struct ReplicatedStateManager;
 
 struct IReplicatedLeaderStateBase {
@@ -70,10 +72,10 @@ struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
                                 IReplicatedLeaderStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  using Stream = streams::ProducerStream<EntryType>;
+  using Stream = streams::ProducerStream<S>;
   using EntryIterator = typename Stream::Iterator;
 
-  // TODO make functions protected
+ protected:
   /**
    * This function is called once on a leader instance. The iterator contains
    * all log entries currently present in the replicated log. The state machine
@@ -99,12 +101,13 @@ struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
    */
   virtual void onRecoveryCompleted() noexcept {};
 
-  void setStream(std::shared_ptr<Stream> stream) noexcept {
-    _stream = std::move(stream);
-  }
+  explicit IReplicatedLeaderState(std::shared_ptr<Stream> stream)
+      : _stream(std::move(stream)) {}
 
  private:
-  std::shared_ptr<Stream> _stream;
+  friend struct LeaderStateManager<S>;
+
+  std::shared_ptr<Stream> const _stream;
 };
 
 template<typename S>
@@ -112,7 +115,7 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
                                   IReplicatedFollowerStateBase {
   using EntryType = typename ReplicatedStateTraits<S>::EntryType;
   using CoreType = typename ReplicatedStateTraits<S>::CoreType;
-  using Stream = streams::Stream<EntryType>;
+  using Stream = streams::Stream<S>;
   using EntryIterator = typename Stream::Iterator;
 
   using WaitForAppliedFuture = futures::Future<futures::Unit>;
@@ -153,10 +156,8 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<CoreType> override = 0;
 
- public:
-  void setStream(std::shared_ptr<Stream> stream) noexcept {
-    _stream = std::move(stream);
-  }
+  explicit IReplicatedFollowerState(std::shared_ptr<Stream> stream)
+      : _stream(std::move(stream)) {}
 
  protected:
   [[nodiscard]] auto getStream() const noexcept
@@ -170,7 +171,7 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
       std::shared_ptr<FollowerStateManager<S>> manager) noexcept;
 
   std::weak_ptr<FollowerStateManager<S>> _manager;
-  std::shared_ptr<Stream> _stream;
+  std::shared_ptr<Stream> const _stream;
 };
 }  // namespace replicated_state
 }  // namespace arangodb::replication2

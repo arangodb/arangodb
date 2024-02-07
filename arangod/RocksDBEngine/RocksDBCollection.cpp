@@ -617,10 +617,12 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     if (vocbase.replicationVersion() == replication::Version::TWO) {
       // May throw TRI_ERROR_REPLICATED_STATE_NOT_FOUND in case the log manager
       // is dropping the replicated state
-      auto documentStateLeader =
+      auto const documentStateLeader =
           _logicalCollection.getDocumentState()->getLeader();
+      auto const documentStateFollower =
+          _logicalCollection.getDocumentState()->getFollower();
       if (documentStateLeader != nullptr) {
-        auto maybeShardID =
+        auto const maybeShardID =
             ShardID::shardIdFromString(_logicalCollection.name());
         if (ADB_UNLIKELY(maybeShardID.fail())) {
           // This will only throw if we take a real collection here and not a
@@ -639,10 +641,35 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
             std::move(op),
             replication2::replicated_state::document::ReplicationOptions{
                 .waitForCommit = true, .waitForSync = true});
-        auto replicationResult = co_await std::move(replicationFuture);
+        auto const replicationResult = co_await std::move(replicationFuture);
         if (!replicationResult.ok()) {
           THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
         }
+        auto const logIndex = replicationResult.get();
+        // Increase the lowest safe index for replay: This must happen *after*
+        // the create index operation has been raft-committed, but *before*
+        // the index is persisted (i.e. before _inprogress=true is removed).
+        documentStateLeader->increaseLowestSafeIndexForReplayTo(shardId,
+                                                                logIndex);
+      } else if (documentStateFollower != nullptr) {
+        // TODO We currently don't have the log index available here, and we
+        //      need it to call:
+        //        documentStateFollower
+        //          ->increaseLowestSafeIndexForReplayTo(shardId, logIndex);
+        LOG_DEVEL << fmt::format(
+            "TODO Missed increase of lowest safe index on follower: stateId={} "
+            "shard={} index={}",
+            _logicalCollection.replicatedStateId(), _logicalCollection.name(),
+            info);
+      } else {
+        THROW_ARANGO_EXCEPTION_MESSAGE(
+            TRI_ERROR_REPLICATION_REPLICATED_STATE_NOT_AVAILABLE,
+            fmt::format(
+                "While finishing index creation: Replicated state {} for shard "
+                "{} is not available. One possible cause is a failover. Index "
+                "definition was: {}",
+                _logicalCollection.replicatedStateId(),
+                _logicalCollection.name(), info));
       }
     }
 

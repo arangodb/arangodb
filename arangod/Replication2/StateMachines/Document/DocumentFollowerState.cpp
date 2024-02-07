@@ -63,10 +63,11 @@ DocumentFollowerState::GuardedData::GuardedData(
       currentSnapshotVersion{0} {}
 
 DocumentFollowerState::DocumentFollowerState(
-    std::unique_ptr<DocumentCore> core,
+    std::unique_ptr<DocumentCore> core, std::shared_ptr<Stream> stream,
     std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
     std::shared_ptr<IScheduler> scheduler)
-    : gid(core->gid),
+    : IReplicatedFollowerState(std::move(stream)),
+      gid(core->gid),
       loggerContext(handlersFactory->createLogger(core->gid)
                         .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
@@ -74,7 +75,8 @@ DocumentFollowerState::DocumentFollowerState(
       _guardedData(std::move(core), loggerContext),
       _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
-          std::make_shared<actor::Scheduler>(std::move(scheduler)))) {
+          std::make_shared<actor::Scheduler>(std::move(scheduler)))),
+      _lowestSafeIndexesForReplay(stream->getCommittedMetadata()) {
   // Get ready to replay the log
   _handlers.shardHandler->prepareShardsForLogReplay();
   _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(

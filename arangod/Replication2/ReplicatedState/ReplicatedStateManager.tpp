@@ -26,6 +26,7 @@
 
 #include "Basics/DownCast.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/Storage/PersistedStateInfo.h"
 
 namespace arangodb::replication2::replicated_state {
 
@@ -115,11 +116,8 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   ADB_PROD_ASSERT(oldMethods == nullptr);
   auto stream = std::make_shared<typename LeaderStateManager<S>::StreamImpl>(
       std::move(methods));
-  auto leaderState = _factory->constructLeader(std::move(core));
-  // TODO Pass the stream during construction already, and delete the
-  //      "setStream" method; after that, the leader state implementation can
-  //      also really rely on the stream being there.
-  leaderState->setStream(stream);
+  auto leaderState =
+      _factory->constructLeader(std::move(core), std::move(stream));
   auto& manager =
       guard->_currentManager
           .template emplace<std::shared_ptr<LeaderStateManager<S>>>(
@@ -149,10 +147,10 @@ void ReplicatedStateManager<S>::becomeFollower(
           .resign();
   ADB_PROD_ASSERT(oldMethods == nullptr);
 
-  auto followerState = _factory->constructFollower(std::move(core), _scheduler);
   auto stream = std::make_shared<typename FollowerStateManager<S>::StreamImpl>(
       std::move(methods));
-  followerState->setStream(stream);
+  auto followerState = _factory->constructFollower(
+      std::move(core), std::move(stream), _scheduler);
   auto stateManager = std::make_shared<FollowerStateManager<S>>(
       _loggerContext.template with<logContextKeyStateRole>(
           static_strings::StringFollower),

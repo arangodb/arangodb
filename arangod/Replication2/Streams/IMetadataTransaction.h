@@ -1,8 +1,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+/// Copyright 2024-2024 ArangoDB GmbH, Cologne, Germany
 ///
 /// Licensed under the Apache License, Version 2.0 (the "License");
 /// you may not use this file except in compliance with the License.
@@ -18,29 +17,18 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Lars Maier
+/// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-namespace arangodb::replication2::replicated_state {
+namespace arangodb::replication2::streams {
 
 template<typename T>
-struct EntryDeserializer {};
-template<typename T>
-struct EntrySerializer {};
-
-template<typename S>
-struct ReplicatedStateTraits {
-  using FactoryType = typename S::FactoryType;
-  using LeaderType = typename S::LeaderType;
-  using FollowerType = typename S::FollowerType;
-  using EntryType = typename S::EntryType;
-  using CoreType = typename S::CoreType;
-  using Deserializer = EntryDeserializer<EntryType>;
-  using Serializer = EntrySerializer<EntryType>;
-  using CleanupHandlerType = typename S::CleanupHandlerType;
-  using MetadataType = typename S::MetadataType;
+struct IMetadataTransaction {
+  using DataType = T;
+  virtual ~IMetadataTransaction() = default;
+  virtual auto get() noexcept -> DataType& = 0;
 };
 
-}  // namespace arangodb::replication2::replicated_state
+};  // namespace arangodb::replication2::streams

@@ -31,6 +31,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
+#include "Replication2/Streams/IMetadataTransaction.h"
 #include "Transaction/Manager.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -51,10 +52,11 @@ DocumentLeaderState::GuardedData::GuardedData(
 }
 
 DocumentLeaderState::DocumentLeaderState(
-    std::unique_ptr<DocumentCore> core,
+    std::unique_ptr<DocumentCore> core, std::shared_ptr<Stream> stream,
     std::shared_ptr<IDocumentStateHandlersFactory> handlersFactory,
     transaction::IManager& transactionManager)
-    : gid(core->gid),
+    : IReplicatedLeaderState(std::move(stream)),
+      gid(core->gid),
       loggerContext(
           handlersFactory->createLogger(gid).with<logContextKeyStateComponent>(
               "LeaderState")),
@@ -65,7 +67,8 @@ DocumentLeaderState::DocumentLeaderState(
           _handlersFactory->createSnapshotHandler(core->getVocbase(), gid)),
       _errorHandler(_handlersFactory->createErrorHandler(gid)),
       _guardedData(std::move(core), _handlersFactory),
-      _transactionManager(transactionManager) {
+      _transactionManager(transactionManager),
+      _lowestSafeIndexesForReplay(stream->getCommittedMetadata()) {
   // Get ready to replay the log
   _shardHandler->prepareShardsForLogReplay();
 }
@@ -134,64 +137,85 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         // just stop here.
         break;
       }
-      auto doc = entry->second;
+      auto [idx, doc] = *entry;
 
-      auto res = std::visit(
+      auto lowestSafeIndexesForReplayGuard =
+          self->_lowestSafeIndexesForReplay.getLockedGuard();
+
+      bool const isSafeForReplay = std::visit(
           overload{
-              [&](ModifiesUserTransaction auto& op) -> Result {
-                auto trxResult = data.transactionHandler->applyEntry(op);
-                // Only add it as an active transaction if the operation was
-                // successful.
-                if (trxResult.ok()) {
-                  activeTransactions.insert(op.tid);
-                }
-                return trxResult;
+              // TODO do we have to handle other kinds of log entries?
+              [&](ModifiesUserTransaction auto const& op) -> bool {
+                return lowestSafeIndexesForReplayGuard->isSafeForReplay(
+                    op.shard, idx);
               },
-              [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
-                // There are three cases where we can end up here:
-                // 1. After recovery, we did not get the beginning of the
-                // transaction.
-                // 2. We ignored all other operations for this transaction
-                // because the shard was dropped.
-                // 3. The transaction applies to multiple shards, which all had
-                // the same leader, thus multiple commits were replicated for
-                // the same transaction.
-                if (activeTransactions.erase(op.tid) == 0) {
-                  return Result{};
-                }
-                return data.transactionHandler->applyEntry(op);
-              },
-              [&](ReplicatedOperation::DropShard& op) -> Result {
-                // Abort all transactions for this shard.
-                for (auto const& tid :
-                     data.transactionHandler->getTransactionsForShard(
-                         op.shard)) {
-                  activeTransactions.erase(tid);
-                  auto abortRes = data.transactionHandler->applyEntry(
-                      ReplicatedOperation::buildAbortOperation(tid));
-                  if (abortRes.fail()) {
-                    LOG_CTX("3eb75", INFO, self->loggerContext)
-                        << "failed to abort transaction " << tid
-                        << " for shard " << op.shard
-                        << " during recovery: " << abortRes;
-                    return abortRes;
-                  }
-                }
-                return data.transactionHandler->applyEntry(op);
-              },
-              [&](auto&& op) {
-                return data.transactionHandler->applyEntry(op);
-              }},
+              [](auto const&) { return false; },
+          },
           doc.getInnerOperation());
 
-      if (res.fail()) {
-        if (self->_errorHandler->handleOpResult(doc.getInnerOperation(), res)
-                .fail()) {
-          LOG_CTX("cbc5b", FATAL, self->loggerContext)
-              << "failed to apply entry " << doc << " during recovery: " << res;
-          TRI_ASSERT(false) << doc << " " << res;
-          FATAL_ERROR_EXIT();
+      if (isSafeForReplay) {
+        auto res = std::visit(
+            overload{
+                [&](ModifiesUserTransaction auto& op) -> Result {
+                  auto trxResult = data.transactionHandler->applyEntry(op);
+                  // Only add it as an active transaction if the operation was
+                  // successful.
+                  if (trxResult.ok()) {
+                    activeTransactions.insert(op.tid);
+                  }
+                  return trxResult;
+                },
+                [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
+                  // There are three cases where we can end up here:
+                  // 1. After recovery, we did not get the beginning of the
+                  // transaction.
+                  // 2. We ignored all other operations for this transaction
+                  // because the shard was dropped.
+                  // 3. The transaction applies to multiple shards, which all
+                  // had the same leader, thus multiple commits were replicated
+                  // for the same transaction.
+                  if (activeTransactions.erase(op.tid) == 0) {
+                    return Result{};
+                  }
+                  return data.transactionHandler->applyEntry(op);
+                },
+                [&](ReplicatedOperation::DropShard& op) -> Result {
+                  // Abort all transactions for this shard.
+                  for (auto const& tid :
+                       data.transactionHandler->getTransactionsForShard(
+                           op.shard)) {
+                    activeTransactions.erase(tid);
+                    auto abortRes = data.transactionHandler->applyEntry(
+                        ReplicatedOperation::buildAbortOperation(tid));
+                    if (abortRes.fail()) {
+                      LOG_CTX("3eb75", INFO, self->loggerContext)
+                          << "failed to abort transaction " << tid
+                          << " for shard " << op.shard
+                          << " during recovery: " << abortRes;
+                      return abortRes;
+                    }
+                  }
+                  return data.transactionHandler->applyEntry(op);
+                },
+                [&](auto&& op) {
+                  return data.transactionHandler->applyEntry(op);
+                }},
+            doc.getInnerOperation());
+
+        if (res.fail()) {
+          if (self->_errorHandler->handleOpResult(doc.getInnerOperation(), res)
+                  .fail()) {
+            LOG_CTX("cbc5b", FATAL, self->loggerContext)
+                << "failed to apply entry " << doc
+                << " during recovery: " << res;
+            TRI_ASSERT(false) << doc << " " << res;
+            FATAL_ERROR_EXIT();
+          }
         }
+      } else {
+        LOG_CTX("acdaa", TRACE, self->loggerContext)
+            << "ignoring log entry " << doc
+            << " during recovery: not safe for replay";
       }
     }
 
@@ -818,6 +842,42 @@ auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
 
     return localIndexRemoval;
   });
+}
+namespace {
+bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
+                        std::map<std::string, LogIndex> right) {
+  auto left = std::map<std::string, LogIndex>{};
+  std::transform(left_.begin(), left_.end(), std::inserter(left, left.end()),
+                 [](auto const& kv) {
+                   return std::pair{ShardID(kv.first), kv.second};
+                 });
+  return left == right;
+}
+}  // namespace
+
+void DocumentLeaderState::increaseLowestSafeIndexForReplayTo(
+    ShardID shardId, LogIndex logIndex) {
+  auto lowestSafeIndexesForReplayGuard =
+      _lowestSafeIndexesForReplay.getLockedGuard();
+  auto trx = getStream()->beginMetadataTrx();
+  auto& metadata = trx->get();
+  if constexpr (maintainerMode) {
+    auto inMemMap = lowestSafeIndexesForReplayGuard->map;
+    auto persistedMap = metadata.lowestSafeIndexesForReplay;
+    if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
+      auto msg = std::stringstream{};
+      msg << "Mismatch between in-memory and persisted state of lowest safe "
+             "indexes for replay. In-memory state: "
+          << inMemMap << ", persisted state: ";
+      // no ADL for persistedMap
+      arangodb::operator<<(msg, persistedMap);
+      TRI_ASSERT(false) << msg.str();
+    }
+  }
+  auto& lowestSafeIndex =
+      metadata.lowestSafeIndexesForReplay[shardId.operator std::string()];
+  lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
+  lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document
