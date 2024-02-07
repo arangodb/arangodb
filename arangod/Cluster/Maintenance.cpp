@@ -2329,6 +2329,20 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
               VPackObjectBuilder o(&report);
               report.add(OP, VP_DELETE);
             }
+            // We also delete all under /Current/ReplicatedLogs/<dbName>,
+            // as well as /Current/CollectionGroups/<dbName>
+            // both behave the same way as /Current/Collections/<dbName>
+            // and are idempotent
+            report.add(VPackValue(CURRENT_REPLICATED_LOGS + dbName));
+            {
+              VPackObjectBuilder o(&report);
+              report.add(OP, VP_DELETE);
+            }
+            report.add(VPackValue(CURRENT_COLLECTION_GROUPS + dbName));
+            {
+              VPackObjectBuilder o(&report);
+              report.add(OP, VP_DELETE);
+            }
           }
         }
       }
