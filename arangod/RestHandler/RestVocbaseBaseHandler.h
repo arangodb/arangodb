@@ -67,9 +67,6 @@ class RestVocbaseBaseHandler : public RestBaseHandler {
   /// @brief collection path
   static std::string const COLLECTION_PATH;
 
-  /// @brief control pregel path
-  static std::string const CONTROL_PREGEL_PATH;
-
   /// @brief cursor path
   static std::string const CURSOR_PATH;
 

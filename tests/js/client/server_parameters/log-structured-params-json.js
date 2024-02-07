@@ -29,7 +29,7 @@ const fs = require('fs');
 
 if (getOptions === true) {
   return {
-    'log.structured-param': ['database=true', 'url', 'username', "pregelId=false"],
+    'log.structured-param': ['database=true', 'url', 'username'],
     'log.use-json-format': 'true',
   };
 }
@@ -93,7 +93,6 @@ return require('internal').options()["log.output"];
       assertTrue(res.hasOwnProperty("database"));
       assertTrue(res.hasOwnProperty("username"));
       assertTrue(res.hasOwnProperty("url"));
-      assertFalse(res.hasOwnProperty("pregelId"));
     },
 
     testLogEntries: function () {

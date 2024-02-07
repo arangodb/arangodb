@@ -40,11 +40,19 @@ template<typename T>
                                     size_t compressedLength, T& uncompressed);
 
 template<typename T>
+[[nodiscard]] ErrorCode lz4Uncompress(uint8_t const* compressed,
+                                      size_t compressedLength, T& uncompressed);
+
+template<typename T>
 [[nodiscard]] ErrorCode gzipCompress(uint8_t const* uncompressed,
                                      size_t uncompressedLength, T& compressed);
 
 template<typename T>
 [[nodiscard]] ErrorCode zlibDeflate(uint8_t const* uncompressed,
+                                    size_t uncompressedLength, T& compressed);
+
+template<typename T>
+[[nodiscard]] ErrorCode lz4Compress(uint8_t const* uncompressed,
                                     size_t uncompressedLength, T& compressed);
 
 }  // namespace arangodb::encoding

@@ -615,6 +615,8 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 
     // step 4½. replicate index creation
     if (vocbase.replicationVersion() == replication::Version::TWO) {
+      // May throw TRI_ERROR_REPLICATED_STATE_NOT_FOUND in case the log manager
+      // is dropping the replicated state
       auto documentStateLeader =
           _logicalCollection.getDocumentState()->getLeader();
       if (documentStateLeader != nullptr) {

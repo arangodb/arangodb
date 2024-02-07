@@ -437,3 +437,7 @@ ErrorCode HttpResponse::zlibDeflate(bool onlyIfSmaller) {
 ErrorCode HttpResponse::gzipCompress(bool onlyIfSmaller) {
   return _body->gzipCompress(onlyIfSmaller);
 }
+
+ErrorCode HttpResponse::lz4Compress(bool onlyIfSmaller) {
+  return _body->lz4Compress(onlyIfSmaller);
+}

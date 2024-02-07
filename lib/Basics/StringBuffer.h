@@ -304,12 +304,25 @@ class StringBuffer {
   /// compression, the special error code TRI_ERROR_DISABLED is returned.
   ErrorCode gzipCompress(bool onlyIfSmaller);
 
+  /// @brief compress the buffer in place, using lz4 compression
+  /// if onlyIfSmaller is true, then the buffer will only contain the
+  /// compressed version if the compressed buffer size is smaller than
+  /// the original size. if onlyIfSmaller is false, then the buffer
+  /// will be compressed unconditionally.
+  /// if compression works, then TRI_ERROR_NO_ERROR is returned.
+  /// in case onlyIfSmaller=true and the buffer is not smaller after
+  /// compression, the special error code TRI_ERROR_DISABLED is returned.
+  ErrorCode lz4Compress(bool onlyIfSmaller);
+
   /// @brief uncompress the buffer into StringBuffer out, using zlib-inflate
   ErrorCode zlibInflate(arangodb::basics::StringBuffer& out, size_t skip = 0);
 
   /// @brief uncompress the buffer into StringBuffer out, using gzip uncompress
   ErrorCode gzipUncompress(arangodb::basics::StringBuffer& out,
                            size_t skip = 0);
+
+  /// @brief uncompress the buffer into StringBuffer out, using lz4 uncompress
+  ErrorCode lz4Uncompress(arangodb::basics::StringBuffer& out, size_t skip = 0);
 
   /// @brief returns the low level buffer
   TRI_string_buffer_t* stringBuffer() { return &_buffer; }

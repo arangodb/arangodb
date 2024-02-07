@@ -24,7 +24,10 @@
 #pragma once
 
 #include <atomic>
+#include <cstdint>
 #include <mutex>
+#include <string>
+#include <string_view>
 
 #include <fuerte/requests.h>
 
@@ -96,6 +99,10 @@ class NetworkFeature final : public ArangodFeature {
                      std::unique_ptr<fuerte::Response>& res);
 
  private:
+  void injectAcceptEncodingHeader(fuerte::Request& req) const;
+  bool compressRequestBody(network::RequestOptions const& opts,
+                           fuerte::Request& req) const;
+
   // configuration
   std::string _protocol;
   uint64_t _maxOpenConnections;
@@ -134,6 +141,12 @@ class NetworkFeature final : public ArangodFeature {
   metrics::Histogram<metrics::FixScale<double>>& _dequeueDurations;
   metrics::Histogram<metrics::FixScale<double>>& _sendDurations;
   metrics::Histogram<metrics::FixScale<double>>& _responseDurations;
+
+  uint64_t _compressRequestThreshold;
+
+  enum class CompressionType { kNone, kDeflate, kGzip, kLz4, kAuto };
+  CompressionType _compressionType;
+  std::string _compressionTypeLabel;
 };
 
 }  // namespace arangodb
