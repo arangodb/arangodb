@@ -122,19 +122,26 @@ struct DocumentStateMachineTest : testing::Test {
   auto createLeader() -> std::shared_ptr<DocumentLeaderStateWrapper> {
     auto factory = replicated_state::document::DocumentFactory(
         handlersFactoryMock, transactionManagerMock);
+
     auto stream = std::make_shared<MockProducerStream>();
-    return std::make_shared<DocumentLeaderStateWrapper>(
+    EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
+    auto leader = std::make_shared<DocumentLeaderStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams), stream,
         handlersFactoryMock, transactionManagerMock);
+    testing::Mock::VerifyAndClearExpectations(stream.get());
+    return leader;
   }
 
   auto createFollower() -> std::shared_ptr<DocumentFollowerStateWrapper> {
     auto factory = replicated_state::document::DocumentFactory(
         handlersFactoryMock, transactionManagerMock);
     auto stream = std::make_shared<MockProducerStream>();
-    return std::make_shared<DocumentFollowerStateWrapper>(
+    EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
+    auto follower = std::make_shared<DocumentFollowerStateWrapper>(
         factory.constructCore(vocbaseMock, globalId, coreParams), stream,
         handlersFactoryMock, schedulerMock);
+    testing::Mock::VerifyAndClearExpectations(stream.get());
+    return follower;
   }
 
   void SetUp() override {

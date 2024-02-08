@@ -254,7 +254,7 @@ TEST(ActiveTransactionsQueueTest,
   ASSERT_EQ(activeTrx.getReleaseIndex(), std::nullopt);
 }
 
-TEST(ActiveTransactionsQueueTest, test_activeTransactions_death) {
+TEST(ActiveTransactionsQueueDeathTest, test_activeTransactions_death) {
   auto activeTrx = ActiveTransactionsQueue{};
   activeTrx.markAsActive(TransactionId{100}, LogIndex{100});
   ASSERT_DEATH_CORE_FREE(activeTrx.markAsActive(LogIndex{99}), "");

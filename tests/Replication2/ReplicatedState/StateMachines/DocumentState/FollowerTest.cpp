@@ -31,6 +31,7 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 
 struct DocumentStateFollowerTest : DocumentStateMachineTest {};
+struct DocumentStateFollowerDeathTest : DocumentStateFollowerTest {};
 
 TEST_F(DocumentStateFollowerTest, follower_associated_shard_map) {
   using namespace testing;
@@ -238,7 +239,7 @@ TEST_F(DocumentStateFollowerTest,
   Mock::VerifyAndClearExpectations(stream.get());
 }
 
-TEST_F(DocumentStateFollowerTest,
+TEST_F(DocumentStateFollowerDeathTest,
        follower_applyEntries_dies_if_transaction_fails) {
   using namespace testing;
 
@@ -371,7 +372,7 @@ TEST_F(DocumentStateFollowerTest,
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());
 }
 
-TEST_F(DocumentStateFollowerTest,
+TEST_F(DocumentStateFollowerDeathTest,
        follower_dies_if_shard_creation_or_deletion_fails) {
   using namespace testing;
 

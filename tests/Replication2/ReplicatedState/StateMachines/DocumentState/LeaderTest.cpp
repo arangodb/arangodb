@@ -32,6 +32,7 @@ using namespace arangodb::replication2::replicated_state;
 using namespace arangodb::replication2::replicated_state::document;
 
 struct DocumentStateLeaderTest : DocumentStateMachineTest {};
+struct DocumentStateLeaderDeathTest : DocumentStateLeaderTest {};
 
 TEST_F(DocumentStateLeaderTest, leader_manipulates_snapshot_successfully) {
   using namespace testing;
@@ -188,7 +189,9 @@ TEST_F(DocumentStateLeaderTest,
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto stream = std::make_shared<MockProducerStream>();
+  EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
   auto leaderState = factory.constructLeader(std::move(core), stream);
+  testing::Mock::VerifyAndClearExpectations(stream.get());
 
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
@@ -245,7 +248,7 @@ TEST_F(DocumentStateLeaderTest,
   Mock::VerifyAndClearExpectations(transactionMock.get());
 }
 
-TEST_F(DocumentStateLeaderTest,
+TEST_F(DocumentStateLeaderDeathTest,
        leader_recoverEntries_dies_if_vocbase_does_not_exist) {
   using namespace testing;
 
@@ -257,7 +260,9 @@ TEST_F(DocumentStateLeaderTest,
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto stream = std::make_shared<MockProducerStream>();
+  EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
   auto leaderState = factory.constructLeader(std::move(core), stream);
+  testing::Mock::VerifyAndClearExpectations(stream.get());
 
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
@@ -274,7 +279,9 @@ TEST_F(DocumentStateLeaderTest,
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto stream = std::make_shared<MockProducerStream>();
+  EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
   auto leaderState = factory.constructLeader(std::move(core), stream);
+  testing::Mock::VerifyAndClearExpectations(stream.get());
 
   auto operation = ReplicatedOperation::buildCommitOperation(
       TransactionId{5}.asFollowerTransactionId());
@@ -301,7 +308,9 @@ TEST_F(DocumentStateLeaderTest,
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto stream = std::make_shared<MockProducerStream>();
+  EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
   auto leaderState = factory.constructLeader(std::move(core), stream);
+  testing::Mock::VerifyAndClearExpectations(stream.get());
 
   // Try to apply a regular entry, not having the shard available
   std::vector<DocumentLogEntry> entries;
