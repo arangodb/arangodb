@@ -624,9 +624,6 @@ function unitTest (cases, options) {
     ['ASAN_OPTIONS',
      'LSAN_OPTIONS',
      'UBSAN_OPTIONS',
-     'ASAN_OPTIONS',
-     'LSAN_OPTIONS',
-     'UBSAN_OPTIONS',
      'TSAN_OPTIONS'].forEach(sanOpt => {
        if (process.env.hasOwnProperty(sanOpt)) {
          options.sanOptions[sanOpt] = {};

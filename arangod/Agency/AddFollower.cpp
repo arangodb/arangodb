@@ -84,8 +84,8 @@ void AddFollower::run(bool& aborts) { runHelper("", _shard, aborts); }
 
 bool AddFollower::create(std::shared_ptr<VPackBuilder> envelope) {
   LOG_TOPIC("8f72c", INFO, Logger::SUPERVISION)
-      << "Todo: AddFollower(s) "
-      << " to shard " << _shard << " in collection " << _collection;
+      << "Todo: AddFollower(s) to shard " << _shard << " in collection "
+      << _collection;
 
   bool selfCreate = (envelope == nullptr);  // Do we create ourselves?
 
@@ -369,7 +369,7 @@ bool AddFollower::start(bool&) {
     _status = FINISHED;
     LOG_TOPIC("961a4", INFO, Logger::SUPERVISION)
         << "Finished: Addfollower(s) to shard " << _shard << " in collection "
-        << _collection;
+        << _collection << ": " << chosen;
     return true;
   }
 
