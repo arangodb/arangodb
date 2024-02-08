@@ -122,12 +122,30 @@ installer.use(function (req, res, next) {
       }
     }
   } catch (e) {
+    console.error(req.path);
     if (e.isArangoError && [
       errors.ERROR_MODULE_FAILURE.code,
       errors.ERROR_MALFORMED_MANIFEST_FILE.code,
       errors.ERROR_INVALID_SERVICE_MANIFEST.code
     ].indexOf(e.errorNum) !== -1) {
       res.throw('bad request', e);
+    }
+    if (
+      e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_SOURCE_ERROR.code
+    ) {
+      let errorType = 'internal server error';
+      if ([
+        '/foxxes/store',
+        '/foxxes/git',
+        '/foxxes/url'
+      ].indexOf(req.path) !== -1) {
+        errorType = (
+          e.message.includes('(timeout after') ?
+          'gateway timeout' : 'bad gateway'
+        );
+      }
+      res.throw(errorType, e);
     }
     if (
       e.isArangoError &&
