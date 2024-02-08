@@ -44,12 +44,11 @@
     generateAndInsert.factor++;
 
     let docs = [];
-    for (let i = 0; i < 2000 * generateAndInsert.factor; i++) {
+    for (let i = 0; i < 600 * generateAndInsert.factor; i++) {
       let custom_field = "field_" + generateAndInsert.counter;
       let d = {
         'stringValue': "" + generateAndInsert.counter, 
-        'numericValue': generateAndInsert.counter,
-        'value': i
+        'numericValue': generateAndInsert.counter
       };
       d[custom_field] = generateAndInsert.counter;
       docs.push(d);
