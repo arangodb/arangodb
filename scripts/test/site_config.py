@@ -109,6 +109,8 @@ class SiteConfig:
             self.portbase = int(os.environ["PORTBASE"])
         self.port_offset = 100
         self.timeout = 1800
+        if os.environ.get("SAN_MODE") != "":
+            self.timeout *= 4
         if "timeLimit".upper() in os.environ:
             self.timeout = int(os.environ["timeLimit".upper()])
         elif "timeLimit" in os.environ:
@@ -208,7 +210,7 @@ class SiteConfig:
         self.run_root = base_source_dir / "testrun"
         if self.run_root.exists():
             shutil.rmtree(self.run_root)
-        self.xml_report_dir = base_source_dir / 'testrunXml'
+        self.xml_report_dir = base_source_dir / "testrunXml"
         if self.xml_report_dir.exists():
             shutil.rmtree(self.xml_report_dir)
         self.xml_report_dir.mkdir(parents=True)
