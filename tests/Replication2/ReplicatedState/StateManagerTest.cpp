@@ -46,6 +46,7 @@
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
+#include "Replication2/StateMachines/BlackHole/Monostate.h"
 #include "Replication2/IScheduler.h"
 #include "Replication2/Mocks/SchedulerMocks.h"
 #include "Replication2/Mocks/RebootIdCacheMock.h"
@@ -68,6 +69,7 @@ struct EmptyState {
   using CoreType = test::TestCoreType;
   using CoreParameterType = void;
   using CleanupHandlerType = void;
+  using MetadataType = Monostate;
 };
 struct FakeState {
   static constexpr std::string_view NAME = "fake-state";
@@ -79,6 +81,7 @@ struct FakeState {
   using CoreType = test::TestCoreType;
   using CoreParameterType = void;
   using CleanupHandlerType = void;
+  using MetadataType = Monostate;
 };
 }  // namespace
 

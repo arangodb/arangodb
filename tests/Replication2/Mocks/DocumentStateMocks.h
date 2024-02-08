@@ -35,6 +35,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
 #include "Replication2/StateMachines/Document/MaintenanceActionExecutor.h"
+#include "Replication2/Streams/IMetadataTransaction.h"
 
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/Manager.h"
@@ -356,18 +357,28 @@ struct MockDocumentStateNetworkHandler
               getLeaderInterface, (ParticipantId), (override, noexcept));
 };
 
+struct MockProducerStream;
+
 /*
  * A wrapper to make some protected methods public.
  */
 struct DocumentFollowerStateWrapper
     : replicated_state::document::DocumentFollowerState {
+  std::shared_ptr<MockProducerStream> stream;
   DocumentFollowerStateWrapper(
       std::unique_ptr<replicated_state::document::DocumentCore> core,
+      std::shared_ptr<MockProducerStream> stream,
       std::shared_ptr<
           replicated_state::document::IDocumentStateHandlersFactory> const&
           handlersFactory,
       std::shared_ptr<IScheduler> scheduler)
-      : DocumentFollowerState(std::move(core), handlersFactory, scheduler) {}
+      : DocumentFollowerState(
+            std::move(core),
+            std::dynamic_pointer_cast<
+                replicated_state::document::DocumentFollowerState::Stream>(
+                stream),
+            handlersFactory, scheduler),
+        stream(stream) {}
 
   auto resign() && noexcept
       -> std::unique_ptr<replicated_state::document::DocumentCore> override {
@@ -390,13 +401,20 @@ struct DocumentFollowerStateWrapper
  */
 struct DocumentLeaderStateWrapper
     : replicated_state::document::DocumentLeaderState {
+  std::shared_ptr<MockProducerStream> stream;
   DocumentLeaderStateWrapper(
       std::unique_ptr<replicated_state::document::DocumentCore> core,
+      std::shared_ptr<MockProducerStream> stream,
       std::shared_ptr<replicated_state::document::IDocumentStateHandlersFactory>
           handlersFactory,
       transaction::IManager& transactionManager)
-      : DocumentLeaderState(std::move(core), std::move(handlersFactory),
-                            transactionManager) {}
+      : DocumentLeaderState(
+            std::move(core),
+            std::dynamic_pointer_cast<
+                replicated_state::document::DocumentLeaderState::Stream>(
+                stream),
+            std::move(handlersFactory), transactionManager),
+        stream(stream) {}
 
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<replicated_state::document::DocumentCore> override {
@@ -410,7 +428,7 @@ struct DocumentLeaderStateWrapper
 };
 
 struct MockProducerStream
-    : streams::ProducerStream<replicated_state::document::DocumentLogEntry> {
+    : streams::ProducerStream<replicated_state::document::DocumentState> {
   // Stream<T>
   MOCK_METHOD(futures::Future<WaitForResult>, waitFor, (LogIndex), (override));
   MOCK_METHOD(futures::Future<std::unique_ptr<Iterator>>, waitForIterator,
@@ -420,6 +438,13 @@ struct MockProducerStream
   MOCK_METHOD(LogIndex, insert,
               (replicated_state::document::DocumentLogEntry const&, bool),
               (override));
+
+  MOCK_METHOD(std::unique_ptr<streams::IMetadataTransaction<MetadataType>>,
+              beginMetadataTrx, (), (override));
+  MOCK_METHOD(Result, commitMetadataTrx,
+              (std::unique_ptr<streams::IMetadataTransaction<MetadataType>>),
+              (override));
+  MOCK_METHOD(MetadataType, getCommittedMetadata, (), (const override));
 
   MockProducerStream() {
     ON_CALL(*this, insert)

@@ -24,6 +24,7 @@
 
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/ReplicatedState/StateInterfaces.h"
+#include "Replication2/StateMachines/BlackHole/Monostate.h"
 
 struct TRI_vocbase_t;
 
@@ -40,18 +41,6 @@ struct BlackHoleLogEntry;
 struct BlackHoleLeaderState;
 struct BlackHoleFollowerState;
 struct BlackHoleCore;
-struct Monostate {
-  template<class Inspector>
-  inline friend auto inspect(Inspector& f, Monostate& p) {
-    if constexpr (Inspector::isLoading) {
-      std::abort();
-      return inspection::Status();
-      // return f.apply(inspection::Null{});
-    } else {
-      return f.apply(inspection::Null{});
-    }
-  }
-};
 
 struct BlackHoleState {
   static constexpr std::string_view NAME = "black-hole";

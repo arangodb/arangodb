@@ -163,8 +163,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
   for (std::uint64_t tid : {6, 10, 14}) {
@@ -195,8 +194,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
   for (std::uint64_t tid : {6, 10, 14}) {
@@ -222,8 +220,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
   auto tid = TransactionId{6};
@@ -249,8 +246,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   ON_CALL(*transactionHandlerMock,
           applyEntry(Matcher<ReplicatedOperation::OperationType const&>(_)))
@@ -272,8 +268,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   // First commit then abort
   std::vector<DocumentLogEntry> entries;
@@ -302,8 +297,7 @@ TEST_F(DocumentStateFollowerTest,
   follower = createFollower();
   res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  stream = follower->stream;
   entries.clear();
 
   entries.emplace_back(createDocumentEntry(TransactionId{6}));
@@ -335,8 +329,7 @@ TEST_F(DocumentStateFollowerTest,
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
 
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   ShardID const myShard{12};
   CollectionID const myCollection = "myCollection";
@@ -386,8 +379,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildCreateShardOperation(
@@ -414,8 +406,7 @@ TEST_F(DocumentStateFollowerTest, follower_ignores_invalid_transactions) {
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   // Try to apply a regular entry, but pretend the shard is not available
   std::vector<DocumentLogEntry> entries;
@@ -465,8 +456,7 @@ TEST_F(DocumentStateFollowerTest,
   auto follower = createFollower();
   auto res = follower->acquireSnapshot("participantId");
   EXPECT_TRUE(res.isReady() && res.get().ok());
-  auto stream = std::make_shared<MockProducerStream>();
-  follower->setStream(stream);
+  auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
   entries.emplace_back(ReplicatedOperation::buildDocumentOperation(

@@ -71,8 +71,9 @@ TEST_F(DocumentStateMachineTest,
       });
 
   auto factory = DocumentFactory(handlersFactoryMock, transactionManagerMock);
+  auto stream = std::make_shared<MockProducerStream>();
   auto follower = std::make_shared<DocumentFollowerStateWrapper>(
-      factory.constructCore(vocbaseMock, globalId, coreParams),
+      factory.constructCore(vocbaseMock, globalId, coreParams), stream,
       handlersFactoryMock, schedulerMock);
 
   // Two steps are necessary before the snapshot is acquired:

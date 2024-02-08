@@ -110,9 +110,8 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
-  leaderState->setStream(stream);
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
   {
     for (std::uint64_t tid : {5, 9, 13}) {
@@ -188,10 +187,9 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<MockProducerStream>();
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
-  leaderState->setStream(stream);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, insert)
@@ -234,10 +232,9 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<MockProducerStream>();
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
-  leaderState->setStream(stream);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   EXPECT_CALL(*stream, insert).Times(1);
@@ -257,10 +254,9 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<MockProducerStream>();
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
-  leaderState->setStream(stream);
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 
   ASSERT_DEATH_CORE_FREE(
@@ -275,7 +271,8 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
+  auto stream = std::make_shared<MockProducerStream>();
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
   auto operation = ReplicatedOperation::buildCommitOperation(
       TransactionId{5}.asFollowerTransactionId());
@@ -301,10 +298,8 @@ TEST_F(DocumentStateLeaderTest,
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<MockProducerStream>();
-
-  leaderState->setStream(stream);
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
   // Try to apply a regular entry, not having the shard available
   std::vector<DocumentLogEntry> entries;
@@ -340,9 +335,8 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
       DocumentFactory(handlersFactoryMock, transactionManagerMock);
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
-  auto leaderState = factory.constructLeader(std::move(core));
   auto stream = std::make_shared<testing::NiceMock<MockProducerStream>>();
-  leaderState->setStream(stream);
+  auto leaderState = factory.constructLeader(std::move(core), stream);
 
   auto properties = velocypack::SharedSlice();
 
