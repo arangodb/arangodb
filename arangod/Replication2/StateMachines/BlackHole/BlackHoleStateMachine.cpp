@@ -27,6 +27,8 @@
 
 #include "BlackHoleStateMachine.h"
 
+#include "Replication2/ReplicatedState/StateInterfaces.tpp"
+
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_state;

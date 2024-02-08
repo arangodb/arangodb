@@ -28,6 +28,8 @@
 #include "Replication2/ReplicatedState/WaitForQueue.h"
 #include "Replication2/Streams/Streams.h"
 
+#include <memory>
+
 namespace arangodb::futures {
 struct Unit;
 template<typename T>
@@ -101,8 +103,7 @@ struct IReplicatedLeaderState : IReplicatedStateImplBase<S>,
    */
   virtual void onRecoveryCompleted() noexcept {};
 
-  explicit IReplicatedLeaderState(std::shared_ptr<Stream> stream)
-      : _stream(std::move(stream)) {}
+  explicit IReplicatedLeaderState(std::shared_ptr<Stream> stream);
 
  private:
   friend struct LeaderStateManager<S>;
@@ -149,15 +150,10 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
   virtual auto acquireSnapshot(ParticipantId const& leader) noexcept
       -> futures::Future<Result> = 0;
 
-  /**
-   * TODO Comment missing
-   * @return
-   */
   [[nodiscard]] auto resign() && noexcept
       -> std::unique_ptr<CoreType> override = 0;
 
-  explicit IReplicatedFollowerState(std::shared_ptr<Stream> stream)
-      : _stream(std::move(stream)) {}
+  explicit IReplicatedFollowerState(std::shared_ptr<Stream> stream);
 
  protected:
   [[nodiscard]] auto getStream() const noexcept
@@ -173,5 +169,6 @@ struct IReplicatedFollowerState : IReplicatedStateImplBase<S>,
   std::weak_ptr<FollowerStateManager<S>> _manager;
   std::shared_ptr<Stream> const _stream;
 };
+
 }  // namespace replicated_state
 }  // namespace arangodb::replication2

@@ -233,7 +233,9 @@ TEST_F(DocumentStateLeaderTest,
 
   auto core = factory.constructCore(vocbaseMock, globalId, coreParams);
   auto stream = std::make_shared<MockProducerStream>();
+  EXPECT_CALL(*stream, getCommittedMetadata).Times(1);
   auto leaderState = factory.constructLeader(std::move(core), stream);
+  Mock::VerifyAndClearExpectations(stream.get());
 
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
 

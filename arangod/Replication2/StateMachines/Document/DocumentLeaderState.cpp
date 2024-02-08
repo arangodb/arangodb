@@ -24,6 +24,7 @@
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 
 #include "Basics/application-exit.h"
+#include "Replication2/ReplicatedState/StateInterfaces.tpp"
 #include "Replication2/StateMachines/Document/DocumentFollowerState.h"
 #include "Replication2/StateMachines/Document/DocumentLogEntry.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
@@ -68,7 +69,7 @@ DocumentLeaderState::DocumentLeaderState(
       _errorHandler(_handlersFactory->createErrorHandler(gid)),
       _guardedData(std::move(core), _handlersFactory),
       _transactionManager(transactionManager),
-      _lowestSafeIndexesForReplay(stream->getCommittedMetadata()) {
+      _lowestSafeIndexesForReplay(getStream()->getCommittedMetadata()) {
   // Get ready to replay the log
   _shardHandler->prepareShardsForLogReplay();
 }
@@ -149,14 +150,14 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                 return lowestSafeIndexesForReplayGuard->isSafeForReplay(
                     op.shard, idx);
               },
-              [](auto const&) { return false; },
+              [](auto const&) { return true; },
           },
           doc.getInnerOperation());
 
       if (isSafeForReplay) {
         auto res = std::visit(
             overload{
-                [&](ModifiesUserTransaction auto& op) -> Result {
+                [&](ModifiesUserTransaction auto const& op) -> Result {
                   auto trxResult = data.transactionHandler->applyEntry(op);
                   // Only add it as an active transaction if the operation was
                   // successful.
@@ -165,7 +166,8 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                   }
                   return trxResult;
                 },
-                [&](FinishesUserTransactionOrIntermediate auto& op) -> Result {
+                [&](FinishesUserTransactionOrIntermediate auto const& op)
+                    -> Result {
                   // There are three cases where we can end up here:
                   // 1. After recovery, we did not get the beginning of the
                   // transaction.
@@ -179,7 +181,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                   }
                   return data.transactionHandler->applyEntry(op);
                 },
-                [&](ReplicatedOperation::DropShard& op) -> Result {
+                [&](ReplicatedOperation::DropShard const& op) -> Result {
                   // Abort all transactions for this shard.
                   for (auto const& tid :
                        data.transactionHandler->getTransactionsForShard(
@@ -197,7 +199,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                   }
                   return data.transactionHandler->applyEntry(op);
                 },
-                [&](auto&& op) {
+                [&](auto const& op) {
                   return data.transactionHandler->applyEntry(op);
                 }},
             doc.getInnerOperation());

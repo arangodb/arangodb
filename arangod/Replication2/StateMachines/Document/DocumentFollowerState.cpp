@@ -25,6 +25,7 @@
 
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/ReplicatedState/StateInterfaces.tpp"
 #include "Replication2/StateMachines/Document/Actor/Scheduler.h"
 #include "Replication2/StateMachines/Document/Actor/ApplyEntries.h"
 #include "Replication2/StateMachines/Document/DocumentLeaderState.h"
@@ -76,7 +77,7 @@ DocumentFollowerState::DocumentFollowerState(
       _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
           std::make_shared<actor::Scheduler>(std::move(scheduler)))),
-      _lowestSafeIndexesForReplay(stream->getCommittedMetadata()) {
+      _lowestSafeIndexesForReplay(getStream()->getCommittedMetadata()) {
   // Get ready to replay the log
   _handlers.shardHandler->prepareShardsForLogReplay();
   _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(

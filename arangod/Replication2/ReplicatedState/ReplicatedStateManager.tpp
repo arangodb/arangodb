@@ -116,8 +116,7 @@ void ReplicatedStateManager<S>::leadershipEstablished(
   ADB_PROD_ASSERT(oldMethods == nullptr);
   auto stream = std::make_shared<typename LeaderStateManager<S>::StreamImpl>(
       std::move(methods));
-  auto leaderState =
-      _factory->constructLeader(std::move(core), std::move(stream));
+  auto leaderState = _factory->constructLeader(std::move(core), stream);
   auto& manager =
       guard->_currentManager
           .template emplace<std::shared_ptr<LeaderStateManager<S>>>(
@@ -149,8 +148,7 @@ void ReplicatedStateManager<S>::becomeFollower(
 
   auto stream = std::make_shared<typename FollowerStateManager<S>::StreamImpl>(
       std::move(methods));
-  auto followerState = _factory->constructFollower(
-      std::move(core), std::move(stream), _scheduler);
+  auto followerState = _factory->constructFollower(std::move(core), stream, _scheduler);
   auto stateManager = std::make_shared<FollowerStateManager<S>>(
       _loggerContext.template with<logContextKeyStateRole>(
           static_strings::StringFollower),
