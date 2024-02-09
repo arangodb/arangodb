@@ -5057,6 +5057,8 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
        VPackSlice::emptyObjectSlice()},
       {"Current/ReplicatedLogs", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
+      {"Plan/Analyzers", AgencyValueOperationType::SET,
+       plan.get({"arango", "Plan", "Analyzers"})},
       {"Plan/Views", AgencyValueOperationType::SET,
        plan.get({"arango", "Plan", "Views"})},
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},

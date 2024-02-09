@@ -219,8 +219,8 @@ class IResearchView final : public LogicalView {
       _trxCallback;  // for snapshot(...)
   std::atomic<bool> _inRecovery;
 
-  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice const& info,
-                IResearchViewMeta&& meta);
+  IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice info,
+                IResearchViewMeta&& meta, bool isUserRequest);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief called when a view's properties are updated (i.e. delta-modified)

@@ -54,7 +54,7 @@ struct TestView : public arangodb::LogicalView {
 
   TestView(TRI_vocbase_t& vocbase,
            arangodb::velocypack::Slice const& definition)
-      : arangodb::LogicalView(*this, vocbase, definition) {}
+      : arangodb::LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder& build,
                                    Serialization, bool) const override {
     build.add("properties", _properties.slice());

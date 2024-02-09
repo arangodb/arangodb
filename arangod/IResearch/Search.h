@@ -94,7 +94,7 @@ class Search final : public LogicalView {
   //////////////////////////////////////////////////////////////////////////////
   static ViewFactory const& factory();
 
-  Search(TRI_vocbase_t& vocbase, velocypack::Slice info);
+  Search(TRI_vocbase_t& vocbase, velocypack::Slice info, bool isUserRequest);
   ~Search() final;
 
   /// Get from indexes

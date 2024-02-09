@@ -96,7 +96,7 @@ function BaseTestConfig () {
         } else if (tries === 20) {
           // wait several seconds so we can be sure the failure point was triggered.
           clearFailurePoints([]);
-          waitForShardsInSync(cn, 60, 1); 
+          waitForShardsInSync(cn, undefined, 1); 
         }
         require("internal").sleep(0.5);
       }
@@ -154,7 +154,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -212,7 +212,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -279,7 +279,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -347,7 +347,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -417,7 +417,7 @@ function BaseTestConfig () {
       
       c.properties({ replicationFactor: 3 });
       
-      waitForShardsInSync(cn, 60, 2); 
+      waitForShardsInSync(cn, undefined, 2); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -479,7 +479,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 3 });
 
-      waitForShardsInSync(cn, 60, 2); 
+      waitForShardsInSync(cn, undefined, 2); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -552,7 +552,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 3 });
       
-      waitForShardsInSync(cn, 60, 2); 
+      waitForShardsInSync(cn, undefined, 2); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -610,7 +610,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -668,7 +668,7 @@ function BaseTestConfig () {
 
       c.properties({ replicationFactor: 2 });
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
 
       // wait until we have an in-sync follower
       let tries = 0;
@@ -719,7 +719,7 @@ function BaseTestConfig () {
       }
       c.insert(docs);
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -746,7 +746,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -802,7 +802,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -825,7 +825,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -883,7 +883,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
@@ -907,7 +907,7 @@ function BaseTestConfig () {
       
       clearFailurePoints([]);
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
         
       // wait until we have an in-sync follower again
       tries = 0;
@@ -968,7 +968,7 @@ function BaseTestConfig () {
         c.insert({ _key: "test" + i }); 
       }
       
-      waitForShardsInSync(cn, 60, 1); 
+      waitForShardsInSync(cn, undefined, 1); 
       
       // wait until we have an in-sync follower
       let tries = 0;
