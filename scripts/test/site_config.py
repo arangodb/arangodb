@@ -109,8 +109,10 @@ class SiteConfig:
             self.portbase = int(os.environ["PORTBASE"])
         self.port_offset = 100
         self.timeout = 1800
-        if os.environ.get("SAN_MODE") != "":
-            self.timeout *= 4
+        if os.environ.get("SAN_MODE") != "alubsan":
+            self.timeout *= 3
+        elif os.environ.get("SAN_MODE") != "tsan":
+            self.timeout *= 6
         if "timeLimit".upper() in os.environ:
             self.timeout = int(os.environ["timeLimit".upper()])
         elif "timeLimit" in os.environ:
