@@ -6888,6 +6888,8 @@ arangodb::Result ClusterInfo::agencyReplan(VPackSlice const plan) {
        plan.get({"arango", "Plan", "Databases"})},
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
+      {"Plan/Analyzers", AgencyValueOperationType::SET,
+       plan.get({"arango", "Plan", "Analyzers"})},
       {"Plan/Views", AgencyValueOperationType::SET,
        plan.get({"arango", "Plan", "Views"})},
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
