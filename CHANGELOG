@@ -1,4 +1,4 @@
-v3.11.7.1 (XXXX-XX-XX)
+v3.11.7.1 (2024-02-09)
 ----------------------
 
 * ES-1892: Fix hot restores missing user defined analyzers.
