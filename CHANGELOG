@@ -2,6 +2,8 @@ devel
 -----
 
 
+* Updated ArangoDB Starter to v0.18.2-preview-2.
+
 * ES-1892: Fix hot restores missing user defined analyzers.
 
 * Added startup options `--network.compression-method` and 
