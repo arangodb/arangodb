@@ -109,9 +109,10 @@ class SiteConfig:
             self.portbase = int(os.environ["PORTBASE"])
         self.port_offset = 100
         self.timeout = 1800
-        if os.environ.get("SAN_MODE") != "alubsan":
+        san_mode = os.environ.get("SAN_MODE") or "<na>"
+        if san_mode != "alubsan":
             self.timeout *= 3
-        elif os.environ.get("SAN_MODE") != "tsan":
+        elif san_mode != "tsan":
             self.timeout *= 6
         if "timeLimit".upper() in os.environ:
             self.timeout = int(os.environ["timeLimit".upper()])
@@ -153,6 +154,7 @@ class SiteConfig:
         self.is_asan = "SAN" in os.environ and os.environ["SAN"] == "On"
         self.is_aulsan = self.is_asan and os.environ["SAN_MODE"] == "AULSan"
         self.is_gcov = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
+        logging.info("Timeout is set to %d - san_mode is %s", self.timeout, san_mode)
         san_gcov_msg = ""
         if self.is_asan or self.is_gcov:
             san_gcov_msg = " - SAN "
