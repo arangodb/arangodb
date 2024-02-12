@@ -11,6 +11,8 @@ devel
   bundles from remote sources has been increased from 10 seconds to 60 seconds
   for both the web UI and the Foxx HTTP API.
 
+* Updated ArangoDB Starter to v0.18.2-preview-2.
+
 * ES-1892: Fix hot restores missing user defined analyzers.
 
 * Added startup options `--network.compression-method` and 
