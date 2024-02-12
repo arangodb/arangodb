@@ -161,7 +161,8 @@ class LogicalView : public LogicalDataSource {
 
  private:
   LogicalView(std::pair<ViewType, std::string_view> typeInfo,
-              TRI_vocbase_t& vocbase, velocypack::Slice definition);
+              TRI_vocbase_t& vocbase, velocypack::Slice definition,
+              bool isUserRequest);
 
   // TODO seems to be ugly
   friend struct ::TRI_vocbase_t;
