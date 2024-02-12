@@ -48,7 +48,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
-      : LogicalView(*this, vocbase, definition) {}
+      : LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
                                    Serialization, bool) const override {
     return {};
