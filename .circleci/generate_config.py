@@ -269,7 +269,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         # sanitizer builds need more resources
         if size == "small":
             size = "xlarge" if build_config.sanitizer == "tsan" and cluster else "large"
-        elif size == "medium" or size == "medium+" or size == "large":
+        elif size in ["medium", "medium+", "large"]:
             size = "xlarge"
 
     deployment_variant = (
