@@ -122,7 +122,6 @@ installer.use(function (req, res, next) {
       }
     }
   } catch (e) {
-    console.error(req.path);
     if (e.isArangoError && [
       errors.ERROR_MODULE_FAILURE.code,
       errors.ERROR_MALFORMED_MANIFEST_FILE.code,
