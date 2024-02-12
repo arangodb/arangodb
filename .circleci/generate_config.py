@@ -292,6 +292,12 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         job["extraArgs"] = " ".join(extra_args)
 
     buckets = params.get("buckets", 1)
+    if suite_name == "replication_sync":
+        # Note: for the replication_sync suite the test-definition.txt specifies only 2 buckets,
+        # because increasing this causes issues in Jenkins. However, in CircleCI we definitely
+        # want to use more buckets, especially when running with sanitizers.
+        buckets = 4
+
     if buckets != 1:
         job["buckets"] = buckets
 
