@@ -110,9 +110,9 @@ class SiteConfig:
         self.port_offset = 100
         self.timeout = 1800
         san_mode = os.environ.get("SAN_MODE") or "<na>"
-        if san_mode != "alubsan":
+        if san_mode == "alubsan":
             self.timeout *= 3
-        elif san_mode != "tsan":
+        elif san_mode == "tsan":
             self.timeout *= 6
         if "timeLimit".upper() in os.environ:
             self.timeout = int(os.environ["timeLimit".upper()])
