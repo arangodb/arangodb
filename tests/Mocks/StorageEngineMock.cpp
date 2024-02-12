@@ -1004,7 +1004,8 @@ PhysicalCollectionMock::PhysicalCollectionMock(
     : PhysicalCollection(collection), _lastDocumentId{0} {}
 
 std::shared_ptr<arangodb::Index> PhysicalCollectionMock::createIndex(
-    arangodb::velocypack::Slice info, bool restore, bool& created) {
+    arangodb::velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>>) {
   before();
 
   std::vector<std::pair<arangodb::LocalDocumentId, arangodb::velocypack::Slice>>
@@ -1332,7 +1333,7 @@ arangodb::IndexEstMap PhysicalCollectionMock::clusterIndexEstimates(
 arangodb::Result PhysicalCollectionMock::read(
     arangodb::transaction::Methods*, std::string_view key,
     arangodb::IndexIterator::DocumentCallback const& cb,
-    arangodb::ReadOwnWrites) const {
+    arangodb::ReadOwnWrites, bool /*countBytes*/) const {
   before();
   auto it = _documents.find(key);
   if (it != _documents.end()) {
@@ -1345,7 +1346,7 @@ arangodb::Result PhysicalCollectionMock::read(
 arangodb::Result PhysicalCollectionMock::read(
     arangodb::transaction::Methods* trx, arangodb::LocalDocumentId const& token,
     arangodb::IndexIterator::DocumentCallback const& cb,
-    arangodb::ReadOwnWrites) const {
+    arangodb::ReadOwnWrites, bool /*countBytes*/) const {
   before();
   for (auto const& entry : _documents) {
     auto& doc = entry.second;
@@ -1360,7 +1361,8 @@ arangodb::Result PhysicalCollectionMock::read(
 arangodb::Result PhysicalCollectionMock::lookupDocument(
     arangodb::transaction::Methods& /*trx*/, arangodb::LocalDocumentId token,
     arangodb::velocypack::Builder& builder, bool /*readCache*/,
-    bool /*fillCache*/, arangodb::ReadOwnWrites /*readOwnWrites*/) const {
+    bool /*fillCache*/, arangodb::ReadOwnWrites /*readOwnWrites*/,
+    bool /*countBytes*/) const {
   before();
   for (auto const& entry : _documents) {
     auto& doc = entry.second;

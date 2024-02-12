@@ -511,18 +511,6 @@ bool LogicalCollection::determineSyncByRevision() const {
   return false;
 }
 
-std::vector<std::shared_ptr<Index>> LogicalCollection::getIndexes() const {
-  return getPhysical()->getIndexes();
-}
-
-void LogicalCollection::getIndexesVPack(
-    VPackBuilder& result,
-    std::function<bool(Index const*,
-                       std::underlying_type<Index::Serialize>::type&)> const&
-        filter) const {
-  getPhysical()->getIndexesVPack(result, filter);
-}
-
 bool LogicalCollection::allowUserKeys() const noexcept {
   return _allowUserKeys;
 }
@@ -596,18 +584,19 @@ Result LogicalCollection::drop() {
 void LogicalCollection::toVelocyPackForInventory(VPackBuilder& result) const {
   result.openObject();
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](arangodb::Index const* idx,
-                             decltype(Index::makeFlags())& flags) {
-    // we have to exclude the primary and edge index for dump / restore
-    switch (idx->type()) {
-      case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
-      case Index::TRI_IDX_TYPE_EDGE_INDEX:
-        return false;
-      default:
-        flags = Index::makeFlags(Index::Serialize::Inventory);
-        return !idx->isHidden();
-    }
-  });
+  getPhysical()->getIndexesVPack(
+      result,
+      [](arangodb::Index const* idx, decltype(Index::makeFlags())& flags) {
+        // we have to exclude the primary and edge index for dump / restore
+        switch (idx->type()) {
+          case Index::TRI_IDX_TYPE_PRIMARY_INDEX:
+          case Index::TRI_IDX_TYPE_EDGE_INDEX:
+            return false;
+          default:
+            flags = Index::makeFlags(Index::Serialize::Inventory);
+            return !idx->isHidden();
+        }
+      });
   result.add("parameters", VPackValue(VPackValueType::Object));
   toVelocyPackIgnore(
       result,
@@ -657,7 +646,7 @@ void LogicalCollection::toVelocyPackForClusterInventory(VPackBuilder& result,
   }
 
   result.add(VPackValue(StaticStrings::Indexes));
-  getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
+  getPhysical()->getIndexesVPack(result, [](Index const* idx, uint8_t& flags) {
     // we have to exclude the primary and the edge index here, because otherwise
     // at least the MMFiles engine will try to create it
     // AND exclude hidden indexes
@@ -737,7 +726,7 @@ Result LogicalCollection::appendVPack(velocypack::Builder& build,
     }
     return false;
   };
-  getIndexesVPack(build, filter);
+  getPhysical()->getIndexesVPack(build, filter);
 
   // Schema
   build.add(VPackValue(StaticStrings::Schema));
@@ -1054,9 +1043,11 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
   return getPhysical()->lookupIndex(info);
 }
 
-std::shared_ptr<Index> LogicalCollection::createIndex(VPackSlice info,
-                                                      bool& created) {
-  auto idx = _physical->createIndex(info, /*restore*/ false, created);
+std::shared_ptr<Index> LogicalCollection::createIndex(
+    VPackSlice info, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+  auto idx = _physical->createIndex(info, /*restore*/ false, created,
+                                    std::move(progress));
   if (idx) {
     auto& df = vocbase().server().getFeature<DatabaseFeature>();
     if (df.versionTracker() != nullptr) {

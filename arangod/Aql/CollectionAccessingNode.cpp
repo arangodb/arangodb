@@ -32,6 +32,7 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Indexes/Index.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
@@ -118,14 +119,15 @@ void CollectionAccessingNode::toVelocyPackHelperPrimaryIndex(
     arangodb::velocypack::Builder& builder) const {
   auto col = collection()->getCollection();
   builder.add(VPackValue("indexes"));
-  col->getIndexesVPack(builder, [](arangodb::Index const* idx, uint8_t& flags) {
-    if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
-      flags = Index::makeFlags(Index::Serialize::Basics);
-      return true;
-    }
+  col->getPhysical()->getIndexesVPack(
+      builder, [](arangodb::Index const* idx, uint8_t& flags) {
+        if (idx->type() == arangodb::Index::TRI_IDX_TYPE_PRIMARY_INDEX) {
+          flags = Index::makeFlags(Index::Serialize::Basics);
+          return true;
+        }
 
-    return false;
-  });
+        return false;
+      });
 }
 
 bool CollectionAccessingNode::isUsedAsSatellite() const {

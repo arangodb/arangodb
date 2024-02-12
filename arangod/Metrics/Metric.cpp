@@ -46,8 +46,8 @@ void Metric::addMark(std::string& result, std::string_view name,
 }
 
 Metric::Metric(std::string_view name, std::string_view help,
-               std::string_view labels) noexcept
-    : _name{name}, _help{help}, _labels{labels} {}
+               std::string_view labels, bool dynamic)
+    : _name{name}, _help{help}, _labels{labels}, _dynamic(dynamic) {}
 
 std::string_view Metric::name() const noexcept { return _name; }
 

@@ -32,12 +32,13 @@
 #include "Aql/QueryProfile.h"
 #include "Basics/ScopeGuard.h"
 #include "Cluster/ServerState.h"
+#include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
-#include "RestServer/QueryRegistryFeature.h"
-#include "Cluster/TraverserEngine.h"
+#include "Utils/CollectionNameResolver.h"
 
 #include <velocypack/Iterator.h>
 
@@ -94,7 +95,8 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, VPackBuilder& answerBuilder,
+    VPackSlice snippets, VPackSlice traverserSlice, std::string const& user,
+    VPackBuilder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
       << elapsedSince(_startTime) << " ClusterQuery::prepareClusterQuery"
@@ -147,6 +149,7 @@ void ClusterQuery::prepareClusterQuery(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   if (_trx->state()->isDBServer()) {
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+    _trx->setUsername(user);
   }
 
   double origLockTimeout = _trx->state()->options().lockTimeout;
@@ -166,6 +169,16 @@ void ClusterQuery::prepareClusterQuery(
         RandomGenerator::interval(uint32_t(100)) >= 95) {
       THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
     }
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    _collections.visit([&](std::string const&,
+                           aql::Collection const& c) -> bool {
+      // this code will only execute on leaders
+      _trx->state()->trackShardRequest(*_trx->resolver(), _vocbase.name(),
+                                       c.name(), user, c.accessType(), "aql");
+      return true;
+    });
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);

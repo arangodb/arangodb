@@ -123,8 +123,13 @@ class PhysicalCollection {
   /// @brief Find index by name
   std::shared_ptr<Index> lookupIndex(std::string_view idxName) const;
 
-  /// @brief get list of all indexes
-  std::vector<std::shared_ptr<Index>> getIndexes() const;
+  /// @brief get list of all indexes. this includes in-progress indexes and thus
+  /// should be used with care
+  std::vector<std::shared_ptr<Index>> getAllIndexes() const;
+
+  /// @brief get a list of "ready" indexes, that means all indexes which are
+  /// not "in progress" anymore
+  std::vector<std::shared_ptr<Index>> getReadyIndexes() const;
 
   /// @brief get a snapshot of all indexes of the collection, with the read
   /// lock on the list of indexes being held while the snapshot is active
@@ -144,8 +149,9 @@ class PhysicalCollection {
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
-  virtual std::shared_ptr<Index> createIndex(velocypack::Slice info,
-                                             bool restore, bool& created) = 0;
+  virtual std::shared_ptr<Index> createIndex(
+      velocypack::Slice info, bool restore, bool& created,
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
 
   virtual Result dropIndex(IndexId iid);
 
@@ -191,12 +197,12 @@ class PhysicalCollection {
 
   virtual Result read(transaction::Methods*, std::string_view key,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   virtual Result readFromSnapshot(transaction::Methods* trx,
                                   LocalDocumentId const& token,
                                   IndexIterator::DocumentCallback const& cb,
-                                  ReadOwnWrites readOwnWrites,
+                                  ReadOwnWrites readOwnWrites, bool countBytes,
                                   StorageSnapshot const& snapshot) const {
     TRI_ASSERT(false);
     return {TRI_ERROR_NOT_IMPLEMENTED};
@@ -204,13 +210,13 @@ class PhysicalCollection {
 
   virtual Result read(transaction::Methods* trx, LocalDocumentId const& token,
                       IndexIterator::DocumentCallback const& cb,
-                      ReadOwnWrites readOwnWrites) const = 0;
+                      ReadOwnWrites readOwnWrites, bool countBytes) const = 0;
 
   virtual Result lookupDocument(transaction::Methods& trx,
                                 LocalDocumentId token,
                                 velocypack::Builder& builder, bool readCache,
-                                bool fillCache,
-                                ReadOwnWrites readOwnWrites) const = 0;
+                                bool fillCache, ReadOwnWrites readOwnWrites,
+                                bool countBytes) const = 0;
 
   virtual Result insert(transaction::Methods& trx,
                         IndexesSnapshot const& indexesSnapshot,

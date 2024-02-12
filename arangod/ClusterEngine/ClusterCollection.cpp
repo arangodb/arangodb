@@ -200,9 +200,9 @@ uint64_t ClusterCollection::numberDocuments(transaction::Methods* trx) const {
   THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
 }
 
-std::shared_ptr<Index> ClusterCollection::createIndex(velocypack::Slice info,
-                                                      bool restore,
-                                                      bool& created) {
+std::shared_ptr<Index> ClusterCollection::createIndex(
+    velocypack::Slice info, bool restore, bool& created,
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // prevent concurrent dropping
@@ -266,7 +266,8 @@ Result ClusterCollection::lookupKeyForUpdate(
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                std::string_view /*key*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+                               ReadOwnWrites /*readOwnWrites*/,
+                               bool /*countBytes*/) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
@@ -274,14 +275,17 @@ Result ClusterCollection::read(transaction::Methods* /*trx*/,
 Result ClusterCollection::read(transaction::Methods* /*trx*/,
                                LocalDocumentId const& /*documentId*/,
                                IndexIterator::DocumentCallback const& /*cb*/,
-                               ReadOwnWrites /*readOwnWrites*/) const {
+                               ReadOwnWrites /*readOwnWrites*/,
+                               bool /*countBytes*/) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 
-Result ClusterCollection::lookupDocument(
-    transaction::Methods& /*trx*/, LocalDocumentId /*documentId*/,
-    velocypack::Builder& /*builder*/, bool /*readCache*/, bool /*fillCache*/,
-    ReadOwnWrites /*readOwnWrites*/) const {
+Result ClusterCollection::lookupDocument(transaction::Methods& /*trx*/,
+                                         LocalDocumentId /*documentId*/,
+                                         velocypack::Builder& /*builder*/,
+                                         bool /*readCache*/, bool /*fillCache*/,
+                                         ReadOwnWrites /*readOwnWrites*/,
+                                         bool /*countBytes*/) const {
   return {TRI_ERROR_NOT_IMPLEMENTED};
 }
 

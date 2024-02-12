@@ -137,7 +137,8 @@ arangodb::Result removeRevisions(
       tempBuilder->clear();
       res = physical->lookupDocument(trx, documentId, *tempBuilder,
                                      /*readCache*/ true, /*fillCache*/ false,
-                                     arangodb::ReadOwnWrites::yes);
+                                     arangodb::ReadOwnWrites::yes,
+                                     /*countBytes*/ false);
 
       if (res.ok()) {
         res = physical->remove(trx, indexesSnapshot, documentId, rid,
@@ -238,7 +239,8 @@ arangodb::Result fetchRevisions(
       tempBuilder->clear();
       r = physical->lookupDocument(trx, documentId, *tempBuilder,
                                    /*readCache*/ true, /*fillCache*/ false,
-                                   arangodb::ReadOwnWrites::yes);
+                                   arangodb::ReadOwnWrites::yes,
+                                   /*countBytes*/ false);
 
       if (r.ok()) {
         TRI_ASSERT(tempBuilder->slice().isObject());
@@ -260,7 +262,7 @@ arangodb::Result fetchRevisions(
 
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : collection.getIndexes()) {
+    for (auto const& idx : collection.getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -421,7 +423,8 @@ arangodb::Result fetchRevisions(
                   ->lookupDocument(trx, arangodb::LocalDocumentId(rid.id()),
                                    docBuilder, /*readCache*/ true,
                                    /*fillCache*/ true,
-                                   arangodb::ReadOwnWrites::yes)
+                                   arangodb::ReadOwnWrites::yes,
+                                   /*countBytes*/ false)
                   .ok()) {
             // already have exactly this revision. no need to insert
             sl.erase(rid);

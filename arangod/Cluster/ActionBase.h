@@ -112,8 +112,18 @@ class ActionBase {
   /// @brief finalize statistics
   void endStats();
 
+  /**
+   *  @brief    update progress by long running processes
+   *  @param  d percentage of work done
+   *  @return   abort if !ok(), true if ok(), with reason to abort.
+   */
+  arangodb::Result setProgress(double d);
+
   /// @brief return progress statistic
-  uint64_t getProgress() const { return _progress.load(); }
+  double getProgress() const {
+    std::lock_guard<std::mutex> guard(_progressMutex);
+    return _progress;
+  }
 
   /// @brief Once PreAction completes, remove its pointer
   void clearPreAction() { _preAction.reset(); }
@@ -237,7 +247,9 @@ class ActionBase {
   std::atomic<std::chrono::system_clock::duration> _actionLastStat;
   std::atomic<std::chrono::system_clock::duration> _actionDone;
 
-  std::atomic<uint64_t> _progress;
+  // So far, std::atomic<double> does not have `fetch_add` on all platforms:
+  mutable std::mutex _progressMutex;  // protects _progress
+  double _progress;
 
   int _priority;
 

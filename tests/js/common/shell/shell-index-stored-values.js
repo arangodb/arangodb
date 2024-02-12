@@ -954,6 +954,39 @@ function indexStoredValuesResultsSuite() {
         assertEqual(base * 3, result[i].value3);
       }
     },
+
+    testResultAfterUpdate: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
+      const n = 100;
+     
+      db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc.value1 == i UPDATE doc WITH { value2: 10 * i, value3: 5 * i } IN ${cn}`);
+
+      for (let i = 0; i < n; ++i) {
+        let result = db._query(`FOR doc IN ${cn} FILTER doc.value1 == ${i} RETURN [doc.value2, doc.value3]`).toArray();
+        assertEqual(1, result.length);
+
+        let doc = result[0];
+        assertEqual(10 * i, doc[0]);
+        assertEqual(5 * i, doc[1]);
+      }
+    },
+    
+    testResultAfterUpdateUnique: function () {
+      c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"], unique: true });
+      const n = 100;
+     
+      db._query(`FOR i IN 0..${n - 1} FOR doc IN ${cn} FILTER doc.value1 == i UPDATE doc WITH { value2: 10 * i, value3: 5 * i } IN ${cn}`);
+
+      for (let i = 0; i < n; ++i) {
+        let result = db._query(`FOR doc IN ${cn} FILTER doc.value1 == ${i} RETURN [doc.value2, doc.value3]`).toArray();
+        assertEqual(1, result.length);
+
+        let doc = result[0];
+        assertEqual(10 * i, doc[0]);
+        assertEqual(5 * i, doc[1]);
+      }
+    },
+
   };
 }
 
