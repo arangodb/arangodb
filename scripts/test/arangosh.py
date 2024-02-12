@@ -101,7 +101,7 @@ class ArangoshExecutor(ArangoCLIprogressiveTimeoutExecutor):
             + self.get_memory_limit_arg()
             + testing_args
         )
-        logging.info("Starting arangosh with the following arguments: ", run_cmd)
+        logging.info("Starting arangosh with the following arguments: %s", str(run_cmd))
         params = make_logfile_params(verbose, logfile, self.cfg.trace, temp_dir)
         ret = self.run_monitored(
             self.cfg.bin_dir / "arangosh",
