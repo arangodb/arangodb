@@ -296,7 +296,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         # Note: for the replication_sync suite the test-definition.txt specifies only 2 buckets,
         # because increasing this causes issues in Jenkins. However, in CircleCI we definitely
         # want to use more buckets, especially when running with sanitizers.
-        buckets = 4
+        buckets = 5
 
     if buckets != 1:
         job["buckets"] = buckets
