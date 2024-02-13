@@ -1,6 +1,8 @@
 v3.10.14 (XXXX-XX-XX)
 ---------------------
 
+* Updated ArangoDB Starter to v0.18.2.
+
 * Rebuilt included rclone v1.59.0 with go1.21.6.
 
 * ES-1892: Fix hot restores missing user defined analyzers.
