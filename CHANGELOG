@@ -1,6 +1,8 @@
 devel
 -----
 
+* Updated rclone to v1.65.2 (built with go1.21.6).
+
 * FE-426: Better error messages for Foxx installation failures.
 
   When installing Foxx services from the web UI, the error messages for
