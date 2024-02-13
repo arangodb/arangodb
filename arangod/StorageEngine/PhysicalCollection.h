@@ -150,11 +150,15 @@ class PhysicalCollection {
   virtual futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options);
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created
   virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
-      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr) = 0;
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr) = 0;
 
   virtual Result dropIndex(IndexId iid);
 

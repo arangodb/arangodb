@@ -326,10 +326,14 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Indexes
 
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+
   /// @brief Create a new Index based on VelocyPack description
   virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice, bool&,
-      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;
