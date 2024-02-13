@@ -1,6 +1,8 @@
 v3.10.14 (XXXX-XX-XX)
 ---------------------
 
+* Rebuilt included rclone v1.59.0 with go1.21.6.
+
 * ES-1892: Fix hot restores missing user defined analyzers.
 
 * BTS-1751: Strange error message when executing a query while creating an index
