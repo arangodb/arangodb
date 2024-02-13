@@ -128,8 +128,8 @@ auto DocumentStateShardHandler::getAvailableShards()
 
 auto DocumentStateShardHandler::ensureIndex(
     ShardID shard, velocypack::SharedSlice properties,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
-    -> Result {
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+    methods::Indexes::Replication2Callback callback) noexcept -> Result {
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),
@@ -137,7 +137,8 @@ auto DocumentStateShardHandler::ensureIndex(
   }
 
   auto res = _maintenance->executeCreateIndex(std::move(col).get(), properties,
-                                              std::move(progress));
+                                              std::move(progress),
+                                              std::move(callback));
   std::ignore = _maintenance->addDirty();
 
   if (res.fail()) {
@@ -146,7 +147,7 @@ auto DocumentStateShardHandler::ensureIndex(
         fmt::format(
             "Error: {}! Replicated log {} failed to ensure index on shard {}! "
             "Index: {}",
-            res.errorMessage(), _gid, std::move(shard), properties.toJson()));
+            res.errorMessage(), _gid, shard, properties.toJson()));
   }
   return res;
 }

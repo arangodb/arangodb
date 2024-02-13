@@ -394,14 +394,15 @@ futures::Future<arangodb::Result> Indexes::getAll(
 
 static futures::Future<Result> EnsureIndexLocal(
     arangodb::LogicalCollection& collection, VPackSlice definition, bool create,
-    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress) {
+    VPackBuilder& output, std::shared_ptr<Indexes::ProgressTracker> progress,
+    Indexes::Replication2Callback replicationCb) {
   auto lambda = [&]() -> futures::Future<futures::Unit> {
     bool created = false;
     std::shared_ptr<arangodb::Index> idx;
 
     if (create) {
-      idx = co_await collection.createIndex(definition, created,
-                                            std::move(progress));
+      idx = co_await collection.createIndex(
+          definition, created, std::move(progress), std::move(replicationCb));
       TRI_ASSERT(idx != nullptr);
     } else {
       idx = collection.lookupIndex(definition);
@@ -463,7 +464,8 @@ std::unordered_set<std::string_view> extractRelevantKeysForSharding(
 
 futures::Future<arangodb::Result> Indexes::ensureIndex(
     LogicalCollection& collection, VPackSlice input, bool create,
-    VPackBuilder& output, std::shared_ptr<ProgressTracker> progress) {
+    VPackBuilder& output, std::shared_ptr<ProgressTracker> progress,
+    Replication2Callback replicationCb) {
   ErrorCode ensureIndexResult = TRI_ERROR_INTERNAL;
   // always log a message at the end of index creation
   auto logResultToAuditLog = scopeGuard([&]() noexcept {
@@ -606,7 +608,8 @@ futures::Future<arangodb::Result> Indexes::ensureIndex(
     }
   } else {
     res = co_await EnsureIndexLocal(collection, indexDef, create, output,
-                                    std::move(progress));
+                                    std::move(progress),
+                                    std::move(replicationCb));
   }
 
   ensureIndexResult = res.errorNumber();
