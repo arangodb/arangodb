@@ -175,7 +175,7 @@ function runArangodRecovery (params, useEncryption, isKillAfterSetup = true) {
   let agentArgs = pu.makeArgs.arangosh(params.options);
   agentArgs['server.endpoint'] = params.instanceManager.findEndpoint();
   if (params.args['log.level']) {
-    agentArgs['log.level'] = params.args['log.level'];
+    agentArgs['log.level'] = ['warning', 'httpclient=debug', 'V8=debug'],
   }
 
   Object.assign(agentArgs, additionalTestParams);
