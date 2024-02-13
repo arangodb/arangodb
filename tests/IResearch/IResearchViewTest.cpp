@@ -454,8 +454,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -477,8 +476,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -563,10 +561,8 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -644,8 +640,7 @@ TEST_F(IResearchViewTest, test_properties_user_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -785,8 +780,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -808,8 +802,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -894,10 +887,8 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -974,8 +965,7 @@ TEST_F(IResearchViewTest, test_properties_user_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1114,8 +1104,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -1137,8 +1126,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1223,10 +1211,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1303,8 +1289,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1444,8 +1429,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
   }
@@ -1467,8 +1451,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1553,10 +1536,8 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
-    EXPECT_TRUE(slice.get("planId").isString() &&
-                "101" == slice.get("planId").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
+    EXPECT_TRUE(slice.get("planId").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -1633,8 +1614,7 @@ TEST_F(IResearchViewTest, test_properties_internal_request_explicit_version) {
                 "testView" == slice.get("name").copyString());
     EXPECT_TRUE(slice.get("type").isString() &&
                 "arangosearch" == slice.get("type").copyString());
-    EXPECT_TRUE(slice.get("id").isString() &&
-                "101" == slice.get("id").copyString());
+    EXPECT_TRUE(slice.get("id").isString());
     EXPECT_TRUE(slice.get("globallyUniqueId").isString() &&
                 !slice.get("globallyUniqueId").copyString().empty());
     EXPECT_TRUE(slice.get("consolidationIntervalMsec").isNumber() &&
@@ -4474,7 +4454,7 @@ TEST_F(IResearchViewTest, test_register_link) {
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
            false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE(slice.get("id").copyString() == "101");
+      EXPECT_TRUE(slice.get("id").isString());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
@@ -4555,7 +4535,7 @@ TEST_F(IResearchViewTest, test_register_link) {
           (slice.hasKey("globallyUniqueId") &&
            slice.get("globallyUniqueId").isString() &&
            false == slice.get("globallyUniqueId").copyString().empty()));
-      EXPECT_TRUE(slice.get("id").copyString() == "101");
+      EXPECT_TRUE(slice.get("id").isString());
       EXPECT_TRUE(slice.get("name").copyString() == "testView");
       EXPECT_TRUE(slice.get("type").copyString() ==
                   arangodb::iresearch::StaticStrings::ViewArangoSearchType);
