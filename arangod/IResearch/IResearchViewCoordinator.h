@@ -131,7 +131,8 @@ class IResearchViewCoordinator final : public LogicalView {
 
   struct ViewFactory;
 
-  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info);
+  IResearchViewCoordinator(TRI_vocbase_t& vocbase, VPackSlice info,
+                           bool isUserRequest);
 
   // transient member, not persisted
   struct Data {

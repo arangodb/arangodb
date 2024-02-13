@@ -433,7 +433,7 @@ Result SearchFactory::instantiate(LogicalView::ptr& view,
                                   bool isUserRequest) const {
   TRI_ASSERT(ServerState::instance()->isCoordinator() ||
              ServerState::instance()->isSingleServer());
-  auto impl = std::make_shared<Search>(vocbase, definition);
+  auto impl = std::make_shared<Search>(vocbase, definition, isUserRequest);
   auto indexesSlice = definition.get("indexes");
   if (indexesSlice.isNone()) {
     view = impl;
@@ -457,8 +457,9 @@ ViewFactory const& Search::factory() {
   return factory;
 }
 
-Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition)
-    : LogicalView{*this, vocbase, definition},
+Search::Search(TRI_vocbase_t& vocbase, velocypack::Slice definition,
+               bool isUserRequest)
+    : LogicalView{*this, vocbase, definition, isUserRequest},
       _meta{std::make_shared<SearchMeta const>()} {
   if (ServerState::instance()->isSingleServer()) {
     _asyncSelf = std::make_shared<AsyncSearchPtr::element_type>(this);

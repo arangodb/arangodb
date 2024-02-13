@@ -148,11 +148,11 @@ struct IResearchViewCoordinator::ViewFactory final : arangodb::ViewFactory {
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                      velocypack::Slice definition,
-                     bool /*isUserRequest*/) const final {
+                     bool isUserRequest) const final {
     std::string error;
     // TODO make_shared instead of new
     auto impl = std::shared_ptr<IResearchViewCoordinator>(
-        new IResearchViewCoordinator(vocbase, definition));
+        new IResearchViewCoordinator(vocbase, definition, isUserRequest));
     if (!impl->_meta.init(definition, error)) {
       return {TRI_ERROR_BAD_PARAMETER,
               absl::StrCat(
@@ -307,8 +307,9 @@ Result IResearchViewCoordinator::unlink(DataSourceId) noexcept {
 }
 
 IResearchViewCoordinator::IResearchViewCoordinator(TRI_vocbase_t& vocbase,
-                                                   velocypack::Slice info)
-    : LogicalView(*this, vocbase, info) {
+                                                   velocypack::Slice info,
+                                                   bool isUserRequest)
+    : LogicalView(*this, vocbase, info, isUserRequest) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 }
 
