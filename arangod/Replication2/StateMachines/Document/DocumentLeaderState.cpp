@@ -156,52 +156,51 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
       if (isSafeForReplay) {
         auto res = std::visit(
-            overload{
-                [&](ModifiesUserTransaction auto const& op) -> Result {
-                  auto trxResult = data.transactionHandler->applyEntry(op);
-                  // Only add it as an active transaction if the operation was
-                  // successful.
-                  if (trxResult.ok()) {
-                    activeTransactions.insert(op.tid);
-                  }
-                  return trxResult;
-                },
-                [&](FinishesUserTransactionOrIntermediate auto const& op)
-                    -> Result {
-                  // There are three cases where we can end up here:
-                  // 1. After recovery, we did not get the beginning of the
-                  // transaction.
-                  // 2. We ignored all other operations for this transaction
-                  // because the shard was dropped.
-                  // 3. The transaction applies to multiple shards, which all
-                  // had the same leader, thus multiple commits were replicated
-                  // for the same transaction.
-                  if (activeTransactions.erase(op.tid) == 0) {
-                    return Result{};
-                  }
-                  return data.transactionHandler->applyEntry(op);
-                },
-                [&](ReplicatedOperation::DropShard const& op) -> Result {
-                  // Abort all transactions for this shard.
-                  for (auto const& tid :
-                       data.transactionHandler->getTransactionsForShard(
-                           op.shard)) {
-                    activeTransactions.erase(tid);
-                    auto abortRes = data.transactionHandler->applyEntry(
-                        ReplicatedOperation::buildAbortOperation(tid));
-                    if (abortRes.fail()) {
-                      LOG_CTX("3eb75", INFO, self->loggerContext)
-                          << "failed to abort transaction " << tid
-                          << " for shard " << op.shard
-                          << " during recovery: " << abortRes;
-                      return abortRes;
-                    }
-                  }
-                  return data.transactionHandler->applyEntry(op);
-                },
-                [&](auto const& op) {
-                  return data.transactionHandler->applyEntry(op);
-                }},
+            overload{[&](ModifiesUserTransaction auto const& op) -> Result {
+                       auto trxResult = data.transactionHandler->applyEntry(op);
+                       // Only add it as an active transaction if the operation
+                       // was successful.
+                       if (trxResult.ok()) {
+                         activeTransactions.insert(op.tid);
+                       }
+                       return trxResult;
+                     },
+                     [&](FinishesUserTransactionOrIntermediate auto const& op)
+                         -> Result {
+                       // There are three cases where we can end up here:
+                       // 1. After recovery, we did not get the beginning of the
+                       // transaction.
+                       // 2. We ignored all other operations for this
+                       // transaction because the shard was dropped.
+                       // 3. The transaction applies to multiple shards, which
+                       // all had the same leader, thus multiple commits were
+                       // replicated for the same transaction.
+                       if (activeTransactions.erase(op.tid) == 0) {
+                         return Result{};
+                       }
+                       return data.transactionHandler->applyEntry(op);
+                     },
+                     [&](ReplicatedOperation::DropShard const& op) -> Result {
+                       // Abort all transactions for this shard.
+                       for (auto const& tid :
+                            data.transactionHandler->getTransactionsForShard(
+                                op.shard)) {
+                         activeTransactions.erase(tid);
+                         auto abortRes = data.transactionHandler->applyEntry(
+                             ReplicatedOperation::buildAbortOperation(tid));
+                         if (abortRes.fail()) {
+                           LOG_CTX("3eb75", INFO, self->loggerContext)
+                               << "failed to abort transaction " << tid
+                               << " for shard " << op.shard
+                               << " during recovery: " << abortRes;
+                           return abortRes;
+                         }
+                       }
+                       return data.transactionHandler->applyEntry(op);
+                     },
+                     [&](auto const& op) {
+                       return data.transactionHandler->applyEntry(op);
+                     }},
             doc.getInnerOperation());
 
         if (res.fail()) {
