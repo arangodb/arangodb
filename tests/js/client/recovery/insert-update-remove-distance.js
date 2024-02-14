@@ -49,6 +49,8 @@ function runSetup () {
     },
     action: function () {
       var db = require('@arangodb').db;
+      const versionHas = require("@arangodb/test-helper").versionHas;
+      const count = versionHas('tsan') ? 10000 : 50000;
 
       var i, c = db._collection('UnitTestsRecovery');
       for (i = 0; i < count; ++i) {
