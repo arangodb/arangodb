@@ -27,7 +27,7 @@ agency,agency-restart priority=350 parallelity=3 size=small single -- --dumpAgen
 authentication priority=1000 single
 endpoints priority=250 single -- --skipEndpointsIpv6 true
 
-recovery priority=2000 buckets=3 parallelity=3 size=small single --extraArgs:log.level warning,httpclient=debug,V8=debug
+recovery priority=2000 buckets=3 parallelity=3 size=small single -- --extraArgs:log.level warning,httpclient=debug,V8=debug
 # cluster
 recovery_cluster priority=2000 size=small cluster buckets=5
 
