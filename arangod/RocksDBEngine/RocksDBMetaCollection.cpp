@@ -461,8 +461,9 @@ RocksDBMetaCollection::computeRevisionTree(uint64_t batchId) {
 
 Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
     LogicalCollection& coll, RocksDBEngine& engine, rocksdb::WriteBatch& batch,
-    rocksdb::ColumnFamilyHandle* const cf, rocksdb::SequenceNumber maxCommitSeq,
-    bool force, std::string const& context, std::string& scratch,
+    rocksdb::ColumnFamilyHandle* const cf,
+    rocksdb::SequenceNumber wantedMaxCommitSeq, bool force,
+    std::string const& context, std::string& scratch,
     rocksdb::SequenceNumber& appliedSeq) {
   TRI_ASSERT(coll.useSyncByRevision());
 
@@ -470,22 +471,28 @@ Result RocksDBMetaCollection::takeCareOfRevisionTreePersistence(
 
   // Get lock on revision tree:
   std::unique_lock<std::mutex> guard(_revisionTreeLock);
-  if (maxCommitSeq < _revisionTreeApplied) {
+  auto correctedMaxCommitSeq = wantedMaxCommitSeq;
+  if (correctedMaxCommitSeq < _revisionTreeApplied) {
     // this function is called indirectly from RocksDBSettingsManager::sync
     // which passes in a seq nr that it has previously obtained, but it can
-    // happen that in the meantime the tree has been moved forward or a tree was
-    // rebuilt and _revisionTreeApplied is now greater than the seq nr we get
-    // passed in. In this case we have to bump the seq nr forward, because we
-    // cannot generate a tree from the past.
-    maxCommitSeq = _revisionTreeApplied;
+    // was rebuilt and _revisionTreeApplied is now greater than the seq nr
+    // we get passed in. In this case we have to bump the seq nr forward,
+    // because we cannot generate a tree from the past.
+    correctedMaxCommitSeq = _revisionTreeApplied;
   }
 
-  maxCommitSeq = _meta.committableSeq(maxCommitSeq);
+  auto maxCommitableSeq = _meta.committableSeq(correctedMaxCommitSeq);
+  TRI_ASSERT(maxCommitableSeq <= correctedMaxCommitSeq);
+  auto maxCommitSeq = maxCommitableSeq;
   if ((force || needToPersistRevisionTree(maxCommitSeq, guard)) &&
       _revisionTreeCanBeSerialized) {
     rocksdb::SequenceNumber seq = maxCommitSeq;
 
-    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied);
+    TRI_ASSERT(maxCommitSeq >= _revisionTreeApplied)
+        << "maxCommitSeq = " << maxCommitSeq
+        << ", _revisionTreeApplied = " << _revisionTreeApplied
+        << ", wantedMaxCommitSeq = " << wantedMaxCommitSeq
+        << ", correctedMaxCommitSeq = " << correctedMaxCommitSeq;
 
     scratch.clear();
 
@@ -922,14 +929,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
           std::chrono::milliseconds(RandomGenerator::interval(uint32_t(2000))));
     }
 
-    {
-      // we may still have some buffered updates, so let's remove them.
-      std::unique_lock<std::mutex> guard(_revisionTreeLock);
-      removeBufferedUpdatesUpTo(blockerSeq - 1);
-
-      _revisionTreeApplied = blockerSeq - 1;
-    }
-
     // unlock the collection again
     lockGuard.fire();
 
@@ -967,10 +966,6 @@ Result RocksDBMetaCollection::rebuildRevisionTree() {
     // wait until all blockers before the snapshot have been removed
     while (true) {
       std::unique_lock<std::mutex> guard(_revisionTreeLock);
-
-      if (_revisionTreeApplied < beginSeq) {
-        _revisionTreeApplied = beginSeq;
-      }
 
       TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
         if (RandomGenerator::interval(uint32_t(2000)) > 1750) {
