@@ -297,9 +297,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedState(
         .generation = {},
         .specification = {.type = std::string(type),
                           .parameters = std::move(parametersCopy)},
-        .stateOwnedMetadata = {
-            /* TODO define default in the document state and pass this here */},
-    };
+        .stateOwnedMetadata = feature.getDefaultStateOwnedMetadata(type)};
     auto maybeStorage = engine.createReplicatedState(vocbase, id, metadata);
 
     if (maybeStorage.fail()) {

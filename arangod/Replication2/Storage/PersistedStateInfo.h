@@ -33,9 +33,10 @@ namespace arangodb::replication2::storage {
 // Metadata owned by the state implementation (e.g. DocumentState) - thus no
 // specific type here.
 struct StateOwnedMetadata {
-  // TODO should we delete the default constructor, so we don't forget to
-  //      construct a default object matching the appropriate state?
-  //      Otherwise, this can easily break deserialization.
+  // The default slice must be provided by the state implementation, and should
+  // not be None by accident. Otherwise, this could easily break
+  // deserialization. However, we can't just delete the default constructor or
+  // will break the inspector.
   velocypack::SharedSlice slice;
 };
 
