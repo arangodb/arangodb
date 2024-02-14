@@ -878,7 +878,17 @@ void DocumentLeaderState::increaseLowestSafeIndexForReplayTo(
   auto& lowestSafeIndex =
       metadata.lowestSafeIndexesForReplay[shardId.operator std::string()];
   lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
-  lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
+  auto const res = getStream()->commitMetadataTrx(std::move(trx));
+  if (res.ok()) {
+    lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
+  } else {
+    auto msg = fmt::format(
+        "Failed to persist the lowest safe index on shard {}. This "
+        "will abort index creation. Error was: {}",
+        shardId, res.errorMessage());
+    LOG_CTX("9afad", WARN, loggerContext) << msg;
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), std::move(msg));
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

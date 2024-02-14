@@ -31,11 +31,28 @@
 
 namespace arangodb::replication2::replicated_state {
 
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+namespace document {
+struct DocumentStateMetadata;
+}
+#endif
+
 template<typename T>
 struct MetadataTransactionImpl : streams::IMetadataTransaction<T> {
   using MetadataType = T;
   explicit MetadataTransactionImpl(
       std::unique_ptr<replicated_log::IStateMetadataTransaction> trx);
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  ~MetadataTransactionImpl() override {
+    if constexpr (std::is_same_v<T, document::DocumentStateMetadata>) {
+      if (_trx != nullptr) {
+        LOG_DEVEL << "Losing metadata transaction before commit; metadata was "
+                  << _metadata.lowestSafeIndexesForReplay;
+      }
+    }
+  }
+#endif
 
   auto
   destruct() && -> std::unique_ptr<replicated_log::IStateMetadataTransaction>;
