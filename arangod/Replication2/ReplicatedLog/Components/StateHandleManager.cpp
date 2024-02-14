@@ -40,6 +40,11 @@ StateHandleManager::GuardedData::GuardedData(
 auto StateHandleManager::resign() noexcept
     -> std::unique_ptr<IReplicatedStateHandle> {
   auto guard = guardedData.getLockedGuard();
+  // This resign method is the one that will set the stateHandle to null.
+  // It is only called from one place, where we hold a lock und which we also
+  // deletes the owning struct.
+  // Hence we cannot have a double resign method.
+  TRI_ASSERT(guard->stateHandle != nullptr);
   // TODO assert same methods
   std::ignore = guard->stateHandle->resignCurrentState();
   return std::move(guard->stateHandle);
@@ -69,16 +74,26 @@ StateHandleManager::StateHandleManager(
 void StateHandleManager::becomeFollower(
     std::unique_ptr<IReplicatedLogFollowerMethods> ptr) {
   auto guard = guardedData.getLockedGuard();
+  // The stateHandle is initialized as non-null, it can be reset
+  // to null via resign. As becomeFollower is part of the
+  // single threaded setup process, no one could have called
+  // resign.
+  TRI_ASSERT(guard->stateHandle != nullptr) << "We did hand out references to StateHandleManager before completing the setup";
   guard->stateHandle->becomeFollower(std::move(ptr));
 }
 
 void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
                                          std::uint64_t version) noexcept {
-  auto guard = guardedData.getLockedGuard();
-  // TODO is the correct log index required here?
-  guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
+  if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
+    // TODO is the correct log index required here?
+    guard->stateHandle->acquireSnapshot(leader, LogIndex{0}, version);
+  }
 }
 
 auto StateHandleManager::getInternalStatus() const -> replicated_state::Status {
-  return guardedData.getLockedGuard()->stateHandle->getInternalStatus();
+  auto guard = guardedData.getLockedGuard();
+  if (guard->stateHandle == nullptr) {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+  }
+  return guard->stateHandle->getInternalStatus();
 }
