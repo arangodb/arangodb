@@ -31,6 +31,10 @@
 var db = require('@arangodb').db;
 var internal = require('internal');
 var jsunity = require('jsunity');
+const versionHas = require("@arangodb/test-helper").versionHas;
+
+// tsan builds on CircleCI too slow, resulting in request timeouts when run with 50k
+const count = versionHas('tsan') ? 10000 : 50000;
 
 function runSetup () {
   'use strict';
@@ -47,23 +51,23 @@ function runSetup () {
       var db = require('@arangodb').db;
 
       var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
       }
 
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         c.save({ _key: 'filler' + i });
       }
 
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         c.update('test' + i, { value3: 'additional value', value4: i });
       }
 
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         c.remove('filler' + i);
       }
 
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         c.remove('test' + i, true);
       }
     }
@@ -90,10 +94,10 @@ function recoverySuite () {
       var i, c = db._collection('UnitTestsRecovery');
 
       assertEqual(0, c.count());
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         assertFalse(c.exists('test' + i));
       }
-      for (i = 0; i < 50000; ++i) {
+      for (i = 0; i < count; ++i) {
         assertFalse(c.exists('filler' + i));
       }
     }
