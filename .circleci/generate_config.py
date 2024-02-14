@@ -252,6 +252,16 @@ def get_size(size, arch):
     return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
 
 
+def get_test_size(size, build_config, cluster):
+    if build_config.sanitizer != "":
+        # sanitizer builds need more resources
+        if size == "small":
+            size = "xlarge" if build_config.sanitizer == "tsan" and cluster else "large"
+        elif size in ["medium", "medium+", "large"]:
+            size = "xlarge"
+    return get_size(size, build_config.arch)
+
+
 def create_test_job(test, cluster, build_config, build_job, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     edition = "ee" if build_config.enterprise else "ce"
@@ -265,13 +275,6 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     if not size in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
         raise Exception(f"Invalid resource class size {size}")
 
-    if build_config.sanitizer != "":
-        # sanitizer builds need more resources
-        if size == "small":
-            size = "xlarge" if build_config.sanitizer == "tsan" and cluster else "large"
-        elif size in ["medium", "medium+", "large"]:
-            size = "xlarge"
-
     deployment_variant = (
         f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
     )
@@ -280,7 +283,7 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_size(size, build_config.arch),
+        "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
         "requires": [build_job],
     }
@@ -328,7 +331,7 @@ def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
             {
                 "run-hotbackup-tests": {
                     "name": f"run-hotbackup-tests-{build_config.arch}",
-                    "size": get_size("medium", build_config.arch),
+                    "size": get_test_size("medium", build_config, True),
                     "requires": [build_job],
                 }
             }
