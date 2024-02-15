@@ -20,7 +20,7 @@ export OPENSSLBRANCH=$1
 export OPENSSLPATCH=$2
 export OPENSSLVERSION="${OPENSSLBRANCH}.${OPENSSLPATCH}"
 
-if [ "$OPENSSLBRANCH" != "3.1" ]; then
+if [ "$OPENSSLBRANCH" != "3.2" ]; then
   OLD="old/${OPENSSLBRANCH}/"
 fi;
 
@@ -36,20 +36,6 @@ make -j64
 make install_dev
 cd /tmp
 rm -rf openssl-$OPENSSLVERSION.tar.gz openssl-$OPENSSLVERSION
-
-# Compile openldap library:
-export OPENLDAPVERSION=2.6.6
-cd /tmp
-curl -O ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-$OPENLDAPVERSION.tgz
-tar xzf openldap-$OPENLDAPVERSION.tgz
-cd openldap-$OPENLDAPVERSION
-CPPFLAGS=-I/opt/include \
-LDFLAGS="-L/opt/lib$X86_64_SUFFIX" \
-./configure -prefix=/opt --enable-static
-make depend && make -j64
-make install
-cd /tmp
-rm -rf openldap-$OPENLDAPVERSION.tgz openldap-$OPENLDAPVERSION
 
 # Clean up any strange cores
 rm -rf /core.*

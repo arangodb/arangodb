@@ -1,6 +1,8 @@
 devel
 -----
 
+* Upgrade OpenSSL to 3.2.1.
+
 * Remove arangosync binary.
 
 * Updated ArangoDB Starter to v0.18.2.
