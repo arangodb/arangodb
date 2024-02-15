@@ -190,6 +190,9 @@ void CloneWorker::setUsedShardsOnClone(ExecutionNode* node,
       if (joinNode != nullptr) {
         // found a JoinNode, now add the `i` th shard for used collections
         for (auto& idx : joinNode->getIndexInfos()) {
+          if (idx.usedAsSatellite) {
+            continue;
+          }
           auto const& shards = permuter->second.at(idx.collection->name());
           idx.usedShard = *std::next(shards.begin(), _shardId);
         }
