@@ -271,7 +271,8 @@ struct MockMaintenanceActionExecutor
               (noexcept, override));
   MOCK_METHOD(Result, executeCreateIndex,
               (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, executeDropIndex,
               (std::shared_ptr<LogicalCollection>, IndexId),
@@ -290,7 +291,8 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(Result, dropShard, (ShardID const&), (noexcept, override));
   MOCK_METHOD(Result, ensureIndex,
               (ShardID, velocypack::SharedSlice properties,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, dropIndex, (ShardID, IndexId), (noexcept, override));
   MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));

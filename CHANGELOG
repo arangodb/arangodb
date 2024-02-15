@@ -1,6 +1,26 @@
 devel
 -----
 
+* Remove arangosync binary.
+
+* Updated ArangoDB Starter to v0.18.2.
+
+* Updated rclone to v1.65.2 (built with go1.21.6).
+
+* FE-426: Better error messages for Foxx installation failures.
+
+  When installing Foxx services from the web UI, the error messages for
+  failures or timeouts during the initial download of the service bundle now
+  provide more information about the underlying cause.
+
+  Additionally the timeout threshold for the initial download of Foxx service
+  bundles from remote sources has been increased from 10 seconds to 60 seconds
+  for both the web UI and the Foxx HTTP API.
+
+* Updated ArangoDB Starter to v0.18.2-preview-2.
+
+* ES-1892: Fix hot restores missing user defined analyzers.
+
 * Added startup options `--network.compression-method` and 
   `--network.compress-request-threshold` to optionally compress relevant
   cluster-internal traffic.

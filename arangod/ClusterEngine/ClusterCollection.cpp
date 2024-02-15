@@ -207,7 +207,8 @@ bool ClusterCollection::cacheEnabled() const noexcept {
 
 futures::Future<std::shared_ptr<Index>> ClusterCollection::createIndex(
     velocypack::Slice info, bool restore, bool& created,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   TRI_ASSERT(ServerState::instance()->isCoordinator());
 
   // prevent concurrent dropping

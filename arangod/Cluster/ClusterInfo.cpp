@@ -5053,6 +5053,12 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
        plan.get({"arango", "Plan", "Databases"})},
       {"Current/Views", AgencyValueOperationType::SET,
        VPackSlice::emptyObjectSlice()},
+      {"Current/CollectionGroups", AgencyValueOperationType::SET,
+       VPackSlice::emptyObjectSlice()},
+      {"Current/ReplicatedLogs", AgencyValueOperationType::SET,
+       VPackSlice::emptyObjectSlice()},
+      {"Plan/Analyzers", AgencyValueOperationType::SET,
+       plan.get({"arango", "Plan", "Analyzers"})},
       {"Plan/Views", AgencyValueOperationType::SET,
        plan.get({"arango", "Plan", "Views"})},
       {"Current/Version", AgencySimpleOperationType::INCREMENT_OP},
@@ -5080,11 +5086,6 @@ Result ClusterInfo::agencyReplan(VPackSlice const plan) {
   for (auto const& subEntry : {"CollectionGroups", "ReplicatedLogs"}) {
     if (auto entry = plan.get({"arango", "Plan", subEntry}); !entry.isNone()) {
       trxOperations.emplace_back(absl::StrCat("Plan/", subEntry),
-                                 AgencyValueOperationType::SET, entry);
-    }
-    if (auto entry = plan.get({"arango", "Current", subEntry});
-        !entry.isNone()) {
-      trxOperations.emplace_back(absl::StrCat("Current/", subEntry),
                                  AgencyValueOperationType::SET, entry);
     }
   }
