@@ -78,7 +78,9 @@ void StateHandleManager::becomeFollower(
   // to null via resign. As becomeFollower is part of the
   // single threaded setup process, no one could have called
   // resign.
-  TRI_ASSERT(guard->stateHandle != nullptr) << "We did hand out references to StateHandleManager before completing the setup";
+  TRI_ASSERT(guard->stateHandle != nullptr)
+      << "We did hand out references to StateHandleManager before completing "
+         "the setup";
   guard->stateHandle->becomeFollower(std::move(ptr));
 }
 
