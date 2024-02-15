@@ -50,8 +50,7 @@ struct IMaintenanceActionExecutor {
       velocypack::SharedSlice properties) noexcept -> Result = 0;
 
   virtual auto executeCreateIndex(
-      std::shared_ptr<LogicalCollection> col,
-      velocypack::SharedSlice properties,
+      std::shared_ptr<LogicalCollection> col, velocypack::Slice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress,
       methods::Indexes::Replication2Callback callback) noexcept -> Result = 0;
 
@@ -81,8 +80,7 @@ class MaintenanceActionExecutor : public IMaintenanceActionExecutor {
       -> Result override;
 
   auto executeCreateIndex(
-      std::shared_ptr<LogicalCollection> col,
-      velocypack::SharedSlice properties,
+      std::shared_ptr<LogicalCollection> col, velocypack::Slice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress,
       methods::Indexes::Replication2Callback callback) noexcept
       -> Result override;

@@ -722,8 +722,6 @@ auto DocumentLeaderState::createIndex(
     ShardID shard, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
-  auto sharedIndexInfo = VPackBuilder{indexInfo}.sharedSlice();
-
   // Why are we first creating the index locally, then replicating it?
   // 1. Unique Indexes
   //   The leader has to check for uniqueness before every insert operation. If
@@ -742,7 +740,7 @@ auto DocumentLeaderState::createIndex(
   //   the server.
 
   auto localIndexCreation = _guardedData.doUnderLock(
-      [self = shared_from_this(), shard, sharedIndexInfo,
+      [self = shared_from_this(), shard, indexInfo,
        progress = std::move(progress)](auto& data) mutable {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
@@ -751,11 +749,12 @@ auto DocumentLeaderState::createIndex(
 
         // Callback used to replicate the operation during
         // RocksDBCollection::createIndex
-        auto op = ReplicatedOperation::buildCreateIndexOperation(
-            shard, sharedIndexInfo, progress);
-        auto callback =
-            [op = std::move(op), self,
-             shard]() mutable -> futures::Future<ResultT<LogIndex>> {
+        auto callback = [self, shard, progress = std::move(progress)](
+                            velocypack::Slice indexDefinition) mutable
+            -> futures::Future<Result> {
+          auto op = ReplicatedOperation::buildCreateIndexOperation(
+              shard, velocypack::Builder(indexDefinition).sharedSlice(),
+              std::move(progress));
           auto replicationResult = co_await self->replicateOperation(
               std::move(op),
               replication2::replicated_state::document::ReplicationOptions{
@@ -768,13 +767,13 @@ auto DocumentLeaderState::createIndex(
             // removed).
             self->increaseLowestSafeIndexForReplayTo(shard, logIndex);
           }
-          co_return replicationResult;
+          co_return std::move(replicationResult).result();
         };
 
         return self->_shardHandler->ensureIndex(
-            shard, sharedIndexInfo, std::move(progress), std::move(callback));
+            shard, indexInfo, std::move(progress), std::move(callback));
       });
-  auto indexId = helpers::extractId(sharedIndexInfo.slice());
+  auto indexId = helpers::extractId(indexInfo);
   TRI_ASSERT(indexId != IndexId::none() or localIndexCreation.fail());
   if (localIndexCreation.fail()) {
     return localIndexCreation;

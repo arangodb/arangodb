@@ -617,10 +617,14 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     // step 4½. replicate index creation
     if (vocbase.replicationVersion() == replication::Version::TWO &&
         replicationCb != nullptr) {
-      auto replicationFuture = replicationCb();
-      auto replicationResult = co_await std::move(replicationFuture);
+      // On a leader, we need to replicate the create index operation now;
+      // on both leader and follower, we need to persist information to make
+      // unique indexes safe to replay. This happens during the callback.
+      // In case anything goes wrong here, the index must be dropped.
+      auto replicationResult = co_await replicationCb(info);
       if (!replicationResult.ok()) {
-        THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
+        // abort index creation
+        THROW_ARANGO_EXCEPTION(replicationResult);
       }
     }
 

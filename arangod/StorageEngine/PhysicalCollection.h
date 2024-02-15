@@ -150,8 +150,8 @@ class PhysicalCollection {
   virtual futures::Future<OperationResult> figures(
       bool details, OperationOptions const& options);
 
-  using Replication2Callback =
-      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+  using Replication2Callback = fu2::unique_function<futures::Future<Result>(
+      velocypack::Slice indexDefinition)>;
 
   /// @brief create or restore an index
   /// @param restore utilize specified ID, assume index has to be created

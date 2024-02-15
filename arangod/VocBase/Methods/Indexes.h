@@ -51,10 +51,9 @@ namespace methods {
 struct Indexes {
   using ProgressTracker = std::function<arangodb::Result(double)>;
 
-  // Replication2 leaders must replicate the index creation operation to
-  // followers
-  using Replication2Callback =
-      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+  // Handle replication during index creation
+  using Replication2Callback = fu2::unique_function<futures::Future<Result>(
+      velocypack::Slice indexDefinition)>;
 
   static futures::Future<arangodb::Result> getIndex(
       LogicalCollection const& collection, velocypack::Slice indexId,

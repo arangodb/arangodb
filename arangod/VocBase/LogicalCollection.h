@@ -326,8 +326,8 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Indexes
 
-  using Replication2Callback =
-      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
+  using Replication2Callback = fu2::unique_function<futures::Future<Result>(
+      velocypack::Slice indexDefinition)>;
 
   /// @brief Create a new Index based on VelocyPack description
   virtual futures::Future<std::shared_ptr<Index>> createIndex(

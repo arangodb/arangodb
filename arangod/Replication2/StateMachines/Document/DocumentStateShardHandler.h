@@ -60,7 +60,7 @@ struct IDocumentStateShardHandler {
       -> std::vector<std::shared_ptr<LogicalCollection>> = 0;
 
   virtual auto ensureIndex(
-      ShardID shard, velocypack::SharedSlice properties,
+      ShardID shard, velocypack::Slice properties,
       std::shared_ptr<methods::Indexes::ProgressTracker> progress,
       methods::Indexes::Replication2Callback callback = nullptr) noexcept
       -> Result = 0;
@@ -98,7 +98,7 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto getAvailableShards()
       -> std::vector<std::shared_ptr<LogicalCollection>> override;
 
-  auto ensureIndex(ShardID shard, velocypack::SharedSlice properties,
+  auto ensureIndex(ShardID shard, velocypack::Slice properties,
                    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
                    methods::Indexes::Replication2Callback callback =
                        nullptr) noexcept -> Result override;

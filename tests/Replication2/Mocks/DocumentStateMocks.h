@@ -270,7 +270,7 @@ struct MockMaintenanceActionExecutor
                velocypack::SharedSlice),
               (noexcept, override));
   MOCK_METHOD(Result, executeCreateIndex,
-              (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice,
+              (std::shared_ptr<LogicalCollection>, velocypack::Slice,
                std::shared_ptr<methods::Indexes::ProgressTracker>,
                LogicalCollection::Replication2Callback),
               (noexcept, override));
@@ -290,7 +290,7 @@ struct MockDocumentStateShardHandler
               (noexcept, override));
   MOCK_METHOD(Result, dropShard, (ShardID const&), (noexcept, override));
   MOCK_METHOD(Result, ensureIndex,
-              (ShardID, velocypack::SharedSlice properties,
+              (ShardID, velocypack::Slice properties,
                std::shared_ptr<methods::Indexes::ProgressTracker>,
                LogicalCollection::Replication2Callback),
               (noexcept, override));

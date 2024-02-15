@@ -171,7 +171,7 @@ auto DocumentStateTransactionHandler::applyOp(
 
 auto DocumentStateTransactionHandler::applyOp(
     ReplicatedOperation::CreateIndex const& op) -> Result {
-  return _shardHandler->ensureIndex(op.shard, op.properties,
+  return _shardHandler->ensureIndex(op.shard, op.properties.slice(),
                                     op.params.progress);
 }
 
