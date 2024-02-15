@@ -1598,7 +1598,7 @@ const replicatedStateDocumentShardsSuite = function () {
         }]});
 
       // Get the log id.
-      const {logId, shardId} = dh.getSingleLogId(database, collection);
+      const {logId, shardId} = dh.getSingleLogId(db, collection);
       let log = db._replicatedLog(logId);
 
       // Wait for the shard to be modified.

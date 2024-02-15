@@ -67,6 +67,7 @@ const IS_A_TTY = RED.length !== 0;
 
 
 const abortSignal = 6;
+const killSignal = 9;
 const termSignal = 15;
 
 let tcpdump;
@@ -1010,6 +1011,21 @@ class instance {
   // //////////////////////////////////////////////////////////////////////////////
   // / @brief commands a server to shut down via webcall
   // //////////////////////////////////////////////////////////////////////////////
+
+  kill({signal = killSignal}) {
+    print(CYAN + Date() +' killing ' + this.name + ', url: ' + this.url);
+
+    if ((this.exitStatus === null) ||
+      (this.exitStatus.status === 'RUNNING')) {
+      if (this.options.enableAliveMonitor) {
+        internal.removePidFromMonitor(this.pid);
+      }
+      this.exitStatus = killExternal(this.pid, signal);
+      this.pid = null;
+    } else {
+      print(Date() + ' Server already dead, doing nothing.');
+    }
+  }
 
   shutdownArangod (forceTerminate) {
     print(CYAN + Date() +' stopping ' + this.name + ', url: ' + this.url + ', force terminate: ' + forceTerminate + ' ' + this.protocol + RESET);
