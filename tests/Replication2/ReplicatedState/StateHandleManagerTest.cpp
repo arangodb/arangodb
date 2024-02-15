@@ -32,8 +32,7 @@ using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-struct StateHandleManagerTest
-    : testing::Test {};
+struct StateHandleManagerTest : testing::Test {};
 
 TEST_F(StateHandleManagerTest, resign) {
   auto stateHandlePtr = std::make_unique<test::ReplicatedStateHandleMock>();
@@ -45,7 +44,8 @@ TEST_F(StateHandleManagerTest, resign) {
   // Times is good enough here, the return value will be ignored anyway.
   EXPECT_CALL(*originalPtr, resignCurrentState).Times(1);
   auto stateHandle = mgr.resign();
-  EXPECT_EQ(originalPtr, stateHandle.get()) << "We expect the initial stateHandle to be returned when we resign";
+  EXPECT_EQ(originalPtr, stateHandle.get())
+      << "We expect the initial stateHandle to be returned when we resign";
 }
 
 TEST_F(StateHandleManagerTest, acquireSnaphot) {
@@ -59,7 +59,8 @@ TEST_F(StateHandleManagerTest, acquireSnaphot) {
 
   // Times is good enough here, we are a void method.
   // Important part is that the input values are forwarded correctly.
-  EXPECT_CALL(*mockPtr, acquireSnapshot(leaderId, LogIndex{0}, version)).Times(1);
+  EXPECT_CALL(*mockPtr, acquireSnapshot(leaderId, LogIndex{0}, version))
+      .Times(1);
 
   mgr.acquireSnapshot(leaderId, version);
 }
@@ -96,7 +97,8 @@ TEST_F(StateHandleManagerTest, becomeFollower) {
   // Times is good enough here, we are a void method.
   // Important part is that the input values are forwarded correctly.
   EXPECT_CALL(*mockPtr, becomeFollower)
-      .WillOnce([&](std::unique_ptr<IReplicatedLogFollowerMethods> methods) -> void {
+      .WillOnce([&](std::unique_ptr<IReplicatedLogFollowerMethods> methods)
+                    -> void {
         EXPECT_EQ(methodsPtr, methods.get())
             << "Did not call the mocked method with the correct methods object";
       });
@@ -122,17 +124,19 @@ TEST_F(StateHandleManagerTest, updateCommitIndex_no_resolveIndex) {
         return std::make_pair<std::optional<LogIndex>, DeferredAction>(
             std::nullopt, std::move(actionDummy));
       });
-  // As we do not return a LogIndex above we are not allowed to call updateCommitIndex
-  // on the Replicated State Handle.
+  // As we do not return a LogIndex above we are not allowed to call
+  // updateCommitIndex on the Replicated State Handle.
   EXPECT_CALL(*mockPtr, updateCommitIndex).Times(0);
 
   StateHandleManager mgr{std::move(stateHandlePtr), followerCommitManager};
 
-  auto action = mgr.updateCommitIndex(expectedIndex,expectedSnapshotAvailable);
+  auto action = mgr.updateCommitIndex(expectedIndex, expectedSnapshotAvailable);
   EXPECT_TRUE(action) << "We expect to have an action";
-  EXPECT_FALSE(deferredActionCalled) << "Already called action, it was not deferred";
+  EXPECT_FALSE(deferredActionCalled)
+      << "Already called action, it was not deferred";
   action.fire();
-  EXPECT_TRUE(deferredActionCalled) << "Deferred different action then expected";
+  EXPECT_TRUE(deferredActionCalled)
+      << "Deferred different action then expected";
 }
 
 TEST_F(StateHandleManagerTest, updateCommitIndex_with_resolveIndex) {
@@ -154,16 +158,19 @@ TEST_F(StateHandleManagerTest, updateCommitIndex_with_resolveIndex) {
             LogIndex{23}, std::move(actionDummy));
       });
   EXPECT_CALL(*mockPtr, updateCommitIndex).WillOnce([](LogIndex index) {
-    EXPECT_EQ(index, LogIndex{23}) << "Was not called with update commit index result";
+    EXPECT_EQ(index, LogIndex{23})
+        << "Was not called with update commit index result";
   });
 
   StateHandleManager mgr{std::move(stateHandlePtr), followerCommitManager};
 
-  auto action = mgr.updateCommitIndex(expectedIndex,expectedSnapshotAvailable);
+  auto action = mgr.updateCommitIndex(expectedIndex, expectedSnapshotAvailable);
   EXPECT_TRUE(action) << "We expect to have an action";
-  EXPECT_FALSE(deferredActionCalled) << "Already called action, it was not deferred";
+  EXPECT_FALSE(deferredActionCalled)
+      << "Already called action, it was not deferred";
   action.fire();
-  EXPECT_TRUE(deferredActionCalled) << "Deferred different action then expected";
+  EXPECT_TRUE(deferredActionCalled)
+      << "Deferred different action then expected";
 }
 
 TEST_F(StateHandleManagerTest, updateCommitIndex_after_resign) {
@@ -183,12 +190,11 @@ TEST_F(StateHandleManagerTest, updateCommitIndex_after_resign) {
   auto stateHandle = mgr.resign();
   ASSERT_TRUE(stateHandle != nullptr);
 
-  auto action = mgr.updateCommitIndex(expectedIndex,expectedSnapshotAvailable);
+  auto action = mgr.updateCommitIndex(expectedIndex, expectedSnapshotAvailable);
   // Action has to be empty and cannot do any harm, lets fire it.
   EXPECT_FALSE(action) << "We actually got an action back, that is not allowed";
   action.fire();
 }
-
 
 TEST_F(StateHandleManagerTest, get_internal_status) {
   auto stateHandlePtr = std::make_unique<test::ReplicatedStateHandleMock>();
