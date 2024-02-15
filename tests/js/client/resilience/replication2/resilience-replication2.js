@@ -86,7 +86,6 @@ function Replication2IndexCreationResilienceSuite () {
       const {logId, shardId, log} = dh.getSingleLogId(db, col);
       const allDocsFrom = (serverId) => { return dh.getAllDocumentsFromServer(serverId, db._name(), shardId); };
       const status = log.status();
-      console.warn(status);
       const {leaderId} = status;
       // Fix the leader
       lh.setLeader(db._name(), logId, leaderId);
