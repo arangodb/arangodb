@@ -328,7 +328,8 @@ void QuerySnippet::addNode(ExecutionNode* node) {
       break;
     }
     case ExecutionNode::JOIN: {
-      _expansions.emplace_back(node, false, false);
+      _expansions.emplace_back(
+          node, true, /* handled in separately in prepareFirstBranch */ false);
       break;
     }
     case ExecutionNode::ENUMERATE_IRESEARCH_VIEW: {
@@ -654,7 +655,9 @@ auto QuerySnippet::prepareFirstBranch(
         }
 
         idx.usedShard = *myExp.begin();
-        myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+        if (myExp.size() > 1) {
+          myExpFinal.insert({idx.collection->name(), std::move(myExp)});
+        }
       }
 
     } else if (exp.node->getType() == ExecutionNode::ENUMERATE_IRESEARCH_VIEW) {
@@ -888,11 +891,6 @@ auto QuerySnippet::prepareFirstBranch(
       }
     }
     if (exp.doExpand) {
-      auto collectionAccessingNode =
-          dynamic_cast<CollectionAccessingNode*>(exp.node);
-      TRI_ASSERT(collectionAccessingNode != nullptr);
-      TRI_ASSERT(!collectionAccessingNode->isUsedAsSatellite());
-
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
       size_t numberOfShardsToPermutate = 0;
       // set the max loop index (note this will essentially be done only once)
