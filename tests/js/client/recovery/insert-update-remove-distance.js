@@ -34,7 +34,7 @@ var jsunity = require('jsunity');
 const versionHas = require("@arangodb/test-helper").versionHas;
 
 // tsan builds on CircleCI too slow, resulting in request timeouts when run with 50k
-const count = versionHas('tsan') ? 10000 : 50000;
+const count = versionHas('tsan') ? 5000 : 50000;
 
 function runSetup () {
   'use strict';
@@ -50,7 +50,7 @@ function runSetup () {
     action: function () {
       var db = require('@arangodb').db;
       const versionHas = require("@arangodb/test-helper").versionHas;
-      const count = versionHas('tsan') ? 10000 : 50000;
+      const count = versionHas('tsan') ? 5000 : 50000;
 
       var i, c = db._collection('UnitTestsRecovery');
       for (i = 0; i < count; ++i) {
