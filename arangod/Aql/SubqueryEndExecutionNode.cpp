@@ -32,7 +32,6 @@
 #include "Aql/RegisterPlan.h"
 #include "Aql/SubqueryEndExecutor.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Meta/static_assert_size.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 

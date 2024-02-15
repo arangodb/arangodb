@@ -172,7 +172,6 @@ add_library(arango STATIC
   Basics/GlobalSerialization.cpp
   Basics/HybridLogicalClock.cpp
   Basics/IndexIter.h
-  Basics/LocalTaskQueue.cpp
   Basics/Nonce.cpp
   Basics/NumberUtils.cpp
   Basics/ReadWriteSpinLock.cpp
