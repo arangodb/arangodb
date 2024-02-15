@@ -1,1 +1,1 @@
-shell_api priority=500 cluster buckets=2 -- $EncryptionAtRest 
+shell_api priority=500 cluster buckets=3 -- $EncryptionAtRest 
