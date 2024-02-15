@@ -93,7 +93,11 @@ void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
 auto StateHandleManager::getInternalStatus() const -> replicated_state::Status {
   auto guard = guardedData.getLockedGuard();
   if (guard->stateHandle == nullptr) {
-    THROW_ARANGO_EXCEPTION(TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
+    // We can only have a nullptr here if we have resigned,
+    // also this stateHandleManager is only used in the follower
+    // So we can directly return FollowerResigned here.
+    return {replicated_state::Status::Follower{
+        replicated_state::Status::Follower::Resigned{}}};
   }
   return guard->stateHandle->getInternalStatus();
 }
