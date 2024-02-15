@@ -969,7 +969,8 @@ arangodb::Result processInputDirectory(
               << "sent " << stats.totalBatches << " data batch(es) of "
               << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
-              << ", workers: " << std::get<1>(queueStats);
+              << ", total workers: " << std::get<1>(queueStats)
+              << ", busy workers: " << std::get<2>(queueStats);
           start = now;
         }
 
@@ -1484,6 +1485,10 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       parameters.get(std::vector<std::string_view>({"parameters", "type"})), 2);
   std::string const collectionType(type == 2 ? "document" : "edge");
 
+  LOG_TOPIC("4b2a7", DEBUG, Logger::RESTORE)
+      << "# About to start loading data into collection '" << collectionName
+      << "'...";
+
   auto&& currentStatus = progressTracker.getStatus(collectionName);
 
   if (currentStatus.state >= arangodb::RestoreFeature::RESTORED) {
@@ -1531,11 +1536,19 @@ Result RestoreFeature::RestoreMainJob::restoreData(
       sharedState->readCompleteInputfile = true;
     }
 
+    LOG_TOPIC("f01ba", DEBUG, Logger::RESTORE)
+        << "# Read complete input file for collection " << collectionName
+        << " - returning early";
+
     updateProgress();
     return {};
   }
 
   TRI_ASSERT(datafile);
+
+  LOG_TOPIC("f01bc", DEBUG, Logger::RESTORE)
+      << "# Have datafile for collection " << collectionName;
+
   // check if we are dealing with compressed file(s)
   bool const isCompressed = datafile->path().ends_with(".gz");
   // check if we are dealing with multiple files (created via `--split-file
@@ -1561,7 +1574,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
     }
   }
 
-  if (options.progress) {
+  if (options.progress || true) {
     LOG_TOPIC("95913", INFO, Logger::RESTORE)
         << "# Loading data into " << collectionType << " collection '"
         << collectionName << "', data size: " << formatSize(fileSize)
@@ -1808,6 +1821,11 @@ arangodb::Result RestoreFeature::RestoreMainJob::restoreIndexes(
       if (options.force) {
         result.reset();
       }
+    }
+
+    if (options.progress) {
+      LOG_TOPIC("d08f3", INFO, Logger::RESTORE)
+          << "# Finished indexes for collection '" << collectionName << "'...";
     }
   }
 
