@@ -117,26 +117,6 @@ Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
   return checkOptions();
 }
 
-Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
-                                VPackSlice options, VPackSlice users) {
-  _name = name;
-  _id = id;
-
-  Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
-  if (res.ok()) {
-    res = extractUsers(users);
-  }
-  if (!res.ok()) {
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _valid = true;
-#endif
-
-  return checkOptions();
-}
-
 void CreateDatabaseInfo::toVelocyPack(VPackBuilder& builder,
                                       bool withUsers) const {
   TRI_ASSERT(_validId);
