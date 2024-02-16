@@ -67,7 +67,7 @@ COPY --from=v8 /opt/v8/third_party /opt/v8/third_party
 
 COPY ./tools/* /tools/
 
-RUN [ "/tools/install.sh", "3.1", "4" ]
+RUN [ "/tools/install.sh", "3.2", "1" ]
 
 COPY ./scripts /scripts
 
