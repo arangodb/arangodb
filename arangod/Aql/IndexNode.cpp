@@ -139,7 +139,7 @@ IndexNode::IndexNode(ExecutionPlan* plan,
 
   TRI_ASSERT(_condition != nullptr);
 
-  if (_outNonMaterializedDocId != nullptr) {
+  if (_outNonMaterializedDocId != nullptr && base.hasKey("indexIdOfVars")) {
     auto const* vars = plan->getAst()->variables();
     TRI_ASSERT(vars);
 
