@@ -37,7 +37,6 @@
 #include "Logger/LoggerStream.h"
 #include "Metrics/Counter.h"
 #include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "Statistics/ServerStatistics.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
@@ -76,6 +75,20 @@ template<typename T>
 T getMetric(std::string_view database, std::string_view collection,
             std::string_view shard, std::string_view user, bool includeUser) {
   T metric;
+  // pre-allocation some storage space for labels, to avoid reallocations.
+  // bytes required for separation and quoting characters in each label.
+  // labels look like foo="abc",bar="xyz",baz="qux",...
+  // we will count 4 bytes overhead per label, although for the first
+  // label it is one byte too many
+  constexpr size_t overheadPerLabel = 4;
+  size_t requiredSpace =
+      overheadPerLabel + /*db*/ 2 + database.size() + overheadPerLabel +
+      /*collection*/ 10 + collection.size() + overheadPerLabel + /*shard*/ 5 +
+      shard.size() +
+      (includeUser ? overheadPerLabel + /*user*/ 4 + user.size() : 0);
+
+  metric.reserveSpaceForLabels(requiredSpace);
+
   metric.addLabel("db", database);
   metric.addLabel("collection", collection);
   metric.addLabel("shard", shard);
@@ -95,11 +108,24 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
       _serverRole(ServerState::instance()->getRole()),
       _options(options),
       _id(tid),
-      _operationOrigin(operationOrigin) {
-  // patch intermediateCommitCount for testing
+      _operationOrigin(operationOrigin),
+      // set usage tracking mode to disabled initially. this may be overriden
+      // below
+      _usageTrackingMode(
+          metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+// patch intermediateCommitCount for testing
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   transaction::Options::adjustIntermediateCommitCount(_options);
 #endif
+
+  if (isDBServer()) {
+    // only if we are on a DB server, the usage tracking mode is relevant, as we
+    // don't track on single servers or coordinators. we have to get the
+    // actually mode from the MetricsFeature, where it is initially configured.
+    _usageTrackingMode = _vocbase.server()
+                             .getFeature<metrics::MetricsFeature>()
+                             .usageTrackingMode();
+  }
 
   // increase the reference counter for the underyling database, so that the
   // database is protected against deletion while the TransactionState object
@@ -110,6 +136,17 @@ TransactionState::TransactionState(TRI_vocbase_t& vocbase, TransactionId tid,
 /// @brief free a transaction container
 TransactionState::~TransactionState() {
   TRI_ASSERT(_status != transaction::Status::RUNNING);
+
+  if (_usageTrackingMode !=
+          metrics::MetricsFeature::UsageTrackingMode::kDisabled &&
+      _shardBytesUnpublishedEvents > 0) {
+    // some metrics updates to publish...
+    try {
+      CollectionNameResolver resolver(_vocbase);
+      publishShardMetrics(resolver);
+    } catch (...) {
+    }
+  }
 
   // process collections in reverse order, free all collections
   RECURSIVE_READ_LOCKER(_collectionsLock, _collectionsLockOwner);
@@ -188,18 +225,15 @@ void TransactionState::trackShardRequest(
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 
-  // no tracking performed on coordinators or single servers
-  if (!isDBServer()) {
+  if (_usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // no tracking required
     return;
   }
 
-  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
-
-  auto mode = mf.usageTrackingMode();
-  if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
-    // tracking is turned off. this is the default setting.
-    return;
-  }
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
 
   if (user.empty()) {
     // access via superuser JWT or authentication is turned off,
@@ -208,11 +242,13 @@ void TransactionState::trackShardRequest(
   }
 
   bool includeUser =
-      (mode ==
-       metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser);
+      _usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
 
   DataSourceId cid = resolver.getCollectionIdLocal(shard);
   std::string collection = resolver.getCollectionNameCluster(cid);
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
 
   if (AccessMode::isRead(accessMode)) {
     // build metric for reads and increase it
@@ -244,22 +280,19 @@ void TransactionState::trackShardUsage(
   TRI_ASSERT(!database.empty());
   TRI_ASSERT(!shard.empty());
 
-  // no tracking performed on coordinators or single servers
-  if (!isDBServer()) {
+  if (_usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
+    // no tracking required
     return;
   }
+
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
 
   if (nBytes == 0) {
     // nothing to be tracked. should normally not happen except for
     // collection scans etc. that did not encounter any documents.
-    return;
-  }
-
-  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
-
-  auto mode = mf.usageTrackingMode();
-  if (mode == metrics::MetricsFeature::UsageTrackingMode::kDisabled) {
-    // tracking is turned off. this is the default setting.
     return;
   }
 
@@ -269,37 +302,90 @@ void TransactionState::trackShardUsage(
     return;
   }
 
-  bool includeUser =
-      (mode ==
-       metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser);
+  bool publishUpdates = false;
 
-  DataSourceId cid = resolver.getCollectionIdLocal(shard);
-  std::string collection = resolver.getCollectionNameCluster(cid);
+  size_t publishShardMetricsThreshold = 1000;
+  TRI_IF_FAILURE("alwaysPublishShardMetrics") {
+    publishShardMetricsThreshold = 1;
+  }
 
-  if (AccessMode::isRead(accessMode)) {
-    // build metric for reads and increase it
-    auto& metric =
-        mf.addDynamic(getMetric<arangodb_collection_requests_bytes_read_total>(
-            database, collection, shard, user, includeUser));
-    metric.count(nBytes);
-  } else {
-    // build metric for writes and increase it
-    auto& metric = mf.addDynamic(
-        getMetric<arangodb_collection_requests_bytes_written_total>(
-            database, collection, shard, user, includeUser));
-    metric.count(nBytes);
+  {
+    std::lock_guard<std::mutex> m(_shardsMetricsMutex);
+
+    if (AccessMode::isRead(accessMode)) {
+      _shardBytesRead[shard] += nBytes;
+    } else {
+      _shardBytesWritten[shard] += nBytes;
+    }
+
+    // only publish every 1000 read/write operations
+    publishUpdates =
+        ++_shardBytesUnpublishedEvents >= publishShardMetricsThreshold;
+  }
+
+  if (publishUpdates) {
+    publishShardMetrics(resolver);
   }
 
   LOG_TOPIC("d3599", TRACE, Logger::FIXME)
-      << "tracking access for database '" << database << "', collection '"
-      << collection << "', shard '" << shard << "', user '" << user
-      << "', mode " << AccessMode::typeString(accessMode)
+      << "tracking access for database '" << database << "', shard '" << shard
+      << "', user '" << user << "', mode " << AccessMode::typeString(accessMode)
       << ", context: " << context << ", nbytes: " << nBytes;
+
 } catch (...) {
   // method can be called from destructors, we cannot throw here
 }
 
-void TransactionState::setUsername(std::string_view name) {
+void TransactionState::publishShardMetrics(
+    CollectionNameResolver const& resolver) {
+  TRI_ASSERT(_usageTrackingMode !=
+             metrics::MetricsFeature::UsageTrackingMode::kDisabled);
+  TRI_ASSERT(isDBServer());
+
+  auto& mf = _vocbase.server().getFeature<metrics::MetricsFeature>();
+
+  bool includeUser =
+      _usageTrackingMode ==
+      metrics::MetricsFeature::UsageTrackingMode::kEnabledPerShardPerUser;
+
+  auto user = username();
+
+  auto drainMap = [&](bool isRead, auto& map) {
+    for (auto& [shard, nBytes] : map) {
+      if (nBytes == 0) {
+        // don't spend any time on map entries that are 0 (after draining)
+        continue;
+      }
+      DataSourceId cid = resolver.getCollectionIdLocal(shard);
+      std::string collection = resolver.getCollectionNameCluster(cid);
+
+      // build metric for reads and increase it
+      if (isRead) {
+        auto& metric = mf.addDynamic(
+            getMetric<arangodb_collection_requests_bytes_read_total>(
+                _vocbase.name(), collection, shard, user, includeUser));
+        metric.count(nBytes);
+      } else {
+        auto& metric = mf.addDynamic(
+            getMetric<arangodb_collection_requests_bytes_written_total>(
+                _vocbase.name(), collection, shard, user, includeUser));
+        metric.count(nBytes);
+      }
+
+      // reset map entry back to 0
+      nBytes = 0;
+    }
+  };
+
+  std::lock_guard<std::mutex> m(_shardsMetricsMutex);
+
+  drainMap(/*isRead*/ true, _shardBytesRead);
+  drainMap(/*isRead*/ false, _shardBytesWritten);
+
+  _shardBytesUnpublishedEvents = 0;
+}
+
+void TransactionState::setUsername(std::string const& name) {
   if (name.empty()) {
     // no username to set here
     return;
@@ -318,7 +404,7 @@ void TransactionState::setUsername(std::string_view name) {
   std::unique_lock lock(_usernameLock);
   if (_username.empty()) {
     // only set if still empty
-    _username = std::string{name};
+    _username = name;
   }
 }
 

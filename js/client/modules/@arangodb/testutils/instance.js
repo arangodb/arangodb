@@ -388,7 +388,9 @@ class instance {
     }
 
 
-    this.args['database.default-replication-version'] = this.options.replicationVersion;
+    if (this.options.hasOwnProperty("replicationVersion")) {
+      this.args['database.default-replication-version'] = this.options.replicationVersion;
+    }
 
     for (const [key, value] of Object.entries(this.options.extraArgs)) {
       let splitkey = key.split('.');

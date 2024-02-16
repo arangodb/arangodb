@@ -157,15 +157,8 @@ Result fillIndexSingleThreaded(
     }
     numDocsWritten++;
 
-    if (numDocsWritten % 1024 == 0) {  // commit buffered writes
-      if (count > 0) {
-        double p =
-            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
-        ridx.progress(p);
-        if (progress != nullptr) {
-          (*progress)(p);
-        }
-      }
+    if (numDocsWritten > 0 &&
+        numDocsWritten % 1024 == 0) {  // commit buffered writes
 
       res = partiallyCommitInsertions(batched, batch, rootDB, trxColl,
                                       docsProcessed, ridx, foreground);
@@ -176,6 +169,7 @@ Result fillIndexSingleThreaded(
       if (res.fail()) {
         break;
       }
+
       if (ridx.collection().vocbase().server().isStopping()) {
         res.reset(TRI_ERROR_SHUTTING_DOWN);
         break;
@@ -189,6 +183,23 @@ Result fillIndexSingleThreaded(
         // collection dropped
         res.reset(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
         break;
+      }
+
+      if (count > 0) {
+        double p =
+            docsProcessed.load(std::memory_order_relaxed) * 100.0 / count;
+        ridx.progress(p);
+#ifdef ARANGODB_ENABLE_FAILURE_TESTS
+        TRI_IF_FAILURE("fillIndex::pause") {
+          while (true) {
+            TRI_IF_FAILURE("fillIndex::unpause") { break; }
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+          }
+        }
+#endif
+        if (progress != nullptr) {
+          (*progress)(p);
+        }
       }
     }
   }
@@ -206,6 +217,10 @@ Result fillIndexSingleThreaded(
   if (res.ok()) {  // required so iresearch commits
     res = trx.commit();
 
+    ridx.progress(100.0);  // Report ready
+    if (progress != nullptr) {
+      (*progress)(100.0);
+    }
     if (ridx.estimator() != nullptr) {
       ridx.estimator()->setAppliedSeq(rootDB->GetLatestSequenceNumber());
     }
@@ -227,11 +242,8 @@ RocksDBBuilderIndex::RocksDBBuilderIndex(std::shared_ptr<RocksDBIndex> wp,
                    wp->objectId(), /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   wp->collection()
-                       .vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()},
+                   static_cast<RocksDBEngine&>(
+                       wp->collection().vocbase().engine())},
       _wrapped{std::move(wp)},
       _docsProcessed{0},
       _numDocsHint{numDocsHint},
@@ -365,9 +377,7 @@ Result RocksDBBuilderIndex::fillIndexForeground(
 
   rocksdb::Snapshot const* snap = nullptr;
 
-  auto& selector =
-      _collection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = static_cast<RocksDBEngine&>(_collection.vocbase().engine());
   rocksdb::DB* db = engine.db()->GetRootDB();
 
   auto& metric = _collection.vocbase()
@@ -778,10 +788,7 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
   RocksDBIndex* internal = _wrapped.get();
   TRI_ASSERT(internal != nullptr);
 
-  RocksDBEngine& engine = _collection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  RocksDBEngine& engine = _collection.vocbase().engine<RocksDBEngine>();
   rocksdb::DB* rootDB = engine.db()->GetRootDB();
 
   rocksdb::Snapshot const* snap = rootDB->GetSnapshot();
@@ -829,10 +836,11 @@ futures::Future<Result> RocksDBBuilderIndex::fillIndexBackground(
     // to avoid duplicate index keys. must therefore use a WriteBatchWithIndex
     rocksdb::WriteBatchWithIndex batch(cmp, getBatchSize(_numDocsHint));
     RocksDBBatchedWithIndexMethods methods(engine.db(), &batch, memoryTracker);
-    res = ::fillIndex<false>(
-        db, *internal, methods, batch, snap, std::ref(_docsProcessed), true,
-        _numThreads, kThreadBatchSize,
-        rocksdb::Options(_engine.rocksDBOptions(), {}), _engine.idxPath());
+    res = ::fillIndex<false>(db, *internal, methods, batch, snap,
+                             std::ref(_docsProcessed), true, _numThreads,
+                             kThreadBatchSize,
+                             rocksdb::Options(_engine.rocksDBOptions(), {}),
+                             _engine.idxPath(), std::move(progress));
   } else {
     // non-unique index. all index keys will be unique anyway because they
     // contain the document id we can therefore get away with a cheap

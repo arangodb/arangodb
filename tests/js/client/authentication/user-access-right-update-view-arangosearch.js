@@ -89,23 +89,11 @@ function rootCreateCollection (colName) {
     }
 
     if (colLevel['none'].has(name)) {
-      if (helper.isLdapEnabledExternal()) {
-        users.grantCollection(':role:' + name, dbName, colName, 'none');
-      } else {
-        users.grantCollection(name, dbName, colName, 'none');
-      }
+      users.grantCollection(name, dbName, colName, 'none');
     } else if (colLevel['ro'].has(name)) {
-      if (helper.isLdapEnabledExternal()) {
-        users.grantCollection(':role:' + name, dbName, colName, 'ro');
-      } else {
-        users.grantCollection(name, dbName, colName, 'ro');
-      }
+      users.grantCollection(name, dbName, colName, 'ro');
     } else if (colLevel['rw'].has(name)) {
-      if (helper.isLdapEnabledExternal()) {
-        users.grantCollection(':role:' + name, dbName, colName, 'rw');
-      } else {
-        users.grantCollection(name, dbName, colName, 'rw');
-      }
+      users.grantCollection(name, dbName, colName, 'rw');
     }
   }
   helper.switchUser(name, dbName);
@@ -130,11 +118,7 @@ function rootPrepareCollection (colName, numDocs = 1, defKey = true) {
 function rootGrantCollection (colName, user, explicitRight = '') {
   if (rootTestCollection(colName, false)) {
     if (explicitRight !== '' && rightLevels.includes(explicitRight)) {
-      if (helper.isLdapEnabledExternal()) {
-        users.grantCollection(':role:' + user, dbName, colName, explicitRight);
-      } else {
-        users.grantCollection(user, dbName, colName, explicitRight);
-      }
+      users.grantCollection(user, dbName, colName, explicitRight);
     }
   }
   helper.switchUser(user, dbName);

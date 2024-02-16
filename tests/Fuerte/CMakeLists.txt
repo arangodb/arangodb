@@ -1,5 +1,4 @@
 add_executable(fuertetest
-  VstTest.cpp
   ConnectionBasicTest.cpp
   ConnectionConcurrentTest.cpp
   ConnectionFailuresTest.cpp

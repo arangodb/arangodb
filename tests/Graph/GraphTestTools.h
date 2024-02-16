@@ -35,25 +35,17 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
-#include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
-#include "ClusterEngine/ClusterEngine.h"
 #include "Graph/ShortestPathOptions.h"
-#include "Metrics/MetricsFeature.h"
-#include "Random/RandomGenerator.h"
-#include "RestServer/AqlFeature.h"
 #include "RestServer/DatabaseFeature.h"
-#include "RestServer/DatabasePathFeature.h"
-#include "RestServer/QueryRegistryFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "Utils/VersionTracker.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <optional>
@@ -93,9 +85,10 @@ struct MockIndexHelpers {
 
 struct MockGraphDatabase {
   TRI_vocbase_t vocbase;
+  VersionTracker versionTracker;
 
   MockGraphDatabase(ArangodServer& server, std::string name)
-      : vocbase(createInfo(server, name, 1)) {}
+      : vocbase(createInfo(server, name, 1), versionTracker, true) {}
 
   ~MockGraphDatabase() {}
 

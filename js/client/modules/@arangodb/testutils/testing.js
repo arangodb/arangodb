@@ -184,7 +184,6 @@ const optionsDefaults = {
   'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
   'cleanup': true,
   'cluster': false,
-  'replicationVersion': '1',
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
@@ -487,7 +486,7 @@ function translateTestList(cases, options) {
       }
     }
   }
-  // Expand meta tests like ldap, all
+  // Expand meta tests like "all"
   caselist = (function() {
     let flattened = [];
     for (let n = 0; n < caselist.length; ++n) {
@@ -625,9 +624,6 @@ function unitTest (cases, options) {
     ['ASAN_OPTIONS',
      'LSAN_OPTIONS',
      'UBSAN_OPTIONS',
-     'ASAN_OPTIONS',
-     'LSAN_OPTIONS',
-     'UBSAN_OPTIONS',
      'TSAN_OPTIONS'].forEach(sanOpt => {
        if (process.env.hasOwnProperty(sanOpt)) {
          options.sanOptions[sanOpt] = {};
@@ -670,6 +666,15 @@ function unitTest (cases, options) {
   }
 }
 
+function dumpCompletions() {
+  loadTestSuites();
+  const result = {};
+  result.options = Object.keys(optionsDefaults).map(o => '--' + o).sort();
+  result.suites = allTests.concat('auto', 'find').sort();
+  print(JSON.stringify(result));
+  return 0;
+}
+
 // /////////////////////////////////////////////////////////////////////////////
 // exports
 // /////////////////////////////////////////////////////////////////////////////
@@ -677,3 +682,4 @@ exports.optionsDefaults = optionsDefaults;
 exports.unitTest = unitTest;
 
 exports.testFuncs = testFuncs;
+exports.dumpCompletions = dumpCompletions;

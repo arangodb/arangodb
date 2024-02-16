@@ -35,7 +35,7 @@ const db = require('internal').db;
 const basePath = fs.makeAbsolute(fs.join(require('internal').pathForTesting('common'), 'test-data', 'apps'));
 const arango = require('@arangodb').arango;
 const expect = require('chai').expect;
-const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:').replace(/^vst:/, 'http:');
+const origin = arango.getEndpoint().replace(/\+vpp/, '').replace(/^tcp:/, 'http:').replace(/^ssl:/, 'https:');
 
 
 function testItzInstalled(mountpoint) {

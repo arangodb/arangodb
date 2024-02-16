@@ -96,8 +96,6 @@ class GeneralResponse {
     return _contentTypeRequested;
   }
 
-  virtual arangodb::Endpoint::TransportType transportType() = 0;
-
  protected:
   explicit GeneralResponse(ResponseCode, uint64_t mid);
 
@@ -175,6 +173,7 @@ class GeneralResponse {
 
   virtual ErrorCode zlibDeflate(bool onlyIfSmaller) = 0;
   virtual ErrorCode gzipCompress(bool onlyIfSmaller) = 0;
+  virtual ErrorCode lz4Compress(bool onlyIfSmaller) = 0;
 
  protected:
   std::unordered_map<std::string, std::string>

@@ -180,6 +180,7 @@ bool EnsureIndex::first() {
                      .get();
       if (res.ok()) {
         indexCreationLogging(index.slice());
+        setProgress(100.);
       }
       return res;
     });

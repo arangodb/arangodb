@@ -457,7 +457,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
-                      << "distribution inaccurate";
+                      << "distribution inaccurate: " << slice.toJson();
                   continue;
                 }
 
@@ -465,7 +465,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 if (!answer.isNumber()) {
                   LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
                       << "Received invalid response for count. Shard "
-                      << "distribution inaccurate";
+                      << "distribution inaccurate: " << slice.toJson();
                   continue;
                 }
 
@@ -491,7 +491,7 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 // shard. note: 3.7 will not provide the "syncing" attribute. it
                 // must therefore be treated as optional in 3.8.
                 if (VPackSlice syncing = slice.get("syncing");
-                    syncing.isBoolean() && syncing.getBoolean()) {
+                    syncing.isTrue()) {
                   ++entry.followersSyncing;
                 }
               }

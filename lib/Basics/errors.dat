@@ -328,22 +328,6 @@ ERROR_SERVICE_DOWNLOAD_FAILED,1752,"service download failed","Will be raised whe
 ERROR_SERVICE_UPLOAD_FAILED,1753,"service upload failed","Will be raised when a service upload from the client to the ArangoDB server failed."
 
 ################################################################################
-## LDAP errors
-################################################################################
-
-ERROR_LDAP_CANNOT_INIT,1800,"cannot init a LDAP connection","can not init a LDAP connection"
-ERROR_LDAP_CANNOT_SET_OPTION,1801,"cannot set a LDAP option","can not set a LDAP option"
-ERROR_LDAP_CANNOT_BIND,1802,"cannot bind to a LDAP server","can not bind to a LDAP server"
-ERROR_LDAP_CANNOT_UNBIND,1803,"cannot unbind from a LDAP server","can not unbind from a LDAP server"
-ERROR_LDAP_CANNOT_SEARCH,1804,"cannot issue a LDAP search","can not search the LDAP server"
-ERROR_LDAP_CANNOT_START_TLS,1805,"cannot start a TLS LDAP session","can not star a TLS LDAP session"
-ERROR_LDAP_FOUND_NO_OBJECTS,1806,"LDAP didn't found any objects","LDAP didn't found any objects with the specified search query"
-ERROR_LDAP_NOT_ONE_USER_FOUND,1807,"LDAP found zero ore more than one user","LDAP found zero ore more than one user"
-ERROR_LDAP_USER_NOT_IDENTIFIED,1808,"LDAP found a user, but its not the desired one","LDAP found a user, but its not the desired one"
-ERROR_LDAP_OPERATIONS_ERROR,1809,"LDAP returned an operations error","LDAP returned an operations error"
-ERROR_LDAP_INVALID_MODE,1820,"invalid ldap mode","cant distinguish a valid mode for provided LDAP configuration"
-
-################################################################################
 ## Task errors
 ################################################################################
 
@@ -357,7 +341,6 @@ ERROR_TASK_NOT_FOUND,1852,"task not found","Will be raised when a task with the 
 
 ERROR_GRAPH_INVALID_GRAPH,1901,"invalid graph","Will be raised when an invalid name is passed to the server."
 ERROR_GRAPH_INVALID_EDGE,1906,"invalid edge","Will be raised when an invalid edge id is passed to the server."
-ERROR_GRAPH_TOO_MANY_ITERATIONS,1909,"too many iterations - try increasing the value of 'maxIterations'","Will be raised when too many iterations are done in a graph traversal."
 ERROR_GRAPH_INVALID_FILTER_RESULT,1910,"invalid filter result","Will be raised when an invalid filter result is returned in a graph traversal."
 ERROR_GRAPH_COLLECTION_MULTI_USE,1920,"multi use of edge collection in edge def","an edge collection may only be used once in one edge definition of a graph.",
 ERROR_GRAPH_COLLECTION_USE_IN_MULTI_GRAPHS,1921,"edge collection already used in edge def"," is already used by another graph in a different edge definition.",
@@ -377,6 +360,7 @@ ERROR_GRAPH_COLLECTION_USED_IN_ORPHANS,1938,"collection used in orphans","The co
 ERROR_GRAPH_EDGE_COL_DOES_NOT_EXIST,1939,"edge collection does not exist or is not part of the graph","the specified edge collection does not exist or is not part of the graph.",
 ERROR_GRAPH_EMPTY,1940,"empty graph","The requested graph has no edge collections."
 ERROR_GRAPH_INTERNAL_DATA_CORRUPT,1941,"internal graph data corrupt","The _graphs collection contains invalid data."
+ERROR_GRAPH_MUST_NOT_DROP_COLLECTION,1942,"must not drop collection while part of graph","The collection must not be dropped while it is used as part of at least one graph definition."
 ERROR_GRAPH_CREATE_MALFORMED_ORPHAN_LIST,1943,"malformed orphan list","the orphan list argument is malformed. It has to be an array of strings."
 ERROR_GRAPH_EDGE_DEFINITION_IS_DOCUMENT,1944,"edge definition collection is a document collection","the collection used as a relation is existing, but is a document collection, it cannot be used here."
 ERROR_GRAPH_COLLECTION_IS_INITIAL,1945,"initial collection is not allowed to be removed manually","the collection is used as the initial collection of this graph and is not allowed to be removed manually."

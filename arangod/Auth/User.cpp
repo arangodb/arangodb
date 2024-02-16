@@ -91,19 +91,6 @@ static ErrorCode HexHashFromData(std::string_view hashMethod,
   return TRI_ERROR_NO_ERROR;
 }
 
-static void AddSource(VPackBuilder& builder, auth::Source source) {
-  switch (source) {
-    case auth::Source::Local:  // used to be collection
-      builder.add("source", VPackValue("LOCAL"));
-      break;
-    case auth::Source::LDAP:
-      builder.add("source", VPackValue("LDAP"));
-      break;
-    default:
-      TRI_ASSERT(false);
-  }
-}
-
 static void AddAuthLevel(VPackBuilder& builder, auth::Level lvl) {
   if (lvl == auth::Level::RW) {
     builder.add("read", VPackValue(true));
@@ -139,11 +126,9 @@ static auth::Level AuthLevelFromSlice(VPackSlice slice) {
 // ============= static ==================
 
 auth::User auth::User::newUser(std::string const& user,
-                               std::string const& password,
-                               auth::Source source) {
+                               std::string const& password) {
   auth::User entry("", RevisionId::none());
   entry._active = true;
-  entry._source = source;
 
   entry._username = user;
   entry._passwordMethod = "sha256";
@@ -281,7 +266,6 @@ auth::User auth::User::fromDocument(VPackSlice const& slice) {
 
   auth::User entry(keySlice.copyString(), rev);
   entry._active = activeSlice.getBool();
-  entry._source = auth::Source::Local;
   entry._username = userSlice.copyString();
   entry._passwordMethod = methodSlice.copyString();
   entry._passwordSalt = saltSlice.copyString();
@@ -360,13 +344,12 @@ VPackBuilder auth::User::toVPackBuilder() const {
     }
 
     builder.add("user", VPackValue(_username));
-    AddSource(builder, _source);
 
     // authData sub-object
     {
       VPackObjectBuilder o2(&builder, "authData", true);
       builder.add("active", VPackValue(_active));
-      if (_source == auth::Source::Local) {
+      {
         VPackObjectBuilder o3(&builder, "simple", true);
         builder.add("hash", VPackValue(_passwordHash));
         builder.add("salt", VPackValue(_passwordSalt));
@@ -570,8 +553,6 @@ auth::Level auth::User::collectionAuthLevel(std::string const& dbname,
       return auth::Level::NONE;
     } else if (cname == StaticStrings::QueuesCollection) {
       return auth::Level::RO;
-    } else if (cname == StaticStrings::PregelCollection) {
-      return auth::Level::RW;
     } else if (cname == StaticStrings::FrontendCollection) {
       return auth::Level::RW;
     }

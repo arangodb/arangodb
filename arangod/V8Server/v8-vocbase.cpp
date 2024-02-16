@@ -87,7 +87,6 @@
 #include "V8Server/v8-externals.h"
 #include "V8Server/v8-general-graph.h"
 #include "V8Server/v8-replicated-logs.h"
-#include "V8Server/v8-pregel.h"
 #include "V8Server/v8-replication.h"
 #include "V8Server/v8-statistics.h"
 #include "V8Server/v8-users.h"
@@ -98,10 +97,6 @@
 #include "VocBase/Methods/Databases.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/Methods/Transactions.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -1881,23 +1876,6 @@ static void JS_AuthenticationEnabled(
   TRI_V8_TRY_CATCH_END
 }
 
-static void JS_LdapEnabled(v8::FunctionCallbackInfo<v8::Value> const& args) {
-  TRI_V8_TRY_CATCH_BEGIN(isolate);
-  v8::HandleScope scope(isolate);
-
-#ifdef USE_ENTERPRISE
-  TRI_GET_SERVER_GLOBALS(ArangodServer);
-  TRI_ASSERT(v8g->server().hasFeature<LdapFeature>());
-  auto& ldap = v8g->server().getFeature<LdapFeature>();
-  TRI_V8_RETURN(v8::Boolean::New(isolate, ldap.isEnabled()));
-#else
-  // LDAP only enabled in Enterprise Edition
-  TRI_V8_RETURN(v8::False(isolate));
-#endif
-
-  TRI_V8_TRY_CATCH_END
-}
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief decode a _rev time stamp
 ////////////////////////////////////////////////////////////////////////////////
@@ -2193,7 +2171,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_InitV8IndexArangoDB(isolate, ArangoNS);
 
   TRI_InitV8Collections(context, &vocbase, v8g, isolate, ArangoNS);
-  TRI_InitV8Pregel(isolate, ArangoNS);
   TRI_InitV8Views(*v8g, isolate);
   TRI_InitV8ReplicatedLogs(v8g, isolate);
   TRI_InitV8Users(context, &vocbase, v8g, isolate);
@@ -2280,10 +2257,6 @@ void TRI_InitV8VocBridge(v8::Isolate* isolate, v8::Handle<v8::Context> context,
   TRI_AddGlobalFunctionVocbase(
       isolate, TRI_V8_ASCII_STRING(isolate, "AUTHENTICATION_ENABLED"),
       JS_AuthenticationEnabled, true);
-
-  TRI_AddGlobalFunctionVocbase(isolate,
-                               TRI_V8_ASCII_STRING(isolate, "LDAP_ENABLED"),
-                               JS_LdapEnabled, true);
 
   TRI_AddGlobalFunctionVocbase(isolate,
                                TRI_V8_ASCII_STRING(isolate, "TRUSTED_PROXIES"),

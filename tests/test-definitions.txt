@@ -42,22 +42,17 @@ shell_api_multi !mac priority=500 single suffix=https -- $EncryptionAtRest --pro
 shell_client priority=250 parallelity=2 buckets=2 single size=2xlarge -- $EncryptionAtRest
 shell_client_multi priority=1500 parallelity=2 single suffix=http2 -- --http2 true
 shell_client_multi !mac priority=1500 parallelity=2 single suffix=http -- --http true
-shell_client_multi !mac priority=2500 parallelity=2 single suffix=vst -- --vst true
 
 
 shell_client_transaction priority=750 single suffix=http -- --http true $EncryptionAtRest
 shell_client_transaction !mac single suffix=http2 -- --http2 true
-shell_client_transaction !mac single suffix=vst -- --vst true
 shell_client_traffic priority=250 parallelity=1 single suffix=http -- --http true
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=http2 -- --http2 true 
-shell_client_traffic !mac priority=250 parallelity=1 single suffix=vst -- --vst true
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http -- http true --protocol ssl
 shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-http2 -- --http2 true --protocol ssl
-shell_client_traffic !mac priority=250 parallelity=1 single suffix=ssl-vst -- --vst true --protocol ssl
 
 shell_client_aql buckets=17 priority=250  single suffix=http -- --http true
 shell_client_aql buckets=17 !mac priority=500  single suffix=http2 -- --http2 true
-shell_client_aql buckets=17 !mac priority=750  single suffix=vst -- --vst true
 shell_client_aql buckets=17 !mac priority=1000 single enterprise suffix=encrypt -- --encryptionAtRest true
 
 # C++ unit tests are executed in single env
@@ -94,7 +89,6 @@ shell_api_multi priority=500 cluster suffix=https -- $EncryptionAtRest --protoco
 
 shell_client_multi priority=1500 cluster suffix=http -- --http true
 shell_client_multi priority=1500 cluster suffix=http2 -- --http2 true
-shell_client_multi priority=2500 cluster suffix=vst -- --vst true
 
 # different number of buckets in cluster
 shell_client_aql !mac priority=1000 size=medium+ cluster buckets=17 -- --dumpAgencyOnError true
@@ -142,16 +136,6 @@ queryCacheAuthorization single full priority=500
 readOnly single full priority=500
 replication_aql priority=1000 single full
 replication_random priority=1000 single full
-
-# LDAP
-ldaprole !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldaprolesimple !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsearch !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsearchsimple !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapdualldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapfirstldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-ldapsecondldap !windows single full ldap priority=2000 -- --ldapHost $LDAPHOST --ldap2Host $LDAPHOST2
-
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true

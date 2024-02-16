@@ -48,7 +48,7 @@ class LogicalViewImpl : public arangodb::LogicalView {
 
   LogicalViewImpl(TRI_vocbase_t& vocbase,
                   arangodb::velocypack::Slice const& definition)
-      : LogicalView(*this, vocbase, definition) {}
+      : LogicalView(*this, vocbase, definition, false) {}
   arangodb::Result appendVPackImpl(arangodb::velocypack::Builder&,
                                    Serialization, bool) const override {
     return {};
@@ -88,8 +88,10 @@ class LogicalDataSourceTest : public ::testing::Test {
                           false);
     features.emplace_back(
         server.addFeature<arangodb::metrics::MetricsFeature>(), false);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
     features.emplace_back(server.addFeature<arangodb::ShardingFeature>(),
                           false);
 

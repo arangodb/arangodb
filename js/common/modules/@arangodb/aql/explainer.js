@@ -830,6 +830,9 @@ function processQuery(query, explain, planIndex) {
     stats = explain.stats;
 
   let plan = explain.plan;
+  if (plan === undefined) {
+    throw "incomplete query execution plan data - this should not happen unless when connected to a DB-Server. fetching query plans/profiles from a DB-Server is not supported!";
+  }
   if (planIndex !== undefined) {
     plan = explain.plans[planIndex];
   }
@@ -874,6 +877,7 @@ function processQuery(query, explain, planIndex) {
       }
     });
   };
+
   recursiveWalk(plan.nodes, 0, 'COOR');
 
   if (profileMode) { 

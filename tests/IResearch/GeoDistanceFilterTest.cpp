@@ -231,7 +231,6 @@ TEST(GeoDistanceFilterTest, equal) {
     *q1.mutable_field() = "field";
 
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
@@ -245,7 +244,6 @@ TEST(GeoDistanceFilterTest, equal) {
     *q1.mutable_field() = "field";
 
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {

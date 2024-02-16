@@ -204,6 +204,9 @@ TEST_F(DocumentStateSnapshotTest, snapshot_fetch_multiple_shards) {
               collectionReaderMock3);
         }
         TRI_ASSERT(false) << "Unexpected shard name: " << shard->name();
+        // The following is only to keep the compiler happy in non-maintainer
+        // builds:
+        return std::unique_ptr<MockCollectionReaderDelegator>(nullptr);
       });
 
   auto snapshot = Snapshot(

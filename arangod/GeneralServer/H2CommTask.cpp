@@ -653,7 +653,7 @@ void H2CommTask<T>::processRequest(Stream& stream,
     return;  // prepareExecution sends the error message
   }
 
-  // gzip-uncompress / zlib-deflate
+  // gzip-uncompress / zlib-deflate / lz4-uncompress
   if (Result res = this->handleContentEncoding(*req); res.fail()) {
     this->sendErrorResponse(rest::ResponseCode::BAD, req->contentTypeResponse(),
                             1, TRI_ERROR_BAD_PARAMETER, res.errorMessage());
@@ -830,7 +830,7 @@ void H2CommTask<T>::queueHttp2Responses() {
     }
 
     // add "Server" response header
-    if (!seenServerHeader) {
+    if (!seenServerHeader && this->_isUserRequest) {
       nva.push_back(
           {(uint8_t*)"server", (uint8_t*)"ArangoDB", 6, 8,
            NGHTTP2_NV_FLAG_NO_COPY_NAME | NGHTTP2_NV_FLAG_NO_COPY_VALUE});

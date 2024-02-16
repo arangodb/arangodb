@@ -498,8 +498,7 @@ RocksDBGenericIterator arangodb::createPrimaryIndexIterator(
   auto primaryIndex = static_cast<RocksDBPrimaryIndex*>(index.get());
 
   auto bounds(RocksDBKeyBounds::PrimaryIndex(primaryIndex->objectId()));
-  auto& selector = col->vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = col->vocbase().engine<RocksDBEngine>();
   auto iterator = RocksDBGenericIterator(engine.db(), options, bounds);
 
   TRI_ASSERT(iterator.bounds().objectId() == primaryIndex->objectId());

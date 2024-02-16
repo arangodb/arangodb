@@ -1740,7 +1740,6 @@ function arangoErrorToHttpCode (num) {
   switch (num) {
     case arangodb.ERROR_INTERNAL:
     case arangodb.ERROR_OUT_OF_MEMORY:
-    case arangodb.ERROR_GRAPH_TOO_MANY_ITERATIONS:
     case arangodb.ERROR_ARANGO_DOCUMENT_KEY_BAD:
       return exports.HTTP_SERVER_ERROR;
 

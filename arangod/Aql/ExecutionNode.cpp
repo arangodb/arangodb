@@ -68,7 +68,6 @@
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/system-compiler.h"
 #include "Cluster/ServerState.h"
-#include "Meta/static_assert_size.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/CountCache.h"

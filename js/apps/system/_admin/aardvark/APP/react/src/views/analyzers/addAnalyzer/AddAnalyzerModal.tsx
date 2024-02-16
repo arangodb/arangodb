@@ -11,6 +11,7 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { notifySuccess } from "../../../utils/notifications";
 import { useReinitializeForm } from "../useReinitializeForm";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
@@ -35,9 +36,7 @@ export const AddAnalyzerModal = ({
     const currentDB = getCurrentDB();
     try {
       await currentDB.analyzer(values.name).create(values);
-      window.arangoHelper.arangoNotification(
-        `The analyzer: ${values.name} was successfully created`
-      );
+      notifySuccess(`The analyzer: ${values.name} was successfully created`);
       mutate("/analyzers");
       onClose();
     } catch (error: any) {

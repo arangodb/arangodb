@@ -57,8 +57,7 @@ namespace arangodb::iresearch {
 struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
   Result create(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
                 VPackSlice definition, bool isUserRequest) const final {
-    auto& engine =
-        vocbase.server().getFeature<EngineSelectorFeature>().engine();
+    auto& engine = vocbase.engine();
     auto properties = definition.isObject()
                           ? definition
                           : velocypack::Slice::emptyObjectSlice();
@@ -163,8 +162,7 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
   }
 
   Result instantiate(LogicalView::ptr& view, TRI_vocbase_t& vocbase,
-                     VPackSlice definition,
-                     bool /*isUserRequest*/) const final {
+                     VPackSlice definition, bool isUserRequest) const final {
     std::string error;
     IResearchViewMeta meta;
     IResearchViewMetaState metaState;
@@ -188,7 +186,7 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
     }
 
     auto impl = std::shared_ptr<IResearchView>(
-        new IResearchView(vocbase, definition, std::move(meta)));
+        new IResearchView(vocbase, definition, std::move(meta), isUserRequest));
 
     // NOTE: for single-server must have full list of collections to lock
     //       for cluster the shards to lock come from coordinator and are not in
@@ -209,10 +207,9 @@ struct IResearchView::ViewFactory final : public arangodb::ViewFactory {
   }
 };
 
-IResearchView::IResearchView(TRI_vocbase_t& vocbase,
-                             velocypack::Slice const& info,
-                             IResearchViewMeta&& meta)
-    : LogicalView(*this, vocbase, info),
+IResearchView::IResearchView(TRI_vocbase_t& vocbase, velocypack::Slice info,
+                             IResearchViewMeta&& meta, bool isUserRequest)
+    : LogicalView(*this, vocbase, info, isUserRequest),
       _asyncSelf(std::make_shared<AsyncViewPtr::element_type>(this)),
       _meta(IResearchViewMeta::FullTag{}, std::move(meta)),
       _inRecovery(false) {
@@ -527,8 +524,7 @@ Result IResearchView::link(AsyncLinkPtr const& link) {
 }
 
 void IResearchView::open() {
-  auto& engine =
-      vocbase().server().getFeature<EngineSelectorFeature>().engine();
+  auto& engine = vocbase().engine();
   _inRecovery = engine.inRecovery();
 }
 

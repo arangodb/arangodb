@@ -46,6 +46,7 @@
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
@@ -151,7 +152,7 @@ Result createLink(LogicalCollection& collection, LogicalView const& view,
         auto* impl = basics::downCast<IResearchRocksDBLink>(link.get());
 #endif
         if (impl) {
-          return impl->commit();
+          return impl->commit().result();
         }
       }
     }
@@ -676,7 +677,7 @@ std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
 
 std::shared_ptr<IResearchLink> IResearchLinkHelper::find(
     LogicalCollection const& collection, LogicalView const& view) {
-  for (auto& index : collection.getIndexes()) {
+  for (auto& index : collection.getPhysical()->getAllIndexes()) {
     if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
       continue;  // not an IResearchLink
     }
@@ -906,7 +907,7 @@ Result IResearchLinkHelper::validateLinks(TRI_vocbase_t& vocbase,
 bool IResearchLinkHelper::visit(
     LogicalCollection const& collection,
     std::function<bool(IResearchLink& link)> const& visitor) {
-  for (auto& index : collection.getIndexes()) {
+  for (auto& index : collection.getPhysical()->getAllIndexes()) {
     if (!index || Index::TRI_IDX_TYPE_IRESEARCH_LINK != index->type()) {
       continue;  // not an IResearchLink
     }

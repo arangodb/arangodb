@@ -45,7 +45,8 @@ class GeneralServerFeature final : public ArangodFeature {
  public:
   static constexpr std::string_view name() noexcept { return "GeneralServer"; }
 
-  explicit GeneralServerFeature(Server& server);
+  explicit GeneralServerFeature(Server& server,
+                                metrics::MetricsFeature& metrics);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -80,15 +81,9 @@ class GeneralServerFeature final : public ArangodFeature {
     _requestBodySizeHttp2.count(bodySize);
   }
 
-  void countVstRequest(uint64_t bodySize) noexcept {
-    _requestBodySizeVst.count(bodySize);
-  }
-
   void countHttp1Connection() { _http1Connections.count(); }
 
   void countHttp2Connection() { _http2Connections.count(); }
-
-  void countVstConnection() { _vstConnections.count(); }
 
   bool isTelemetricsEnabled() const noexcept { return _enableTelemetrics; }
   uint64_t telemetricsMaxRequestsPerInterval() const noexcept {
@@ -136,10 +131,8 @@ class GeneralServerFeature final : public ArangodFeature {
   // Some metrics about requests and connections
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp1;
   metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeHttp2;
-  metrics::Histogram<metrics::LogScale<uint64_t>>& _requestBodySizeVst;
   metrics::Counter& _http1Connections;
   metrics::Counter& _http2Connections;
-  metrics::Counter& _vstConnections;
 };
 
 }  // namespace arangodb

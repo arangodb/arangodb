@@ -122,8 +122,6 @@ class TestConfig:
         if "ONLYGREY" in os.environ:
             self.args += ["--onlyGrey", os.environ["ONLYGREY"]]
 
-        if "vst" in flags:
-            self.args += ["--vst", "true"]
         if "ssl" in flags:
             self.args += ["--protocol", "ssl"]
         if "http2" in flags:

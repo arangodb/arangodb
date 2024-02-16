@@ -333,9 +333,11 @@ auto Snapshot::generateBatch(state::Ongoing const&) -> ResultT<SnapshotBatch> {
                                        << shard->name();
 
     auto tid = TransactionId::createFollower();
+    // During SnapshotTransfer, we do not want to account the operation to a
+    // specific user, so we set an empty userName.
     operations.emplace_back(ReplicatedOperation::buildDocumentOperation(
         TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, maybeShardID.get(),
-        std::move(payload)));
+        std::move(payload), StaticStrings::Empty));
     operations.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
 
     auto readerHasMore = reader->hasMore();
@@ -396,9 +398,11 @@ auto Snapshot::generateDocumentBatch(ShardID shardId,
   std::vector<ReplicatedOperation> batch;
   batch.reserve(2);
   auto tid = TransactionId::createFollower();
+  // During SnapshotTransfer, we do not want to account the operation to a
+  // specific user, so we set an empty userName.
   batch.emplace_back(ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, tid, std::move(shardId),
-      std::move(slice)));
+      std::move(slice), StaticStrings::Empty));
   batch.emplace_back(ReplicatedOperation::buildCommitOperation(tid));
   return batch;
 }

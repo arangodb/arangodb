@@ -189,7 +189,7 @@ class Methods {
   /// only be set if no user has been registered with the transaction yet.
   /// this user name is informational only and can be used for logging,
   /// metrics etc. it should not be used for permission checks.
-  void setUsername(std::string_view name);
+  void setUsername(std::string const& name);
 
   /// @brief return name of user who originated the transaction. may be
   /// empty. this user name is informational only and can be used for logging,
@@ -433,7 +433,7 @@ class Methods {
       std::shared_ptr<const std::vector<std::string>> const& followers,
       OperationOptions const& options,
       velocypack::Builder const& replicationData,
-      TRI_voc_document_operation_e operation);
+      TRI_voc_document_operation_e operation, std::string_view userName);
 
  private:
   // perform a (deferred) intermediate commit if required

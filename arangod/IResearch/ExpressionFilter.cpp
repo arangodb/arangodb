@@ -121,16 +121,16 @@ class ExpressionQuery : public irs::filter::prepared {
     return _allQuery->visit(segment, visitor, boost);
   }
 
+  irs::score_t boost() const noexcept final { return _allQuery->boost(); }
+
  protected:
   explicit ExpressionQuery(ExpressionCompilationContext const& ctx,
-                           irs::filter::prepared::ptr&& allQuery) noexcept
-      : irs::filter::prepared{allQuery->boost()},
-        _allQuery{std::move(allQuery)},
-        _ctx{ctx} {
+                           prepared::ptr&& allQuery) noexcept
+      : _allQuery{std::move(allQuery)}, _ctx{ctx} {
     TRI_ASSERT(_allQuery);
   }
 
-  irs::filter::prepared::ptr _allQuery;
+  prepared::ptr _allQuery;
   ExpressionCompilationContext _ctx;
 };
 
@@ -200,11 +200,6 @@ class DeterministicExpressionQuery : public ExpressionQuery {
 
 }  // namespace
 
-size_t ExpressionCompilationContext::hash() const noexcept {
-  return irs::hash_combine(
-      irs::hash_combine(1610612741, aql::AstNodeValueHash()(node.get())), ast);
-}
-
 void ByExpression::init(QueryContext const& ctx, aql::AstNode& node) noexcept {
   return init(ctx, std::shared_ptr<aql::AstNode>{&node, [](aql::AstNode*) {}});
 }
@@ -223,8 +218,6 @@ bool ByExpression::equals(irs::filter const& rhs) const noexcept {
   auto const& impl = static_cast<ByExpression const&>(rhs);
   return _ctx == impl._ctx && _allColumn == impl._allColumn;
 }
-
-size_t ByExpression::hash() const noexcept { return _ctx.hash(); }
 
 irs::filter::prepared::ptr ByExpression::prepare(
     irs::PrepareContext const& ctx) const {

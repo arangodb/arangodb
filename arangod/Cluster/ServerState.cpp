@@ -169,6 +169,25 @@ ServerState::~ServerState() = default;
 ServerState* ServerState::instance() noexcept { return Instance; }
 
 ////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the id is from a coordinator
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isCoordinatorId(std::string_view id) {
+  // intended to be a cheap validation, and intentionally not using
+  return id.starts_with("CRDN-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief whether or not the id is from a DB server
+////////////////////////////////////////////////////////////////////////////////
+
+bool ServerState::isDBServerId(std::string_view id) {
+  return id.starts_with("PRMR-") &&
+         std::regex_match(id.begin(), id.end(), ::uuidRegex);
+}
+
+////////////////////////////////////////////////////////////////////////////////
 /// @brief get the string representation of a role
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -214,7 +233,8 @@ std::string ServerState::roleToShortString(ServerState::RoleEnum role) {
 /// @brief convert a string to a role
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::RoleEnum ServerState::stringToRole(std::string_view value) {
+ServerState::RoleEnum ServerState::stringToRole(
+    std::string_view value) noexcept {
   if (value == "SINGLE") {
     return ROLE_SINGLE;
   } else if (value == "PRIMARY" || value == "DBSERVER") {
@@ -256,7 +276,8 @@ std::string ServerState::stateToString(StateEnum state) {
 /// @brief convert a string representation to a state
 ////////////////////////////////////////////////////////////////////////////////
 
-ServerState::StateEnum ServerState::stringToState(std::string_view value) {
+ServerState::StateEnum ServerState::stringToState(
+    std::string_view value) noexcept {
   if (value == "STARTUP") {
     return STATE_STARTUP;
   } else if (value == "SERVING") {
@@ -314,33 +335,34 @@ ServerState::Mode ServerState::mode() noexcept {
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief change server mode, returns previously set mode
 ////////////////////////////////////////////////////////////////////////////////
-ServerState::Mode ServerState::setServerMode(ServerState::Mode value) {
+
+ServerState::Mode ServerState::setServerMode(ServerState::Mode value) noexcept {
   if (::serverMode.load(std::memory_order_acquire) != value) {
     return ::serverMode.exchange(value, std::memory_order_release);
   }
   return value;
 }
 
-bool ServerState::isStartupOrMaintenance() {
+bool ServerState::isStartupOrMaintenance() noexcept {
   Mode value = mode();
   return value == Mode::STARTUP || value == Mode::MAINTENANCE;
 }
 
-bool ServerState::readOnly() {
+bool ServerState::readOnly() noexcept {
   return ::serverStateReadOnly.load(std::memory_order_acquire) ||
          ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
-bool ServerState::readOnlyByAPI() {
+bool ServerState::readOnlyByAPI() noexcept {
   return ::serverStateReadOnly.load(std::memory_order_acquire);
 }
 
-bool ServerState::readOnlyByLicense() {
+bool ServerState::readOnlyByLicense() noexcept {
   return ::licenseReadOnly.load(std::memory_order_acquire);
 }
 
 /// @brief set server read-only
-bool ServerState::setReadOnly(ReadOnlyMode ro) {
+bool ServerState::setReadOnly(ReadOnlyMode ro) noexcept {
   auto ret = readOnly();
   if (ro == API_FALSE) {
     ::serverStateReadOnly.store(false, std::memory_order_release);

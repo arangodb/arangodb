@@ -53,7 +53,6 @@ struct GeneralRequestMock : public arangodb::GeneralRequest {
   arangodb::velocypack::Slice payload(bool strictValidation = true) override;
   void setPayload(arangodb::velocypack::Buffer<uint8_t> buffer) override;
   void setData(arangodb::velocypack::Slice slice);
-  arangodb::Endpoint::TransportType transportType() override;
   std::unordered_map<std::string, std::string>& values() { return _values; }
 };
 
@@ -74,7 +73,6 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
       bool resolveExternals = true) override;
   virtual void addRawPayload(std::string_view payload) override;
   virtual void reset(arangodb::ResponseCode code) override;
-  virtual arangodb::Endpoint::TransportType transportType() override;
   void setAllowCompression(
       arangodb::rest::ResponseCompressionType rct) noexcept override {}
   arangodb::rest::ResponseCompressionType compressionAllowed()
@@ -84,4 +82,5 @@ struct GeneralResponseMock : public arangodb::GeneralResponse {
   virtual size_t bodySize() const override { return _payload.size(); }
   virtual ErrorCode zlibDeflate(bool onlyIfSmaller) override;
   virtual ErrorCode gzipCompress(bool onlyIfSmaller) override;
+  virtual ErrorCode lz4Compress(bool onlyIfSmaller) override;
 };

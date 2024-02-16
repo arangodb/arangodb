@@ -934,6 +934,9 @@ auto checkConfigChanged(SupervisionContext& ctx, Log const& log,
   auto const& plan = *log.plan;
   auto const& current = *log.current;
 
+  if (!current.supervision.has_value()) {
+    return;
+  }
   ADB_PROD_ASSERT(current.supervision.has_value());
 
   // Check write concern
@@ -969,7 +972,9 @@ auto checkConfigCommitted(SupervisionContext& ctx, Log const& log) -> void {
 
   auto const& plan = *log.plan;
   auto const& current = *log.current;
-
+  if (!current.supervision.has_value()) {
+    return;
+  }
   ADB_PROD_ASSERT(current.supervision.has_value());
 
   if (!current.leader.has_value() ||

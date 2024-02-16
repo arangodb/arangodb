@@ -101,10 +101,8 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
     return VersionResult{VersionResult::VERSION_MATCH, serverVersion,
                          serverVersion, tasks};
   }
-  StorageEngine& engine =
-      vocbase->server().getFeature<EngineSelectorFeature>().engine();
 
-  std::string versionFile = engine.versionFilename(vocbase->id());
+  std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
   if (!basics::FileUtils::exists(versionFile)) {
     LOG_TOPIC("fde3f", DEBUG, Logger::STARTUP)
         << "VERSION file '" << versionFile << "' not found";
@@ -183,10 +181,7 @@ VersionResult Version::check(TRI_vocbase_t* vocbase) {
 
 Result Version::write(TRI_vocbase_t* vocbase,
                       std::map<std::string, bool> const& tasks, bool sync) {
-  StorageEngine& engine =
-      vocbase->server().getFeature<EngineSelectorFeature>().engine();
-
-  std::string versionFile = engine.versionFilename(vocbase->id());
+  std::string versionFile = vocbase->engine().versionFilename(vocbase->id());
   if (versionFile.empty()) {
     // cluster engine
     return Result();

@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { mutate } from "swr";
 import { getAardvarkRouteForCurrentDb } from "../../../utils/arangoClient";
-import { useQueryContext } from "../QueryContextProvider";
 import { QueryType } from "./useFetchUserSavedQueries";
 
 const useReadFile = () => {
@@ -60,7 +59,6 @@ const uploadToServer = async ({
 };
 export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
   const [isUploading, setIsUploading] = useState(false);
-  const { onSaveQueryList } = useQueryContext();
   const { onReadFile } = useReadFile();
   const handleSuccess = async () => {
     await mutate("/savedQueries");
@@ -90,16 +88,7 @@ export const useQueryImport = ({ onClose }: { onClose: () => void }) => {
         }) as QueryType[];
         setIsUploading(true);
         // if auth is preset, upload via aardvark server
-        if (!window.frontendConfig.ldapEnabled) {
-          await uploadToServer({
-            sanitizedQueries,
-            onSuccess: handleSuccess,
-            onFailure: handleFailure
-          });
-          return;
-        }
-        // if no ldap, upload to localstorage
-        await onSaveQueryList({
+        await uploadToServer({
           sanitizedQueries,
           onSuccess: handleSuccess,
           onFailure: handleFailure

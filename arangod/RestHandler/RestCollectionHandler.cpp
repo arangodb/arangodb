@@ -695,7 +695,9 @@ void RestCollectionHandler::handleCommandDelete() {
     VPackObjectBuilder obj(&_builder, true);
 
     obj->add("id", VPackValue(std::to_string(coll->id().id())));
-    res = methods::Collections::drop(*coll, allowDropSystem);
+    CollectionDropOptions dropOptions{.allowDropSystem = allowDropSystem,
+                                      .allowDropGraphCollection = false};
+    res = methods::Collections::drop(*coll, dropOptions);
   }
 
   if (res.fail()) {

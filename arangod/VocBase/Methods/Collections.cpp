@@ -40,6 +40,7 @@
 #include "Cluster/ServerState.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
+#include "Graph/Graph.h"
 #include "Graph/GraphManager.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
@@ -119,8 +120,7 @@ Result validateCreationInfo(CollectionCreationInfo const& info,
                             bool isLocalCollection, bool isSystemName,
                             bool allowSystem = false) {
   // check whether the name of the collection is valid
-  bool extendedNames =
-      vocbase.server().getFeature<DatabaseFeature>().extendedNames();
+  bool extendedNames = vocbase.extendedNames();
   if (auto res = CollectionNameValidator::validateName(
           allowSystem, extendedNames, info.name);
       res.fail()) {
@@ -220,8 +220,7 @@ VPackBuilder createCollectionProperties(
     TRI_vocbase_t const& vocbase,
     std::vector<CollectionCreationInfo> const& infos,
     bool allowEnterpriseCollectionsOnSingleServer) {
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.engine();
   VPackBuilder builder;
   VPackBuilder helper;
 
@@ -1170,10 +1169,7 @@ Result Collections::rename(LogicalCollection& collection,
               "non-system collection name or vice versa"};
     }
 
-    bool extendedNames = collection.vocbase()
-                             .server()
-                             .getFeature<DatabaseFeature>()
-                             .extendedNames();
+    bool extendedNames = collection.vocbase().extendedNames();
     if (auto res = CollectionNameValidator::validateName(
             isSystem, extendedNames, newName);
         res.fail()) {
@@ -1219,8 +1215,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
 
 /*static*/ Result Collections::drop(  // drop collection
     LogicalCollection& coll,          // collection to drop
-    bool allowDropSystem,             // allow dropping system collection
-    bool keepUserRights) {
+    CollectionDropOptions options) {
   ExecContext const& exec = ExecContext::current();
   if (!exec.canUseDatabase(coll.vocbase().name(),
                            auth::Level::RW) ||  // vocbase modifiable
@@ -1239,15 +1234,56 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
   std::string const collName = coll.name();
   Result res;
 
+  if (!options.allowDropGraphCollection &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    graph::GraphManager gm(coll.vocbase(),
+                           transaction::OperationOriginREST{
+                               "checking graph membership of collection"});
+    res = gm.applyOnAllGraphs([&collName](std::unique_ptr<graph::Graph> graph)
+                                  -> Result {
+      TRI_ASSERT(graph != nullptr);
+      if (graph->hasOrphanCollection(collName)) {
+        return {TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION,
+                absl::StrCat(
+                    TRI_errno_string(TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION),
+                    ": collection '", collName,
+                    "' is an orphan collection inside graph '", graph->name(),
+                    "'")};
+      }
+      if (graph->hasEdgeCollection(collName)) {
+        return {
+            TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION,
+            absl::StrCat(
+                TRI_errno_string(TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION),
+                ": collection '", collName,
+                "' is an edge collection inside graph '", graph->name(), "'")};
+      }
+      if (graph->hasVertexCollection(collName)) {
+        return {
+            TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION,
+            absl::StrCat(
+                TRI_errno_string(TRI_ERROR_GRAPH_MUST_NOT_DROP_COLLECTION),
+                ": collection '", collName,
+                "' is a vertex collection inside graph '", graph->name(), "'")};
+      }
+      return {};
+    });
+
+    if (res.fail()) {
+      events::DropCollection(coll.vocbase().name(), coll.name(),
+                             res.errorNumber());
+      return res;
+    }
+  }
+
 // If we are a coordinator in a cluster, we have to behave differently:
 #ifdef USE_ENTERPRISE
-
-  res = DropColEnterprise(&coll, allowDropSystem);
+  res = DropColEnterprise(&coll, options.allowDropSystem);
 #else
   if (ServerState::instance()->isCoordinator()) {
-    res = DropVocbaseColCoordinator(&coll, allowDropSystem);
+    res = DropVocbaseColCoordinator(&coll, options.allowDropSystem);
   } else {
-    res = coll.vocbase().dropCollection(coll.id(), allowDropSystem);
+    res = coll.vocbase().dropCollection(coll.id(), options.allowDropSystem);
   }
 #endif
 
@@ -1258,7 +1294,7 @@ static Result DropVocbaseColCoordinator(LogicalCollection* collection,
       << "error while dropping collection: '" << collName << "' error: '"
       << res.errorMessage() << "'";
 
-  if (ADB_LIKELY(!keepUserRights)) {
+  if (ADB_LIKELY(!options.keepUserRights)) {
     auth::UserManager* um = AuthenticationFeature::instance()->userManager();
 
     if (res.ok() && um != nullptr) {
@@ -1288,10 +1324,9 @@ futures::Future<Result> Collections::warmup(TRI_vocbase_t& vocbase,
     return warmupOnCoordinator(feature, vocbase.name(), cid, options);
   }
 
-  StorageEngine& engine =
-      vocbase.server().getFeature<EngineSelectorFeature>().engine();
+  StorageEngine& engine = vocbase.engine();
 
-  auto idxs = coll.getIndexes();
+  auto idxs = coll.getPhysical()->getReadyIndexes();
   for (auto const& idx : idxs) {
     if (idx->canWarmup()) {
       TRI_IF_FAILURE("warmup::executeDirectly") {
