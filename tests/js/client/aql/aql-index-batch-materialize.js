@@ -200,6 +200,7 @@ function IndexBatchMaterializeTestSuite() {
           RETURN doc
       `;
       db._explain(query);
+      print(db._createStatement({query}).explain().plan);
     },
 
     testMaterializeIndexScanProjections: function () {

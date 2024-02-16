@@ -46,7 +46,8 @@ bool usesOutVariable(materialize::MaterializeNode const* matNode,
   return other->getVariableIdsUsedHere().contains(matNode->outVariable().id);
 }
 
-bool checkCalculation(materialize::MaterializeNode const* matNode,
+bool checkCalculation(ExecutionPlan* plan,
+                      materialize::MaterializeNode const* matNode,
                       ExecutionNode* other) {
   if (!usesOutVariable(matNode, other)) {
     return true;
@@ -85,15 +86,15 @@ bool checkCalculation(materialize::MaterializeNode const* matNode,
     LOG_DEVEL << "NEW PROJ: " << proj;
     calc->replaceVariables(
         {{matNode->outVariable().id, indexNode->outVariable()}});
-    indexNode->setProjections(std::move(proj));
-
+    indexNode->recalculateProjections(plan);
     return true;
   }
 
   return false;
 }
 
-bool canMovePastNode(materialize::MaterializeNode const* matNode,
+bool canMovePastNode(ExecutionPlan* plan,
+                     materialize::MaterializeNode const* matNode,
                      ExecutionNode* other) {
   switch (other->getType()) {
     case EN::LIMIT:
@@ -106,7 +107,7 @@ bool canMovePastNode(materialize::MaterializeNode const* matNode,
       // TODO This is very pessimistic. In fact we could move the materialize
       // node down, if the index supports
       //      projecting the required attribute.
-      return checkCalculation(matNode, other);
+      return checkCalculation(plan, matNode, other);
     default:
       break;
   }
@@ -130,7 +131,7 @@ void arangodb::aql::pushDownLateMaterializationRule(
     ExecutionNode* insertBefore = matNode->getFirstParent();
 
     while (insertBefore != nullptr) {
-      if (!canMovePastNode(matNode, insertBefore)) {
+      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
         LOG_RULE << "NODE " << matNode->id() << " can not move past "
                  << insertBefore->id() << " " << insertBefore->getTypeString();
         break;
@@ -145,5 +146,8 @@ void arangodb::aql::pushDownLateMaterializationRule(
     }
   }
 
+  if (modified) {
+    plan->show();
+  }
   opt->addPlan(std::move(plan), rule, modified);
 }

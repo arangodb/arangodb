@@ -118,10 +118,23 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
     indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
                                    {});
+    auto oldOutVariable = indexNode->outVariable();
+    auto newOutVariable =
+        plan->getAst()->variables()->createTemporaryVariable();
+
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
-        *indexNode->outVariable());
+        *newOutVariable);
+
     plan->insertAfter(indexNode, materialized);
+
+    for (auto* n = materialized->getFirstParent(); n != nullptr;
+         n = n->getFirstParent()) {
+      n->replaceVariables({{oldOutVariable->id, newOutVariable}});
+      n->invalidateVarUsage();
+    }
+    plan->clearVarUsageComputed();
+
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
       TRI_ASSERT(!indexNode->projections().hasOutputRegisters());
@@ -129,6 +142,10 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       materialized->projections(std::move(indexNode->projections()));
     }
     modified = true;
+  }
+
+  if (modified) {
+    plan->show();
   }
 
   opt->addPlan(std::move(plan), rule, modified);
