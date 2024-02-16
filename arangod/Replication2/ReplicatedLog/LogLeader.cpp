@@ -292,14 +292,12 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     LOG_CTX("8ff44", TRACE, follower->logContext)
                         << "received append entries response, messageId = "
                         << messageId;
-                    auto [preparedRequests, resolvedPromises] = std::invoke(
+                    auto responseResult = basics::catchToResultT(
                         [&]() -> std::pair<std::vector<std::optional<
                                                PreparedAppendEntryRequest>>,
                                            ResolvedPromiseSet> {
                           auto guarded = self->acquireMutex();
                           if (!guarded->_didResign) {
-                            // TODO: This can throw when we register the
-                            // Callback
                             return guarded->handleAppendEntriesResponse(
                                 *follower, lastIndex, currentCommitIndex,
                                 currentLITK, currentTerm, std::move(res),
@@ -312,6 +310,14 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                           }
                           return {};
                         });
+                    if (responseResult.fail()) {
+                      LOG_TOPIC("a32de", DEBUG, Logger::REPLICATION2)
+                          << "appendEntries failed, follower already gone: "
+                          << responseResult.result();
+                    }
+
+                    auto [preparedRequests, resolvedPromises] =
+                        std::move(responseResult.get());
 
                     handleResolvedPromiseSet(self->_scheduler.get(),
                                              std::move(resolvedPromises),

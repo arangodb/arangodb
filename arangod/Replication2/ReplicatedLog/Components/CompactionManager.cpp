@@ -116,7 +116,18 @@ void CompactionManager::triggerAsyncCompaction(
     guard->_compactionInProgress = true;
     while (true) {
       ADB_PROD_ASSERT(guard.isLocked());
-      auto store = guard->storage.transaction();
+
+      auto storeRes = basics::catchToResultT([&]() -> auto {
+        return guard->storage.transaction();
+      });
+      if (storeRes.fail()) {
+        // The participant might be gone
+        LOG_CTX("d7724", DEBUG, self->loggerContext)
+            << "error during compaction: " << storeRes.result();
+        break;
+      }
+
+      auto store = std::move(storeRes.get());
       auto logBounds = store->getLogBounds();
 
       auto threshold = guard->_fullCompactionNextRound
