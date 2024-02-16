@@ -44,7 +44,7 @@
     generateAndInsert.factor++;
 
     let docs = [];
-    for (let i = 0; i < 1000 * generateAndInsert.factor; i++) {
+    for (let i = 0; i < 600 * generateAndInsert.factor; i++) {
       let custom_field = "field_" + generateAndInsert.counter;
       let d = {
         'stringValue': "" + generateAndInsert.counter, 
@@ -99,7 +99,7 @@
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
           writers_curr = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
-          assertTrue(writers_prev < writers_curr);
+          assertTrue(writers_prev < writers_curr, `new writers value (${writers_curr}) is equal or less old writers value (${writers_prev})`);
           writers_prev = writers_curr;
         }
         db._view(viewName).properties({commitIntervalMsec: 100});

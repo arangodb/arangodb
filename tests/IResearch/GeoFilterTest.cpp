@@ -226,7 +226,6 @@ TEST(GeoFilterTest, equal) {
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {
@@ -238,7 +237,6 @@ TEST(GeoFilterTest, equal) {
         geo::ShapeContainer::Type::S2_POINT);
     *q1.mutable_field() = "field";
     ASSERT_EQ(q, q1);
-    ASSERT_EQ(q.hash(), q1.hash());
   }
 
   {

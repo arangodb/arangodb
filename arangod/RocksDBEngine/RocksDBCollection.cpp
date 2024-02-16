@@ -88,6 +88,7 @@
 #include "VocBase/voc-types.h"
 
 #include <absl/strings/str_cat.h>
+#include <Replication2/StateMachines/Document/DocumentLeaderState.h>
 #include <rocksdb/utilities/transaction.h>
 #include <rocksdb/utilities/transaction_db.h>
 #include <velocypack/Iterator.h>
@@ -392,9 +393,7 @@ void RocksDBCollection::freeMemory() noexcept {
 
   RocksDBMetaCollection::freeMemory();
 
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   engine.removeCollectionMapping(objectId());
 }
 
@@ -450,11 +449,13 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
 
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
   TRI_vocbase_t& vocbase = _logicalCollection.vocbase();
+  auto& engine = vocbase.engine<RocksDBEngine>();
 
   DatabaseGuard dbGuard(vocbase);
   CollectionGuard guard(&vocbase, _logicalCollection.id());
@@ -463,9 +464,6 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
   if (!co_await locker.lock()) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
   }
-
-  auto& selector = vocbase.server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
 
   {
     // Step 1. Check for existing matching index
@@ -609,12 +607,24 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
       co_return res;
     }
 
-    // always (re-)lock to avoid inconsistencies
-    co_await locker.lock();
+    ADB_PROD_ASSERT(locker.isLocked())
+        << "Internal error: lock already gone during index creation";
 
     syncIndexOnCreate(*newIdx);
 
     inventoryLocker.lock();
+
+    // step 4½. replicate index creation
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        replicationCb != nullptr) {
+      // replicationCb is only set for leaders.
+      // Its purpose is to replicate the CreateIndex operation to the followers.
+      auto replicationFuture = replicationCb();
+      auto replicationResult = co_await std::move(replicationFuture);
+      if (!replicationResult.ok()) {
+        THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
+      }
+    }
 
     // Step 5. register in index list
     {
@@ -669,9 +679,7 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
 // the write-lock on all indexes is still held. this is not called
 // during recovery.
 Result RocksDBCollection::duringDropIndex(std::shared_ptr<Index> idx) {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   TRI_ASSERT(!engine.inRecovery());
 
   auto builder = _logicalCollection.toVelocyPackIgnore(
@@ -722,11 +730,9 @@ std::unique_ptr<ReplicationIterator> RocksDBCollection::getReplicationIterator(
   }
 
   if (batchId != 0) {
-    EngineSelectorFeature& selector = _logicalCollection.vocbase()
-                                          .server()
-                                          .getFeature<EngineSelectorFeature>();
-    RocksDBEngine& engine = selector.engine<RocksDBEngine>();
-    RocksDBReplicationManager* manager = engine.replicationManager();
+    RocksDBReplicationManager* manager = _logicalCollection.vocbase()
+                                             .engine<RocksDBEngine>()
+                                             .replicationManager();
 
     RocksDBReplicationContextGuard ctx = manager->find(batchId);
     if (ctx) {
@@ -794,10 +800,7 @@ Result RocksDBCollection::truncateWithRangeDelete(transaction::Methods& trx) {
     return Result(TRI_ERROR_DEBUG);
   }
 
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
+  auto& engine = _logicalCollection.vocbase().engine<RocksDBEngine>();
   rocksdb::DB* db = engine.db()->GetRootDB();
 
   TRI_IF_FAILURE("RocksDBCollection::truncate::forceSync") {
@@ -1036,7 +1039,7 @@ Result RocksDBCollection::doLookupKey(
 }
 
 bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
-                                       VPackSlice const& key,
+                                       velocypack::Slice key,
                                        RevisionId& revisionId,
                                        ReadOwnWrites readOwnWrites) const {
   TRI_ASSERT(key.isString());
@@ -1048,6 +1051,7 @@ bool RocksDBCollection::lookupRevision(transaction::Methods* trx,
   }
   return false;
 }
+
 Result RocksDBCollection::lookup(transaction::Methods* trx,
                                  std::string_view key,
                                  IndexIterator::DocumentCallback const& cb,
@@ -1085,6 +1089,12 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
         res, _logicalCollection, key, documentId,
         static_cast<ReadOwnWrites>(options.readOwnWrites),
         RocksDBTransactionState::toState(trx));
+  }
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document read", ps.size());
   }
   return res;
 }
@@ -1147,16 +1157,27 @@ Result RocksDBCollection::lookup(transaction::Methods* trx,
       *family, tokens.size(), keys.data(), values.data(), statuses.data(),
       options.readOwnWrites ? ReadOwnWrites::yes : ReadOwnWrites::no);
 
+  size_t totalSize = 0;
+
   for (std::size_t k = 0; k < tokens.size(); k++) {
     if (!statuses[k].ok()) {
       cb(rocksutils::convertStatus(statuses[k]), tokens[k], nullptr,
          VPackSlice::noneSlice());
     } else {
       // TODO optimization for non-pinned slices
-      // for that we have lease strings for each value.
+      // for that we have leased strings for each value.
       cb(Result{}, tokens[k], nullptr,
          VPackSlice{reinterpret_cast<uint8_t const*>(values[k].data())});
+
+      totalSize += values[k].size();
     }
+  }
+
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document multiget", totalSize);
   }
 
   return {};
@@ -1298,21 +1319,17 @@ bool RocksDBCollection::cacheEnabled() const noexcept {
 }
 
 bool RocksDBCollection::hasDocuments() {
-  RocksDBEngine& engine = _logicalCollection.vocbase()
-                              .server()
-                              .getFeature<EngineSelectorFeature>()
-                              .engine<RocksDBEngine>();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
-  return rocksutils::hasKeys(engine.db(), bounds, /*snapshot*/ nullptr, true);
+  return rocksutils::hasKeys(
+      _logicalCollection.vocbase().engine<RocksDBEngine>().db(), bounds,
+      /*snapshot*/ nullptr, true);
 }
 
 /// @brief return engine-specific figures
 void RocksDBCollection::figuresSpecific(
     bool details, arangodb::velocypack::Builder& builder) {
-  auto& selector =
-      _logicalCollection.vocbase().server().getFeature<EngineSelectorFeature>();
-  auto& engine = selector.engine<RocksDBEngine>();
-  rocksdb::TransactionDB* db = engine.db();
+  rocksdb::TransactionDB* db =
+      _logicalCollection.vocbase().engine<RocksDBEngine>().db();
   RocksDBKeyBounds bounds = RocksDBKeyBounds::CollectionDocuments(objectId());
   rocksdb::Range r(bounds.start(), bounds.end());
 
@@ -1345,7 +1362,8 @@ void RocksDBCollection::figuresSpecific(
 
   if (details) {
     // engine-specific stuff here
-    RocksDBFilePurgePreventer purgePreventer(engine.disallowPurging());
+    RocksDBFilePurgePreventer purgePreventer(
+        _logicalCollection.vocbase().engine<RocksDBEngine>().disallowPurging());
 
     rocksdb::DB* rootDB = db->GetRootDB();
 
@@ -1543,25 +1561,26 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
       res.withError([&doc](result::Error& err) {
         TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
         err.appendErrorMessage("; key: ");
-        err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+        err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
       });
       TRI_ASSERT(false) << "insert: " << res.errorMessage()
                         << ", options: " << options;
     }
   }
 #endif
+  size_t const byteSize = static_cast<size_t>(doc.byteSize());
+
   rocksdb::Status s = mthds->PutUntracked(
       RocksDBColumnFamilyManager::get(
           RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(doc.startAs<char>(), static_cast<size_t>(doc.byteSize())));
+      key.ref(), rocksdb::Slice(doc.startAs<char>(), byteSize));
 
   if (!s.ok()) {
     res.reset(rocksutils::convertStatus(s, rocksutils::document));
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1569,6 +1588,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
   // we have successfully added a value to the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "single-document insert", byteSize);
 
   {
     bool needReversal = false;
@@ -1674,7 +1698,7 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
     res.withError([&doc](result::Error& err) {
       TRI_ASSERT(doc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(doc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(doc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1682,6 +1706,11 @@ Result RocksDBCollection::removeDocument(transaction::Methods* trx,
   // we have successfully removed a value from the WBWI. after this, we
   // can only restore the previous state via a full rebuild
   savepoint.tainted();
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document remove", key->size());
 
   auto const& indexes = indexesSnapshot.getIndexes();
 
@@ -1753,9 +1782,9 @@ Result RocksDBCollection::modifyDocument(
                            _logicalCollection.name()));
     res.withError([&oldDoc, &newDoc](result::Error& err) {
       err.appendErrorMessage("; old key: ");
-      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(oldDoc.get(StaticStrings::KeyString).stringView());
       err.appendErrorMessage("; new key: ");
-      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).stringView());
     });
 #ifndef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("b28a9", ERR, Logger::ENGINES) << res.errorMessage();
@@ -1835,7 +1864,7 @@ Result RocksDBCollection::modifyDocument(
     res.withError([&newDoc](result::Error& err) {
       TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
       err.appendErrorMessage("; key: ");
-      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).copyString());
+      err.appendErrorMessage(newDoc.get(StaticStrings::KeyString).stringView());
     });
     return res;
   }
@@ -1880,10 +1909,10 @@ Result RocksDBCollection::modifyDocument(
         TRI_ASSERT(newDoc.get(StaticStrings::KeyString).isString());
         err.appendErrorMessage("; old key: ");
         err.appendErrorMessage(
-            oldDoc.get(StaticStrings::KeyString).copyString());
+            oldDoc.get(StaticStrings::KeyString).stringView());
         err.appendErrorMessage("; new key: ");
         err.appendErrorMessage(
-            newDoc.get(StaticStrings::KeyString).copyString());
+            newDoc.get(StaticStrings::KeyString).stringView());
       });
       TRI_ASSERT(false) << "modify: " << res.errorMessage()
                         << ", options: " << options;
@@ -1891,12 +1920,12 @@ Result RocksDBCollection::modifyDocument(
   }
 #endif
 
-  s = mthds->PutUntracked(
-      RocksDBColumnFamilyManager::get(
-          RocksDBColumnFamilyManager::Family::Documents),
-      key.ref(),
-      rocksdb::Slice(newDoc.startAs<char>(),
-                     static_cast<size_t>(newDoc.byteSize())));
+  size_t const byteSize = static_cast<size_t>(newDoc.byteSize());
+
+  s = mthds->PutUntracked(RocksDBColumnFamilyManager::get(
+                              RocksDBColumnFamilyManager::Family::Documents),
+                          key.ref(),
+                          rocksdb::Slice(newDoc.startAs<char>(), byteSize));
   if (!s.ok()) {
     return res.reset(rocksutils::convertStatus(s, rocksutils::document));
   }
@@ -1905,6 +1934,11 @@ Result RocksDBCollection::modifyDocument(
     // banish new document to avoid caching without committing first
     invalidateCacheEntry(key.ref());
   }
+
+  trx->state()->trackShardUsage(
+      *trx->resolver(), _logicalCollection.vocbase().name(),
+      _logicalCollection.name(), trx->username(), AccessMode::Type::WRITE,
+      "document update/replace", byteSize);
 
   {
     bool needReversal = false;
@@ -1979,6 +2013,11 @@ Result RocksDBCollection::lookupDocumentVPack(
     if (f.found()) {
       cb(token, nullptr,
          VPackSlice(reinterpret_cast<uint8_t const*>(f.value()->value())));
+
+      trx->state()->trackShardUsage(
+          *trx->resolver(), _logicalCollection.vocbase().name(),
+          _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+          "document lookup from cache", f.value()->size());
       return {};
     }
   }
@@ -2001,6 +2040,13 @@ Result RocksDBCollection::lookupDocumentVPack(
 
   if (!s.ok()) {
     return rocksutils::convertStatus(s);
+  }
+
+  if (options.countBytes) {
+    trx->state()->trackShardUsage(
+        *trx->resolver(), _logicalCollection.vocbase().name(),
+        _logicalCollection.name(), trx->username(), AccessMode::Type::READ,
+        "document lookup", ps.size());
   }
 
   TRI_ASSERT(ps.size() > 0);

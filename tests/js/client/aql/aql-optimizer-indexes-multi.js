@@ -70,7 +70,10 @@ function optimizerIndexesMultiTestSuite () {
   let idx0 = null;
   let idx1 = null;
   let noProjections = { optimizer: { rules: ["-reduce-extraction-to-projection"] } };
-  let noMoveFilters = { optimizer: { rules: ["-move-filters-into-enumerate"] } };
+  let noMoveFilters = { optimizer: { rules: [
+        "-move-filters-into-enumerate",
+        "-batch-materialize-documents"
+      ] } };
 
   return {
     setUpAll: function (){
@@ -1899,4 +1902,3 @@ function optimizerIndexesMultiTestSuite () {
 jsunity.run(optimizerIndexesMultiTestSuite);
 
 return jsunity.done();
-

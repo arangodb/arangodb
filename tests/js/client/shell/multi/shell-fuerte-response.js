@@ -53,7 +53,7 @@ function fuerteResponseTestSuite () {
 
       if (arango.protocol() === "http") {
         // http/1 provides the full status text in a seperate header
-        // http/2 does not provide such header, neither does VST
+        // http/2 does not provide such header
         assertEqual("200 OK", response.headers['http/1.1']);
       }
     },

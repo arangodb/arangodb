@@ -186,7 +186,7 @@ void EndpointFeature::prepare() {
 }
 
 std::vector<std::string> EndpointFeature::httpEndpoints() {
-  auto httpEntries = _endpointList.all(Endpoint::TransportType::HTTP);
+  auto httpEntries = _endpointList.all();
   std::vector<std::string> result;
 
   for (auto http : httpEntries) {

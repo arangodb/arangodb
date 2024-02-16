@@ -47,10 +47,6 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 // -----------------------------------------------------------------------------
 // --SECTION--                                                 setup / tear-down
 // -----------------------------------------------------------------------------
@@ -83,18 +79,15 @@ class FlushFeatureTest
     auto& selector = server.addFeature<arangodb::EngineSelectorFeature>();
     features.emplace_back(selector, false);
     selector.setEngineTesting(&engine);
-    features.emplace_back(server.addFeature<arangodb::QueryRegistryFeature>(),
-                          false);  // required for TRI_vocbase_t
+    features.emplace_back(
+        server.addFeature<arangodb::QueryRegistryFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
+        false);  // required for TRI_vocbase_t
 #ifdef USE_V8
     features.emplace_back(
-        server.addFeature<arangodb::V8DealerFeature>(),
+        server.addFeature<arangodb::V8DealerFeature>(
+            server.template getFeature<arangodb::metrics::MetricsFeature>()),
         false);  // required for DatabaseFeature::createDatabase(...)
-#endif
-
-#if USE_ENTERPRISE
-    features.emplace_back(
-        server.addFeature<arangodb::LdapFeature>(),
-        false);  // required for AuthenticationFeature with USE_ENTERPRISE
 #endif
 
     for (auto& f : features) {

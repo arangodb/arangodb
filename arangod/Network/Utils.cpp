@@ -41,8 +41,7 @@
 
 #include <fuerte/types.h>
 
-namespace arangodb {
-namespace network {
+namespace arangodb::network {
 
 Headers addAuthorizationHeader(
     std::unordered_map<std::string, std::string> const& originalHeaders) {
@@ -240,9 +239,6 @@ ErrorCode toArangoErrorCodeInternal(fuerte::Error err) {
     case fuerte::Error::WriteError:
     case fuerte::Error::ProtocolError:
       return TRI_ERROR_CLUSTER_CONNECTION_LOST;
-
-    case fuerte::Error::VstUnauthorized:
-      return TRI_ERROR_FORBIDDEN;
   }
 
   return TRI_ERROR_INTERNAL;
@@ -366,10 +362,22 @@ void addSourceHeader(consensus::Agent* agent, fuerte::Request& req) {
   auto state = ServerState::instance();
   if (state->isCoordinator() || state->isDBServer()) {
     req.header.addMeta(StaticStrings::ClusterCommSource, state->getId());
+#if 0
   } else if (state->isAgent() && agent != nullptr) {
+    // note: header intentionally not sent to save cluster-internal
+    // traffic
     req.header.addMeta(StaticStrings::ClusterCommSource, agent->id());
+#endif
   }
 }
 
-}  // namespace network
-}  // namespace arangodb
+void addUserParameter(RequestOptions& reqOpts, std::string_view value) {
+  if (!value.empty()) {
+    // if no user name is set, we cannot add it to the request options
+    // as a URL parameter, because they will assert that the provided
+    // value is non-empty
+    reqOpts.param(StaticStrings::UserString, value);
+  }
+}
+
+}  // namespace arangodb::network

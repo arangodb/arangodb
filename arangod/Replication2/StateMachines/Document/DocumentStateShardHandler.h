@@ -61,11 +61,11 @@ struct IDocumentStateShardHandler {
 
   virtual auto ensureIndex(
       ShardID shard, velocypack::SharedSlice properties,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+      methods::Indexes::Replication2Callback callback = nullptr) noexcept
       -> Result = 0;
 
-  virtual auto dropIndex(ShardID shard, velocypack::SharedSlice index)
-      -> Result = 0;
+  virtual auto dropIndex(ShardID shard, IndexId indexId) -> Result = 0;
 
   virtual auto lookupShard(ShardID const& shard) noexcept
       -> ResultT<std::shared_ptr<LogicalCollection>> = 0;
@@ -98,13 +98,12 @@ class DocumentStateShardHandler : public IDocumentStateShardHandler {
   auto getAvailableShards()
       -> std::vector<std::shared_ptr<LogicalCollection>> override;
 
-  auto ensureIndex(
-      ShardID shard, velocypack::SharedSlice properties,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
-      -> Result override;
+  auto ensureIndex(ShardID shard, velocypack::SharedSlice properties,
+                   std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+                   methods::Indexes::Replication2Callback callback =
+                       nullptr) noexcept -> Result override;
 
-  auto dropIndex(ShardID shard, velocypack::SharedSlice index) noexcept
-      -> Result override;
+  auto dropIndex(ShardID shard, IndexId indexId) noexcept -> Result override;
 
   auto lookupShard(ShardID const& shard) noexcept
       -> ResultT<std::shared_ptr<LogicalCollection>> override;

@@ -13609,7 +13609,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty with prefix
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"
@@ -13620,7 +13620,7 @@ TEST_P(QueryOptimization, mergeLevenshteinStartsWith) {
   // make it empty
   {
     irs::Or expected;
-    expected.add<irs::And>().add<irs::empty>();
+    expected.add<irs::And>().add<irs::Empty>();
     assertFilterOptimized(
         vocbase(),
         "FOR d IN testView SEARCH STARTS_WITH(d.name, 'foobar12345')"

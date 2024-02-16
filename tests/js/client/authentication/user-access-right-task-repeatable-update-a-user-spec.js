@@ -69,10 +69,6 @@ const executeJS = (code) => {
   let username = 'root';
   let password = '';
 
-  if (helper.isLdapEnabledExternal()) {
-    username = 'arangoadmin';
-    password = 'abc';
-  }
   let httpOptions = pu.makeAuthorizationHeaders({
     username: username,
     password: password

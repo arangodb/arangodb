@@ -48,7 +48,8 @@ class SupervisedScheduler final : public Scheduler {
                       uint64_t fifo1Size, uint64_t fifo2Size,
                       uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
                       double unavailabilityQueueFillGrade,
-                      uint64_t maxNumberDetachedThreads);
+                      uint64_t maxNumberDetachedThreads,
+                      metrics::MetricsFeature& metrics);
   ~SupervisedScheduler() final;
 
   bool start() override;

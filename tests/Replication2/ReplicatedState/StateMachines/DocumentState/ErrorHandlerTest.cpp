@@ -83,8 +83,8 @@ TEST_F(DocumentStateErrorHandlerTest, create_index_test) {
 }
 
 TEST_F(DocumentStateErrorHandlerTest, drop_index_test) {
-  auto op = ReplicatedOperation::buildDropIndexOperation(
-      ShardID{"s1"}, velocypack::SharedSlice());
+  auto op = ReplicatedOperation::buildDropIndexOperation(ShardID{"s1"},
+                                                         IndexId::none());
   EXPECT_EQ(
       errorHandler->handleOpResult(op, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
       TRI_ERROR_NO_ERROR);
@@ -128,7 +128,7 @@ TEST_F(DocumentStateErrorHandlerTest, document_transaction_test) {
 TEST_F(DocumentStateErrorHandlerTest, modify_transaction_test) {
   auto op = ReplicatedOperation::buildDocumentOperation(
       TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{1}, ShardID{"s1"},
-      velocypack::SharedSlice{});
+      velocypack::SharedSlice{}, "root");
   EXPECT_EQ(
       errorHandler->handleOpResult(op, TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND),
       TRI_ERROR_NO_ERROR);

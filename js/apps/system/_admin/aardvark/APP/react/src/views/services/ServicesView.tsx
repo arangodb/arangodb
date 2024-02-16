@@ -1,6 +1,6 @@
-import { AddIcon } from "@chakra-ui/icons";
-import { Box, Button, Heading, Stack } from "@chakra-ui/react";
+import { Box } from "@chakra-ui/react";
 import React from "react";
+import { ListHeader } from "../../components/table/ListHeader";
 import { ServicesTable } from "./listServices/ServicesTable";
 
 export const ServicesView = () => {
@@ -14,18 +14,12 @@ export const ServicesView = () => {
 
 const ServiceViewHeader = () => {
   return (
-    <Stack direction="row" marginBottom="4" alignItems="center">
-      <Heading size="lg">Services</Heading>
-      <Button
-        size="sm"
-        leftIcon={<AddIcon />}
-        colorScheme="green"
-        onClick={() => {
-          window.App.navigate("#services/install", { trigger: true });
-        }}
-      >
-        Add service
-      </Button>
-    </Stack>
+    <ListHeader
+      onButtonClick={() => {
+        window.App.navigate("#services/install", { trigger: true });
+      }}
+      heading="Services"
+      buttonText="Add service"
+    />
   );
 };

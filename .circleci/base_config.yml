@@ -1,8 +1,5 @@
 version: 2.1
 
-orbs:
-  win: circleci/windows@5.0 # The Windows orb gives you everything you need to start using the
-
 parameters:
   enterprise-commit:
     type: string
@@ -10,16 +7,13 @@ parameters:
   build-docker-image:
     type: string
     default: "arangodb/ubuntubuildarangodb-devel:2"
-  build-windows-image:
+  test-docker-image:
     type: string
-    default: "arangodb/build-windows-x64:10.0.17763.4737-VS-17.3.3-OpenSSL-3.1.4-4c65c2ae530"
+    default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
   # Unused here, but it will be forwarded from config and will cause errors if not defined
   replication-two:
     type: boolean
     default: false
-  skip-windows-tests:
-    type: boolean
-    default: true 
   c-compiler:
     type: string
     default: "clang"
@@ -273,219 +267,9 @@ jobs:
                   - 3rdParty/iresearch/tests/resources
                   - 3rdParty/rta-makedata
 
-  compile-mac:
-    parameters:
-      preset:
-        type: string
-      resource:
-        type: string
-      build-tests:
-        type: boolean
-        default: true
-      enterprise:
-        type: boolean
-        default: false
-      publish-artifacts:
-        type: boolean
-        default: true
-    macos:
-      xcode: 14.2.0
-    resource_class: << parameters.resource >>
-    steps:
-      - checkout-arangodb:
-          with-submodules: true
-          destination: "~/project"
-      - when:
-          condition: << parameters.enterprise >>
-          steps:
-            - checkout-enterprise:
-                destination: "~/project/enterprise"
-      - run:
-          name: "Install llvm"
-          command: |
-            brew install cmake llvm@14
-      - run:
-          name: "Install OpenSSL"
-          command: |
-            export MAC_OPENSSL=`grep OPENSSL_MACOS ~/project/VERSIONS|cut -d '"' -f 2-2`
-            wget https://www.openssl.org/source/openssl-$MAC_OPENSSL.tar.gz --directory-prefix=/tmp
-            mkdir ~/openssl
-            tar zvxf /tmp/openssl-$MAC_OPENSSL.tar.gz -C ~/openssl --strip-components 1
-            cd ~/openssl/
-            ./config
-            make -j8
-      - run:
-          name: "Configure"
-          command: |
-            export PATH="/opt/homebrew/opt/llvm@14/bin:/usr/local/opt/llvm@14/bin:$PATH"
-            export MACOSX_DEPLOYMENT_TARGET=11.0
-            export OPENSSL_ROOT_DIR=~/openssl
-            mkdir ~/build
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_LIBRARY_PATH=~/openssl/ -DSTATIC_EXECUTABLES=Off -DCMAKE_EXE_LINKER_FLAGS="-Wl" -S ~/project -B ~/build
-      - run:
-          name: "Build"
-          command: |
-            echo "Building targets: client-tools"
-            cmake --build ~/build --parallel 8 --target client-tools
-
-  compile-windows:
-    parameters:
-      preset:
-        type: string
-      build-tests:
-        type: boolean
-        default: true
-      publish-artifacts:
-        type: boolean
-        default: true
-    machine: true
-    resource_class: "arangodb/win"
-    shell: powershell.exe
-    environment:
-      GIT_SSH_COMMAND: ssh
-      SCCACHE_ERROR_LOG: /tmp/sccache.log
-      SCCACHE_LOG: info,sccache::cache=debug,sccache::compiler::compiler=debug
-    steps:
-      - checkout-arangodb:
-          with-submodules: true
-          destination: "D:/CircleCI/project"
-      # for windows we build only enterprise, so we can check it out unconditionally
-      - checkout-enterprise:
-          destination: "D:/CircleCI/project/enterprise"
-      - run:
-          name: "Configure"
-          shell: powershell.exe
-          command: |
-            $CCacheFolderName = "D:/CircleCI-ccache"
-            if ( -not (Test-Path $CCacheFolderName)) {
-              New-Item $CCacheFolderName -ItemType Directory
-              Write-Host "$($CCacheFolderName) Created successfully"
-            }
-            mkdir build
-            # make sure we have the latest image!
-            docker pull << pipeline.parameters.build-windows-image >>
-            # TODO - use preset
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake -G 'Visual Studio 17 2022' -T 'v143,host=x64' -DUSE_MAINTAINER_MODE=On -DUSE_GOOGLE_TESTS=On -DUSE_ENTERPRISE=On -DCMAKE_BUILD_TYPE=RelWithDebInfo -DPACKAGING=NSIS -DCMAKE_INSTALL_PREFIX=/ -DSKIP_PACKAGING=On -DUSE_FAILURE_TESTS=On -DSTATIC_EXECUTABLES=On -DOPENSSL_USE_STATIC_LIBS=On -DUSE_STRICT_OPENSSL_VERSION=On -DUSE_CCACHE=On ..
-      - run:
-          name: "Clear CCache statistics"
-          shell: powershell.exe
-          command: |
-            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -z
-      - run:
-          name: "Build"
-          shell: powershell.exe
-          command: |
-            docker run --rm --isolation process -v D:/CircleCI/project:C:/project -v D:/CircleCI-ccache:C:/ccache -w C:/project/build << pipeline.parameters.build-windows-image >> cmake --build . --config `"RelWithDebInfo`" --parallel -- /p:CL_MPcount=24 
-      - run:
-          name: "Print CCache statistics"
-          shell: powershell.exe
-          command: |
-            docker run --rm --isolation process -v D:/CircleCI-ccache:C:/ccache << pipeline.parameters.build-windows-image >> ccache -s
-      - run:
-          name: Cleanup build directory
-          shell: powershell.exe
-          command: |
-            cd D:/CircleCI/project/build
-            Get-ChildItem *.pdb -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.lib -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.exp -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.obj -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.vcxproj -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.filters -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.sln -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.pch -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.ifc -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.ilk -Recurse | foreach { Remove-Item -Path $_.FullName }
-            Get-ChildItem *.tlog -Recurse | where { ! $_.PSIsContainer } | foreach { Remove-Item -Path $_.FullName }
-      # - run:
-      #     name: Save workspace for development
-      #     shell: powershell.exe
-      #     command: |
-      #       cd D:/CircleCI/project/
-      #       7z a -r ./workspace CMakePresets.json build/ scripts/ js/ enterprise/js etc/ tests/js enterprise/tests/js utils 3rdParty/iresearch/tests/resources 3rdParty/rta-makedata
-      - when:
-          condition: << parameters.publish-artifacts >>
-          steps:
-            # - store_artifacts:
-            #     path: D:/CircleCI/project/workspace.7z
-            - store_artifacts:
-                path: D:/CircleCI/project/build/bin/RelWithDebInfo/
-                destination: windows
-            - persist_to_workspace:
-                root: D:/CircleCI/project/
-                paths:
-                  - CMakePresets.json
-                  - build/
-                  - scripts/
-                  - js/
-                  - enterprise/js
-                  - etc/
-                  - tests/js
-                  - enterprise/tests/js
-                  - utils
-                  - 3rdParty/iresearch/tests/resources
-                  - 3rdParty/rta-makedata
-
-  run-windows-tests:
-    parameters:
-      suiteName:
-        type: string
-      suites:
-        type: string
-      size:
-        type: string
-      extraArgs:
-        type: string
-        default: ""
-      buckets:
-        type: integer
-        default: 1
-      cluster:
-        type: boolean
-    executor:
-      name: win/default # executor type
-      size: << parameters.size >> # can be medium, large, xlarge, 2xlarge
-    parallelism: << parameters.buckets >>
-    steps:
-      - attach_workspace:
-          at: .
-      - run:
-          name: Install python packages
-          when: always
-          command: |
-            pip install psutil
-      - run:
-          name: Prepare OS
-          when: always
-          command: |
-            Set-TimeZone -Id "Central European Standard Time"
-      - run:
-          name: Run << parameters.suiteName >> tests
-          # we increase the no_output_timeout so our own timeout mechanism can kick in and gather more information
-          no_output_timeout: 20m
-          command: |
-            mkdir work
-            # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
-            python scripts/test/test_launch_controller.py << parameters.suites >> `
-              --testBuckets $env:CIRCLE_NODE_TOTAL/$env:CIRCLE_NODE_INDEX `
-              --cluster << parameters.cluster >> `
-              --extraArgs " << parameters.extraArgs >>" `
-              --definition tests/test-definitions.txt
-      - run:
-          name: Copy test results
-          when: always
-          command: |
-            mkdir test-results
-            Get-ChildItem -Path .\testrunXml -Filter *.xml -Recurse | ForEach-Object {Copy-Item $_.FullName -Destination .\test-results}
-      - store_artifacts:
-          destination: << parameters.suiteName >>
-          path: ./work/
-      - store_test_results:
-          path: ./test-results/
-
   run-linux-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       suiteName:
         type: string
@@ -535,7 +319,7 @@ jobs:
 
   run-hotbackup-tests:
     docker:
-      - image: arangodb/test-ubuntu:22.04-6c4e824d8d2
+      - image: << pipeline.parameters.test-docker-image >>
     parameters:
       size:
         type: string
@@ -549,7 +333,7 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            pip install -r scripts/toolbox/requirements.txt
+            pip install -r scripts/toolbox/requirements.txt --break-system-packages
       - run:
           name: Run HotBackup tests
           command: |
@@ -693,45 +477,3 @@ workflows:
           size: arm.medium
           requires:
             - build-linux-ee-aarch64
-  aarch64-mac-tools-pr:
-    jobs:
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-enterprise-pr
-          resource: macos.m1.medium.gen1
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-m1-community-pr
-          resource: macos.m1.medium.gen1
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-enterprise-pr
-          resource: macos.x86.medium.gen2
-          preset: enterprise-pr
-          build-tests: false
-          enterprise: true
-      - compile-mac:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: mac-tools-x86-community-pr
-          resource: macos.x86.medium.gen2
-          preset: community-pr
-          build-tests: false
-          enterprise: false
-  x64-enterprise-windows-pr:
-    jobs:
-      - compile-windows:
-          context:
-            - sccache-aws-bucket # add the environment variables to setup sccache for the S3 bucket
-          name: build-windows-ee-x64
-          preset: enterprise-pr
-          build-tests: true

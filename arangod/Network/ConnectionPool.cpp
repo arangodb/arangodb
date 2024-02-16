@@ -259,7 +259,6 @@ struct ConnectionPool::Impl {
 
       std::size_t limit = 0;
       switch (_config.protocol) {
-        case fuerte::ProtocolType::Vst:
         case fuerte::ProtocolType::Http2:
           limit = 4;
           break;

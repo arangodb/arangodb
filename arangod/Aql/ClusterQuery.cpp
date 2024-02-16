@@ -97,7 +97,7 @@ std::shared_ptr<ClusterQuery> ClusterQuery::create(
 
 void ClusterQuery::prepareClusterQuery(
     VPackSlice querySlice, VPackSlice collections, VPackSlice variables,
-    VPackSlice snippets, VPackSlice traverserSlice, std::string_view user,
+    VPackSlice snippets, VPackSlice traverserSlice, std::string const& user,
     VPackBuilder& answerBuilder,
     QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking) {
   LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
@@ -152,6 +152,7 @@ void ClusterQuery::prepareClusterQuery(
       transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   if (_trx->state()->isDBServer()) {
     _trx->state()->acceptAnalyzersRevision(analyzersRevision);
+    _trx->setUsername(user);
   }
 
   double origLockTimeout = _trx->state()->options().lockTimeout;
@@ -174,12 +175,13 @@ void ClusterQuery::prepareClusterQuery(
   }
 
   if (ServerState::instance()->isDBServer()) {
-    _collections.visit(
-        [&](std::string const&, aql::Collection const& c) -> bool {
-          _trx->state()->trackRequest(*_trx->resolver(), _vocbase.name(),
-                                      c.name(), user, c.accessType(), "aql");
-          return true;
-        });
+    _collections.visit([&](std::string const&,
+                           aql::Collection const& c) -> bool {
+      // this code will only execute on leaders
+      _trx->state()->trackShardRequest(*_trx->resolver(), _vocbase.name(),
+                                       c.name(), user, c.accessType(), "aql");
+      return true;
+    });
   }
 
   enterState(QueryExecutionState::ValueType::PARSING);

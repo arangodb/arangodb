@@ -13,7 +13,7 @@ exposedBy:
   - agent
   - single
 description: |
-  This counter reflects the total number of HTTP (or VST) requests which
+  This counter reflects the total number of HTTP requests which
   have hit this particular instance of `arangod`. Note that this counter
   is ever growing during the lifetime of the `arangod` process. However,
   when the process is restarted, it starts from scratch. In the Grafana

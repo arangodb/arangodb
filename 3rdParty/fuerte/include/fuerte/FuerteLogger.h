@@ -56,14 +56,6 @@ class LogHack {
 #define ENABLE_FUERTE_LOG_TRACE 0
 #endif
 
-#ifndef ENABLE_FUERTE_LOG_VSTTRACE
-#define ENABLE_FUERTE_LOG_VSTTRACE 0
-#endif
-
-#ifndef ENABLE_FUERTE_LOG_VST_CHUNK_TRACE
-#define ENABLE_FUERTE_LOG_VST_CHUNK_TRACE 0
-#endif
-
 #ifndef ENABLE_FUERTE_LOG_HTTPTRACE
 #define ENABLE_FUERTE_LOG_HTTPTRACE 0
 #endif
@@ -91,20 +83,6 @@ class LogHack {
 #define FUERTE_LOG_TRACE std::cout
 #else
 #define FUERTE_LOG_TRACE \
-  if (0) std::cout
-#endif
-
-#if ENABLE_FUERTE_LOG_VSTTRACE > 0
-#define FUERTE_LOG_VSTTRACE std::cout << "[vst] "
-#else
-#define FUERTE_LOG_VSTTRACE \
-  if (0) std::cout
-#endif
-
-#if ENABLE_FUERTE_LOG_VSTCHUNKTRACE > 0
-#define FUERTE_LOG_VSTCHUNKTRACE std::cout << "[vst] "
-#else
-#define FUERTE_LOG_VSTCHUNKTRACE \
   if (0) std::cout
 #endif
 

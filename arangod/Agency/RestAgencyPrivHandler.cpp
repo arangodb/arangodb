@@ -161,122 +161,134 @@ bool readValue(GeneralRequest const& req, char const* name, std::string& val) {
 
 RestStatus RestAgencyPrivHandler::execute() {
   try {
-    VPackBuilder result;
-    result.add(VPackValue(VPackValueType::Object));
-    result.add("id", VPackValue(_agent->id()));
-    result.add("endpoint", VPackValue(_agent->endpoint()));
-
     auto const& suffixes = _request->suffixes();
 
     if (suffixes.empty()) {  // empty request
       return reportErrorEmptyRequest();
-    } else if (suffixes.size() > 1) {  // request too long
+    }
+    if (suffixes.size() > 1) {  // request too long
       return reportTooManySuffices();
-    } else {
-      term_t term = 0;
-      term_t prevLogTerm = 0;
-      std::string id;  // leaderId for appendEntries, cadidateId for requestVote
-      arangodb::consensus::index_t prevLogIndex, leaderCommit;
-      if (suffixes[0] == "appendEntries") {  // appendEntries
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        int64_t senderTimeStamp = 0;
-        readValue(*_request, "senderTimeStamp",
-                  senderTimeStamp);  // ignore if not given
-        if (readValue(*_request, "term", term) &&
-            readValue(*_request, "leaderId", id) &&
-            readValue(*_request, "prevLogIndex", prevLogIndex) &&
-            readValue(*_request, "prevLogTerm", prevLogTerm) &&
-            readValue(*_request, "leaderCommit",
-                      leaderCommit)) {  // found all values
-          auto ret =
-              _agent->recvAppendEntriesRPC(term, id, prevLogIndex, prevLogTerm,
-                                           leaderCommit, _request->payload());
-          result.add("success", VPackValue(ret.success));
-          result.add("term", VPackValue(ret.term));
-          result.add("senderTimeStamp", VPackValue(senderTimeStamp));
-        } else {
-          return reportBadQuery();  // bad query
-        }
-      } else if (suffixes[0] == "requestVote") {  // requestVote
-        int64_t timeoutMult = 1;
-        readValue(*_request, "timeoutMult", timeoutMult);
-        if (readValue(*_request, "term", term) &&
-            readValue(*_request, "candidateId", id) &&
-            readValue(*_request, "prevLogIndex", prevLogIndex) &&
-            readValue(*_request, "prevLogTerm", prevLogTerm)) {
-          priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex,
-                                                   prevLogTerm, timeoutMult);
-          result.add("term", VPackValue(ret.term));
-          result.add("voteGranted", VPackValue(ret.success));
-        }
-      } else if (suffixes[0] == "notifyAll") {  // notify
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
-        if (readValue(*_request, "term", term) &&
-            readValue(*_request, "agencyId", id)) {
-          priv_rpc_ret_t ret = _agent->requestVote(term, id, 0, 0, -1);
-          result.add("term", VPackValue(ret.term));
-          result.add("voteGranted", VPackValue(ret.success));
-        } else {
-          return reportBadQuery();  // bad query
-        }
-      } else if (suffixes[0] == "gossip") {
-        if (_request->requestType() != rest::RequestType::POST) {
-          return reportMethodNotAllowed();
-        }
+    }
 
-        bool success = false;
-        VPackSlice const query = this->parseVPackBody(success);
-        if (!success) {  // error already written
-          return RestStatus::DONE;
-        }
+    // whether or not to add "id" and "endpoint" attribute to the response
+    // object. we normally want this, but we don't need it when responding
+    // to an empty appendEntries request. in this case we want to keep the
+    // response object as small as possible.
+    bool addIdAndEndpoint = true;
 
-        try {
-          query_t ret = _agent->gossip(query);
-          auto slice = ret->slice();
-          LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
-              << "Responding to gossip request " << query.toJson() << " with "
-              << slice.toJson();
-          if (slice.hasKey(StaticStrings::Error)) {
-            return reportError(slice);
-          }
-          if (slice.hasKey("redirect")) {
-            redirectRequest(slice.get("id").copyString());
-            return RestStatus::DONE;
-          }
-          for (auto const& obj : VPackObjectIterator(ret->slice())) {
-            result.add(obj.key.copyString(), obj.value);
-          }
-        } catch (std::exception const& e) {
-          LOG_TOPIC("d7dda", ERR, Logger::AGENCY) << e.what();
+    VPackBuilder result;
+    result.add(VPackValue(VPackValueType::Object));
+
+    term_t term = 0;
+    term_t prevLogTerm = 0;
+    std::string id;  // leaderId for appendEntries, cadidateId for requestVote
+    arangodb::consensus::index_t prevLogIndex, leaderCommit;
+    if (suffixes[0] == "appendEntries") {  // appendEntries
+      if (_request->requestType() != rest::RequestType::POST) {
+        return reportMethodNotAllowed();
+      }
+      int64_t senderTimeStamp = 0;
+      readValue(*_request, "senderTimeStamp",
+                senderTimeStamp);  // ignore if not given
+      if (readValue(*_request, "term", term) &&
+          readValue(*_request, "leaderId", id) &&
+          readValue(*_request, "prevLogIndex", prevLogIndex) &&
+          readValue(*_request, "prevLogTerm", prevLogTerm) &&
+          readValue(*_request, "leaderCommit",
+                    leaderCommit)) {  // found all values
+        if (_request->payload().isEmptyArray()) {
+          addIdAndEndpoint = false;
         }
-      } else if (suffixes[0] == "activeAgents") {
-        if (_request->requestType() != rest::RequestType::GET) {
-          return reportMethodNotAllowed();
-        }
-        if (_agent->leaderID() != NO_LEADER) {
-          result.add("active",
-                     _agent->config().activeAgentsToBuilder()->slice());
-        }
-      } else if (suffixes[0] == "inform") {
-        velocypack::Slice query = _request->payload();
-        try {
-          _agent->notify(query);
-        } catch (std::exception const& e) {
-          return reportBadQuery(e.what());
-        }
+        auto ret =
+            _agent->recvAppendEntriesRPC(term, id, prevLogIndex, prevLogTerm,
+                                         leaderCommit, _request->payload());
+        result.add("success", VPackValue(ret.success));
+        result.add("term", VPackValue(ret.term));
+        result.add("senderTimeStamp", VPackValue(senderTimeStamp));
       } else {
-        generateError(rest::ResponseCode::NOT_FOUND,
-                      TRI_ERROR_HTTP_NOT_FOUND);  // nothing else here
+        return reportBadQuery();  // bad query
+      }
+    } else if (suffixes[0] == "requestVote") {  // requestVote
+      int64_t timeoutMult = 1;
+      readValue(*_request, "timeoutMult", timeoutMult);
+      if (readValue(*_request, "term", term) &&
+          readValue(*_request, "candidateId", id) &&
+          readValue(*_request, "prevLogIndex", prevLogIndex) &&
+          readValue(*_request, "prevLogTerm", prevLogTerm)) {
+        priv_rpc_ret_t ret = _agent->requestVote(term, id, prevLogIndex,
+                                                 prevLogTerm, timeoutMult);
+        result.add("term", VPackValue(ret.term));
+        result.add("voteGranted", VPackValue(ret.success));
+      }
+    } else if (suffixes[0] == "notifyAll") {  // notify
+      if (_request->requestType() != rest::RequestType::POST) {
+        return reportMethodNotAllowed();
+      }
+      if (readValue(*_request, "term", term) &&
+          readValue(*_request, "agencyId", id)) {
+        priv_rpc_ret_t ret = _agent->requestVote(term, id, 0, 0, -1);
+        result.add("term", VPackValue(ret.term));
+        result.add("voteGranted", VPackValue(ret.success));
+      } else {
+        return reportBadQuery();  // bad query
+      }
+    } else if (suffixes[0] == "gossip") {
+      if (_request->requestType() != rest::RequestType::POST) {
+        return reportMethodNotAllowed();
+      }
+
+      bool success = false;
+      VPackSlice const query = this->parseVPackBody(success);
+      if (!success) {  // error already written
         return RestStatus::DONE;
       }
+
+      try {
+        query_t ret = _agent->gossip(query);
+        auto slice = ret->slice();
+        LOG_TOPIC("bcd46", DEBUG, Logger::AGENCY)
+            << "Responding to gossip request " << query.toJson() << " with "
+            << slice.toJson();
+        if (slice.hasKey(StaticStrings::Error)) {
+          return reportError(slice);
+        }
+        if (slice.hasKey("redirect")) {
+          redirectRequest(slice.get("id").copyString());
+          return RestStatus::DONE;
+        }
+        for (auto const& obj : VPackObjectIterator(ret->slice())) {
+          result.add(obj.key.stringView(), obj.value);
+        }
+      } catch (std::exception const& e) {
+        LOG_TOPIC("d7dda", ERR, Logger::AGENCY) << e.what();
+      }
+    } else if (suffixes[0] == "activeAgents") {
+      if (_request->requestType() != rest::RequestType::GET) {
+        return reportMethodNotAllowed();
+      }
+      if (_agent->leaderID() != NO_LEADER) {
+        result.add("active", _agent->config().activeAgentsToBuilder()->slice());
+      }
+    } else if (suffixes[0] == "inform") {
+      velocypack::Slice query = _request->payload();
+      try {
+        _agent->notify(query);
+      } catch (std::exception const& e) {
+        return reportBadQuery(e.what());
+      }
+    } else {
+      generateError(rest::ResponseCode::NOT_FOUND,
+                    TRI_ERROR_HTTP_NOT_FOUND);  // nothing else here
+      return RestStatus::DONE;
     }
+
+    if (addIdAndEndpoint) {
+      result.add("id", VPackValue(_agent->id()));
+      result.add("endpoint", VPackValue(_agent->endpoint()));
+    }
+
     result.close();
-    VPackSlice s = result.slice();
-    generateResult(rest::ResponseCode::OK, s);
+    generateResult(rest::ResponseCode::OK, result.slice());
   } catch (...) {
     // Ignore this error
   }

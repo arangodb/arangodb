@@ -357,11 +357,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
   options.database = _query.vocbase().name();
   options.timeout = network::Timeout(kSetupTimeout);
   options.skipScheduler = true;  // hack to speed up future.get()
-  if (!ExecContext::current().user().empty()) {
-    // send name of current user, if set. note that we cannot send
-    // empty URL parameters with our networking tools right now.
-    options.param("user", ExecContext::current().user());
-  }
+  network::addUserParameter(options, trx.username());
 
   TRI_IF_FAILURE("Query::setupTimeout") {
     options.timeout = network::Timeout(
@@ -378,13 +374,12 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     options.timeout = network::Timeout(t);
   }
 
+  auto& clusterInfo =
+      _query.vocbase().server().getFeature<ClusterFeature>().clusterInfo();
+
   /// cluster global query id, under which the query will be registered
   /// on DB servers from 3.8 onwards.
-  QueryId clusterQueryId = _query.vocbase()
-                               .server()
-                               .getFeature<ClusterFeature>()
-                               .clusterInfo()
-                               .uniqid();
+  QueryId clusterQueryId = clusterInfo.uniqid();
 
   std::mutex serverToQueryIdLock{};
   std::vector<std::tuple<ServerID, std::shared_ptr<VPackBuffer<uint8_t>>,
@@ -509,11 +504,7 @@ Result EngineInfoContainerDBServerServerBased::buildEngines(
     TRI_ASSERT(serverToQueryId.empty());
 
     // we must generate a new query id, because the fast path setup has failed
-    clusterQueryId = _query.vocbase()
-                         .server()
-                         .getFeature<ClusterFeature>()
-                         .clusterInfo()
-                         .uniqid();
+    clusterQueryId = clusterInfo.uniqid();
 
     if (trx.isMainTransaction() && !trx.state()->isReadOnlyTransaction()) {
       // when we are not in a streaming transaction, it is ok to roll a new trx

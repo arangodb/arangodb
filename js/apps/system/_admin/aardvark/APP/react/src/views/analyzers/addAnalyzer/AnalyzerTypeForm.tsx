@@ -9,6 +9,7 @@ import { GeoJSONConfig } from "./forms/GeoJSONConfig";
 import { GeopointConfig } from "./forms/GeopointConfig";
 import { GeoS2Config } from "./forms/GeoS2Config";
 import { MinHashConfig } from "./forms/MinHashConfig";
+import { MultiDelimiterConfig } from "./forms/MultiDelimiterConfig";
 import { NearestNeighborsConfig } from "./forms/NearestNeighborsConfig";
 import { NgramConfig } from "./forms/NgramConfig";
 import { NormConfig } from "./forms/NormConfig";
@@ -17,6 +18,7 @@ import { SegmentationConfig } from "./forms/SegmentationConfig";
 import { StemConfig } from "./forms/StemConfig";
 import { StopwordsConfig } from "./forms/StopwordsConfig";
 import { TextConfig } from "./forms/TextConfig";
+import { WildcardConfig } from "./forms/WildcardConfig";
 
 const ANALYZER_TYPE_TO_CONFIG_MAP = {
   identity: null,
@@ -35,7 +37,9 @@ const ANALYZER_TYPE_TO_CONFIG_MAP = {
   geojson: GeoJSONConfig,
   geopoint: GeopointConfig,
   geo_s2: GeoS2Config,
-  minhash: MinHashConfig
+  minhash: MinHashConfig,
+  multi_delimiter: MultiDelimiterConfig,
+  wildcard: WildcardConfig
 };
 
 export const AnalyzerTypeForm = ({

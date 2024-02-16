@@ -28,7 +28,7 @@
 
 const jsunity = require("jsunity");
 const _ = require("lodash");
-const { getDBServers } = require('@arangodb/test-helper');
+const { getDBServers, getAgents } = require('@arangodb/test-helper');
 
 function headersClusterSuite () {
   'use strict';
@@ -56,11 +56,15 @@ function headersClusterSuite () {
     testCoordinator: function() {
       let result = arango.GET_RAW("/_api/version");
       assertTrue(result.hasOwnProperty("headers"), "no headers found");
-      if (arango.protocol() !== 'vst') {
-        // VST does not send this header, never
-        assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
-        assertEqual("ArangoDB", result.headers["server"]);
-      }
+        
+      assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
+      assertEqual("ArangoDB", result.headers["server"]);
+    
+      ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+        assertTrue(result.headers.hasOwnProperty(h), {h, result});
+      });
+    
+      assertTrue(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
     },
 
     // test executing requests on DB-Servers
@@ -75,8 +79,35 @@ function headersClusterSuite () {
 
         let result = arango.GET_RAW("/_api/version");
         assertTrue(result.hasOwnProperty("headers"), "no headers found");
-        assertTrue(result.headers.hasOwnProperty("server"), "server header not found");
-        assertEqual("ArangoDB", result.headers["server"]);
+        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
+      
+        ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+          assertFalse(result.headers.hasOwnProperty(h), {h, result});
+        });
+
+        assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
+      });
+    },
+    
+    // test executing requests on agent
+    testAgent: function() {
+      const agents = getAgents();
+      assertTrue(agents.length > 0, "no agents found");
+       
+      agents.forEach(function(agent, i) {
+        let id = agent.id;
+        require("console").warn("connecting to agent", agent.endpoint, id);
+        arango.reconnect(agent.endpoint, "_system", arango.connectedUser(), "");
+
+        let result = arango.GET_RAW("/_api/version");
+        assertTrue(result.hasOwnProperty("headers"), "no headers found");
+        assertFalse(result.headers.hasOwnProperty("server"), "server header found");
+      
+        ["cache-control", "content-security-policy", "expires", "pragma", "strict-transport-security", "x-content-type-options"].forEach((h) => {
+          assertFalse(result.headers.hasOwnProperty(h), {h, result});
+        });
+
+        assertFalse(result.headers.hasOwnProperty("x-arango-queue-time-seconds"), result);
       });
     },
     

@@ -64,7 +64,6 @@
 
 #if USE_ENTERPRISE
 #include "fakeit.hpp"
-#include "Enterprise/Ldap/LdapFeature.h"
 #include "Enterprise/IResearch/IResearchDataStoreEE.hpp"
 #endif
 

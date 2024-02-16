@@ -27,10 +27,13 @@
 #include <velocypack/Slice.h>
 
 #include "Basics/Result.h"
+#include "Futures/Future.h"
 #include "Indexes/Index.h"
 #include "Transaction/Hints.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
+
+#include <function2.hpp>
 
 struct TRI_vocbase_t;
 
@@ -41,11 +44,17 @@ class Future;
 }
 class LogicalCollection;
 class CollectionNameResolver;
+class SingleCollectionTransaction;
 namespace methods {
 
 /// Common code for ensureIndexes and api-index.js
 struct Indexes {
   using ProgressTracker = std::function<arangodb::Result(double)>;
+
+  // Replication2 leaders must replicate the index creation operation to
+  // followers
+  using Replication2Callback =
+      fu2::unique_function<futures::Future<ResultT<replication2::LogIndex>>()>;
 
   static futures::Future<arangodb::Result> getIndex(
       LogicalCollection const& collection, velocypack::Slice indexId,
@@ -63,11 +72,24 @@ struct Indexes {
 
   static futures::Future<arangodb::Result> ensureIndex(
       LogicalCollection& collection, velocypack::Slice definition, bool create,
-      velocypack::Builder& output,
-      std::shared_ptr<ProgressTracker> f = nullptr);
+      velocypack::Builder& output, std::shared_ptr<ProgressTracker> f = nullptr,
+      Replication2Callback replicationCb = nullptr);
 
   static futures::Future<arangodb::Result> drop(LogicalCollection& collection,
                                                 velocypack::Slice indexArg);
+  static futures::Future<arangodb::Result> drop(LogicalCollection& collection,
+                                                IndexId indexId);
+
+  template<typename IndexSpec>
+  requires std::is_same_v<IndexSpec, IndexId> or
+      std::is_same_v<IndexSpec, velocypack::Slice>
+  static futures::Future<arangodb::Result> dropDBServer(
+      LogicalCollection& collection, IndexSpec indexSpec);
+  static futures::Future<arangodb::Result> dropCoordinator(
+      LogicalCollection& collection, IndexId indexId);
+
+  static std::unique_ptr<SingleCollectionTransaction> createTrxForDrop(
+      LogicalCollection& collection);
 
   static arangodb::Result extractHandle(LogicalCollection const& collection,
                                         CollectionNameResolver const* resolver,

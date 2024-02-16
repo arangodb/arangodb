@@ -282,7 +282,9 @@ class RDBNearIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+          if (!physical
+                   ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -314,7 +316,9 @@ class RDBNearIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, gdoc.token, callback, {}).ok()) {
+            if (!physical
+                     ->lookup(_trx, gdoc.token, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -493,7 +497,8 @@ class RDBCoveringIterator final : public IndexIterator {
           };
           auto* physical = _collection->getPhysical();
           // geo index never needs to observe own writes
-          if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+          if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                   .ok()) {
             return false;  // ignore document
           }
           return result;
@@ -525,7 +530,8 @@ class RDBCoveringIterator final : public IndexIterator {
             };
             auto* physical = _collection->getPhysical();
             // geo index never needs to observe own writes
-            if (!physical->lookup(_trx, docid, callback, {}).ok()) {
+            if (!physical->lookup(_trx, docid, callback, {.countBytes = true})
+                     .ok()) {
               return false;
             }
             if (!result) {
@@ -632,10 +638,7 @@ RocksDBGeoIndex::RocksDBGeoIndex(IndexId iid, LogicalCollection& collection,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()),
+                   collection.vocbase().engine<RocksDBEngine>()),
       geo_index::Index(info, _fields),
       _typeName(typeName) {
   TRI_ASSERT(iid.isSet());

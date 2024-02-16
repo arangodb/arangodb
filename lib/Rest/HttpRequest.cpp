@@ -31,6 +31,8 @@
 #include "Basics/conversions.h"
 #include "Basics/debugging.h"
 
+#include <fuerte/types.h>
+
 #include <velocypack/Builder.h>
 #include <velocypack/Options.h>
 #include <velocypack/Parser.h>
@@ -908,42 +910,16 @@ VPackSlice HttpRequest::payload(bool strictValidation) {
 }
 
 EncodingType HttpRequest::parseAcceptEncoding(std::string_view value) const {
-  // parse Accept-Encoding header
-  size_t pos = 0;
-  while (pos < value.size()) {
-    std::string_view current;
-    // split multiple specified encodings at ','
-    size_t next = value.find(',', pos);
-    if (next == std::string::npos) {
-      current = {value.data() + pos, value.size() - pos};
-      pos = value.size();
-    } else {
-      current = {value.data() + pos, next - pos};
-      pos = next + 1;
-    }
-
-    // each encoding can have a "quality"/weight value attached.
-    // strip it.
-    next = current.find(';');
-    if (next != std::string_view::npos) {
-      current = current.substr(0, next);
-    }
-    // ltrim the result value
-    while (!current.empty() && current.front() == ' ') {
-      current = current.substr(1);
-    }
-    // rtrim the result value
-    while (!current.empty() && current.back() == ' ') {
-      current = current.substr(0, current.size() - 1);
-    }
-    if (current == StaticStrings::EncodingDeflate) {
-      // if we find "deflate", we return it
+  // let fuerte translate the content encoding for us
+  switch (fuerte::to_ContentEncoding(value)) {
+    case fuerte::ContentEncoding::Deflate:
       return EncodingType::DEFLATE;
-    }
-    if (current == StaticStrings::EncodingGzip) {
-      // if we find "gzip", we return it
+    case fuerte::ContentEncoding::Gzip:
       return EncodingType::GZIP;
-    }
+    case fuerte::ContentEncoding::Lz4:
+      return EncodingType::LZ4;
+    default:
+      // everything else counts as unset
+      return EncodingType::UNSET;
   }
-  return EncodingType::UNSET;
 }

@@ -53,10 +53,7 @@ IResearchRocksDBLink::IResearchRocksDBLink(IndexId iid,
                    /*useCache*/ false,
                    /*cacheManager*/ nullptr,
                    /*engine*/
-                   collection.vocbase()
-                       .server()
-                       .getFeature<EngineSelectorFeature>()
-                       .engine<RocksDBEngine>()},
+                   collection.vocbase().engine<RocksDBEngine>()},
       IResearchLink{collection.vocbase().server(), collection} {
   TRI_ASSERT(!ServerState::instance()->isCoordinator());
   _unique = false;  // cannot be unique since multiple fields are indexed
@@ -127,11 +124,9 @@ std::shared_ptr<Index> IResearchRocksDBLink::IndexFactory::instantiate(
   if (!isOpening) {
     link->setBuilding(true);
   }
-  auto const res =
-      link->init(definition, pathExists, [this]() -> irs::directory_attributes {
-        auto& selector = _server.getFeature<EngineSelectorFeature>();
-        TRI_ASSERT(selector.isRocksDB());
-        auto& engine = selector.engine<RocksDBEngine>();
+  auto const res = link->init(
+      definition, pathExists, [&collection]() -> irs::directory_attributes {
+        auto& engine = collection.vocbase().engine<RocksDBEngine>();
         auto* encryption = engine.encryptionProvider();
         if (encryption) {
           return irs::directory_attributes{

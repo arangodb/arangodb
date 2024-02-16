@@ -47,10 +47,6 @@ const std::string fu_content_encoding_key("content-encoding");
 const std::string fu_keep_alive_key("keep-alive");
 
 struct MessageHeader {
-  /// arangodb message format version
-  short version() const { return _version; }
-  void setVersion(short v) { _version = v; }
-
   // Header metadata helpers#
   template<typename K, typename V>
   void addMeta(K&& key, V&& value) {
@@ -96,7 +92,6 @@ struct MessageHeader {
 
  protected:
   StringMap _meta;     /// Header meta data (equivalent to HTTP headers)
-  short _version = 0;  // vst protocol version. only used by vst
   ContentType _contentType = ContentType::Unset;
   ContentType _acceptType = ContentType::VPack;
   ContentEncoding _contentEncoding = ContentEncoding::Identity;

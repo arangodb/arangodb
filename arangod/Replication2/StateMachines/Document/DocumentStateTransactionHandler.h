@@ -99,6 +99,8 @@ class DocumentStateTransactionHandler
   auto applyOp(ReplicatedOperation::CreateShard const&) -> Result;
   auto applyOp(ReplicatedOperation::ModifyShard const&) -> Result;
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
+
+  // TODO These should return futures
   auto applyOp(ReplicatedOperation::CreateIndex const&) -> Result;
   auto applyOp(ReplicatedOperation::DropIndex const&) -> Result;
 

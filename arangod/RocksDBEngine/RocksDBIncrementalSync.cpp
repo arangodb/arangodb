@@ -440,7 +440,7 @@ Result syncChunkRocksDB(DatabaseInitialSyncer& syncer,
   // determine number of unique indexes. we may need it later
   std::size_t numUniqueIndexes = [&]() {
     std::size_t numUnique = 0;
-    for (auto const& idx : coll->getIndexes()) {
+    for (auto const& idx : coll->getPhysical()->getReadyIndexes()) {
       numUnique += idx->unique() ? 1 : 0;
     }
     return numUnique;
@@ -1034,10 +1034,7 @@ Result handleSyncKeysRocksDB(DatabaseInitialSyncer& syncer,
         // patch the document counter of the collection and the transaction
         int64_t diff = static_cast<int64_t>(numberDocumentsAfterSync) -
                        static_cast<int64_t>(numberDocumentsDueToCounter);
-        RocksDBEngine& engine = col->vocbase()
-                                    .server()
-                                    .getFeature<EngineSelectorFeature>()
-                                    .engine<RocksDBEngine>();
+        RocksDBEngine& engine = col->vocbase().engine<RocksDBEngine>();
         auto seq = engine.db()->GetLatestSequenceNumber();
         static_cast<RocksDBCollection*>(
             trx->documentCollection()->getPhysical())
