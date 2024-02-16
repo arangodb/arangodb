@@ -1143,8 +1143,7 @@ Projections translateLMIndexVarsToProjections(
     proj.coveringIndexCutoff = proj.path.size();
     proj.variable = var;
     proj.levelsToClose = proj.startsAtLevel = 0;
-    proj.type = proj.path.size() > 1 ? AttributeNamePath::Type::MultiAttribute
-                                     : AttributeNamePath::Type::SingleAttribute;
+    proj.type = proj.path.type();
   }
 
   projections.setCoveringContext(index->collection().id(), index);
