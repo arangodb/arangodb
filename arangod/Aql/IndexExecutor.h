@@ -74,8 +74,6 @@ class IndexExecutorInfos {
       bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
-      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
       IndexNode::IndexFilterCoveringVars filterCoveringVars);
 
   IndexExecutorInfos() = delete;
@@ -117,17 +115,7 @@ class IndexExecutorInfos {
   bool hasNonConstParts() const;
 
   bool isLateMaterialized() const noexcept {
-    return !_outNonMaterializedIndRegs.second.empty();
-  }
-
-  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars()
-      const noexcept {
-    return _outNonMaterializedIndVars;
-  }
-
-  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs()
-      const noexcept {
-    return _outNonMaterializedIndRegs;
+    return _options.forLateMaterialization;
   }
 
   IndexNode::IndexFilterCoveringVars const& getFilterCoveringVars()
@@ -173,9 +161,6 @@ class IndexExecutorInfos {
   NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
-
-  IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
-  IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;
 
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type
