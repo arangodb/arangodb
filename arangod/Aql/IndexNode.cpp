@@ -449,7 +449,8 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
     // object.
     // this will be handled below by adding the main output register.
   }
-  if (writableOutputRegisters.empty() && (doCount() || isProduceResult())) {
+  if (isLateMaterialized() ||
+      (writableOutputRegisters.empty() && (doCount() || isProduceResult()))) {
     // counting also needs an output register.
     writableOutputRegisters.emplace(outRegister);
   }
@@ -651,6 +652,19 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
                                     IndexId commonIndexId,
                                     IndexVarsInfo const& indexVariables) {
   _outNonMaterializedDocId = docIdVariable;
+  IndexValuesVars oldIndexValuesVars;
+  oldIndexValuesVars.first = commonIndexId;
+  oldIndexValuesVars.second.clear();
+  oldIndexValuesVars.second.reserve(indexVariables.size());
+  for (auto& indVars : indexVariables) {
+    oldIndexValuesVars.second.try_emplace(indVars.second.var,
+                                          indVars.second.indexFieldNum);
+  }
+
+  _projections = utils::translateLMIndexVarsToProjections(
+      plan(), oldIndexValuesVars, getSingleIndex());
+  _projections.setCoveringContext(_collectionAccess.collection()->id(),
+                                  getSingleIndex());
   _options.forLateMaterialization = true;
 }
 
@@ -682,7 +696,6 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
   }
 
   if (isLateMaterialized()) {
-    _projections.clear();
     return false;
   }
 

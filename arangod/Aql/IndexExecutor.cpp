@@ -153,6 +153,7 @@ IndexIterator::CoveringCallback getCallback(
 
     // write projections into individual output registers
     if (!context.getProjectionsForRegisters().empty()) {
+      TRI_ASSERT(context.getProjectionsForRegisters().usesCoveringIndex());
       context.getProjectionsForRegisters().produceFromIndex(
           context.getBuilder(), covering, context.getTrxPtr(),
           [&](Variable const* variable, velocypack::Slice slice) {

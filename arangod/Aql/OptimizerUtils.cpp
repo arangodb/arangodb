@@ -1140,7 +1140,7 @@ Projections translateLMIndexVarsToProjections(
   for (auto [var, fieldIndex] : indexVars.second) {
     auto& proj = projections[i++];
     proj.coveringIndexPosition = fieldIndex;
-    proj.coveringIndexCutoff = fieldIndex;
+    proj.coveringIndexCutoff = proj.path.size();
     proj.variable = var;
     proj.levelsToClose = proj.startsAtLevel = 0;
     proj.type = proj.path.size() > 1 ? AttributeNamePath::Type::MultiAttribute
