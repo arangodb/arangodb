@@ -772,9 +772,14 @@ Result RocksDBCollection::truncate(transaction::Methods& trx,
   auto state = RocksDBTransactionState::toState(&trx);
   TRI_ASSERT(!state->isReadOnlyTransaction());
 
+  size_t minimumNumberOfDocumentsForRangeDelete = 32 * 1024;
+  TRI_IF_FAILURE("TruncateRangeDeleteLowValue") {
+    minimumNumberOfDocumentsForRangeDelete = 1;
+  }
+
   if (state->isOnlyExclusiveTransaction() &&
       state->hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE) &&
-      _meta.numberDocuments() >= 32 * 1024) {
+      _meta.numberDocuments() >= minimumNumberOfDocumentsForRangeDelete) {
     // optimized truncate, using DeleteRange operations.
     // this can only be used if the truncate is performed as a standalone
     // operation (i.e. not part of a larger transaction)
