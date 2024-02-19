@@ -23,12 +23,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RestoreFeature.h"
+#include <exception>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
@@ -970,7 +972,7 @@ arangodb::Result processInputDirectory(
               << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
               << ", total workers: " << std::get<1>(queueStats)
-              << ", busy workers: " << std::get<2>(queueStats);
+              << ", idle workers: " << std::get<2>(queueStats);
           start = now;
         }
 
