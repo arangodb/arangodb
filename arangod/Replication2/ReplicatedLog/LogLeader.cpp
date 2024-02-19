@@ -322,10 +322,9 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     return;
                   }
 
-                  TRI_ASSERT(false)
-                      << "appendEntries failed, follower already gone: "
+                  ADB_PROD_ASSERT(responseResult.ok())
+                      << "appendEntries failed with an unhandled error: "
                       << responseResult.result();
-                  FATAL_ERROR_EXIT();
                 }
 
                 auto [preparedRequests, resolvedPromises] =
