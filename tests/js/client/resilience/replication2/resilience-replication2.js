@@ -63,8 +63,6 @@ const console = require('console');
 const _ = require('lodash');
 
 function Replication2IndexCreationResilienceSuite () {
-  let oldDb;
-
   // Convert [{_key: "a", value: 1, ...}, ...]
   // into { "a": 1, ... }
   const docsToKV = (docs) => {
@@ -106,11 +104,20 @@ function Replication2IndexCreationResilienceSuite () {
       assertEqual(expected, docsToKV(col.toArray()));
       assertEqual(expected, docsToKV(allDocsFrom(leaderId)));
       assertEqual(expected, docsToKV(allDocsFrom(followerId)));
-      lh.bumpTermOfLogsAndWaitForConfirmation(db._name(), col);
+      // kind of a hack: We increase the term without running a new election.
+      // This is OK in this situation, as the log should be completely settled
+      // (all operations finished; writeConcern == replicationFactor; follower
+      // has applied everything).
+      // This way, the leader (server is unchanged) immediately runs a recovery;
+      // if there was an election in between, it would have been instantiated as
+      // a follower during the election-term. This should make the diagnosis of
+      // possible failures in this test easier.
+      lh.bumpTermOnly(db._name(), logId);
+      lh.waitFor(lp.replicatedLogLeaderEstablished(db._name(), logId, undefined, []));
+      assertEqual(leaderId, log.status().leaderId);
       assertEqual(expected, docsToKV(col.toArray()));
       assertEqual(expected, docsToKV(allDocsFrom(leaderId)));
       assertEqual(expected, docsToKV(allDocsFrom(followerId)));
-
 
       let term = lh.readReplicatedLogAgency(db._name(), logId).plan.currentTerm.term;
       lh.setLeader(db._name(), logId, followerId);

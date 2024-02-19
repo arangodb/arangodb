@@ -360,7 +360,7 @@ arangodb::Result StorageManager::commitMetaInfoTrx(
     THROW_ARANGO_EXCEPTION(res);
   }
   LOG_CTX("6a7fb", DEBUG, loggerContext)
-      << "commit meta info transaction, new value = "
+      << "committed meta info transaction, new value = "
       << velocypack::serialize(trx.info).toJson();
   guard->info = std::move(trx.info);
   return {};

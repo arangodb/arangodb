@@ -131,6 +131,10 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       return {TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED};
     }
 
+    // TODO should we just copy this and release the mutex?
+    auto lowestSafeIndexesForReplayGuard =
+        self->_lowestSafeIndexesForReplay.getLockedGuard();
+
     std::unordered_set<TransactionId> activeTransactions;
     while (auto entry = ptr->next()) {
       if (self->_resigning) {
@@ -139,9 +143,6 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
         break;
       }
       auto [idx, doc] = *entry;
-
-      auto lowestSafeIndexesForReplayGuard =
-          self->_lowestSafeIndexesForReplay.getLockedGuard();
 
       bool const isSafeForReplay = std::visit(
           overload{
@@ -214,8 +215,10 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
           }
         }
       } else {
+        // TODO don't log the entire operation, including the payload!
+        //      Also check other log statements for this problem.
         LOG_CTX("acdaa", TRACE, self->loggerContext)
-            << "ignoring log entry " << doc
+            << "ignoring log entry [" << idx << "] " << doc
             << " during recovery: not safe for replay";
       }
     }
