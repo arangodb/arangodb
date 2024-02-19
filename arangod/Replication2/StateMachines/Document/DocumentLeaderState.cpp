@@ -714,36 +714,25 @@ auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
   });
 }
 
-// TODO There are some pieces missing:
-//      - The CreateIndexOperation should be forwarded to
-//        RocksDBCollection::createIndex, instead of being recreated there.
-//      - The LogIndex replicated during RocksDBCollection::createIndex should
-//        be returned here, so it can be released.
+// TODO
 //      - The future returned by RocksDBCollection::createIndex should also be
 //        propagated to here, so we don't block the thread.
 auto DocumentLeaderState::createIndex(
     ShardID shard, VPackSlice indexInfo,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
-  // Why are we first creating the index locally, then replicating it?
-  // 1. Unique Indexes
-  //   The leader has to check for uniqueness before every insert operation. If
-  //   a follower creates the index first, it may reject inserts that were
-  //   still valid on the leader at the time of their replication.
-  // 2. Other Indexes
-  //   Various error may occur during index creation, which need to be validated
-  //   before replication. For example, there can only be one TTL index per
-  //   collection. If there's already a TTL index, the leader will reject the
-  //   index creation. But, since the entry has already been replicated, it is
-  //   already in the log. Then there's the risk that it may replayed
-  //   successfully after a snapshot transfer.
-  // What happens if index is created locally, but replication fails?
-  //   We'll try to fix it - drop the index and report and error.
-  //   If the undo operation is successful, there's no reason to crash
-  //   the server.
+  // Index creation happens roughly as follows, most of it currently in
+  // RocksDBCollection::createIndex:
+  // 1) some work in the background, that we can ignore
+  // 2) acquire an exclusive collection lock
+  // 3) finish index creation
+  // 4) replicate the CreateIndex operation, wait for raft-commit
+  //    (the callback below)
+  // 5) persist and publish the index
+  auto releaseIndex = std::optional<LogIndex>();
 
   auto localIndexCreation = _guardedData.doUnderLock(
-      [self = shared_from_this(), shard, indexInfo,
+      [self = shared_from_this(), shard, indexInfo, &releaseIndex,
        progress = std::move(progress)](auto& data) mutable {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
@@ -752,7 +741,8 @@ auto DocumentLeaderState::createIndex(
 
         // Callback used to replicate the operation during
         // RocksDBCollection::createIndex
-        auto callback = [self, shard, progress = std::move(progress)](
+        auto callback = [self, shard, &releaseIndex,
+                         progress = std::move(progress)](
                             velocypack::Slice indexDefinition) mutable
             -> futures::Future<Result> {
           auto op = ReplicatedOperation::buildCreateIndexOperation(
@@ -764,6 +754,7 @@ auto DocumentLeaderState::createIndex(
                   .waitForCommit = true, .waitForSync = true});
           if (replicationResult.ok()) {
             auto const logIndex = replicationResult.get();
+            releaseIndex = logIndex;
             // Increase the lowest safe index for replay: This must happen
             // *after* the create index operation has been raft-committed, but
             // *before* the index is persisted (i.e. before _inprogress=true is
@@ -782,8 +773,16 @@ auto DocumentLeaderState::createIndex(
     return localIndexCreation;
   }
 
-  // We should release the log index now, but we don't have it. Shouldn't be a
-  // problem though, releasing the next log entry will release this with it.
+  // If the index creation succeeded, we must have saved a release index
+  TRI_ASSERT(releaseIndex.has_value());
+  if (releaseIndex.has_value()) {
+    if (auto releaseRes = release(*releaseIndex); releaseRes.fail()) {
+      LOG_CTX("3deea", ERR, loggerContext)
+          << "Failed to call release on index " << *releaseIndex << ": "
+          << releaseRes;
+    }
+  }
+
   return Result{};
 }
 
