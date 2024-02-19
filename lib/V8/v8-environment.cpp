@@ -71,6 +71,12 @@ static void EnvGetter(v8::Local<v8::Name> property,
     return args.GetReturnValue().SetUndefined();
   }
 
+  v8::String::Utf8Value const key(isolate, property);
+  char const* val = getenv(*key);
+  if (val) {
+    TRI_V8_RETURN_STRING(val);
+  }
+
   auto context = TRI_IGETC;
   // Not found.  Fetch from prototype.
   TRI_V8_RETURN(args.Data()
