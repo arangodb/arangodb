@@ -503,19 +503,9 @@ struct CompactionStopReason {
         -> bool = default;
   };
 
-  struct StorageManagerNotReady {
-    template<class Inspector>
-    friend auto inspect(Inspector& f, StorageManagerNotReady& x) {
-      return f.object(x).fields();
-    }
-    friend auto operator==(StorageManagerNotReady const& left,
-                           StorageManagerNotReady const& right) noexcept
-        -> bool = default;
-  };
-
   std::variant<CompactionThresholdNotReached, NotReleasedByStateMachine,
                ParticipantMissingEntries, LeaderBlocksReleaseEntry,
-               NothingToCompact, StorageManagerNotReady>
+               NothingToCompact>
       value;
 
   friend auto operator==(CompactionStopReason const& left,
@@ -531,8 +521,7 @@ struct CompactionStopReason {
         insp::type<NotReleasedByStateMachine>("NotReleasedByStateMachine"),
         insp::type<LeaderBlocksReleaseEntry>("LeaderBlocksRelease"),
         insp::type<NothingToCompact>("NothingToCompact"),
-        insp::type<ParticipantMissingEntries>("ParticipantMissingEntries"),
-        insp::type<StorageManagerNotReady>("StorageManagerNotReady"));
+        insp::type<ParticipantMissingEntries>("ParticipantMissingEntries"));
   }
 };
 

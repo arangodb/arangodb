@@ -126,16 +126,19 @@ void CompactionManager::triggerAsyncCompaction(
         // The participant might be gone
         LOG_CTX("d7724", DEBUG, self->loggerContext)
             << "error during compaction: " << storeRes.result();
-        auto cresult = CompactResult{
-            .error = std::move(storeRes).result().error(),
-            .stopReason =
-                CompactionStopReason{
-                    CompactionStopReason::StorageManagerNotReady{}},
-            .compactedRange = {}};
-        guard->status.lastCompaction->error = cresult.error;
+
+        result::Error err{storeRes.result().errorNumber(),
+                          storeRes.result().errorMessage()};
+        auto& compaction = guard->status.inProgress.emplace();
+        guard->status.lastCompaction = guard->status.inProgress;
+        guard->status.inProgress.reset();
+        compaction.error = std::move(err);
         clearCompactionRunning.fire();
+
         guard.unlock();
-        promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
+        auto ex = std::make_exception_ptr(
+            basics::Exception(std::move(storeRes).result(), ADB_HERE));
+        promises.resolveAll(futures::Try<CompactResult>{std::move(ex)});
         break;
       }
 
