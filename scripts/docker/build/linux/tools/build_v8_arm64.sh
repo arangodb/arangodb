@@ -5,7 +5,7 @@ apt-get install -y git curl python3 xz-utils pkg-config python3-distutils python
 apt-get install -y build-essential cmake ninja-build
 
 wget -qO- https://apt.llvm.org/llvm-snapshot.gpg.key | tee /etc/apt/trusted.gpg.d/apt.llvm.org.asc
-echo deb http://apt.llvm.org/mantic/ llvm-toolchain-mantic main >> /etc/apt/sources.list
+echo deb http://apt.llvm.org/mantic/ llvm-toolchain-mantic-18 main >> /etc/apt/sources.list
 apt update
 apt-get install -y clang-18 clang-tools-18 clang-18-doc libclang-common-18-dev libclang-18-dev libclang1-18 clang-format-18 python3-clang-18 clangd-18 clang-tidy-18 lld-18
 ln -s /usr/bin/clang-18 /usr/bin/clang

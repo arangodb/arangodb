@@ -43,7 +43,7 @@ struct HealthData {
   double freeDiskSpacePercent = 0.0;
 
   static HealthData fromVelocyPack(velocypack::Slice slice);
-  void toVelocyPack(velocypack::Builder& builder) const;
+  void toVelocyPack(velocypack::Builder& builder, bool withDetails) const;
 };
 
 }  // namespace arangodb

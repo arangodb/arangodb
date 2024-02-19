@@ -36,17 +36,12 @@ namespace auth {
 
 class HandlerResult {
  public:
-  explicit HandlerResult(arangodb::auth::Source const& source)
-      : HandlerResult(TRI_ERROR_FAILED, source) {}
+  explicit HandlerResult() : HandlerResult(TRI_ERROR_FAILED) {}
 
-  HandlerResult(ErrorCode errorNumber, arangodb::auth::Source const& source)
-      : _result(errorNumber), _authSource(source) {}
+  HandlerResult(ErrorCode errorNumber) : _result(errorNumber) {}
 
-  HandlerResult(std::set<std::string> const& roles, auth::Source const& source)
-      : _result(TRI_ERROR_NO_ERROR), _authSource(source), _roles(roles) {}
-
- public:
-  arangodb::auth::Source source() const { return _authSource; }
+  HandlerResult(std::set<std::string> const& roles)
+      : _result(TRI_ERROR_NO_ERROR), _roles(roles) {}
 
   std::set<std::string> roles() const { return _roles; }
 
@@ -58,7 +53,6 @@ class HandlerResult {
 
  protected:
   Result _result;
-  arangodb::auth::Source _authSource;
   std::set<std::string> _roles;
 };
 
@@ -67,7 +61,6 @@ class Handler {
   /// Refresh rate for users from this source in seconds
   virtual double refreshRate() const = 0;
   virtual bool allowOfflineCacheUsage() const = 0;
-  virtual auth::Source source() const = 0;
 
   /// Authenticate user and return user permissions and roles
   virtual HandlerResult authenticate(std::string const& username,

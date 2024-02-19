@@ -133,7 +133,9 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   }
 
   auto finish(ExitReason reason) -> void override {
-    if (status.load() & Status::kFinished) {
+    if (status.fetch_or(Status::kFinishing) & Status::kFinishing) {
+      // already finished or someone else is currently finishing this actor
+      // only one thread can finish an actor, so that one wins
       return;
     }
     exitReason = reason;
@@ -144,7 +146,8 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   }
 
   auto isFinishedAndIdle() -> bool override {
-    return status.load() == (Status::kFinished | Status::kIdle);
+    return status.load() ==
+           (Status::kFinished | Status::kFinishing | Status::kIdle);
   }
 
   auto isIdle() -> bool override { return status.load() & Status::kIdle; }
@@ -234,7 +237,7 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   auto pushToQueueAndKick(std::unique_ptr<InternalMessage> msg) -> void {
     // don't add new messages when actor is finished
     auto s = status.load();
-    if (s & Status::kFinished) {
+    if (s & Status::kFinishing) {
       // finished actors no longer accept new messages
       return;
     }
@@ -256,7 +259,9 @@ struct Actor : ActorBase<typename Runtime::ActorPID> {
   ActorPID pid;
   struct Status {
     static constexpr std::uint8_t kIdle = 1;
-    static constexpr std::uint8_t kFinished = 2;
+    // Note: a finished actor will have both flags set, kFinishing and kFinished
+    static constexpr std::uint8_t kFinishing = 2;
+    static constexpr std::uint8_t kFinished = 4;
   };
   std::atomic<std::uint8_t> status{Status::kIdle};
   ExitReason exitReason = ExitReason::kFinished;

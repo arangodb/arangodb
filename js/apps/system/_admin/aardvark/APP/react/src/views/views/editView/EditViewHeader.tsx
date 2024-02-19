@@ -3,6 +3,7 @@ import { Box, Button, Flex, Grid, IconButton } from "@chakra-ui/react";
 import { useField, useFormikContext } from "formik";
 import React from "react";
 import { useHistory } from "react-router-dom";
+import { notifySuccess } from "../../../utils/notifications";
 import { useEditViewContext } from "../editView/EditViewContext";
 import { ViewPropertiesType } from "../View.types";
 import { CopyPropertiesDropdown } from "./CopyPropertiesDropdown";
@@ -92,6 +93,7 @@ const DeleteViewButton = () => {
           view={initialView}
           onSuccess={() => {
             history.push("/views");
+            notifySuccess(`View: "${initialView.name}" deleted`);
           }}
           onClose={() => {
             setShowDeleteModal(false);

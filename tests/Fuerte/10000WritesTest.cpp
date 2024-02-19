@@ -39,7 +39,7 @@ namespace f = ::arangodb::fuerte;
 
 class Connection100kWritesF : public ::testing::Test {
  protected:
-  Connection100kWritesF() { _server = "vst://127.0.0.1:8529"; }
+  Connection100kWritesF() { _server = "tcp://127.0.0.1:8529"; }
   virtual ~Connection100kWritesF() noexcept {}
 
   virtual void SetUp() override {

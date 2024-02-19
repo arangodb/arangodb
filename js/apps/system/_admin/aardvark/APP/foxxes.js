@@ -131,6 +131,23 @@ installer.use(function (req, res, next) {
     }
     if (
       e.isArangoError &&
+      e.errorNum === errors.ERROR_SERVICE_SOURCE_ERROR.code
+    ) {
+      let errorType = 'internal server error';
+      if ([
+        '/foxxes/store',
+        '/foxxes/git',
+        '/foxxes/url'
+      ].indexOf(req.path) !== -1) {
+        errorType = (
+          e.message.includes('(timeout after') ?
+          'gateway timeout' : 'bad gateway'
+        );
+      }
+      res.throw(errorType, e);
+    }
+    if (
+      e.isArangoError &&
       e.errorNum === errors.ERROR_SERVICE_NOT_FOUND.code
     ) {
       res.throw('not found', e);

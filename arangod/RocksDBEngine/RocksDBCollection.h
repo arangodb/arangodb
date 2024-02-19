@@ -27,7 +27,6 @@
 #include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "RocksDBEngine/RocksDBPrimaryIndex.h"
 #include "VocBase/Identifiers/IndexId.h"
-#include "VocBase/vocbase.h"
 
 #include <atomic>
 #include <memory>
@@ -72,8 +71,8 @@ class RocksDBCollection final : public RocksDBMetaCollection {
 
   futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice info, bool restore, bool& created,
-      std::shared_ptr<std::function<arangodb::Result(double)>> =
-          nullptr) override;
+      std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
+      Replication2Callback replicationCb = nullptr) override;
 
   std::unique_ptr<IndexIterator> getAllIterator(
       transaction::Methods* trx, ReadOwnWrites readOwnWrites) const override;

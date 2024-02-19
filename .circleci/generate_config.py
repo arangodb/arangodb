@@ -21,7 +21,6 @@ known_flags = {
     "!full": "this test is only executed in non-full tests",
     "gtest": "only the gtest are to be executed",
     "sniff": "whether tcpdump / ngrep should be used",
-    "ldap": "ldap",
     "enterprise": "this tests is only executed with the enterprise version",
     "!windows": "test is excluded from ps1 output",
     "!mac": "test is excluded when launched on MacOS",
@@ -86,9 +85,6 @@ def parse_arguments():
     )
     parser.add_argument(
         "-rt", "--replication_two", default=False, action='store_true', help="flag if we should enable replication two tests"
-    )
-    parser.add_argument(
-        "--skip-windows", default=False, action='store_true', help="flag if we should skip windows tests"
     )
     return parser.parse_args()
 
@@ -229,7 +225,7 @@ def filter_tests(args, tests, enterprise):
     return list(tests)
 
 
-def get_size(size, arch, dist):
+def get_size(size, arch):
     aarch64_sizes = {
         "small": "arm.medium",
         "medium": "arm.medium",
@@ -237,14 +233,6 @@ def get_size(size, arch, dist):
         "large": "arm.large",
         "xlarge": "arm.xlarge",
         "2xlarge": "arm.xlarge",
-    }
-    windows_sizes = {
-        "small": "medium",
-        "medium": "medium",
-        "medium+": "large",
-        "large": "large",
-        "xlarge": "xlarge",
-        "2xlarge": "2xlarge",
     }
     x86_sizes = {
         "small": "small",
@@ -254,14 +242,12 @@ def get_size(size, arch, dist):
         "xlarge": "large",
         "2xlarge": "large",
     }
-    if dist == "windows":
-        return windows_sizes[size]
-    elif arch == "aarch64":
+    if arch == "aarch64":
         return aarch64_sizes[size]
     return x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
+def create_test_job(test, cluster, edition, arch, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
     params = test["params"]
     suite_name = test["name"]
@@ -278,9 +264,9 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
         "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_size(test["size"], arch, dist),
+        "size": get_size(test["size"], arch),
         "cluster": cluster,
-        "requires": [f"build-{dist}-{edition}-{arch}"],
+        "requires": [f"build-linux-{edition}-{arch}"],
     }
 
     extra_args = test["args"].copy()
@@ -296,33 +282,31 @@ def create_test_job(test, cluster, edition, arch, dist, replication_version=1):
     return result
 
 
-def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, dist, repl2):
+def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, repl2):
     jobs = config["workflows"][workflow]["jobs"]
     for test in tests:
-        if "!" + dist in test["flags"]:
-            continue
         if "cluster" in test["flags"]:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+                {f"run-linux-tests": create_test_job(test, True, edition, arch)}
             )
             if repl2:
                 jobs.append(
-                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                    {f"run-linux-tests": create_test_job(test, True, edition, arch, 2)}
                 )
         elif "single" in test["flags"]:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+                {f"run-linux-tests": create_test_job(test, False, edition, arch)}
             )
         else:
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist)}
+                {f"run-linux-tests": create_test_job(test, True, edition, arch)}
             )
             if repl2:
                 jobs.append(
-                    {f"run-{dist}-tests": create_test_job(test, True, edition, arch, dist, 2)}
+                    {f"run-linux-tests": create_test_job(test, True, edition, arch, 2)}
                 )
             jobs.append(
-                {f"run-{dist}-tests": create_test_job(test, False, edition, arch, dist)}
+                {f"run-linux-tests": create_test_job(test, False, edition, arch)}
             )
 
 
@@ -334,27 +318,24 @@ def get_arch(workflow):
     raise Exception(f"Cannot extract architecture from workflow {workflow}")
 
 
-def generate_output(config, tests, enterprise, repl2, skip_windows):
+def generate_output(config, tests, enterprise, repl2):
     """generate output"""
     workflows = config["workflows"]
     edition = "ee" if enterprise else "ce"
     for workflow, jobs in workflows.items():
-        if ("windows" in workflow) and enterprise and not skip_windows:
-            arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "windows", repl2)
         if (
             ("linux" in workflow)
             and (enterprise and "enterprise" in workflow)
             or (not enterprise and "community" in workflow)
         ):
             arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, "linux", repl2)
+            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, repl2)
 
 
 def generate_jobs(config, args, tests, enterprise):
     """generate job definitions"""
     tests = filter_tests(args, tests, enterprise)
-    generate_output(config, tests, enterprise, args.replication_two, args.skip_windows)
+    generate_output(config, tests, enterprise, args.replication_two)
 
 
 def main():

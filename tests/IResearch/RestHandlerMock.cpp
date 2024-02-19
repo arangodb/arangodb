@@ -65,10 +65,6 @@ void GeneralRequestMock::setData(VPackSlice slice) {
   _payload.add(slice);
 }
 
-arangodb::Endpoint::TransportType GeneralRequestMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
-}
-
 GeneralResponseMock::GeneralResponseMock(
     arangodb::ResponseCode code /*= arangodb::ResponseCode::OK*/
     )
@@ -102,10 +98,6 @@ void GeneralResponseMock::reset(arangodb::ResponseCode code) {
   _responseCode = code;
 }
 
-arangodb::Endpoint::TransportType GeneralResponseMock::transportType() {
-  return arangodb::Endpoint::TransportType::HTTP;  // arbitrary value
-}
-
 ErrorCode GeneralResponseMock::zlibDeflate(bool /*onlyIfSmaller*/) {
   // we should never get here
   TRI_ASSERT(false);
@@ -113,6 +105,12 @@ ErrorCode GeneralResponseMock::zlibDeflate(bool /*onlyIfSmaller*/) {
 }
 
 ErrorCode GeneralResponseMock::gzipCompress(bool /*onlyIfSmaller*/) {
+  // we should never get here
+  TRI_ASSERT(false);
+  return TRI_ERROR_INTERNAL;
+}
+
+ErrorCode GeneralResponseMock::lz4Compress(bool /*onlyIfSmaller*/) {
   // we should never get here
   TRI_ASSERT(false);
   return TRI_ERROR_INTERNAL;

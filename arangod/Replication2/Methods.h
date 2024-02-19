@@ -23,11 +23,13 @@
 #pragma once
 
 #include "Agency/AgencyCommon.h"
+#include "Replication2/AgencyCollectionSpecification.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "Replication2/ReplicatedLog/LogPayload.h"
 #include "Replication2/ReplicatedLog/LogStatus.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
+#include "Replication2/StateMachines/Document/DocumentStateSnapshot.h"
 #include "VocBase/vocbase.h"
 
 #include <string>
@@ -87,6 +89,23 @@ struct ReplicatedLogMethods {
     std::vector<ParticipantId> servers;
   };
 
+  struct AllLogsStatus {
+    replication2::replicated_log::GlobalStatus globalStatus;
+    ResultT<velocypack::SharedSlice> snapshots;
+    ResultT<velocypack::SharedSlice> shards;
+
+    void toVelocyPack(velocypack::Builder& b) const;
+  };
+
+  struct CollectionStatus {
+    replication2::agency::CollectionGroupId groupId;
+    std::vector<std::string> allCollectionsInGroup;
+    std::vector<ShardID> collectionShards;
+    std::unordered_map<LogId, AllLogsStatus> logs;
+
+    void toVelocyPack(velocypack::Builder& b) const;
+  };
+
   virtual auto createReplicatedLog(CreateOptions spec) const
       -> futures::Future<ResultT<CreateResult>> = 0;
 
@@ -100,6 +119,8 @@ struct ReplicatedLogMethods {
   virtual auto getGlobalStatus(
       LogId, replicated_log::GlobalStatus::SpecificationSource) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> = 0;
+  virtual auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> = 0;
   virtual auto getStatus(LogId) const -> futures::Future<GenericLogStatus> = 0;
 
   virtual auto slice(LogId, LogIndex start, LogIndex stop) const

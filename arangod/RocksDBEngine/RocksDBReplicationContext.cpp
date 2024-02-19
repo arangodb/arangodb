@@ -329,7 +329,9 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
   }
 
   // we should have a valid iterator if there are documents in here
-  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore());
+  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore())
+      << "numDocs: " << numberDocuments << ", hasMore: " << cIter->hasMore()
+      << ", shard: " << logical->name();
   co_return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
@@ -1224,11 +1226,8 @@ void RocksDBReplicationContext::CollectionIterator::setSorted(bool sorted) {
 
     TRI_ASSERT(_upperLimit.size() > 0);
     _readOptions.iterate_upper_bound = &_upperLimit;
-    iter.reset(vocbase.server()
-                   .getFeature<EngineSelectorFeature>()
-                   .engine<RocksDBEngine>()
-                   .db()
-                   ->NewIterator(_readOptions, cf));
+    iter.reset(
+        vocbase.engine<RocksDBEngine>().db()->NewIterator(_readOptions, cf));
     TRI_ASSERT(iter);
     iter->Seek(_bounds.start());
     currentTick = 1;

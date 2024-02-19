@@ -80,6 +80,9 @@ Coding Guidelines.
 
 We support only officially released compiler versions which major version is
 at least 9 month old.
+ArangoDB does not guarantee successful compilation with arbitrary compilers, 
+but uses a certain compiler make and version for building ArangoDB. Both the
+compiler make and version can change over time.
 
 ### Unique Log Ids
 
@@ -282,7 +285,7 @@ favorite browser and open the web interface.
 All changes to any source will automatically re-build and reload your browser.
 Enjoy :)
 
-#### Cross Origin Policy (CORS) ERROR
+#### Cross Origin Policy (CORS) error
 
 Our front-end development server currently runs on port:`3000`, while the backend
 runs on port:`8529` respectively. This implies that when the front-end sends a
@@ -442,7 +445,6 @@ Mode:
 
 - start arangod with `--console` to get a debug console
 - Cheapen startup for valgrind: `--server.rest-server false`
-- to have backtraces output set this on the prompt: `ENABLE_NATIVE_BACKTRACES(true)`
 
 ### Startup
 
@@ -450,13 +452,12 @@ Arangod has a startup rc file: `~/.arangod.rc`. It's evaled as JavaScript. A
 sample version to help working with the arangod rescue console may look like
 that:
 
-    ENABLE_NATIVE_BACKTRACES(true);
     internal = require("internal");
     fs = require("fs");
     db = internal.db;
     time = internal.time;
     timed = function (cb) {
-      var s = time();
+      let s = time();
       cb();
       return time() - s;
     };
@@ -469,7 +470,7 @@ _Hint_: You shouldn't lean on these variables in your Foxx services.
 To debug AQL execution blocks, two steps are required:
 
 - turn on logging for queries using `--extraArgs:log.level queries=info`
-- divert this facilities logoutput into individual files: `--extraArgs --log.output queries file://@ARANGODB_SERVER_DIR@/arangod_queries.log`
+- divert this facilities log output into individual files: `--extraArgs --log.output queries file://@ARANGODB_SERVER_DIR@/arangod_queries.log`
 - send queries enabling block debugging: `db._query('RETURN 1', {}, { profile: 4 })`
 
 You now will get log entries with the contents being passed between the blocks.
@@ -723,7 +724,7 @@ thread, the later one the stacktraces of all threads.
 
 #### Windows Core Dumps
 
-For the average \*nix user windows debugging has some awkward methods.
+For the average \*nix user Windows debugging has some awkward methods.
 
 ##### Windows Core Dump Generation
 
@@ -883,15 +884,15 @@ Get a list of the available testsuites and options by invoking:
 
 To locate the suite(s) associated with a specific test file use:
 
-    ./scripts/unittest find --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest find --test tests/js/client/shell/api/aqlfunction.js
 
 Run all suite(s) associated with a specific test file in single server mode:
 
-    ./scripts/unittest auto --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest auto --test tests/js/client/shell/api/aqlfunction.js
 
 Run all suite(s) associated with a specific test file in cluster mode:
 
-    ./scripts/unittest auto --cluster true --test tests/js/common/shell/shell-aqlfunctions.js
+    ./scripts/unittest auto --cluster true --test tests/js/client/shell/api/aqlfunction.js
 
 Run all C++ based Google Test (gtest) tests using the `arangodbtests` binary:
 
@@ -905,7 +906,7 @@ Run specific gtest tests:
 
 Controlling the place where the test-data is stored:
 
-    TMPDIR=/some/other/path ./scripts/unittest shell_server_aql
+    TMPDIR=/some/other/path ./scripts/unittest shell_client_aql
 
 (Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
 
@@ -921,8 +922,11 @@ The actual testsuites are located in the
 
 The first parameter chooses the facility to execute. Available choices include:
 
-- **single_client**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
-- **single_server**: (see [Running a single unittest suite](#running-a-single-unittest-suite))
+- **shell_client**
+- **shell_api**
+- **shell_api_multi**
+- **shell_client_aql**
+- **shell_client_multi**
 
 Different facilities may take different options. The above mentioned usage
 output contains the full detail.
@@ -932,7 +936,7 @@ previously started arangod instance. You can launch the instance as you want
 including via a debugger or `rr` and prepare it for what you want to test with
 it. You then launch the test on it like this (assuming the default endpoint):
 
-    ./scripts/unittest http_server --server tcp://127.0.0.1:8529/
+    ./scripts/unittest shell_client --server tcp://127.0.0.1:8529/
 
 A commandline for running a single test (-> with the facility 'single_server')
 using valgrind could look like this. Options are passed as regular long values
@@ -956,7 +960,7 @@ this:
 - We specify some arangod arguments via --extraArgs which increase the server performance
 - We specify to run using valgrind (this is supported by all facilities)
 - We specify some valgrind commandline arguments
-- We set the log levels for agents to `trace` (the Instance type can be specified by:
+- We set the log levels for agents to `trace` (the Iinstance type can be specified by:
   - `single`
   - `agent`
   - `dbserver`
@@ -966,26 +970,20 @@ this:
 - We force the logging not to happen asynchronous
 - Eventually you may still add temporary `console.log()` statements to tests you debug.
 
-
-
 #### Running a Single Unittest Suite
 
-Testing a single test with the framework directly on a server:
+Testing a single test with the framework directly from the arangosh:
 
-    scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js
+    scripts/unittest shell_client --test tests/js/client/shell/shell-client.js
 
 You can also only execute a filtered test case in a jsunity/mocha/gtest test
 suite (in this case `testTokens`):
 
-    scripts/unittest single_server --test tests/js/server/aql/aql-escaping.js --testCase testTokens
+    scripts/unittest shell_client_aql --test tests/js/client/aql/aql-escaping.js --testCase testTokens
 
     scripts/unittest shell_client --test shell-util-spec.js --testCase zip
 
     scripts/unittest gtest --testCase "IResearchDocumentTest.*"
-
-Testing a single test with the framework via arangosh:
-
-    scripts/unittest single_client --test tests/js/client/shell/shell-client.js
 
 Running a test against a server you started (instead of letting the script start its own server):
 
@@ -995,7 +993,7 @@ Re-running previously failed tests:
 
     scripts/unittest <args> --failed
 
-Specifying a `--test `-Filter containing `-cluster` will implicitely set `--cluster true` and launch a cluster test.
+Specifying a `--test ` filter containing `-cluster` will implicitly set `--cluster true` and launch a cluster test.
 
 The `<args>` should be the same as in the previous run, only `--test`/`--testCase` can be omitted.
 The information which tests failed is taken from the `UNITTEST_RESULT.json` in your test output folder.
@@ -1010,7 +1008,7 @@ parameters will overrule global and default values.
 
 Running the same testsuite twice with different and shared parameters would look like this:
 
-    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"vst":true,"suffix":"vst"}]'
+    ./scripts/unittest  shell_client_multi,shell_client_multi --test shell-admin-status.js  --optionsJson '[{"http2":true,"suffix":"http2"},{"http":true,"suffix":"http"}]'
 
 
 #### Running Foxx Tests with a Fake Foxx Repo
@@ -1049,16 +1047,6 @@ arangosh> require("jsunity").runTest("test.js");
 2012-01-28T19:10:23Z [10671] INFO 0 tests failed
 2012-01-28T19:10:23Z [10671] INFO 1 millisecond elapsed
 ```
-
-#### Running jsUnity Tests with arangod
-
-In (emergency) console mode (`arangod --console`):
-
-    require("jsunity").runTest("tests/js/server/aql/aql-escaping.js");
-
-Filtering for one test case (in this case `testTokens`) in console mode:
-
-    require("jsunity").runTest("tests/js/server/aql/aql-escaping.js", false, "testTokens");
 
 #### Running jsUnity Tests with arangosh client
 
@@ -1374,6 +1362,30 @@ getting the PIDs of the server in the testrun using jq:
     "1721883_dbserver": {
     "1721884_dbserver": {
     "1721885_coordinator": {
+
+### Installing bash completion for `./scripts/unittest`
+
+Calling
+
+```bash
+./scripts/buildUnittestBashCompletion.bash > ~/arango_unittest_comp.bash
+```
+
+generates a bash completion script for `./scripts/unittest` which can be sourced
+in your `~/.bashrc` or `~/.bash_profile`:
+
+```bash
+. ~/arango_unittest_comp.bash
+```
+
+You can also install completions directly by running
+
+```bash
+  eval "$(./scripts/buildUnittestBashCompletion.bash)"
+```
+
+in your shell, or `.bashrc` etc., but note that it has to be executed in the
+arangodb directory.
 
 # Additional Resources
 

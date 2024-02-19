@@ -46,7 +46,7 @@ namespace arangodb::iresearch {
 
 class ByExpression;
 
-irs::filter::ptr makeAll(std::string_view field);
+irs::AllDocsProvider::Ptr makeAll(std::string_view field);
 
 std::string_view makeAllColumn(QueryContext const& ctx) noexcept;
 

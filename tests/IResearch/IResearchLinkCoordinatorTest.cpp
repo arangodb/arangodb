@@ -163,7 +163,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "}");
     arangodb::LogicalView::ptr logicalView;
     ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
-                                              viewJson->slice(), true)
+                                              viewJson->slice(), false)
                     .ok());
 
     ASSERT_TRUE(logicalView);
@@ -325,7 +325,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
         "}");
     arangodb::LogicalView::ptr logicalView;
     ASSERT_TRUE(arangodb::LogicalView::create(logicalView, *vocbase,
-                                              viewJson->slice(), true)
+                                              viewJson->slice(), false)
                     .ok());
     ASSERT_TRUE(logicalView);
     auto const viewId = std::to_string(logicalView->planId().id());

@@ -385,7 +385,7 @@ void TransactionState::publishShardMetrics(
   _shardBytesUnpublishedEvents = 0;
 }
 
-void TransactionState::setUsername(std::string_view name) {
+void TransactionState::setUsername(std::string const& name) {
   if (name.empty()) {
     // no username to set here
     return;
@@ -404,7 +404,7 @@ void TransactionState::setUsername(std::string_view name) {
   std::unique_lock lock(_usernameLock);
   if (_username.empty()) {
     // only set if still empty
-    _username = std::string{name};
+    _username = name;
   }
 }
 

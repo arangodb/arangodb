@@ -130,7 +130,7 @@ function restoreIntegrationSuite() {
   assertTrue(fs.isFile(arangorestore), "arangorestore not found!");
 
   let addConnectionArgs = function (args) {
-    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^vst:/, 'tcp:').replace(/^h2:/, 'tcp:');
+    let endpoint = arango.getEndpoint().replace(/\+vpp/, '').replace(/^http:/, 'tcp:').replace(/^https:/, 'ssl:').replace(/^h2:/, 'tcp:');
     args.push('--server.endpoint');
     args.push(endpoint);
     if (args.indexOf("--all-databases") === -1 && args.indexOf("--server.database") === -1) {

@@ -52,10 +52,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #define ASSERT_ARANGO_OK(x) \
   { ASSERT_TRUE(x.ok()) << x.errorMessage(); }
 
@@ -209,9 +205,7 @@ class RestAnalyzerHandlerTest
   void grantOnDb(std::string const& dbName,
                  arangodb::auth::Level const& level) {
     arangodb::auth::UserMap userMap;  // empty map, no user -> no permissions
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      "", "", arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser("", ""))
                      .first->second;
 
     // for system collections User::collectionAuthLevel(...) returns database
@@ -227,9 +221,7 @@ class RestAnalyzerHandlerTest
       std::vector<std::pair<std::string const&, arangodb::auth::Level const&>>
           grants) {
     arangodb::auth::UserMap userMap;
-    auto& user = userMap
-                     .emplace("", arangodb::auth::User::newUser(
-                                      ""s, ""s, arangodb::auth::Source::LDAP))
+    auto& user = userMap.emplace("", arangodb::auth::User::newUser(""s, ""s))
                      .first->second;
 
     for (auto& g : grants) {

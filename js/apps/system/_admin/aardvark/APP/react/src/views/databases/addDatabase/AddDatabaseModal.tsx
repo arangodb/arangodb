@@ -10,9 +10,10 @@ import {
   ModalHeader
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
-import { AddDatabaseForm } from "./AddDatabaseForm";
+import { notifyError, notifySuccess } from "../../../utils/notifications";
 import { DatabaseDescription } from "../Database.types";
 import { useFetchInitialValues } from "../useFetchInitialValues";
+import { AddDatabaseForm } from "./AddDatabaseForm";
 
 export const AddDatabaseModal = ({
   isOpen,
@@ -45,15 +46,13 @@ export const AddDatabaseModal = ({
             }
           : { users }
       );
-      window.arangoHelper.arangoNotification(
-        `The database: ${name} was successfully created`
-      );
+      notifySuccess(`The database: ${name} was successfully created`);
       mutate("/databases");
       onClose();
     } catch (error: any) {
       const errorMessage = error?.response?.body?.errorMessage;
       if (errorMessage) {
-        window.arangoHelper.arangoError("Database", errorMessage);
+        notifyError(`Database creation error: ${errorMessage}`);
       }
     }
   };
@@ -63,7 +62,9 @@ export const AddDatabaseModal = ({
       <Formik
         initialValues={initialValues}
         validationSchema={Yup.object({
-          name: Yup.string().required("Name is required")
+          name: Yup.string()
+            .required("Name is required")
+            .max(64, "Database name max length is 64 bytes.")
         })}
         onSubmit={handleSubmit}
       >

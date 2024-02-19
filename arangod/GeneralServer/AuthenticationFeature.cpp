@@ -38,11 +38,6 @@
 #include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
 
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapAuthenticationHandler.h"
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
-
 #include <limits>
 
 using namespace arangodb::options;
@@ -57,17 +52,12 @@ AuthenticationFeature::AuthenticationFeature(Server& server)
       _authCache(nullptr),
       _authenticationUnixSockets(true),
       _authenticationSystemOnly(true),
-      _localAuthentication(true),
       _active(true),
       _authenticationTimeout(0.0),
       _sessionTimeout(static_cast<double>(1 * std::chrono::hours(1) /
                                           std::chrono::seconds(1))) {  // 1 hour
   setOptional(false);
   startsAfter<application_features::BasicFeaturePhaseServer>();
-
-  if constexpr (Server::contains<LdapFeature>()) {
-    startsAfter<LdapFeature>();
-  }
 }
 
 void AuthenticationFeature::collectOptions(
@@ -91,13 +81,10 @@ authentication on the server-side, so that all clients can execute any action
 without authorization and privilege checks. You should only do this if you bind
 the server to `localhost` to not expose it to the public internet)");
 
-  options
-      ->addOption("--server.authentication-timeout",
-                  "The timeout for the authentication cache "
-                  "(in seconds, 0 = indefinitely).",
-                  new DoubleParameter(&_authenticationTimeout))
-      .setLongDescription(R"(This option is only necessary if you use an
-external authentication system like LDAP.)");
+  options->addOption("--server.authentication-timeout",
+                     "The timeout for the authentication cache "
+                     "(in seconds, 0 = indefinitely).",
+                     new DoubleParameter(&_authenticationTimeout));
 
   options
       ->addOption(
@@ -118,17 +105,9 @@ However, the session are renewed automatically as long as you regularly interact
 with the web interface in your browser. You are not logged out while actively
 using it.)");
 
-  options
-      ->addOption("--server.local-authentication",
-                  "Whether to use ArangoDB's built-in authentication system.",
-                  new BooleanParameter(&_localAuthentication),
-                  arangodb::options::makeFlags(
-                      arangodb::options::Flags::DefaultNoComponents,
-                      arangodb::options::Flags::OnCoordinator,
-                      arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(If you set this option to `false`, only an
-external authentication system like LDAP is used. If set to `true`, also use
-the built-in system which uses the `_users` system collection.)");
+  options->addObsoleteOption(
+      "--server.local-authentication",
+      "Whether to use ArangoDB's built-in authentication system.", false);
 
   options
       ->addOption("--server.authentication-system-only",
@@ -264,13 +243,6 @@ void AuthenticationFeature::prepare() {
   ServerState::RoleEnum role = ServerState::instance()->getRole();
   TRI_ASSERT(role != ServerState::RoleEnum::ROLE_UNDEFINED);
   if (ServerState::isSingleServer(role) || ServerState::isCoordinator(role)) {
-#if USE_ENTERPRISE
-    if (server().getFeature<LdapFeature>().isEnabled()) {
-      _userManager = std::make_unique<auth::UserManager>(
-          server(), std::make_unique<LdapAuthenticationHandler>(
-                        server().getFeature<LdapFeature>()));
-    }
-#endif
     if (_userManager == nullptr) {
       _userManager = std::make_unique<auth::UserManager>(server());
     }

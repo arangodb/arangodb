@@ -69,14 +69,11 @@
 #include "RestServer/ViewTypesFeature.h"
 #include "Sharding/ShardingFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
+#include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Indexes.h"
 #include "VocBase/Methods/Upgrade.h"
 #include "VocBase/Methods/Version.h"
-
-#if USE_ENTERPRISE
-#include "Enterprise/Ldap/LdapFeature.h"
-#endif
 
 using namespace std::chrono_literals;
 
@@ -100,7 +97,8 @@ class IResearchFeatureTest
 
     server.addFeature<arangodb::iresearch::IResearchAnalyzerFeature>(false);
     server.addFeature<arangodb::FlushFeature>(false);
-    server.addFeature<arangodb::QueryRegistryFeature>(false);
+    server.addFeature<arangodb::QueryRegistryFeature>(
+        false, server.template getFeature<arangodb::metrics::MetricsFeature>());
     server.addFeature<arangodb::ServerSecurityFeature>(false);
     server.startFeatures();
   }
@@ -2907,7 +2905,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
                                        // 'vocbase', hence notify manually
 
   {
-    auto indexes = logicalCollection->getIndexes();
+    auto indexes = logicalCollection->getPhysical()->getReadyIndexes();
     for (auto& index : indexes) {
       if (index->type() ==
           arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {
@@ -2924,7 +2922,7 @@ TEST_F(IResearchFeatureTestDBServer, test_upgrade1_link_collectionName) {
                   .ok());  // run upgrade
 
   {
-    auto indexes = logicalCollection->getIndexes();
+    auto indexes = logicalCollection->getPhysical()->getReadyIndexes();
     for (auto& index : indexes) {
       if (index->type() ==
           arangodb::Index::IndexType::TRI_IDX_TYPE_IRESEARCH_LINK) {

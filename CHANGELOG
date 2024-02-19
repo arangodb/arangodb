@@ -3,6 +3,131 @@ devel
 
 * Upgraded bundled version of RocksDB to 8.11.
 
+* Upgrade OpenSSL to 3.2.1.
+
+* Remove arangosync binary.
+
+* Updated ArangoDB Starter to v0.18.2.
+
+* Updated rclone to v1.65.2 (built with go1.21.6).
+
+* FE-426: Better error messages for Foxx installation failures.
+
+  When installing Foxx services from the web UI, the error messages for
+  failures or timeouts during the initial download of the service bundle now
+  provide more information about the underlying cause.
+
+  Additionally the timeout threshold for the initial download of Foxx service
+  bundles from remote sources has been increased from 10 seconds to 60 seconds
+  for both the web UI and the Foxx HTTP API.
+
+* Updated ArangoDB Starter to v0.18.2-preview-2.
+
+* ES-1892: Fix hot restores missing user defined analyzers.
+
+* Added startup options `--network.compression-method` and 
+  `--network.compress-request-threshold` to optionally compress relevant
+  cluster-internal traffic.
+
+  If `--network.compression-method` is set to 'none', then no compression will
+  be performed. To enable compression for cluster-internal requests, set this 
+  option to either 'deflate', 'gzip', 'lz4' or 'auto'.
+  The 'deflate' and 'gzip' compression methods are general purpose, but can
+  have significant CPU overhead for performing the compression work.
+  The 'lz4' compression method compresses slightly worse, but has a lot lower 
+  CPU overhead for performing the compression.
+  The 'auto' compression method will use 'deflate' by default, and 'lz4' for
+  requests which have a size that is at least 3 times the configured threshold
+  size.
+  The compression method only matters if `--network.compress-request-threshold`
+  is set to value greater than zero. This option configures a threshold value
+  from which on the outgoing requests will be compressed. If the threshold is 
+  set to value of 0, then no compression will be performed. If the threshold
+  is set to a value greater than 0, then the size of the request body will be
+  compared against the threshold value, and compression will happen if the
+  uncompressed request body size exceeds the threshold value.
+  The threshold can thus be used to avoid futile compression attempts for too
+  small requests.
+
+  Compression for all agency traffic is turned off regardless of the settings 
+  of these options.
+  This is important so that the agent instances do not get overwhelmed by the
+  potential extra CPU utilization caused by compression/decompression.
+
+* Save some traffic in cluster-internal requests:
+
+  - Remove disk usage metrics from heartbeat messages (`freeDiskSpaceBytes` and
+    `freeDiskSpacePercent`), as these are not processed by the agency 
+    supervision at all.
+  - Do not return `id` and `endpoint` attributes in responses to empty 
+    appendEntries requests in the agency, as these attributes are not picked up
+    by the response message handler.
+  - Do not include `x-arango-source` HTTP header in any outgoing requests that
+    the agency makes to other servers.
+  - Do not include `x-arango-hlc` HTTP header in heartbeat messages to the 
+    agency's transient store.
+  - Do not return the following HTTP response headers in cluster-internal 
+    traffic:
+    - `x-arango-queue-time-seconds`
+    - `x-content-type-options`
+    - `content-security-policy`
+    - `cache-control`
+    - `pragma`
+    - `expires`
+    - `strict-transport-security`
+    - `server`
+
+    The following responses **do not count** as cluster internal traffic, so 
+    that the mentioned HTTP response headers are fully retained for them:
+    - responses by single server instances.
+    - responses by coordinators if the `x-arango-source` HTTP header was not
+      set in the request.
+
+    The following responses count as cluster-internal traffic, so the HTTP
+    response headers will be removed:
+    - all responses by agents and DB servers, regardless from where the 
+      requests were initiated.
+    - all responses from coordinators, if the `x-arango-source` HTTP header was
+      set in the request and is set to the id of a coordinator or DB server.
+
+* FE-409: add deletion success notifications in views on web UI.
+
+* FE-320: Database name maximum length validation during input.
+
+* BTS-1733: prevent dropping of collection if the collection is part of an
+  existing graph.
+  This PR prevents the unintentional dropping of collections that are part of
+  any existing graph, so that graph definitions remain intact even if the user
+  attempts to drop a member collection.
+  This introduces a change in behavior: while previously it was allowed to drop
+  collections that were part of an existing graph, trying to do so will now
+  result in error `ERROR_GRAPH_MUST_NOT_DROP_COLLECTION` (error code `1942`
+  and error message `must not drop collection while part of graph` with more
+  specifics following).
+  This may require a change in client application code that drops individual
+  collections from graphs in order to clean up. The recommended way to drop
+  these collections is to drop the graph instead. Dropping the graph can
+  optionally also delete all associated collections of the graph. Even if this
+  flag is not used, collections that are not part of a graph definition anymore
+  can later be dropped regularly.
+
+* Allow changing writeConcern of dependent collections.
+
+  Previously changing the `writeConcern` property of collections that also have
+  their `distributeShardsLike` property set was disallowed. This is now 
+  allowed.
+
+* BTS-1751: Strange error message when executing a query while creating an 
+  index in the background.
+
+* Updated ArangoDB Starter to v0.18.1-preview-1.
+
+* Reduce default amount of per-collection document removals by TTL background 
+  index creation thread from 1m to 100k in each iteration. This change gives
+  other collections a chance of being cleaned up as well.
+
+* FE-425: adds missing Analyzer types on web UI - "multi_delimiter" & "wildcard"
+
 * BTS-1660: When updating (PATCH request) edges with API Gharial and only
   specifying one of the two edge attributes `_from` or `_to` (not both),
   the content of the edge was not fully validated. This has been fixed now.
@@ -28,6 +153,8 @@ devel
   above RocksDB components in the RocksDB block cache and thus the metric
   `rocksdb_block_cache_usage`. This also allows to better limit the total
   memory usage of RocksDB.
+
+* Index progress visibility for indexes, which are created in background
 
 * Updated ArangoDB Starter to v0.18.0.
 

@@ -65,6 +65,21 @@ ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
   TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
 }
 
+std::unique_ptr<ExecContext> ExecContext::clone() const {
+  // ExecContext does not have a public ctor, so we can't use plain
+  // std::make_unique. this workaround makes it work though.
+  struct Cloner final : public ExecContext {
+    Cloner(ExecContext::Type type, std::string const& user,
+           std::string const& database, auth::Level systemLevel,
+           auth::Level dbLevel, bool isAdminUser)
+        : ExecContext(type, user, database, systemLevel, dbLevel, isAdminUser) {
+    }
+  };
+
+  return std::make_unique<Cloner>(_type, _user, _database, _systemDbAuthLevel,
+                                  _databaseAuthLevel, _isAdminUser);
+}
+
 /*static*/ bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
@@ -150,8 +165,6 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
     } else if (coll == StaticStrings::QueuesCollection) {
       // _queues
       return auth::Level::RO;
-    } else if (coll == StaticStrings::PregelCollection) {
-      return auth::Level::RW;
     } else if (coll == StaticStrings::FrontendCollection) {
       // _frontend
       return auth::Level::RW;

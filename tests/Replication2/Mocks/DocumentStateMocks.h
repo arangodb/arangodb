@@ -185,7 +185,8 @@ struct MockDocumentStateHandlersFactory
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateTransaction>,
       createTransaction,
-      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type),
+      (TRI_vocbase_t&, TransactionId, ShardID const&, AccessMode::Type,
+       std::string_view),
       (override));
   MOCK_METHOD(
       std::shared_ptr<replicated_state::document::IDocumentStateNetworkHandler>,
@@ -269,7 +270,8 @@ struct MockMaintenanceActionExecutor
               (noexcept, override));
   MOCK_METHOD(Result, executeCreateIndex,
               (std::shared_ptr<LogicalCollection>, velocypack::SharedSlice,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, executeDropIndex,
               (std::shared_ptr<LogicalCollection>, IndexId),
@@ -288,7 +290,8 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(Result, dropShard, (ShardID const&), (noexcept, override));
   MOCK_METHOD(Result, ensureIndex,
               (ShardID, velocypack::SharedSlice properties,
-               std::shared_ptr<methods::Indexes::ProgressTracker>),
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               LogicalCollection::Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, dropIndex, (ShardID, IndexId), (noexcept, override));
   MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));

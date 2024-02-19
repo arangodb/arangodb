@@ -29,6 +29,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/Storage/IStorageEngineMethods.h"
+#include "RestServer/DatabaseFeature.h"
 #include "VocBase/VocbaseInfo.h"
 #include "VocBase/vocbase.h"
 
@@ -60,7 +61,11 @@ void StorageEngine::addParametersForNewCollection(velocypack::Builder&,
 
 std::unique_ptr<TRI_vocbase_t> StorageEngine::createDatabase(
     CreateDatabaseInfo&& info) {
-  return std::make_unique<TRI_vocbase_t>(std::move(info));
+  DatabaseFeature& databaseFeature =
+      info.server().getFeature<DatabaseFeature>();
+  return std::make_unique<TRI_vocbase_t>(std::move(info),
+                                         databaseFeature.versionTracker(),
+                                         databaseFeature.extendedNames());
 }
 
 Result StorageEngine::writeCreateDatabaseMarker(TRI_voc_tick_t id,

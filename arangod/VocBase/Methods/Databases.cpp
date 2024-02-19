@@ -41,7 +41,9 @@
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "RestServer/SystemDatabaseFeature.h"
+#include "RocksDBEngine/RocksDBEngine.h"
 #include "Sharding/ShardingInfo.h"
+#include "StorageEngine/EngineSelectorFeature.h"
 #include "Utils/Events.h"
 #include "Utils/ExecContext.h"
 #include "Utilities/NameValidator.h"
@@ -274,7 +276,8 @@ Result Databases::createCoordinator(CreateDatabaseInfo const& info) {
   // This vocbase is needed for the call to methods::Upgrade::createDB, but
   // is just a placeholder
   CreateDatabaseInfo tempInfo = info;
-  TRI_vocbase_t vocbase(std::move(tempInfo));
+  TRI_vocbase_t vocbase(std::move(tempInfo), databaseFeature.versionTracker(),
+                        databaseFeature.extendedNames());
 
   // Now create *all* system collections for the database,
   // if any of these fail, database creation is considered unsuccessful
@@ -402,15 +405,26 @@ Result Databases::create(ArangodServer& server, ExecContext const& exec,
       return res;
     }
 
-    if (createInfo.replicationVersion() == replication::Version::TWO &&
-        !replication2::EnableReplication2) {
-      using namespace std::string_view_literals;
-      auto const message =
-          R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
-      LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
-      // Should not happen during testing
-      TRI_ASSERT(false);
-      return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+    if (ServerState::instance()->isDBServer() &&
+        createInfo.replicationVersion() == replication::Version::TWO) {
+      if (!replication2::EnableReplication2) {
+        using namespace std::string_view_literals;
+        auto const message =
+            R"(Replication version 2 is disabled in this binary, but trying to create a version 2 database.)"sv;
+        LOG_TOPIC("e768d", ERR, Logger::REPLICATION2) << message;
+        // Should not happen during testing
+        TRI_ASSERT(false);
+        return Result(TRI_ERROR_NOT_IMPLEMENTED, message);
+      }
+
+      auto& selector = server.getFeature<EngineSelectorFeature>();
+      auto& engine = selector.engine<RocksDBEngine>();
+      if (engine.syncThread() == nullptr) {
+        return Result(TRI_ERROR_CLUSTER_COULD_NOT_CREATE_DATABASE,
+                      "Automatic syncing must be enabled for replication "
+                      "version 2. Please make sure the --rocksdb.sync-interval "
+                      "option is set to a value greater than 0.");
+      }
     }
 
     if (ServerState::instance()

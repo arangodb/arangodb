@@ -30,8 +30,8 @@
 namespace arangodb {
 class EndpointIpV6 final : public EndpointIp {
  public:
-  EndpointIpV6(EndpointType, TransportType, EncryptionType, int, bool,
-               std::string const&, uint16_t);
+  EndpointIpV6(EndpointType, EncryptionType, int, bool, std::string const&,
+               uint16_t);
 
  public:
   int domain() const override { return AF_INET6; }

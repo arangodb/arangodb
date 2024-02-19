@@ -63,24 +63,13 @@ using namespace arangodb::basics;
 #endif
 
 uint16_t const EndpointIp::_defaultPortHttp = 8529;
-uint16_t const EndpointIp::_defaultPortVst = 8530;
 char const* EndpointIp::_defaultHost = "127.0.0.1";
 
 static std::string buildSpecification(Endpoint::DomainType domainType,
-                                      Endpoint::TransportType transport,
                                       Endpoint::EncryptionType encryption,
                                       std::string const& host,
                                       uint16_t const port) {
-  std::string specification;
-
-  switch (transport) {
-    case Endpoint::TransportType::HTTP:
-      specification = "http+";
-      break;
-    case Endpoint::TransportType::VST:
-      specification = "vst+";
-      break;
-  }
+  std::string specification = "http+";
 
   switch (encryption) {
     case Endpoint::EncryptionType::NONE:
@@ -113,13 +102,12 @@ static std::string buildSpecification(Endpoint::DomainType domainType,
 ////////////////////////////////////////////////////////////////////////////////
 
 EndpointIp::EndpointIp(DomainType domainType, EndpointType type,
-                       TransportType transport, EncryptionType encryption,
-                       int listenBacklog, bool reuseAddress,
-                       std::string const& host, uint16_t const port)
-    : Endpoint(
-          domainType, type, transport, encryption,
-          buildSpecification(domainType, transport, encryption, host, port),
-          listenBacklog),
+                       EncryptionType encryption, int listenBacklog,
+                       bool reuseAddress, std::string const& host,
+                       uint16_t const port)
+    : Endpoint(domainType, type, encryption,
+               buildSpecification(domainType, encryption, host, port),
+               listenBacklog),
       _host(host),
       _port(port),
       _reuseAddress(reuseAddress) {

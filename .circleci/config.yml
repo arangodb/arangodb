@@ -12,18 +12,15 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  rebuild-test-docker-images:
+    type: boolean
+    default: false
   build-docker-image:
-    type: string
-    default: ""
-  build-windows-image:
     type: string
     default: ""
   replication-two:
     type: boolean
     default: false # We use replication1 as default.
-  skip-windows-tests:
-    type: boolean
-    default: true 
   c-compiler:
     type: string
     default: "gcc"
@@ -98,11 +95,15 @@ jobs:
       - run:
           name: Generate config
           command: |
-            pip install pyyaml
-            python3 ".circleci/generate_config.py" <<# pipeline.parameters.skip-windows-tests >> --skip-windows <</ pipeline.parameters.skip-windows-tests >> <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o generated_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            if [ "<< pipeline.parameters.rebuild-test-docker-images >>" == "true" ]; then
+              cp .circleci/build_test_image.yml continuation_config.yml
+            else
+              pip install pyyaml
+              python3 ".circleci/generate_config.py" <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+            fi
 
       - continuation/continue:
-          configuration_path: generated_config.yml # use newly generated config to continue
+          configuration_path: continuation_config.yml
           parameters: parameters.json
 
 # our single workflow, that triggers the setup job defined above

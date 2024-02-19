@@ -84,6 +84,8 @@ class PrimaryKeysFilterBase : public irs::filter,
   void visit(irs::SubReader const&, irs::PreparedStateVisitor&,
              irs::score_t) const final {}
 
+  irs::score_t boost() const noexcept final { return irs::kNoBoost; }
+
   irs::attribute* get_mutable(irs::type_info::type_id id) noexcept final {
     return irs::type<irs::document>::id() == id ? &_doc : nullptr;
   }

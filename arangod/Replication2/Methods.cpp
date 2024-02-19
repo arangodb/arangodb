@@ -48,6 +48,7 @@
 #include "Replication2/ReplicatedLog/ReplicatedLog.h"
 #include "Replication2/ReplicatedState/ReplicatedState.h"
 #include "Replication2/StateMachines/BlackHole/BlackHoleStateMachine.h"
+#include "VocBase/LogicalCollection.h"
 #include "VocBase/vocbase.h"
 
 #include "Agency/AgencyPaths.h"
@@ -61,6 +62,63 @@
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
+
+void ReplicatedLogMethods::AllLogsStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("globalStatus"));
+  globalStatus.toVelocyPack(b);
+
+  if (snapshots.fail()) {
+    b.add(VPackValue("snapshots"));
+    velocypack::serialize(b, snapshots.result());
+  } else if (snapshots->get("result").isObject() &&
+             snapshots->get("result").hasKey("snapshots")) {
+    b.add(VPackValue("snapshots"));
+    b.add(snapshots->get("result")["snapshots"]);
+  }
+
+  if (shards.fail()) {
+    b.add(VPackValue("shards"));
+    velocypack::serialize(b, shards.result());
+  } else if (shards->get("result").isArray()) {
+    b.add(VPackValue("shards"));
+    b.add(shards->get("result"));
+  }
+}
+
+void ReplicatedLogMethods::CollectionStatus::toVelocyPack(
+    velocypack::Builder& b) const {
+  VPackObjectBuilder ob(&b);
+
+  b.add(VPackValue("groupId"));
+  b.add(VPackValue(groupId.id()));
+
+  b.add(VPackValue("allCollectionsInGroup"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& collection : allCollectionsInGroup) {
+      b.add(VPackValue(collection));
+    }
+  }
+
+  b.add(VPackValue("collectionShards"));
+  {
+    VPackArrayBuilder ab(&b);
+    for (auto const& shard : collectionShards) {
+      b.add(VPackValue(shard.id()));
+    }
+  }
+
+  {
+    VPackObjectBuilder ob2(&b, "logs");
+    for (auto const& [logId, logStatus] : logs) {
+      b.add(VPackValue(to_string(logId)));
+      logStatus.toVelocyPack(b);
+    }
+  }
+}
 
 namespace {
 struct ReplicatedLogMethodsDBServer final
@@ -107,6 +165,11 @@ struct ReplicatedLogMethodsDBServer final
   [[noreturn]] auto getGlobalStatus(
       LogId id, replicated_log::GlobalStatus::SpecificationSource) const
       -> futures::Future<replication2::replicated_log::GlobalStatus> override {
+    THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
+  }
+
+  [[noreturn]] auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_NOT_IMPLEMENTED);
   }
 
@@ -561,6 +624,126 @@ struct ReplicatedLogMethodsCoordinator final
         });
   }
 
+  auto getCollectionStatus(CollectionID cid) const
+      -> futures::Future<CollectionStatus> override {
+    // Identify the collection
+    auto col = clusterInfo.getCollectionNT(vocbaseName, cid);
+    if (!col) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection {} not found", cid));
+    }
+
+    // Find the shards corresponding to the collection
+    auto shardMap = col->shardIds();
+    if (!shardMap) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Shards of collection {} not found", cid));
+    }
+    std::vector<ShardID> shards;
+    shards.reserve(shardMap->size());
+    for (auto const& shard : *shardMap) {
+      shards.emplace_back(shard.first);
+    }
+
+    // Get the collection group
+    // This will help identify the replicated logs
+    auto group = clusterInfo.getCollectionGroupById(col->groupID());
+    if (!group) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND,
+          fmt::format("Collection group {} not found", col->groupID().id()));
+    }
+
+    // Get all the leaders of these logs
+    std::map<LogId, ParticipantId> logLeaders;
+    for (auto const& sheaf : group->shardSheaves) {
+      auto leader = clusterInfo.getReplicatedLogLeader(sheaf.replicatedLog);
+      if (leader.ok()) {
+        logLeaders.emplace(sheaf.replicatedLog, std::move(leader).get());
+      }
+    }
+
+    // Get ongoing snapshot status of all replicated logs that have a leader
+    auto snapshotStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "snapshot/status");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    auto shardsStatusFut = std::invoke([&] {
+      std::vector<futures::Future<ResultT<velocypack::SharedSlice>>> status;
+      status.reserve(logLeaders.size());
+      for (auto const& [logId, leader] : logLeaders) {
+        auto path = basics::StringUtils::joinT("/", "_api/document-state",
+                                               logId, "shards");
+        status.emplace_back(queryParticipantPath(leader, std::move(path)));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Get global status of replicated logs
+    auto globalStatusFut = std::invoke([&] {
+      std::vector<futures::Future<GlobalStatus>> status;
+      status.reserve(group->shardSheaves.size());
+      for (auto const& sheaf : group->shardSheaves) {
+        status.emplace_back(
+            getGlobalStatus(sheaf.replicatedLog,
+                            GlobalStatus::SpecificationSource::kLocalCache));
+      }
+      return futures::collectAll(status);
+    });
+
+    // Gather a list of all collections in the group
+    std::vector<CollectionID> collectionsInGroup;
+    collectionsInGroup.reserve(group->collections.size());
+    for (auto const& c : group->collections) {
+      auto collection = clusterInfo.getCollectionNT(vocbaseName, c.first);
+      if (collection) {
+        collectionsInGroup.emplace_back(collection->name());
+      } else {
+        collectionsInGroup.emplace_back(c.first);
+      }
+    }
+
+    return futures::collect(std::move(globalStatusFut),
+                            std::move(snapshotStatusFut),
+                            std::move(shardsStatusFut))
+        .thenValue([group = std::move(group), col = std::move(col),
+                    collectionsInGroup = std::move(collectionsInGroup),
+                    shards = std::move(shards),
+                    logLeaders =
+                        std::move(logLeaders)](auto&& tupleResult) mutable {
+          std::unordered_map<LogId, AllLogsStatus> logs;
+          auto& [globalStatuses, snapshotStatuses, shardsStatuses] =
+              tupleResult;
+          for (std::size_t idx{0}; idx < group->shardSheaves.size(); ++idx) {
+            auto logId = group->shardSheaves[idx].replicatedLog;
+            AllLogsStatus status;
+            status.globalStatus = std::move(globalStatuses[idx].get());
+            if (auto leader = logLeaders.find(logId);
+                leader != logLeaders.end()) {
+              auto dist = std::distance(logLeaders.begin(), leader);
+              status.snapshots = std::move(snapshotStatuses[dist].get());
+              status.shards = std::move(shardsStatuses[dist].get());
+            } else {
+              status.snapshots = status.shards =
+                  Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
+                         "Could not find replicated log leader"};
+            }
+            logs.emplace(logId, std::move(status));
+          }
+          return CollectionStatus{col->groupID(), std::move(collectionsInGroup),
+                                  std::move(shards), std::move(logs)};
+        });
+  }
+
   auto slice(LogId id, LogIndex start, LogIndex stop) const
       -> futures::Future<std::unique_ptr<LogIterator>> override {
     auto path = basics::StringUtils::joinT("/", "_api/log", id, "slice");
@@ -993,6 +1176,34 @@ struct ReplicatedLogMethodsCoordinator final
                         response.slice().get("result"))};
           }
           return status;
+        });
+  }
+
+  auto queryParticipantPath(ParticipantId const& participant,
+                            std::string path) const
+      -> futures::Future<ResultT<velocypack::SharedSlice>> {
+    network::RequestOptions opts;
+    opts.database = vocbaseName;
+    opts.timeout = std::chrono::seconds{10};
+    return network::sendRequest(pool, "server:" + participant,
+                                fuerte::RestVerb::Get, std::move(path), {},
+                                opts)
+        .then([](futures::Try<network::Response>&& tryResult) mutable
+              -> ResultT<velocypack::SharedSlice> {
+          auto result = basics::catchToResultT(
+              [&] { return std::move(tryResult.get()); });
+
+          if (result.fail()) {
+            return result.result();
+          }
+
+          auto& response = result.get();
+          if (response.combinedResult().ok()) {
+            VPackBuilder b(response.stealResponse()->stealPayload());
+            return b.sharedSlice();
+          }
+
+          return response.combinedResult();
         });
   }
 

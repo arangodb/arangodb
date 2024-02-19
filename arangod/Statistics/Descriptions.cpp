@@ -51,8 +51,6 @@ std::string stats::fromGroupType(stats::GroupType gt) {
       return "clientUser";
     case stats::GroupType::Http:
       return "http";
-    case stats::GroupType::Vst:
-      return "vst";
     case stats::GroupType::Server:
       return "server";
   }

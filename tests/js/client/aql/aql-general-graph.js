@@ -28,14 +28,14 @@
 /// @author Copyright 2014, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 const isCluster = require("internal").isCluster();
-var errors = require("internal").errors;
-var graph = require("@arangodb/general-graph");
-var helper = require("@arangodb/aql-helper");
-var getQueryResults = helper.getQueryResults;
-var getRawQueryResults = helper.getRawQueryResults;
+const errors = require("internal").errors;
+const graph = require("@arangodb/general-graph");
+const helper = require("@arangodb/aql-helper");
+const getQueryResults = helper.getQueryResults;
+const getRawQueryResults = helper.getRawQueryResults;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite for traversals using GRAPHS
@@ -136,6 +136,7 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
+      db._collection("_graphs").remove("_graphs/bla3");
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -143,7 +144,6 @@ function ahuacatlQueryGeneralEdgesTestSuite() {
       db._drop(e1);
       db._drop(e2);
       db._drop(or);
-      db._collection("_graphs").remove("_graphs/bla3");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -745,13 +745,13 @@ function ahuacatlQueryGeneralCommonTestSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
-      db._drop("UnitTestsAhuacatlVertex1");
-      db._drop("UnitTestsAhuacatlVertex2");
-      db._drop("UnitTestsAhuacatlEdge1");
       try {
         db._collection("_graphs").remove("_graphs/bla3");
       } catch (ignore) {
       }
+      db._drop("UnitTestsAhuacatlVertex1");
+      db._drop("UnitTestsAhuacatlVertex2");
+      db._drop("UnitTestsAhuacatlEdge1");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1422,13 +1422,13 @@ function ahuacatlQueryGeneralCyclesSuite() {
     ////////////////////////////////////////////////////////////////////////////////
 
     tearDownAll: function () {
+      db._collection("_graphs").remove("_graphs/werKenntWen");
       db._drop("UnitTests_Berliner");
       db._drop("UnitTests_Hamburger");
       db._drop("UnitTests_Frankfurter");
       db._drop("UnitTests_Leipziger");
       db._drop("UnitTests_KenntAnderenBerliner");
       db._drop("UnitTests_KenntAnderen");
-      db._collection("_graphs").remove("_graphs/werKenntWen");
     },
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -1674,6 +1674,7 @@ function ahuacatlQueryShortestPathTestSuite() {
     },
     
     tearDownAll: function () {
+      db._collection("_graphs").remove(graphName);
       db._drop(v1);
       db._drop(v2);
       db._drop(v3);
@@ -1681,7 +1682,6 @@ function ahuacatlQueryShortestPathTestSuite() {
       db._drop(e2);
       db._drop(e3);
       db._drop(e4);
-      db._collection("_graphs").remove(graphName);
     },
     
     testShortestPathAtoFoutbound: function () {

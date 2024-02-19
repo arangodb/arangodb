@@ -213,10 +213,6 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
   forwarded = true;
 
-  bool useVst = false;
-  if (_request->transportType() == Endpoint::TransportType::VST) {
-    useVst = true;
-  }
   std::string const& dbname = _request->databaseName();
 
   std::map<std::string, std::string> headers{_request->headers().begin(),
@@ -227,9 +223,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   headers.erase(StaticStrings::Connection);
 
   if (headers.find(StaticStrings::Authorization) == headers.end()) {
-    // No authorization header is set, this is in particular the case if this
-    // request is coming in with VelocyStream, where the authentication happens
-    // once at the beginning of the connection and not with every request.
+    // No authorization header is set.
     // In this case, we have to produce a proper JWT token as authorization:
     auto auth = AuthenticationFeature::instance();
     if (auth != nullptr && auth->isActive()) {
@@ -249,15 +243,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   options.database = dbname;
   options.timeout = network::Timeout(900);
 
-  if (useVst && _request->contentType() == rest::ContentType::UNSET) {
-    // request is using VST, but doesn't have a Content-Type header set.
-    // it is likely VelocyPack content, so let's assume that here.
-    // should fix issue BTS-133.
-    options.contentType = rest::contentTypeToString(rest::ContentType::VPACK);
-  } else {
-    // if the type is unset JSON is used
-    options.contentType = rest::contentTypeToString(_request->contentType());
-  }
+  // if the type is unset JSON is used
+  options.contentType = rest::contentTypeToString(_request->contentType());
 
   options.acceptType =
       rest::contentTypeToString(_request->contentTypeResponse());
@@ -292,7 +279,7 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   auto future = network::sendRequestRetry(
       pool, "server:" + serverId, requestType, _request->requestPath(),
       std::move(payload), options, std::move(headers));
-  auto cb = [this, serverId, useVst, self = shared_from_this()](
+  auto cb = [this, serverId, self = shared_from_this()](
                 network::Response&& response) -> Result {
     auto res = network::fuerteToArangoErrorCode(response);
     if (res != TRI_ERROR_NO_ERROR) {
@@ -304,16 +291,12 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
     _response->setContentType(
         fuerte::v1::to_string(response.response().contentType()));
 
-    if (!useVst) {
-      HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
-      if (_response == nullptr) {
-        THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                       "invalid response type");
-      }
-      httpResponse->body() = response.response().payloadAsString();
-    } else {
-      _response->setPayload(std::move(*response.response().stealPayload()));
+    HttpResponse* httpResponse = dynamic_cast<HttpResponse*>(_response.get());
+    if (_response == nullptr) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                     "invalid response type");
     }
+    httpResponse->body() = response.response().payloadAsString();
 
     auto const& resultHeaders = response.response().messageHeader().meta();
     for (auto const& it : resultHeaders) {
@@ -667,6 +650,17 @@ void RestHandler::compressResponse() {
           TRI_ERROR_NO_ERROR) {
         _response->setHeaderNC(StaticStrings::ContentEncoding,
                                StaticStrings::EncodingGzip);
+      }
+      break;
+
+    case rest::EncodingType::LZ4:
+      // the resulting compressed response body may be larger than the
+      // uncompressed input size. in this case we are not returning the
+      // compressed response body, but the original, uncompressed body.
+      if (_response->lz4Compress(/*onlyIfSmaller*/ true) ==
+          TRI_ERROR_NO_ERROR) {
+        _response->setHeaderNC(StaticStrings::ContentEncoding,
+                               StaticStrings::EncodingArangoLz4);
       }
       break;
 
