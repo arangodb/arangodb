@@ -1270,6 +1270,8 @@ class MaterializeNode : public ExecutionNode {
     return *_oldDocVariable;
   }
 
+  void setDocOutVariable(Variable const& var) noexcept { _outVariable = &var; }
+
  protected:
   /// @brief export to VelocyPack
   void doToVelocyPack(arangodb::velocypack::Builder& nodes,

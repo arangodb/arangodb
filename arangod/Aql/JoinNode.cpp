@@ -350,8 +350,8 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
     RegisterId documentOutputRegister = RegisterId::maxRegisterId;
     if (!p.hasOutputRegisters()) {
-      documentOutputRegister = variableToRegisterId(idx.outVariable);
       if (idx.producesOutput && !idx.isLateMaterialized) {
+        documentOutputRegister = variableToRegisterId(idx.outVariable);
         writableOutputRegisters.emplace(documentOutputRegister);
       }
     }
@@ -404,6 +404,13 @@ std::unique_ptr<ExecutionBlock> JoinNode::createBlock(
 
       for (auto const& var : inVars) {
         TRI_ASSERT(var != nullptr);
+        if (var->id == idx.outVariable->id &&
+            idx.filterProjections.usesCoveringIndex()) {
+          // if the index covers the filter projections, then don't add the
+          // document variable to the filter vars. It is not used and will cause
+          // an error during register planning.
+          continue;
+        }
         auto regId = variableToRegisterId(var);
         filter.filterVarsToRegs.emplace_back(var->id, regId);
       }

@@ -117,21 +117,14 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
     auto oldOutVariable = indexNode->outVariable();
-    auto newOutVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
+    // a later optimizer rule will change the actual document output variable
+    auto newOutVariable = oldOutVariable;
 
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
         *newOutVariable, *oldOutVariable);
 
     plan->insertAfter(indexNode, materialized);
-
-    for (auto* n = materialized->getFirstParent(); n != nullptr;
-         n = n->getFirstParent()) {
-      n->replaceVariables({{oldOutVariable->id, newOutVariable}});
-      n->invalidateVarUsage();
-    }
-    plan->clearVarUsageComputed();
 
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
