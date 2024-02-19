@@ -663,8 +663,6 @@ void IndexNode::setLateMaterialized(aql::Variable const* docIdVariable,
 
   _projections = utils::translateLMIndexVarsToProjections(
       plan(), oldIndexValuesVars, getSingleIndex());
-  _projections.setCoveringContext(_collectionAccess.collection()->id(),
-                                  getSingleIndex());
   _options.forLateMaterialization = true;
 }
 

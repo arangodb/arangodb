@@ -1146,7 +1146,9 @@ Projections translateLMIndexVarsToProjections(
     proj.type = proj.path.type();
   }
 
-  projections.setCoveringContext(index->collection().id(), index);
+  if (index->covers(projections)) {
+    projections.setCoveringContext(index->collection().id(), index);
+  }
   return projections;
 }
 
