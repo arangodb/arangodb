@@ -313,8 +313,7 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
                     });
                 if (responseResult.fail()) {
                   LOG_TOPIC("a32de", DEBUG, Logger::REPLICATION2)
-                      << "appendEntries failed, follower already gone: "
-                      << responseResult.result();
+                      << "appendEntries failed " << responseResult.result();
 
                   if (responseResult.is(
                           TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE)) {
