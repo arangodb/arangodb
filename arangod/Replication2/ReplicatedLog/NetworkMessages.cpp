@@ -32,31 +32,12 @@
 #include <Basics/voc-errors.h>
 #include <Basics/Result.h>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector_transient.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::replication2;
 using namespace arangodb::replication2::replicated_log;
 
-#if (_MSC_VER >= 1)
-// suppress false positive warning:
-#pragma warning(push)
-// function assumed not to throw an exception but does
-#pragma warning(disable : 4297)
-#endif
 AppendEntriesRequest::AppendEntriesRequest(
     AppendEntriesRequest&& other) noexcept try
     : leaderTerm(other.leaderTerm),
@@ -92,9 +73,6 @@ AppendEntriesRequest::AppendEntriesRequest(
          "longer be guaranteed. The process will terminate now.";
   FATAL_ERROR_ABORT();
 }
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 auto AppendEntriesRequest::operator=(
     replicated_log::AppendEntriesRequest&& other) noexcept

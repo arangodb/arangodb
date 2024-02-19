@@ -62,7 +62,6 @@ using namespace arangodb::maintenance;
 using namespace arangodb::cluster;
 using namespace arangodb::velocypack;
 
-#ifndef _WIN32
 char const* planStr =
 #include "Plan.json"
     ;
@@ -81,18 +80,6 @@ char const* dbs1Str =
 char const* dbs2Str =
 #include "DBServer0003.json"
     ;
-#else  // _WIN32
-
-#include <Windows.h>
-#include "jsonresource.h"
-LPSTR planStr = nullptr;
-LPSTR currentStr = nullptr;
-LPSTR supervisionStr = nullptr;
-LPSTR dbs0Str = nullptr;
-LPSTR dbs1Str = nullptr;
-LPSTR dbs2Str = nullptr;
-
-#endif  // _WIN32
 
 // Random stuff
 std::random_device rd{};
@@ -143,30 +130,7 @@ class SharedMaintenanceTest : public ::testing::Test {
    *
    */
  protected:
-#ifndef _WIN32
   int loadResources(void) { return 0; }
-
-#else  // _WIN32
-  LPSTR getResource(int which) {
-    HRSRC myResource = ::FindResource(NULL, MAKEINTRESOURCE(which), RT_RCDATA);
-    HGLOBAL myResourceData = ::LoadResource(NULL, myResource);
-    return (LPSTR)::LockResource(myResourceData);
-  }
-  int loadResources(void) {
-    if ((planStr == nullptr) && (currentStr == nullptr) &&
-        (supervisionStr == nullptr) && (dbs0Str == nullptr) &&
-        (dbs1Str == nullptr) && (dbs2Str == nullptr)) {
-      planStr = getResource(IDS_PLAN);
-      currentStr = getResource(IDS_CURRENT);
-      dbs0Str = getResource(IDS_DBSERVER0001);
-      dbs1Str = getResource(IDS_DBSERVER0002);
-      dbs2Str = getResource(IDS_DBSERVER0003);
-      supervisionStr = getResource(IDS_SUPERVISION);
-    }
-    return 0;
-  }
-
-#endif  // _WIN32
 
   std::map<std::string, std::string> matchShortLongIds(
       NodePtr const& supervision) {

@@ -29,24 +29,12 @@
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 using namespace arangodb;
 
 namespace {
 
 // Windows variant for getpagesize()
-#ifdef _WIN32
-int pageSizeImpl() {
-  SYSTEM_INFO systemInfo;
-  GetSystemInfo(&systemInfo);
-  return systemInfo.dwPageSize;
-}
-#else
 int pageSizeImpl() { return getpagesize(); }
-#endif
 
 struct PageSizeCache {
   PageSizeCache() : cachedValue(pageSizeImpl()) {}

@@ -49,9 +49,6 @@ class ShellColorsFeature final
 
  private:
   bool useColors();
-#ifdef _WIN32
-  bool prepareConsole();
-#endif
 
  public:
   static char const* SHELL_COLOR_RED;

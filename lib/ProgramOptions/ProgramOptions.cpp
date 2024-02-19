@@ -769,24 +769,12 @@ void ProgramOptions::fail(int exitCode, std::string const& message) {
             << TRI_Basename(_progname.c_str()) << ":" << colorEnd << std::endl;
   failNotice(exitCode, message);
   std::cerr << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 void ProgramOptions::failNotice(int exitCode, std::string const& message) {
   _processingResult.fail(exitCode);
 
   std::cerr << "  " << message << std::endl;
-#ifdef _WIN32
-  // additionally log these errors to the debug output window in MSVC so
-  // we can see them during development
-  OutputDebugString(message.c_str());
-  OutputDebugString("\r\n");
-#endif
 }
 
 // add a positional argument (callback from parser)

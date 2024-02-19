@@ -31,11 +31,6 @@
 #include <unistd.h>
 #endif
 
-#if _WIN32
-#include <iostream>
-#include "Basics/win-utils.h"
-#endif
-
 #include "LoggerFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -182,11 +177,7 @@ You can adjust the parameter settings at runtime using the
   options
       ->addOption("--log.output,-o",
                   "Log destination(s), e.g. "
-#ifdef _WIN32
-                  "file://C:\\path\\to\\file"
-#else
                   "file:///path/to/file"
-#endif
                   " (any occurrence of $PID is replaced with the process ID).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
@@ -693,13 +684,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
-#if _WIN32
-  if (!TRI_InitWindowsEventLog()) {
-    std::cerr << "failed to init event log" << std::endl;
-    FATAL_ERROR_EXIT();
-  }
-#endif
-
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(
       std::max<uint32_t>(256, _maxEntryLength));

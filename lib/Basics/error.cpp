@@ -33,19 +33,11 @@
 #include "Basics/exitcodes.h"
 #include "Basics/voc-errors.h"
 
-#if defined(_WIN32)
-#include <windows.h>
-#endif
-
 /// @brief error number and system error
 struct ErrorContainer {
   ErrorCode _number = TRI_ERROR_NO_ERROR;
 
-#if defined(_WIN32)
-  DWORD _sys = 0;
-#else
   int _sys = 0;
-#endif
 };
 
 /// @brief holds the last error that occurred in the current thread
@@ -59,32 +51,7 @@ std::string TRI_last_error() {
   ErrorCode err = LastError._number;
 
   if (err == TRI_ERROR_SYS_ERROR) {
-#if defined(_WIN32)
-    if (LastError._sys == 0) {
-      return {};
-    }
-
-    std::size_t size{0};
-    LPSTR messageBuffer{nullptr};
-    auto sg = arangodb::ScopeGuard([&]() noexcept {
-      if (messageBuffer != nullptr && size != 0) {
-        LocalFree(messageBuffer);
-      }
-    });
-
-    size = FormatMessageA(
-        FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
-            FORMAT_MESSAGE_IGNORE_INSERTS,
-        nullptr, LastError._sys, 0, (LPSTR)&messageBuffer, 0, nullptr);
-    if (size == 0) {
-      return "failed to get error message, the error code is " +
-             std::to_string(LastError._sys);
-    }
-
-    return std::string{messageBuffer, size};
-#else
     return strerror(LastError._sys);
-#endif
   }
 
   return std::string{TRI_errno_string(err)};
@@ -95,11 +62,7 @@ ErrorCode TRI_set_errno(ErrorCode error) {
   LastError._number = error;
 
   if (error == TRI_ERROR_SYS_ERROR) {
-#if defined(_WIN32)
-    LastError._sys = GetLastError();
-#else
     LastError._sys = errno;
-#endif
   } else {
     LastError._sys = 0;
   }

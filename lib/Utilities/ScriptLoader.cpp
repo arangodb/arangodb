@@ -90,13 +90,8 @@ std::vector<std::string> ScriptLoader::getDirectoryParts() {
     // implementations, otherwise we will only allow ";"
     // .........................................................................
 
-#ifdef _WIN32
-    std::vector<std::string> parts =
-        basics::StringUtils::split(_directory, ';');
-#else
     std::vector<std::string> parts =
         basics::StringUtils::split(_directory, ":;");
-#endif
 
     for (size_t i = 0; i < parts.size(); ++i) {
       std::string part = StringUtils::trim(parts[i]);

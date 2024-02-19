@@ -1,17 +1,3 @@
-if (MSVC AND NOT(SKIP_PACKAGING))
-  set(ARANGO_RESTORE_FRIENDLY_STRING "arangrestore - data and configuration restoration tool")
-  generate_product_version(ProductVersionFiles_arangorestore
-    NAME arangorestore
-    FILE_DESCRIPTION ${ARANGO_RESTORE_FRIENDLY_STRING}
-    ICON ${ARANGO_ICON}
-    COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
-    VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-    VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-    VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-    VERSION_REVISION ${BUILD_ID}
-  )
-endif ()
-
 add_library(arango_restore
   RestoreFeature.cpp
 )
@@ -30,7 +16,6 @@ add_executable(${BIN_ARANGORESTORE}
 target_link_libraries(${BIN_ARANGORESTORE}
   arango_restore
   arango
-  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

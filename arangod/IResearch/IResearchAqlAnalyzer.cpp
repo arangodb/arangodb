@@ -21,12 +21,6 @@
 /// @author Andrei Lobov
 ////////////////////////////////////////////////////////////////////////////////
 
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
-#if defined(_MSC_VER)
-#include "date/date.h"
-#endif
-
 #include "IResearchAqlAnalyzer.h"
 
 #include "utils/hash_utils.hpp"
