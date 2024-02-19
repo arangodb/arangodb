@@ -395,6 +395,10 @@ auto replicated_log::to_string(CompactionStopReason const& csr) -> std::string {
           "Compaction waiting for participant {} to receive all log entries",
           reason.who);
     }
+    auto operator()(CompactionStopReason::StorageManagerNotReady const&)
+        -> std::string {
+      return "Storage manager not ready";
+    }
   };
 
   return std::visit(ToStringVisitor{}, csr.value);

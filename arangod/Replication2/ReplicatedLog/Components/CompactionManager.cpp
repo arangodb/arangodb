@@ -117,6 +117,8 @@ void CompactionManager::triggerAsyncCompaction(
     while (true) {
       ADB_PROD_ASSERT(guard.isLocked());
 
+      auto promises = std::move(guard->compactAggregator);
+
       auto storeRes = basics::catchToResultT([&]() -> auto {
         return guard->storage.transaction();
       });
@@ -124,6 +126,16 @@ void CompactionManager::triggerAsyncCompaction(
         // The participant might be gone
         LOG_CTX("d7724", DEBUG, self->loggerContext)
             << "error during compaction: " << storeRes.result();
+        auto cresult = CompactResult{
+            .error = std::move(storeRes).result().error(),
+            .stopReason =
+                CompactionStopReason{
+                    CompactionStopReason::StorageManagerNotReady{}},
+            .compactedRange = {}};
+        guard->status.lastCompaction->error = cresult.error;
+        clearCompactionRunning.fire();
+        guard.unlock();
+        promises.resolveAll(futures::Try<CompactResult>{std::move(cresult)});
         break;
       }
 
@@ -136,7 +148,6 @@ void CompactionManager::triggerAsyncCompaction(
       auto [index, reason] = calculateCompactionIndex(
           guard->releaseIndex, guard->lowestIndexToKeep, logBounds, threshold);
       guard->_fullCompactionNextRound = false;
-      auto promises = std::move(guard->compactAggregator);
 
       if (index > logBounds.from) {
         auto& compaction = guard->status.inProgress.emplace();
