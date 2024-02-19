@@ -37,11 +37,11 @@ const batchMaterializeRule = "batch-materialize-documents";
 function IndexBatchMaterializeTestSuite() {
 
   function makeCollection(name) {
-    const c = db._create(name);
+    const c = db._create(name, {numberOfShards: 3});
     c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
-    c.ensureIndex({type: "persistent", fields: ["u"], unique: true});
+    c.ensureIndex({type: "persistent", fields: ["u", "_key"], unique: true});
     return c;
   }
 
@@ -96,7 +96,7 @@ function IndexBatchMaterializeTestSuite() {
       assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
 
       checkResult(query);
-      return {plan, indexNode, materializeNode};
+      return {plan, nodes, indexNode, materializeNode};
     } catch (e) {
       db._explain(query);
       throw e;
@@ -199,8 +199,31 @@ function IndexBatchMaterializeTestSuite() {
           SORT doc.b
           RETURN doc
       `;
-      db._explain(query);
-      print(db._createStatement({query}).explain().plan);
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"]]);
+      assertEqual(normalize(materializeNode.projections), []);
+
+      // expect `MATERIALIZE` to be after `SORT`
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+    },
+
+    testMaterializeFilterStoredValues: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          FILTER NOOPT(doc.b > 7)
+          RETURN doc
+      `;
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"]]);
+      assertEqual(normalize(materializeNode.projections), []);
+
+      // expect `MATERIALIZE` to be after `FILTER`
+      assertNotEqual(nodes.indexOf('FilterNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
     },
 
     testMaterializeIndexScanProjections: function () {

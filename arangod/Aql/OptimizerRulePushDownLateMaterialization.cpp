@@ -37,7 +37,7 @@ using namespace arangodb::aql;
 using namespace arangodb::containers;
 using EN = arangodb::aql::ExecutionNode;
 
-#define LOG_RULE LOG_DEVEL_IF(true)
+#define LOG_RULE LOG_DEVEL_IF(false)
 
 namespace {
 
@@ -49,6 +49,7 @@ bool usesOutVariable(materialize::MaterializeNode const* matNode,
 bool checkCalculation(ExecutionPlan* plan,
                       materialize::MaterializeNode const* matNode,
                       ExecutionNode* other) {
+  LOG_RULE << "ATTEMPT TO MOVE PAST CALCULATION";
   if (!usesOutVariable(matNode, other)) {
     return true;
   }
@@ -73,17 +74,16 @@ bool checkCalculation(ExecutionPlan* plan,
   Ast::getReferencedAttributesRecursive(
       calc->expression()->node(), &matNode->outVariable(), "", attributes,
       matNode->plan()->getAst()->query().resourceMonitor());
-  LOG_DEVEL << "CALC ATTRIBUTES: ";
+  LOG_RULE << "CALC ATTRIBUTES: ";
   for (auto const& attr : attributes) {
-    LOG_DEVEL << attr;
+    LOG_RULE << attr;
   }
 
   auto proj = indexNode->projections();  // copy intentional
   proj.addPaths(attributes);
 
   if (index->covers(proj)) {
-    LOG_DEVEL << "INDEX COVERS THOSE PROJECTIONS";
-    LOG_DEVEL << "NEW PROJ: " << proj;
+    LOG_RULE << "INDEX COVERS ATTRIBTUES";
     calc->replaceVariables(
         {{matNode->outVariable().id, indexNode->outVariable()}});
     indexNode->recalculateProjections(plan);
@@ -121,36 +121,30 @@ void arangodb::aql::pushDownLateMaterializationRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  if (false) {
-    containers::SmallVector<ExecutionNode*, 8> indexes;
-    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  containers::SmallVector<ExecutionNode*, 8> indexes;
+  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-    for (auto node : indexes) {
-      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-      auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
+  for (auto node : indexes) {
+    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+    auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
 
-      ExecutionNode* insertBefore = matNode->getFirstParent();
+    ExecutionNode* insertBefore = matNode->getFirstParent();
 
-      while (insertBefore != nullptr) {
-        if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
-          LOG_RULE << "NODE " << matNode->id() << " can not move past "
-                   << insertBefore->id() << " "
-                   << insertBefore->getTypeString();
-          break;
-        }
-        insertBefore = insertBefore->getFirstParent();
+    while (insertBefore != nullptr) {
+      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
+        LOG_RULE << "NODE " << matNode->id() << " can not move past "
+                 << insertBefore->id() << " " << insertBefore->getTypeString();
+        break;
       }
-
-      if (insertBefore != matNode->getFirstParent()) {
-        plan->unlinkNode(matNode);
-        plan->insertBefore(insertBefore, matNode);
-        modified = true;
-      }
+      insertBefore = insertBefore->getFirstParent();
     }
 
-    if (modified) {
-      plan->show();
+    if (insertBefore != matNode->getFirstParent()) {
+      plan->unlinkNode(matNode);
+      plan->insertBefore(insertBefore, matNode);
+      modified = true;
     }
   }
+
   opt->addPlan(std::move(plan), rule, modified);
 }

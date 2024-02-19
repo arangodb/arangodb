@@ -144,9 +144,5 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     modified = true;
   }
 
-  if (modified) {
-    plan->show();
-  }
-
   opt->addPlan(std::move(plan), rule, modified);
 }
