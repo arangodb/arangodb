@@ -9,7 +9,7 @@ import { IndexInfoTooltip } from "./IndexInfoTooltip";
 import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
-import { ZKDIndexForm } from "./ZKDIndexForm";
+import { MDIIndexForm } from "./MDIIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
@@ -72,8 +72,9 @@ const IndexTypeForm = ({
   if (type === "geo") {
     return <GeoIndexForm onClose={onClose} />;
   }
-  if (type === "zkd") {
-    return <ZKDIndexForm onClose={onClose} />;
+  if (type === "mdi") {
+    return <MDIIndexForm onClose={onClose} />;
+  }
   }
   return <></>;
 };

@@ -3,7 +3,7 @@ import { commonFieldsMap, commonSchema } from "./IndexFieldsHelper";
 import { useCreateIndex } from "./useCreateIndex";
 
 export const INITIAL_VALUES = {
-  type: "zkd",
+  type: "mdi",
   fields: commonFieldsMap.fields.initialValue,
   storedValues: "",
   inBackground: commonFieldsMap.inBackground.initialValue,
@@ -41,7 +41,7 @@ type ValuesType = Omit<typeof INITIAL_VALUES, "fields" | "storedValues"> & {
   storedValues?: string[];
 };
 
-export const useCreateZKDIndex = () => {
+export const useCreateMDIIndex = () => {
   const { onCreate: onCreateIndex } = useCreateIndex<ValuesType>();
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
