@@ -128,21 +128,6 @@ void arangodb::aql::pushDownLateMaterializationRule(
     TRI_ASSERT(node->getType() == EN::MATERIALIZE);
     auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
 
-    // create a new output variable for the materialized document.
-    // this happens after the join rule. Otherwise, joins are not detected.
-    // A separate variable comes in handy when optimizing projections, because
-    // it allows to distinguish where the projections belongs to (Index or Mat).
-    auto newOutVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
-    matNode->setDocOutVariable(*newOutVariable);
-
-    // replace every occurence with this new variable
-    for (auto* n = matNode->getFirstParent(); n != nullptr;
-         n = n->getFirstParent()) {
-      n->replaceVariables({{matNode->oldDocVariable().id, newOutVariable}});
-    }
-    modified = true;
-
     ExecutionNode* insertBefore = matNode->getFirstParent();
 
     while (insertBefore != nullptr) {
@@ -158,6 +143,21 @@ void arangodb::aql::pushDownLateMaterializationRule(
       plan->unlinkNode(matNode);
       plan->insertBefore(insertBefore, matNode);
     }
+
+    // create a new output variable for the materialized document.
+    // this happens after the join rule. Otherwise, joins are not detected.
+    // A separate variable comes in handy when optimizing projections, because
+    // it allows to distinguish where the projections belongs to (Index or Mat).
+    auto newOutVariable =
+        plan->getAst()->variables()->createTemporaryVariable();
+    matNode->setDocOutVariable(*newOutVariable);
+
+    // replace every occurrence with this new variable
+    for (auto* n = matNode->getFirstParent(); n != nullptr;
+         n = n->getFirstParent()) {
+      n->replaceVariables({{matNode->oldDocVariable().id, newOutVariable}});
+    }
+    modified = true;
   }
 
   opt->addPlan(std::move(plan), rule, modified);
