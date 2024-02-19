@@ -1062,7 +1062,6 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .constantFields = computedConstantFields};
 
               if (c->isLateMaterialized()) {
-                TRI_ASSERT(c->projections().empty());
                 info.isLateMaterialized = true;
 
                 info.outDocIdVariable = c->getLateMaterializedDocIdOutVar();
