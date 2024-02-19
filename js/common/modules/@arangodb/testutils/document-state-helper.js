@@ -166,7 +166,7 @@ const getAllDocumentsFromServer = function (serverId, dbName, shardId) {
   });
   lh.checkRequestResult(res, false);
   return res.json.result;
-}
+};
 
 const getAssociatedShards = function (endpoint, db, stateId) {
   let res = request.get({
