@@ -116,8 +116,6 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
-    indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
-                                   {});
     auto oldOutVariable = indexNode->outVariable();
     auto newOutVariable =
         plan->getAst()->variables()->createTemporaryVariable();
@@ -141,6 +139,8 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       // move projections from index node into materialize node
       materialized->projections(std::move(indexNode->projections()));
     }
+    indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
+                                   {});
     modified = true;
   }
 

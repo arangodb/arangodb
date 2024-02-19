@@ -300,7 +300,7 @@ DocumentProducingFunctionContext::DocumentProducingFunctionContext(
       _expressionContext = std::make_unique<LateMaterializedExpressionContext>(
           _trx, _query, _aqlFunctionsInternalCache,
           infos.getFilterVarsToRegister(), _inputRow,
-          infos.getOutNonMaterializedIndVars().second);
+          infos.getFilterCoveringVars());
     } else {
       TRI_ASSERT(_outputVariable != nullptr);
       if (_filterProjections.usesCoveringIndex()) {
