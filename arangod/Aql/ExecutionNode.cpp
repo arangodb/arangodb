@@ -2991,6 +2991,7 @@ constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
 constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
 constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
 constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
+constexpr std::string_view kMaterializeNodeOldDocVar = "oldDocVariable";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
@@ -3004,10 +3005,12 @@ MaterializeNode* materialize::createMaterializeNode(
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  aql::Variable const& inDocId,
-                                 aql::Variable const& outVariable)
+                                 aql::Variable const& outVariable,
+                                 aql::Variable const& oldDocVariable)
     : ExecutionNode(plan, id),
       _inNonMaterializedDocId(&inDocId),
-      _outVariable(&outVariable) {}
+      _outVariable(&outVariable),
+      _oldDocVariable(&oldDocVariable) {}
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice base)
@@ -3015,7 +3018,9 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
       _inNonMaterializedDocId(aql::Variable::varFromVPack(
           plan->getAst(), base, kMaterializeNodeInNmDocParam, true)),
       _outVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, kMaterializeNodeOutVariableParam)) {}
+          plan->getAst(), base, kMaterializeNodeOutVariableParam)),
+      _oldDocVariable(aql::Variable::varFromVPack(plan->getAst(), base,
+                                                  kMaterializeNodeOldDocVar)) {}
 
 void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
@@ -3024,6 +3029,9 @@ void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
 
   nodes.add(VPackValue(kMaterializeNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
+
+  nodes.add(VPackValue(kMaterializeNodeOldDocVar));
+  _oldDocVariable->toVelocyPack(nodes);
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
@@ -3048,11 +3056,10 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
-                                             ExecutionNodeId id,
-                                             aql::Variable const& inDocId,
-                                             aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable) {}
+MaterializeSearchNode::MaterializeSearchNode(
+    ExecutionPlan* plan, ExecutionNodeId id, aql::Variable const& inDocId,
+    aql::Variable const& outVariable, aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable) {}
 
 MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice base)
@@ -3100,15 +3107,17 @@ ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
                                             bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  return cloneHelper(std::make_unique<MaterializeSearchNode>(
-                         plan, _id, *_inNonMaterializedDocId, *_outVariable),
-                     withDependencies);
+  return cloneHelper(
+      std::make_unique<MaterializeSearchNode>(
+          plan, _id, *_inNonMaterializedDocId, *_outVariable, *_oldDocVariable),
+      withDependencies);
 }
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
-    aql::Variable const& inDocId, aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable),
+    aql::Variable const& inDocId, aql::Variable const& outVariable,
+    aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable),
       CollectionAccessingNode(collection) {}
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(ExecutionPlan* plan,
@@ -3170,7 +3179,8 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
   TRI_ASSERT(plan);
 
   auto c = std::make_unique<MaterializeRocksDBNode>(
-      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable);
+      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable,
+      *_oldDocVariable);
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

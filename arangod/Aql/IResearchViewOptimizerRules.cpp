@@ -1054,7 +1054,7 @@ void lateDocumentMaterializationArangoSearchRule(
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeSearchNode>(
-                plan.get(), plan->nextId(), *localDocIdTmp, var));
+                plan.get(), plan->nextId(), *localDocIdTmp, var, var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;

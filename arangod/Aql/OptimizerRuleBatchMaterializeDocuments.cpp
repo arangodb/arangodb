@@ -122,7 +122,7 @@ void arangodb::aql::batchMaterializeDocumentsRule(
 
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
-        *newOutVariable);
+        *newOutVariable, *oldOutVariable);
 
     plan->insertAfter(indexNode, materialized);
 

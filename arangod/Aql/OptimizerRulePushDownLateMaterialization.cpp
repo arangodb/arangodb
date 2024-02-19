@@ -121,33 +121,36 @@ void arangodb::aql::pushDownLateMaterializationRule(
     OptimizerRule const& rule) {
   bool modified = false;
 
-  containers::SmallVector<ExecutionNode*, 8> indexes;
-  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+  if (false) {
+    containers::SmallVector<ExecutionNode*, 8> indexes;
+    plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
 
-  for (auto node : indexes) {
-    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
+    for (auto node : indexes) {
+      TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+      auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
 
-    ExecutionNode* insertBefore = matNode->getFirstParent();
+      ExecutionNode* insertBefore = matNode->getFirstParent();
 
-    while (insertBefore != nullptr) {
-      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
-        LOG_RULE << "NODE " << matNode->id() << " can not move past "
-                 << insertBefore->id() << " " << insertBefore->getTypeString();
-        break;
+      while (insertBefore != nullptr) {
+        if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
+          LOG_RULE << "NODE " << matNode->id() << " can not move past "
+                   << insertBefore->id() << " "
+                   << insertBefore->getTypeString();
+          break;
+        }
+        insertBefore = insertBefore->getFirstParent();
       }
-      insertBefore = insertBefore->getFirstParent();
+
+      if (insertBefore != matNode->getFirstParent()) {
+        plan->unlinkNode(matNode);
+        plan->insertBefore(insertBefore, matNode);
+        modified = true;
+      }
     }
 
-    if (insertBefore != matNode->getFirstParent()) {
-      plan->unlinkNode(matNode);
-      plan->insertBefore(insertBefore, matNode);
-      modified = true;
+    if (modified) {
+      plan->show();
     }
-  }
-
-  if (modified) {
-    plan->show();
   }
   opt->addPlan(std::move(plan), rule, modified);
 }
