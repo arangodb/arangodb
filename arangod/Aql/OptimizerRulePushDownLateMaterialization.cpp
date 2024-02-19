@@ -80,6 +80,8 @@ bool checkCalculation(ExecutionPlan* plan,
   }
 
   auto proj = indexNode->projections();  // copy intentional
+  TRI_ASSERT(!proj.hasOutputRegisters())
+      << "projection output registers shouldn't be set at this point";
   proj.addPaths(attributes);
 
   if (index->covers(proj)) {
@@ -88,6 +90,8 @@ bool checkCalculation(ExecutionPlan* plan,
         {{matNode->outVariable().id, indexNode->outVariable()}});
     indexNode->recalculateProjections(plan);
     return true;
+  } else {
+    LOG_RULE << "INDEX DOES NOT COVER " << proj;
   }
 
   return false;
@@ -128,22 +132,6 @@ void arangodb::aql::pushDownLateMaterializationRule(
     TRI_ASSERT(node->getType() == EN::MATERIALIZE);
     auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
 
-    ExecutionNode* insertBefore = matNode->getFirstParent();
-
-    while (insertBefore != nullptr) {
-      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
-        LOG_RULE << "NODE " << matNode->id() << " can not move past "
-                 << insertBefore->id() << " " << insertBefore->getTypeString();
-        break;
-      }
-      insertBefore = insertBefore->getFirstParent();
-    }
-
-    if (insertBefore != matNode->getFirstParent()) {
-      plan->unlinkNode(matNode);
-      plan->insertBefore(insertBefore, matNode);
-    }
-
     // create a new output variable for the materialized document.
     // this happens after the join rule. Otherwise, joins are not detected.
     // A separate variable comes in handy when optimizing projections, because
@@ -157,6 +145,25 @@ void arangodb::aql::pushDownLateMaterializationRule(
          n = n->getFirstParent()) {
       n->replaceVariables({{matNode->oldDocVariable().id, newOutVariable}});
     }
+
+    ExecutionNode* insertBefore = matNode->getFirstParent();
+
+    while (insertBefore != nullptr) {
+      LOG_RULE << "ATTEMPT MOVING PAST " << insertBefore->getTypeString() << "["
+               << insertBefore->id() << "]";
+      if (!canMovePastNode(plan.get(), matNode, insertBefore)) {
+        LOG_RULE << "NODE " << matNode->id() << " can not move past "
+                 << insertBefore->id() << " " << insertBefore->getTypeString();
+        break;
+      }
+      insertBefore = insertBefore->getFirstParent();
+    }
+
+    if (insertBefore != matNode->getFirstParent()) {
+      plan->unlinkNode(matNode);
+      plan->insertBefore(insertBefore, matNode);
+    }
+
     modified = true;
   }
 

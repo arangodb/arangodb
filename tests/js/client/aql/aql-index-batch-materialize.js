@@ -38,7 +38,7 @@ function IndexBatchMaterializeTestSuite() {
 
   function makeCollection(name) {
     const c = db._create(name, {numberOfShards: 3});
-    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b"]});
+    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b", "z"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
     c.ensureIndex({type: "persistent", fields: ["u", "_key"], unique: true});
@@ -224,6 +224,27 @@ function IndexBatchMaterializeTestSuite() {
       assertNotEqual(nodes.indexOf('FilterNode'), -1);
       assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
       assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+    },
+
+    testMaterializeDoubleFilterStoredValues: function () {
+      const query = `
+        FOR d1 IN ${collection}
+          FILTER d1.x > 5
+          SORT d1.b
+          LIMIT 100
+          FILTER d1.z < 18
+          RETURN d1.w`;
+
+      db._explain(query, null, {optimizer: {rules: ['-late-document-materialization']}});
+
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"], ["z"]]);
+      assertEqual(normalize(materializeNode.projections), [["b"], ["w"], ["z"]]);
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('FilterNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+      assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
     },
 
     testMaterializeIndexScanProjections: function () {
