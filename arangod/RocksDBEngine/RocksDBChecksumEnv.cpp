@@ -174,9 +174,9 @@ void ChecksumHelper::checkMissingShaFiles() {
                 // sorted first (before .sst or .blob files)
                 return true;
               }
-              if (isSstFile(rhs)) {
+              if (isHashFile(rhs)) {
                 // cannot have 2 hash files for the same prefix
-                TRI_ASSERT(!isSstFile(lhs));
+                TRI_ASSERT(!isHashFile(lhs));
 
                 // prefixes of lhs and rhs are identical - .hash files should be
                 // sorted first (before .sst or .blob files)
