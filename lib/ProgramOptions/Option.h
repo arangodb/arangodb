@@ -57,12 +57,10 @@ enum class Flags : uint16_t {
   FlushOnFirst = 32,  // when we first see this parameter, we will flush the
                       // contents of its default value before setting it.
   // operating systems
-  OsLinux = 64,     // option can be used on Linux
-  OsWindows = 128,  // option can be used on Windows
-  OsMac = 256,      // option can be used on MacOS
+  OsLinux = 64,  // option can be used on Linux
+  OsMac = 128,   // option can be used on MacOS
 
-  OsAll = OsLinux | OsWindows |
-          OsMac,  // option can be used on all OSes (linux + win + mac)
+  OsAll = OsLinux | OsMac,  // option can be used on all OSes (linux + mac)
 
   // components
   OnCoordinator = 512,  // option can be used on coordinator

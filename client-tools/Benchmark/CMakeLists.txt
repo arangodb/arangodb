@@ -4,7 +4,6 @@ add_executable(${BIN_ARANGOBENCH}
   BenchFeature.cpp
   BenchmarkOperation.cpp
   testcases/helpers.cpp
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
 )
 target_include_directories(${BIN_ARANGOBENCH} PRIVATE ${PROJECT_SOURCE_DIR}/client-tools)
 

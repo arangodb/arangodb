@@ -536,19 +536,8 @@ include(CheckCompilerVersion)
 
 CheckCompilerVersion(
   11.2 # GCC
-  14.0 # Clang
-  19.32 # MSVC
+  16.0 # Clang
 )
-
-# FIXME: refactor/cleanup check below
-if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
-    message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
-  endif()
-  set(BASE_C_FLAGS "${BASE_C_FLAGS}")
-endif ()
 
 if (CMAKE_COMPILER_IS_CLANG) 
   if (APPLE)

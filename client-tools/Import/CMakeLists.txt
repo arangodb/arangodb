@@ -8,7 +8,6 @@ target_link_libraries(arangoimport_utils arango)
 
 add_executable(${BIN_ARANGOIMPORT}
   ${ProductVersionFiles_arangoimport}
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
   ImportFeature.cpp
   arangoimport.cpp
 )

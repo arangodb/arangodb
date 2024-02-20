@@ -315,14 +315,10 @@ VPackBuilder ProgramOptions::toVelocyPack(
           if (option.hasFlag(arangodb::options::Flags::OsMac)) {
             builder.add(VPackValue("macos"));
           }
-          if (option.hasFlag(arangodb::options::Flags::OsWindows)) {
-            builder.add(VPackValue("windows"));
-          }
           builder.close();
 
           // component support
-          if (_progname.ends_with("arangod") ||
-              _progname.ends_with("arangod.exe")) {
+          if (_progname.ends_with("arangod")) {
             builder.add("component", VPackValue(VPackValueType::Array));
             if (option.hasFlag(arangodb::options::Flags::OnCoordinator)) {
               builder.add(VPackValue("coordinator"));

@@ -53,7 +53,6 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
-  ../cmake/activeCodePage.manifest
   main.cpp)
 
 target_include_directories(arango_tests_basics

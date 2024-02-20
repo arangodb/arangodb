@@ -9,7 +9,6 @@ target_link_libraries(arango_restore arango_shell)
 
 add_executable(${BIN_ARANGORESTORE}
   ${ProductVersionFiles_arangorestore}
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
   arangorestore.cpp
 )
 

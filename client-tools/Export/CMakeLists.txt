@@ -1,6 +1,5 @@
 add_executable(${BIN_ARANGOEXPORT}
   ${ProductVersionFiles_arangoexport}
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
   ExportFeature.cpp
   arangoexport.cpp
 )

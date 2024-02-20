@@ -1,6 +1,5 @@
 add_executable(${BIN_ARANGODUMP}
   ${ProductVersionFiles_arangodump}
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
   DumpFeature.cpp
   arangodump.cpp
 )

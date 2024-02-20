@@ -2,7 +2,6 @@ if (USE_ENTERPRISE)
 
   add_executable(${BIN_ARANGOBACKUP}
     ${ProductVersionFiles_arangobackup}
-    ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
     BackupFeature.cpp
     arangobackup.cpp
   )

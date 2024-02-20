@@ -1,7 +1,6 @@
 add_library(arango_shell STATIC
   ClientFeature.cpp
   ShellConsoleFeature.cpp
-  ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
 )
 
 target_link_libraries(arango_shell
@@ -21,7 +20,6 @@ target_include_directories(arango_shell PRIVATE ${CMAKE_SOURCE_DIR}/client-tools
 if (USE_V8)
   add_executable(${BIN_ARANGOSH}
     ${ProductVersionFiles_arangosh}
-    ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
 
     ShellFeature.cpp
     TelemetricsHandler.cpp
