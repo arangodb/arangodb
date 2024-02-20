@@ -128,21 +128,6 @@ message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
 ################################################################################
-# Windows version
-################################################################################
-
-# PATCH needs to be numeric for the windows rc file
-set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
-
-if (ARANGODB_VERSION_PATCH GREATER -1)
-  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
-else()
-  set(ARANGODB_WINDOWS_PATCH 1337)
-endif()
-
-message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
-
-################################################################################
 # SNAP version
 ################################################################################
 
@@ -181,11 +166,7 @@ endif()
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  if (WINDOWS)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-  else ()
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-  endif ()
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 endif()
 
 # enable V8/JavaScript in executables. 
@@ -418,9 +399,7 @@ endif ()
 # user options
 # ------------------------------------------------------------------------------
 
-if (WINDOWS)
-  SET(USE_JEMALLOC OFF)
-elseif (APPLE)
+if (APPLE)
   SET(USE_JEMALLOC OFF)
 else ()
   option(
@@ -493,22 +472,20 @@ endif()
 # /usr/bin/ch(mod|own) to prevent the search
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
-if (NOT WINDOWS)
-  find_program (MAKE make gmake)
+find_program (MAKE make gmake)
 
-  find_program(
-    CHMOD_EXECUTABLE chmod
-    PATHS "/bin/" "/usr/bin/"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
-  find_program(
-    CHOWN_EXECUTABLE chown
-    PATHS "/bin" "/usr/bin"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
-endif()
+find_program(
+  CHMOD_EXECUTABLE chmod
+  PATHS "/bin/" "/usr/bin/"
+  NO_DEFAULT_PATH
+)
+message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
+find_program(
+  CHOWN_EXECUTABLE chown
+  PATHS "/bin" "/usr/bin"
+  NO_DEFAULT_PATH
+)
+message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 
 ################################################################################
 ## ARCHITECTURE
@@ -703,12 +680,10 @@ endif()
 ## LIBRARY RESOLV
 ################################################################################
 
-if (NOT WINDOWS)
-  set(SYS_LIBS ${SYS_LIBS} resolv)
+set(SYS_LIBS ${SYS_LIBS} resolv)
 
-  if (NOT DARWIN)
-    set(SYS_LIBS ${SYS_LIBS} rt)
-  endif ()
+if (NOT DARWIN)
+  set(SYS_LIBS ${SYS_LIBS} rt)
 endif ()
 
 # ------------------------------------------------------------------------------
