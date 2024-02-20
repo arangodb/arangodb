@@ -28,6 +28,7 @@
 #include "Aql/types.h"
 #include "Containers/FlatHashSet.h"
 #include "Utils/OperationOptions.h"
+#include "IndexNode.h"
 
 #include <cstdint>
 #include <memory>
@@ -106,6 +107,10 @@ NonConstExpressionContainer extractNonConstPartsOfIndexCondition(
 
 arangodb::aql::Collection const* getCollection(
     arangodb::aql::ExecutionNode const* node);
+
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index);
 
 }  // namespace utils
 }  // namespace aql
