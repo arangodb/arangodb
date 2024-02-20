@@ -127,12 +127,16 @@ void CompactionManager::triggerAsyncCompaction(
         LOG_CTX("d7724", DEBUG, self->loggerContext)
             << "error during compaction: " << storeRes.result();
 
-        result::Error err{storeRes.result().errorNumber(),
-                          storeRes.result().errorMessage()};
-        auto& compaction = guard->status.inProgress.emplace();
-        guard->status.lastCompaction = guard->status.inProgress;
-        guard->status.inProgress.reset();
-        compaction.error = std::move(err);
+        if (guard->status.inProgress.has_value()) {
+          guard->status.lastCompaction = guard->status.inProgress;
+          guard->status.inProgress.reset();
+        } else {
+          guard->status.lastCompaction = CompactionStatus::Compaction{
+              .time = CompactionStatus::clock::now(),
+              .range = {},
+              .error = result::Error{storeRes.result().errorNumber(),
+                                     storeRes.result().errorMessage()}};
+        }
         clearCompactionRunning.fire();
 
         guard.unlock();
