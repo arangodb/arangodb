@@ -72,10 +72,14 @@ function IndexBatchMaterializeTestSuite() {
     }
   }
 
-  function checkResult(query) {
-    const expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
+  function checkResult(query, resultIsSorted = false) {
+    let expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
+    let actual = db._createStatement({query}).execute().toArray();
 
-    const actual = db._createStatement({query}).execute().toArray();
+    if (!resultIsSorted) {
+      expected = _.sortBy(expected, ['_key']);
+      actual = _.sortBy(expected, ['_key']);
+    }
 
     assertEqual(actual, expected);
   }
@@ -235,16 +239,67 @@ function IndexBatchMaterializeTestSuite() {
           FILTER d1.z < 18
           RETURN d1.w`;
 
-      db._explain(query, null, {optimizer: {rules: ['-late-document-materialization']}});
-
       const {materializeNode, indexNode, nodes} = expectOptimization(query);
       assertEqual(normalize(indexNode.projections), [["b"], ["z"]]);
       assertEqual(normalize(materializeNode.projections), [["b"], ["w"], ["z"]]);
       assertNotEqual(nodes.indexOf('SortNode'), -1);
-      assertNotEqual(nodes.indexOf('FilterNode'), -1);
       assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
-      assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
       assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+      if (!internal.isCluster()) {
+        assertNotEqual(nodes.indexOf('FilterNode'), -1);
+        assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+      }
+    },
+
+    testMaterializeIndexScanSubquery: function() {
+      const query = `
+        FOR d1 IN ${collection} 
+          FILTER d1.x > 5
+          LET e = SUM(FOR c IN ${collection} LET p = d1.b + c.x LIMIT 10 RETURN p)
+          SORT e
+          LIMIT 10
+          RETURN d1
+      `;
+
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      if (!internal.isCluster()) {
+        assertEqual(normalize(indexNode.projections), [["b"]]);
+        assertEqual(normalize(materializeNode.projections), []);
+        assertNotEqual(nodes.indexOf('SortNode'), -1);
+        assertNotEqual(nodes.indexOf('LimitNode'), -1);
+        assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+        assertNotEqual(nodes.indexOf('SubqueryEndNode'), -1);
+        assertTrue(nodes.indexOf('LimitNode') < nodes.indexOf('MaterializeNode'));
+        assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+        assertTrue(nodes.indexOf('SubqueryEndNode') < nodes.indexOf('MaterializeNode'));
+      } else {
+        // Subqueries Start nodes are always on the coordinator, thus the materialize node will stay
+        // right below the IndexNode.
+        assertEqual(normalize(indexNode.projections), []);
+        assertEqual(normalize(materializeNode.projections), []);
+      }
+    },
+
+    testMaterializeIndexScanSubqueryFullDoc: function() {
+      const query = `
+        FOR d1 IN ${collection} 
+          FILTER d1.x > 5
+          LET e = SUM(FOR c IN ${collection} LET p = d1 LIMIT 10 RETURN p)
+          SORT e
+          LIMIT 10
+          RETURN d1
+      `;
+
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), []);
+      assertEqual(normalize(materializeNode.projections), []);
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('LimitNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertNotEqual(nodes.indexOf('SubqueryEndNode'), -1);
+      assertTrue(nodes.indexOf('LimitNode') > nodes.indexOf('MaterializeNode'));
+      assertTrue(nodes.indexOf('SortNode') > nodes.indexOf('MaterializeNode'));
+      assertTrue(nodes.indexOf('SubqueryEndNode') > nodes.indexOf('MaterializeNode'));
     },
 
     testMaterializeIndexScanProjections: function () {

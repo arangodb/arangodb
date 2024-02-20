@@ -2955,7 +2955,8 @@ struct Shower final
         auto type = std::string{node.getTypeString()};
         type += " " + indexNode->collection()->name();
         type += std::string{" -> "} + indexNode->outVariable()->name;
-        type += std::string{" "} + indexNode->condition()->root()->toString();
+        // type += std::string{" "} +
+        // indexNode->condition()->root()->toString();
         return type;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:

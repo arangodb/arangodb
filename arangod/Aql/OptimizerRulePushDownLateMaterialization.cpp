@@ -26,9 +26,10 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
-#include "Aql/Query.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
+#include "Aql/OptimizerUtils.h"
+#include "Aql/Query.h"
 #include "Indexes/Index.h"
 #include "Logger/LogMacros.h"
 
@@ -44,6 +45,20 @@ namespace {
 bool usesOutVariable(materialize::MaterializeNode const* matNode,
                      ExecutionNode const* other) {
   return other->getVariableIdsUsedHere().contains(matNode->outVariable().id);
+}
+
+void replaceVariableDownwards(
+    ExecutionNode* first,
+    std::unordered_map<VariableId, Variable const*> const& replacement) {
+  for (auto* n = first; n != nullptr; n = n->getFirstParent()) {
+    if (n->getType() == ExecutionNode::SUBQUERY) {
+      auto* subquery = ExecutionNode::castTo<SubqueryNode*>(n);
+      replaceVariableDownwards(subquery->getSubquery()->getSingleton(),
+                               replacement);
+    } else {
+      n->replaceVariables(replacement);
+    }
+  }
 }
 
 bool checkCalculation(ExecutionPlan* plan,
@@ -97,6 +112,65 @@ bool checkCalculation(ExecutionPlan* plan,
   return false;
 }
 
+bool checkSubquery(ExecutionPlan* plan,
+                   materialize::MaterializeNode const* matNode,
+                   ExecutionNode* other) {
+  LOG_RULE << "ATTEMPT TO MOVE PAST SUBQUERY";
+  if (!usesOutVariable(matNode, other)) {
+    LOG_RULE << "SUBQUERY DOES NOT USE MATERIALIZE OUT VARIABLE";
+    return true;
+  }
+
+  TRI_ASSERT(other->getType() == EN::SUBQUERY);
+  auto* sub = ExecutionNode::castTo<SubqueryNode*>(other);
+
+  auto* matOriginNode =
+      matNode->plan()->getVarSetBy(matNode->docIdVariable().id);
+  if (matOriginNode->getType() != EN::INDEX) {
+    return false;
+  }
+
+  auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
+  TRI_ASSERT(indexNode->isLateMaterialized());
+  auto index = indexNode->getSingleIndex();
+  if (index == nullptr) {
+    return false;
+  }
+
+  containers::FlatHashSet<aql::AttributeNamePath> attributes;
+  bool notUsingFullDocument = arangodb::aql::utils::findProjections(
+      sub->getSubquery()->getSingleton(), &matNode->outVariable(), "", false,
+      attributes);
+  if (!notUsingFullDocument) {
+    LOG_RULE << "SUBQUERY USES FULL DOCUMENT";
+    // if the subquery uses the full document, we can not move past it
+    return false;
+  }
+
+  LOG_RULE << "SUBQUERY ATTRIBUTES: ";
+  for (auto const& attr : attributes) {
+    LOG_RULE << attr;
+  }
+
+  auto proj = indexNode->projections();  // copy intentional
+  TRI_ASSERT(!proj.hasOutputRegisters())
+      << "projection output registers shouldn't be set at this point";
+  proj.addPaths(attributes);
+
+  if (index->covers(proj)) {
+    LOG_RULE << "INDEX COVERS ATTRIBTUES";
+    replaceVariableDownwards(
+        sub->getSubquery()->getSingleton(),
+        {{matNode->outVariable().id, indexNode->outVariable()}});
+    indexNode->recalculateProjections(plan);
+    return true;
+  } else {
+    LOG_RULE << "INDEX DOES NOT COVER " << proj;
+  }
+
+  return false;
+}
+
 bool canMovePastNode(ExecutionPlan* plan,
                      materialize::MaterializeNode const* matNode,
                      ExecutionNode* other) {
@@ -107,6 +181,8 @@ bool canMovePastNode(ExecutionPlan* plan,
     case EN::SORT:
     case EN::FILTER:
       return !usesOutVariable(matNode, other);
+    case EN::SUBQUERY:
+      return checkSubquery(plan, matNode, other);
     case EN::CALCULATION:
       // TODO This is very pessimistic. In fact we could move the materialize
       // node down, if the index supports
@@ -141,10 +217,8 @@ void arangodb::aql::pushDownLateMaterializationRule(
     matNode->setDocOutVariable(*newOutVariable);
 
     // replace every occurrence with this new variable
-    for (auto* n = matNode->getFirstParent(); n != nullptr;
-         n = n->getFirstParent()) {
-      n->replaceVariables({{matNode->oldDocVariable().id, newOutVariable}});
-    }
+    replaceVariableDownwards(matNode->getFirstParent(),
+                             {{matNode->oldDocVariable().id, newOutVariable}});
 
     ExecutionNode* insertBefore = matNode->getFirstParent();
 

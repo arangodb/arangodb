@@ -108,9 +108,15 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     }
 
     if (indexNode->estimateCost().estimatedNrItems < 100) {
-      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
-               << "estimated number of items too small";
-      continue;
+      TRI_IF_FAILURE("batch-materialize-no-estimation") {
+        // do nothing here
+      }
+      else {
+        LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+                 << "estimated number of items too small ("
+                 << indexNode->estimateCost().estimatedNrItems << ")";
+        continue;
+      }
     }
 
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
