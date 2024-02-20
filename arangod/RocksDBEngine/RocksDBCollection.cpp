@@ -449,7 +449,8 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
 
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things
@@ -614,35 +615,14 @@ futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     inventoryLocker.lock();
 
     // step 4½. replicate index creation
-    if (vocbase.replicationVersion() == replication::Version::TWO) {
-      // May throw TRI_ERROR_REPLICATED_STATE_NOT_FOUND in case the log manager
-      // is dropping the replicated state
-      auto documentStateLeader =
-          _logicalCollection.getDocumentState()->getLeader();
-      if (documentStateLeader != nullptr) {
-        auto maybeShardID =
-            ShardID::shardIdFromString(_logicalCollection.name());
-        if (ADB_UNLIKELY(maybeShardID.fail())) {
-          // This will only throw if we take a real collection here and not a
-          // shard.
-          TRI_ASSERT(false) << "Tried to ensure index on Collection "
-                            << _logicalCollection.name()
-                            << " which is not considered a shard.";
-          THROW_ARANGO_EXCEPTION(maybeShardID.result());
-        }
-        auto const shardId = maybeShardID.get();
-
-        auto op = replication2::replicated_state::document::
-            ReplicatedOperation::buildCreateIndexOperation(
-                shardId, VPackBuilder{info}.sharedSlice(), std::move(progress));
-        auto replicationFuture = documentStateLeader->replicateOperation(
-            std::move(op),
-            replication2::replicated_state::document::ReplicationOptions{
-                .waitForCommit = true, .waitForSync = true});
-        auto replicationResult = co_await std::move(replicationFuture);
-        if (!replicationResult.ok()) {
-          THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
-        }
+    if (vocbase.replicationVersion() == replication::Version::TWO &&
+        replicationCb != nullptr) {
+      // replicationCb is only set for leaders.
+      // Its purpose is to replicate the CreateIndex operation to the followers.
+      auto replicationFuture = replicationCb();
+      auto replicationResult = co_await std::move(replicationFuture);
+      if (!replicationResult.ok()) {
+        THROW_ARANGO_EXCEPTION(std::move(replicationResult).result());
       }
     }
 

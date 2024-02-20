@@ -165,13 +165,6 @@ class IndexNode : public ExecutionNode,
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
   bool isLateMaterialized() const noexcept {
-    TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
-                _outNonMaterializedIndVars.second.empty()) ||
-               _outNonMaterializedDocId != nullptr)
-        << std::boolalpha << "_outNonMaterializedDocId == nullptr = "
-        << (_outNonMaterializedDocId == nullptr)
-        << " _outNonMaterializedIndVars.second.empty() = "
-        << _outNonMaterializedIndVars.second.empty();
     return _outNonMaterializedDocId != nullptr;
   }
 
@@ -216,7 +209,7 @@ class IndexNode : public ExecutionNode,
 
   bool isProduceResult() const override;
 
-  std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
+  aql::Variable const* getLateMaterializedDocIdOutVar() const;
 
   // returns the single index pointer if the IndexNode uses a single index,
   // nullptr otherwise
@@ -258,9 +251,6 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
-
-  /// @brief output variables to non-materialized document index references
-  IndexValuesVars _outNonMaterializedIndVars;
 };
 
 }  // namespace aql
