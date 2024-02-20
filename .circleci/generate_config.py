@@ -7,7 +7,9 @@ import sys
 import traceback
 import yaml
 
-BuildConfig = namedtuple("BuildConfig", ["arch", "enterprise", "sanitizer"])
+BuildConfig = namedtuple(
+    "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
+)
 
 # check python 3
 if sys.version_info[0] != 3:
@@ -93,6 +95,12 @@ def parse_arguments():
         default=False,
         action="store_true",
         help="flag if we should enable replication two tests",
+    )
+    parser.add_argument(
+        "--nightly",
+        default=False,
+        action="store_true",
+        help="flag whether this is a nightly build",
     )
     return parser.parse_args()
 
@@ -378,7 +386,9 @@ def add_build_job(workflow, build_config, overrides=None):
 def add_workflow(workflows, tests, build_config, args):
     tests = filter_tests(args, tests, build_config.enterprise)
     repl2 = args.replication_two
-    suffix = "pr" if build_config.sanitizer == "" else build_config.sanitizer
+    suffix = "nightly" if build_config.isNightly else "pr"
+    if build_config.sanitizer != "":
+        suffix += "-" + build_config.sanitizer
     if args.replication_two:
         suffix += "-repl2"
     edition = "enterprise" if build_config.enterprise else "community"
@@ -396,13 +406,13 @@ def add_x64_community_workflow(workflows, tests, args):
     add_workflow(
         workflows,
         tests,
-        BuildConfig("x64", False, args.sanitizer),
+        BuildConfig("x64", False, args.sanitizer, args.nightly),
         args,
     )
 
 
 def add_x64_enterprise_workflow(workflows, tests, args):
-    build_config = BuildConfig("x64", True, args.sanitizer)
+    build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
     workflow = add_workflow(workflows, tests, build_config, args)
     if args.sanitizer == "":
         add_build_job(
@@ -429,19 +439,21 @@ def add_x64_enterprise_workflow(workflows, tests, args):
 
 
 def add_aarch64_community_workflow(workflows, tests, args):
-    add_workflow(
-        workflows,
-        tests,
-        BuildConfig("aarch64", False, args.sanitizer),
-        args,
-    )
+    # for normal PR runs we run only aarch64 enterprise
+    if args.nightly:
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", False, args.sanitizer, args.nightly),
+            args,
+        )
 
 
 def add_aarch64_enterprise_workflow(workflows, tests, args):
     add_workflow(
         workflows,
         tests,
-        BuildConfig("aarch64", True, args.sanitizer),
+        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
         args,
     )
 
