@@ -3006,7 +3006,7 @@ AstNode* Ast::clone(AstNode const* node) {
   // copy flags, but nothing const-related
   copy->flags = node->flags;
   copy->removeFlag(AstNodeFlagType::FLAG_INTERNAL_CONST);
-  TEMPORARILY_UNLOCK_NODE(copy);  // if locked, unlock to copy properly
+  copy->removeFlag(AstNodeFlagType::FLAG_FINALIZED);
 
   // special handling for certain node types
   // copy payload...
