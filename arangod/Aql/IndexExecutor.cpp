@@ -104,12 +104,10 @@ void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
 
 template<bool checkUniqueness>
 IndexIterator::CoveringCallback getCallback(
+    DocumentProducingCallbackVariant::WithLateMaterialization,
     DocumentProducingFunctionContext& context,
-    transaction::Methods::IndexHandle const& index,
-    IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-    IndexNode::IndexValuesRegisters const& outNonMaterializedIndRegs) {
-  auto impl = [&context, &index, &outNonMaterializedIndVars,
-               &outNonMaterializedIndRegs]<typename TokenType>(
+    transaction::Methods::IndexHandle const& index) {
+  auto impl = [&context]<typename TokenType>(
                   TokenType&& token, IndexIteratorCoveringData& covering) {
     constexpr bool isLocalDocumentId =
         std::is_same_v<LocalDocumentId, std::decay_t<TokenType>>;
@@ -130,14 +128,6 @@ IndexIterator::CoveringCallback getCallback(
     }
 
     context.incrScanned();
-
-    auto indexId = index->id();
-    TRI_ASSERT(indexId == outNonMaterializedIndRegs.first &&
-               indexId == outNonMaterializedIndVars.first);
-    if (ADB_UNLIKELY(indexId != outNonMaterializedIndRegs.first ||
-                     indexId != outNonMaterializedIndVars.first)) {
-      return false;
-    }
 
     if (context.hasFilter() && !context.checkFilter(&covering)) {
       context.incrFiltered();
@@ -161,30 +151,19 @@ IndexIterator::CoveringCallback getCallback(
       output.moveValueInto(registerId, input, &guard);
     }
 
-    // hash/skiplist/persistent
-    if (!outNonMaterializedIndRegs.second.empty()) {
-      if (covering.isArray()) {
-        for (auto const& indReg : outNonMaterializedIndRegs.second) {
-          TRI_ASSERT(indReg.first < covering.length());
-          if (ADB_UNLIKELY(indReg.first >= covering.length())) {
-            return false;
-          }
-          auto s = covering.at(indReg.first);
-          AqlValue v(s);
-          AqlValueGuard guard{v, true};
-          TRI_ASSERT(!output.isFull());
-          output.moveValueInto(indReg.second, input, &guard);
-        }
-      } else {  // primary/edge
-        auto indReg = outNonMaterializedIndRegs.second.cbegin();
-        if (ADB_UNLIKELY(indReg == outNonMaterializedIndRegs.second.cend())) {
-          return false;
-        }
-        AqlValue v(covering.value());
-        AqlValueGuard guard{v, true};
-        TRI_ASSERT(!output.isFull());
-        output.moveValueInto(indReg->second, input, &guard);
-      }
+    // write projections into individual output registers
+    if (!context.getProjectionsForRegisters().empty()) {
+      TRI_ASSERT(context.getProjectionsForRegisters().usesCoveringIndex());
+      context.getProjectionsForRegisters().produceFromIndex(
+          context.getBuilder(), covering, context.getTrxPtr(),
+          [&](Variable const* variable, velocypack::Slice slice) {
+            if (slice.isNone()) {
+              slice = VPackSlice::nullSlice();
+            }
+            RegisterId registerId = context.registerForVariable(variable->id);
+            TRI_ASSERT(registerId != RegisterId::maxRegisterId);
+            output.moveValueInto(registerId, input, slice);
+          });
     }
 
     TRI_ASSERT(output.produced());
@@ -207,8 +186,6 @@ IndexExecutorInfos::IndexExecutorInfos(
     bool oneIndexCondition,
     std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
     IndexIteratorOptions options,
-    IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-    IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
     IndexNode::IndexFilterCoveringVars filterCoveringVars)
     : _strategy(strategy),
       _indexes(std::move(indexes)),
@@ -225,8 +202,6 @@ IndexExecutorInfos::IndexExecutorInfos(
       _filterCoveringVars(std::move(filterCoveringVars)),
       _nonConstExpressions(std::move(nonConstExpressions)),
       _outputRegisterId(outputRegister),
-      _outNonMaterializedIndVars(outNonMaterializedIndVars),
-      _outNonMaterializedIndRegs(std::move(outNonMaterializedIndRegs)),
       _hasMultipleExpansions(::hasMultipleExpansions(_indexes)),
       _oneIndexCondition(oneIndexCondition),
       _readOwnWrites(readOwnWrites) {
@@ -448,12 +423,12 @@ IndexExecutor::CursorReader::CursorReader(
     case IndexNode::Strategy::kLateMaterialized:
       _coveringProducer =
           checkUniqueness
-              ? ::getCallback<true>(context, _index,
-                                    _infos.getOutNonMaterializedIndVars(),
-                                    _infos.getOutNonMaterializedIndRegs())
-              : ::getCallback<false>(context, _index,
-                                     _infos.getOutNonMaterializedIndVars(),
-                                     _infos.getOutNonMaterializedIndRegs());
+              ? ::getCallback<true>(
+                    DocumentProducingCallbackVariant::WithLateMaterialization{},
+                    context, _index)
+              : ::getCallback<false>(
+                    DocumentProducingCallbackVariant::WithLateMaterialization{},
+                    context, _index);
       break;
     case IndexNode::Strategy::kCount:
       break;

@@ -969,7 +969,8 @@ arangodb::Result processInputDirectory(
               << "sent " << stats.totalBatches << " data batch(es) of "
               << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
-              << ", workers: " << std::get<1>(queueStats);
+              << ", total workers: " << std::get<1>(queueStats)
+              << ", idle workers: " << std::get<2>(queueStats);
           start = now;
         }
 
@@ -1536,6 +1537,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   }
 
   TRI_ASSERT(datafile);
+
   // check if we are dealing with compressed file(s)
   bool const isCompressed = datafile->path().ends_with(".gz");
   // check if we are dealing with multiple files (created via `--split-file

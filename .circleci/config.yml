@@ -27,6 +27,9 @@ parameters:
   cxx-compiler:
     type: string
     default: "g++"
+  sanitizer:
+    type: string
+    default: "" # should be empty, "tsan" or "alubsan"
 
 # our defined job, and its steps
 jobs:
@@ -99,7 +102,7 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               pip install pyyaml
-              python3 ".circleci/generate_config.py" <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
             fi
 
       - continuation/continue:
