@@ -205,18 +205,19 @@ def read_definitions(filename):
     return tests
 
 
-def filter_tests(args, tests, enterprise):
+def filter_tests(args, tests, enterprise, nightly):
     """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
 
+    full = args.full or nightly
     filters = []
     # if args.cluster:
     #     filters.append(lambda test: "single" not in test["flags"])
     # else:
     #     filters.append(lambda test: "cluster" not in test["flags"])
 
-    if args.full:
+    if full:
         filters.append(lambda test: "!full" not in test["flags"])
     else:
         filters.append(lambda test: "full" not in test["flags"])
@@ -384,7 +385,7 @@ def add_build_job(workflow, build_config, overrides=None):
 
 
 def add_workflow(workflows, tests, build_config, args):
-    tests = filter_tests(args, tests, build_config.enterprise)
+    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.sanitizer != "":
