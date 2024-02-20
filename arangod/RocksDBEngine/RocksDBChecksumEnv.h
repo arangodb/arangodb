@@ -60,6 +60,7 @@ class ChecksumHelper {
 
   [[nodiscard]] static bool isSstFile(std::string_view fileName) noexcept;
   [[nodiscard]] static bool isBlobFile(std::string_view fileName) noexcept;
+  [[nodiscard]] static bool isHashFile(std::string_view fileName) noexcept;
 
   void checkMissingShaFiles();
 
