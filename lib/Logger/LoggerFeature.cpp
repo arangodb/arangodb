@@ -220,8 +220,7 @@ applied as well.
 
 If you specify `--log.file-group <name>`, then any newly created log file tries
 to use `<name>` as the group name. Note that you have to be a member of that
-group. Otherwise, the group ownership is not changed. This option is only
-available under Linux and macOS. It is not available under Windows.
+group. Otherwise, the group ownership is not changed.
 
 The old `--log.file` option is still available for convenience. It is a
 shortcut for the more general option `--log.output file://filename`.
