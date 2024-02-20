@@ -159,10 +159,9 @@ DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
     "loading a memory page from disk");
-DECLARE_COUNTER(
-    arangodb_process_statistics_major_page_faults_total,
-    "This figure contains the number of major faults the process "
-    "has made which have required loading a memory page from disk");
+DECLARE_COUNTER(arangodb_process_statistics_major_page_faults_total,
+                "This figure contains the number of major faults the process "
+                "has made which have required loading a memory page from disk");
 DECLARE_GAUGE(arangodb_process_statistics_user_time, double,
               "Amount of time that this process has been scheduled in user "
               "mode, measured in seconds");
