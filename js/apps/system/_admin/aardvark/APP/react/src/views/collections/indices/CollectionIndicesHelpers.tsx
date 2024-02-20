@@ -5,8 +5,9 @@ export const TYPE_TO_LABEL_MAP = {
   ttl: "TTL",
   zkd: "MDI",
   mdi: "MDI",
+  "mdi-prefixed": "MDI (Prefixed)",
   inverted: "Inverted",
   tier: "Tier",
   primary: "Primary",
-  edge: "Edge",
-}
+  edge: "Edge"
+};

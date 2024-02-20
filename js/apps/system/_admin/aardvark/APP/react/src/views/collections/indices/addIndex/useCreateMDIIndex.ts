@@ -11,24 +11,28 @@ export const INITIAL_VALUES = {
   fieldValueTypes: "double"
 };
 
-export const FIELDS = [
-  commonFieldsMap.fields,
-  commonFieldsMap.name,
-  {
+export const mdiFieldsMap = {
+  storedValues: {
     label: "Extra stored values",
     name: "storedValues",
     type: "string",
     tooltip:
       "A comma-separated list of extra attribute paths. The values of these attributes will be stored in the index as well. They can be used for projections, but cannot be used for filtering or sorting."
   },
-  {
+  fieldValueTypes: {
     label: "Field Value Types",
     name: "fieldValueTypes",
     type: "text",
     isDisabled: true,
     tooltip:
       "The value type of the fields being indexed (only double supported for now)."
-  },
+  }
+};
+export const FIELDS = [
+  commonFieldsMap.fields,
+  commonFieldsMap.name,
+  mdiFieldsMap.storedValues,
+  mdiFieldsMap.fieldValueTypes,
   commonFieldsMap.inBackground
 ];
 
@@ -46,7 +50,9 @@ export const useCreateMDIIndex = () => {
   const onCreate = async ({ values }: { values: typeof INITIAL_VALUES }) => {
     return onCreateIndex({
       ...values,
-      storedValues: values.storedValues ? values.storedValues.split(",").map(field => field.trim()) : undefined,
+      storedValues: values.storedValues
+        ? values.storedValues.split(",").map(field => field.trim())
+        : undefined,
       fields: values.fields.split(",").map(field => field.trim())
     });
   };

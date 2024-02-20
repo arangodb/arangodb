@@ -10,6 +10,7 @@ import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
 import { MDIIndexForm } from "./MDIIndexForm";
+import { MDIPrefixedIndexForm } from "./MDIPrefixedIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
@@ -75,6 +76,8 @@ const IndexTypeForm = ({
   if (type === "mdi") {
     return <MDIIndexForm onClose={onClose} />;
   }
+  if (type === "mdi-prefixed") {
+    return <MDIPrefixedIndexForm onClose={onClose} />;
   }
   return <></>;
 };

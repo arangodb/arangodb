@@ -57,6 +57,10 @@ const indexTypeOptions: {
     value: "mdi"
   },
   {
+    label: "MDI Index (Prefixed)",
+    value: "mdi-prefixed"
+  },
+  {
     label: "Inverted Index",
     value: "inverted"
   }
