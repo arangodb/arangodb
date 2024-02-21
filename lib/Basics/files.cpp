@@ -1103,7 +1103,7 @@ bool TRI_ProcessFile(
 
   auto guard = scopeGuard([&fd]() noexcept { TRI_CLOSE(fd); });
 
-  char buffer[4096];
+  char buffer[16384];
 
   while (true) {
     TRI_read_return_t n = TRI_READ(fd, &buffer[0], sizeof(buffer));
