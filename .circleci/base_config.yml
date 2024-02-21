@@ -264,6 +264,7 @@ jobs:
                   - build/compile_commands.json
                   - CMakePresets.json
                   - build/bin
+                  - build/etc
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
                   - build/build_version.cc
                   - scripts/
