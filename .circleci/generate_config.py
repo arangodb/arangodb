@@ -297,8 +297,8 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         "requires": [build_job],
     }
     if suite_name == "chaos" and build_config.isNightly:
-        # nightly chaos tests cover more combinations and therefore take longer
-        job["timeLimit"] = 3600
+        # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+        job["timeLimit"] = 32 * 5 * 60
 
     extra_args = test["args"].copy()
     if cluster:
