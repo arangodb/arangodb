@@ -23,6 +23,9 @@ export const FIELDS = [
   commonFieldsMap.name,
   mdiFieldsMap.storedValues,
   mdiFieldsMap.fieldValueTypes,
+  mdiFieldsMap.estimates,
+  mdiFieldsMap.unique,
+  mdiFieldsMap.sparse,
   commonFieldsMap.inBackground
 ];
 

@@ -8,7 +8,10 @@ export const INITIAL_VALUES = {
   storedValues: "",
   inBackground: commonFieldsMap.inBackground.initialValue,
   name: commonFieldsMap.name.initialValue,
-  fieldValueTypes: "double"
+  fieldValueTypes: "double",
+  estimates: true,
+  unique: false,
+  sparse: false
 };
 
 export const mdiFieldsMap = {
@@ -26,6 +29,26 @@ export const mdiFieldsMap = {
     isDisabled: true,
     tooltip:
       "The value type of the fields being indexed (only double supported for now)."
+  },
+  estimates: {
+    label: "Maintain index selectivity estimates",
+    name: "estimates",
+    type: "boolean",
+    tooltip:
+      "Maintain index selectivity estimates for this index. This option can be turned off for non-unique-indexes to improve efficiency of write operations, but will lead to the optimizer being unaware of the data distribution inside this index."
+  },
+  unique: {
+    label: "Unique",
+    name: "unique",
+    type: "boolean",
+    tooltip: "If true, then create a unique index."
+  },
+  sparse: {
+    label: "Sparse",
+    name: "sparse",
+    type: "boolean",
+    tooltip:
+      "If true, then create a sparse index. Sparse indexes do not include documents for which the index attributes do not exist or have a value of null. Sparse indexes will exclude any such documents, so they can save space, but are less versatile than non-sparse indexes. For example, sparse indexes may not be usable for sort operations, range or point lookup queries if the query optimizer cannot prove that the index query range excludes null values."
   }
 };
 export const FIELDS = [
@@ -33,6 +56,9 @@ export const FIELDS = [
   commonFieldsMap.name,
   mdiFieldsMap.storedValues,
   mdiFieldsMap.fieldValueTypes,
+  mdiFieldsMap.estimates,
+  mdiFieldsMap.unique,
+  mdiFieldsMap.sparse,
   commonFieldsMap.inBackground
 ];
 
