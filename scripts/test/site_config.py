@@ -109,6 +109,11 @@ class SiteConfig:
             self.portbase = int(os.environ["PORTBASE"])
         self.port_offset = 100
         self.timeout = 1800
+        san_mode = os.environ.get("SAN_MODE") or "<na>"
+        if san_mode == "alubsan":
+            self.timeout *= 3
+        elif san_mode == "tsan":
+            self.timeout *= 6
         if "timeLimit".upper() in os.environ:
             self.timeout = int(os.environ["timeLimit".upper()])
         elif "timeLimit" in os.environ:
@@ -149,6 +154,7 @@ class SiteConfig:
         self.is_asan = "SAN" in os.environ and os.environ["SAN"] == "On"
         self.is_aulsan = self.is_asan and os.environ["SAN_MODE"] == "AULSan"
         self.is_gcov = "COVERAGE" in os.environ and os.environ["COVERAGE"] == "On"
+        logging.info("Timeout is set to %d - san_mode is %s", self.timeout, san_mode)
         san_gcov_msg = ""
         if self.is_asan or self.is_gcov:
             san_gcov_msg = " - SAN "
@@ -208,7 +214,7 @@ class SiteConfig:
         self.run_root = base_source_dir / "testrun"
         if self.run_root.exists():
             shutil.rmtree(self.run_root)
-        self.xml_report_dir = base_source_dir / 'testrunXml'
+        self.xml_report_dir = base_source_dir / "testrunXml"
         if self.xml_report_dir.exists():
             shutil.rmtree(self.xml_report_dir)
         self.xml_report_dir.mkdir(parents=True)
