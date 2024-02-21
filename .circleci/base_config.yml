@@ -396,6 +396,14 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo ===================
+            du -sh /root/workspace/build/*
+            echo ===================
+            du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"
