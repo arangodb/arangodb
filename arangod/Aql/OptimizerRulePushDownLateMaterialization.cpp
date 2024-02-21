@@ -206,7 +206,10 @@ void arangodb::aql::pushDownLateMaterializationRule(
 
   for (auto node : indexes) {
     TRI_ASSERT(node->getType() == EN::MATERIALIZE);
-    auto matNode = ExecutionNode::castTo<materialize::MaterializeNode*>(node);
+    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+    if (matNode == nullptr) {
+      continue;  // search materialize requires more work
+    }
 
     // create a new output variable for the materialized document.
     // this happens after the join rule. Otherwise, joins are not detected.

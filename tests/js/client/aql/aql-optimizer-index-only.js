@@ -142,15 +142,27 @@ function optimizerIndexOnlyEdgeTestSuite () {
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc RETURN doc._to`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc RETURN doc._a`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc`,
+      ];
+     
+      queries.forEach(function(query) {
+        let plan = db._createStatement(query).explain().plan;
+        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query);
+        assertFalse(nodes[0].producesResult);
+        assertFalse(nodes[0].indexCoversProjections);
+      });
+
+      queries = [
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._from RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._to`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._from`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._a`,
-        `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`
+        `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`,
       ];
-     
+
       queries.forEach(function(query) {
         let plan = db._createStatement(query).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
@@ -320,7 +332,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
         assertEqual([], nodes[0].projections);
-        assertTrue(nodes[0].producesResult);
+        assertFalse(nodes[0].producesResult);
         assertFalse(nodes[0].indexCoversProjections);
       });
     },
