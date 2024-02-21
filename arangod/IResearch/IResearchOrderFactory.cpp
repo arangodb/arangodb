@@ -24,12 +24,6 @@
 
 #include "IResearchOrderFactory.h"
 
-// otherwise define conflict between 3rdParty\date\include\date\date.h and
-// 3rdParty\iresearch\core\shared.hpp
-#if defined(_MSC_VER)
-#include "date/date.h"
-#endif
-
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionNode.h"

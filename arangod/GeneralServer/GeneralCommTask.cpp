@@ -197,6 +197,4 @@ void GeneralCommTask<T>::logResponseHeaders(
 
 template class arangodb::rest::GeneralCommTask<SocketType::Tcp>;
 template class arangodb::rest::GeneralCommTask<SocketType::Ssl>;
-#ifndef _WIN32
 template class arangodb::rest::GeneralCommTask<SocketType::Unix>;
-#endif

@@ -33,11 +33,7 @@
 
 #pragma once
 
-#ifndef _WIN32
-
 #include <sys/resource.h>
-
-// Enabled on Linux and Mac
 
 inline void disableCoredump() {
   auto core_limit = rlimit{};
@@ -60,14 +56,3 @@ inline void disableCoredump() {
         func;                                   \
       }(),                                      \
       assertion)
-
-#else
-
-// Disabled on windows
-// If anyone knows how to disable core creation of a forked process
-// please feel free to fix it here.
-
-#define EXPECT_DEATH_CORE_FREE(func, assertion) EXPECT_TRUE(true)
-#define ASSERT_DEATH_CORE_FREE(func, assertion) ASSERT_TRUE(true)
-
-#endif

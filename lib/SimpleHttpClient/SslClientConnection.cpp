@@ -63,15 +63,7 @@
 
 #undef TRACE_SSL_CONNECTIONS
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -490,9 +482,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
                                                 size_t* bytesWritten) {
   TRI_ASSERT(bytesWritten != nullptr);
 
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
   *bytesWritten = 0;
 
   if (_ssl == nullptr) {
@@ -551,10 +540,6 @@ bool SslClientConnection::writeClientConnection(void const* buffer,
 
 bool SslClientConnection::readClientConnection(StringBuffer& stringBuffer,
                                                bool& connectionClosed) {
-#ifdef _WIN32
-  char windowsErrorBuf[256];
-#endif
-
   connectionClosed = true;
   if (_ssl == nullptr) {
     return false;
