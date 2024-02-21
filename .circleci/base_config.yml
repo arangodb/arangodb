@@ -265,7 +265,7 @@ jobs:
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
                   - build/build_version.cc
                   - scripts/
-                  - js
+                  - js/
                   - enterprise/js
                   - etc/
                   - tests/js
