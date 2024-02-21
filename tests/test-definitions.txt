@@ -141,7 +141,7 @@ replication_random priority=1000 single full
 
 # Full Cluster Tests
 authentication full cluster priority=500 buckets=3 -- --dumpAgencyOnError true
-chaos !windows !mac !coverage full cluster priority=9600 -- --dumpAgencyOnError true --skipNightly false
+chaos !windows !mac !coverage full cluster priority=9600 size=large -- --dumpAgencyOnError true --skipNightly false
 resilience_failover_failure !mac full cluster priority=500 -- --dumpAgencyOnError true
 resilience_failover_view !mac full cluster priority=500 -- --dumpAgencyOnError true
 resilience_transactions !mac full cluster priority=500 -- --dumpAgencyOnError true
