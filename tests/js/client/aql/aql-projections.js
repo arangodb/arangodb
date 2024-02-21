@@ -29,6 +29,7 @@ const db = require("@arangodb").db;
 const normalize = require("@arangodb/aql-helper").normalizeProjections;
 const ruleName = "reduce-extraction-to-projection";
 const cn = "UnitTestsOptimizer";
+const internal = require('internal');
 
 function projectionsPlansTestSuite () {
   let c = null;
@@ -485,6 +486,7 @@ function projectionsPlansTestSuite () {
     },
     
     testMaterialize : function () {
+      internal.debugSetFailAt('batch-materialize-no-estimation');
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3"] });
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
@@ -496,6 +498,7 @@ function projectionsPlansTestSuite () {
 
       queries.forEach(function(query) {
         let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
+        db._explain(query[0]);
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -511,6 +514,7 @@ function projectionsPlansTestSuite () {
         });
         assertEqual(query[4], results);
       });
+      internal.debugClearFailAt();
     },
     
     testMaterializeSubAttributes : function () {

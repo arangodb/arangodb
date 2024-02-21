@@ -73,6 +73,7 @@ function ahuacatlProfilerTestSuite() {
     },
 
     testMaterializeBlock: function () {
+      internal.debugSetFailAt('batch-materialize-no-estimation');
       const col = db._create(colName);
       col.insert({ name_1: "foo", "value_nested": [{ "nested_1": [{ "nested_2": "foo123"}]}]});
       let indexMeta = {};
@@ -118,7 +119,8 @@ function ahuacatlProfilerTestSuite() {
       const iiQuery = `FOR d IN ${colName} OPTIONS {indexHint: 'inverted', forceIndexHint: true, waitForSync: true} 
          FILTER d.value <= 10 SORT d.more LIMIT 3 RETURN d`;
       let iiQueryRes = db._query(iiQuery).toArray();
-      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function 
+      assertTrue(iiQueryRes.length >= 2); // 2 docs with nested + more from 'prepare' function
+      internal.debugClearFailAt();
     },
 
     testMaterializeBlockThatFilters: function () {
@@ -127,6 +129,7 @@ function ahuacatlProfilerTestSuite() {
       }
 
       try {
+        internal.debugSetFailAt('batch-materialize-no-estimation');
         const col = db._create(colName);
         col.insert({name_1: "foo", "value_nested": [{"nested_1": [{"nested_2": "foo123"}]}]});
         let indexMeta = {};

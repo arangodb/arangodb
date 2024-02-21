@@ -1403,7 +1403,7 @@ function optimizerIndexesTestSuite () {
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.producesResult);
+          assertFalse(node.producesResult);
           assertEqual("skiplist", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
@@ -1411,6 +1411,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("MaterializeNode"), query);
 
       var results = db._query(query, {}, opt);
       assertEqual([ 2, 3, 4, 5, 6, 7, 8 ], results.toArray().sort(), query);
