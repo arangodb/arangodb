@@ -234,14 +234,17 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     _replicationFactor = vocopts.replicationFactor;
     _writeConcern = vocopts.writeConcern;
     _sharding = vocopts.sharding;
-    // We put this in MAINTAINER_MODE so that we cannot create Replication2
-    // in production yet.
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     if (!ServerState::instance()->isSingleServer()) {
+      if (!arangodb::replication2::EnableReplication2) {
+        if (vocopts.replicationVersion == replication::Version::TWO) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "Replication version 2 is disabled in this binary, "
+                        "cannot create replication version 2 databases.");
+        }
+      }
       // Just ignore Replication2 for SingleServers
       _replicationVersion = vocopts.replicationVersion;
     }
-#endif
 
     if (extractName) {
       auto nameSlice = options.get(StaticStrings::DatabaseName);
