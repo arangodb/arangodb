@@ -808,6 +808,12 @@ involved attributes are covered by regular indexes.)");
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Push down late materialization.)");
 
+  registerRule("materialize-into-separate-variable",
+               materializeIntoSeparateVariable,
+               OptimizerRule::materializeIntoSeparateVariable,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Introduce a separate variable for late materialization.)");
+
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos
   registerRule("late-materialization-offset-info",

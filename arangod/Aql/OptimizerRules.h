@@ -402,6 +402,8 @@ void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
 
 void pushDownLateMaterializationRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                      OptimizerRule const&);
+void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const&);
 
 }  // namespace aql
 }  // namespace arangodb

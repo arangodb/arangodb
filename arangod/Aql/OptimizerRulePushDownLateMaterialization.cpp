@@ -86,9 +86,13 @@ bool checkCalculation(ExecutionPlan* plan,
   }
 
   containers::FlatHashSet<aql::AttributeNamePath> attributes;
-  Ast::getReferencedAttributesRecursive(
+  bool notUsingFullDocument = Ast::getReferencedAttributesRecursive(
       calc->expression()->node(), &matNode->outVariable(), "", attributes,
       matNode->plan()->getAst()->query().resourceMonitor());
+  if (!notUsingFullDocument) {
+    LOG_RULE << "CALCULATION USES FULL DOCUMENT";
+    return false;
+  }
   LOG_RULE << "CALC ATTRIBUTES: ";
   for (auto const& attr : attributes) {
     LOG_RULE << attr;
@@ -101,9 +105,10 @@ bool checkCalculation(ExecutionPlan* plan,
 
   if (index->covers(proj)) {
     LOG_RULE << "INDEX COVERS ATTRIBTUES";
-    calc->replaceVariables(
-        {{matNode->outVariable().id, indexNode->outVariable()}});
-    indexNode->recalculateProjections(plan);
+    indexNode->projections() = std::move(proj);
+    indexNode->projections().setCoveringContext(indexNode->collection()->id(),
+                                                index);
+    TRI_ASSERT(indexNode->projections().usesCoveringIndex());
     return true;
   } else {
     LOG_RULE << "INDEX DOES NOT COVER " << proj;
@@ -159,10 +164,9 @@ bool checkSubquery(ExecutionPlan* plan,
 
   if (index->covers(proj)) {
     LOG_RULE << "INDEX COVERS ATTRIBTUES";
-    replaceVariableDownwards(
-        sub->getSubquery()->getSingleton(),
-        {{matNode->outVariable().id, indexNode->outVariable()}});
-    indexNode->recalculateProjections(plan);
+    indexNode->projections() = std::move(proj);
+    indexNode->projections().setCoveringContext(indexNode->collection()->id(),
+                                                index);
     return true;
   } else {
     LOG_RULE << "INDEX DOES NOT COVER " << proj;
@@ -211,18 +215,6 @@ void arangodb::aql::pushDownLateMaterializationRule(
       continue;  // search materialize requires more work
     }
 
-    // create a new output variable for the materialized document.
-    // this happens after the join rule. Otherwise, joins are not detected.
-    // A separate variable comes in handy when optimizing projections, because
-    // it allows to distinguish where the projections belongs to (Index or Mat).
-    auto newOutVariable =
-        plan->getAst()->variables()->createTemporaryVariable();
-    matNode->setDocOutVariable(*newOutVariable);
-
-    // replace every occurrence with this new variable
-    replaceVariableDownwards(matNode->getFirstParent(),
-                             {{matNode->oldDocVariable().id, newOutVariable}});
-
     ExecutionNode* insertBefore = matNode->getFirstParent();
 
     while (insertBefore != nullptr) {
@@ -241,6 +233,38 @@ void arangodb::aql::pushDownLateMaterializationRule(
       plan->insertBefore(insertBefore, matNode);
     }
 
+    modified = true;
+  }
+
+  opt->addPlan(std::move(plan), rule, modified);
+}
+
+void arangodb::aql::materializeIntoSeparateVariable(
+    Optimizer* opt, std::unique_ptr<ExecutionPlan> plan,
+    OptimizerRule const& rule) {
+  bool modified = false;
+
+  containers::SmallVector<ExecutionNode*, 8> indexes;
+  plan->findNodesOfType(indexes, EN::MATERIALIZE, /* enterSubqueries */ true);
+
+  for (auto node : indexes) {
+    TRI_ASSERT(node->getType() == EN::MATERIALIZE);
+    auto matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(node);
+    if (matNode == nullptr) {
+      continue;  // search materialize requires more work
+    }
+
+    // create a new output variable for the materialized document.
+    // this happens after the join rule. Otherwise, joins are not detected.
+    // A separate variable comes in handy when optimizing projections, because
+    // it allows to distinguish where the projections belongs to (Index or Mat).
+    auto newOutVariable =
+        plan->getAst()->variables()->createTemporaryVariable();
+    matNode->setDocOutVariable(*newOutVariable);
+
+    // replace every occurrence with this new variable
+    replaceVariableDownwards(matNode->getFirstParent(),
+                             {{matNode->oldDocVariable().id, newOutVariable}});
     modified = true;
   }
 
