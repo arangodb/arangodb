@@ -300,6 +300,10 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
         # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
         job["timeLimit"] = 32 * 5 * 60
 
+    if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
+        # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
+        job["size"] = get_test_size("medium+", build_config, cluster)
+
     extra_args = test["args"].copy()
     if cluster:
         extra_args.append(f"--replicationVersion {replication_version}")
