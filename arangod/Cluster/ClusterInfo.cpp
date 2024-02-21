@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
@@ -1072,6 +1073,21 @@ void ClusterInfo::loadPlan() {
       // an extended name, we should not declare it invalid and abort
       // the startup once the extended names option is turned off.
       info.validateNames(false);
+
+      if (!arangodb::replication2::EnableReplication2) {
+        // We right now cannot run a replication2 database on a coordinator
+        // that has replication2 disabled
+        if (info.replicationVersion() == arangodb::replication::Version::TWO) {
+          LOG_TOPIC("8fdd8", FATAL, Logger::REPLICATION2)
+              << "Replication version 2 is disabled in this binary, but loading a "
+                 "version 2 database "
+              << "(named '" << info.getName() << "'). "
+              << "Creating such databases is disabled. Please dump the data, and "
+                 "recreate the database with replication version 1 (the default), "
+                 "and then restore the data.";
+          FATAL_ERROR_EXIT();
+        }
+      }
 
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
