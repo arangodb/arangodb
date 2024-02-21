@@ -303,6 +303,8 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     extra_args = test["args"].copy()
     if cluster:
         extra_args.append(f"--replicationVersion {replication_version}")
+    if build_config.isNightly:
+        extra_args.append(f"--skipNightly false")
     if extra_args != []:
         job["extraArgs"] = " ".join(extra_args)
 
