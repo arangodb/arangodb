@@ -61,8 +61,12 @@ export const useCreatePrefixedMDIIndex = () => {
       storedValues: values.storedValues
         ? values.storedValues.split(",").map(field => field.trim())
         : undefined,
-      fields: values.fields ? values.fields.split(",").map(field => field.trim()) : [],
-      prefixFields: values.prefixFields.split(",").map(field => field.trim())
+      fields: values.fields
+        ? values.fields.split(",").map(field => field.trim())
+        : [],
+      prefixFields: values.prefixFields
+        ? values.prefixFields.split(",").map(field => field.trim())
+        : []
     });
   };
   return { onCreate };
