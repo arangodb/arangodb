@@ -1079,11 +1079,14 @@ void ClusterInfo::loadPlan() {
         // that has replication2 disabled
         if (info.replicationVersion() == arangodb::replication::Version::TWO) {
           LOG_TOPIC("8fdd8", FATAL, Logger::REPLICATION2)
-              << "Replication version 2 is disabled in this binary, but loading a "
+              << "Replication version 2 is disabled in this binary, but "
+                 "loading a "
                  "version 2 database "
               << "(named '" << info.getName() << "'). "
-              << "Creating such databases is disabled. Please dump the data, and "
-                 "recreate the database with replication version 1 (the default), "
+              << "Creating such databases is disabled. Please dump the data, "
+                 "and "
+                 "recreate the database with replication version 1 (the "
+                 "default), "
                  "and then restore the data.";
           FATAL_ERROR_EXIT();
         }
@@ -1782,12 +1785,13 @@ void ClusterInfo::loadPlan() {
                   auto res = replication::parseVersion(value.stringView());
                   // Just care for valid Replication versions now
                   if (res.ok() && res.get() != systemDB->replicationVersion()) {
-                    // We cannot change the replication version of the system database
-                    // The system database is created during startup, using the default option
-                    // There is a timeframe where new collections are already created
-                    // for this database, and use the "wrong" replicationVersion.
-                    // This crashes on the way before this codepoint is reached and could
-                    // repair the system Database.
+                    // We cannot change the replication version of the system
+                    // database The system database is created during startup,
+                    // using the default option There is a timeframe where new
+                    // collections are already created for this database, and
+                    // use the "wrong" replicationVersion. This crashes on the
+                    // way before this codepoint is reached and could repair the
+                    // system Database.
                     LOG_TOPIC("50b83", FATAL, arangodb::Logger::STARTUP)
                         << "Changed option "
                            "'--database.default-replication-version' between "
