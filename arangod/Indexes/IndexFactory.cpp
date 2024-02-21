@@ -129,7 +129,8 @@ bool IndexTypeFactory::equal(Index::IndexType type, velocypack::Slice lhs,
   // sparse must be identical if present
   if (Index::IndexType::TRI_IDX_TYPE_GEO2_INDEX != type &&
       Index::IndexType::TRI_IDX_TYPE_GEO1_INDEX != type &&
-      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type) {
+      Index::IndexType::TRI_IDX_TYPE_GEO_INDEX != type &&
+      Index::IndexType::TRI_IDX_TYPE_FULLTEXT_INDEX != type) {
     bool lhsSparse = basics::VelocyPackHelper::getBooleanValue(
         lhs, StaticStrings::IndexSparse, false);
     bool rhsSparse = basics::VelocyPackHelper::getBooleanValue(
