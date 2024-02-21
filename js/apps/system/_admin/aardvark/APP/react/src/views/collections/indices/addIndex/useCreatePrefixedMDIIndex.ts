@@ -12,11 +12,12 @@ export const INITIAL_VALUES = {
 };
 
 export const FIELDS = [
-  { ...commonFieldsMap.fields, isRequired: false },
+  commonFieldsMap.fields,
   {
     label: "Prefix Fields",
     name: "prefixFields",
     type: "string",
+    isRequired: true,
     tooltip: "A comma-separated list of attribute names used as search prefix."
   },
   commonFieldsMap.name,
@@ -25,24 +26,10 @@ export const FIELDS = [
   commonFieldsMap.inBackground
 ];
 
-export const SCHEMA = Yup.object().shape(
-  {
-    ...commonSchema,
-    prefixFields: Yup.string().when("fields", {
-      is: (fields: string) => !fields || fields.length === 0,
-      then: schema =>
-        schema.required("Either fields or prefix fields are required"),
-      otherwise: schema => schema
-    }),
-    fields: Yup.string().when("prefixFields", {
-      is: (prefixFields: string) => !prefixFields || prefixFields.length === 0,
-      then: schema =>
-        schema.required("Either fields or prefix fields are required"),
-      otherwise: schema => schema
-    })
-  },
-  [["fields", "prefixFields"]]
-);
+export const SCHEMA = Yup.object({
+  ...commonSchema,
+  prefixFields: Yup.string().required("Prefix fields are required")
+});
 
 type ValuesType = Omit<
   typeof INITIAL_VALUES,
