@@ -27,18 +27,6 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-if (APPLE)
-  if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
-    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
-      message(FATAL_ERROR "environment variable MACOSX_DEPLOYMENT_TARGET is missing")
-    else ()
-      set(CMAKE_OSX_DEPLOYMENT_TARGET "$ENV{MACOSX_DEPLOYMENT_TARGET}" CACHE STRING "deployment target for MacOSX; adjust to your system")
-    endif ()
-  else ()
-    set($ENV{MACOSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_DEPLOYMENT_TARGET})
-  endif ()
-endif ()
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -368,7 +356,7 @@ option(HOMEBREW
   Off
 )
 
-if (UNIX AND NOT APPLE)
+if (UNIX)
   if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
     set(LINUX TRUE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
@@ -386,28 +374,17 @@ if (UNIX AND NOT APPLE)
   elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
     set(SYSV5 TRUE)
   endif ()
-elseif (APPLE)
-  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
-    set(DARWIN TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
-    set(DARWIN TRUE)
-  endif ()
-  find_program(BREW brew)
 endif ()
 
 # ------------------------------------------------------------------------------
 # user options
 # ------------------------------------------------------------------------------
 
-if (APPLE)
-  SET(USE_JEMALLOC OFF)
-else ()
-  option(
-    USE_JEMALLOC
-    "use jemalloc memory allocator"
-    ON
-  )
-endif ()
+option(
+  USE_JEMALLOC
+  "use jemalloc memory allocator"
+  ON
+)
 
 if (LINUX)
   option(
@@ -517,21 +494,10 @@ CheckCompilerVersion(
 )
 
 if (CMAKE_COMPILER_IS_CLANG) 
-  if (APPLE)
-    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
-    else ()
-      set(BASE_C_FLAGS "${BASE_C_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_LD_FLAGS "${BASE_LD_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-    endif ()
-    add_definitions("-Wno-deprecated-declarations")
-  else ()
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
-      message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
-    endif()
-    list(APPEND BASE_LIBS atomic)
-  endif ()
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
+    message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
+  endif()
+  list(APPEND BASE_LIBS atomic)
 endif ()
 
 # need c++20
@@ -680,11 +646,7 @@ endif()
 ## LIBRARY RESOLV
 ################################################################################
 
-set(SYS_LIBS ${SYS_LIBS} resolv)
-
-if (NOT DARWIN)
-  set(SYS_LIBS ${SYS_LIBS} rt)
-endif ()
+set(SYS_LIBS ${SYS_LIBS} resolv rt)
 
 # ------------------------------------------------------------------------------
 # IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
@@ -828,22 +790,9 @@ elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
   set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
   set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
   
-  if (NOT DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
     # clang 11 and higher supports -Wsuggest-override. older versions don't
     set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
-  endif ()
-
-  if (DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
-    # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
-    # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
-    # VPackObjectIterator and VPackArrayIterator - which is not the case.
-    #
-    # See example here: https://github.com/arangodb/arangodb/pull/12730
-    #
-    # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
-    # check upcoming versions if the compiler behaviour will be fixed.
-    set(EXTRA_C_FLAGS "-Wno-range-loop-analysis")
-    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-range-loop-analysis")
   endif ()
 else ()
   # unknown compiler
@@ -937,8 +886,6 @@ else ()
   file(READ "${CMAKE_CURRENT_LIST_DIR}/VERSIONS" ARANGODB_VERSIONS_CONTENT)
   if (LINUX)
     set (TARGET_OS "LINUX")
-  elseif (DARWIN)
-    set (TARGET_OS "MACOS")
   endif ()
 
   if (USE_STRICT_OPENSSL_VERSION)

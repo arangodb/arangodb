@@ -140,20 +140,6 @@ void ServerState::findHost(std::string const& fallback) {
     }
   }
 
-#ifdef __APPLE__
-  static_assert(sizeof(uuid_t) == 16, "");
-  uuid_t localUuid;
-  struct timespec timeout;
-  timeout.tv_sec = 5;
-  timeout.tv_nsec = 0;
-  int res = gethostuuid(localUuid, &timeout);
-  if (res == 0) {
-    _host = StringUtils::encodeHex(reinterpret_cast<char*>(localUuid),
-                                   sizeof(uuid_t));
-    return;
-  }
-#endif
-
   // Finally, as a last resort, take the fallback, coming from
   // the ClusterFeature with the value of --cluster.my-address
   // or by the AgencyFeature with the value of --agency.my-address:

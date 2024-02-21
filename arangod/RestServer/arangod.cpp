@@ -275,7 +275,7 @@ int main(int argc, char* argv[]) {
   // so the process does not have to be terminated. On Windows, we have
   // to do this because the solution below is not possible. In these
   // cases, we need outside help to get the process restarted.
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__)
   res = chdir(workdir.c_str());
   if (res != 0) {
     std::cerr << "WARNING: could not change into directory '" << workdir << "'"
