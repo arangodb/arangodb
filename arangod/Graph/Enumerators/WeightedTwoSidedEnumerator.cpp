@@ -33,6 +33,7 @@
 #include "Graph/PathManagement/PathStore.h"
 #include "Graph/PathManagement/PathStoreTracer.h"
 #include "Graph/PathManagement/PathValidator.h"
+#include "Graph/PathType.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/ProviderTracer.h"
 #include "Graph/Providers/SingleServerProvider.h"
@@ -40,6 +41,7 @@
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/Types/ValidationResult.h"
 #include "Graph/algorithm-aliases.h"
+#include "Logger/LogMacros.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/HashedStringRef.h>
@@ -347,54 +349,6 @@ auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 }
 
 /*
- * Class: ResultCache (internally used in WeightedTwoSidedEnumerator)
- */
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::ResultCache::ResultCache(Ball& left,
-                                                                    Ball& right)
-    : _internalLeft(left), _internalRight(right), _internalResultsCache{} {}
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                           PathValidator>::ResultCache::~ResultCache() =
-    default;
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::ResultCache::clear() -> void {
-  _internalResultsCache.clear();
-};
-
-template<class QueueType, class PathStoreType, class ProviderType,
-         class PathValidator>
-auto WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
-                                PathValidator>::ResultCache::
-    tryAddResult(CalculatedCandidate const& candidate) -> bool {
-  auto const& [weight, first, second] = candidate;
-  PathResult<ProviderType, typename ProviderType::Step> resultPathCandidate{
-      _internalLeft.provider(), _internalRight.provider()};
-
-  // generates left and right parts of the path and combines them
-  // then checks whether we do have a path duplicate or not.
-  _internalLeft.buildPath(first, resultPathCandidate);
-  _internalRight.buildPath(second, resultPathCandidate);
-  for (auto const& pathToCheck : _internalResultsCache) {
-    bool foundDuplicate =
-        resultPathCandidate.isEqualEdgeRepresentation(pathToCheck);
-    if (foundDuplicate) {
-      return false;
-    }
-  }
-  _internalResultsCache.push_back(std::move(resultPathCandidate));
-  return true;
-};
-
-/*
  * Class: WeightedTwoSidedEnumerator
  */
 
@@ -412,7 +366,6 @@ WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             validatorOptions, resourceMonitor},
       _right{Direction::BACKWARD, std::move(backwardProvider), _options,
              std::move(validatorOptions), resourceMonitor},
-      _resultsCache(_left, _right),
       _resultPath{_left.provider(), _right.provider()} {}
 
 template<class QueueType, class PathStoreType, class ProviderType,
@@ -436,8 +389,6 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
   // Order is important here, please do not change.
   // 1.) Remove current results & state
   _candidatesStore.clear();
-  _resultsCache.clear();
-  _results.clear();
 
   // 2.) Remove both Balls (order here is not important)
   _left.clear();
@@ -457,13 +408,22 @@ template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::isDone() const {
-  if (_options.getPathType() == PathType::Type::KShortestPaths) {
-    if (!_candidatesStore.isEmpty()) {
-      return false;
-    }
+  // #if 0
+  switch (_options.getPathType()) {
+    case PathType::Type::ShortestPath: {
+      return (_candidatesStore.isEmpty() && searchDone()) ||
+             isAlgorithmFinished();
+    } break;
+    default: {
+      if (!_candidatesStore.isEmpty()) {
+        return false;
+      }
+    } break;
   }
+  // #endif
 
-  return _results.empty() && searchDone();
+  return (_candidatesStore.isEmpty() &&
+          searchDone());  // || isAlgorithmFinished();
 }
 
 /**
@@ -486,16 +446,17 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
 
   _left.reset(source, 0);
 
-  // TODO: this is not ideal; here's the issue: If source == target there is no
-  // search to be done as there is only *at most* one shortest path between a
-  // vertex and itself: the path of length and weight 0. If the vertex does not
-  // fulfill the global vertex condition, there is none. So the global vertex
-  // condition has to be evaluated! This is why the _left ball is used here.
+  // TODO: this is not ideal; here's the issue: If source == target there is
+  // no search to be done as there is only *at most* one shortest path between
+  // a vertex and itself: the path of length and weight 0. If the vertex does
+  // not fulfill the global vertex condition, there is none. So the global
+  // vertex condition has to be evaluated! This is why the _left ball is used
+  // here.
   //
   // Admittedly, this choice is arbitrary: in our context a path is a sequence
   // of edges that does not repeat vertices. Otherwise this path search would
-  // have to return all cycles based at the source == target vertex. This can be
-  // implemented using a OneSidedEnumerator if ever requested.
+  // have to return all cycles based at the source == target vertex. This can
+  // be implemented using a OneSidedEnumerator if ever requested.
   if (source == target) {
     _singleton = true;
     _right.clear();
@@ -524,18 +485,15 @@ template<class QueueType, class PathStoreType, class ProviderType,
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::getNextPath(VPackBuilder&
                                                                 result) {
-  auto handleResult = [&]() {
-    /*
-     * Helper method to take care of stored results (in: _results)
-     */
-    if (!_results.empty()) {
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        TRI_ASSERT(_results.size() == 1);
-      }
-#endif
+  while (!isDone()) {
+    if (!searchDone()) {
+      searchMoreResults();
+    }
 
-      auto const& [weight, leftVertex, rightVertex] = _results.front();
+    if (_candidatesStore.isEmpty()) {
+      return false;
+    } else {
+      auto [weight, leftVertex, rightVertex] = _candidatesStore.pop();
 
       _resultPath.clear();
       _left.buildPath(leftVertex, _resultPath);
@@ -548,110 +506,12 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
             result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
       } else {
         _resultPath.toVelocyPack(result);
-      }
-      // remove handled result
-      _results.pop_front();
-
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  auto handleCandidate = [&](CalculatedCandidate&& candidate) {
-    auto const& [weight, leftVertex, rightVertex] = candidate;
-
-    _resultPath.clear();
-    _left.buildPath(leftVertex, _resultPath);
-    _right.buildPath(rightVertex, _resultPath);
-    TRI_ASSERT(!_resultPath.isEmpty());
-
-    if (_options.getPathType() == PathType::Type::KShortestPaths) {
-      // Add weight attribute to edges
-      _resultPath.toVelocyPack(
-          result, PathResult<ProviderType, Step>::WeightType::ACTUAL_WEIGHT);
-    } else {
-      _resultPath.toVelocyPack(result);
-    }
-  };
-
-  auto checkCandidates = [&]() {
-    /*
-     * Helper method to take care of multiple candidates
-     */
-    TRI_ASSERT(searchDone());
-    // ShortestPath not allowed because we cannot produce more than one
-    // result in total.
-    TRI_ASSERT(_options.getPathType() != PathType::Type::ShortestPath);
-
-    if (!_candidatesStore.isEmpty()) {
-      while (!_candidatesStore.isEmpty()) {
-        CalculatedCandidate potentialCandidate = _candidatesStore.pop();
-
-        // only add if non-duplicate
-        bool foundNonDuplicatePath =
-            _resultsCache.tryAddResult(potentialCandidate);
-
-        if (foundNonDuplicatePath) {
-          handleCandidate(std::move(potentialCandidate));
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    return false;
-  };
-
-  auto checkShortestPathCandidates = [&]() {
-    TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-    /*
-     * Helper method to take care of ShortestPath related candidates
-     * Only allowed to find and return exactly one path.
-     */
-    bool foundPath = handleResult();
-    if (!foundPath) {
-      if (!_candidatesStore.isEmpty() && !isAlgorithmFinished()) {
-        CalculatedCandidate candidate = _candidatesStore.pop();
-        handleCandidate(std::move(candidate));
-        foundPath = true;
-        // ShortestPath produces only one result.
         setAlgorithmFinished();
       }
-    }
 
-    return foundPath;
-  };
-
-  while (!isDone()) {
-    if (!searchDone()) {
-      searchMoreResults();
-    }
-
-    if (handleResult()) {
-      if (_options.onlyProduceOnePath()) {
-        // At this state we've produced a valid path result. In case we're
-        // using the path type "(Weighted)ShortestPath", the algorithm is
-        // finished. We need to store this information.
-
-        TRI_ASSERT(_options.getPathType() == PathType::Type::ShortestPath);
-        setAlgorithmFinished();  // just quick exit marker
-      }
       return true;
-    } else {
-      // Check candidates list
-      if (_options.getPathType() == PathType::Type::KShortestPaths) {
-        return checkCandidates();
-      } else {
-        if (checkShortestPathCandidates()) {
-          return true;
-        };
-      }
     }
   }
-
   TRI_ASSERT(isDone());
   return false;
 }
@@ -679,61 +539,40 @@ void WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
       }
     }
 
-    if (!_candidatesStore.isEmpty()) {
-      auto bestWeight = std::get<0>(_candidatesStore.peek());
-      // if the sum of the diameters of left and right search are
-      // bigger than the best candidate, there will not be a better
-      // candidate found.
-      //
-      // A simple shortest path search is done *now* (and not
-      // earlier!);
-      //
-      // It is *required* to continue search for a shortest path even
-      // after having found *some* path between the two searches:
-      // There might be improvements on the weight in paths that are
-      // found later. Improvements are impossible only if the sum of the
-      // diameters of the two searches is bigger or equal to the current
-      // best found path.
-      //
-      // For a K-SHORTEST-PATH search all candidates that have lower
-      // weight than the sum of the two diameters are valid shortest
-      // paths that must be returned.  K-SHORTEST-PATH search has to
-      // continue until the queues on both sides are empty
+    // if the sum of the diameters of left and right search are bigger
+    // than the best candidate, there will not be a better candidate found.
+    //
+    // A simple shortest path search is done *now* (and not earlier!);
+    //
+    // It is *required* to continue search for a shortest path even
+    // after having found *some* path between the two searches:
+    // There might be improvements on the weight in paths that are
+    // found later. Improvements are impossible only if the sum of
+    // the diameters of the two searches is smaller than the current
+    // best found path.
+    //
+    // For a K-SHORTEST-PATH search all candidates that have lower weight
+    // than the sum of the two diameters are valid shortest paths that must
+    // be returned.
+    // K-SHORTEST-PATH search has to continue until the queues on both
+    // sides are empty
 
-      auto leftDiameter = _left.getDiameter();
-      auto rightDiameter = _right.getDiameter();
-      auto sumDiameter = leftDiameter + rightDiameter;
+    auto leftDiameter = _left.getDiameter();
+    auto rightDiameter = _right.getDiameter();
+    auto sumDiameter = leftDiameter + rightDiameter;
 
-      if (sumDiameter >= bestWeight) {
-        while (!_candidatesStore.isEmpty() and
-               std::get<0>(_candidatesStore.peek()) < sumDiameter) {
-          bool foundShortestPath = false;
-          CalculatedCandidate potentialCandidate = _candidatesStore.pop();
-
-          if (_options.getPathType() == PathType::Type::KShortestPaths) {
-            foundShortestPath = _resultsCache.tryAddResult(potentialCandidate);
-          } else if (_options.getPathType() == PathType::Type::ShortestPath) {
-            // Performance optimization: We do not use the cache as we will
-            // always calculate only one path.
-            foundShortestPath = true;
-          }
-
-          if (foundShortestPath) {
-            _results.emplace_back(std::move(potentialCandidate));
-
-            if (_options.getPathType() == PathType::Type::ShortestPath) {
-              // Proven to be finished with the algorithm. Our last best score
-              // is the shortest path (quick exit).
-              setAlgorithmFinished();
-              break;
-            }
-          }
-        }
+    if (!_candidatesStore.isEmpty() &&
+        std::get<0>(_candidatesStore.peek()) < sumDiameter) {
+      if (_options.getPathType() == PathType::Type::ShortestPath) {
+        // Proven to be finished with the algorithm. Our last best score
+        // is the shortest path (quick exit).
+        setAlgorithmFinished();
       }
+      break;
     }
   }
 
-  if (_options.onlyProduceOnePath() /* found a candidate */) {
+  if (_options.onlyProduceOnePath()) {
     fetchResult();
   } else {
     fetchResults();
@@ -767,74 +606,25 @@ bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
  * @return true Found and skipped a path.
  * @return false No path found.
  */
-
 template<class QueueType, class PathStoreType, class ProviderType,
          class PathValidator>
 bool WeightedTwoSidedEnumerator<QueueType, PathStoreType, ProviderType,
                                 PathValidator>::skipPath() {
-  auto skipResult = [&]() {
-    /*
-     * Helper method to take care of stored results (in: _results)
-     */
-    if (!_results.empty()) {
-      if (_options.getPathType() == PathType::Type::ShortestPath) {
-        ADB_PROD_ASSERT(_results.size() == 1)
-            << "ShortestPath found more than one path. This is not allowed.";
-      }
-
-      // remove handled result
-      _results.pop_front();
-
-      return true;
-    } else {
-      return false;
-    }
-  };
-
-  auto skipKPathsCandidates = [&]() {
-    /*
-     * Helper method to take care of KPath related candidates
-     */
-    TRI_ASSERT(searchDone());
-    TRI_ASSERT(_options.getPathType() == PathType::Type::KShortestPaths);
-    if (!_candidatesStore.isEmpty()) {
-      while (!_candidatesStore.isEmpty()) {
-        CalculatedCandidate potentialCandidate = _candidatesStore.pop();
-
-        // only add if non-duplicate
-        bool foundNonDuplicatePath =
-            _resultsCache.tryAddResult(potentialCandidate);
-
-        if (foundNonDuplicatePath) {
-          // delete potentialCandidate;
-          return true;
-        }
-      }
-
-      return false;
-    }
-
-    return false;
-  };
-
   while (!isDone()) {
     if (!searchDone()) {
       searchMoreResults();
     }
 
-    if (skipResult()) {
-      // means we've found a valid path
+    if (_candidatesStore.isEmpty()) {
+      return false;
+    } else {
+      std::ignore = _candidatesStore.pop();
       if (_options.getPathType() == PathType::Type::ShortestPath) {
         setAlgorithmFinished();
       }
-
       return true;
-    } else {
-      // Check candidates list
-      return skipKPathsCandidates();
     }
   }
-
   return false;
 }
 

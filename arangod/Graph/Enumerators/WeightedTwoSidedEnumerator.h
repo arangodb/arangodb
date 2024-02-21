@@ -67,9 +67,6 @@ class WeightedTwoSidedEnumerator {
   enum Direction { FORWARD, BACKWARD };
 
   using VertexRef = arangodb::velocypack::HashedStringRef;
-
-  using Shell = std::multiset<Step>;
-  using ResultList = std::deque<CalculatedCandidate>;
   using GraphOptions = arangodb::graph::TwoSidedEnumeratorOptions;
 
   /*
@@ -216,34 +213,12 @@ class WeightedTwoSidedEnumerator {
     PathValidatorType _validator;
     containers::FlatHashMap<typename Step::VertexType, std::vector<size_t>>
         _visitedNodes;
+
     Direction _direction;
     GraphOptions _graphOptions;
     double _diameter = -std::numeric_limits<double>::infinity();
   };
   enum BallSearchLocation { LEFT, RIGHT, FINISH };
-
-  /*
-   * A class that is able to store valid shortest paths results.
-   * This is required to be able to check for duplicate paths, as those can be
-   * found during a KShortestPaths graphs search.
-   */
-  class ResultCache {
-   public:
-    ResultCache(Ball& left, Ball& right);
-    ~ResultCache();
-
-    // @brief: returns whether a path could be inserted or not.
-    // True: It will be inserted if this specific path has not been added yet.
-    // False: Could not insert as this path has already been found.
-    [[nodiscard]] auto tryAddResult(CalculatedCandidate const& candidate)
-        -> bool;
-    auto clear() -> void;
-
-   private:
-    Ball& _internalLeft;
-    Ball& _internalRight;
-    std::vector<PathResult<ProviderType, Step>> _internalResultsCache{};
-  };
 
  public:
   WeightedTwoSidedEnumerator(ProviderType&& forwardProvider,
@@ -344,8 +319,6 @@ class WeightedTwoSidedEnumerator {
 
   // Templated result list, where only valid result(s) are stored in
   CandidatesStore _candidatesStore{};
-  ResultCache _resultsCache;
-  ResultList _results{};
 
   bool _resultsFetched{false};
   bool _algorithmFinished{false};
