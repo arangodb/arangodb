@@ -134,6 +134,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // index does not cover any fields
         continue;
       }
+      if (index->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        // rule can only be applied for inverted indexes
+        continue;
+      }
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeExpressionWithAttrs> nodesToChange;
       if (indexNode->hasFilter()) {

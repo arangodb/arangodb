@@ -786,14 +786,14 @@ collection access or traversal, shortest path, or k-shortest paths query.)");
                R"(Try to read from the underlying collections of a View as late
 as possible if the involved attributes are covered by the View index.)");
 
-  // apply late materialization for index queries
+  // apply late materialization for inverted index queries.
+  // note: this rule is only used for inverted indexes but not for other
+  // index types
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled,
-                                        OptimizerRule::Flags::DisabledByDefault,
-                                        OptimizerRule::Flags::Hidden),
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Try to read from collections as late as possible if the
-involved attributes are covered by regular indexes.)");
+involved attributes are covered by inverted indexes.)");
 
   // apply late materialization for index queries
   registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
