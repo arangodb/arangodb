@@ -24,7 +24,6 @@
 
 const fs = require('fs');
 const Minimatch = require('minimatch').Minimatch;
-const isWindows = require('internal').platform.substr(0, 3) === 'win';
 const mocha = require('@arangodb/mocha');
 
 const isNotPattern = (pattern) => pattern.indexOf('*') === -1;
@@ -54,8 +53,6 @@ exports.findTests = function findTestFiles (service) {
     return new Minimatch(pattern);
   });
   return paths.filter(
-    (path) => path && matchers.some((pattern) => pattern.match(
-        isWindows ? path.replace(/\\/g, '/') : path
-      )) && fs.isFile(fs.join(basePath, path))
+    (path) => path && matchers.some((pattern) => pattern.match(path)) && fs.isFile(fs.join(basePath, path))
   );
 };

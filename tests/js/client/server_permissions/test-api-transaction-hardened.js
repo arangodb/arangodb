@@ -97,12 +97,7 @@ function testSuite() {
       let data = {
         collections: {},
         action: String(function() {
-          let command;
-          if (require('internal').platform.substr(0, 3) !== 'win') {
-            command = "/bin/true";
-          } else {
-            command = "notepad.exe";
-          }
+          let command = "/bin/true";
           require('internal').executeExternal(command);
         })
       };

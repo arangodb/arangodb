@@ -61,9 +61,4 @@ void CrashHandler::installCrashHandler() {
   CrashHandler::crash("installCrashHandler is not implemented.");
 }
 
-#ifdef _WIN32
-void CrashHandler::setMiniDumpDirectory(std::string path) {
-  CrashHandler::crash("setMiniDumpDirectory is not implemented.");
-}
-#endif
 }  // namespace arangodb

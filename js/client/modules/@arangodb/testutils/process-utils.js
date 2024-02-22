@@ -301,10 +301,6 @@ const createBaseConfigBuilder = function (type, options, instanceInfo, database 
 };
 
 let executableExt = '';
-if (platform.substr(0, 3) === 'win') {
-  executableExt = '.exe';
-}
-
 let serverCrashedLocal = false;
 let serverFailMessagesLocal = "";
 let cleanupDirectories = [];
@@ -824,42 +820,11 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
     };
   }
 
-  let res = {};
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    res = executeExternal(cmd, args, false, coverageEnvironment());
-    instanceInfo.pid = res.pid;
-    instanceInfo.exitStatus = res;
-    if (crashUtils.runProcdump(options, instanceInfo, rootDir, res.pid)) {
-      Object.assign(instanceInfo.exitStatus,
-                    statusExternal(res.pid, true, timeout * 1000));
-      if (instanceInfo.exitStatus.status === 'TIMEOUT') {
-        print('Timeout while running ' + cmd + ' - will kill it now! ' + JSON.stringify(args));
-        executeExternalAndWait('netstat', ['-aonb']);
-        killExternal(res.pid);
-        crashUtils.stopProcdump(options, instanceInfo);
-        instanceInfo.exitStatus.status = 'ABORTED';
-        const deltaTime = time() - startTime;
-        return {
-          timeout: true,
-          status: false,
-          message: `irregular termination of '${launchCmd}' by TIMEOUT`,
-          duration: deltaTime
-        };
-      }
-      crashUtils.stopProcdump(options, instanceInfo);
-    } else {
-      print('Killing ' + cmd + ' - ' + JSON.stringify(args));
-      res = killExternal(res.pid);
-      instanceInfo.pid = res.pid;
-      instanceInfo.exitStatus = res;
-    }
-  } else {
-    // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
-    res = executeExternalAndWait(cmd, args, false, timeout*1000, coverageEnvironment());
-    instanceInfo.pid = res.pid;
-    instanceInfo.exitStatus = res;
-    crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
-  }
+  // V8 executeExternalAndWait thinks that timeout is in ms, so *1000
+  let res = executeExternalAndWait(cmd, args, false, timeout * 1000, coverageEnvironment());
+  instanceInfo.pid = res.pid;
+  instanceInfo.exitStatus = res;
+  crashUtils.calculateMonitorValues(options, instanceInfo, res.pid, cmd);
   const deltaTime = time() - startTime;
 
   let errorMessage = ' - ';
@@ -868,11 +833,8 @@ function executeAndWait (cmd, args, options, valgrindTest, rootDir, coreCheck = 
       instanceInfo.exitStatus.hasOwnProperty('signal') &&
       ((instanceInfo.exitStatus.signal === 11) ||
        (instanceInfo.exitStatus.signal === 6) ||
-       (instanceInfo.exitStatus.signal === 4) || // mac sometimes SIG_ILLs...
-       // Windows sometimes has random numbers in signal...
-       (platform.substr(0, 3) === 'win')
-      )
-     ) {
+        // mac sometimes SIG_ILLs...
+       (instanceInfo.exitStatus.signal === 4))) {
     print(`${Date()} executeAndWait: Marking '${launchCmd}' crashy - ${JSON.stringify(instanceInfo)}`);
     crashUtils.analyzeCrash(cmd,
                             instanceInfo,

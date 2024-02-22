@@ -600,9 +600,7 @@ describe('SyntheticRequest', function () {
       );
     });
     it('correctly handles unix sockets', function () {
-      const socketPath = require('internal').platform.substr(0, 3) === 'win'
-        ? "C:\\tmp\\arangod.sock"
-        : "/tmp/arangod.sock";
+      const socketPath = "/tmp/arangod.sock";
       const rawReq = createNativeRequest({
         db: 'bananas',
         mount: '/foxx',

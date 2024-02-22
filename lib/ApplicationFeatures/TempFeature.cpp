@@ -75,10 +75,4 @@ void TempFeature::prepare() {
   }
 }
 
-void TempFeature::start() {
-#ifdef _WIN32
-  CrashHandler::setMiniDumpDirectory(TRI_GetTempPath());
-#endif
-}
-
 }  // namespace arangodb

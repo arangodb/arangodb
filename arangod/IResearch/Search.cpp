@@ -21,17 +21,6 @@
 /// @author Valery Mironov
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4291)
-#pragma warning(disable : 4244)
-#pragma warning(disable : 4245)
-#pragma warning(disable : 4706)
-#pragma warning(disable : 4305)
-#pragma warning(disable : 4267)
-#pragma warning(disable : 4018)
-#endif
-
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/QueryCache.h"

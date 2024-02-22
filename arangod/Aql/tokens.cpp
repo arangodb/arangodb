@@ -4,10 +4,6 @@
 #include <algorithm>
 #include <cstdint>
 
-#if (_MSC_VER >= 1)
-// fix ret_val = EOB_ACT_LAST_MATCH later on, its generated, we can't control this.
-#pragma warning( disable : 4267)
-#endif
 
 
 
@@ -1319,10 +1315,6 @@ static const flex_int32_t yy_rule_can_match_eol[108] =
 #include "Basics/NumberUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/operating-system.h"
-
-#if _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 // introduce the namespace here, otherwise following references to
 // the namespace in auto-generated headers might fail

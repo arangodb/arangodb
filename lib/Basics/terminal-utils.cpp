@@ -35,7 +35,7 @@ using namespace arangodb;
 namespace arangodb::terminal_utils {
 
 /// @brief returns the terminal size
-#if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
+#if !defined(TRI_HAVE_SYS_IOCTL_H)
 TerminalSize defaultTerminalSize() {
   auto getFromEnvironment = [](char const* name, int defaultValue) {
     char* e = getenv(name);
@@ -73,19 +73,6 @@ void setStdinVisibility(bool visible) noexcept {
     tty.c_lflag &= ~ECHO;
   }
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
-#else
-#ifdef _WIN32
-  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-  DWORD mode;
-  GetConsoleMode(hStdin, &mode);
-
-  if (visible) {
-    mode |= ENABLE_ECHO_INPUT;
-  } else {
-    mode &= ~ENABLE_ECHO_INPUT;
-  }
-  SetConsoleMode(hStdin, mode);
-#endif
 #endif
 }
 

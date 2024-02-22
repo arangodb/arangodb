@@ -30,9 +30,7 @@ namespace arangodb::signals {
 enum class SignalType { term, core, cont, ign, logrotate, stop, user };
 
 /// @brief find out what impact a signal will have to the process we send it.
-#ifndef _WIN32
 SignalType signalType(int signal) noexcept;
-#endif
 
 /// @brief whether or not the signal is deadly
 bool isDeadly(int signal) noexcept;
