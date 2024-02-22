@@ -25,27 +25,30 @@
 #include "Logger/LogContextKeys.h"
 
 namespace arangodb::replication2::tests {
+
 MockDocumentStateTransactionHandler::MockDocumentStateTransactionHandler(
     std::shared_ptr<
         replicated_state::document::IDocumentStateTransactionHandler>
         real)
     : _real(std::move(real)) {
-  ON_CALL(*this,
-          applyEntry(
-              testing::Matcher<replicated_state::document::ReplicatedOperation>(
-                  testing::_)))
-      .WillByDefault(
-          [this](replicated_state::document::ReplicatedOperation op) {
-            return _real->applyEntry(std::move(op));
-          });
-  ON_CALL(*this,
-          applyEntry(
-              testing::Matcher<replicated_state::document::ReplicatedOperation::
-                                   OperationType const&>(testing::_)))
-      .WillByDefault([this](replicated_state::document::ReplicatedOperation::
-                                OperationType const& op) {
-        return _real->applyEntry(op);
-      });
+  auto delegateApplyEntry = [this](auto const& op) {
+    return _real->applyEntry(op);
+  };
+  // register default applyEntry for all overloaded methods
+  std::invoke(
+      [&](auto const&... args) {
+        (ON_CALL(*this, applyEntry(testing::An<decltype(args)>()))
+             .WillByDefault(delegateApplyEntry),
+         ...);
+      },
+      ReplicatedOperation::Commit{}, ReplicatedOperation::Abort{},
+      ReplicatedOperation::IntermediateCommit{},
+      ReplicatedOperation::Truncate{}, ReplicatedOperation::Insert{},
+      ReplicatedOperation::Update{}, ReplicatedOperation::Replace{},
+      ReplicatedOperation::Remove{}, ReplicatedOperation::AbortAllOngoingTrx{},
+      ReplicatedOperation::CreateShard{}, ReplicatedOperation::ModifyShard{},
+      ReplicatedOperation::DropShard{}, ReplicatedOperation::CreateIndex{},
+      ReplicatedOperation::DropIndex{});
   ON_CALL(*this, removeTransaction(testing::_))
       .WillByDefault(
           [this](TransactionId tid) { return _real->removeTransaction(tid); });

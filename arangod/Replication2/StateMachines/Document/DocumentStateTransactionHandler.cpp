@@ -34,6 +34,15 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+auto IDocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation const& operation) noexcept -> Result {
+  return applyEntry(operation.operation);
+}
+auto IDocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::OperationType const& operation) noexcept -> Result {
+  return std::visit([&](auto const& op) { return applyEntry(op); }, operation);
+}
+
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
     std::shared_ptr<IDocumentStateHandlersFactory> factory,
@@ -181,24 +190,73 @@ auto DocumentStateTransactionHandler::applyOp(
   return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
-Result DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation operation) noexcept {
-  return applyEntry(operation.operation);
-}
-
-Result DocumentStateTransactionHandler::applyEntry(
-    const ReplicatedOperation::OperationType& operation) noexcept {
-  auto res = basics::catchToResult([&]() {
-    return std::visit([&](auto const& op) -> Result { return applyOp(op); },
-                      operation);
-  });
-  if (res.fail()) {
+template<typename Op>
+auto DocumentStateTransactionHandler::applyAndCatchAndLog(Op op) -> Result {
+  auto result = basics::catchToResult([&]() { return applyOp(op); });
+  if (result.fail()) {
     LOG_CTX("01202", DEBUG, _loggerContext)
-        << "Error occurred while applying operation " << operation << " " << res
+        << "Error occurred while applying operation " << op << " " << result
         << ". This is not necessarily a problem. Some errors are expected to "
            "occur during leader or follower recovery.";
   }
-  return res;
+  return result;
+}
+
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Commit const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Abort const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::IntermediateCommit const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Truncate const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Insert const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Update const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Replace const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::Remove const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::AbortAllOngoingTrx const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::CreateShard const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::ModifyShard const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::DropShard const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::CreateIndex const& op) noexcept {
+  return applyAndCatchAndLog(op);
+}
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::DropIndex const& op) noexcept {
+  return applyAndCatchAndLog(op);
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

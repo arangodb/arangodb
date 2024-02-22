@@ -157,9 +157,8 @@ TEST_F(DocumentStateLeaderTest,
       .Times(1);
 
   // resigning should abort all ongoing transactions
-  EXPECT_CALL(
-      *transactionHandlerMock,
-      applyEntry(ReplicatedOperation::buildAbortAllOngoingTrxOperation()))
+  EXPECT_CALL(*transactionHandlerMock,
+              applyEntry(ReplicatedOperation::AbortAllOngoingTrx{}))
       .Times(1);
 
   std::ignore = std::move(*leaderState).resign();
@@ -318,7 +317,9 @@ TEST_F(DocumentStateLeaderTest,
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   EXPECT_CALL(*stream, insert).Times(1);  // AbortAllOngoingTrx
   EXPECT_CALL(*stream, release).Times(1);
-  ON_CALL(*transactionHandlerMock, applyEntry(entries[0].operation))
+  ON_CALL(*transactionHandlerMock,
+          applyEntry(std::get<ReplicatedOperation::Insert>(
+              entries[0].getInnerOperation())))
       .WillByDefault(Return(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND));
   std::ignore = leaderState->recoverEntries(std::move(entryIterator));
   Mock::VerifyAndClearExpectations(shardHandlerMock.get());

@@ -241,13 +241,50 @@ struct MockDocumentStateTransactionHandler
           replicated_state::document::IDocumentStateTransactionHandler>
           real);
 
-  MOCK_METHOD(Result, applyEntry,
-              (replicated_state::document::ReplicatedOperation),
-              (noexcept, override));
-  MOCK_METHOD(
-      Result, applyEntry,
-      (replicated_state::document::ReplicatedOperation::OperationType const&),
+  using ReplicatedOperation = replicated_state::document::ReplicatedOperation;
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Commit const&),
       (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Abort const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::IntermediateCommit const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Truncate const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Insert const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Update const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Replace const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::Remove const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::AbortAllOngoingTrx const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::CreateShard const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::ModifyShard const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::DropShard const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::CreateIndex const&),
+      (noexcept, override));
+  MOCK_METHOD(  //
+      Result, applyEntry, (ReplicatedOperation::DropIndex const&),
+      (noexcept, override));
+
   MOCK_METHOD(void, removeTransaction, (TransactionId tid), (override));
   MOCK_METHOD(std::vector<TransactionId>, getTransactionsForShard,
               (ShardID const&), (override));
