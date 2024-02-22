@@ -101,8 +101,8 @@ auto ApplyEntriesHandler<Runtime>::operator()(
       // aborted, but in case the transaction is broken and all operations are
       // skipped, we need to remove it here
       // For details about this special case see the Transaction actor
-      this->state->handlers.transactionHandler->removeTransaction(
-          it->second.tid);
+      this->state->followerState._handlers.transactionHandler
+          ->removeTransaction(it->second.tid);
     }
     this->state->_pendingTransactions.erase(it);
     if (this->state->_pendingTransactions.empty() && this->state->_batch) {
@@ -144,7 +144,7 @@ auto ApplyEntriesHandler<Runtime>::processEntry(DataDefinition auto& op,
   if (not this->state->_pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
-  auto res = applyDataDefinitionEntry(op);
+  auto res = applyDataDefinitionEntry(op, index);
   if (res.fail()) {
     return res;
   }
@@ -171,9 +171,10 @@ auto ApplyEntriesHandler<Runtime>::processEntry(
   if (not this->state->_pendingTransactions.empty()) {
     return ProcessResult::kWaitForPendingTrx;
   }
-  auto originalRes = this->state->handlers.transactionHandler->applyEntry(op);
-  auto res =
-      this->state->handlers.errorHandler->handleOpResult(op, originalRes);
+  auto originalRes =
+      this->state->followerState._handlers.transactionHandler->applyEntry(op);
+  auto res = this->state->followerState._handlers.errorHandler->handleOpResult(
+      op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -195,7 +196,8 @@ auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
   } else {
     pid = this->template spawn<actor::TransactionActor>(
         std::make_unique<actor::TransactionState>(
-            this->state->loggerContext, this->state->handlers, op.tid));
+            this->state->loggerContext, this->state->followerState._handlers,
+            op.tid));
     LOG_CTX("8a74c", DEBUG, this->state->loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
     this->monitor(pid);
@@ -244,7 +246,7 @@ auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
 
 template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
-    ReplicatedOperation::DropShard const& op) -> Result {
+    ReplicatedOperation::DropShard const& op, LogIndex index) -> Result {
   // We first have to abort all transactions for this shard.
   // Note that after the entry is committed, locally all transactions on the
   // leader for this shard will be aborted. This will also add log entries to
@@ -252,10 +254,11 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
   // it in the future. However, it doesn't hurt, so for now it's low on the
   // priority list.
   for (auto const& tid :
-       this->state->handlers.transactionHandler->getTransactionsForShard(
-           op.shard)) {
-    auto abortRes = this->state->handlers.transactionHandler->applyEntry(
-        ReplicatedOperation::buildAbortOperation(tid));
+       this->state->followerState._handlers.transactionHandler
+           ->getTransactionsForShard(op.shard)) {
+    auto abortRes =
+        this->state->followerState._handlers.transactionHandler->applyEntry(
+            ReplicatedOperation::Abort{tid});
     if (abortRes.fail()) {
       LOG_CTX("aa36c", INFO, this->state->loggerContext)
           << "Failed to abort transaction " << tid << " for shard " << op.shard
@@ -264,21 +267,22 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
     }
     this->state->activeTransactions.markAsInactive(tid);
   }
-  return applyEntryAndReleaseIndex(op);
+  return applyEntryAndReleaseIndex(op, index);
 }
 
 template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
-    ReplicatedOperation::ModifyShard const& op) -> Result {
+    ReplicatedOperation::ModifyShard const& op, LogIndex index) -> Result {
   // Note that locking the shard is not necessary on the follower.
   // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
-  auto trxLock = this->state->handlers.shardHandler->lockShard(
+  auto trxLock = this->state->followerState._handlers.shardHandler->lockShard(
       op.shard, AccessMode::Type::EXCLUSIVE, std::move(origin));
   if (trxLock.fail()) {
-    auto res = this->state->handlers.errorHandler->handleOpResult(
-        op, trxLock.result());
+    auto res =
+        this->state->followerState._handlers.errorHandler->handleOpResult(
+            op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {
@@ -287,26 +291,46 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
 
     return res;
   }
-  return applyEntryAndReleaseIndex(op);
+  return applyEntryAndReleaseIndex(op, index);
 }
 
 template<typename Runtime>
 template<class T>
 requires IsAnyOf<T, ReplicatedOperation::CreateShard,
-                 ReplicatedOperation::CreateIndex,
                  ReplicatedOperation::DropIndex>
-auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(T const& op)
+auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(T const& op,
+                                                            LogIndex index)
     -> Result {
-  return applyEntryAndReleaseIndex(op);
+  return applyEntryAndReleaseIndex(op, index);
+}
+
+template<typename Runtime>
+auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
+    ReplicatedOperation::CreateIndex const& op, LogIndex index) -> Result {
+  return applyEntryAndReleaseIndex(op, index);
 }
 
 template<typename Runtime>
 template<class T>
-auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op)
+auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op,
+                                                             LogIndex index)
     -> Result {
-  auto originalRes = this->state->handlers.transactionHandler->applyEntry(op);
-  auto res =
-      this->state->handlers.errorHandler->handleOpResult(op, originalRes);
+  auto originalRes = std::invoke([&]() {
+    if constexpr (std::is_same_v<T, ReplicatedOperation::CreateIndex>) {
+      // all entries until here have already been applied; there are no
+      // open transactions; it is safe to increase the lowest safe index
+      // now. Then we can create the index.
+      this->state->followerState.increaseLowestSafeIndexForReplayTo(op.shard,
+                                                                    index);
+      return this->state->followerState._handlers.transactionHandler
+          ->applyEntry(op, nullptr, nullptr);
+    } else {
+      return this->state->followerState._handlers.transactionHandler
+          ->applyEntry(op);
+    }
+  });
+  auto res = this->state->followerState._handlers.errorHandler->handleOpResult(
+      op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -316,8 +340,14 @@ auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op)
 template<typename Runtime>
 auto ApplyEntriesHandler<Runtime>::beforeApplyEntry(
     ModifiesUserTransaction auto const& op, LogIndex index) -> bool {
-  this->state->activeTransactions.markAsActive(op.tid, index);
-  return true;
+  auto lowestSafeIndexesForReplayGuard =
+      this->state->followerState._lowestSafeIndexesForReplay.getLockedGuard();
+  bool const isSafeForReplay =
+      lowestSafeIndexesForReplayGuard->isSafeForReplay(op.shard, index);
+  if (isSafeForReplay) {
+    this->state->activeTransactions.markAsActive(op.tid, index);
+  }
+  return isSafeForReplay;
 }
 
 template<typename Runtime>
@@ -366,7 +396,7 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept try {
         doc.getInnerOperation());
 
     if (res.fail()) {
-      TRI_ASSERT(this->state->handlers.errorHandler
+      TRI_ASSERT(this->state->followerState._handlers.errorHandler
                      ->handleOpResult(doc.getInnerOperation(), res.result())
                      .fail())
           << res.result() << " should have been already handled for operation "

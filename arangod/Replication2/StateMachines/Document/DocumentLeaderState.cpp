@@ -84,7 +84,7 @@ auto DocumentLeaderState::resign() && noexcept
         << " is not possible because it is already resigned";
 
     auto abortAllRes = data.transactionHandler->applyEntry(
-        ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+        ReplicatedOperation::AbortAllOngoingTrx{});
     ADB_PROD_ASSERT(abortAllRes.ok()) << abortAllRes;
 
     return std::move(data.core);
@@ -157,51 +157,89 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
 
       if (isSafeForReplay) {
         auto res = std::visit(
-            overload{[&](ModifiesUserTransaction auto const& op) -> Result {
-                       auto trxResult = data.transactionHandler->applyEntry(op);
-                       // Only add it as an active transaction if the operation
-                       // was successful.
-                       if (trxResult.ok()) {
-                         activeTransactions.insert(op.tid);
-                       }
-                       return trxResult;
-                     },
-                     [&](FinishesUserTransactionOrIntermediate auto const& op)
-                         -> Result {
-                       // There are three cases where we can end up here:
-                       // 1. After recovery, we did not get the beginning of the
-                       // transaction.
-                       // 2. We ignored all other operations for this
-                       // transaction because the shard was dropped.
-                       // 3. The transaction applies to multiple shards, which
-                       // all had the same leader, thus multiple commits were
-                       // replicated for the same transaction.
-                       if (activeTransactions.erase(op.tid) == 0) {
-                         return Result{};
-                       }
-                       return data.transactionHandler->applyEntry(op);
-                     },
-                     [&](ReplicatedOperation::DropShard const& op) -> Result {
-                       // Abort all transactions for this shard.
-                       for (auto const& tid :
-                            data.transactionHandler->getTransactionsForShard(
-                                op.shard)) {
-                         activeTransactions.erase(tid);
-                         auto abortRes = data.transactionHandler->applyEntry(
-                             ReplicatedOperation::buildAbortOperation(tid));
-                         if (abortRes.fail()) {
-                           LOG_CTX("3eb75", INFO, self->loggerContext)
-                               << "failed to abort transaction " << tid
-                               << " for shard " << op.shard
-                               << " during recovery: " << abortRes;
-                           return abortRes;
-                         }
-                       }
-                       return data.transactionHandler->applyEntry(op);
-                     },
-                     [&](auto const& op) {
-                       return data.transactionHandler->applyEntry(op);
-                     }},
+            overload{
+                [&](ModifiesUserTransaction auto const& op) -> Result {
+                  auto trxResult = data.transactionHandler->applyEntry(op);
+                  // Only add it as an active transaction if the operation
+                  // was successful.
+                  if (trxResult.ok()) {
+                    activeTransactions.insert(op.tid);
+                  }
+                  return trxResult;
+                },
+                [&](FinishesUserTransactionOrIntermediate auto const& op)
+                    -> Result {
+                  // There are three cases where we can end up here:
+                  // 1. After recovery, we did not get the beginning of the
+                  // transaction.
+                  // 2. We ignored all other operations for this
+                  // transaction because the shard was dropped.
+                  // 3. The transaction applies to multiple shards, which
+                  // all had the same leader, thus multiple commits were
+                  // replicated for the same transaction.
+                  if (activeTransactions.erase(op.tid) == 0) {
+                    return Result{};
+                  }
+                  return data.transactionHandler->applyEntry(op);
+                },
+                [&](ReplicatedOperation::DropShard const& op) -> Result {
+                  // Abort all transactions for this shard.
+                  for (auto const& tid :
+                       data.transactionHandler->getTransactionsForShard(
+                           op.shard)) {
+                    activeTransactions.erase(tid);
+                    auto abortRes = data.transactionHandler->applyEntry(
+                        ReplicatedOperation::Abort{tid});
+                    if (abortRes.fail()) {
+                      LOG_CTX("3eb75", INFO, self->loggerContext)
+                          << "failed to abort transaction " << tid
+                          << " for shard " << op.shard
+                          << " during recovery: " << abortRes;
+                      return abortRes;
+                    }
+                  }
+                  return data.transactionHandler->applyEntry(op);
+                },
+                [&](ReplicatedOperation::CreateIndex const& op) {
+                  if (auto trxs =
+                          data.transactionHandler->getTransactionsForShard(
+                              op.shard);
+                      not trxs.empty()) {
+                    auto const name = [&] {
+                      try {
+                        return op.properties.get(StaticStrings::IndexName)
+                            .stringView();
+                      } catch (...) {
+                      }
+                      try {
+                        return op.properties.get(StaticStrings::IndexId)
+                            .stringView();
+                      } catch (...) {
+                      }
+                      TRI_ASSERT(false);
+                      return std::string_view("n/a");
+                    }();
+                    auto msg = std::stringstream{};
+                    msg << "During recovery, when creating index " << name
+                        << " on shard " << op.shard
+                        << ", there are open transactions: " << trxs
+                        << ". This must not happen, aborting recovery. Please "
+                           "contact ArangoDB support.";
+                    LOG_CTX("21517", ERR, self->loggerContext) << msg.str();
+                    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                                   msg.str());
+                  }
+                  // all entries until here have already been applied; there are
+                  // no open transactions; it is safe to increase the lowest
+                  // safe index now. Then we can create the index.
+                  self->increaseLowestSafeIndexForReplayTo(
+                      lowestSafeIndexesForReplayGuard.get(), op.shard, idx);
+                  return data.transactionHandler->applyEntry(op, nullptr,
+                                                             nullptr);
+                },
+                [&](auto const& op) {
+                  return data.transactionHandler->applyEntry(op);
+                }},
             doc.getInnerOperation());
 
         if (res.fail()) {
@@ -222,8 +260,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
             << " during recovery: not safe for replay";
       }
     }
-
-    auto abortAll = ReplicatedOperation::buildAbortAllOngoingTrxOperation();
+    auto abortAll = ReplicatedOperation::AbortAllOngoingTrx{};
     auto abortAllReplicationFut =
         self->replicateOperation(abortAll, ReplicationOptions{});
     // Should finish immediately, because we are not waiting the operation to be
@@ -492,8 +529,8 @@ auto DocumentLeaderState::createShard(ShardID shard,
                                       TRI_col_type_e collectionType,
                                       velocypack::SharedSlice properties)
     -> futures::Future<Result> {
-  auto op = ReplicatedOperation::buildCreateShardOperation(
-      shard, collectionType, std::move(properties));
+  auto op = ReplicatedOperation::CreateShard{shard, collectionType,
+                                             std::move(properties)};
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -524,8 +561,7 @@ auto DocumentLeaderState::createShard(ShardID shard,
 
           // Some errors can be safely ignored, even though the operation has
           // been already replicated.
-          if (auto res = self->_errorHandler->handleOpResult(op.operation,
-                                                             applyEntryRes);
+          if (auto res = self->_errorHandler->handleOpResult(op, applyEntryRes);
               res.fail()) {
             if (res.is(TRI_ERROR_SHUTTING_DOWN)) {
               LOG_CTX("e07a8", DEBUG, self->loggerContext)
@@ -578,8 +614,8 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
       << trxLock.get()->tid();
 
   // Replicate and wait for commit
-  ReplicatedOperation op = ReplicatedOperation::buildModifyShardOperation(
-      shard, std::move(collectionId), std::move(properties));
+  auto op = ReplicatedOperation::ModifyShard{shard, std::move(collectionId),
+                                             std::move(properties)};
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
@@ -646,7 +682,7 @@ auto DocumentLeaderState::modifyShard(ShardID shard, CollectionID collectionId,
 }
 
 auto DocumentLeaderState::dropShard(ShardID shard) -> futures::Future<Result> {
-  ReplicatedOperation op = ReplicatedOperation::buildDropShardOperation(shard);
+  auto op = ReplicatedOperation::DropShard{shard};
 
   auto fut = _guardedData.doUnderLock([&](auto& data) {
     if (data.didResign()) {
@@ -741,13 +777,11 @@ auto DocumentLeaderState::createIndex(
 
         // Callback used to replicate the operation during
         // RocksDBCollection::createIndex
-        auto callback = [self, shard, &releaseIndex,
-                         progress = std::move(progress)](
+        auto callback = [self, shard, &releaseIndex](
                             velocypack::Slice indexDefinition) mutable
             -> futures::Future<Result> {
-          auto op = ReplicatedOperation::buildCreateIndexOperation(
-              shard, velocypack::Builder(indexDefinition).sharedSlice(),
-              std::move(progress));
+          auto op = ReplicatedOperation::CreateIndex{
+              shard, velocypack::Builder(indexDefinition).sharedSlice()};
           auto replicationResult = co_await self->replicateOperation(
               std::move(op),
               replication2::replicated_state::document::ReplicationOptions{
@@ -759,7 +793,10 @@ auto DocumentLeaderState::createIndex(
             // *after* the create index operation has been raft-committed, but
             // *before* the index is persisted (i.e. before _inprogress=true is
             // removed).
-            self->increaseLowestSafeIndexForReplayTo(shard, logIndex);
+            auto lowestSafeIndexesForReplayGuard =
+                self->_lowestSafeIndexesForReplay.getLockedGuard();
+            self->increaseLowestSafeIndexForReplayTo(
+                lowestSafeIndexesForReplayGuard.get(), shard, logIndex);
           }
           co_return std::move(replicationResult).result();
         };
@@ -794,8 +831,7 @@ auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
   }
   auto&& col = res.get();
 
-  ReplicatedOperation op =
-      ReplicatedOperation::buildDropIndexOperation(shard, indexId);
+  auto op = ReplicatedOperation::DropIndex{shard, indexId};
 
   auto trx = methods::Indexes::createTrxForDrop(*col);
 
@@ -875,13 +911,12 @@ bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
 }  // namespace
 
 void DocumentLeaderState::increaseLowestSafeIndexForReplayTo(
-    ShardID shardId, LogIndex logIndex) {
-  auto lowestSafeIndexesForReplayGuard =
-      _lowestSafeIndexesForReplay.getLockedGuard();
+    LowestSafeIndexesForReplay& lowestSafeIndexesForReplay, ShardID shardId,
+    LogIndex logIndex) {
   auto trx = getStream()->beginMetadataTrx();
   auto& metadata = trx->get();
   if constexpr (maintainerMode) {
-    auto inMemMap = lowestSafeIndexesForReplayGuard->map;
+    auto inMemMap = lowestSafeIndexesForReplay.map;
     auto persistedMap = metadata.lowestSafeIndexesForReplay;
     if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
       auto msg = std::stringstream{};
@@ -898,7 +933,7 @@ void DocumentLeaderState::increaseLowestSafeIndexForReplayTo(
   lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
   auto const res = getStream()->commitMetadataTrx(std::move(trx));
   if (res.ok()) {
-    lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
+    lowestSafeIndexesForReplay.setFromMetadata(metadata);
   } else {
     auto msg = fmt::format(
         "Failed to persist the lowest safe index on shard {}. This "

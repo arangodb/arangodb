@@ -129,7 +129,7 @@ auto DocumentStateShardHandler::getAvailableShards()
 auto DocumentStateShardHandler::ensureIndex(
     ShardID shard, velocypack::Slice properties,
     std::shared_ptr<methods::Indexes::ProgressTracker> progress,
-    methods::Indexes::Replication2Callback callback) noexcept -> Result {
+    Replication2Callback callback) noexcept -> Result {
   auto col = lookupShard(shard);
   if (col.fail()) {
     return {col.errorNumber(),

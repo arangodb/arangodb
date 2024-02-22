@@ -29,6 +29,7 @@
 #include "Basics/Result.h"
 #include "Futures/Future.h"
 #include "Indexes/Index.h"
+#include "Replication2/StateMachines/Document/CreateIndexReplicationCallback.h"
 #include "Transaction/Hints.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/voc-types.h"
@@ -51,10 +52,6 @@ namespace methods {
 struct Indexes {
   using ProgressTracker = std::function<arangodb::Result(double)>;
 
-  // Handle replication during index creation
-  using Replication2Callback = fu2::unique_function<futures::Future<Result>(
-      velocypack::Slice indexDefinition)>;
-
   static futures::Future<arangodb::Result> getIndex(
       LogicalCollection const& collection, velocypack::Slice indexId,
       velocypack::Builder& out, transaction::Methods* trx = nullptr);
@@ -72,7 +69,8 @@ struct Indexes {
   static futures::Future<arangodb::Result> ensureIndex(
       LogicalCollection& collection, velocypack::Slice definition, bool create,
       velocypack::Builder& output, std::shared_ptr<ProgressTracker> f = nullptr,
-      Replication2Callback replicationCb = nullptr);
+      replication2::replicated_state::document::Replication2Callback
+          replicationCb = nullptr);
 
   static futures::Future<arangodb::Result> drop(LogicalCollection& collection,
                                                 velocypack::Slice indexArg);

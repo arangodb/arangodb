@@ -120,9 +120,12 @@ function Replication2IndexCreationResilienceSuite () {
       assertEqual(expected, docsToKV(allDocsFrom(followerId)));
 
       let term = lh.readReplicatedLogAgency(db._name(), logId).plan.currentTerm.term;
+      // switching leader/follower now
       lh.setLeader(db._name(), logId, followerId);
       lh.waitFor(lp.replicatedLogIsReady(db._name(), logId, term + 1, [leaderId, followerId], followerId));
       assertEqual(expected, docsToKV(col.toArray()));
+      assertEqual(expected, docsToKV(allDocsFrom(followerId))); // current leader
+      assertEqual(expected, docsToKV(allDocsFrom(leaderId))); // current follower
     },
   };
 }

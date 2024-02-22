@@ -26,6 +26,7 @@
 #include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
+#include "Replication2/StateMachines/Document/CreateIndexReplicationCallback.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
@@ -170,9 +171,11 @@ auto DocumentStateTransactionHandler::applyOp(
 }
 
 auto DocumentStateTransactionHandler::applyOp(
-    ReplicatedOperation::CreateIndex const& op) -> Result {
+    ReplicatedOperation::CreateIndex const& op,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+    Replication2Callback callback) -> Result {
   return _shardHandler->ensureIndex(op.shard, op.properties.slice(),
-                                    op.params.progress);
+                                    std::move(progress), std::move(callback));
 }
 
 auto DocumentStateTransactionHandler::applyOp(
@@ -180,23 +183,90 @@ auto DocumentStateTransactionHandler::applyOp(
   return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
-auto DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation operation) noexcept -> Result {
-  return applyEntry(operation.operation);
+// [[nodiscard]] auto applyEntry(UserTransactionOperation operation) noexcept
+//     -> Result override;
+// [[nodiscard]] auto applyEntry(DataDefinitionOperation operation) noexcept
+//     -> Result override;
+
+namespace {
+auto to_string(UserTransactionOperation const& oper) noexcept -> std::string {
+  return std::visit(
+      [](auto& op) {
+        auto ss = std::stringstream{};
+        ss << op;
+        return ss.str();
+      },
+      oper);
 }
+auto to_string(DataDefinitionOperation const& oper) noexcept -> std::string {
+  return std::visit(
+      [](auto& op) {
+        auto ss = std::stringstream{};
+        ss << op;
+        return ss.str();
+      },
+      oper);
+}
+}  // namespace
 
 auto DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation::OperationType const& operation) noexcept -> Result {
+    UserTransactionOperation const& operation) noexcept -> Result {
   auto res = basics::catchToResult([&]() {
     return std::visit([&](auto const& op) -> Result { return applyOp(op); },
                       operation);
   });
   if (res.fail()) {
     LOG_CTX("01202", DEBUG, _loggerContext)
+        << "Error occurred while applying operation " << to_string(operation)
+        << " " << res
+        << ". This is not necessarily a problem. Some errors are expected to "
+           "occur during leader or follower recovery.";
+  }
+  return res;
+}
+
+auto DocumentStateTransactionHandler::applyEntry(
+    DataDefinitionOperation const& operation) noexcept -> Result {
+  auto res = basics::catchToResult([&]() {
+    return std::visit([&](auto const& op) -> Result { return applyOp(op); },
+                      operation);
+  });
+  if (res.fail()) {
+    LOG_CTX("32b1d", DEBUG, _loggerContext)
+        << "Error occurred while applying operation " << to_string(operation)
+        << " " << res
+        << ". This is not necessarily a problem. Some errors are expected to "
+           "occur during leader or follower recovery.";
+  }
+  return res;
+}
+
+auto DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::AbortAllOngoingTrx const& operation) noexcept
+    -> Result {
+  auto res = basics::catchToResult([&]() { return applyOp(operation); });
+  if (res.fail()) {
+    LOG_CTX("aa521", DEBUG, _loggerContext)
         << "Error occurred while applying operation " << operation << " " << res
         << ". This is not necessarily a problem. Some errors are expected to "
            "occur during leader or follower recovery.";
   }
   return res;
 }
+auto DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation::CreateIndex const& operation,
+    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+    Replication2Callback callback) noexcept -> Result {
+  auto res = basics::catchToResult([&]() {
+    return applyOp(operation, std::move(progress), std::move(callback));
+  });
+  if (res.fail()) {
+    LOG_CTX("2da1f", DEBUG, _loggerContext)
+        << "Error occurred while applying operation " << operation << " " << res
+        << ". This is not necessarily a problem. Some errors are expected to "
+           "occur during leader or follower recovery.";
+  }
+  return res;
+}
+
 }  // namespace arangodb::replication2::replicated_state::document

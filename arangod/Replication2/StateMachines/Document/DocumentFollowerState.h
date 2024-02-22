@@ -40,6 +40,10 @@ struct LocalRuntime;
 }
 
 namespace arangodb::replication2::replicated_state::document {
+namespace actor {
+template<typename Runtime>
+struct ApplyEntriesHandler;
+}
 
 struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
@@ -63,6 +67,8 @@ struct DocumentFollowerState
       std::shared_ptr<IScheduler> scheduler);
 
   ~DocumentFollowerState() override;
+
+  friend struct actor::ApplyEntriesHandler<arangodb::actor::LocalRuntime>;
 
   GlobalLogIdentifier const gid;
   LoggerContext const loggerContext;
@@ -110,14 +116,20 @@ struct DocumentFollowerState
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;
+
+ protected:
   Handlers const _handlers;
+
+  void increaseLowestSafeIndexForReplayTo(ShardID, LogIndex);
+
+ private:
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of
                                         // the state machine upon resigning
 
-  std::shared_ptr<actor::LocalRuntime> _runtime;
-  actor::LocalActorPID _applyEntriesActor;
+  std::shared_ptr<arangodb::actor::LocalRuntime> _runtime;
+  arangodb::actor::LocalActorPID _applyEntriesActor;
 
   Guarded<LowestSafeIndexesForReplay> _lowestSafeIndexesForReplay;
 };

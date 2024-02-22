@@ -44,9 +44,9 @@ using namespace arangodb::actor;
 
 struct ApplyEntriesState {
   explicit ApplyEntriesState(LoggerContext const& loggerContext,
-                             Handlers const& handlers)
+                             DocumentFollowerState& followerState)
       : loggerContext(loggerContext),  // TODO - include pid in context
-        handlers(handlers) {}
+        followerState(followerState) {}
 
   friend inline auto inspect(auto& f, ApplyEntriesState& x) {
     return f.object(x).fields(
@@ -78,7 +78,7 @@ struct ApplyEntriesState {
   };
 
   LoggerContext const loggerContext;
-  Handlers const handlers;
+  DocumentFollowerState& followerState;
 
   std::unique_ptr<Batch> _batch;
 
@@ -189,18 +189,21 @@ struct ApplyEntriesHandler : HandlerBase<Runtime, ApplyEntriesState> {
   auto beforeApplyEntry(FinishesUserTransaction auto const& op, LogIndex index)
       -> bool;
 
-  auto applyDataDefinitionEntry(ReplicatedOperation::DropShard const& op)
-      -> Result;
-  auto applyDataDefinitionEntry(ReplicatedOperation::ModifyShard const& op)
-      -> Result;
+  auto applyDataDefinitionEntry(ReplicatedOperation::DropShard const& op,
+                                LogIndex index) -> Result;
+
+  auto applyDataDefinitionEntry(ReplicatedOperation::ModifyShard const& op,
+                                LogIndex index) -> Result;
   template<class T>
   requires IsAnyOf<T, ReplicatedOperation::CreateShard,
-                   ReplicatedOperation::CreateIndex,
                    ReplicatedOperation::DropIndex>
-  auto applyDataDefinitionEntry(T const& op) -> Result;
+  auto applyDataDefinitionEntry(T const& op, LogIndex index) -> Result;
 
   template<class T>
-  auto applyEntryAndReleaseIndex(T const& op) -> Result;
+  auto applyEntryAndReleaseIndex(T const& op, LogIndex index) -> Result;
+
+  auto applyDataDefinitionEntry(ReplicatedOperation::CreateIndex const& op,
+                                LogIndex index) -> Result;
 };
 
 struct ApplyEntriesActor {

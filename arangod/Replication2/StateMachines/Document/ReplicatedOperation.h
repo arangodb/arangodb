@@ -38,6 +38,9 @@ namespace arangodb::replication2::replicated_state::document {
 struct ReplicatedOperation {
   ReplicatedOperation() = default;
 
+  explicit ReplicatedOperation(auto operation)
+      : ReplicatedOperation(std::in_place, operation) {}
+
   struct DocumentOperation {
     TransactionId tid;
     ShardID shard;
@@ -136,15 +139,6 @@ struct ReplicatedOperation {
     ShardID shard;
     velocypack::SharedSlice properties;
 
-    // Parameters attached to the operation, but not replicated, because they
-    // make sense only locally.
-    struct Parameters {
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress;
-
-      friend auto operator==(Parameters const&, Parameters const&)
-          -> bool = default;
-    } params;
-
     friend auto operator==(CreateIndex const& lhs, CreateIndex const& rhs)
         -> bool {
       return lhs.shard == rhs.shard &&
@@ -197,9 +191,8 @@ struct ReplicatedOperation {
   static auto buildDropShardOperation(ShardID shard) noexcept
       -> ReplicatedOperation;
   static auto buildCreateIndexOperation(
-      ShardID shard, velocypack::SharedSlice properties,
-      std::shared_ptr<methods::Indexes::ProgressTracker> progress =
-          nullptr) noexcept -> ReplicatedOperation;
+      ShardID shard, velocypack::SharedSlice properties) noexcept
+      -> ReplicatedOperation;
   static auto buildDropIndexOperation(ShardID shard, IndexId indexId) noexcept
       -> ReplicatedOperation;
   static auto buildDocumentOperation(
@@ -213,7 +206,8 @@ struct ReplicatedOperation {
 
  private:
   template<typename... Args>
-  explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept;
+  explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept
+      : operation(std::forward<Args>(args)...) {}
 };
 
 template<typename T, typename... U>
@@ -264,6 +258,15 @@ concept DataDefinition = IsAnyOf<std::remove_cvref_t<T>,            //
                                  ReplicatedOperation::DropShard,    //
                                  ReplicatedOperation::CreateIndex,  //
                                  ReplicatedOperation::DropIndex>;
+
+// TODO clean this up: It should either contain CreateIndex, or be renamed, or
+//      be removed (prolly the latter)
+using DataDefinitionOperation =
+    std::variant<ReplicatedOperation::CreateShard,  //
+                 ReplicatedOperation::ModifyShard,  //
+                 ReplicatedOperation::DropShard,    //
+                 // ReplicatedOperation::CreateIndex,  //
+                 ReplicatedOperation::DropIndex>;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 auto operator<<(std::ostream&, ReplicatedOperation::OperationType const&)

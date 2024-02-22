@@ -34,6 +34,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateNetworkHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/Streams/IMetadataTransaction.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "VocBase/LogicalCollection.h"
 
@@ -81,7 +82,7 @@ DocumentFollowerState::DocumentFollowerState(
   // Get ready to replay the log
   _handlers.shardHandler->prepareShardsForLogReplay();
   _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(
-      std::make_unique<actor::ApplyEntriesState>(loggerContext, _handlers));
+      std::make_unique<actor::ApplyEntriesState>(loggerContext, *this));
   LOG_CTX("de019", INFO, loggerContext)
       << "Spawned ApplyEntries actor " << _applyEntriesActor.id;
 }
@@ -112,7 +113,7 @@ auto DocumentFollowerState::resign() && noexcept
         << "Follower " << gid << " already resigned!";
 
     auto abortAllRes = _handlers.transactionHandler->applyEntry(
-        ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+        ReplicatedOperation::AbortAllOngoingTrx{});
     ADB_PROD_ASSERT(abortAllRes.ok())
         << "Failed to abort ongoing transactions while resigning follower "
         << gid << ": " << abortAllRes;
@@ -154,7 +155,7 @@ auto DocumentFollowerState::acquireSnapshot(
         }
 
         if (auto abortAllRes = self->_handlers.transactionHandler->applyEntry(
-                ReplicatedOperation::buildAbortAllOngoingTrxOperation());
+                ReplicatedOperation::AbortAllOngoingTrx{});
             abortAllRes.fail()) {
           LOG_CTX("c863a", ERR, self->loggerContext)
               << "Failed to abort ongoing transactions before acquiring "
@@ -364,9 +365,26 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                   << snapshotRes->snapshotId
                   << " operations: " << snapshotRes->operations;
 
-              for (auto const& op : snapshotRes->operations) {
-                if (auto applyRes =
-                        self->_handlers.transactionHandler->applyEntry(op);
+              for (auto const& oper : snapshotRes->operations) {
+                if (auto applyRes = std::visit(
+                        overload{
+                            [&](ReplicatedOperation::CreateIndex const& op)
+                                -> Result {
+                              // TODO snapshot transfer must include a set of
+                              // lowest safe indexes; otherwise index creation
+                              // during snapshot transfer might not be safe
+                              LOG_DEVEL
+                                  << "Creating index during snapshot transfer: "
+                                     "this is currently unsafe!";
+                              return self->_handlers.transactionHandler
+                                  ->applyEntry(op, nullptr, nullptr);
+                            },
+                            [&](auto const& op) -> Result {
+                              return self->_handlers.transactionHandler
+                                  ->applyEntry(op);
+                            },
+                        },
+                        oper.operation);
                     applyRes.fail()) {
                   reportingFailure = true;
                   return applyRes;
@@ -454,6 +472,55 @@ auto DocumentFollowerState::applyEntries(
           return Result{};
         });
   });
+}
+
+namespace {
+// TODO this is shared code with the leader; deduplicate it
+bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
+                        std::map<std::string, LogIndex> right) {
+  auto left = std::map<std::string, LogIndex>{};
+  std::transform(left_.begin(), left_.end(), std::inserter(left, left.end()),
+                 [](auto const& kv) {
+                   return std::pair{ShardID(kv.first), kv.second};
+                 });
+  return left == right;
+}
+
+}  // namespace
+// TODO this shares code with the leader; deduplicate it
+void DocumentFollowerState::increaseLowestSafeIndexForReplayTo(
+    ShardID shardId, LogIndex logIndex) {
+  auto lowestSafeIndexesForReplayGuard =
+      _lowestSafeIndexesForReplay.getLockedGuard();
+  auto trx = getStream()->beginMetadataTrx();
+  auto& metadata = trx->get();
+  if constexpr (maintainerMode) {
+    auto inMemMap = lowestSafeIndexesForReplayGuard->map;
+    auto persistedMap = metadata.lowestSafeIndexesForReplay;
+    if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
+      auto msg = std::stringstream{};
+      msg << "Mismatch between in-memory and persisted state of lowest safe "
+             "indexes for replay. In-memory state: "
+          << inMemMap << ", persisted state: ";
+      // no ADL for persistedMap
+      arangodb::operator<<(msg, persistedMap);
+      TRI_ASSERT(false) << msg.str();
+    }
+  }
+  auto& lowestSafeIndex =
+      metadata.lowestSafeIndexesForReplay[shardId.operator std::string()];
+  lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
+  auto const res = getStream()->commitMetadataTrx(std::move(trx));
+  if (res.ok()) {
+    lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
+  } else {
+    auto msg = fmt::format(
+        "Failed to persist the lowest safe index on shard {}. This "
+        "will abort index creation. Error was: {}",
+        shardId, res.errorMessage());
+    LOG_CTX("9afad", WARN, loggerContext) << msg;
+    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), std::move(msg));
+  }
 }
 
 }  // namespace arangodb::replication2::replicated_state::document

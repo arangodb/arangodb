@@ -1,6 +1,7 @@
 target_sources(arango_replication2 PRIVATE
   ActiveTransactionsQueue.cpp ActiveTransactionsQueue.h
   CollectionReader.cpp CollectionReader.h
+  CreateIndexReplicationCallback.h
   DocumentCore.cpp DocumentCore.h
   DocumentStateErrorHandler.cpp DocumentStateErrorHandler.h
   DocumentFollowerState.cpp DocumentFollowerState.h

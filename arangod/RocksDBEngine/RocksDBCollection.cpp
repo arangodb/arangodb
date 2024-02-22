@@ -450,7 +450,8 @@ void RocksDBCollection::duringAddIndex(std::shared_ptr<Index> idx) {
 futures::Future<std::shared_ptr<Index>> RocksDBCollection::createIndex(
     VPackSlice info, bool restore, bool& created,
     std::shared_ptr<std::function<arangodb::Result(double)>> progress,
-    Replication2Callback replicationCb) {
+    replication2::replicated_state::document::Replication2Callback
+        replicationCb) {
   TRI_ASSERT(info.isObject());
 
   // Step 0. Lock all the things

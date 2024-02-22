@@ -37,11 +37,6 @@ ReplicatedOperation::DocumentOperation::DocumentOperation(
       userName{userName},
       options(options) {}
 
-template<typename... Args>
-ReplicatedOperation::ReplicatedOperation(std::in_place_t,
-                                         Args&&... args) noexcept
-    : operation(std::forward<Args>(args)...) {}
-
 auto ReplicatedOperation::fromOperationType(OperationType op) noexcept
     -> ReplicatedOperation {
   return ReplicatedOperation{std::in_place, std::move(op)};
@@ -95,12 +90,10 @@ auto ReplicatedOperation::buildDropShardOperation(ShardID shard) noexcept
 }
 
 auto ReplicatedOperation::buildCreateIndexOperation(
-    ShardID shard, velocypack::SharedSlice properties,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress) noexcept
+    ShardID shard, velocypack::SharedSlice properties) noexcept
     -> ReplicatedOperation {
-  return ReplicatedOperation{
-      std::in_place, CreateIndex{shard, std::move(properties),
-                                 CreateIndex::Parameters{std::move(progress)}}};
+  return ReplicatedOperation{std::in_place,
+                             CreateIndex{shard, std::move(properties)}};
 }
 
 auto ReplicatedOperation::buildDropIndexOperation(ShardID shard,

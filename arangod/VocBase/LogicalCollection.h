@@ -31,6 +31,7 @@
 #include "Futures/Future.h"
 #include "Indexes/IndexIterator.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/StateMachines/Document/CreateIndexReplicationCallback.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -326,14 +327,12 @@ class LogicalCollection : public LogicalDataSource {
 
   // SECTION: Indexes
 
-  using Replication2Callback = fu2::unique_function<futures::Future<Result>(
-      velocypack::Slice indexDefinition)>;
-
   /// @brief Create a new Index based on VelocyPack description
   virtual futures::Future<std::shared_ptr<Index>> createIndex(
       velocypack::Slice, bool&,
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr,
-      Replication2Callback replicationCb = nullptr);
+      replication2::replicated_state::document::Replication2Callback
+          replicationCb = nullptr);
 
   /// @brief Find index by definition
   std::shared_ptr<Index> lookupIndex(velocypack::Slice) const;

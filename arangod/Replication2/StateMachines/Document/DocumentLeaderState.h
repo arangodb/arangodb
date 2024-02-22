@@ -68,7 +68,14 @@ struct DocumentLeaderState
   auto replicateOperation(ReplicatedOperation op, ReplicationOptions opts)
       -> futures::Future<ResultT<LogIndex>>;
 
-  void increaseLowestSafeIndexForReplayTo(ShardID, LogIndex);
+  auto replicateOperation(auto op, ReplicationOptions opts)
+      -> futures::Future<ResultT<LogIndex>> {
+    return replicateOperation(ReplicatedOperation{std::move(op)},
+                              std::move(opts));
+  }
+
+  void increaseLowestSafeIndexForReplayTo(LowestSafeIndexesForReplay&, ShardID,
+                                          LogIndex);
 
   auto release(LogIndex index) -> Result;
 

@@ -49,12 +49,16 @@ struct IDocumentStateTransactionHandler {
 
   virtual ~IDocumentStateTransactionHandler() = default;
 
-  [[nodiscard]] virtual auto applyEntry(ReplicatedOperation operation) noexcept
-      -> Result = 0;
-
   [[nodiscard]] virtual auto applyEntry(
-      ReplicatedOperation::OperationType const& operation) noexcept
+      UserTransactionOperation const&) noexcept -> Result = 0;
+  [[nodiscard]] virtual auto applyEntry(DataDefinitionOperation const&) noexcept
       -> Result = 0;
+  [[nodiscard]] virtual auto applyEntry(
+      ReplicatedOperation::AbortAllOngoingTrx const&) noexcept -> Result = 0;
+  [[nodiscard]] virtual auto applyEntry(
+      ReplicatedOperation::CreateIndex const&,
+      std::shared_ptr<methods::Indexes::ProgressTracker>,
+      Replication2Callback) noexcept -> Result = 0;
 
   virtual void removeTransaction(TransactionId tid) = 0;
 
@@ -72,12 +76,17 @@ class DocumentStateTransactionHandler
       std::shared_ptr<IDocumentStateHandlersFactory> factory,
       std::shared_ptr<IDocumentStateShardHandler> shardHandler);
 
-  [[nodiscard]] auto applyEntry(ReplicatedOperation operation) noexcept
-      -> Result override;
-
   [[nodiscard]] auto applyEntry(
-      ReplicatedOperation::OperationType const& operation) noexcept
+      UserTransactionOperation const& operation) noexcept -> Result override;
+  [[nodiscard]] auto applyEntry(
+      DataDefinitionOperation const& operation) noexcept -> Result override;
+  [[nodiscard]] auto applyEntry(
+      ReplicatedOperation::AbortAllOngoingTrx const& operation) noexcept
       -> Result override;
+  [[nodiscard]] auto applyEntry(
+      ReplicatedOperation::CreateIndex const& operation,
+      std::shared_ptr<methods::Indexes::ProgressTracker> progress,
+      Replication2Callback callback) noexcept -> Result override;
 
   void removeTransaction(TransactionId tid) override;
 
@@ -101,7 +110,9 @@ class DocumentStateTransactionHandler
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
 
   // TODO These should return futures
-  auto applyOp(ReplicatedOperation::CreateIndex const&) -> Result;
+  auto applyOp(ReplicatedOperation::CreateIndex const&,
+               std::shared_ptr<methods::Indexes::ProgressTracker>,
+               Replication2Callback) -> Result;
   auto applyOp(ReplicatedOperation::DropIndex const&) -> Result;
 
  private:
