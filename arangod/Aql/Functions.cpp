@@ -116,12 +116,7 @@
 #include <regex>
 #endif
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include <Ws2tcpip.h>
-#else
 #include <arpa/inet.h>
-#endif
 
 #include <absl/crc/crc32c.h>
 #include <absl/strings/escaping.h>

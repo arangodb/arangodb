@@ -35,10 +35,6 @@ extern "C" {
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 using namespace arangodb;
 
 ////////////////////////////////////////////////////////////////////////////////

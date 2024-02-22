@@ -51,10 +51,6 @@
 #include "Logger/LogStructuredParamsAllowList.h"
 #include "Logger/LogThread.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
 #endif

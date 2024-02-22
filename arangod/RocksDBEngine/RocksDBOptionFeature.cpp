@@ -566,7 +566,7 @@ prevent WAL files from being moved to the archive and being removed.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(Levels above the default of `2` use Snappy
+      .setLongDescription(R"(Levels above the default of `2` use
 compression to reduce the disk space requirements for storing data in these
 levels.)");
 

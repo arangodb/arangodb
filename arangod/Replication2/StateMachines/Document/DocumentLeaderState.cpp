@@ -698,13 +698,6 @@ auto DocumentLeaderState::createIndex(
     std::shared_ptr<methods::Indexes::ProgressTracker> progress)
     -> futures::Future<Result> {
   auto sharedIndexInfo = VPackBuilder{indexInfo}.sharedSlice();
-  // Note that this ReplicatedOperation will only be used to call
-  // createIndex, but will not be replicated; instead, a new one will be created
-  // during RocksDBCollection::createIndex. It will actually be different,
-  // because it will work with a normalized `indexInfo` parameter; however, as
-  // that one is used for the index creation, it should not create any problems.
-  auto op = ReplicatedOperation::buildCreateIndexOperation(
-      shard, sharedIndexInfo, std::move(progress));
 
   // Why are we first creating the index locally, then replicating it?
   // 1. Unique Indexes
@@ -724,13 +717,26 @@ auto DocumentLeaderState::createIndex(
   //   the server.
 
   auto localIndexCreation = _guardedData.doUnderLock(
-      [op = std::move(op), self = shared_from_this()](auto& data) mutable {
+      [self = shared_from_this(), shard, sharedIndexInfo,
+       progress = std::move(progress)](auto& data) mutable {
         if (data.didResign()) {
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_LEADER_RESIGNED,
                         "Leader resigned prior to index creation"};
         }
 
-        return data.transactionHandler->applyEntry(std::move(op));
+        // Callback used to replicate the operation during
+        // RocksDBCollection::createIndex
+        auto op = ReplicatedOperation::buildCreateIndexOperation(
+            shard, sharedIndexInfo, progress);
+        auto callback = [op = std::move(op), self]() mutable {
+          return self->replicateOperation(
+              std::move(op),
+              replication2::replicated_state::document::ReplicationOptions{
+                  .waitForCommit = true, .waitForSync = true});
+        };
+
+        return self->_shardHandler->ensureIndex(
+            shard, sharedIndexInfo, std::move(progress), std::move(callback));
       });
   auto indexId = helpers::extractId(sharedIndexInfo.slice());
   TRI_ASSERT(indexId != IndexId::none() or localIndexCreation.fail());

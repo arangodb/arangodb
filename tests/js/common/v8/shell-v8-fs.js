@@ -473,16 +473,7 @@ function FileSystemSuite () {
       // tolerate a max deviation of 60 seconds
       // (deviation needs to be > 1 to make the tests succeed even on busy
       // test servers)
-      if (require("internal").platform.substr(0, 3) === 'win') {
-        // Windows is bugged. For details see:
-        // http://stackoverflow.com/questions/19800811/last-modification-time-reported-by-stat-changes-depending-on-daylight-savings
-        // we just work around it here.
-        var deltaModulo = Math.abs(mtime - now);
-        assertTrue(deltaModulo <= 60 || (deltaModulo > 3540));
-      }
-      else {
-        assertTrue(Math.abs(mtime - now) <= 60);
-      }
+      assertTrue(Math.abs(mtime - now) <= 60);
     },
 
 ////////////////////////////////////////////////////////////////////////////////

@@ -30,7 +30,6 @@
   const arangodb = require("@arangodb");
   const db = arangodb.db;
   const { getCompleteMetricsValues } = require('@arangodb/test-helper');
-  const isWindows = (require("internal").platform.substr(0, 3) === 'win');
   const collectionName = "test";
   const viewName = "testView";
 
@@ -44,7 +43,7 @@
     generateAndInsert.factor++;
 
     let docs = [];
-    for (let i = 0; i < 1000 * generateAndInsert.factor; i++) {
+    for (let i = 0; i < 600 * generateAndInsert.factor; i++) {
       let custom_field = "field_" + generateAndInsert.counter;
       let d = {
         'stringValue': "" + generateAndInsert.counter, 
@@ -99,7 +98,7 @@
           generateAndInsert(collectionName);
           db._query(`for d in ${viewName} OPTIONS {waitForSync: true} LIMIT 1 RETURN 1 `);
           writers_curr = getCompleteMetricsValues("arangodb_search_writers_memory_usage");
-          assertTrue(writers_prev < writers_curr);
+          assertTrue(writers_prev < writers_curr, `new writers value (${writers_curr}) is equal or less old writers value (${writers_prev})`);
           writers_prev = writers_curr;
         }
         db._view(viewName).properties({commitIntervalMsec: 100});
@@ -121,7 +120,7 @@
 
           assertEqual(scheduler_memory, num_worker_threads * 4 * 1000000, {scheduler_memory, num_worker_threads});
 
-          if (readers > 0 && consolidations > 0 && descriptors > 0 && (isWindows || mapped > 0)) {
+          if (readers > 0 && consolidations > 0 && descriptors > 0 && mapped > 0) {
             break;
           }
           require("internal").sleep(0.25);
@@ -130,9 +129,7 @@
         assertTrue(readers > 0);
         assertTrue(consolidations > 0);
         assertTrue(descriptors > 0);
-        if (!isWindows) {
-          assertTrue(mapped > 0);
-        }
+        assertTrue(mapped > 0);
 
         {
           db._view(viewName).properties({commitIntervalMsec: 0});
@@ -154,7 +151,7 @@
             "arangodb_scheduler_num_worker_threads"
           ]);
 
-          if (readers === 0 && consolidations === 0 && descriptors === 0 && (isWindows || mapped === 0)) {
+          if (readers === 0 && consolidations === 0 && descriptors === 0 && mapped === 0) {
             break;
           }
           require("internal").sleep(0.25);

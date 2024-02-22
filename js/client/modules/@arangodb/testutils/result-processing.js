@@ -357,9 +357,6 @@ function saveToJunitXML(options, results) {
       try {
         fn = fs.join(options.testXmlOutputDirectory,
                          'UNITTEST_RESULT_' + state.xmlName + '.xml');
-        if ((fn.length > 250) && (internal.platform.substr(0, 3) === 'win')) {
-          fn = '\\\\?\\' + fn;
-        }
         fs.write(fn, state.xml.join(''));
       } catch (x) {
         print(`Failed to write '${fn}'! - ${x.message}`);

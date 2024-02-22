@@ -1136,9 +1136,11 @@ std::shared_ptr<Index> LogicalCollection::lookupIndex(VPackSlice info) const {
 
 futures::Future<std::shared_ptr<Index>> LogicalCollection::createIndex(
     VPackSlice info, bool& created,
-    std::shared_ptr<std::function<arangodb::Result(double)>> progress) {
+    std::shared_ptr<std::function<arangodb::Result(double)>> progress,
+    Replication2Callback replicationCb) {
   auto idx = co_await _physical->createIndex(info, /*restore*/ false, created,
-                                             std::move(progress));
+                                             std::move(progress),
+                                             std::move(replicationCb));
   if (idx) {
     vocbase().versionTracker().track("create index");
   }

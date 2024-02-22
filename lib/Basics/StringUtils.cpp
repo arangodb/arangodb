@@ -1596,11 +1596,7 @@ float floatDecimal(std::string_view value) {
 // .............................................................................
 
 std::string correctPath(std::string_view incorrectPath) {
-#ifdef _WIN32
-  return replace(incorrectPath, "/", "\\");
-#else
   return replace(incorrectPath, "\\", "/");
-#endif
 }
 
 std::string encodeHex(char const* value, size_t length) {

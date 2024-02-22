@@ -791,8 +791,9 @@ function createServiceBundle (mount, bundlePath = FoxxService.bundlePath(mount))
 }
 
 function downloadServiceBundleFromRemote (url) {
+  const timeout = 60.0;
   try {
-    const res = request.get(url, {encoding: null});
+    const res = request.get(url, {encoding: null, timeout});
     if (res.json && res.json.errorNum) {
       throw new ArangoError(res.json);
     }
@@ -801,12 +802,16 @@ function downloadServiceBundleFromRemote (url) {
     fs.writeFileSync(tempFile, res.body);
     return tempFile;
   } catch (e) {
+    const timeoutMessage = (
+      e.message.includes('timeout during') ?
+      ` (timeout after ${timeout.toFixed(1)}s)` : ''
+    );
     throw Object.assign(
       new ArangoError({
         errorNum: errors.ERROR_SERVICE_SOURCE_ERROR.code,
         errorMessage: dd`
           ${errors.ERROR_SERVICE_SOURCE_ERROR.message}
-          URL: ${url}
+          URL: ${url}${timeoutMessage}
         `
       }),
       {cause: e}

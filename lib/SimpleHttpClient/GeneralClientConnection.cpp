@@ -51,15 +51,7 @@
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -369,10 +361,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
       TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   } else {  // res < 0
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
     char const* pErr = STR_ERROR();
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
                     std::string(" - ") + pErr;
