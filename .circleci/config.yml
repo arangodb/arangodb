@@ -18,6 +18,9 @@ parameters:
   build-docker-image:
     type: string
     default: ""
+  nightly:
+    type: boolean
+    default: false
   replication-two:
     type: boolean
     default: false # We use replication1 as default.
@@ -102,7 +105,10 @@ jobs:
               cp .circleci/build_test_image.yml continuation_config.yml
             else
               pip install pyyaml
-              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
+              python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
+                <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
+                <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
+                -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
             fi
 
       - continuation/continue:
