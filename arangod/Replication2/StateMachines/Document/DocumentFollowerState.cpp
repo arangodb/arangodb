@@ -372,8 +372,7 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                               LOG_DEVEL
                                   << "Creating index during snapshot transfer: "
                                      "this is currently unsafe!";
-                              return self->_transactionHandler->applyEntry(
-                                  op, nullptr, nullptr);
+                              return self->_transactionHandler->applyEntry(op);
                             },
                             [&](auto const& op) -> Result {
                               return self->_transactionHandler->applyEntry(op);

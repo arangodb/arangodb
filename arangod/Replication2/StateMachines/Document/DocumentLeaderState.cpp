@@ -236,8 +236,7 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                       self->loggerContext,
                       lowestSafeIndexesForReplayGuard.get(), *self->getStream(),
                       op.shard, idx);
-                  return data.transactionHandler->applyEntry(op, nullptr,
-                                                             nullptr);
+                  return data.transactionHandler->applyEntry(op);
                 },
                 [&](auto const& op) {
                   return data.transactionHandler->applyEntry(op);

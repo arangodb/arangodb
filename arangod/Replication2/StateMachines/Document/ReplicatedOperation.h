@@ -213,6 +213,23 @@ struct ReplicatedOperation {
 template<typename T, typename... U>
 concept IsAnyOf = (std::same_as<T, U> || ...);
 
+template<typename T>
+concept AnyOperation = IsAnyOf<std::remove_cvref_t<T>,                   //
+                               ReplicatedOperation::AbortAllOngoingTrx,  //
+                               ReplicatedOperation::Commit,              //
+                               ReplicatedOperation::IntermediateCommit,  //
+                               ReplicatedOperation::Abort,               //
+                               ReplicatedOperation::Truncate,            //
+                               ReplicatedOperation::CreateShard,         //
+                               ReplicatedOperation::ModifyShard,         //
+                               ReplicatedOperation::DropShard,           //
+                               ReplicatedOperation::CreateIndex,         //
+                               ReplicatedOperation::DropIndex,           //
+                               ReplicatedOperation::Insert,              //
+                               ReplicatedOperation::Update,              //
+                               ReplicatedOperation::Replace,             //
+                               ReplicatedOperation::Remove>;
+
 template<class T>
 concept ModifiesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,         //
                                           ReplicatedOperation::Truncate,  //
@@ -259,13 +276,11 @@ concept DataDefinition = IsAnyOf<std::remove_cvref_t<T>,            //
                                  ReplicatedOperation::CreateIndex,  //
                                  ReplicatedOperation::DropIndex>;
 
-// TODO clean this up: It should either contain CreateIndex, or be renamed, or
-//      be removed (prolly the latter)
 using DataDefinitionOperation =
     std::variant<ReplicatedOperation::CreateShard,  //
                  ReplicatedOperation::ModifyShard,  //
                  ReplicatedOperation::DropShard,    //
-                 // ReplicatedOperation::CreateIndex,  //
+                 ReplicatedOperation::CreateIndex,  //
                  ReplicatedOperation::DropIndex>;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;

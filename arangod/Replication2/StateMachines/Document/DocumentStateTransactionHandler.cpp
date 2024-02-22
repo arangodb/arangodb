@@ -171,11 +171,9 @@ auto DocumentStateTransactionHandler::applyOp(
 }
 
 auto DocumentStateTransactionHandler::applyOp(
-    ReplicatedOperation::CreateIndex const& op,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
-    Replication2Callback callback) -> Result {
-  return _shardHandler->ensureIndex(op.shard, op.properties.slice(),
-                                    std::move(progress), std::move(callback));
+    ReplicatedOperation::CreateIndex const& op) -> Result {
+  return _shardHandler->ensureIndex(op.shard, op.properties.slice(), nullptr,
+                                    nullptr);
 }
 
 auto DocumentStateTransactionHandler::applyOp(
@@ -183,85 +181,19 @@ auto DocumentStateTransactionHandler::applyOp(
   return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
-// [[nodiscard]] auto applyEntry(UserTransactionOperation operation) noexcept
-//     -> Result override;
-// [[nodiscard]] auto applyEntry(DataDefinitionOperation operation) noexcept
-//     -> Result override;
-
-namespace {
-auto to_string(UserTransactionOperation const& oper) noexcept -> std::string {
-  return std::visit(
-      [](auto& op) {
-        auto ss = std::stringstream{};
-        ss << op;
-        return ss.str();
-      },
-      oper);
+Result DocumentStateTransactionHandler::applyEntry(
+    ReplicatedOperation operation) noexcept {
+  return applyEntry(operation.operation);
 }
-auto to_string(DataDefinitionOperation const& oper) noexcept -> std::string {
-  return std::visit(
-      [](auto& op) {
-        auto ss = std::stringstream{};
-        ss << op;
-        return ss.str();
-      },
-      oper);
-}
-}  // namespace
 
-auto DocumentStateTransactionHandler::applyEntry(
-    UserTransactionOperation const& operation) noexcept -> Result {
+Result DocumentStateTransactionHandler::applyEntry(
+    const ReplicatedOperation::OperationType& operation) noexcept {
   auto res = basics::catchToResult([&]() {
     return std::visit([&](auto const& op) -> Result { return applyOp(op); },
                       operation);
   });
   if (res.fail()) {
     LOG_CTX("01202", DEBUG, _loggerContext)
-        << "Error occurred while applying operation " << to_string(operation)
-        << " " << res
-        << ". This is not necessarily a problem. Some errors are expected to "
-           "occur during leader or follower recovery.";
-  }
-  return res;
-}
-
-auto DocumentStateTransactionHandler::applyEntry(
-    DataDefinitionOperation const& operation) noexcept -> Result {
-  auto res = basics::catchToResult([&]() {
-    return std::visit([&](auto const& op) -> Result { return applyOp(op); },
-                      operation);
-  });
-  if (res.fail()) {
-    LOG_CTX("32b1d", DEBUG, _loggerContext)
-        << "Error occurred while applying operation " << to_string(operation)
-        << " " << res
-        << ". This is not necessarily a problem. Some errors are expected to "
-           "occur during leader or follower recovery.";
-  }
-  return res;
-}
-
-auto DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation::AbortAllOngoingTrx const& operation) noexcept
-    -> Result {
-  auto res = basics::catchToResult([&]() { return applyOp(operation); });
-  if (res.fail()) {
-    LOG_CTX("aa521", DEBUG, _loggerContext)
-        << "Error occurred while applying operation " << operation << " " << res
-        << ". This is not necessarily a problem. Some errors are expected to "
-           "occur during leader or follower recovery.";
-  }
-  return res;
-}
-auto DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation::CreateIndex const& operation,
-    std::shared_ptr<methods::Indexes::ProgressTracker> progress,
-    Replication2Callback callback) noexcept -> Result {
-  auto res = basics::catchToResult([&]() {
-    return applyOp(operation, std::move(progress), std::move(callback));
-  });
-  if (res.fail()) {
-    LOG_CTX("2da1f", DEBUG, _loggerContext)
         << "Error occurred while applying operation " << operation << " " << res
         << ". This is not necessarily a problem. Some errors are expected to "
            "occur during leader or follower recovery.";
