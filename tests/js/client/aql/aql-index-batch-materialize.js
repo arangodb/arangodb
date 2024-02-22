@@ -238,10 +238,9 @@ function IndexBatchMaterializeTestSuite() {
           LIMIT 100
           FILTER d1.z < 18
           RETURN d1.w`;
-
       const {materializeNode, indexNode, nodes} = expectOptimization(query);
       assertEqual(normalize(indexNode.projections), [["b"], ["z"]]);
-      assertEqual(normalize(materializeNode.projections), [["b"], ["w"], ["z"]]);
+      assertEqual(normalize(materializeNode.projections), [["w"]]);
       assertNotEqual(nodes.indexOf('SortNode'), -1);
       assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
       assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));

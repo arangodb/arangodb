@@ -1257,7 +1257,7 @@ class MaterializeNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override;
 
   /// @brief return out variable
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
@@ -1333,9 +1333,12 @@ class MaterializeRocksDBNode : public MaterializeNode,
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }
 
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
   void projections(Projections proj) noexcept {
     _projections = std::move(proj);
   }
+  Projections& projections() noexcept { return _projections; }
   Projections const& projections() const noexcept { return _projections; }
 
  protected:

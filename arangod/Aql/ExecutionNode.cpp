@@ -3103,7 +3103,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {});
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {}, {});
 
   return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3147,15 +3147,40 @@ void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
   }
 }
 
+std::vector<Variable const*> MaterializeRocksDBNode::getVariablesSetHere()
+    const {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
+    return std::vector<Variable const*>{_outVariable};
+  } else {
+    std::vector<Variable const*> vars;
+    vars.reserve(projections().size());
+    std::transform(projections().projections().begin(),
+                   projections().projections().end(), std::back_inserter(vars),
+                   [](auto const& p) { return p.variable; });
+    return vars;
+  }
+}
+
 std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
+  auto writableOutputRegisters = RegIdSet{};
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
+
   RegisterId outDocumentRegId;
-  {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
     TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
     outDocumentRegId = it->second.registerId;
+    writableOutputRegisters.emplace(outDocumentRegId);
+  } else {
+    for (auto const& p : projections().projections()) {
+      auto reg = getRegisterPlan()->variableToRegisterId(p.variable);
+      varsToRegs.emplace(p.variable->id, reg);
+      writableOutputRegisters.emplace(reg);
+    }
   }
   RegisterId inNmDocIdRegId;
   {
@@ -3167,14 +3192,13 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   if (inNmDocIdRegId.isValid()) {
     readableInputRegisters.emplace(inNmDocIdRegId);
   }
-  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos =
-      MaterializerExecutorInfos(inNmDocIdRegId, outDocumentRegId,
-                                engine.getQuery(), collection(), _projections);
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection(),
+      _projections, std::move(varsToRegs));
 
   return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
