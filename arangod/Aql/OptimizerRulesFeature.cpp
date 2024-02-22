@@ -811,7 +811,8 @@ involved attributes are covered by regular indexes.)");
   registerRule("materialize-into-separate-variable",
                materializeIntoSeparateVariable,
                OptimizerRule::materializeIntoSeparateVariable,
-               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               // rule cannot be disabled because it is crucial for correctness
+               OptimizerRule::makeFlags(),
                R"(Introduce a separate variable for late materialization.)");
 
 #ifdef USE_ENTERPRISE
