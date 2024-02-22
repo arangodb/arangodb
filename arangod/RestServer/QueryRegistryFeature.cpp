@@ -186,6 +186,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
 #endif
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
+      _maxAsyncPrefetchSlotsTotal(256),
+      _maxAsyncPrefetchSlotsPerQuery(32),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
       _peakMemoryUsageThreshold(1073741824),  // 1GB
@@ -205,6 +207,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
+      _asyncPrefetchSlotsUsed(0),
       _queryTimes(metrics.add(arangodb_aql_query_time{})),
       _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
@@ -696,6 +699,32 @@ lookups.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31007);
+
+  options
+      ->addOption(
+          "--query.max-total-async-prefetch-slots",
+          "The maximum total number of slots available for asynchronous "
+          "prefetching across all AQL queries.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsTotal),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
+
+  options
+      ->addOption(
+          "--query.max-query-async-prefetch-slots",
+          "The maximum per-query number of slots available for asynchronous "
+          "prefetching inside any AQL query.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsPerQuery),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
 }
 
 void QueryRegistryFeature::validateOptions(
@@ -705,6 +734,17 @@ void QueryRegistryFeature::validateOptions(
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
         << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
            "value >= `--query.memory-limit`";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_maxAsyncPrefetchSlotsPerQuery > _maxAsyncPrefetchSlotsTotal) {
+    LOG_TOPIC("84882", FATAL, Logger::AQL)
+        << "invalid values for `--query.max-total-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsTotal
+        << ") / `--query.max-query-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsPerQuery
+        << "). the latter option must not be set to a higher value than the "
+           "former";
     FATAL_ERROR_EXIT();
   }
 
@@ -776,8 +816,6 @@ void QueryRegistryFeature::prepare() {
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 }
 
-void QueryRegistryFeature::start() {}
-
 void QueryRegistryFeature::beginShutdown() {
   TRI_ASSERT(_queryRegistry != nullptr);
   _queryRegistry->disallowInserts();
@@ -792,6 +830,42 @@ void QueryRegistryFeature::stop() {
 void QueryRegistryFeature::unprepare() {
   // clear the query registry
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
+}
+
+size_t QueryRegistryFeature::leaseAsyncPrefetchSlots(size_t value) noexcept {
+  // reduce value to the allowed per-query maximum
+  value = std::min(_maxAsyncPrefetchSlotsPerQuery, value);
+
+  if (value == 0) {
+    return 0;
+  }
+
+  // check if global (per-server) total is below the configured total maximum
+  size_t expected = _asyncPrefetchSlotsUsed.load(std::memory_order_relaxed);
+  TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
+  do {
+    size_t target = std::min(_maxAsyncPrefetchSlotsTotal, expected + value);
+    if (target == expected) {
+      // no slots left
+      return 0;
+    }
+    TRI_ASSERT(target > expected);
+    if (_asyncPrefetchSlotsUsed.compare_exchange_weak(
+            expected, target, std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
+      return target - expected;
+    }
+    TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
+  } while (true);
+}
+
+void QueryRegistryFeature::returnAsyncPrefetchSlots(size_t value) noexcept {
+  if (value == 0) {
+    return;
+  }
+  [[maybe_unused]] size_t previous =
+      _asyncPrefetchSlotsUsed.fetch_sub(value, std::memory_order_relaxed);
+  TRI_ASSERT(previous >= value);
 }
 
 void QueryRegistryFeature::updateMetrics() {

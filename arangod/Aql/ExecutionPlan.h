@@ -120,6 +120,13 @@ class ExecutionPlan {
   /// @brief disable a specific rule
   void disableRule(int rule);
 
+  /// @brief increase number of async prefetch nodes
+  void increaseAsyncPrefetchNodes() noexcept;
+  /// @brief decrease number of async prefetch nodes
+  void decreaseAsyncPrefetchNodes() noexcept;
+
+  size_t asyncPrefetchNodes() const noexcept;
+
   /// @brief return the next value for a node id
   ExecutionNodeId nextId();
 
@@ -450,6 +457,8 @@ class ExecutionPlan {
 
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
+
+  size_t _asyncPrefetchNodes;
 };
 
 }  // namespace aql

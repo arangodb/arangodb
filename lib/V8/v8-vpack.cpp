@@ -38,6 +38,7 @@
 #include "V8/v8-conv.h"
 #include "V8/v8-utils.h"
 
+#include <absl/strings/str_cat.h>
 #include <string_view>
 
 using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
@@ -356,9 +357,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          "input value is nested too deep - input " +
-              std::to_string(context.level) + "; max " +
-              std::to_string(VPackOptions::Defaults.nestingLimit));
+          absl::StrCat("input value is nested too deep - input ", context.level,
+                       "; max ", VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,
@@ -473,9 +473,8 @@ static void V8ToVPack(BuilderContext& context, v8::Handle<v8::Value> parameter,
     if (context.level + 1 > VPackOptions::Defaults.nestingLimit) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_BAD_PARAMETER,
-          "input value is nested too deep - input " +
-              std::to_string(context.level) + "; max " +
-              std::to_string(VPackOptions::Defaults.nestingLimit));
+          absl::StrCat("input value is nested too deep - input ", context.level,
+                       "; max ", VPackOptions::Defaults.nestingLimit));
     }
 
     AddValue<VPackValue, inObject>(context, attributeName,

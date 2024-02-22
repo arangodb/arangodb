@@ -66,6 +66,14 @@ class ExecutionEngine {
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
 
+  void asyncPrefetchSlotsReserved(size_t value) noexcept {
+    _asyncPrefetchSlotsReserved = value;
+  }
+
+  size_t asyncPrefetchSlotsReserved() const noexcept {
+    return _asyncPrefetchSlotsReserved;
+  }
+
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
                                   bool planRegisters);
@@ -174,6 +182,8 @@ class ExecutionEngine {
 
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
+
+  size_t _asyncPrefetchSlotsReserved;
 };
 
 }  // namespace arangodb::aql

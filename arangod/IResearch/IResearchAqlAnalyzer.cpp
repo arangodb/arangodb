@@ -495,6 +495,8 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       optimizer.createPlans(std::move(plan), _query->queryOptions(), false);
 
       _plan = optimizer.stealBest();
+      TRI_ASSERT(
+          !_plan->hasAppliedRule(OptimizerRule::RuleLevel::asyncPrefetchRule));
 
       // try to optimize
       if (tryOptimize(this)) {
