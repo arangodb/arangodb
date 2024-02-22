@@ -23,10 +23,6 @@
 
 #pragma once
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include <cstdint>
 #include <string>
 #include <vector>

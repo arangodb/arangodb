@@ -93,13 +93,9 @@ struct OperationOptions {
   OperationOptions() = default;
   explicit OperationOptions(ExecContext const&);
 
-// The following code does not work with VisualStudio 2019's `cl`
-// Lets keep it for debugging on linux.
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#ifndef _WIN32
   friend std::ostream& operator<<(std::ostream& os,
                                   OperationOptions const& ops);
-#endif
 #endif
 
   bool isOverwriteModeSet() const noexcept {

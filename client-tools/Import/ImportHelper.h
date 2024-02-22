@@ -36,10 +36,6 @@
 #include "Basics/StringBuffer.h"
 #include "Basics/csv.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 namespace arangodb {
 class ClientFeature;
 class EncryptionFeature;

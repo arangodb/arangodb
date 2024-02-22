@@ -53,13 +53,7 @@ namespace arangodb {
 ServerFeature::ServerFeature(Server& server, int* res)
     : ArangodFeature{server, *this},
       _result(res),
-      _operationMode(OperationMode::MODE_SERVER)
-#if _WIN32
-      ,
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX)
-#endif
-{
+      _operationMode(OperationMode::MODE_SERVER) {
   setOptional(true);
   startsAfter<AqlFeaturePhase>();
   startsAfter<UpgradeFeature>();
@@ -94,15 +88,6 @@ another mode.)");
 
   options->addOption("--javascript.script", "Run the script and exit.",
                      new VectorParameter<StringParameter>(&_scripts));
-
-#if _WIN32
-  options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
-      new UInt16Parameter(&_codePage),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Uncommon));
-#endif
 
   // add obsolete MMFiles WAL options (obsoleted in 3.7)
   options->addSection("wal", "WAL of the MMFiles engine", "", true, true);
@@ -249,13 +234,6 @@ void ServerFeature::prepare() {
 }
 
 void ServerFeature::start() {
-#if _WIN32
-  _originalCodePage = GetConsoleOutputCP();
-  if (IsValidCodePage(_codePage)) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
-
   waitForHeartbeat();
 
   *_result = EXIT_SUCCESS;
@@ -282,14 +260,6 @@ void ServerFeature::start() {
       server().getFeature<SchedulerFeature>().buildControlCHandler();
     });
   }
-}
-
-void ServerFeature::stop() {
-#if _WIN32
-  if (IsValidCodePage(_originalCodePage)) {
-    SetConsoleOutputCP(_originalCodePage);
-  }
-#endif
 }
 
 void ServerFeature::beginShutdown() { _isStopping = true; }

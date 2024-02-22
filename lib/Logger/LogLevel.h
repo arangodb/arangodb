@@ -28,10 +28,6 @@
 
 #include "Basics/operating-system.h"
 
-#ifdef _WIN32
-#undef DEBUG
-#endif
-
 namespace arangodb {
 enum class LogLevel {
   DEFAULT = 0,

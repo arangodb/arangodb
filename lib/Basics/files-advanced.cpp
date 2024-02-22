@@ -38,15 +38,7 @@
 
 #include "Basics/operating-system.h"
 
-#ifdef _WIN32
-#include <Shlwapi.h>
-#include <tchar.h>
-#include <windows.h>
-#endif
-
-#ifndef _WIN32
 #include <sys/statvfs.h>
-#endif
 
 #ifdef TRI_HAVE_DIRENT_H
 #include <dirent.h>

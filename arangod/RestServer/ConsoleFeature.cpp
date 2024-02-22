@@ -43,10 +43,8 @@
 
 #include <iostream>
 
-#ifndef _WIN32
 #include <sys/ioctl.h>
 #include <unistd.h>
-#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -87,14 +85,12 @@ void ConsoleFeature::beginShutdown() {
 
   _consoleThread->userAbort();
 
-#ifndef _WIN32
   if (isatty(STDIN_FILENO)) {
     char c = '\n';
     // send ourselves a character, so that we can get out of the blocking
     // linenoise function that reads a character from the terminal
     [[maybe_unused]] int res = ioctl(STDIN_FILENO, TIOCSTI, &c);
   }
-#endif
 }
 
 void ConsoleFeature::unprepare() {

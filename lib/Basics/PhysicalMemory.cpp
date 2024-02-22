@@ -44,10 +44,6 @@
 #include <sys/sysctl.h>
 #endif
 
-#ifdef _WIN32
-#include <windows.h>
-#endif
-
 using namespace arangodb;
 
 namespace {
@@ -80,16 +76,6 @@ uint64_t physicalMemoryImpl() {
   return static_cast<uint64_t>(pages * page_size);
 }
 
-#else
-#ifdef TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
-uint64_t physicalMemoryImpl() {
-  MEMORYSTATUSEX status;
-  status.dwLength = sizeof(status);
-  GlobalMemoryStatusEx(&status);
-
-  return static_cast<uint64_t>(status.ullTotalPhys);
-}
-#endif  // TRI_HAVE_WIN32_GLOBAL_MEMORY_STATUS
 #endif
 #endif
 

@@ -23,16 +23,6 @@
 
 #include "InitDatabaseFeature.h"
 
-#ifdef _WIN32
-#include <io.h>
-#include <fcntl.h>
-#include <locale.h>
-#include <string.h>
-#include <tchar.h>
-#include <unicode/locid.h>
-#include <iomanip>
-#endif
-
 #include <chrono>
 #include <iostream>
 #include <thread>
@@ -151,24 +141,12 @@ std::string InitDatabaseFeature::readPassword(std::string const& message) {
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
   std::cerr << std::flush;
   std::cout << message << ": " << std::flush;
-#ifdef _WIN32
-  terminal_utils::setStdinVisibility(false);
-  auto sg = arangodb::scopeGuard(
-      [&]() noexcept { terminal_utils::setStdinVisibility(true); });
-  std::wstring wpassword;
-  _setmode(_fileno(stdin), _O_U16TEXT);
-  std::getline(std::wcin, wpassword);
-  icu::UnicodeString pw(wpassword.c_str(),
-                        static_cast<int32_t>(wpassword.length()));
-  pw.toUTF8String<std::string>(password);
-#else
 #ifdef TRI_HAVE_TERMIOS_H
   terminal_utils::setStdinVisibility(false);
   std::getline(std::cin, password);
   terminal_utils::setStdinVisibility(true);
 #else
   std::getline(std::cin, password);
-#endif
 #endif
   std::cout << std::endl;
 

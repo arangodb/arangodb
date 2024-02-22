@@ -47,7 +47,6 @@ TEST(InputProcessorsTest, testEmpty) {
   }
 }
 
-#ifndef _WIN32
 TEST(InputProcessorsTest, testNonEmpty) {
   char const* data =
 #include "InputProcessorsData.json"
@@ -63,4 +62,3 @@ TEST(InputProcessorsTest, testNonEmpty) {
 
   ASSERT_EQ(202, rowsFound);
 }
-#endif

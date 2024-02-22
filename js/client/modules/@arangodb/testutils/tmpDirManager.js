@@ -31,24 +31,15 @@ const platform = require('internal').platform;
 class tmpDirManager {
   constructor(testName, options) {
     this.tempDir = fs.join(fs.getTempPath(), testName);
-    if (platform.substr(0, 3) === 'win') {
-      this.orgTempDir = process.env.TMP;
-      process.env.TMP = this.tempDir;
-    } else {
-      this.orgTempDir = process.env.TMPDIR;
-      process.env.TMPDIR = this.tempDir;
-    }
+    this.orgTempDir = process.env.TMPDIR;
+    process.env.TMPDIR = this.tempDir;
     fs.makeDirectoryRecursive(this.tempDir);
     if (options.extremeVerbosity) {
       print("temporary directory now: " + this.tempDir);
     }
   }
   destructor(cleanup) {
-    if (platform.substr(0, 3) === 'win') {
-      process.env.TMP = this.orgTempDir;
-    } else {
-      process.env.TMPDIR = this.orgTempDir;
-    }
+    process.env.TMPDIR = this.orgTempDir;
     if (cleanup) {
       fs.removeDirectoryRecursive(this.tempDir, true);
     }
