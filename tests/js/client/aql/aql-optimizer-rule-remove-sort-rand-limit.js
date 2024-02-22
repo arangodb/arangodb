@@ -44,9 +44,11 @@ function optimizerRuleTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
