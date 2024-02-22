@@ -226,7 +226,7 @@ class instance {
     this.jwtFiles = null;
 
     this.sanOptions = _.clone(this.options.sanOptions);
-    this.sanFiles = [];
+    this.sanitizerLogPaths = {};
 
     this._makeArgsArangod();
 
@@ -473,8 +473,9 @@ class instance {
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        const origPath = this.sanOptions[key]['log_path'];
         this.sanOptions[key]['log_path'] = oneLogFile;
-        this.sanFiles.push(oneLogFile);
+        this.sanitizerLogPaths[key] = { upstream: origPath, local: oneLogFile };
       }
     }
   }
@@ -789,23 +790,30 @@ class instance {
   };
 
   fetchSanFileAfterExit() {
-    if (this.options.isSan) {
-      this.sanFiles.forEach(fileName => {
-        let fn = `${fileName}.arangod.${this.pid}`;
-        if (this.options.extremeVerbosity) {
-          print(`checking for ${fn}: ${fs.exists(fn)}`);
+    if (!this.options.isSan) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
+      const { upstream, local } = value;
+      let fn = `${local}.arangod.${this.pid}`;
+      if (this.options.extremeVerbosity) {
+        print(`checking for ${fn}: ${fs.exists(fn)}`);
+      }
+      if (fs.exists(fn)) {
+        let content = fs.read(fn);
+        if (upstream) {
+          fs.write(`${upstream}.arangod.${this.pid}`, content);
         }
-        if (fs.exists(fn)) {
-          let content = fs.read(fn);
-          if (content.length > 10) {
-            crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
-            crashUtils.GDB_OUTPUT += content;
-            this.serverCrashedLocal = true;
-          }
+        if (content.length > 10) {
+          crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
+          crashUtils.GDB_OUTPUT += content;
+          this.serverCrashedLocal = true;
         }
-      });
+      }
     }
   }
+  
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
