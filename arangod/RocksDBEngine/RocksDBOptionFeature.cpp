@@ -1908,6 +1908,7 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   }
 
   result.compaction_style = ::compactionStyleFromString(_compactionStyle);
+  result.compaction_pri = rocksdb::kMinOverlappingRatio;
 
   // Number of files to trigger level-0 compaction. A value <0 means that
   // level-0 compaction will not be triggered by number of files at all.
