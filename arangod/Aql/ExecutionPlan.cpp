@@ -2928,16 +2928,16 @@ struct Shower final
       case ExecutionNode::CALCULATION: {
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " $" + std::to_string(calcNode.outVariable()->id) + " = ";
+        auto type = absl::StrCat(node.getTypeString(), " $",
+                                 calcNode.outVariable()->id, " = ");
         calcNode.expression()->stringify(type);
         return type;
       }
       case ExecutionNode::FILTER: {
         auto const& filterNode =
             *ExecutionNode::castTo<FilterNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " $" + std::to_string(filterNode.inVariable()->id);
+        auto type = absl::StrCat(node.getTypeString(), " $",
+                                 filterNode.inVariable()->id);
         return type;
       }
       case ExecutionNode::TRAVERSAL:
@@ -2952,11 +2952,10 @@ struct Shower final
       }
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " " + indexNode->collection()->name();
-        type += std::string{" -> "} + indexNode->outVariable()->name;
-        // type += std::string{" "} +
-        // indexNode->condition()->root()->toString();
+        auto type = absl::StrCat(node.getTypeString(), " ",
+                                 indexNode->collection()->name(), " -> ",
+                                 indexNode->outVariable()->name, " ",
+                                 indexNode->condition()->root()->toString());
         return type;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
@@ -2967,10 +2966,8 @@ struct Shower final
       case ExecutionNode::UPSERT: {
         auto const& colAccess =
             *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " (";
-        type += colAccess.collection()->name();
-        type += ")";
+        auto type = absl::StrCat(node.getTypeString(), " (",
+                                 colAccess.collection()->name(), ")");
         if (colAccess.isUsedAsSatellite()) {
           type += " used as satellite";
         }
