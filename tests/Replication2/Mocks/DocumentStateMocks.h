@@ -272,7 +272,8 @@ struct MockMaintenanceActionExecutor
   MOCK_METHOD(Result, executeCreateIndex,
               (std::shared_ptr<LogicalCollection>, velocypack::Slice,
                std::shared_ptr<methods::Indexes::ProgressTracker>,
-               LogicalCollection::Replication2Callback),
+               arangodb::replication2::replicated_state::document::
+                   Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, executeDropIndex,
               (std::shared_ptr<LogicalCollection>, IndexId),
@@ -292,7 +293,8 @@ struct MockDocumentStateShardHandler
   MOCK_METHOD(Result, ensureIndex,
               (ShardID, velocypack::Slice properties,
                std::shared_ptr<methods::Indexes::ProgressTracker>,
-               LogicalCollection::Replication2Callback),
+               arangodb::replication2::replicated_state::document::
+                   Replication2Callback),
               (noexcept, override));
   MOCK_METHOD(Result, dropIndex, (ShardID, IndexId), (noexcept, override));
   MOCK_METHOD(Result, dropAllShards, (), (noexcept, override));
