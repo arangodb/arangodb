@@ -41,6 +41,9 @@ function projectionsPlansTestSuite () {
     
     tearDownAll : function () {
       db._dropView(cn + "View");
+      if (internal.debugCanUseFailAt()) {
+        internal.debugClearFailAt();
+      }
     },
 
     setUp : function () {
@@ -486,19 +489,23 @@ function projectionsPlansTestSuite () {
     },
     
     testMaterialize : function () {
+      if (!internal.debugCanUseFailAt()) {
+        // cant execute this test as failure points are not available here
+        return;
+      }
+
       internal.debugSetFailAt('batch-materialize-no-estimation');
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2", "value3"] });
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.value1 == 93 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
         [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
         [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 SORT doc.value3 DESC LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value2", "value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
-        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 DESC LIMIT 5 RETURN doc`, 'persistent', ["value2", "value3"], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.value1 >= 93 && doc.value1 <= 95 && doc.value2 != 23 SORT doc.value3 DESC LIMIT 5 RETURN doc`, 'persistent', ["value3"], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
       ];
 
       queries.forEach(function(query) {
         let plan = db._createStatement({query: query[0], options: { optimizer: { rules: ["-optimize-cluster-single-document-operations"] } }}).explain().plan;
-        db._explain(query[0]);
         let nodes = plan.nodes.filter(function(node) { return node.type === 'IndexNode'; });
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
@@ -514,7 +521,6 @@ function projectionsPlansTestSuite () {
         });
         assertEqual(query[4], results);
       });
-      internal.debugClearFailAt();
     },
     
     testMaterializeSubAttributes : function () {
@@ -523,8 +529,8 @@ function projectionsPlansTestSuite () {
         [`FOR doc IN ${cn} FILTER doc.foo.bar == 93 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"]], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"]], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
         [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 SORT doc.foo.bat DESC LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"]], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"], ["foo","baz"]], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
-        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat DESC LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"], ["foo","baz"]], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"]], true, [ { _key: "test93", value1: 93, value2: "test93", value3: 93 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test95", value1: 95, value2: "test95", value3: 95 } ] ],
+        [`FOR doc IN ${cn} FILTER doc.foo.bar >= 93 && doc.foo.bar <= 95 && doc.foo.baz != 23 SORT doc.foo.bat DESC LIMIT 5 RETURN doc`, 'persistent', [["foo","bat"]], true, [ { _key: "test95", value1: 95, value2: "test95", value3: 95 }, { _key: "test94", value1: 94, value2: "test94", value3: 94 }, { _key: "test93", value1: 93, value2: "test93", value3: 93 } ] ],
       ];
 
       queries.forEach(function(query) {
@@ -587,7 +593,7 @@ function projectionsPlansTestSuite () {
       c.ensureIndex({ type: "persistent", fields: ["a.b"], sparse: true });
       let queries = [
         [`FOR doc IN ${cn} FILTER doc.a.b == 93 RETURN doc.a.b`, 'persistent', [['a', 'b']], true, "covering" ],
-        [`FOR doc IN ${cn} FILTER doc.a.b == 93 RETURN doc.a`, 'persistent', ['a'], false, "document" ],
+        [`FOR doc IN ${cn} FILTER doc.a.b == 93 RETURN doc.a`, 'persistent', ['a'], false, "late materialized" ],
       ];
 
       queries.forEach(function(query) {
@@ -596,7 +602,13 @@ function projectionsPlansTestSuite () {
         assertEqual(1, nodes.length, query);
         assertEqual(1, nodes[0].indexes.length, query);
         assertEqual(query[1], nodes[0].indexes[0].type, query);
-        assertEqual(normalize(query[2]), normalize(nodes[0].projections), query);
+        let matNodes = plan.nodes.filter(function(node) { return node.type === 'MaterializeNode'; });
+        if (matNodes.length === 0) {
+          assertEqual(query[2], normalize(nodes[0].projections), query);
+        } else {
+          assertEqual([], normalize(nodes[0].projections), query);
+          assertEqual(normalize(query[2]), normalize(matNodes[0].projections), query);
+        }
         assertEqual(query[3], nodes[0].indexCoversProjections, query);
         assertEqual(query[4], nodes[0].strategy, query);
         
