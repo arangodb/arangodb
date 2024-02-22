@@ -1629,21 +1629,12 @@ void RocksDBOptionFeature::validateOptions(
   }
 
 #ifdef ARANGODB_ROCKSDB8
-  if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
-    if (_blockCacheEstimatedEntryCharge == 0) {
-      LOG_TOPIC("0ffa2", FATAL, arangodb::Logger::ENGINES)
-          << "value of option '--rocksdb.block-cache-estimated-entry-charge' "
-             "must be set when using hyper-clock cache";
-      FATAL_ERROR_EXIT();
-    }
-  } else {
-    TRI_ASSERT(_blockCacheType == ::kBlockCacheTypeLRU);
-    if (options->processingResult().touched(
-            "--rocksdb.block-cache-estimated-entry-charge")) {
-      LOG_TOPIC("a527b", WARN, arangodb::Logger::ENGINES)
-          << "Setting value of '--rocksdb.block-cache-estimated-entry-charge' "
-             "has no effect when using LRU block cache";
-    }
+  if (_blockCacheType == ::kBlockCacheTypeLRU &&
+      options->processingResult().touched(
+          "--rocksdb.block-cache-estimated-entry-charge")) {
+    LOG_TOPIC("a527b", WARN, arangodb::Logger::ENGINES)
+        << "Setting value of '--rocksdb.block-cache-estimated-entry-charge' "
+           "has no effect when using LRU block cache";
   }
 #endif
 
@@ -2040,8 +2031,6 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       result.block_cache = rocksdb::NewLRUCache(opts);
 #ifdef ARANGODB_ROCKSDB8
     } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
-      TRI_ASSERT(_blockCacheEstimatedEntryCharge > 0);
-
       rocksdb::HyperClockCacheOptions opts(
           _blockCacheSize, _blockCacheEstimatedEntryCharge,
           static_cast<int>(_blockCacheShardBits), _enforceBlockCacheSizeLimit,
