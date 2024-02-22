@@ -422,29 +422,9 @@ function stopProcdump (options, instanceInfo, force = false) {
   }
 }
 
-function calculateMonitorValues(options, instanceInfo, pid, cmd) {
-  
-  if (platform.substr(0, 3) === 'win') {
-    if (process.env.hasOwnProperty('COREDIR')) {
-      instanceInfo.coreFilePattern = fs.join(process.env['COREDIR'],
-                                             'core_' + pid.toString() + '.dmp');
-      instanceInfo.coreDirectory = process.env['COREDIR'];
-    } else if (process.env.hasOwnProperty('WORKSPACE') &&
-        fs.isDirectory(fs.join(process.env['WORKSPACE'], 'core'))) {
-      let spcmd = fs.normalize(cmd).split(fs.pathSeparator);
-      let executable = spcmd[spcmd.length - 1];
-      instanceInfo.coreFilePattern = fs.join(process.env['WORKSPACE'],
-                                             'core',
-                                             executable + '.' + pid.toString() + '.dmp');
-      instanceInfo.coreDirectory = fs.join(process.env['WORKSPACE'], 'core');
-    }
-  }
-}
+function calculateMonitorValues(options, instanceInfo, pid, cmd) {}
+
 function isEnabledWindowsMonitor(options, instanceInfo, pid, cmd) {
-  calculateMonitorValues(options, instanceInfo, pid, cmd);
-  if (platform.substr(0, 3) === 'win' && !options.disableMonitor) {
-    return true;
-  }
   return false;
 }
 
@@ -703,21 +683,7 @@ function analyzeCrash (binary, instanceInfo, options, checkStr) {
   sleep(5);
 
   let hint = '';
-  if (platform.substr(0, 3) === 'win') {
-    if (instanceInfo.hasOwnProperty('monitor')) {
-      stopProcdump(options, instanceInfo);
-    }
-    if (!instanceInfo.hasOwnProperty('coreFilePattern') ) {
-      print("your process wasn't monitored by procdump, won't have a coredump!");
-      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
-      return;
-    } else if (!fs.exists(instanceInfo.coreFilePattern)) {
-      print("No coredump exists at " + instanceInfo.coreFilePattern);
-      instanceInfo.exitStatus['gdbHint'] = "coredump unavailable";
-      return;
-    }
-    hint = analyzeCoreDumpWindows(instanceInfo);
-  } else if (platform === 'darwin') {
+  if (platform === 'darwin') {
     hint = analyzeCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid);
   } else {
     hint = analyzeCoreDump(instanceInfo, options, binary, instanceInfo.pid);
@@ -745,12 +711,6 @@ function generateCrashDump (binary, instanceInfo, options, checkStr) {
   if (options.test !== undefined) {
     print(CYAN + instanceInfo.name + " - in single test mode, hard killing." + RESET);
     instanceInfo.exitStatus = killExternal(instanceInfo.pid, termSignal);
-  } else if (platform.substr(0, 3) === 'win') {
-    if (!options.disableMonitor) {
-      stopProcdump(options, instanceInfo, true);
-    }
-    instanceInfo.debuggerInfo = generateCoreDumpWindows(instanceInfo);
-    instanceInfo.exitStatus = { status: 'TERMINATED'};
   } else if (platform === 'darwin') {
     instanceInfo.debuggerInfo = generateCoreDumpMac(instanceInfo, options, binary, instanceInfo.pid, generateCoreDump);
     instanceInfo.exitStatus = { status: 'TERMINATED'};
@@ -798,9 +758,7 @@ function aggregateDebugger(instanceInfo, options) {
 --------------------------------------------------------------------------------
 Crash analysis of: ` + JSON.stringify(instanceInfo.getStructure()) + '\n\n';
 
-  if (platform.substr(0, 3) === 'win') {
-    readCdbFileFiltered(instanceInfo.debuggerInfo.file);
-  } else if (platform === 'darwin') {
+  if (platform === 'darwin') {
     const buf = fs.readBuffer(instanceInfo.debuggerInfo.file);
     let lineStart = 0;
     let maxBuffer = buf.length;

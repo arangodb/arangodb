@@ -31,15 +31,11 @@
 #include "Logger/LogAppender.h"
 #include "Logger/LoggerFeature.h"
 #include "Logger/Logger.h"
+#include "Metrics/CounterBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "ProgramOptions/Parameters.h"
 #include "ProgramOptions/ProgramOptions.h"
 #include "ProgramOptions/Section.h"
-#include "Metrics/CounterBuilder.h"
-#include "Metrics/MetricsFeature.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 #include <cstring>
 #include <utility>
@@ -159,48 +155,6 @@ class LogAppenderRingBuffer final : public LogAppender {
   std::vector<LogBuffer> _buffer;
 };
 
-#ifdef _WIN32
-/// logs to the debug output windows in MSVC
-class LogAppenderDebugOutput final : public LogAppender {
- public:
-  LogAppenderDebugOutput() : LogAppender() {}
-
- public:
-  void logMessage(LogMessage const& message) override {
-    // only handle FATAl and ERR log messages
-    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
-      return;
-    }
-
-    // log these errors to the debug output window in MSVC so
-    // we can see them during development
-    OutputDebugString(message._message.data() + message._offset);
-    OutputDebugString("\r\n");
-  }
-
-  std::string details() const override { return std::string(); }
-};
-
-/// logs to the Windows event log
-class LogAppenderEventLog final : public LogAppender {
- public:
-  LogAppenderEventLog() : LogAppender() {}
-
- public:
-  void logMessage(LogMessage const& message) override {
-    // only handle FATAl and ERR log messages
-    if (message._level != LogLevel::FATAL && message._level != LogLevel::ERR) {
-      return;
-    }
-
-    TRI_LogWindowsEventlog(message._function, message._file, message._line,
-                           message._message);
-  }
-
-  std::string details() const override { return std::string(); }
-};
-#endif
-
 /// @brief log appender that increases counters for warnings/errors
 /// in our metrics
 class LogAppenderMetricsCounter final : public LogAppender {
@@ -233,12 +187,6 @@ LogBufferFeature::LogBufferFeature(Server& server)
   setOptional(true);
   startsAfter<LoggerFeature>();
 
-#ifdef _WIN32
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                 std::make_shared<LogAppenderDebugOutput>());
-  LogAppender::addGlobalAppender(Logger::defaultLogGroup(),
-                                 std::make_shared<LogAppenderEventLog>());
-#endif
   LogAppender::addGlobalAppender(
       Logger::defaultLogGroup(),
       std::make_shared<LogAppenderMetricsCounter>(

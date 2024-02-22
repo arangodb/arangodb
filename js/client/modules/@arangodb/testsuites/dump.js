@@ -68,7 +68,7 @@ const encryptionKey = '01234567890123456789012345678901';
 const encryptionKeySha256 = "861009ec4d599fab1f40abc76e6f89880cff5833c79c548c99f9045f191cd90b";
 
 let timeoutFactor = 1;
-if (versionHas('asan') || versionHas('tsan') || (platform.substr(0, 3) === 'win')) {
+if (versionHas('asan') || versionHas('tsan')) {
   timeoutFactor = 8;
 } else if (versionHas('coverage')) {
     timeoutFactor = 16;

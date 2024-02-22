@@ -14,9 +14,5 @@ target_link_libraries(arango_geo
   boost_boost
   s2)
 
-if (MSVC)
-  target_compile_options(arango_geo PUBLIC "-J")
-endif ()
-
 add_subdirectory(karney)
 add_subdirectory(S2)

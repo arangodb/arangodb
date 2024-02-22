@@ -78,8 +78,6 @@ class ClientFeature final : public HttpEndpointProvider {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
-  void stop() override final;
 
   std::string databaseName() const;
   void setDatabaseName(std::string_view databaseName);
@@ -175,11 +173,6 @@ class ClientFeature final : public HttpEndpointProvider {
   // only set at startup
   uint64_t _sslProtocol;
   size_t _retries;
-
-#if _WIN32
-  uint16_t _codePage;
-  uint16_t _originalCodePage;
-#endif
 
   bool const _allowJwtSecret;
   bool _authentication;

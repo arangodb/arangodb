@@ -60,23 +60,14 @@ using namespace arangodb::basics;
 
 namespace {
 
-#ifndef _WIN32
 // ever-increasing counter for thread numbers.
 // not used on Windows
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
-#endif
 
 // helper struct to assign and retrieve a thread id
 struct ThreadNumber {
   ThreadNumber() noexcept
-      :
-#ifdef _WIN32
-        value(static_cast<uint64_t>(GetCurrentThreadId())) {
-  }
-#else
-        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {
-  }
-#endif
+      : value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {}
 
   uint64_t get() const noexcept { return value; }
 
@@ -157,13 +148,7 @@ void Thread::startThread(void* arg) {
 }
 
 /// @brief returns the process id
-TRI_pid_t Thread::currentProcessId() {
-#ifdef _WIN32
-  return _getpid();
-#else
-  return getpid();
-#endif
-}
+TRI_pid_t Thread::currentProcessId() { return getpid(); }
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
@@ -172,14 +157,10 @@ uint64_t Thread::currentThreadNumber() noexcept {
 
 /// @brief returns the thread id
 TRI_tid_t Thread::currentThreadId() {
-#ifdef TRI_HAVE_WIN32_THREADS
-  return GetCurrentThreadId();
-#else
 #ifdef TRI_HAVE_POSIX_THREADS
   return pthread_self();
 #else
 #error "Thread::currentThreadId not implemented"
-#endif
 #endif
 }
 

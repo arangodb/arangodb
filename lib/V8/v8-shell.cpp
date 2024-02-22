@@ -53,10 +53,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 using namespace arangodb;
 
 namespace {
@@ -297,12 +293,7 @@ static void JS_ProcessJsonFile(
 
   // read and convert
   std::string line;
-#ifndef _MSC_VER
   std::ifstream file(*filename);
-#else
-  std::ifstream file;
-  file.open(arangodb::basics::toWString(*filename));
-#endif
 
   auto builder = std::make_shared<VPackBuilder>();
   VPackParser parser(builder);

@@ -36,21 +36,8 @@
 #include <Basics/debugging.h>
 #include <Containers/ImmerMemoryPolicy.h>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -142,12 +129,6 @@ replicated_log::InMemoryLog::InMemoryLog(log_type log, LogIndex first)
       << (!_log.empty() ? _log.front().entry().logIndex().value : 0);
 }
 
-#if (_MSC_VER >= 1)
-// suppress false positive warning:
-#pragma warning(push)
-// function assumed not to throw an exception but does
-#pragma warning(disable : 4297)
-#endif
 replicated_log::InMemoryLog::InMemoryLog(
     replicated_log::InMemoryLog&& other) noexcept try
     : _log(std::move(other._log)), _first(other._first) {
@@ -176,9 +157,6 @@ replicated_log::InMemoryLog::InMemoryLog(
          "guaranteed. The process will terminate now.";
   FATAL_ERROR_ABORT();
 }
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 auto replicated_log::InMemoryLog::operator=(
     replicated_log::InMemoryLog&& other) noexcept

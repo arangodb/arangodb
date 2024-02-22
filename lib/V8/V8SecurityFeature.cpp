@@ -81,14 +81,12 @@ void testRegexPair(std::string const& allowList, std::string const& denyList,
 }
 
 std::string canonicalpath(std::string const& path) {
-#ifndef _WIN32
   auto realPath = std::unique_ptr<char, void (*)(void*)>(
       ::realpath(path.c_str(), nullptr), &free);
   if (realPath) {
     return std::string(realPath.get());
   }
   // fallthrough intentional
-#endif
   return path;
 }
 

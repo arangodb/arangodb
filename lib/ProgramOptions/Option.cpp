@@ -57,7 +57,6 @@ Option::Option(std::string const& value, std::string const& description,
   // at least one OS must be supported
   if (!hasFlag(arangodb::options::Flags::OsLinux) &&
       !hasFlag(arangodb::options::Flags::OsMac) &&
-      !hasFlag(arangodb::options::Flags::OsWindows) &&
       !hasFlag(arangodb::options::Flags::Obsolete)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL, std::string("option ") + value +

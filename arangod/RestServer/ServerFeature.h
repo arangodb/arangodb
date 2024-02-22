@@ -48,7 +48,6 @@ class ServerFeature final : public ArangodFeature {
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
   void start() override final;
-  void stop() override final;
   void beginShutdown() override final;
   bool isStopping() const { return _isStopping; }
 
@@ -74,10 +73,6 @@ class ServerFeature final : public ArangodFeature {
   std::vector<std::string> _scripts;
   int* _result;
   OperationMode _operationMode;
-#if _WIN32
-  uint16_t _codePage;
-  uint16_t _originalCodePage;
-#endif
 };
 
 }  // namespace arangodb

@@ -73,10 +73,6 @@ ClientFeature::ClientFeature(ApplicationServer& server,
       _compressRequestThreshold(0),
       _sslProtocol(TLS_V12),
       _retries(DEFAULT_RETRIES),
-#if _WIN32
-      _codePage(65001),  // default to UTF8
-      _originalCodePage(UINT16_MAX),
-#endif
       _allowJwtSecret(allowJwtSecret),
       _authentication(true),
       _askJwtSecret(false),
@@ -190,15 +186,6 @@ arangosh without connecting to a server.)");
   options->addOption("--ssl.protocol", availableSslProtocolsDescription(),
                      new DiscreteValuesParameter<UInt64Parameter>(
                          &_sslProtocol, sslProtocols));
-#if _WIN32
-  options->addOption(
-      "--console.code-page", "Windows code page to use; defaults to UTF-8.",
-      new UInt16Parameter(&_codePage),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsWindows,
-                                   arangodb::options::Flags::Uncommon));
-#endif
-
   options
       ->addOption(
           "--compress-transfer",
@@ -470,23 +457,6 @@ std::vector<std::string> ClientFeature::httpEndpoints() {
                   }
                 });
   return httpEndpoints;
-}
-
-void ClientFeature::start() {
-#if _WIN32
-  _originalCodePage = GetConsoleOutputCP();
-  if (IsValidCodePage(_codePage)) {
-    SetConsoleOutputCP(_codePage);
-  }
-#endif
-}
-
-void ClientFeature::stop() {
-#if _WIN32
-  if (IsValidCodePage(_originalCodePage)) {
-    SetConsoleOutputCP(_originalCodePage);
-  }
-#endif
 }
 
 std::string ClientFeature::databaseName() const {

@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add startup progress reporting for RocksDB .sst file checksum computation.
+
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.

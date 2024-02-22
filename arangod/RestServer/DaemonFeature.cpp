@@ -74,9 +74,7 @@ DaemonFeature::DaemonFeature(Server& server) : ArangodFeature{server, *this} {
   setOptional(true);
   startsAfter<application_features::GreetingsFeaturePhase>();
 
-#ifndef _WIN32
   _workingDirectory = "/var/tmp";
-#endif
 }
 
 void DaemonFeature::collectOptions(std::shared_ptr<ProgramOptions> options) {
