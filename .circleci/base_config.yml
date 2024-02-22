@@ -245,6 +245,7 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
+            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -390,6 +391,14 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo ===================
+            du -sh /root/workspace/build/*
+            echo ===================
+            du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"

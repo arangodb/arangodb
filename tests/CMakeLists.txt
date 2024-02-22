@@ -30,10 +30,6 @@ if (USE_V8)
   endforeach()
 endif ()
 
-if (WINDOWS)
-  set(RCFILE Maintenance/json.rc)
-endif ()
-
 add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/ClusterInfoMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Mocks/FakeScheduler.cpp
@@ -53,7 +49,6 @@ add_library(arango_tests_basics OBJECT
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/ExpressionContextMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/IResearch/RestHandlerMock.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/Aql/VelocyPackHelper.cpp
-  ../cmake/activeCodePage.manifest
   main.cpp)
 
 target_include_directories(arango_tests_basics

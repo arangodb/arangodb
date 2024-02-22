@@ -278,9 +278,6 @@ using ArangodFeaturesList = TypeList<
     RocksDBIndexCacheRefillFeature,
     RocksDBOptionFeature,
     RocksDBRecoveryManager,
-#ifdef _WIN32
-    WindowsServiceFeature,
-#endif
 #ifdef TRI_HAVE_GETRLIMIT
     FileDescriptorsFeature,
 #endif

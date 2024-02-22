@@ -23,10 +23,6 @@
 
 #include "Rest/Version.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include <cstdint>
 #include <sstream>
 #include <string_view>
@@ -471,9 +467,6 @@ std::string Version::getCompiler() {
   return "clang [" + std::string(__VERSION__) + "]";
 #elif defined(__GNUC__) || defined(__GNUG__)
   return "gcc [" + std::string(__VERSION__) + "]";
-#elif defined(_MSC_VER)
-  return "msvc [" + std::to_string(_MSC_VER) + "]";
-#else
   return "unknown";
 #endif
 }
@@ -598,11 +591,7 @@ std::string Version::getDetailed() {
       result.append(it.first);
       result.append(": ");
       result.append(it.second);
-#ifdef _WIN32
-      result += "\r\n";
-#else
       result += "\n";
-#endif
     }
   }
 

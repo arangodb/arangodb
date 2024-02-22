@@ -71,9 +71,7 @@ struct AsioSocket<SocketType::Tcp>
   void shutdown(F&& cb) {
     asio_ns::error_code ec;
     if (socket.is_open()) {
-#ifndef _WIN32
       socket.cancel(ec);
-#endif
       if (!ec) {
         socket.shutdown(asio_ns::ip::tcp::socket::shutdown_both, ec);
       }
@@ -143,12 +141,10 @@ struct AsioSocket<SocketType::Ssl>
       socket.async_shutdown(
           [cb(std::forward<F>(cb)), self = shared_from_this()](auto const& ec) {
             self->timer.cancel();
-#ifndef _WIN32
             if (!ec || ec == asio_ns::error::basic_errors::not_connected) {
               asio_ns::error_code ec2;
               self->socket.lowest_layer().close(ec2);
             }
-#endif
             cb(ec);
           });
     } else {

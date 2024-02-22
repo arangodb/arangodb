@@ -28,16 +28,7 @@
 #include <cstdio>
 #include <filesystem>
 
-#ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <Windows.h>
-#endif
-
 namespace arangodb::replication2::storage::wal {
-
-#ifndef _WIN32
 
 struct FileWriterImplPosix final : IFileWriter {
   FileWriterImplPosix(std::filesystem::path path);
@@ -60,29 +51,5 @@ struct FileWriterImplPosix final : IFileWriter {
 };
 
 using FileWriterImpl = FileWriterImplPosix;
-
-#else  // _WIN32
-
-struct FileWriterImplWindows final : IFileWriter {
-  FileWriterImplWindows(std::filesystem::path path);
-  ~FileWriterImplWindows();
-
-  auto path() const -> std::string override { return _path.string(); }
-
-  auto append(std::string_view data) -> Result override;
-
-  void truncate(std::uint64_t size) override;
-
-  void sync() override;
-
-  auto getReader() const -> std::unique_ptr<IFileReader> override;
-
- private:
-  std::filesystem::path _path;
-  HANDLE _file = INVALID_HANDLE_VALUE;
-};
-using FileWriterImpl = FileWriterImplWindows;
-
-#endif
 
 }  // namespace arangodb::replication2::storage::wal
