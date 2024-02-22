@@ -86,9 +86,6 @@ void TRI_TerminateDebugging(std::string_view message) {
 #elif defined(__GNUC__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wterminate"
-#elif _MSC_VER
-#pragma warning(push)
-#pragma warning(disable : 4297)
 #endif
 
     auto f = []() noexcept {
@@ -101,8 +98,6 @@ void TRI_TerminateDebugging(std::string_view message) {
 #pragma clang diagnostic pop
 #elif defined(__GNUC__)
 #pragma GCC diagnostic pop
-#elif _MSC_VER
-#pragma warning(pop)
 #endif
     // we will get here at least with ASan/UBSan.
     std::terminate();

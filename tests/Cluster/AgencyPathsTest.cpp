@@ -205,7 +205,6 @@ static_assert(!std::is_default_constructible<Root::Arango::Agency::Definition>::
 static_assert(!std::is_default_constructible<Root::Arango::InitDone>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
-#ifndef _WIN32
 
 // Second, constructors with parent
 static_assert(!std::is_constructible<Root::Arango, Root>::value, CONSTRUCTIBLE_MESSAGE);
@@ -395,7 +394,6 @@ static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Databas
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
-#endif
 // clang-format on
 #undef CONSTRUCTIBLE_MESSAGE
 

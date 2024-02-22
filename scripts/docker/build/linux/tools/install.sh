@@ -20,7 +20,7 @@ export OPENSSLBRANCH=$1
 export OPENSSLPATCH=$2
 export OPENSSLVERSION="${OPENSSLBRANCH}.${OPENSSLPATCH}"
 
-if [ "$OPENSSLBRANCH" != "3.1" ]; then
+if [ "$OPENSSLBRANCH" != "3.2" ]; then
   OLD="old/${OPENSSLBRANCH}/"
 fi;
 
@@ -38,7 +38,7 @@ cd /tmp
 rm -rf openssl-$OPENSSLVERSION.tar.gz openssl-$OPENSSLVERSION
 
 # Compile openldap library:
-export OPENLDAPVERSION=2.6.6
+export OPENLDAPVERSION=2.6.7
 cd /tmp
 curl -O ftp://ftp.openldap.org/pub/OpenLDAP/openldap-release/openldap-$OPENLDAPVERSION.tgz
 tar xzf openldap-$OPENLDAPVERSION.tgz

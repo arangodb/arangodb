@@ -589,7 +589,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
     return false;
   }
 
-#ifndef _WIN32
   if (syncFile) {
     // also sync target directory
     std::string const dir = TRI_Dirname(filename);
@@ -615,7 +614,6 @@ bool VelocyPackHelper::velocyPackToFile(std::string const& filename,
       }
     }
   }
-#endif
 
   return true;
 }

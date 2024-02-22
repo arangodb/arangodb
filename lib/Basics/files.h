@@ -23,10 +23,6 @@
 
 #pragma once
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include <cstddef>
 #include <functional>
 #include <string>
@@ -368,15 +364,10 @@ ErrorCode TRI_GetTempName(char const* directory, std::string& result,
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-bool TRI_CopyFile(std::string const& src, std::string const& dst,
-                  std::string& error);
-#else
 // this API allows passing already retrieved stat info to the copy routine, in
 // order to avoid extra stat calls
 bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error, struct stat* statbuf = nullptr);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.

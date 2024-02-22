@@ -46,8 +46,6 @@ const _ = require('lodash');
 
 const testPaths = {
   'resilience_move': [tu.pathForTesting('client/resilience/move')],
-  'resilience_move_view': [tu.pathForTesting('client/resilience/move-view')],
-  'resilience_repair': [tu.pathForTesting('client/resilience/repair')],
   'resilience_failover': [tu.pathForTesting('client/resilience/failover')],
   'resilience_failover_failure': [tu.pathForTesting('client/resilience/failover-failure')],
   'resilience_failover_view': [tu.pathForTesting('client/resilience/failover-view')],
@@ -55,7 +53,6 @@ const testPaths = {
   'resilience_sharddist': [tu.pathForTesting('client/resilience/sharddist')],
   'resilience_analyzers': [tu.pathForTesting('client/resilience/analyzers')],
   'resilience_replication2': [tu.pathForTesting('client/resilience/replication2')],
-  'client_resilience': [tu.pathForTesting('client/resilience')],
 };
 
 class resilienceRunner extends tu.runLocalInArangoshRunner {

@@ -246,17 +246,17 @@ inline bool ClientTaskQueue<JobData>::isQueueEmpty() const noexcept {
 template<typename JobData>
 inline std::tuple<size_t, size_t, size_t> ClientTaskQueue<JobData>::statistics()
     const noexcept {
-  size_t busy = 0;
+  size_t idle = 0;
   size_t workers = 0;
 
   std::lock_guard lock{_queueCondition.mutex};
   for (auto const& worker : _workers) {
     ++workers;
     if (worker->isIdle()) {
-      ++busy;
+      ++idle;
     }
   }
-  return std::make_tuple(_jobs.size(), workers, busy);
+  return std::make_tuple(_jobs.size(), workers, idle);
 }
 
 template<typename JobData>
@@ -347,6 +347,7 @@ inline std::unique_ptr<JobData> ClientTaskQueue<JobData>::fetchJob(
   if (!_jobs.empty()) {
     worker.setBusy();
     job = std::move(_jobs.front());
+    TRI_ASSERT(job != nullptr);
     _jobs.pop();
   }
 
@@ -406,6 +407,7 @@ inline void ClientTaskQueue<JobData>::Worker::run() {
       _queue.notifyIdle();
     }
 
+    TRI_ASSERT(isIdle());
     _queue.waitForWork();
   }
 }

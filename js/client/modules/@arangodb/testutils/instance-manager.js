@@ -398,17 +398,11 @@ class instanceManager {
     }
     this.options.cleanup = false;
     let device = 'lo';
-    if (platform.substr(0, 3) === 'win') {
-      device = '1';
-    }
     if (this.options.sniffDevice !== undefined) {
       device = this.options.sniffDevice;
     }
 
     let prog = 'tcpdump';
-    if (platform.substr(0, 3) === 'win') {
-      prog = 'c:/Program Files/Wireshark/tshark.exe';
-    }
     if (this.options.sniffProgram !== undefined) {
       prog = this.options.sniffProgram;
     }

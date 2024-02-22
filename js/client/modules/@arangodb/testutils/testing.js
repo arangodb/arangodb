@@ -181,7 +181,7 @@ const optionsDefaults = {
   'agencySupervision': true,
   'bindBroadcast': false,
   'build': '',
-  'buildType': (platform.substr(0, 3) === 'win') ? 'RelWithDebInfo':'',
+  'buildType': '',
   'cleanup': true,
   'cluster': false,
   'concurrency': 3,

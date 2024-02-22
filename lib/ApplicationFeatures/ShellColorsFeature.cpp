@@ -26,13 +26,6 @@
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
-#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
-#endif
-#endif
-
 using namespace arangodb::basics;
 
 namespace {
@@ -97,38 +90,6 @@ void ShellColorsFeature::prepare() {
   }
 }
 
-bool ShellColorsFeature::useColors() {
-#ifdef _WIN32
-  if (!prepareConsole()) {
-    return false;
-  }
-  return terminalKnowsANSIColors();
-#else
-  return true;
-#endif
-}
-
-#ifdef _WIN32
-bool ShellColorsFeature::prepareConsole() {
-  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  if (hStdout == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-
-  DWORD handleMode = 0;
-  if (!GetConsoleMode(hStdout, &handleMode)) {
-    return false;
-  }
-  handleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  if (!SetConsoleMode(hStdout, handleMode)) {
-    return false;
-  }
-
-  // Set the codepage for the console output to UTF-8 so that unicode characters
-  // are displayed correctly.
-  SetConsoleOutputCP(CP_UTF8);
-  return true;
-}
-#endif
+bool ShellColorsFeature::useColors() { return true; }
 
 }  // namespace arangodb

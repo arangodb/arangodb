@@ -8991,6 +8991,10 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                  n->getType() == EN::INDEX);
 
       auto* documentNode = ExecutionNode::castTo<DocumentProducingNode*>(n);
+      if (documentNode->projections().hasOutputRegisters()) {
+        // Some late materialize rule sets output registers
+        continue;
+      }
       modified |= documentNode->recalculateProjections(plan.get());
       modified |= replace(n, documentNode->projections(),
                           documentNode->outVariable(), /*index*/ 0);

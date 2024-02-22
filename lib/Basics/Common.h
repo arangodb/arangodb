@@ -23,21 +23,6 @@
 
 #pragma once
 
-#ifdef _WIN32
-
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN 1
-#endif
-
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
-// Windows debug mode also seems to define DEBUG preproc symbol
-#undef DEBUG
-
-#endif
-
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 #define TEST_VIRTUAL virtual
 #else

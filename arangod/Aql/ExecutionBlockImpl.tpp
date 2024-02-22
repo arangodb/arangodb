@@ -1440,12 +1440,8 @@ auto ExecutionBlockImpl<Executor>::executeFastForward(
         if constexpr (std::is_same_v<AqlCallType, AqlCall>) {
           return fastForwardCall;
         } else {
-#ifndef _WIN32
-          // For some reason our Windows compiler complains about this static
-          // assert in the cases that should be in the above constexpr path.
-          // So simply not compile it in.
           static_assert(std::is_same_v<AqlCallType, AqlCallSet>);
-#endif
+
           auto call = AqlCallSet{};
           call.calls.emplace_back(typename AqlCallSet::DepCallPair{
               dependency, AqlCallList{fastForwardCall}});

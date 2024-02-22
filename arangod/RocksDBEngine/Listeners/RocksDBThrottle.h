@@ -54,13 +54,7 @@
 // write_controller.
 //  need either ROCKSDB_PLATFORM_POSIX or OS_WIN set before the <db/...>
 //  includes
-#ifndef _WIN32
 #define ROCKSDB_PLATFORM_POSIX 1
-#else
-#define OS_WIN 1
-#include <sys/types.h>
-#define _SSIZE_T_DEFINED 1
-#endif
 #include <db/db_impl/db_impl.h>
 #include <db/write_controller.h>
 

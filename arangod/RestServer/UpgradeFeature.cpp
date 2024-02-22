@@ -100,15 +100,12 @@ in the `VERSION` file, the server refuses to start.)");
       arangodb::options::makeDefaultFlags(arangodb::options::Flags::Uncommon));
 }
 
-#ifndef _WIN32
 static int upgradeRestart() {
   unsetenv(StaticStrings::UpgradeEnvName.c_str());
   return 0;
 }
-#endif
 
 void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
-#ifndef _WIN32
   // The following environment variable is another way to run a database
   // upgrade. If the environment variable is set, the system does a database
   // upgrade and then restarts itself without the environment variable.
@@ -127,7 +124,6 @@ void UpgradeFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
         << " with value " << upgrade
         << " will perform database auto-upgrade and immediately restart.";
   }
-#endif
   if (_upgrade && !_upgradeCheck) {
     LOG_TOPIC("47698", FATAL, arangodb::Logger::FIXME)
         << "cannot specify both '--database.auto-upgrade true' and "

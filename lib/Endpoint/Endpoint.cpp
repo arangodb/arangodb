@@ -130,11 +130,7 @@ std::string Endpoint::unifiedForm(std::string const& specification) {
   }
 
   if (schema.starts_with("srv://")) {
-#ifndef _WIN32
     return prefix + schema + copy.substr(6);
-#else
-    return StaticStrings::Empty;
-#endif
   }
 
   // strip tcp:// or ssl://
@@ -247,11 +243,7 @@ Endpoint* Endpoint::factory(Endpoint::EndpointType type,
       return nullptr;
     }
 
-#ifndef _WIN32
     return new EndpointSrv(copy.substr(6));
-#else
-    return nullptr;
-#endif
   }
 
   if (copy.starts_with("ssl://")) {

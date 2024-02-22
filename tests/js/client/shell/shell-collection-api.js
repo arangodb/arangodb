@@ -30,8 +30,6 @@ const {arango, db, ArangoError} = require("@arangodb");
 const isCluster = require('internal').isCluster();
 const isEnterprise = require("internal").isEnterprise();
 const _ = require("lodash");
-const isWindows = (require("internal").platform.substr(0, 3) === 'win');
-const isServer = typeof require("internal").arango === 'undefined';
 
 const {
   ERROR_HTTP_BAD_PARAMETER,
@@ -84,8 +82,7 @@ const getDefaultProps = () => {
         "allowUserKeys": true,
         "type": "traditional"
       },
-      /* On windows we start with a replicationFactor of 1 */
-      "replicationFactor": isWindows ? 1 : 2,
+      "replicationFactor": 2,
       "minReplicationFactor": 1,
       "writeConcern": 1,
       "shardingStrategy": "hash",
@@ -95,12 +92,6 @@ const getDefaultProps = () => {
       "schema": null,
       "isDisjoint": false
     };
-    if (isServer) {
-      base.internalValidatorType = 0;
-      base.isSmartChild = false;
-      base.usesRevisionsAsDocumentIds = true;
-      base.statusString = "loaded";
-    }
     return base;
   } else {
     const base = {
@@ -117,12 +108,6 @@ const getDefaultProps = () => {
       "syncByRevision": true,
       "schema": null
     };
-    if (isServer) {
-      base.internalValidatorType = 0;
-      base.isSmartChild = false;
-      base.usesRevisionsAsDocumentIds = true;
-      base.statusString = "loaded";
-    }
     return base;
   }
 };
@@ -135,13 +120,6 @@ const tryCreate = (parameters) => {
     }
     return {result: true};
   } catch (err) {
-    if (isServer && err instanceof ArangoError) {
-      // Translate to HTTP style error.
-      return {
-        error: true,
-        errorNum: err.errorNum
-      };
-    }
     return err;
   }
 };
@@ -158,10 +136,6 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
   const col = db._collection(colName);
   const props = col.properties();
   assertTrue(props.hasOwnProperty("globallyUniqueId"));
-  if (isServer && !isCluster) {
-    // This is a local property only exposed on dbServer and singleServer
-    assertTrue(props.hasOwnProperty("objectId"));
-  }
   if (isCluster && db._properties().replicationVersion === "2") {
     // Replication 2 always exposes the group id
     assertTrue(props.hasOwnProperty("groupId"), `${JSON.stringify(props)} is missing groupId`);
@@ -185,20 +159,9 @@ const validateProperties = (overrides, colName, type, keepEnterpriseSimulationAt
     // sure it is always there.
     expectedKeys.push("globallyUniqueId");
   }
-  if (isServer && !isCluster && !overrides.hasOwnProperty("objectId")) {
-    // The objectId is generated, so we cannot compare equality, we should make
-    // sure it is always there.
-    expectedKeys.push("objectId");
-  }
   if (isCluster && db._properties().replicationVersion === "2" && !overrides.hasOwnProperty("groupId")) {
     // Replication 2 always exposes the group id
     expectedKeys.push("groupId");
-  }
-  if (isServer && isCluster && overrides.isSmart && type === 3) {
-    // Special attribute for smartEdgeColelctions
-    expectedKeys.push("shadowCollections");
-    assertTrue(Array.isArray(props.shadowCollections), `A smart edge collection is required to have shadowCollections, ${JSON.stringify(props)}`);
-    assertEqual(props.shadowCollections.length, 3, `Found incorrect amount of shadowCollections ${JSON.stringify(props.shadowCollections)}`);
   }
   const foundKeys = Object.keys(props);
   assertEqual(expectedKeys.length, foundKeys.length, `Check that all reported properties are expected. Missing: ${JSON.stringify(_.difference(expectedKeys, foundKeys))} unexpected: ${JSON.stringify(_.difference(foundKeys, expectedKeys))}`);
@@ -214,9 +177,7 @@ const validatePropertiesAreNotEqual = (forbidden, collname) => {
 
 const isDisallowed = (code, errorNum, res, input) => {
   assertTrue(res.error, `Created disallowed Collection on input ${JSON.stringify(input)}`);
-  if (!isServer) {
-    assertEqual(res.code, code, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
-  }
+  assertEqual(res.code, code, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
   assertEqual(res.errorNum, errorNum, `Different error on input ${JSON.stringify(input)}, ${JSON.stringify(res)}`);
 };
 
@@ -240,18 +201,10 @@ const validatePropertiesDoNotExist = (colName, illegalProperties) => {
 };
 
 const clearLogs = () => {
-  if (isServer) {
-    // Only client reported so far
-    return;
-  }
   arango.DELETE("/_admin/log/entries");
 };
 
 const validateDeprecationLogEntryWritten = () => {
-  if (isServer) {
-    // Only client reported so far
-    return;
-  }
   try {
     const expectedTopic = "deprecation";
     const expectedLogId = "ee638";
@@ -268,10 +221,6 @@ const validateDeprecationLogEntryWritten = () => {
 };
 
 const validateNoLogsLeftBehind = () => {
-  if (isServer) {
-    // Only client reported so far
-    return;
-  }
   try {
     let res = arango.GET("/_admin/log/entries?upto=warning&size=1");
     assertEqual(res.total, 0, `Expecting no additional logs, every test that expects a log entry needs to run cleanup after itself`);
@@ -316,14 +265,8 @@ function CreateCollectionsSuite() {
           fail();
         } catch (err) {
           // Sometimes we get internal, sometime Bad_Parameter
-          if (!isServer) {
-            assertTrue(err.code === ERROR_HTTP_SERVER_ERROR.code || err.code === ERROR_HTTP_BAD_PARAMETER.code, `Got response ${err} for body ${JSON.stringify(body)}`);
-          }
-          if (isServer && err instanceof TypeError) {
-            // This is allowed, v8 type error, noting we can assert.
-          } else {
-            assertNotEqual(allowedErrorsCodes.indexOf(err.errorNum), -1 , `Got response ${err.errorNum}, ${err.message} for body ${JSON.stringify(body)}, ${err}`);
-          }
+          assertTrue(err.code === ERROR_HTTP_SERVER_ERROR.code || err.code === ERROR_HTTP_BAD_PARAMETER.code, `Got response ${err} for body ${JSON.stringify(body)}`);
+          assertNotEqual(allowedErrorsCodes.indexOf(err.errorNum), -1 , `Got response ${err.errorNum}, ${err.message} for body ${JSON.stringify(body)}, ${err}`);
         }
       }
     },
@@ -633,9 +576,7 @@ function CreateCollectionsSuite() {
           }
         } else {
           assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          if (!isServer) {
-            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          }
+          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         }
       } finally {
@@ -648,9 +589,7 @@ function CreateCollectionsSuite() {
       try {
         if (isEnterprise) {
           assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          if (!isServer) {
-            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          }
+          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         } else {
           // Community ignores this, go to defaults
@@ -669,9 +608,7 @@ function CreateCollectionsSuite() {
       try {
         if (isEnterprise) {
           assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          if (!isServer) {
-            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          }
+          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         } else {
           // Community ignores this, go to defaults
@@ -701,9 +638,7 @@ function CreateCollectionsSuite() {
             validateDeprecationLogEntryWritten();
           } else {
             assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-            if (!isServer) {
-              assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-            }
+            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
             assertEqual(res.errorNum, ERROR_INVALID_SMART_JOIN_ATTRIBUTE.code);
           }
         }
@@ -722,9 +657,7 @@ function CreateCollectionsSuite() {
           validateDeprecationLogEntryWritten();
         } else {
           assertTrue(res.error, `Result: ${JSON.stringify(res)}`);
-          if (!isServer) {
-            assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
-          }
+          assertEqual(res.code, ERROR_HTTP_BAD_PARAMETER.code);
           assertEqual(res.errorNum, ERROR_BAD_PARAMETER.code);
         }
       } finally {
@@ -941,15 +874,6 @@ function CreateCollectionsSuite() {
               vertex.isDisjoint = false;
             }
           }
-          if (isServer) {
-            // Server has no special DC2DC case to let isDisjoint pass
-            if (isEnterprise) {
-              vertex.isDisjoint = false;
-            } else {
-              // Community does not even have the attribute
-              delete vertex.isDisjoint;
-            }
-          }
           if (!isEnterprise && !isCluster) {
             validateDeprecationLogEntryWritten();
           }
@@ -982,34 +906,10 @@ function CreateCollectionsSuite() {
                   edge.isDisjoint = false;
                 }
               }
-              if (isServer) {
-                // Server has no special DC2DC case to let isDisjoint pass
-                if (isEnterprise) {
-                  edge.isDisjoint = false;
-                } else {
-                  // Community does not even have the attribute
-                  delete edge.isDisjoint;
-                }
-                if (isCluster) {
-                  // SmartEdge Leader
-                  if (isEnterprise) {
-                    // isDisjoint should be 2
-                    // But we cannot actually create it.
-                    edge.internalValidatorType = 1;
-                  } else {
-                    // Community does not support this
-                    edge.internalValidatorType = 0;
-                  }
-                }
-              }
               if (isEnterprise && isCluster) {
                 // Check special creation path
                 const makeSmartEdgeAttributes = (isTo, isLocal) => {
                   const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isServer) {
-                    tmp.internalValidatorType = isLocal ? 2 : 4;
-                    tmp.isSmartChild = true;
-                  }
                   if (isTo) {
                     tmp.shardKeys = [":_key"];
                   }
@@ -1017,7 +917,7 @@ function CreateCollectionsSuite() {
                 };
                 validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
                 validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint || isServer) {
+                if (!isDisjoint) {
                   // If we are not disjoint we get all collections, as server test cannot let isDisjoint pass, we will also end up here
                   validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                   validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
@@ -1099,15 +999,6 @@ function CreateCollectionsSuite() {
                 vertex.shardingStrategy = "hash";
               }
             }
-            if (isServer) {
-              // Server has no special DC2DC case to let isDisjoint pass
-              if (isEnterprise) {
-                vertex.isDisjoint = false;
-              } else {
-                // Community does not even have the attribute
-                delete vertex.isDisjoint;
-              }
-            }
             validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
             if (!isEnterprise && !isCluster) {
               validateDeprecationLogEntryWritten();
@@ -1137,34 +1028,10 @@ function CreateCollectionsSuite() {
                   edge.shardingStrategy = "hash";
                 }
               }
-              if (isServer) {
-                // Server has no special DC2DC case to let isDisjoint pass
-                if (isEnterprise) {
-                  edge.isDisjoint = false;
-                } else {
-                  // Community does not even have the attribute
-                  delete edge.isDisjoint;
-                }
-                if (isCluster) {
-                  // SmartEdge Leader
-                  if (isEnterprise) {
-                    // isDisjoint should be 2
-                    // But we cannot actually create it.
-                    edge.internalValidatorType = 1;
-                  } else {
-                    // Community does not support this
-                    edge.internalValidatorType = 0;
-                  }
-                }
-              }
               if (isEnterprise && isCluster) {
                 // Check special creation path
                 const makeSmartEdgeAttributes = (isTo, isLocal) => {
                   const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isServer) {
-                    tmp.internalValidatorType = isLocal ? 2 : 4;
-                    tmp.isSmartChild = true;
-                  }
                   if (isTo) {
                     tmp.shardKeys = [":_key"];
                   }
@@ -1172,7 +1039,7 @@ function CreateCollectionsSuite() {
                 };
                 validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
                 validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint || isServer) {
+                if (!isDisjoint) {
                   validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                   validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 } else {
@@ -1252,15 +1119,6 @@ function CreateCollectionsSuite() {
                 vertex.shardingStrategy = "hash";
               }
             }
-            if (isServer) {
-              // Server has no special DC2DC case to let isDisjoint pass
-              if (isEnterprise) {
-                vertex.isDisjoint = false;
-              } else {
-                // Community does not even have the attribute
-                delete vertex.isDisjoint;
-              }
-            }
             validateProperties(vertex, vertexName, 2, keepEnterpriseSimulationAttributes);
             if (!isEnterprise && !isCluster) {
               validateDeprecationLogEntryWritten();
@@ -1289,34 +1147,10 @@ function CreateCollectionsSuite() {
                   edge.shardingStrategy = "hash";
                 }
               }
-              if (isServer) {
-                // Server has no special DC2DC case to let isDisjoint pass
-                if (isEnterprise) {
-                  edge.isDisjoint = false;
-                } else {
-                  // Community does not even have the attribute
-                  delete edge.isDisjoint;
-                }
-                if (isCluster) {
-                  // SmartEdge Leader
-                  if (isEnterprise) {
-                    // isDisjoint should be 2
-                    // But we cannot actually create it.
-                    edge.internalValidatorType = 1;
-                  } else {
-                    // Community does not support this
-                    edge.internalValidatorType = 0;
-                  }
-                }
-              }
               if (isEnterprise && isCluster) {
                 // Check special creation path
                 const makeSmartEdgeAttributes = (isTo, isLocal) => {
                   const tmp = {...edge, isSystem: true, isSmart: false, shardingStrategy: "hash"};
-                  if (isServer) {
-                    tmp.internalValidatorType = isLocal ? 2 : 4;
-                    tmp.isSmartChild = true;
-                  }
                   if (isTo) {
                     tmp.shardKeys = [":_key"];
                   }
@@ -1324,7 +1158,7 @@ function CreateCollectionsSuite() {
                 };
                 validateProperties({...edge, numberOfShards: 0}, edgeName, 3, keepEnterpriseSimulationAttributes);
                 validateProperties(makeSmartEdgeAttributes(false, true), `_local_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
-                if (!isDisjoint || isServer) {
+                if (!isDisjoint) {
                   validateProperties(makeSmartEdgeAttributes(false, false), `_from_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                   validateProperties(makeSmartEdgeAttributes(true, false), `_to_${edgeName}`, 3, keepEnterpriseSimulationAttributes);
                 } else {

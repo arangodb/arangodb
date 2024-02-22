@@ -78,18 +78,22 @@
       "hidden": true,
       "name": "tsan",
       "cacheVariables": {
+        "USE_JEMALLOC": "Off",
+        "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=thread",
         "CMAKE_C_FLAGS": "-fsanitize=thread",
-        "USE_JEMALLOC": "Off"
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
       "hidden": true,
-      "name": "asan-ubsan",
+      "name": "alubsan",
       "cacheVariables": {
+        "USE_JEMALLOC": "Off",
+        "STATIC_EXECUTABLES": "Off",
         "CMAKE_CXX_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=vptr -fno-sanitize=alignment",
         "CMAKE_C_FLAGS": "-fsanitize=address -fsanitize=leak -fsanitize=undefined -fsanitize=float-divide-by-zero -fsanitize-address-use-after-return=never -fno-sanitize=alignment",
-        "USE_JEMALLOC": "Off"
+        "USE_MINIMAL_DEBUGINFO": "On"
       }
     },
     {
@@ -150,7 +154,7 @@
       "inherits": [
         "pr",
         "community",
-				"no-v8"
+        "no-v8"
       ],
       "displayName": "PR Build ArangoDB Community Edition (without V8)"
     },
@@ -167,7 +171,7 @@
       "inherits": [
         "pr",
         "enterprise",
-				"no-v8"
+        "no-v8"
       ],
       "displayName": "PR Build ArangoDB Enterprise Edition (without V8)"
     },
@@ -219,6 +223,14 @@
       "displayName": "Build ArangoDB Community Edition (TSAN Build)"
     },
     {
+      "name": "community-pr-tsan",
+      "inherits": [
+        "tsan",
+        "community-pr"
+      ],
+      "displayName": "Build ArangoDB Community Edition (TSAN Build)"
+    },
+    {
       "name": "enterprise-developer-tsan",
       "inherits": [
         "tsan",
@@ -227,18 +239,42 @@
       "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
     },
     {
-      "name": "community-developer-asan-ubsan",
+      "name": "enterprise-pr-tsan",
       "inherits": [
-        "asan-ubsan",
+        "tsan",
+        "enterprise-pr"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (TSAN Build)"
+    },
+    {
+      "name": "community-developer-alubsan",
+      "inherits": [
+        "alubsan",
         "community-developer"
       ],
       "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
     },
     {
-      "name": "enterprise-developer-asan-ubsan",
+      "name": "community-pr-alubsan",
       "inherits": [
-        "asan-ubsan",
+        "alubsan",
+        "community-pr"
+      ],
+      "displayName": "Build ArangoDB Community Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "enterprise-developer-alubsan",
+      "inherits": [
+        "alubsan",
         "enterprise-developer"
+      ],
+      "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
+    },
+    {
+      "name": "enterprise-pr-alubsan",
+      "inherits": [
+        "alubsan",
+        "enterprise-pr"
       ],
       "displayName": "Build ArangoDB Enterprise Edition (ASAN and UBSAN Build)"
     },
@@ -309,16 +345,32 @@
       "configurePreset": "community-developer-tsan"
     },
     {
+      "name": "community-pr-tsan",
+      "configurePreset": "community-pr-tsan"
+    },
+    {
       "name": "enterprise-developer-tsan",
       "configurePreset": "enterprise-developer-tsan"
     },
     {
-      "name": "community-developer-asan-ubsan",
-      "configurePreset": "community-developer-asan-ubsan"
+      "name": "enterprise-pr-tsan",
+      "configurePreset": "enterprise-pr-tsan"
     },
     {
-      "name": "enterprise-developer-asan-ubsan",
-      "configurePreset": "enterprise-developer-asan-ubsan"
+      "name": "community-developer-alubsan",
+      "configurePreset": "community-developer-alubsan"
+    },
+    {
+      "name": "community-pr-alubsan",
+      "configurePreset": "community-pr-alubsan"
+    },
+    {
+      "name": "enterprise-developer-alubsan",
+      "configurePreset": "enterprise-developer-alubsan"
+    },
+    {
+      "name": "enterprise-pr-alubsan",
+      "configurePreset": "enterprise-pr-alubsan"
     },
     {
       "name": "community-developer-coverage",

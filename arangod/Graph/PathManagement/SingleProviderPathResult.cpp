@@ -58,6 +58,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::clear()
     -> void {
   _vertices.clear();
   _edges.clear();
+  _weights.clear();
 }
 
 template<class ProviderType, class PathStoreType, class Step>
@@ -100,7 +101,7 @@ auto SingleProviderPathResult<ProviderType, PathStoreType, Step>::populatePath()
       prependWeight(s.getWeight());
     } else {
       prependWeight(0);
-    };
+    }
     return true;
   });
 }
