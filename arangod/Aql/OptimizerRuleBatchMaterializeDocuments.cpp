@@ -120,23 +120,6 @@ void arangodb::aql::batchMaterializeDocumentsRule(
       }
     }
 
-    bool eligible = std::invoke([&]() {
-      auto current = node;
-      while (current->getFirstParent() != nullptr) {
-        current = current->getFirstParent();
-        if (current->getType() == EN::COLLECT &&
-            !ExecutionNode::castTo<CollectNode const*>(current)
-                 ->keepVariables()
-                 .empty()) {
-          return false;
-        }
-      }
-      return true;
-    });
-    if (!eligible) {
-      continue;
-    }
-
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();

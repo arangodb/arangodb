@@ -311,13 +311,19 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), slice, "outVariable", true);
 
       // keepVariables
-      std::vector<Variable const*> keepVariables;
-      VPackSlice keepVariablesSlice = slice.get("keepVariables");
-      if (keepVariablesSlice.isArray()) {
+      std::vector<std::pair<Variable const*, std::string>> keepVariables;
+      if (VPackSlice keepVariablesSlice = slice.get("keepVariables");
+          keepVariablesSlice.isArray()) {
         for (VPackSlice it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
               Variable::varFromVPack(plan->getAst(), it, "variable");
-          keepVariables.emplace_back(variable);
+          if (auto name = it.get("name"); name.isString()) {
+            keepVariables.emplace_back(
+                std::make_pair(variable, name.copyString()));
+          } else {
+            keepVariables.emplace_back(
+                std::make_pair(variable, variable->name));
+          }
         }
       }
 
@@ -357,9 +363,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
-          std::string const type = it.get("type").copyString();
+          std::string type = it.get("type").copyString();
           aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, type});
+              AggregateVarInfo{outVar, inVar, std::move(type)});
         }
       }
 

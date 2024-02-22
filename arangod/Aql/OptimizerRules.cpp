@@ -4459,7 +4459,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
@@ -4493,7 +4493,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), true);
 
             dbCollectNode->addDependency(previous);
@@ -4552,8 +4552,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
-                std::vector<Variable const*>(), collectNode->variableMap(),
-                false);
+                std::vector<std::pair<Variable const*, std::string>>{},
+                collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
