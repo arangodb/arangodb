@@ -107,15 +107,10 @@ struct DocumentFollowerState
   };
 
   std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;
-
- protected:
   std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
   std::shared_ptr<IDocumentStateTransactionHandler> const _transactionHandler;
   std::shared_ptr<IDocumentStateErrorHandler> const _errorHandler;
 
-  void increaseLowestSafeIndexForReplayTo(ShardID, LogIndex);
-
- private:
   Guarded<GuardedData, basics::UnshackledMutex> _guardedData;
 
   std::atomic<bool> _resigning{false};  // Allows for a quicker shutdown of

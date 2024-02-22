@@ -18,6 +18,7 @@ target_sources(arango_replication2 PRIVATE
   DocumentStateTransaction.cpp DocumentStateTransaction.h
   DocumentStateTransactionHandler.cpp DocumentStateTransactionHandler.h
   LowestSafeIndexesForReplay.cpp LowestSafeIndexesForReplay.h
+  LowestSafeIndexesForReplayUtils.cpp LowestSafeIndexesForReplayUtils.h
   MaintenanceActionExecutor.cpp MaintenanceActionExecutor.h
   ReplicatedOperation.cpp ReplicatedOperation.h
   ReplicatedOperationInspectors.h

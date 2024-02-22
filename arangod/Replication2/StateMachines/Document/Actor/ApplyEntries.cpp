@@ -33,9 +33,8 @@
 
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/Actor/Transaction.h"
-// for some reason MSVC requires this include to compile
-#include "Replication2/StateMachines/Document/DocumentLeaderState.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
+#include "Replication2/StateMachines/Document/LowestSafeIndexesForReplayUtils.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
 #include "Transaction/Methods.h"
 #include "Transaction/OperationOrigin.h"
@@ -319,8 +318,12 @@ auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op,
       // all entries until here have already been applied; there are no
       // open transactions; it is safe to increase the lowest safe index
       // now. Then we can create the index.
-      this->state->followerState.increaseLowestSafeIndexForReplayTo(op.shard,
-                                                                    index);
+      auto lowestSafeIndexesForReplayGuard =
+          this->state->followerState._lowestSafeIndexesForReplay
+              .getLockedGuard();
+      increaseAndPersistLowestSafeIndexForReplayTo(
+          this->state->loggerContext, lowestSafeIndexesForReplayGuard.get(),
+          *this->state->followerState.getStream(), op.shard, index);
       return this->state->followerState._transactionHandler->applyEntry(
           op, nullptr, nullptr);
     } else {

@@ -32,7 +32,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateSnapshotHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransactionHandler.h"
-#include "Replication2/Streams/IMetadataTransaction.h"
+#include "Replication2/StateMachines/Document/LowestSafeIndexesForReplayUtils.h"
 #include "Transaction/Manager.h"
 #include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
@@ -232,8 +232,10 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                   // all entries until here have already been applied; there are
                   // no open transactions; it is safe to increase the lowest
                   // safe index now. Then we can create the index.
-                  self->increaseLowestSafeIndexForReplayTo(
-                      lowestSafeIndexesForReplayGuard.get(), op.shard, idx);
+                  increaseAndPersistLowestSafeIndexForReplayTo(
+                      self->loggerContext,
+                      lowestSafeIndexesForReplayGuard.get(), *self->getStream(),
+                      op.shard, idx);
                   return data.transactionHandler->applyEntry(op, nullptr,
                                                              nullptr);
                 },
@@ -795,8 +797,9 @@ auto DocumentLeaderState::createIndex(
             // removed).
             auto lowestSafeIndexesForReplayGuard =
                 self->_lowestSafeIndexesForReplay.getLockedGuard();
-            self->increaseLowestSafeIndexForReplayTo(
-                lowestSafeIndexesForReplayGuard.get(), shard, logIndex);
+            increaseAndPersistLowestSafeIndexForReplayTo(
+                self->loggerContext, lowestSafeIndexesForReplayGuard.get(),
+                *self->getStream(), shard, logIndex);
           }
           co_return std::move(replicationResult).result();
         };
@@ -898,52 +901,11 @@ auto DocumentLeaderState::dropIndex(ShardID shard, IndexId indexId)
     return localIndexRemoval;
   });
 }
-namespace {
-bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
-                        std::map<std::string, LogIndex> right) {
-  auto left = std::map<std::string, LogIndex>{};
-  std::transform(left_.begin(), left_.end(), std::inserter(left, left.end()),
-                 [](auto const& kv) {
-                   return std::pair{ShardID(kv.first), kv.second};
-                 });
-  return left == right;
-}
-}  // namespace
-
-void DocumentLeaderState::increaseLowestSafeIndexForReplayTo(
-    LowestSafeIndexesForReplay& lowestSafeIndexesForReplay, ShardID shardId,
-    LogIndex logIndex) {
-  auto trx = getStream()->beginMetadataTrx();
-  auto& metadata = trx->get();
-  if constexpr (maintainerMode) {
-    auto inMemMap = lowestSafeIndexesForReplay.map;
-    auto persistedMap = metadata.lowestSafeIndexesForReplay;
-    if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
-      auto msg = std::stringstream{};
-      msg << "Mismatch between in-memory and persisted state of lowest safe "
-             "indexes for replay. In-memory state: "
-          << inMemMap << ", persisted state: ";
-      // no ADL for persistedMap
-      arangodb::operator<<(msg, persistedMap);
-      TRI_ASSERT(false) << msg.str();
-    }
-  }
-  auto& lowestSafeIndex =
-      metadata.lowestSafeIndexesForReplay[shardId.operator std::string()];
-  lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
-  auto const res = getStream()->commitMetadataTrx(std::move(trx));
-  if (res.ok()) {
-    lowestSafeIndexesForReplay.setFromMetadata(metadata);
-  } else {
-    auto msg = fmt::format(
-        "Failed to persist the lowest safe index on shard {}. This "
-        "will abort index creation. Error was: {}",
-        shardId, res.errorMessage());
-    LOG_CTX("9afad", WARN, loggerContext) << msg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), std::move(msg));
-  }
-}
 
 }  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
+
+namespace arangodb::replication2::replicated_state {
+template struct IReplicatedLeaderState<document::DocumentState>;
+}

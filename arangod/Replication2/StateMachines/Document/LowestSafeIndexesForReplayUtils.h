@@ -20,38 +20,18 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#pragma once
+
 #include "LowestSafeIndexesForReplay.h"
 
-#include "Cluster/Utils/ShardID.h"
-#include "Replication2/ReplicatedLog/LogCommon.h"
+#include "Replication2/Streams/Streams.h"
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 
 namespace arangodb::replication2::replicated_state::document {
 
-bool LowestSafeIndexesForReplay::isSafeForReplay(ShardID shardId,
-                                                 LogIndex logIndex) {
-  auto it = map.find(shardId);
-  if (it == map.end()) {
-    return true;
-  } else {
-    return logIndex >= it->second;
-  }
-}
+void increaseAndPersistLowestSafeIndexForReplayTo(
+    LoggerContext loggerContext,
+    LowestSafeIndexesForReplay& lowestSafeIndexesForReplay,
+    streams::Stream<DocumentState>& stream, ShardID shardId, LogIndex logIndex);
 
-void LowestSafeIndexesForReplay::setFromMetadata(
-    DocumentStateMetadata const& metadata) {
-  auto newMap = std::map<ShardID, LogIndex>{};
-  std::transform(metadata.lowestSafeIndexesForReplay.begin(),
-                 metadata.lowestSafeIndexesForReplay.end(),
-                 std::inserter(newMap, newMap.end()), [](auto const& kv) {
-                   return std::pair{ShardID(kv.first), kv.second};
-                 });
-  map = std::move(newMap);
 }
-
-LowestSafeIndexesForReplay::LowestSafeIndexesForReplay(
-    DocumentStateMetadata const& metadata) {
-  setFromMetadata(metadata);
-}
-
-}  // namespace arangodb::replication2::replicated_state::document

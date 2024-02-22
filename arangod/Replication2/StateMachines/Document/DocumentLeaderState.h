@@ -74,9 +74,6 @@ struct DocumentLeaderState
                               std::move(opts));
   }
 
-  void increaseLowestSafeIndexForReplayTo(LowestSafeIndexesForReplay&, ShardID,
-                                          LogIndex);
-
   auto release(LogIndex index) -> Result;
 
   auto release(TransactionId tid, LogIndex index) -> Result;

@@ -469,55 +469,10 @@ auto DocumentFollowerState::applyEntries(
   });
 }
 
-namespace {
-// TODO this is shared code with the leader; deduplicate it
-bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
-                        std::map<std::string, LogIndex> right) {
-  auto left = std::map<std::string, LogIndex>{};
-  std::transform(left_.begin(), left_.end(), std::inserter(left, left.end()),
-                 [](auto const& kv) {
-                   return std::pair{ShardID(kv.first), kv.second};
-                 });
-  return left == right;
-}
-
-}  // namespace
-// TODO this shares code with the leader; deduplicate it
-void DocumentFollowerState::increaseLowestSafeIndexForReplayTo(
-    ShardID shardId, LogIndex logIndex) {
-  auto lowestSafeIndexesForReplayGuard =
-      _lowestSafeIndexesForReplay.getLockedGuard();
-  auto trx = getStream()->beginMetadataTrx();
-  auto& metadata = trx->get();
-  if constexpr (maintainerMode) {
-    auto inMemMap = lowestSafeIndexesForReplayGuard->map;
-    auto persistedMap = metadata.lowestSafeIndexesForReplay;
-    if (!lsfifrMapsAreEqual(inMemMap, persistedMap)) {
-      auto msg = std::stringstream{};
-      msg << "Mismatch between in-memory and persisted state of lowest safe "
-             "indexes for replay. In-memory state: "
-          << inMemMap << ", persisted state: ";
-      // no ADL for persistedMap
-      arangodb::operator<<(msg, persistedMap);
-      TRI_ASSERT(false) << msg.str();
-    }
-  }
-  auto& lowestSafeIndex =
-      metadata.lowestSafeIndexesForReplay[shardId.operator std::string()];
-  lowestSafeIndex = std::max(lowestSafeIndex, logIndex);
-  auto const res = getStream()->commitMetadataTrx(std::move(trx));
-  if (res.ok()) {
-    lowestSafeIndexesForReplayGuard->setFromMetadata(metadata);
-  } else {
-    auto msg = fmt::format(
-        "Failed to persist the lowest safe index on shard {}. This "
-        "will abort index creation. Error was: {}",
-        shardId, res.errorMessage());
-    LOG_CTX("9afad", WARN, loggerContext) << msg;
-    THROW_ARANGO_EXCEPTION_MESSAGE(res.errorNumber(), std::move(msg));
-  }
-}
-
 }  // namespace arangodb::replication2::replicated_state::document
 
 #include "Replication2/ReplicatedState/ReplicatedStateImpl.tpp"
+
+namespace arangodb::replication2::replicated_state {
+template struct IReplicatedFollowerState<document::DocumentState>;
+}
