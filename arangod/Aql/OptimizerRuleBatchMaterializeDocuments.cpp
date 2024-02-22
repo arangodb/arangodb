@@ -21,6 +21,7 @@
 
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -117,6 +118,23 @@ void arangodb::aql::batchMaterializeDocumentsRule(
                  << indexNode->estimateCost().estimatedNrItems << ")";
         continue;
       }
+    }
+
+    bool eligible = std::invoke([&]() {
+      auto current = node;
+      while (current->getFirstParent() != nullptr) {
+        current = current->getFirstParent();
+        if (current->getType() == EN::COLLECT &&
+            !ExecutionNode::castTo<CollectNode const*>(current)
+                 ->keepVariables()
+                 .empty()) {
+          return false;
+        }
+      }
+      return true;
+    });
+    if (!eligible) {
+      continue;
     }
 
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
