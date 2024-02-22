@@ -24,8 +24,9 @@
 namespace arangodb::replication2::replicated_state::document {
 
 namespace {
-bool lsfifrMapsAreEqual(std::map<ShardID, LogIndex> left_,
-                        std::map<std::string, LogIndex> right) {
+// used only in maintainer mode
+[[maybe_unused]] bool lsfifrMapsAreEqual(
+    std::map<ShardID, LogIndex> left_, std::map<std::string, LogIndex> right) {
   auto left = std::map<std::string, LogIndex>{};
   std::transform(left_.begin(), left_.end(), std::inserter(left, left.end()),
                  [](auto const& kv) {
