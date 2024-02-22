@@ -49,15 +49,6 @@ struct IDocumentStateLeaderInterface;
 struct IDocumentStateNetworkHandler;
 struct SnapshotBatch;
 
-struct Handlers {
-  Handlers(
-      std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-      TRI_vocbase_t& vocbase, GlobalLogIdentifier gid);
-  std::shared_ptr<IDocumentStateShardHandler> const shardHandler;
-  std::shared_ptr<IDocumentStateTransactionHandler> const transactionHandler;
-  std::shared_ptr<IDocumentStateErrorHandler> const errorHandler;
-};
-
 struct DocumentFollowerState
     : replicated_state::IReplicatedFollowerState<DocumentState>,
       std::enable_shared_from_this<DocumentFollowerState> {
@@ -118,7 +109,9 @@ struct DocumentFollowerState
   std::shared_ptr<IDocumentStateNetworkHandler> const _networkHandler;
 
  protected:
-  Handlers const _handlers;
+  std::shared_ptr<IDocumentStateShardHandler> const _shardHandler;
+  std::shared_ptr<IDocumentStateTransactionHandler> const _transactionHandler;
+  std::shared_ptr<IDocumentStateErrorHandler> const _errorHandler;
 
   void increaseLowestSafeIndexForReplayTo(ShardID, LogIndex);
 

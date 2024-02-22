@@ -50,14 +50,6 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
-Handlers::Handlers(
-    std::shared_ptr<IDocumentStateHandlersFactory> const& handlersFactory,
-    TRI_vocbase_t& vocbase, GlobalLogIdentifier gid)
-    : shardHandler(handlersFactory->createShardHandler(vocbase, gid)),
-      transactionHandler(handlersFactory->createTransactionHandler(
-          vocbase, gid, shardHandler)),
-      errorHandler(handlersFactory->createErrorHandler(gid)) {}
-
 DocumentFollowerState::GuardedData::GuardedData(
     std::unique_ptr<DocumentCore> core, LoggerContext const& loggerContext)
     : loggerContext(loggerContext),
@@ -73,14 +65,18 @@ DocumentFollowerState::DocumentFollowerState(
       loggerContext(handlersFactory->createLogger(core->gid)
                         .with<logContextKeyStateComponent>("FollowerState")),
       _networkHandler(handlersFactory->createNetworkHandler(core->gid)),
-      _handlers(handlersFactory, core->getVocbase(), core->gid),
+      _shardHandler(
+          handlersFactory->createShardHandler(core->getVocbase(), gid)),
+      _transactionHandler(handlersFactory->createTransactionHandler(
+          core->getVocbase(), gid, _shardHandler)),
+      _errorHandler(handlersFactory->createErrorHandler(gid)),
       _guardedData(std::move(core), loggerContext),
       _runtime(std::make_shared<actor::LocalRuntime>(
           "FollowerState-" + to_string(gid),
           std::make_shared<actor::Scheduler>(std::move(scheduler)))),
       _lowestSafeIndexesForReplay(getStream()->getCommittedMetadata()) {
   // Get ready to replay the log
-  _handlers.shardHandler->prepareShardsForLogReplay();
+  _shardHandler->prepareShardsForLogReplay();
   _applyEntriesActor = _runtime->template spawn<actor::ApplyEntriesActor>(
       std::make_unique<actor::ApplyEntriesState>(loggerContext, *this));
   LOG_CTX("de019", INFO, loggerContext)
@@ -112,7 +108,7 @@ auto DocumentFollowerState::resign() && noexcept
     ADB_PROD_ASSERT(!data.didResign())
         << "Follower " << gid << " already resigned!";
 
-    auto abortAllRes = _handlers.transactionHandler->applyEntry(
+    auto abortAllRes = _transactionHandler->applyEntry(
         ReplicatedOperation::AbortAllOngoingTrx{});
     ADB_PROD_ASSERT(abortAllRes.ok())
         << "Failed to abort ongoing transactions while resigning follower "
@@ -127,7 +123,7 @@ auto DocumentFollowerState::resign() && noexcept
 
 auto DocumentFollowerState::getAssociatedShardList() const
     -> std::vector<ShardID> {
-  auto collections = _handlers.shardHandler->getAvailableShards();
+  auto collections = _shardHandler->getAvailableShards();
 
   std::vector<ShardID> shardIds;
   shardIds.reserve(collections.size());
@@ -154,7 +150,7 @@ auto DocumentFollowerState::acquireSnapshot(
           return Result{TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED};
         }
 
-        if (auto abortAllRes = self->_handlers.transactionHandler->applyEntry(
+        if (auto abortAllRes = self->_transactionHandler->applyEntry(
                 ReplicatedOperation::AbortAllOngoingTrx{});
             abortAllRes.fail()) {
           LOG_CTX("c863a", ERR, self->loggerContext)
@@ -166,7 +162,7 @@ auto DocumentFollowerState::acquireSnapshot(
         LOG_CTX("529bb", DEBUG, self->loggerContext)
             << "All ongoing transactions aborted before acquiring snapshot";
 
-        if (auto dropAllRes = self->_handlers.shardHandler->dropAllShards();
+        if (auto dropAllRes = self->_shardHandler->dropAllShards();
             dropAllRes.fail()) {
           LOG_CTX("ae182", ERR, self->loggerContext)
               << "Failed to drop shards before acquiring snapshot: "
@@ -277,7 +273,7 @@ auto DocumentFollowerState::acquireSnapshot(
                 // If we replayed a snapshot, we need to wait for views to
                 // settle before we can continue. Otherwise, we would get into
                 // issues with duplicate document ids
-                self->_handlers.shardHandler->prepareShardsForLogReplay();
+                self->_shardHandler->prepareShardsForLogReplay();
               }
               return res;
             });
@@ -376,12 +372,11 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                               LOG_DEVEL
                                   << "Creating index during snapshot transfer: "
                                      "this is currently unsafe!";
-                              return self->_handlers.transactionHandler
-                                  ->applyEntry(op, nullptr, nullptr);
+                              return self->_transactionHandler->applyEntry(
+                                  op, nullptr, nullptr);
                             },
                             [&](auto const& op) -> Result {
-                              return self->_handlers.transactionHandler
-                                  ->applyEntry(op);
+                              return self->_transactionHandler->applyEntry(op);
                             },
                         },
                         oper.operation);

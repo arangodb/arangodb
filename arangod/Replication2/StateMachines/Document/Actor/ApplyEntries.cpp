@@ -101,8 +101,8 @@ auto ApplyEntriesHandler<Runtime>::operator()(
       // aborted, but in case the transaction is broken and all operations are
       // skipped, we need to remove it here
       // For details about this special case see the Transaction actor
-      this->state->followerState._handlers.transactionHandler
-          ->removeTransaction(it->second.tid);
+      this->state->followerState._transactionHandler->removeTransaction(
+          it->second.tid);
     }
     this->state->_pendingTransactions.erase(it);
     if (this->state->_pendingTransactions.empty() && this->state->_batch) {
@@ -172,9 +172,9 @@ auto ApplyEntriesHandler<Runtime>::processEntry(
     return ProcessResult::kWaitForPendingTrx;
   }
   auto originalRes =
-      this->state->followerState._handlers.transactionHandler->applyEntry(op);
-  auto res = this->state->followerState._handlers.errorHandler->handleOpResult(
-      op, originalRes);
+      this->state->followerState._transactionHandler->applyEntry(op);
+  auto res =
+      this->state->followerState._errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -196,8 +196,9 @@ auto ApplyEntriesHandler<Runtime>::processEntry(UserTransaction auto& op,
   } else {
     pid = this->template spawn<actor::TransactionActor>(
         std::make_unique<actor::TransactionState>(
-            this->state->loggerContext, this->state->followerState._handlers,
-            op.tid));
+            this->state->loggerContext,
+            this->state->followerState._transactionHandler,
+            this->state->followerState._errorHandler, op.tid));
     LOG_CTX("8a74c", DEBUG, this->state->loggerContext)
         << "spawned transaction actor " << pid.id << " for trx " << op.tid;
     this->monitor(pid);
@@ -254,11 +255,10 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
   // it in the future. However, it doesn't hurt, so for now it's low on the
   // priority list.
   for (auto const& tid :
-       this->state->followerState._handlers.transactionHandler
-           ->getTransactionsForShard(op.shard)) {
-    auto abortRes =
-        this->state->followerState._handlers.transactionHandler->applyEntry(
-            ReplicatedOperation::Abort{tid});
+       this->state->followerState._transactionHandler->getTransactionsForShard(
+           op.shard)) {
+    auto abortRes = this->state->followerState._transactionHandler->applyEntry(
+        ReplicatedOperation::Abort{tid});
     if (abortRes.fail()) {
       LOG_CTX("aa36c", INFO, this->state->loggerContext)
           << "Failed to abort transaction " << tid << " for shard " << op.shard
@@ -277,12 +277,11 @@ auto ApplyEntriesHandler<Runtime>::applyDataDefinitionEntry(
   // However, we still do it for safety reasons.
   auto origin =
       transaction::OperationOriginREST{"follower collection properties update"};
-  auto trxLock = this->state->followerState._handlers.shardHandler->lockShard(
+  auto trxLock = this->state->followerState._shardHandler->lockShard(
       op.shard, AccessMode::Type::EXCLUSIVE, std::move(origin));
   if (trxLock.fail()) {
-    auto res =
-        this->state->followerState._handlers.errorHandler->handleOpResult(
-            op, trxLock.result());
+    auto res = this->state->followerState._errorHandler->handleOpResult(
+        op, trxLock.result());
 
     // If the shard was not found, we can ignore this operation and release it.
     if (res.ok()) {
@@ -322,15 +321,14 @@ auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op,
       // now. Then we can create the index.
       this->state->followerState.increaseLowestSafeIndexForReplayTo(op.shard,
                                                                     index);
-      return this->state->followerState._handlers.transactionHandler
-          ->applyEntry(op, nullptr, nullptr);
+      return this->state->followerState._transactionHandler->applyEntry(
+          op, nullptr, nullptr);
     } else {
-      return this->state->followerState._handlers.transactionHandler
-          ->applyEntry(op);
+      return this->state->followerState._transactionHandler->applyEntry(op);
     }
   });
-  auto res = this->state->followerState._handlers.errorHandler->handleOpResult(
-      op, originalRes);
+  auto res =
+      this->state->followerState._errorHandler->handleOpResult(op, originalRes);
   if (res.fail()) {
     return res;
   }
@@ -396,7 +394,7 @@ void ApplyEntriesHandler<Runtime>::continueBatch() noexcept try {
         doc.getInnerOperation());
 
     if (res.fail()) {
-      TRI_ASSERT(this->state->followerState._handlers.errorHandler
+      TRI_ASSERT(this->state->followerState._errorHandler
                      ->handleOpResult(doc.getInnerOperation(), res.result())
                      .fail())
           << res.result() << " should have been already handled for operation "
