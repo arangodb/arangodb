@@ -39,9 +39,11 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, a: (i % 10), b: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, a: (i % 10), b: i });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
@@ -124,9 +126,11 @@ function optimizerIndexOnlyEdgeTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._createEdgeCollection("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, _from: "test/" + (i % 10), _to: "test/" + i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, _from: "test/" + (i % 10), _to: "test/" + i });
       }
+      c.insert(docs);
       require('@arangodb/test-helper').waitForEstimatorSync();
     },
 
@@ -258,9 +262,11 @@ function optimizerIndexOnlyVPackTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, a: (i % 10), b: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, a: (i % 10), b: i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {

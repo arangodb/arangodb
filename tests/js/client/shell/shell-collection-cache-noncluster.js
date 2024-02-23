@@ -120,8 +120,12 @@ function CollectionCacheSuite () {
       let p = c.properties();
       assertTrue(p.cacheEnabled, p);
 
-      for(let i = 0; i < 10000; i++) {
-        c.insert({_key:String(i), value : i});
+      for(let i = 0; i < 10; i++) {
+        let docs = [];
+        for(let j = 0; j < 100; j++) {
+          docs.push({_key:String(i), value : i});
+        }
+        c.insert(docs);
       }
 
       let f = c.figures();

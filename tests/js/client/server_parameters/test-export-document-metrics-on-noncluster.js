@@ -59,8 +59,12 @@ function testSuite() {
       db._drop(cn);
       let c = db._create(cn);
       try {
-        for (let i = 0; i < 1000; ++i) {
-          c.insert({});
+        for (let i = 0; i < 10; ++i) {
+          let docs = [];
+          for (let j = 0; j < 100; ++j) {
+            docs.push({});
+          }
+          c.insert(docs);
         }
         // fetch updated metrics
         lines = getMetrics();

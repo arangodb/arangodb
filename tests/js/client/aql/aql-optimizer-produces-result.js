@@ -39,9 +39,11 @@ function optimizerProducesResultTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, a: (i % 10), b: i, c: i, x: (i % 10), y: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, a: (i % 10), b: i, c: i, x: (i % 10), y: i });
       }
+      c.insert(docs);
 
       c.ensureIndex({ type: "hash", fields: ["a", "b"] });
       c.ensureIndex({ type: "hash", fields: ["c"] });

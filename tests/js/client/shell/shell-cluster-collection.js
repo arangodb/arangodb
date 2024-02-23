@@ -758,9 +758,11 @@ function ClusterCollectionSuite () {
 
     testCountAll : function () {
       var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
-      for (var i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
       }
+      c.insert(docs);
 
       assertEqual(1000, c.count());
     },
@@ -771,9 +773,11 @@ function ClusterCollectionSuite () {
 
     testCountDetailed : function () {
       var c = db._create("UnitTestsClusterCrud", { numberOfShards : 5 });
-      for (var i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ value: i });
       }
+      c.insert(docs);
 
       var total = 0, res = c.count(true);
       assertEqual(5, Object.keys(res).length);
