@@ -27,6 +27,10 @@
 
 namespace arangodb {
 
+// This lives in `GreetingsFeature.cpp` and thus in `libarango`, which is
+// also linked in `arangosh` and friends:
+extern char const* LGPLNotice;
+
 class ConfigFeature;
 class FileSystemFeature;
 class LoggerFeature;
