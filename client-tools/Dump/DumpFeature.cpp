@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
@@ -1425,6 +1426,8 @@ void DumpFeature::reportError(Result const& error) {
 ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
   return _clientTaskQueue;
 }
+
+void DumpFeature::prepare() { logLGPLNotice(); }
 
 void DumpFeature::start() {
   using arangodb::basics::StringUtils::formatSize;
