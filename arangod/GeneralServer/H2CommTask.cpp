@@ -47,11 +47,6 @@
 
 #include <llhttp.h>
 
-// Work-around for nghttp2 non-standard definition ssize_t under windows
-// https://github.com/nghttp2/nghttp2/issues/616
-#if defined(_WIN32) && defined(_MSC_VER)
-#define ssize_t long
-#endif
 #include <nghttp2/nghttp2.h>
 
 using namespace arangodb::basics;
@@ -1040,9 +1035,7 @@ bool H2CommTask<T>::shouldStop() const {
 
 template class arangodb::rest::H2CommTask<SocketType::Tcp>;
 template class arangodb::rest::H2CommTask<SocketType::Ssl>;
-#ifndef _WIN32
 template class arangodb::rest::H2CommTask<SocketType::Unix>;
-#endif
 
 }  // namespace rest
 }  // namespace arangodb

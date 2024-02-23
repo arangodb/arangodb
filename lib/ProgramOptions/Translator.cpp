@@ -91,19 +91,6 @@ std::string arangodb::options::EnvironmentTranslator(std::string const& value,
             if (k == "PID") {
               vv = std::to_string(Thread::currentProcessId());
             }
-#if _WIN32
-            else if (k == "ROOTDIR") {
-              vv = TRI_LocateInstallDirectory(nullptr, binaryPath);
-
-              if (!vv.empty()) {
-                char c = *(vv.rbegin());
-
-                if (c == TRI_DIR_SEPARATOR_CHAR || c == '/') {
-                  vv.pop_back();
-                }
-              }
-            }
-#endif
           }
 
           result += vv;

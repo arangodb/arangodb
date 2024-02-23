@@ -27,8 +27,6 @@
 #include <algorithm>
 #include <vector>
 
-#ifndef _WIN32
-
 #define BIND_4_COMPAT 1  // LINUX
 #define BIND_8_COMPAT 1  // MACOSX
 
@@ -178,14 +176,6 @@ static std::vector<SrvRecord> srvRecords(std::string const& specification) {
 
   return services;
 }
-
-#else
-
-static std::vector<SrvRecord> srvRecords(std::string const& specification) {
-  return {};
-}
-
-#endif
 
 EndpointSrv::EndpointSrv(std::string const& specification)
     : Endpoint(DomainType::SRV, EndpointType::CLIENT, EncryptionType::NONE,

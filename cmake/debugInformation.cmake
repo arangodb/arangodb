@@ -17,8 +17,7 @@ macro(install_debinfo
   set(FILE ${USER_OUTPUT_DIRECTORY}/${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
   set(STRIP_FILE ${STRIP_DIR}/${USER_TARGET}${CMAKE_EXECUTABLE_SUFFIX})
 
-  if (NOT MSVC AND
-      CMAKE_STRIP AND
+  if (CMAKE_STRIP AND
       READELF_EXECUTABLE AND
       STRIP_FILE AND
       EXISTS ${FILE})
@@ -55,7 +54,7 @@ endmacro()
 # Detect whether this system has SHA checksums
 macro(detect_binary_id_type sourceVar)
   set(${sourceVar} false)
-  if (NOT MSVC AND CMAKE_STRIP AND READELF_EXECUTABLE)
+  if (CMAKE_STRIP AND READELF_EXECUTABLE)
     execute_process(
       COMMAND ${READELF_EXECUTABLE} -n ${READELF_EXECUTABLE}
       OUTPUT_VARIABLE READELF_RESULT)
@@ -84,7 +83,7 @@ macro(strip_install_bin_and_config
   endif()
   set(FILE ${CMAKE_RUNTIME_OUTPUT_DIRECTORY_X}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
   set(STRIP_FILE ${INTERMEDIATE_STRIP_DIR}/${TARGET}${CMAKE_EXECUTABLE_SUFFIX})
-  if (NOT MSVC AND CMAKE_STRIP)
+  if (CMAKE_STRIP)
     set(TARGET_NAME "${BIND_TARGET}_${TARGET}")
     ExternalProject_Add("${TARGET_NAME}"
       DEPENDS ${BIND_TARGET}

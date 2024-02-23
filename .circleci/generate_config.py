@@ -1,10 +1,15 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
+from collections import namedtuple
 import argparse
 import os
 import sys
 import traceback
 import yaml
+
+BuildConfig = namedtuple(
+    "BuildConfig", ["arch", "enterprise", "sanitizer", "isNightly"]
+)
 
 # check python 3
 if sys.version_info[0] != 3:
@@ -64,6 +69,7 @@ def parse_arguments():
         "definitions", help="file containing the test definitions", type=str
     )
     parser.add_argument("-o", "--output", type=str, help="filename of the output")
+    parser.add_argument("-s", "--sanitizer", type=str, help="sanitizer to use")
     parser.add_argument(
         "--validate-only",
         help="validates the test definition file",
@@ -84,7 +90,17 @@ def parse_arguments():
         "--all", help="output all test, ignore other filters", action="store_true"
     )
     parser.add_argument(
-        "-rt", "--replication_two", default=False, action='store_true', help="flag if we should enable replication two tests"
+        "-rt",
+        "--replication_two",
+        default=False,
+        action="store_true",
+        help="flag if we should enable replication two tests",
+    )
+    parser.add_argument(
+        "--nightly",
+        default=False,
+        action="store_true",
+        help="flag whether this is a nightly build",
     )
     return parser.parse_args()
 
@@ -189,18 +205,19 @@ def read_definitions(filename):
     return tests
 
 
-def filter_tests(args, tests, enterprise):
+def filter_tests(args, tests, enterprise, nightly):
     """filter testcase by operations target Single/Cluster/full"""
     if args.all:
         return tests
 
+    full = args.full or nightly
     filters = []
     # if args.cluster:
     #     filters.append(lambda test: "single" not in test["flags"])
     # else:
     #     filters.append(lambda test: "cluster" not in test["flags"])
 
-    if args.full:
+    if full:
         filters.append(lambda test: "!full" not in test["flags"])
     else:
         filters.append(lambda test: "full" not in test["flags"])
@@ -212,7 +229,6 @@ def filter_tests(args, tests, enterprise):
 
     if not enterprise:
         filters.append(lambda test: "enterprise" not in test["flags"])
-
 
     # if IS_ARM:
     #     filters.append(lambda test: "!arm" not in test["flags"])
@@ -239,117 +255,248 @@ def get_size(size, arch):
         "medium": "medium",
         "medium+": "medium+",
         "large": "large",
-        "xlarge": "large",
-        "2xlarge": "large",
+        "xlarge": "xlarge",
+        "2xlarge": "xlarge",
     }
-    if arch == "aarch64":
-        return aarch64_sizes[size]
-    return x86_sizes[size]
+    return aarch64_sizes[size] if arch == "aarch64" else x86_sizes[size]
 
 
-def create_test_job(test, cluster, edition, arch, replication_version=1):
+def get_test_size(size, build_config, cluster):
+    if build_config.sanitizer != "":
+        # sanitizer builds need more resources
+        if size == "small":
+            size = "xlarge" if build_config.sanitizer == "tsan" and cluster else "large"
+        elif size in ["medium", "medium+", "large"]:
+            size = "xlarge"
+    return get_size(size, build_config.arch)
+
+
+def create_test_job(test, cluster, build_config, build_job, replication_version=1):
     """creates the test job definition to be put into the config yaml"""
+    edition = "ee" if build_config.enterprise else "ce"
     params = test["params"]
     suite_name = test["name"]
     suffix = params.get("suffix", "")
     if suffix:
         suite_name += f"-{suffix}"
 
-    if not test["size"] in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
-        raise Exception("Invalid resource class size " + test["size"])
+    size = test["size"]
+    if not size in ["small", "medium", "medium+", "large", "xlarge", "2xlarge"]:
+        raise Exception(f"Invalid resource class size {size}")
 
-    deployment_variant = f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
+    deployment_variant = (
+        f"cluster{'-repl2' if replication_version==2 else ''}" if cluster else "single"
+    )
 
-    result = {
-        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{arch}",
+    job = {
+        "name": f"test-{edition}-{deployment_variant}-{suite_name}-{build_config.arch}",
         "suiteName": suite_name,
         "suites": test["suites"],
-        "size": get_size(test["size"], arch),
+        "size": get_test_size(size, build_config, cluster),
         "cluster": cluster,
-        "requires": [f"build-linux-{edition}-{arch}"],
+        "requires": [build_job],
     }
+    if suite_name == "chaos" and build_config.isNightly:
+        # nightly chaos tests runs 32 different combinations, each running for 3 min plus some time to check for consistency
+        job["timeLimit"] = 32 * 5 * 60
+
+    if suite_name == "shell_client_aql" and build_config.isNightly and not cluster:
+        # nightly single shell_client_aql suite runs some chaos tests that require more memory, so beef up the size
+        job["size"] = get_test_size("medium+", build_config, cluster)
 
     extra_args = test["args"].copy()
     if cluster:
         extra_args.append(f"--replicationVersion {replication_version}")
+    if build_config.isNightly:
+        extra_args.append(f"--skipNightly false")
     if extra_args != []:
-        result["extraArgs"] = " ".join(extra_args)
+        job["extraArgs"] = " ".join(extra_args)
 
     buckets = params.get("buckets", 1)
+    if suite_name == "replication_sync":
+        # Note: for the replication_sync suite the test-definition.txt specifies only 2 buckets,
+        # because increasing this causes issues in Jenkins. However, in CircleCI we definitely
+        # want to use more buckets, especially when running with sanitizers.
+        buckets = 5
+
     if buckets != 1:
-        result["buckets"] = buckets
+        job["buckets"] = buckets
 
-    return result
+    return {"run-linux-tests": job}
 
 
-def add_test_jobs_to_workflow(config, tests, workflow, edition, arch, repl2):
-    jobs = config["workflows"][workflow]["jobs"]
+def add_test_definition_jobs_to_workflow(
+    workflow, tests, build_config, build_job, repl2
+):
+    jobs = workflow["jobs"]
     for test in tests:
         if "cluster" in test["flags"]:
-            jobs.append(
-                {f"run-linux-tests": create_test_job(test, True, edition, arch)}
-            )
+            jobs.append(create_test_job(test, True, build_config, build_job))
             if repl2:
-                jobs.append(
-                    {f"run-linux-tests": create_test_job(test, True, edition, arch, 2)}
-                )
+                jobs.append(create_test_job(test, True, build_config, build_job, 2))
         elif "single" in test["flags"]:
-            jobs.append(
-                {f"run-linux-tests": create_test_job(test, False, edition, arch)}
-            )
+            jobs.append(create_test_job(test, False, build_config, build_job))
         else:
-            jobs.append(
-                {f"run-linux-tests": create_test_job(test, True, edition, arch)}
-            )
+            jobs.append(create_test_job(test, True, build_config, build_job))
             if repl2:
-                jobs.append(
-                    {f"run-linux-tests": create_test_job(test, True, edition, arch, 2)}
-                )
-            jobs.append(
-                {f"run-linux-tests": create_test_job(test, False, edition, arch)}
-            )
+                jobs.append(create_test_job(test, True, build_config, build_job, 2))
+            jobs.append(create_test_job(test, False, build_config, build_job))
 
 
-def get_arch(workflow):
-    if workflow.startswith("aarch64"):
-        return "aarch64"
-    if workflow.startswith("x64"):
-        return "x64"
-    raise Exception(f"Cannot extract architecture from workflow {workflow}")
+def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
+    if build_config.enterprise:
+        workflow["jobs"].append(
+            {
+                "run-hotbackup-tests": {
+                    "name": f"run-hotbackup-tests-{build_config.arch}",
+                    "size": get_test_size("medium", build_config, True),
+                    "requires": [build_job],
+                }
+            }
+        )
+    add_test_definition_jobs_to_workflow(
+        workflow, tests, build_config, build_job, repl2
+    )
 
 
-def generate_output(config, tests, enterprise, repl2):
-    """generate output"""
-    workflows = config["workflows"]
-    edition = "ee" if enterprise else "ce"
-    for workflow, jobs in workflows.items():
-        if (
-            ("linux" in workflow)
-            and (enterprise and "enterprise" in workflow)
-            or (not enterprise and "community" in workflow)
-        ):
-            arch = get_arch(workflow)
-            add_test_jobs_to_workflow(config, tests, workflow, edition, arch, repl2)
+def add_cppcheck_job(workflow, build_job):
+    workflow["jobs"].append(
+        {
+            "run-cppcheck": {
+                "name": "cppcheck",
+                "requires": [build_job],
+            }
+        }
+    )
 
 
-def generate_jobs(config, args, tests, enterprise):
+def add_build_job(workflow, build_config, overrides=None):
+    edition = "ee" if build_config.enterprise else "ce"
+    preset = "enterprise-pr" if build_config.enterprise else "community-pr"
+    if build_config.sanitizer != "":
+        preset += f"-{build_config.sanitizer}"
+    suffix = "" if build_config.sanitizer == "" else f"-{build_config.sanitizer}"
+    name = f"build-{edition}-{build_config.arch}{suffix}"
+    params = {
+        "context": [
+            "sccache-aws-bucket"
+        ],  # add the environment variables to setup sccache for the S3 bucket
+        "resource-class": get_size("xlarge", build_config.arch),
+        "name": name,
+        "preset": preset,
+        "enterprise": build_config.enterprise,
+    }
+    if build_config.arch == "aarch64":
+        params["s3-prefix"] = "aarch64"
+
+    workflow["jobs"].append({"compile-linux": params | (overrides or {})})
+    return name
+
+
+def add_workflow(workflows, tests, build_config, args):
+    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
+    repl2 = args.replication_two
+    suffix = "nightly" if build_config.isNightly else "pr"
+    if build_config.sanitizer != "":
+        suffix += "-" + build_config.sanitizer
+    if args.replication_two:
+        suffix += "-repl2"
+    edition = "enterprise" if build_config.enterprise else "community"
+    name = f"{build_config.arch}-{edition}-{suffix}"
+    workflows[name] = {"jobs": []}
+    workflow = workflows[name]
+    build_job = add_build_job(workflow, build_config)
+    if build_config.arch == "x64":
+        add_cppcheck_job(workflow, build_job)
+    add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
+    return workflow
+
+
+def add_x64_community_workflow(workflows, tests, args):
+    if args.sanitizer != "" and args.nightly:
+        # for nightly sanitizer runs we skip community and only test enterprise
+        return
+    add_workflow(
+        workflows,
+        tests,
+        BuildConfig("x64", False, args.sanitizer, args.nightly),
+        args,
+    )
+
+
+def add_x64_enterprise_workflow(workflows, tests, args):
+    build_config = BuildConfig("x64", True, args.sanitizer, args.nightly)
+    workflow = add_workflow(workflows, tests, build_config, args)
+    if args.sanitizer == "":
+        add_build_job(
+            workflow,
+            build_config,
+            {
+                "name": "build-ee-non-maintainer-x64",
+                "preset": "enterprise-pr-non-maintainer",
+                "publish-artifacts": False,
+                "build-tests": False,
+            },
+        )
+        add_build_job(
+            workflow,
+            build_config,
+            {
+                "name": "build-ee-no-v8-x64",
+                "preset": "enterprise-pr-no-v8",
+                "publish-artifacts": False,
+                "build-tests": False,
+                "build-v8": False,
+            },
+        )
+
+
+def add_aarch64_community_workflow(workflows, tests, args):
+    # for normal PR runs we run only aarch64 enterprise
+    if args.nightly:
+        add_workflow(
+            workflows,
+            tests,
+            BuildConfig("aarch64", False, args.sanitizer, args.nightly),
+            args,
+        )
+
+
+def add_aarch64_enterprise_workflow(workflows, tests, args):
+    add_workflow(
+        workflows,
+        tests,
+        BuildConfig("aarch64", True, args.sanitizer, args.nightly),
+        args,
+    )
+
+
+def generate_jobs(config, args, tests):
     """generate job definitions"""
-    tests = filter_tests(args, tests, enterprise)
-    generate_output(config, tests, enterprise, args.replication_two)
+    workflows = config["workflows"]
+    add_x64_community_workflow(workflows, tests, args)
+    add_x64_enterprise_workflow(workflows, tests, args)
+    if args.sanitizer == "":
+        # ATM we run ARM only without sanitizer
+        add_aarch64_community_workflow(workflows, tests, args)
+        add_aarch64_enterprise_workflow(workflows, tests, args)
 
 
 def main():
     """entrypoint"""
     try:
         args = parse_arguments()
+        if not args.sanitizer in ["", "tsan", "alubsan"]:
+            raise Exception(
+                f"Invalid sanitizer {args.sanitizer} - must be either empty, 'tsan' or 'alubsan'"
+            )
         tests = read_definitions(args.definitions)
         # if args.validate_only:
         #    return  # nothing left to do
         with open(args.base_config, "r", encoding="utf-8") as instream:
             with open(args.output, "w", encoding="utf-8") as outstream:
                 config = yaml.safe_load(instream)
-                generate_jobs(config, args, tests, False)  # community
-                generate_jobs(config, args, tests, True)  # enterprise
+                generate_jobs(config, args, tests)
                 yaml.dump(config, outstream)
     except Exception as exc:
         traceback.print_exc(exc, file=sys.stderr)

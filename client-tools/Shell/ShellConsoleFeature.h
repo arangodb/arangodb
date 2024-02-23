@@ -36,7 +36,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   explicit ShellConsoleFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
@@ -52,9 +51,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   std::string const& prompt() const { return _prompt; }
 
  private:
-#ifdef _WIN32
-  bool _cygwinShell;
-#endif
   bool _quiet;
   bool _colors;
   bool _useHistory;
@@ -90,19 +86,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   Prompt buildPrompt(ClientFeature*);
   void startPager();
   void stopPager();
-
-#ifdef _WIN32
- private:
-  void _print2(std::string const&);
-  void _print(std::string const&);
-
- private:
-  int _consoleAttribute;
-  int _consoleColor;
-  int _defaultAttribute;
-  int _defaultColor;
-  int _defaultBackground;
-#endif
 
  private:
   bool _promptError;

@@ -2116,7 +2116,7 @@ function IResearchFeatureDDLTestSuite1() {
       } catch (e) {
       }
       try {
-        analyzers.remove(analyzerName);
+        analyzers.remove(analyzerName, true);
       } catch (e) {
       }
       db._createDatabase(dbName);

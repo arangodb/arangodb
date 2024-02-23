@@ -116,9 +116,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
-#elif _WIN32
-  // TODO: improve Windows version detection
-  _operatingSystem = "windows";
 #elif __APPLE__
   // TODO: improve MacOS version detection
   _operatingSystem = "macos";

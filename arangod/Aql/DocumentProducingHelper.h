@@ -190,6 +190,7 @@ struct WithProjectionsCoveredByIndex {};
 struct WithFilterCoveredByIndex {};
 struct WithProjectionsNotCoveredByIndex {};
 struct DocumentCopy {};
+struct WithLateMaterialization {};
 }  // namespace DocumentProducingCallbackVariant
 
 template<bool checkUniqueness, bool skip>

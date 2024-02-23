@@ -1060,6 +1060,22 @@ const IndexJoinTestSuite = function () {
       }
     },
 
+    testJoinInClusterShardedLocalExpansions: function () {
+      const A = db._create("A", {numberOfShards: 10, replicationFactor: 1, writeConcern: 1, waitForSync: true});
+      fillCollection(A.name(), singleAttributeGenerator(20, "x", x => x));
+      const query = `FOR c1 IN A FOR c2 IN A FILTER c1._key == c2._key RETURN c1._key`;
+      const result = db._query(query, null, {}).toArray();
+      assertEqual(result.length, A.count());
+    },
+
+    testJoinInClusterShardedLocalExpansionsMaterialize: function () {
+      const A = db._create("A", {numberOfShards: 10, replicationFactor: 1, writeConcern: 1, waitForSync: true});
+      fillCollection(A.name(), singleAttributeGenerator(10000, "x", x => x));
+      const query = `FOR c1 IN A FOR c2 IN A FILTER c1._key == c2._key RETURN c1`;
+      const result = db._query(query, null, {}).toArray();
+      assertEqual(result.length, A.count());
+    },
+
     testLateMaterialized: function () {
       const A = createCollection("A", ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"]});

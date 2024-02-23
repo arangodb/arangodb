@@ -154,11 +154,6 @@
 #include "V8Server/V8DealerFeature.h"
 #endif
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include "RestServer/WindowsServiceFeature.h"
-#endif
-
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Audit/AuditFeature.h"
 #include "Enterprise/Encryption/EncryptionFeature.h"
