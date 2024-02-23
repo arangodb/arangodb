@@ -11,6 +11,9 @@ parameters:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
   # Unused here, but it will be forwarded from config and will cause errors if not defined
+  create-docker-images:
+    type: boolean
+    default: false
   nightly:
     type: boolean
     default: false
@@ -222,7 +225,15 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DOPENSSL_ROOT_DIR=/opt
+            cmake --preset << parameters.preset >> \
+              -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+              -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DOPENSSL_ROOT_DIR=/opt \
+              -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
@@ -238,6 +249,18 @@ jobs:
             fi
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+      - when:
+          condition: << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                name: Create install package
+                command: |
+                  mkdir install
+                  # Note: ATM this will rebuild the frontend
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  strip ./install/usr/bin/arango*
+                  strip ./install/usr/sbin/arangod
+                  tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
           command: |
@@ -264,6 +287,7 @@ jobs:
                 paths:
                   - build/compile_commands.json
                   - CMakePresets.json
+                  - install.tar.gz
                   - build/bin
                   - build/etc
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
@@ -280,6 +304,29 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+
+  create-docker-image:
+    docker:
+      - image: cimg/base:current
+    resource_class: large
+    steps:
+      - setup_remote_docker:
+            docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      # TODO
+      #  - download starter
+      #  - download syncer
+      #  - download rclone
+      - run:
+          name: Create Docker Image
+          command: |
+            # TODO
+            ls -la
+            mkdir install
+            tar -xzf install.tar.gz -C install
+            ls -la install
+            #docker build --platform linux/$arch --build-arg arch=$arch -t $image:latest-$arch --file arangodb-test.Dockerfile .
 
   run-linux-tests:
     docker:

@@ -102,6 +102,12 @@ def parse_arguments():
         action="store_true",
         help="flag whether this is a nightly build",
     )
+    parser.add_argument(
+        "--create-docker-images",
+        default=False,
+        action="store_true",
+        help="flag whether we want to create docker images based on the build results",
+    )
     return parser.parse_args()
 
 
@@ -370,6 +376,20 @@ def add_cppcheck_job(workflow, build_job):
     )
 
 
+def add_create_docker_image_job(workflow, build_config, build_job, args):
+    if not args.create_docker_images:
+        return
+    edition = "ee" if build_config.enterprise else "ce"
+    workflow["jobs"].append(
+        {
+            "create-docker-image": {
+                "name": f"create-{edition}-{build_config.arch}-docker-image",
+                "requires": [build_job],
+            }
+        }
+    )
+
+
 def add_build_job(workflow, build_config, overrides=None):
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
@@ -394,7 +414,6 @@ def add_build_job(workflow, build_config, overrides=None):
 
 
 def add_workflow(workflows, tests, build_config, args):
-    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.sanitizer != "":
@@ -408,6 +427,9 @@ def add_workflow(workflows, tests, build_config, args):
     build_job = add_build_job(workflow, build_config)
     if build_config.arch == "x64":
         add_cppcheck_job(workflow, build_job)
+    add_create_docker_image_job(workflow, build_config, build_job, args)
+
+    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
     add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
     return workflow
 
