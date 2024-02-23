@@ -39,12 +39,16 @@ char const* LGPLNotice =
     "https://www.gnu.org/copyleft/lesser.html and "
     "https://www.gnu.org/licenses/gpl.html";
 
-void GreetingsFeature::prepare() {
-  LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
-      << rest::Version::getVerboseVersionString();
+void logLGPLNotice(void) {
 #ifdef __GLIBC__
   LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
 #endif
+}
+
+void GreetingsFeature::prepare() {
+  LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
+      << rest::Version::getVerboseVersionString();
+  logLGPLNotice();
 
   // building in maintainer mode or enabling unit test code will incur runtime
   // overhead, so warn users about this

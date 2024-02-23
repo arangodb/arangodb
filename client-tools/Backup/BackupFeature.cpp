@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -155,7 +156,7 @@ arangodb::Result waitForRestart(arangodb::ClientManager& clientManager,
     auto now = std::chrono::high_resolution_clock::now();
     auto duration = now - start;
     return (static_cast<double>(duration.count()) /
-            decltype(duration)::period::den* decltype(duration)::period::num);
+            decltype(duration)::period::den * decltype(duration)::period::num);
   };
 
   LOG_TOPIC("0dfda", INFO, arangodb::Logger::BACKUP)
@@ -922,6 +923,8 @@ void BackupFeature::validateOptions(
   }
 #endif
 }
+
+void BackupFeature::prepare() { logLGPLNotice(); }
 
 void BackupFeature::start() {
   Result result;
