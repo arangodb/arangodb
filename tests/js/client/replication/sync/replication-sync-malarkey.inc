@@ -35,10 +35,12 @@ const replication = require('@arangodb/replication');
 const leaderEndpoint = arango.getEndpoint();
 const followerEndpoint = ARGUMENTS[ARGUMENTS.length - 1];
 const errors = require("internal").errors;
-const { deriveTestSuite, compareStringIds } = require('@arangodb/test-helper');
+const { deriveTestSuite, compareStringIds, versionHas } = require('@arangodb/test-helper');
 const _ = require('lodash');
 
 const cn = 'UnitTestsReplication';
+
+const docCount = versionHas('tsan') ? 10000 : 100000;
 
 const connectToLeader = function () {
   reconnectRetry(leaderEndpoint, db._name(), 'root', '');
@@ -599,7 +601,7 @@ function BaseTestConfig () {
     testDowngradeManyRevisions: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -630,14 +632,14 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, docCount);
     },
     
     // create different state on follower
     testRewriteEntireFollowerSecondaryUniqueIndexes: function () {
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ value: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -670,7 +672,7 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, docCount);
     },
     
     testUniqueConstraints: function () {
@@ -680,7 +682,7 @@ function BaseTestConfig () {
       c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
 
       let docs = [];
-      for (let i = 0; i < 1 * 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -701,7 +703,7 @@ function BaseTestConfig () {
       db._query("FOR doc IN " + cn + " SORT doc.value REPLACE doc WITH { value: doc.value - 1, x: doc.x + 1000000, y: doc.y + 1000000, z: doc.z + 1000000} IN " + cn);
       
       docs = [];
-      for (let i = 0; i < 1 * 100 * 1000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "L" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -720,12 +722,12 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, docCount);
 
       // Now check that the unique index entries are all in place by
       // provoking violations:
       docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", x: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -738,7 +740,7 @@ function BaseTestConfig () {
           docs = [];
         }
       }
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", y: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -751,7 +753,7 @@ function BaseTestConfig () {
           docs = [];
         }
       }
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", z: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -765,17 +767,17 @@ function BaseTestConfig () {
         }
       }
       // And use the index entries in a query:
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.x == i 
              RETURN 1)`).toArray()[0]);
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn}
              FILTER doc.y == i 
              RETURN 1)`).toArray()[0]);
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
@@ -789,7 +791,7 @@ function BaseTestConfig () {
       c.ensureIndex({type: "hash", unique: true, fields: ["z"]});
 
       let docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "K" + i, value: i, x: i, y: i, z: i });
         if (docs.length === 10000) {
           c.insert(docs, { silent: true });
@@ -820,12 +822,12 @@ function BaseTestConfig () {
       db._flushCache();
       c = db._collection(cn);
 
-      checkCountConsistency(cn, 100000);
+      checkCountConsistency(cn, docCount);
 
       // Now check that the unique index entries are all in place by
       // provoking violations:
       docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", x: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -839,7 +841,7 @@ function BaseTestConfig () {
         }
       }
 
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", y: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -853,7 +855,7 @@ function BaseTestConfig () {
         }
       }
       
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < docCount; ++i) {
         docs.push({ _key: "N", z: i });
         if (docs.length === 10000) {
           let res = c.insert(docs);
@@ -868,17 +870,17 @@ function BaseTestConfig () {
       }
 
       // And use the index entries in a query:
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.x == i 
              RETURN 1)`).toArray()[0]);
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.y == i 
              RETURN 1)`).toArray()[0]);
-      assertEqual(100000, db._query(
+      assertEqual(docCount, db._query(
         `RETURN COUNT(FOR i IN 0..99999
            FOR doc IN ${cn} 
              FILTER doc.z == i 
