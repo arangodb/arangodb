@@ -338,7 +338,7 @@ const TOP_DIR = (function findTopDir () {
 // create additional system environment variables for coverage
 function coverageEnvironment () {
   let result = [];
-  let name = 'GCOV_PREFIX';
+  let name = 'LLVM_PROFILE_FILE';
 
   if (process.env.hasOwnProperty(name)) {
     result.push(
