@@ -512,13 +512,21 @@ RestStatus RestAqlHandler::continueExecute() {
   // extract the sub-request type
   rest::RequestType type = _request->requestType();
 
+  if (type == rest::RequestType::POST) {
+    // we can get here when the future produced in setupClusterQuery()
+    // completes. in this case we can simply declare success
+    TRI_ASSERT(suffixes.size() == 1 && suffixes[0] == "setup");
+    return RestStatus::DONE;
+  }
   if (type == rest::RequestType::PUT) {
-    // This cannot be changed!
     TRI_ASSERT(suffixes.size() == 2);
     return useQuery(suffixes[0], suffixes[1]);
   }
-  if (type == rest::RequestType::DELETE_REQ && suffixes[0] == "finish") {
-    return RestStatus::DONE;  // uses futures
+  if (type == rest::RequestType::DELETE_REQ) {
+    // we can get here when the future produced in handleFinishQuery()
+    // completes. in this case we can simply declare success
+    TRI_ASSERT(suffixes.size() == 2 && suffixes[0] == "finish");
+    return RestStatus::DONE;
   }
 
   generateError(
