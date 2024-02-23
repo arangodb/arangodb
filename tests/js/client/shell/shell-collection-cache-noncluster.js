@@ -122,8 +122,8 @@ function CollectionCacheSuite () {
 
       for(let i = 0; i < 10; i++) {
         let docs = [];
-        for(let j = 0; j < 100; j++) {
-          v = (i * 100) + j;
+        for(let j = 0; j < 1000; j++) {
+          const v = (i * 1000) + j;
           docs.push({_key:String(v), value : v});
         }
         c.insert(docs);
