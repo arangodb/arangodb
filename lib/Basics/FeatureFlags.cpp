@@ -23,4 +23,8 @@
 
 #include "FeatureFlags.h"
 
+#if ARANGODB_ENABLE_MAINTAINER_MODE
 bool const ::arangodb::replication2::EnableReplication2 = true;
+#else
+bool const ::arangodb::replication2::EnableReplication2 = false;
+#endif
