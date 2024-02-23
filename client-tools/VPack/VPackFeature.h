@@ -37,7 +37,6 @@ class VPackFeature final : public ArangoVPackFeature {
   VPackFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
-  void prepare() override;
   void start() override;
 
  private:
