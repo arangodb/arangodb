@@ -3172,7 +3172,8 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   RegisterId outDocumentRegId;
   if (projections().empty() || !projections().hasOutputRegisters()) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end())
+        << "variable not found = " << _outVariable->id;
     outDocumentRegId = it->second.registerId;
     writableOutputRegisters.emplace(outDocumentRegId);
   } else {
@@ -3211,6 +3212,7 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
   auto c = std::make_unique<MaterializeRocksDBNode>(
       plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable,
       *_oldDocVariable);
+  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }
