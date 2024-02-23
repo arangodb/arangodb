@@ -59,6 +59,7 @@ class BenchFeature final : public ArangoBenchFeature {
   BenchFeature(Server& server, int* result);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
+  void prepare() override final;
   void start() override final;
 
   bool async() const { return _async; }

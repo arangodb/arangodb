@@ -24,6 +24,7 @@
 #include "VPackFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
@@ -166,6 +167,8 @@ void VPackFeature::collectOptions(
           new BooleanParameter(&_failOnNonJson))
       .setIntroducedIn(30800);
 }
+
+void VPackFeature::prepare() { logLGPLNotice(); }
 
 void VPackFeature::start() {
   *_result = EXIT_SUCCESS;
