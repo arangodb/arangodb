@@ -11,6 +11,9 @@ parameters:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
   # Unused here, but it will be forwarded from config and will cause errors if not defined
+  nightly:
+    type: boolean
+    default: false
   replication-two:
     type: boolean
     default: false
@@ -245,6 +248,7 @@ jobs:
             find build/ -iname *.a -delete || true
             find build/ -iname *.o -delete || true
             find build/ -iname *.o.d -delete || true
+            rm js/apps/system/_admin/aardvark/APP/react/node_modules -rf
       - run:
           name: SCCache Statistics
           command: sccache -s
@@ -261,6 +265,7 @@ jobs:
                   - build/compile_commands.json
                   - CMakePresets.json
                   - build/bin
+                  - build/etc
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
                   - build/build_version.cc
                   - scripts/
@@ -294,6 +299,9 @@ jobs:
         default: 1
       cluster:
         type: boolean
+      timeLimit:
+        type: integer
+        default: 1800
     resource_class: << parameters.size >>
     parallelism: << parameters.buckets >>
     steps:
@@ -318,22 +326,12 @@ jobs:
               export SAN_MODE=tsan
             fi
             # Note: we need the leading space for extraArgs to avoid a parsing issue in argparse
+            export TIMELIMIT=<< parameters.timeLimit >>
             python3 scripts/test/test_launch_controller.py << parameters.suites >> \
               --testBuckets $CIRCLE_NODE_TOTAL/$CIRCLE_NODE_INDEX \
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
               --definition tests/test-definitions.txt
-      - when:
-          condition: << pipeline.parameters.sanitizer >> != ""
-          steps:
-            - run:
-                name: Gather sanitizer logs
-                when: always
-                command: |
-                  # testing.js adjusts the sanitizer log path for each instance and then copies them to
-                  # the project root folder, so we have to move them to the work folder manually
-                  ls -la
-                  find . -maxdepth 1 -name '*san.log.*' -type f -print0 | xargs -0r mv -t ./work/
       - run:
           name: Copy test results
           when: always
@@ -390,6 +388,14 @@ jobs:
             mkdir -p /root/project/
       - attach_workspace:
           at: "/root/workspace/"
+      - run:
+          name: Print workspace size
+          command: |
+            du -sh /root/workspace/*
+            echo ===================
+            du -sh /root/workspace/build/*
+            echo ===================
+            du -sh /root/workspace/build/bin/*
       - checkout-arangodb:
           with-submodules: true
           destination: "/root/project"
