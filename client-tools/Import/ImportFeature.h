@@ -46,6 +46,7 @@ class ImportFeature final : public ArangoImportFeature {
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override;
   void validateOptions(
       std::shared_ptr<options::ProgramOptions> options) override;
+  void prepare() override;
   void start() override;
 
  private:

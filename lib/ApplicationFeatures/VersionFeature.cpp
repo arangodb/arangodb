@@ -21,6 +21,7 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "ApplicationFeatures/VersionFeature.h"
 
 #include "ProgramOptions/Option.h"
@@ -68,6 +69,8 @@ void VersionFeature::validateOptions(std::shared_ptr<ProgramOptions>) {
 
   if (_printVersion) {
     std::cout << Version::getServerVersion() << std::endl
+              << std::endl
+              << LGPLNotice << std::endl
               << std::endl
               << Version::getDetailed() << std::endl;
     exit(EXIT_SUCCESS);

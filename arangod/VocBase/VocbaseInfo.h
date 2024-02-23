@@ -80,9 +80,6 @@ class CreateDatabaseInfo {
   Result load(std::string_view name, VPackSlice options,
               VPackSlice users = VPackSlice::emptyArraySlice());
 
-  Result load(std::string_view name, uint64_t id, VPackSlice options,
-              VPackSlice users);
-
   Result load(VPackSlice options, VPackSlice users);
 
   void toVelocyPack(VPackBuilder& builder, bool withUsers = false) const;

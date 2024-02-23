@@ -3010,6 +3010,11 @@ void RocksDBEngine::addSystemDatabase() {
   builder.add(StaticStrings::DatabaseName,
               VPackValue(StaticStrings::SystemDatabase));
   builder.add("deleted", VPackValue(false));
+  // Also store the ReplicationVersion when creating the Database
+  auto& df = server().getFeature<DatabaseFeature>();
+  builder.add(
+      StaticStrings::ReplicationVersion,
+      VPackValue(replication::versionToString(df.defaultReplicationVersion())));
   builder.close();
 
   RocksDBLogValue log = RocksDBLogValue::DatabaseCreate(id);

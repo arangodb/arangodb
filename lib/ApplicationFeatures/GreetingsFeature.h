@@ -27,6 +27,9 @@
 
 namespace arangodb {
 
+extern char const* LGPLNotice;
+void logLGPLNotice(void);
+
 class LoggerFeature;
 
 class GreetingsFeature final : public application_features::ApplicationFeature {
