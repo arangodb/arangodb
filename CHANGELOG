@@ -21,6 +21,8 @@ devel
   prefetching fully congests the scheduler queue, and also they prevent large
   AQL queries to use up all async prefetching capacity on their own.
 
+* FE-424: Adjusted Foxx service install button placement.
+
 * Add startup progress reporting for RocksDB .sst file checksum computation.
 
 * Upgrade OpenSSL to 3.2.1.
