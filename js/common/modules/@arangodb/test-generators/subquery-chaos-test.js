@@ -1,53 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-///
-/// Fuzzing tests for nested subquery execution. Generates random nested subqueries
-/// and then runs spliced subqueries against "old style" subqueries and compares
-/// results.
-///
-/// DISCLAIMER
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Markus Pfeiffer
-////////////////////////////////////////////////////////////////////////////////
-///
-/// This module is aimed at testing varying interactions between subquery, limit
-/// and collect by generating random queries.
-///
-/// To make debugging not too annoying, we use a seeded random number generator
-/// and print the seed with every test. This means that, should you be faced with
-/// the thankless task of debugging a query that has been produced by this code,
-/// all you have to do is to run `testQueryWithSeed` or `testModifyingQueryWithSeed`
-/// with the seed that the test suite printed out for you and you'll get the exact
-/// failing query.
-///
-/// the two exported functions in this module take an object with options. The
-/// following options are understood:
-///
-/// seed:             an integer, the random seed to use
-/// numberSubqueries: an integer, how many subqueries to generate
-/// printQuery:       a boolean, whether to print the query string *before* running
-///                   any test
-/// explainQuery:     explain the query before running it. Note that this option
-///                   causes the query to be explained twice: once with subquery
-///                   splicing, and once without.
-///
-///
+// //////////////////////////////////////////////////////////////////////////////
 const db = require("@arangodb").db;
 const _ = require("lodash");
 
