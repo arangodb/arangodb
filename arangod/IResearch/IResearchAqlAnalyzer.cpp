@@ -489,6 +489,7 @@ bool AqlAnalyzer::reset(std::string_view field) noexcept {
       // SubqueryNodes with SubqueryStartNodes and SubqueryEndNodes.
       Optimizer optimizer(_query->resourceMonitor(), 1);
       // disable all rules which are not necessary
+      optimizer.initializeRules(plan.get(), _query->queryOptions());
       optimizer.disableRules(plan.get(), [](OptimizerRule const& rule) -> bool {
         return rule.canBeDisabled() || rule.isClusterOnly();
       });

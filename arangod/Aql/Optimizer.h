@@ -146,6 +146,8 @@ class Optimizer {
     return _plans.size() + _newPlans.size() + 1;
   }
 
+  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
+
  private:
   /// @brief disable a specific rule
   void disableRule(ExecutionPlan* plan, int level);
@@ -164,7 +166,6 @@ class Optimizer {
                        OptimizerRule const& rule, bool wasModified,
                        RuleDatabase::iterator const& nextRule);
 
-  void initializeRules(ExecutionPlan* plan, QueryOptions const& queryOptions);
   void finalizePlans();
   void estimateCosts(QueryOptions const& queryOptions, bool estimateAllPlans);
 
