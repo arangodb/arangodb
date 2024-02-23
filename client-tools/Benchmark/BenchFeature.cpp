@@ -39,6 +39,7 @@
 #endif
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/StaticStrings.h"
@@ -349,6 +350,8 @@ void BenchFeature::updateStatsValues(
     }
   }
 }
+
+void BenchFeature::prepare() { logLGPLNotice(); }
 
 void BenchFeature::start() {
   std::sort(_percentiles.begin(), _percentiles.end());

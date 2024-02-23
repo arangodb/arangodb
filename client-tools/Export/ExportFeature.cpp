@@ -24,6 +24,7 @@
 #include "ExportFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StaticStrings.h"
@@ -266,6 +267,7 @@ void ExportFeature::validateOptions(
 }
 
 void ExportFeature::prepare() {
+  logLGPLNotice();
   EncryptionFeature* encryption{};
   if constexpr (Server::contains<EncryptionFeature>()) {
     if (server().hasFeature<EncryptionFeature>()) {
