@@ -55,6 +55,8 @@ endif()
 install_readme(README README.txt)
 install_readme(README.md README.md)
 install_readme(LICENSES-OTHER-COMPONENTS.md LICENSES-OTHER-COMPONENTS.md)
+install_readme(Documentation/GPL-3 GPL-3)
+install_readme(Documentation/LGPL-3 LGPL-3)
 
 if (USE_ENTERPRISE)
   install_readme(enterprise/LICENSE LICENSE.txt)

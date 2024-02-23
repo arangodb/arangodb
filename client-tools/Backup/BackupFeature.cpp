@@ -31,6 +31,7 @@
 #include <velocypack/Parser.h>
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -922,6 +923,8 @@ void BackupFeature::validateOptions(
   }
 #endif
 }
+
+void BackupFeature::prepare() { logLGPLNotice(); }
 
 void BackupFeature::start() {
   Result result;
