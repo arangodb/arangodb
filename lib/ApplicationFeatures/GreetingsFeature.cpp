@@ -33,9 +33,18 @@
 
 namespace arangodb {
 
+char const* LGPLNotice =
+    "This executable uses the GNU C library (glibc), which is licensed under "
+    "the GNU Lesser General Public License (LGPL), see "
+    "https://www.gnu.org/copyleft/lesser.html and "
+    "https://www.gnu.org/licenses/gpl.html";
+
 void GreetingsFeature::prepare() {
   LOG_TOPIC("e52b0", INFO, arangodb::Logger::FIXME)
-      << "" << rest::Version::getVerboseVersionString();
+      << rest::Version::getVerboseVersionString();
+#ifdef __GLIBC__
+  LOG_TOPIC("11111", INFO, arangodb::Logger::FIXME) << LGPLNotice;
+#endif
 
   // building in maintainer mode or enabling unit test code will incur runtime
   // overhead, so warn users about this
