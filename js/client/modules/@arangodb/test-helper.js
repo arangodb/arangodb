@@ -621,6 +621,7 @@ exports.triggerMetrics = function () {
     let c = coordinators[i];
     exports.getRawMetric(c, '?mode=trigger_global');
   }
+  require("internal").sleep(2);
 };
 
 exports.activateFailure = function (name) {
