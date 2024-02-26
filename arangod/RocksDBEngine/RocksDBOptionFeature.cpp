@@ -271,8 +271,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
           rocksDBTableOptionsDefaults.block_size,
           static_cast<decltype(rocksDBTableOptionsDefaults.block_size)>(16 *
                                                                         1024))),
-      _compactionReadaheadSize(
-          2 * 1024 * 1024),  // rocksDBDefaults.compaction_readahead_size
+      _compactionReadaheadSize(8 * 1024 * 1024),
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
@@ -288,6 +287,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _checksumType(::kChecksumTypeXXHash64),
       _compactionStyle(::kCompactionStyleLevel),
       _formatVersion(6),
+      // note: the following option has historically had a default value of
+      // false in RocksDB. RocksDB 9.1 changes the default value to true.
+      // explicitly set it to false here to keep old behavior intact
+      _optimizeFiltersForMemory(false),
       _enableIndexCompression(
           rocksDBTableOptionsDefaults.enable_index_compression),
       _useJemallocAllocator(false),
@@ -1129,6 +1132,19 @@ version.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31000);
+
+  options
+      ->addOption("--rocksdb.optimize-filters-for-memory",
+                  "Optimize RocksDB bloom filters to reduce internal memory "
+                  "fragmentation.",
+                  new BooleanParameter(&_optimizeFiltersForMemory),
+                  arangodb::options::makeFlags(
+                      arangodb::options::Flags::Uncommon,
+                      arangodb::options::Flags::DefaultNoComponents,
+                      arangodb::options::Flags::OnAgent,
+                      arangodb::options::Flags::OnDBServer,
+                      arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
 
   options
       ->addOption("--rocksdb.enable-index-compression",
@@ -2059,6 +2075,7 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       rocksdb::NewBloomFilterPolicy(_bloomBitsPerKey, true));
   result.enable_index_compression = _enableIndexCompression;
   result.format_version = _formatVersion;
+  result.optimize_filters_for_memory = _optimizeFiltersForMemory;
   result.prepopulate_block_cache =
       _prepopulateBlockCache
           ? rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kFlushOnly

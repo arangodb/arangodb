@@ -138,6 +138,7 @@ class RocksDBOptionFeature final : public ArangodFeature,
   std::string _checksumType;
   std::string _compactionStyle;
   uint32_t _formatVersion;
+  bool _optimizeFiltersForMemory;
   bool _enableIndexCompression;
   bool _useJemallocAllocator;
   bool _prepopulateBlockCache;
