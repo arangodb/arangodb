@@ -245,7 +245,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxBytesForLevelMultiplier(
           rocksDBDefaults.max_bytes_for_level_multiplier),
       _maxBackgroundJobs(rocksDBDefaults.max_background_jobs),
-      _maxSubcompactions(2),
+      _maxSubcompactions(4),
       _numThreadsHigh(0),
       _numThreadsLow(0),
       _targetFileSizeBase(rocksDBDefaults.target_file_size_base),
