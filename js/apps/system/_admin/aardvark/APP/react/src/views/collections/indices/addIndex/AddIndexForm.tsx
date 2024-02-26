@@ -1,19 +1,20 @@
 import { Box, FormLabel } from "@chakra-ui/react";
-import { Index } from "arangojs/indexes";
 import React, { useState } from "react";
 import SingleSelect from "../../../../components/select/SingleSelect";
+import { CollectionIndex } from "../CollectionIndex.types";
 import { useCollectionIndicesContext } from "../CollectionIndicesContext";
 import { FulltextIndexForm } from "./FulltextIndexForm";
 import { GeoIndexForm } from "./GeoIndexForm";
 import { IndexInfoTooltip } from "./IndexInfoTooltip";
 import { InvertedIndexFormWrap } from "./invertedIndex/InvertedIndexFormWrap";
+import { MDIIndexForm } from "./MDIIndexForm";
+import { MDIPrefixedIndexForm } from "./MDIPrefixedIndexForm";
 import { PersistentIndexForm } from "./PersistentIndexForm";
 import { TTLIndexForm } from "./TTLIndexForm";
-import { ZKDIndexForm } from "./ZKDIndexForm";
 
 export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
   const { indexTypeOptions } = useCollectionIndicesContext();
-  const [indexType, setIndexType] = useState<Index["type"]>(
+  const [indexType, setIndexType] = useState<CollectionIndex["type"]>(
     indexTypeOptions[0].value
   );
   let tooltipText = "Type of index to create.";
@@ -38,7 +39,7 @@ export const AddIndexForm = ({ onClose }: { onClose: () => void }) => {
           defaultValue={indexTypeOptions[0]}
           options={indexTypeOptions}
           onChange={value => {
-            setIndexType(value?.value as Index["type"]);
+            setIndexType(value?.value as CollectionIndex["type"]);
           }}
         />
         <IndexInfoTooltip label={tooltipText} />
@@ -54,7 +55,7 @@ const IndexTypeForm = ({
   type,
   onClose
 }: {
-  type: Index["type"];
+  type: CollectionIndex["type"];
   onClose: () => void;
 }) => {
   if (type === "inverted") {
@@ -72,8 +73,11 @@ const IndexTypeForm = ({
   if (type === "geo") {
     return <GeoIndexForm onClose={onClose} />;
   }
-  if (type === "zkd") {
-    return <ZKDIndexForm onClose={onClose} />;
+  if (type === "mdi") {
+    return <MDIIndexForm onClose={onClose} />;
+  }
+  if (type === "mdi-prefixed") {
+    return <MDIPrefixedIndexForm onClose={onClose} />;
   }
   return <></>;
 };

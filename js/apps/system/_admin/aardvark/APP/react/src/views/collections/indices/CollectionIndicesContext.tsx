@@ -1,7 +1,7 @@
 import { useDisclosure } from "@chakra-ui/react";
-import { Index } from "arangojs/indexes";
 import React, { createContext, ReactNode, useContext, useState } from "react";
 import { useFetchCollectionFigures } from "../figures/useFetchCollectionFigures";
+import { CollectionIndex } from "./CollectionIndex.types";
 import {
   IndexWithFigures,
   useFetchCollectionIndices
@@ -15,7 +15,7 @@ type CollectionIndicesContextType = {
   collectionIndices: IndexWithFigures[] | undefined;
   collectionName: string;
   collectionId: string;
-  indexTypeOptions: { value: Index["type"]; label: string }[];
+  indexTypeOptions: { value: CollectionIndex["type"]; label: string }[];
   onOpenForm: () => void;
   onCloseForm: () => void;
   isFormOpen: boolean;
