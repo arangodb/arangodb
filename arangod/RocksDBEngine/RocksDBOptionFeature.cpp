@@ -235,7 +235,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxWriteBufferNumber(RocksDBColumnFamilyManager::numberOfColumnFamilies +
                             2),  // number of column families plus 2
       _maxWriteBufferSizeToMaintain(0),
-      _maxTotalWalSize(80 << 20),
+      _maxTotalWalSize(256 << 20),
       _delayedWriteRate(rocksDBDefaults.delayed_write_rate),
       _minWriteBufferNumberToMerge(defaultMinWriteBufferNumberToMerge(
           _totalWriteBufferSize, _writeBufferSize, _maxWriteBufferNumber)),
