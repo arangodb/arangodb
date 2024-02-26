@@ -332,17 +332,6 @@ jobs:
               --cluster << parameters.cluster >> \
               --extraArgs " << parameters.extraArgs >>" \
               --definition tests/test-definitions.txt
-      - when:
-          condition: << pipeline.parameters.sanitizer >> != ""
-          steps:
-            - run:
-                name: Gather sanitizer logs
-                when: always
-                command: |
-                  # testing.js adjusts the sanitizer log path for each instance and then copies them to
-                  # the project root folder, so we have to move them to the work folder manually
-                  ls -la
-                  find . -maxdepth 1 -name '*san.log.*' -type f -print0 | xargs -0r mv -t ./work/
       - run:
           name: Copy test results
           when: always

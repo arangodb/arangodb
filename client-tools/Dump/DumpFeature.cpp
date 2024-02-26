@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/BoundedChannel.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
@@ -1425,6 +1426,8 @@ void DumpFeature::reportError(Result const& error) {
 ClientTaskQueue<DumpFeature::DumpJob>& DumpFeature::taskQueue() {
   return _clientTaskQueue;
 }
+
+void DumpFeature::prepare() { logLGPLNotice(); }
 
 void DumpFeature::start() {
   using arangodb::basics::StringUtils::formatSize;
