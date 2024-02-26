@@ -3399,6 +3399,11 @@ DECLARE_GAUGE(rocksdb_engine_throttle_bps, uint64_t,
               "rocksdb_engine_throttle_bps");
 DECLARE_GAUGE(rocksdb_read_only, uint64_t, "rocksdb_read_only");
 DECLARE_GAUGE(rocksdb_total_sst_files, uint64_t, "rocksdb_total_sst_files");
+DECLARE_GAUGE(rocksdb_live_blob_file_size, uint64_t,
+              "rocksdb_live_blob_file_size");
+DECLARE_GAUGE(rocksdb_live_blob_file_garbage_size, uint64_t,
+              "rocksdb_live_blob_file_garbage_size");
+DECLARE_GAUGE(rocksdb_num_blob_files, uint64_t, "rocksdb_num_blob_files");
 
 void RocksDBEngine::getCapabilities(velocypack::Builder& builder) const {
   // get generic capabilities
@@ -3540,6 +3545,9 @@ void RocksDBEngine::getStatistics(VPackBuilder& builder) const {
   addInt(rocksdb::DB::Properties::kMinLogNumberToKeep);
   addIntAllCf(rocksdb::DB::Properties::kEstimateLiveDataSize);
   addIntAllCf(rocksdb::DB::Properties::kLiveSstFilesSize);
+  addIntAllCf(rocksdb::DB::Properties::kLiveBlobFileSize);
+  addIntAllCf(rocksdb::DB::Properties::kLiveBlobFileGarbageSize);
+  addIntAllCf(rocksdb::DB::Properties::kNumBlobFiles);
   addStr(rocksdb::DB::Properties::kDBStats);
   addStr(rocksdb::DB::Properties::kSSTables);
   addInt(rocksdb::DB::Properties::kNumRunningCompactions);
