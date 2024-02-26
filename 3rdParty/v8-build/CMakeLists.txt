@@ -356,7 +356,7 @@ else ()
   string(REGEX REPLACE "-Werror( |$)" "" V8_CFLAGS ${V8_CXXFLAGS})
   string(REGEX REPLACE "-Werror( |$)" "" V8_CXXFLAGS ${V8_CXXFLAGS})
 
-  set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS} $ENV{V8_LDFLAGS}")
+  set(V8_LDFLAGS    "${CMAKE_EXE_LINKER_FLAGS}  ${CMAKE_LD_FLAGS} $ENV{V8_LDFLAGS}")
 
   # for V8 we minimal debug information is more than enough
   set(V8_CFLAGS   "${V8_CFLAGS} -g1 -gno-column-info -gz")
