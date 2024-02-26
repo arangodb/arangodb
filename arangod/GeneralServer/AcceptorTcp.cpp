@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -82,24 +82,8 @@ void AcceptorTcp<T>::open() {
   }
   _acceptor.open(asioEndpoint.protocol());
 
-#ifdef _WIN32
-  // on Windows everything is different of course:
-  // we need to set SO_EXCLUSIVEADDRUSE to prevent others from binding to our
-  // ip/port.
-  // https://msdn.microsoft.com/en-us/library/windows/desktop/ms740621(v=vs.85).aspx
-  BOOL trueOption = 1;
-
-  if (::setsockopt(_acceptor.native_handle(), SOL_SOCKET, SO_EXCLUSIVEADDRUSE,
-                   (char const*)&trueOption, sizeof(BOOL)) != 0) {
-    LOG_TOPIC("1bcff", ERR, Logger::COMMUNICATION)
-        << "unable to set acceptor socket option: " << WSAGetLastError();
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_FAILED,
-                                   "unable to set acceptor socket option");
-  }
-#else
   _acceptor.set_option(asio_ns::ip::tcp::acceptor::reuse_address(
       ((EndpointIp*)_endpoint)->reuseAddress()));
-#endif
 
   _acceptor.bind(asioEndpoint, ec);
   if (ec) {

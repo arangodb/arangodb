@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -100,18 +100,16 @@ arangod --server.endpoint tcp://127.0.0.1:8529 \
 
 On one specific ethernet interface, each port can only be bound
 **exactly once**. You can look up your available interfaces using the `ifconfig`
-command on Linux / macOS, and `ipconfig` on Windows. The general names of the
+command on Linux. The general names of the
 interfaces differ between operating systems and the hardware they run on.
 However, every host has typically a so called loopback interface, which is a
 virtual interface. By convention, it always has the address `127.0.0.1` (IPv4)
 or `::1` (IPv6), and can only be reached from the very same host. Ethernet
-interfaces usually have names like `eth0`, `wlan0`, `eth1:17`, `le0`, or a
-plain text name in Windows.
+interfaces usually have names like `eth0`, `wlan0`, `eth1:17`, `le0`.
 
 To find out which services already use ports (so ArangoDB can't bind them
 anymore), you can use the `netstat` command. It behaves a little different on
-each platform; run it with `-lnpt` on Linux, `-p tcp` on macOS, or with `-an`
-on Windows for valuable information.
+each platform; run it with `-lnpt` on Linux for valuable information.
 
 ArangoDB can also do a so called *broadcast bind* using `tcp://0.0.0.0:8529`.
 This way, it is reachable on all interfaces of the host. This may be useful on
@@ -146,10 +144,9 @@ If you set this option to `false`, it is possible that it takes up to a minute
 after a server has terminated until it is possible for a new server to use the
 same endpoint again.
 
-**Note**: Under some operating systems, this can be a security risk because it
-might be possible for another process to bind to the same address and port,
-possibly hijacking network traffic. Under Windows, ArangoDB additionally sets
-the `SO_EXCLUSIVEADDRUSE` flag as a measure to alleviate this problem.)");
+**Note**: This can be a security risk because it might be possible for another
+process to bind to the same address and port, possibly hijacking network
+traffic.)");
 
   options
       ->addOption("--tcp.backlog-size",

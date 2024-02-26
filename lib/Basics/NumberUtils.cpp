@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,12 +24,6 @@
 #include "NumberUtils.h"
 #include "Basics/debugging.h"
 
-#ifdef _MSC_VER
-#include <intrin.h>
-
-#pragma intrinsic(_BitScanReverse)
-#endif
-
 namespace arangodb {
 namespace NumberUtils {
 
@@ -43,10 +37,6 @@ uint32_t log2(uint32_t value) noexcept {
          static_cast<uint32_t>(
              __builtin_clzl(static_cast<unsigned long>(value))) -
          1;
-#elif defined(_MSC_VER)
-  unsigned long index;
-  _BitScanReverse(&index, static_cast<unsigned long>(value));
-  return static_cast<uint32_t>(index);
 #else
   static_assert(false, "no known way of computing log2");
 #endif

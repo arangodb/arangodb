@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,13 +25,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#ifndef ENABLE_VIRTUAL_TERMINAL_PROCESSING
-#define ENABLE_VIRTUAL_TERMINAL_PROCESSING 0x0004
-#endif
-#endif
 
 using namespace arangodb::basics;
 
@@ -97,38 +90,6 @@ void ShellColorsFeature::prepare() {
   }
 }
 
-bool ShellColorsFeature::useColors() {
-#ifdef _WIN32
-  if (!prepareConsole()) {
-    return false;
-  }
-  return terminalKnowsANSIColors();
-#else
-  return true;
-#endif
-}
-
-#ifdef _WIN32
-bool ShellColorsFeature::prepareConsole() {
-  HANDLE hStdout = GetStdHandle(STD_OUTPUT_HANDLE);
-  if (hStdout == INVALID_HANDLE_VALUE) {
-    return false;
-  }
-
-  DWORD handleMode = 0;
-  if (!GetConsoleMode(hStdout, &handleMode)) {
-    return false;
-  }
-  handleMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-  if (!SetConsoleMode(hStdout, handleMode)) {
-    return false;
-  }
-
-  // Set the codepage for the console output to UTF-8 so that unicode characters
-  // are displayed correctly.
-  SetConsoleOutputCP(CP_UTF8);
-  return true;
-}
-#endif
+bool ShellColorsFeature::useColors() { return true; }
 
 }  // namespace arangodb

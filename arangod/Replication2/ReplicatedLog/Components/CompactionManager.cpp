@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2022 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -116,7 +116,37 @@ void CompactionManager::triggerAsyncCompaction(
     guard->_compactionInProgress = true;
     while (true) {
       ADB_PROD_ASSERT(guard.isLocked());
-      auto store = guard->storage.transaction();
+
+      auto promises = std::move(guard->compactAggregator);
+
+      auto storeRes = basics::catchToResultT([&]() -> auto {
+        return guard->storage.transaction();
+      });
+      if (storeRes.fail()) {
+        // The participant might be gone
+        LOG_CTX("d7724", DEBUG, self->loggerContext)
+            << "error during compaction: " << storeRes.result();
+
+        if (guard->status.inProgress.has_value()) {
+          guard->status.lastCompaction = guard->status.inProgress;
+          guard->status.inProgress.reset();
+        } else {
+          guard->status.lastCompaction = CompactionStatus::Compaction{
+              .time = CompactionStatus::clock::now(),
+              .range = {},
+              .error = result::Error{storeRes.result().errorNumber(),
+                                     storeRes.result().errorMessage()}};
+        }
+        clearCompactionRunning.fire();
+
+        guard.unlock();
+        auto ex = std::make_exception_ptr(
+            basics::Exception(std::move(storeRes).result(), ADB_HERE));
+        promises.resolveAll(futures::Try<CompactResult>{std::move(ex)});
+        break;
+      }
+
+      auto store = std::move(storeRes.get());
       auto logBounds = store->getLogBounds();
 
       auto threshold = guard->_fullCompactionNextRound
@@ -125,7 +155,6 @@ void CompactionManager::triggerAsyncCompaction(
       auto [index, reason] = calculateCompactionIndex(
           guard->releaseIndex, guard->lowestIndexToKeep, logBounds, threshold);
       guard->_fullCompactionNextRound = false;
-      auto promises = std::move(guard->compactAggregator);
 
       if (index > logBounds.from) {
         auto& compaction = guard->status.inProgress.emplace();

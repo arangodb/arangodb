@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -64,14 +64,7 @@
 #include <mach/vm_map.h>
 #endif
 
-#ifdef _WIN32
-#include <Psapi.h>
-#include <TlHelp32.h>
-#include "Basics/socket-utils.h"
-#include "Basics/win-utils.h"
-#else
 #include <sys/resource.h>
-#endif
 #include <fcntl.h>
 
 #ifdef TRI_HAVE_UNISTD_H
@@ -97,21 +90,6 @@
 using namespace arangodb;
 
 namespace {
-
-#ifdef _WIN32
-HANDLE getProcessHandle(TRI_pid_t pid) {
-  {
-    std::lock_guard guard{ExternalProcessesLock};
-    auto found = std::find_if(
-        ExternalProcesses.begin(), ExternalProcesses.end(),
-        [pid](ExternalProcess const* m) -> bool { return m->_pid == pid; });
-    if (found != ExternalProcesses.end()) {
-      return (*found)->_process;
-    }
-  }
-  return INVALID_HANDLE_VALUE;
-}
-#endif
 
 #ifdef TRI_HAVE_LINUX_PROC
 /// @brief consumes all whitespace
@@ -173,19 +151,7 @@ ProcessInfo::ProcessInfo()
       _virtualSize(0),
       _scClkTck(0) {}
 
-ExternalId::ExternalId()
-    :
-#ifndef _WIN32
-      _pid(0),
-      _readPipe(-1),
-      _writePipe(-1) {
-}
-#else
-      _pid(0),
-      _readPipe(INVALID_HANDLE_VALUE),
-      _writePipe(INVALID_HANDLE_VALUE) {
-}
-#endif
+ExternalId::ExternalId() : _pid(0), _readPipe(-1), _writePipe(-1) {}
 
 ExternalProcess::~ExternalProcess() {
   TRI_ASSERT(_numberArguments == 0 || _arguments != nullptr);
@@ -198,22 +164,12 @@ ExternalProcess::~ExternalProcess() {
     TRI_Free(_arguments);
   }
 
-#ifndef _WIN32
   if (_readPipe != -1) {
     close(_readPipe);
   }
   if (_writePipe != -1) {
     close(_writePipe);
   }
-#else
-  CloseHandle(_process);
-  if (_readPipe != INVALID_HANDLE_VALUE) {
-    CloseHandle(_readPipe);
-  }
-  if (_writePipe != INVALID_HANDLE_VALUE) {
-    CloseHandle(_writePipe);
-  }
-#endif
 }
 
 ExternalProcess* TRI_LookupSpawnedProcess(TRI_pid_t pid) {
@@ -248,7 +204,6 @@ std::optional<ExternalProcessStatus> TRI_LookupSpawnedProcessStatus(
 /// @brief creates pipe pair
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _WIN32
 static bool CreatePipes(int* pipe_server_to_child, int* pipe_child_to_server) {
   if (pipe(pipe_server_to_child) == -1) {
     LOG_TOPIC("ef919", ERR, arangodb::Logger::FIXME) << "cannot create pipe";
@@ -371,265 +326,6 @@ static void StartExternalProcess(ExternalProcess* external, bool usePipes,
   external->_pid = processPid;
   external->_status = TRI_EXT_RUNNING;
 }
-#else
-static bool createPipes(HANDLE* hChildStdinRd, HANDLE* hChildStdinWr,
-                        HANDLE* hChildStdoutRd, HANDLE* hChildStdoutWr) {
-  // set the bInheritHandle flag so pipe handles are inherited
-  SECURITY_ATTRIBUTES saAttr;
-
-  saAttr.nLength = sizeof(SECURITY_ATTRIBUTES);
-  saAttr.bInheritHandle = TRUE;
-  saAttr.lpSecurityDescriptor = NULL;
-
-  // create a pipe for the child process's STDOUT
-  if (!CreatePipe(hChildStdoutRd, hChildStdoutWr, &saAttr, 0)) {
-    LOG_TOPIC("504dc", ERR, arangodb::Logger::FIXME)
-        << ""
-        << "stdout pipe creation failed";
-    return false;
-  }
-
-  // create a pipe for the child process's STDIN
-  if (!CreatePipe(hChildStdinRd, hChildStdinWr, &saAttr, 0)) {
-    CloseHandle(hChildStdoutRd);
-    CloseHandle(hChildStdoutWr);
-    LOG_TOPIC("b7915", ERR, arangodb::Logger::FIXME)
-        << "stdin pipe creation failed";
-    return false;
-  }
-
-  return true;
-}
-
-#define appendChar(buf, x)                        \
-  do {                                            \
-    err = TRI_AppendCharStringBuffer((buf), (x)); \
-    if (err != TRI_ERROR_NO_ERROR) {              \
-      return err;                                 \
-    }                                             \
-  } while (false);
-
-[[maybe_unused]] static ErrorCode appendQuotedArg(TRI_string_buffer_t* buf,
-                                                  char const* p) {
-  auto err = TRI_ERROR_NO_ERROR;
-
-  appendChar(buf, '"');
-
-  while (*p != 0) {
-    unsigned int i;
-    unsigned int NumberBackslashes = 0;
-    char const* q = p;
-    while (*q == '\\') {
-      ++q;
-      ++NumberBackslashes;
-    }
-    if (*q == 0) {
-      // Escape all backslashes, but let the terminating
-      // double quotation mark we add below be interpreted
-      // as a metacharacter.
-      for (i = 0; i < NumberBackslashes; i++) {
-        appendChar(buf, '\\');
-        appendChar(buf, '\\');
-      }
-      break;
-    } else if (*q == '"') {
-      // Escape all backslashes and the following
-      // double quotation mark.
-      for (i = 0; i < NumberBackslashes; i++) {
-        appendChar(buf, '\\');
-        appendChar(buf, '\\');
-      }
-      appendChar(buf, '\\');
-      appendChar(buf, *q);
-    } else {
-      // Backslashes aren't special here.
-      for (i = 0; i < NumberBackslashes; i++) {
-        appendChar(buf, '\\');
-      }
-      appendChar(buf, *q);
-    }
-    p = ++q;
-  }
-  appendChar(buf, '"');
-  return TRI_ERROR_NO_ERROR;
-}
-
-static ErrorCode wAppendQuotedArg(std::wstring& buf, wchar_t const* p) {
-  buf += L'"';
-
-  while (*p != 0) {
-    unsigned int i;
-    unsigned int NumberBackslashes = 0;
-    wchar_t const* q = p;
-    while (*q == L'\\') {
-      ++q;
-      ++NumberBackslashes;
-    }
-    if (*q == 0) {
-      // Escape all backslashes, but let the terminating
-      // double quotation mark we add below be interpreted
-      // as a metacharacter.
-      for (i = 0; i < NumberBackslashes; i++) {
-        buf += L'\\';
-        buf += L'\\';
-      }
-      break;
-    } else if (*q == L'"') {
-      // Escape all backslashes and the following
-      // double quotation mark.
-      for (i = 0; i < NumberBackslashes; i++) {
-        buf += L'\\';
-        buf += L'\\';
-      }
-      buf += L'\\';
-      buf += *q;
-    } else {
-      // Backslashes aren't special here.
-      for (i = 0; i < NumberBackslashes; i++) {
-        buf += L'\\';
-      }
-      buf += *q;
-    }
-    p = ++q;
-  }
-  buf += L'"';
-  return TRI_ERROR_NO_ERROR;
-}
-
-static std::wstring makeWindowsArgs(ExternalProcess* external) {
-  size_t i;
-  auto err = TRI_ERROR_NO_ERROR;
-  std::wstring res;
-
-  if ((external->_executable.find('/') == std::string::npos) &&
-      (external->_executable.find('\\') == std::string::npos)) {
-    // oK, this is a binary without path, start the lookup.
-    // This will most probably break with non-ascii paths.
-    char buf[MAX_PATH];
-    char* pBuf;
-    DWORD n;
-    n = SearchPath(nullptr, external->_executable.c_str(), nullptr, MAX_PATH,
-                   buf, &pBuf);
-    if (n > 0) {
-      external->_executable = std::string(buf, n);
-    }
-  }
-
-  auto uwargs = arangodb::basics::toWString(external->_executable);
-
-  err = wAppendQuotedArg(res, uwargs.data());
-  if (err != TRI_ERROR_NO_ERROR) {
-    return L"";
-  }
-  for (i = 1; i < external->_numberArguments; i++) {
-    res += L' ';
-    uwargs = arangodb::basics::toWString(external->_arguments[i]);
-    err = wAppendQuotedArg(res, uwargs.data());
-    if (err != TRI_ERROR_NO_ERROR) {
-      return L"";
-    }
-  }
-  return res;
-}
-
-static bool startProcess(ExternalProcess* external, HANDLE rd, HANDLE wr) {
-  std::wstring args;
-  PROCESS_INFORMATION piProcInfo;
-  STARTUPINFOW siStartInfo;
-  BOOL bFuncRetn = FALSE;
-  TRI_ERRORBUF;
-
-  args = makeWindowsArgs(external);
-  if (args.length() == 0) {
-    LOG_TOPIC("1004e", ERR, arangodb::Logger::FIXME)
-        << "execute of '" << external->_executable << "' failed making args";
-    return false;
-  }
-
-  // set up members of the PROCESS_INFORMATION structure
-  ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
-
-  // set up members of the STARTUPINFO structure
-  ZeroMemory(&siStartInfo, sizeof(STARTUPINFOW));
-  siStartInfo.cb = sizeof(STARTUPINFOW);
-
-  siStartInfo.dwFlags = STARTF_USESTDHANDLES;
-  siStartInfo.hStdInput = rd ? rd : nullptr;
-  siStartInfo.hStdOutput = wr ? wr : GetStdHandle(STD_OUTPUT_HANDLE);
-  siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
-
-  // create the child process
-  bFuncRetn = CreateProcessW(NULL,
-                             (LPWSTR)args.c_str(),  // command line
-                             NULL,  // process security attributes
-                             NULL,  // primary thread security attributes
-                             TRUE,  // handles are inherited
-                             CREATE_NEW_PROCESS_GROUP,  // creation flags
-                             NULL,          // use parent's environment
-                             NULL,          // use parent's current directory
-                             &siStartInfo,  // STARTUPINFO pointer
-                             &piProcInfo);  // receives PROCESS_INFORMATION
-
-  if (bFuncRetn == FALSE) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("32092", ERR, arangodb::Logger::FIXME)
-        << "execute of '" << external->_executable
-        << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
-    return false;
-  } else {
-    external->_pid = piProcInfo.dwProcessId;
-    external->_process = piProcInfo.hProcess;
-    CloseHandle(piProcInfo.hThread);
-    return true;
-  }
-}
-
-static void StartExternalProcess(
-    ExternalProcess* external, bool usePipes,
-    std::vector<std::string> const& additionalEnv,
-    std::string const& /* fileForStdErr ignored for now on Windows */) {
-  HANDLE hChildStdinRd = NULL, hChildStdinWr = NULL;
-  HANDLE hChildStdoutRd = NULL, hChildStdoutWr = NULL;
-  bool fSuccess;
-  if (usePipes) {
-    fSuccess = createPipes(&hChildStdinRd, &hChildStdinWr, &hChildStdoutRd,
-                           &hChildStdoutWr);
-
-    if (!fSuccess) {
-      external->_status = TRI_EXT_PIPE_FAILED;
-      return;
-    }
-  }
-
-  // now create the child process.
-  fSuccess = startProcess(external, hChildStdinRd, hChildStdoutWr);
-  if (!fSuccess) {
-    external->_status = TRI_EXT_FORK_FAILED;
-
-    if (hChildStdoutRd != NULL) {
-      CloseHandle(hChildStdoutRd);
-    }
-    if (hChildStdoutWr != NULL) {
-      CloseHandle(hChildStdoutWr);
-    }
-    if (hChildStdinRd != NULL) {
-      CloseHandle(hChildStdinRd);
-    }
-    if (hChildStdinWr != NULL) {
-      CloseHandle(hChildStdinWr);
-    }
-
-    return;
-  }
-
-  CloseHandle(hChildStdinRd);
-  CloseHandle(hChildStdoutWr);
-
-  external->_readPipe = hChildStdoutRd;
-  external->_writePipe = hChildStdinWr;
-  external->_status = TRI_EXT_RUNNING;
-}
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief converts usec and sec into seconds
@@ -915,7 +611,6 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 }
 
 #else
-#ifndef _WIN32
 ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
   ProcessInfo result;
 
@@ -923,7 +618,6 @@ ProcessInfo TRI_ProcessInfo(TRI_pid_t pid) {
 
   return result;
 }
-#endif
 #endif
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1022,7 +716,6 @@ void TRI_ClosePipe(ExternalProcess* process, bool read) {
 
   auto pipe = (read) ? &process->_readPipe : &process->_writePipe;
 
-#ifndef _WIN32
   if (*pipe != -1) {
     FILE* stream = fdopen(*pipe, "w");
     if (stream != nullptr) {
@@ -1031,12 +724,6 @@ void TRI_ClosePipe(ExternalProcess* process, bool read) {
     close(*pipe);
     *pipe = -1;
   }
-#else
-  if (*pipe != INVALID_HANDLE_VALUE) {
-    CloseHandle(*pipe);
-    *pipe = INVALID_HANDLE_VALUE;
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1051,11 +738,7 @@ TRI_read_return_t TRI_ReadPipe(ExternalProcess const* process, char* buffer,
 
   memset(buffer, 0, bufferSize);
 
-#ifndef _WIN32
   return TRI_ReadPointer(process->_readPipe, buffer, bufferSize);
-#else
-  return TRI_READ_POINTER(process->_readPipe, buffer, bufferSize);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1068,11 +751,7 @@ bool TRI_WritePipe(ExternalProcess const* process, char const* buffer,
     return false;
   }
 
-#ifndef _WIN32
   return TRI_WritePointer(process->_writePipe, buffer, bufferSize);
-#else
-  return TRI_WRITE_POINTER(process->_writePipe, buffer, bufferSize);
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1095,7 +774,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(
 
   if (status->_status == TRI_EXT_RUNNING ||
       status->_status == TRI_EXT_STOPPED) {
-#ifndef _WIN32
     if (timeout > 0) {
       // if we use a timeout, it means we cannot use blocking
       wait = false;
@@ -1196,97 +874,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(
       status->_errorMessage = absl::StrCat("unexpected waitpid result for pid ",
                                            pid._pid, ": ", res);
     }
-#else
-    {
-      char windowsErrorBuf[256];
-      bool wantGetExitCode = wait;
-      HANDLE process = getProcessHandle(pid._pid);
-      if (wait) {
-        DWORD result;
-        DWORD waitFor = INFINITE;
-        if (timeout != 0) {
-          waitFor = timeout;
-        }
-        if (process == INVALID_HANDLE_VALUE) {
-          return *status;
-        }
-        result = WaitForSingleObject(process, waitFor);
-        if (result == WAIT_FAILED) {
-          FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
-                        windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-          LOG_TOPIC("64246", WARN, arangodb::Logger::FIXME)
-              << "could not wait for subprocess with pid " << pid._pid << ": "
-              << windowsErrorBuf;
-          status->_errorMessage =
-              absl::StrCat("could not wait for subprocess with pid ", pid._pid,
-                           windowsErrorBuf);
-          status->_exitStatus = GetLastError();
-        } else if ((result == WAIT_TIMEOUT) && (timeout != 0)) {
-          wantGetExitCode = false;
-          status->_status = TRI_EXT_TIMEOUT;
-          status->_exitStatus = -1;
-        }
-      } else {
-        DWORD result;
-        result = WaitForSingleObject(process, 0);
-        switch (result) {
-          case WAIT_ABANDONED:
-            wantGetExitCode = true;
-            LOG_TOPIC("92708", WARN, arangodb::Logger::FIXME)
-                << "WAIT_ABANDONED while waiting for subprocess with pid "
-                << pid._pid;
-            break;
-          case WAIT_OBJECT_0:
-            /// this seems to be the exit case - want getExitCodeProcess here.
-            wantGetExitCode = true;
-            break;
-          case WAIT_TIMEOUT:
-            // success - process is up and running.
-            status->_exitStatus = 0;
-            break;
-          case WAIT_FAILED:
-            FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0,
-                          windowsErrorBuf, sizeof(windowsErrorBuf), NULL);
-            LOG_TOPIC("f79de", WARN, arangodb::Logger::FIXME)
-                << "could not wait for subprocess with pid " << pid._pid << ": "
-                << windowsErrorBuf;
-            status->_errorMessage =
-                absl::StrCat("could not wait for subprocess with PID '",
-                             pid._pid, "'", windowsErrorBuf);
-            status->_exitStatus = GetLastError();
-          default:
-            wantGetExitCode = true;
-            LOG_TOPIC("5c1fb", WARN, arangodb::Logger::FIXME)
-                << "unexpected status while waiting for subprocess with pid "
-                << pid._pid;
-        }
-      }
-      if (wantGetExitCode) {
-        DWORD exitCode = STILL_ACTIVE;
-        if (!GetExitCodeProcess(process, &exitCode)) {
-          LOG_TOPIC("798af", WARN, arangodb::Logger::FIXME)
-              << "exit status could not be determined for pid " << pid._pid;
-          status->_errorMessage = absl::StrCat(
-              "exit status could not be determined for pid ", pid._pid);
-          status->_exitStatus = -1;
-          status->_status = TRI_EXT_NOT_STARTED;
-        } else {
-          if (exitCode == STILL_ACTIVE) {
-            status->_exitStatus = 0;
-          } else if (exitCode > 255) {
-            // this should be one of our signals which we mapped...
-            status->_status = TRI_EXT_ABORTED;
-            status->_exitStatus = exitCode - 255;
-          } else {
-            status->_status = TRI_EXT_TERMINATED;
-            status->_exitStatus = exitCode;
-          }
-        }
-      } else if (timeout == 0) {
-        status->_status = TRI_EXT_RUNNING;
-      }
-    }
-#endif
   } else {
     LOG_TOPIC("1cff4", WARN, arangodb::Logger::FIXME)
         << "unexpected process status " << status->_status << ": "
@@ -1329,7 +916,6 @@ ExternalProcessStatus TRI_CheckExternalProcess(
 ////////////////////////////////////////////////////////////////////////////////
 // @brief check for a process we didn't spawn, and check for access rights to
 //        send it signals.
-#ifndef _WIN32
 static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
   if (kill(pid, 0) == 0) {
     ExternalProcess* external = new ExternalProcess();
@@ -1345,26 +931,9 @@ static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
       << "' failed with error: " << strerror(errno);
   return nullptr;
 }
-#else
-static ExternalProcess* getExternalProcess(TRI_pid_t pid) {
-  HANDLE hProcess = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid);
-
-  if (hProcess != nullptr) {
-    ExternalProcess* external = new ExternalProcess();
-
-    external->_pid = pid;
-    external->_status = TRI_EXT_RUNNING;
-    external->_process = hProcess;
-
-    return external;
-  }
-  return nullptr;
-}
-#endif
 
 /// @brief check for a process we didn't spawn, and check for access rights to
 /// send it signals.
-#ifndef _WIN32
 static bool killProcess(ExternalProcess* pid, int signal) {
   TRI_ASSERT(pid != nullptr);
   if (pid == nullptr) {
@@ -1379,25 +948,6 @@ static bool killProcess(ExternalProcess* pid, int signal) {
   }
   return false;
 }
-
-#else
-static bool killProcess(ExternalProcess* pid, int signal) {
-  TRI_ASSERT(pid != nullptr);
-  UINT uExitCode = 0;
-
-  if (pid == nullptr) {
-    return false;
-  }
-
-  // kill worker process
-  if (0 != TerminateProcess(pid->_process, uExitCode)) {
-    return true;
-  } else {
-    return false;
-  }
-}
-#define SIGKILL 1
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief kills an external process
@@ -1502,16 +1052,6 @@ ExternalProcessStatus TRI_KillExternalProcess(ExternalId pid, int signal,
   return TRI_CheckExternalProcess(pid, false, 0, noDeadLine);
 }
 
-#ifdef _WIN32
-typedef LONG(NTAPI* NtSuspendProcess)(IN HANDLE ProcessHandle);
-typedef LONG(NTAPI* NtResumeProcess)(IN HANDLE ProcessHandle);
-
-NtSuspendProcess pfnNtSuspendProcess = (NtSuspendProcess)GetProcAddress(
-    GetModuleHandle("ntdll"), "NtSuspendProcess");
-NtResumeProcess pfnNtResumeProcess = (NtResumeProcess)GetProcAddress(
-    GetModuleHandle("ntdll"), "NtResumeProcess");
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief stops an external process
 ////////////////////////////////////////////////////////////////////////////////
@@ -1520,22 +1060,7 @@ bool TRI_SuspendExternalProcess(ExternalId pid) {
   LOG_TOPIC("13e36", DEBUG, arangodb::Logger::FIXME)
       << "suspending process: " << pid._pid;
 
-#ifndef _WIN32
   return 0 == kill(pid._pid, SIGSTOP);
-#else
-  TRI_ERRORBUF;
-
-  HANDLE processHandle = OpenProcess(PROCESS_ALL_ACCESS, FALSE, pid._pid);
-  bool rc = pfnNtSuspendProcess(processHandle) == 0;
-  if (!rc) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("4da8a", ERR, arangodb::Logger::FIXME)
-        << "suspending of '" << pid._pid
-        << "' failed, error: " << GetLastError() << " " << TRI_GET_ERRORBUF;
-  }
-  CloseHandle(processHandle);
-  return rc;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1546,22 +1071,7 @@ bool TRI_ContinueExternalProcess(ExternalId pid) {
   LOG_TOPIC("45884", DEBUG, arangodb::Logger::FIXME)
       << "continueing process: " << pid._pid;
 
-#ifndef _WIN32
   return 0 == kill(pid._pid, SIGCONT);
-#else
-  TRI_ERRORBUF;
-
-  HANDLE processHandle = OpenProcess(PROCESS_SUSPEND_RESUME, FALSE, pid._pid);
-  bool rc = processHandle != NULL && pfnNtResumeProcess(processHandle) == 0;
-  if (!rc) {
-    TRI_SYSTEM_ERROR();
-    LOG_TOPIC("57e23", ERR, arangodb::Logger::FIXME)
-        << "resuming of '" << pid._pid << "' failed, error: " << GetLastError()
-        << " " << TRI_GET_ERRORBUF;
-  }
-  CloseHandle(processHandle);
-  return rc;
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1578,7 +1088,6 @@ void TRI_ShutdownProcess() {
 
 std::string TRI_SetPriority(ExternalId pid, int prio) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#ifndef _WIN32
   errno = 0;
   int ret = setpriority(PRIO_PROCESS, pid._pid, prio);
   if (ret == -1) {
@@ -1590,16 +1099,6 @@ std::string TRI_SetPriority(ExternalId pid, int prio) {
       return ss.str();
     }
   }
-#else
-  HANDLE processHandle = OpenProcess(PROCESS_SET_INFORMATION, FALSE, pid._pid);
-  DWORD dwPriorityClass;
-  if (prio == 0) {
-    dwPriorityClass = NORMAL_PRIORITY_CLASS;
-  } else {
-    dwPriorityClass = IDLE_PRIORITY_CLASS;
-  }
-  SetPriorityClass(processHandle, dwPriorityClass);
-#endif
   return "";
 #else
   return "only available in maintainer mode";

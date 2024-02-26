@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -51,15 +51,7 @@
 #include "SimpleHttpClient/ClientConnection.h"
 #include "SimpleHttpClient/SslClientConnection.h"
 
-#ifdef _WIN32
-#define STR_ERROR()                                                  \
-  windowsErrorBuf;                                                   \
-  FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM, NULL, GetLastError(), 0, \
-                windowsErrorBuf, sizeof(windowsErrorBuf), NULL);     \
-  errno = GetLastError();
-#else
 #define STR_ERROR() strerror(errno)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::basics;
@@ -369,10 +361,6 @@ bool GeneralClientConnection::prepare(TRI_socket_t socket, double timeout,
       TRI_set_errno(TRI_ERROR_SIMPLE_CLIENT_COULD_NOT_READ);
     }
   } else {  // res < 0
-#ifdef _WIN32
-    char windowsErrorBuf[256];
-#endif
-
     char const* pErr = STR_ERROR();
     _errorDetails = std::string("during prepare: ") + std::to_string(errno) +
                     std::string(" - ") + pErr;

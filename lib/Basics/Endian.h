@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,12 +31,6 @@
 #ifdef __APPLE__
 #include <libkern/OSByteOrder.h>
 #include <machine/endian.h>
-#elif _WIN32
-#include <stdlib.h>
-static_assert(sizeof(uint16_t) == sizeof(unsigned short),
-              "wrong size for ushort");
-static_assert(sizeof(uint32_t) == sizeof(unsigned long),
-              "wrong size for ulong");
 #elif __linux__
 #include <endian.h>
 #else
@@ -52,8 +46,6 @@ static constexpr bool isLittleEndian() { return true; }
 #elif BYTE_ORDER == BIG_ENDIAN
 static constexpr bool isLittleEndian() { return false; }
 #endif
-#elif _WIN32
-static constexpr bool isLittleEndian() { return true; }
 #elif __linux__
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static constexpr bool isLittleEndian() { return true; }
@@ -76,11 +68,6 @@ struct EndianTraits<T, 2> {
     return OSSwapHostToLittleInt16(in);
 #elif __linux__
     return htole16(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_ushort(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -91,11 +78,6 @@ struct EndianTraits<T, 2> {
     return OSSwapLittleToHostInt16(in);
 #elif __linux__
     return le16toh(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_ushort(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -106,11 +88,6 @@ struct EndianTraits<T, 2> {
     return OSSwapHostToBigInt16(in);
 #elif __linux__
     return htobe16(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_ushort(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -120,11 +97,6 @@ struct EndianTraits<T, 2> {
     return OSSwapBigToHostInt16(in);
 #elif __linux__
     return be16toh(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_ushort(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -140,11 +112,6 @@ struct EndianTraits<T, 4> {
     return OSSwapHostToLittleInt32(in);
 #elif __linux__
     return htole32(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_ulong(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -155,11 +122,6 @@ struct EndianTraits<T, 4> {
     return OSSwapLittleToHostInt32(in);
 #elif __linux__
     return le32toh(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_ulong(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -170,11 +132,6 @@ struct EndianTraits<T, 4> {
     return OSSwapHostToBigInt32(in);
 #elif __linux__
     return htobe32(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_ulong(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -185,11 +142,6 @@ struct EndianTraits<T, 4> {
     return OSSwapBigToHostInt32(in);
 #elif __linux__
     return be32toh(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_ulong(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -205,11 +157,6 @@ struct EndianTraits<T, 8> {
     return OSSwapHostToLittleInt64(in);
 #elif __linux__
     return htole64(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_uint64(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -220,11 +167,6 @@ struct EndianTraits<T, 8> {
     return OSSwapLittleToHostInt64(in);
 #elif __linux__
     return le64toh(in);
-#elif _WIN32
-    if (!isLittleEndian()) {
-      return _byteswap_uint64(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -235,11 +177,6 @@ struct EndianTraits<T, 8> {
     return OSSwapHostToBigInt64(in);
 #elif __linux__
     return htobe64(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_uint64(in);
-    }
-    return in;
 #else
     return in;
 #endif
@@ -250,11 +187,6 @@ struct EndianTraits<T, 8> {
     return OSSwapBigToHostInt64(in);
 #elif __linux__
     return be64toh(in);
-#elif _WIN32
-    if (isLittleEndian()) {
-      return _byteswap_uint64(in);
-    }
-    return in;
 #else
     return in;
 #endif

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -31,6 +31,7 @@
 #include "Agency/Supervision.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
+#include "Basics/FeatureFlags.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/GlobalSerialization.h"
 #include "Basics/NumberUtils.h"
@@ -365,12 +366,6 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
 }
 }  // namespace
 }  // namespace arangodb
-
-#ifdef _WIN32
-// turn off warnings about too long type name for debug symbols blabla in MSVC
-// only...
-#pragma warning(disable : 4503)
-#endif
 
 using namespace arangodb;
 using namespace cluster;
@@ -1073,6 +1068,24 @@ void ClusterInfo::loadPlan() {
       // the startup once the extended names option is turned off.
       info.validateNames(false);
 
+      if (!arangodb::replication2::EnableReplication2) {
+        // We right now cannot run a replication2 database on a coordinator
+        // that has replication2 disabled
+        if (info.replicationVersion() == arangodb::replication::Version::TWO) {
+          LOG_TOPIC("8fdd8", FATAL, Logger::REPLICATION2)
+              << "Replication version 2 is disabled in this binary, but "
+                 "loading a "
+                 "version 2 database "
+              << "(named '" << info.getName() << "'). "
+              << "Creating such databases is disabled. Please dump the data, "
+                 "and "
+                 "recreate the database with replication version 1 (the "
+                 "default), "
+                 "and then restore the data.";
+          FATAL_ERROR_EXIT();
+        }
+      }
+
       Result res = info.load(dbSlice, VPackSlice::emptyArraySlice());
 
       if (res.fail()) {
@@ -1737,18 +1750,56 @@ void ClusterInfo::loadPlan() {
           }
         }
 
-        // The systemDB does initially set the sharding attribute. Therefore,
-        // we need to set it here.
+        // The systemDB does initially set default values.
+        // As they can change with startup parameters we need
+        // to overwrite hem here to align with existing properties
+        // and all participants in the cluster agree on
+        // same definition.
         if (newPlan.contains(StaticStrings::SystemDatabase)) {
           auto planSlice = newPlan[StaticStrings::SystemDatabase]->slice();
           if (planSlice.isArray() && planSlice.length() == 1) {
             if (planSlice.at(0).isObject()) {
               auto entrySlice = planSlice.at(0);
-              auto path = std::vector<std::string>{
-                  "arango", "Plan", "Databases", StaticStrings::SystemDatabase,
-                  StaticStrings::Sharding};
-              if (entrySlice.hasKey(path) && entrySlice.get(path).isString()) {
-                systemDB->setSharding(entrySlice.get(path).copyString());
+              {
+                // Add sharding Attribute
+                auto path = std::vector<std::string>{
+                    "arango", "Plan", "Databases",
+                    StaticStrings::SystemDatabase, StaticStrings::Sharding};
+                if (auto value = entrySlice.get(path); value.isString()) {
+                  systemDB->setSharding(value.copyString());
+                }
+              }
+              {
+                // Add replication version
+                auto path =
+                    std::vector<std::string>{"arango", "Plan", "Databases",
+                                             StaticStrings::SystemDatabase,
+                                             StaticStrings::ReplicationVersion};
+                if (auto value = entrySlice.get(path); value.isString()) {
+                  auto res = replication::parseVersion(value.stringView());
+                  // Just care for valid Replication versions now
+                  if (res.ok() && res.get() != systemDB->replicationVersion()) {
+                    // We cannot change the replication version of the system
+                    // database The system database is created during startup,
+                    // using the default option There is a timeframe where new
+                    // collections are already created for this database, and
+                    // use the "wrong" replicationVersion. This crashes on the
+                    // way before this codepoint is reached and could repair the
+                    // system Database.
+                    LOG_TOPIC("50b83", FATAL, arangodb::Logger::STARTUP)
+                        << "Changed option "
+                           "'--database.default-replication-version' between "
+                           "startups. (Was "
+                        << value.stringView() << ", is now set to "
+                        << replication::versionToString(
+                               systemDB->replicationVersion())
+                        << "). This would break the _system database. If you "
+                           "want your _system database to use a different "
+                           "replication version you need to start with an "
+                           "empty cluster and restore data.";
+                    FATAL_ERROR_EXIT();
+                  }
+                }
               }
             }
           }

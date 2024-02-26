@@ -1,12 +1,10 @@
 add_library(clienttools_utils STATIC
   ClientManager.cpp
   ManagedDirectory.cpp
-  #${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
 )
 
 target_link_libraries(clienttools_utils
   arango
-  ${MSVC_LIBS}
   ${SYSTEM_LIBRARIES}
   boost_system
   boost_boost

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -42,9 +42,7 @@
 #endif
 
 // unreachable code marker
-#if defined(_MSC_VER)
-#define ADB_UNREACHABLE __assume(false)
-#elif defined(__GNUC__) || defined(__GNUG__)
+#if defined(__GNUC__) || defined(__GNUG__)
 #define ADB_UNREACHABLE __builtin_unreachable()
 #elif defined(__clang__)
 #define ADB_UNREACHABLE __builtin_unreachable()
@@ -77,8 +75,6 @@
 // pretty function name macro
 #if defined(__clang__) || defined(__GNUC__)
 #define ARANGODB_PRETTY_FUNCTION __PRETTY_FUNCTION__
-#elif defined(_MSC_VER)
-#define ARANGODB_PRETTY_FUNCTION __FUNCSIG__
 #else
 #define ARANGODB_PRETTY_FUNCTION __func__
 #endif

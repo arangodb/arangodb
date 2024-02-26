@@ -109,15 +109,17 @@ class SiteConfig:
             self.portbase = int(os.environ["PORTBASE"])
         self.port_offset = 100
         self.timeout = 1800
+        if "timeLimit".upper() in os.environ:
+            self.timeout = int(os.environ["timeLimit".upper()])
+        elif "timeLimit" in os.environ:
+            self.timeout = int(os.environ["timeLimit"])
+
         san_mode = os.environ.get("SAN_MODE") or "<na>"
         if san_mode == "alubsan":
             self.timeout *= 3
         elif san_mode == "tsan":
             self.timeout *= 6
-        if "timeLimit".upper() in os.environ:
-            self.timeout = int(os.environ["timeLimit".upper()])
-        elif "timeLimit" in os.environ:
-            self.timeout = int(os.environ["timeLimit"])
+
         self.small_machine = False
         self.extra_args = []
         if psutil.cpu_count(logical=False) <= 12:

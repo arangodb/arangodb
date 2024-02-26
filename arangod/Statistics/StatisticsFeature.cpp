@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -158,12 +158,10 @@ DECLARE_HISTOGRAM(arangodb_client_user_connection_statistics_bytes_sent,
 DECLARE_COUNTER(
     arangodb_process_statistics_minor_page_faults_total,
     "The number of minor faults the process has made which have not required "
-    "loading a memory page from disk. This figure is not reported on Windows");
-DECLARE_COUNTER(
-    arangodb_process_statistics_major_page_faults_total,
-    "On Windows, this figure contains the total number of page faults. On "
-    "other system, this figure contains the number of major faults the process "
-    "has made which have required loading a memory page from disk");
+    "loading a memory page from disk");
+DECLARE_COUNTER(arangodb_process_statistics_major_page_faults_total,
+                "This figure contains the number of major faults the process "
+                "has made which have required loading a memory page from disk");
 DECLARE_GAUGE(arangodb_process_statistics_user_time, double,
               "Amount of time that this process has been scheduled in user "
               "mode, measured in seconds");
@@ -186,9 +184,7 @@ DECLARE_GAUGE(arangodb_process_statistics_resident_set_size_percent, double,
               "are swapped out. The value is a ratio between 0.00 and 1.00");
 DECLARE_GAUGE(
     arangodb_process_statistics_virtual_memory_size, double,
-    "On Windows, this figure contains the total amount of memory that the "
-    "memory manager has committed for the arangod process. On other systems, "
-    "this figure contains The size of the virtual memory the process is using");
+    "This figure contains The size of the virtual memory the process is using");
 DECLARE_GAUGE(arangodb_client_connection_statistics_client_connections, double,
               "The number of client connections that are currently open");
 DECLARE_HISTOGRAM(arangodb_client_connection_statistics_connection_time,
@@ -278,12 +274,10 @@ auto const statStrings = std::map<std::string_view,
     {"minorPageFaults",
      {"arangodb_process_statistics_minor_page_faults_total", "counter",
       "The number of minor faults the process has made which have not required "
-      "loading a memory page from disk. This figure is not reported on "
-      "Windows"}},
+      "loading a memory page from disk"}},
     {"majorPageFaults",
      {"arangodb_process_statistics_major_page_faults_total", "counter",
-      "On Windows, this figure contains the total number of page faults. On "
-      "other system, this figure contains the number of major faults the "
+      "This figure contains the number of major faults the "
       "process has made which have required loading a memory page from disk"}},
     {"userTime",
      {"arangodb_process_statistics_user_time", "gauge",
@@ -311,9 +305,7 @@ auto const statStrings = std::map<std::string_view,
       "between 0.00 and 1.00"}},
     {"virtualSize",
      {"arangodb_process_statistics_virtual_memory_size", "gauge",
-      "On Windows, this figure contains the total amount of memory that the "
-      "memory manager has committed for the arangod process. On other systems, "
-      "this figure contains The size of the virtual memory the process is "
+      "This figure contains The size of the virtual memory the process is "
       "using"}},
     {"clientHttpConnections",
      {"arangodb_client_connection_statistics_client_connections", "gauge",

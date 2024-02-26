@@ -82,7 +82,7 @@ const AddAnalyzerModalInner = ({
   isSubmitting: boolean;
 }) => {
   const [showJSONForm, setShowJSONForm] = React.useState(false);
-  useReinitializeForm();
+  const { onReinitialize } = useReinitializeForm();
   return (
     <Form>
       <ModalHeader fontSize="sm" fontWeight="normal">
@@ -97,6 +97,7 @@ const AddAnalyzerModalInner = ({
             marginLeft="auto"
             onClick={() => {
               setShowJSONForm(!showJSONForm);
+              onReinitialize();
             }}
           >
             {showJSONForm ? "Show form" : " Show JSON"}
