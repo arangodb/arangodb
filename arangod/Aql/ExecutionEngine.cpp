@@ -779,7 +779,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
               .server()
               .getFeature<QueryRegistryFeature>()
               .leaseAsyncPrefetchSlots(numAsyncPrefetchNodesInPlan);
-      // we may get less slots that we asked for
+      // we may get less slots than we asked for
       TRI_ASSERT(asyncPrefetchSlots <= numAsyncPrefetchNodesInPlan);
       if (asyncPrefetchSlots > 0) {
         // the ExecutionEngine object is later responsible for returning the
