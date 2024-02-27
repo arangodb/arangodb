@@ -285,6 +285,7 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
+                  - VERSIONS
                   - build/compile_commands.json
                   - CMakePresets.json
                   - install.tar.gz
