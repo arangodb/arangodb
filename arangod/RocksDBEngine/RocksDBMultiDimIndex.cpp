@@ -1128,9 +1128,7 @@ Result RocksDBUniqueMdiIndex::insert(transaction::Methods& trx,
   }
 
   if (!options.checkUniqueConstraintsInPreflight) {
-    transaction::StringLeaser leased(&trx);
-    rocksdb::PinnableSlice existing(leased.get());
-    if (auto s = methods->GetForUpdate(_cf, rocksdbKey.string(), &existing);
+    if (auto s = methods->GetForUpdate(_cf, rocksdbKey.string(), nullptr);
         s.ok()) {  // detected conflicting index entry
       return {TRI_ERROR_ARANGO_UNIQUE_CONSTRAINT_VIOLATED};
     } else if (!s.IsNotFound()) {
