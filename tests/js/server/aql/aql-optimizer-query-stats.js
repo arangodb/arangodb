@@ -54,9 +54,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanNonEmpty : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -65,9 +67,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanSkipped : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " LIMIT 500, 1000 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -76,9 +80,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanLimited : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " LIMIT 0, 100 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -87,9 +93,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFiltered : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 RETURN doc").getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -98,9 +106,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFilteredSkipped : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 500, 1000 RETURN doc").getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -109,9 +119,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFilteredLimited : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 0, 10 RETURN doc",{},{fullCount: true}).getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -120,9 +132,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testIndexScan : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "hash", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 RETURN doc").getExtra().stats;
 
@@ -132,9 +146,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testIndexScanFiltered : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "hash", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 && doc._key != 'peng' RETURN doc").getExtra().stats;
 

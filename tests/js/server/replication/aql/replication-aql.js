@@ -255,10 +255,12 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          let c = db._create(cn); 
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
+          c.insert(docs);
           c.ensureIndex({ type: "hash", fields: ["value2"] });
         },
 
@@ -323,10 +325,12 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          let c = db._create(cn); 
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
+          c.insert(docs);
           c.ensureIndex({ type: "hash", fields: ["value2"] });
         },
 
@@ -393,10 +397,12 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          let c = db._createEdgeCollection(cn); 
+          let c = db._createEdgeCollection(cn);
+          let docs = [];
           for (let i = 0; i < 1000; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
+            docs.push({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
           }
+          c.insert(docs);
         },
 
         function(state) {
@@ -512,10 +518,12 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          let c = db._create(cn); 
+          let c = db._create(cn);
+          let docs = [];
           for (let i = 0; i < 5000; ++i) {
-            c.insert({ _key: "test" + i, value1: i, value2: (i % 100) });
+            docs.push({ _key: "test" + i, value1: i, value2: (i % 100) });
           }
+          c.insert(docs);
           c.ensureIndex({ type: "hash", fields: ["value2"] });
         },
 
@@ -582,10 +590,12 @@ function ReplicationSuite() {
 
       compare(
         function(state) {
-          let c = db._createEdgeCollection(cn); 
+          let c = db._createEdgeCollection(cn);
+          let docs = [];
           for (let i = 0; i < 1000; ++i) {
-            c.insert({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
+            docs.push({ _key: "test" + i, _from: "test/v" + (i % 100), _to: "test/y" + (i % 100) });
           }
+          c.insert(docs);
         },
 
         function(state) {

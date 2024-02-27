@@ -61,20 +61,26 @@ function limitSuite() {
 
       var i;
 
-      var c = db._create(gn + 'v');
+      let c = db._create(gn + 'v');
+      let docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_key: 'test' + i});
+        docs.push({_key: 'test' + i});
       }
-
+      c.insert(docs);
+      
       c = db._createEdgeCollection(gn + 'e');
+      docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + i});
+        docs.push({_from: gn + 'v/test' + i, _to: gn + 'v/test' + i});
       }
-
+      c.insert(docs);
+      
       c = db._createEdgeCollection(gn + 'e2');
-      c.insert({_from: gn + 'v/test1', _to: gn + 'v/test0'});
-      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test0'});
-      c.insert({_from: gn + 'v/test2', _to: gn + 'v/test1'});
+      c.insert([
+        {_from: gn + 'v/test1', _to: gn + 'v/test0'},
+        {_from: gn + 'v/test2', _to: gn + 'v/test0'},
+        {_from: gn + 'v/test2', _to: gn + 'v/test1'}
+      ]);
     },
 
     tearDownAll: function () {
