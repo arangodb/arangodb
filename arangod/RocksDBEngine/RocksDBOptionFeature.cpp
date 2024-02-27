@@ -244,7 +244,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _maxBytesForLevelBase(rocksDBDefaults.max_bytes_for_level_base),
       _maxBytesForLevelMultiplier(
           rocksDBDefaults.max_bytes_for_level_multiplier),
-      _maxBackgroundJobs(rocksDBDefaults.max_background_jobs),
+      // set max number of background jobs to the number of available cores
+      _maxBackgroundJobs(static_cast<int32_t>(
+          std::max(static_cast<size_t>(2), NumberOfCores::getValue()))),
       _maxSubcompactions(4),
       _numThreadsHigh(0),
       _numThreadsLow(0),
@@ -280,7 +282,9 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
-      _recycleLogFileNum(rocksDBDefaults.recycle_log_file_num),
+      // intentional deviation from RocksDB default (0) to reduce I/O for
+      // writing to WAL
+      _recycleLogFileNum(4),
       _compressionType(::kCompressionTypeLZ4),
       _blobCompressionType(::kCompressionTypeLZ4),
       _blockCacheType(::kBlockCacheTypeLRU),
@@ -332,9 +336,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _partitionFilesForVPackIndexCf(false),
       _partitionFilesForMdiIndexCf(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
-  // setting the number of background jobs to
-  _maxBackgroundJobs = static_cast<int32_t>(
-      std::max(static_cast<size_t>(2), NumberOfCores::getValue()));
 
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
@@ -1949,6 +1950,9 @@ rocksdb::Options RocksDBOptionFeature::doGetOptions() const {
   // Maximum number of pending compaction bytes. We stop writes at this point.
   result.hard_pending_compaction_bytes_limit =
       _pendingCompactionBytesStopTrigger;
+
+  // table cache is only used when max_open_files != -1
+  result.table_cache_numshardbits = 8;
 
   result.recycle_log_file_num = _recycleLogFileNum;
   result.compaction_readahead_size =
