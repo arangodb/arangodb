@@ -473,6 +473,8 @@ class instance {
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
+        this.sanOptions[key]['log_exe_name'] = "true";
         const origPath = this.sanOptions[key]['log_path'];
         this.sanOptions[key]['log_path'] = oneLogFile;
         this.sanitizerLogPaths[key] = { upstream: origPath, local: oneLogFile };
