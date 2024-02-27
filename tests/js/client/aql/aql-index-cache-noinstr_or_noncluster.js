@@ -34,6 +34,8 @@ const isCluster = require("internal").isCluster();
 const canUseFailAt =  internal.debugCanUseFailAt();
 const versionHas = require("@arangodb/test-helper").versionHas;
   
+// we do not want to run these tests for cluster sanitizer runs since they are very resource intensive
+
 const cn = "UnitTestsCollection";
 
 function CreateSuite () {
@@ -1082,20 +1084,17 @@ function PersistentIndexUniqueReadOnlyStoredValuesSuite() {
   return suite;
 }
 
-// disable these tests for cluster sanitizer runs since they are very slow
-if (!isCluster || (!versionHas('asan') && !versionHas('tsan'))) {
-  jsunity.run(CreateSuite);
-  jsunity.run(FiguresSuite);
-  jsunity.run(PersistentIndexNonUniqueModifySuite);
-  jsunity.run(PersistentIndexUniqueModifySuite);
-  jsunity.run(PersistentIndexNonUniqueHugeValueSuite);
-  jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
-  jsunity.run(PersistentIndexNonUniqueReadOnlyCacheEnabledSuite);
-  jsunity.run(PersistentIndexNonUniqueReadOnlyStoredValuesSuite);
-  jsunity.run(PersistentIndexUniqueReadOnlyCacheDisabledSuite);
-  jsunity.run(PersistentIndexUniqueReadOnlyCacheEnabledSuite);
-  jsunity.run(PersistentIndexUniqueReadOnlyStoredValuesSuite);
-  jsunity.run(OtherIndexesSuite);
-}
+jsunity.run(CreateSuite);
+jsunity.run(FiguresSuite);
+jsunity.run(PersistentIndexNonUniqueModifySuite);
+jsunity.run(PersistentIndexUniqueModifySuite);
+jsunity.run(PersistentIndexNonUniqueHugeValueSuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyCacheDisabledSuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyCacheEnabledSuite);
+jsunity.run(PersistentIndexNonUniqueReadOnlyStoredValuesSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyCacheDisabledSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyCacheEnabledSuite);
+jsunity.run(PersistentIndexUniqueReadOnlyStoredValuesSuite);
+jsunity.run(OtherIndexesSuite);
 
 return jsunity.done();
