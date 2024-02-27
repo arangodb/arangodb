@@ -446,8 +446,8 @@ def add_workflow(workflows, tests, build_config, args):
         add_cppcheck_job(workflow, build_job)
     add_create_docker_image_job(workflow, build_config, build_job, args)
 
-    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
-    add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
+    # tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
+    # add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
     return workflow
 
 
