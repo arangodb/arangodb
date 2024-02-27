@@ -33,6 +33,8 @@ const { deriveTestSuite } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
 const canUseFailAt =  internal.debugCanUseFailAt();
   
+// we do not want to run these tests for cluster sanitizer runs since they are very resource intensive
+
 const cn = "UnitTestsCollection";
 
 function CreateSuite () {

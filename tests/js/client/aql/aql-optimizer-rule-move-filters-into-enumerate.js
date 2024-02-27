@@ -38,9 +38,11 @@ function optimizerRuleTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
     
@@ -330,9 +332,11 @@ function optimizerRuleIndexesTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i, value3: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i, value3: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
     

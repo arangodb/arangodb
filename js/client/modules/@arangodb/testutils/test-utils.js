@@ -193,6 +193,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
+  if ((testname.indexOf('-noinstr_or_noncluster') !== -1) && (options.isInstrumented && options.cluster)) {
+    whichFilter.filter = 'skip when built with an instrumented build and running in cluster mode';
+    return false;
+  }
+
   if ((testname.indexOf('-noasan') !== -1) && (options.isSan)) {
     whichFilter.filter = 'skip when built with asan or tsan';
     return false;
