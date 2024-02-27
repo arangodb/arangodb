@@ -2162,6 +2162,8 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       result.sst_partitioner_factory =
           rocksdb::NewSstPartitionerFixedPrefixFactory(sizeof(uint64_t));
     }
+    // keep immutable mem tables around in memory for conflict checking
+    result.max_write_buffer_size_to_maintain = 64 << 20;
   }
 
   if (family == RocksDBColumnFamilyManager::Family::EdgeIndex) {
