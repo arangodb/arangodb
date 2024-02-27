@@ -1,6 +1,7 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
 from collections import namedtuple
+from datetime import date
 import argparse
 import os
 import sys
@@ -380,10 +381,26 @@ def add_create_docker_image_job(workflow, build_config, build_job, args):
     if not args.create_docker_images:
         return
     edition = "ee" if build_config.enterprise else "ce"
+    arch = "amd64" if build_config.arch == "x64" else "arm64"
+    image = (
+        "arangodb/enterprise-test"
+        if build_config.enterprise
+        else "arangodb/arangodb-test"
+    )
+    branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
+    sha1 = os.environ.get("CIRCLE_SHA1")
+    if sha1 is None:
+        sha1 = "unknown-sha1"
+    else:
+        sha1 = sha1[:7]
+    tag = f"{date.today()}-{branch}-{sha1}-{arch}"
     workflow["jobs"].append(
         {
             "create-docker-image": {
                 "name": f"create-{edition}-{build_config.arch}-docker-image",
+                "resource-class": get_size("large", build_config.arch),
+                "arch": arch,
+                "tag": f"{image}:{tag}",
                 "requires": [build_job],
             }
         }

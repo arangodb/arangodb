@@ -306,27 +306,32 @@ jobs:
                   - lsan_arangodb_suppressions.txt
 
   create-docker-image:
+    parameters:
+      resource-class:
+          type: string
+      arch:
+          type: string
+      tag:
+          type: string
     docker:
       - image: cimg/base:current
-    resource_class: large
+    resource_class: << parameters.resource-class >>
     steps:
       - setup_remote_docker:
             docker_layer_caching: true
       - attach_workspace:
           at: .
-      # TODO
-      #  - download starter
-      #  - download syncer
-      #  - download rclone
       - run:
           name: Create Docker Image
           command: |
-            # TODO
-            ls -la
+            cd scripts/docker/deploy
             mkdir install
-            tar -xzf install.tar.gz -C install
-            ls -la install
-            #docker build --platform linux/$arch --build-arg arch=$arch -t $image:latest-$arch --file arangodb-test.Dockerfile .
+            tar -xzf ../../../install.tar.gz -C install
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+            # TODO
+            #  - download rclone
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
 
   run-linux-tests:
     docker:
