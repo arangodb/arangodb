@@ -30,6 +30,9 @@
 #include <atomic>
 
 namespace arangodb {
+namespace aql {
+class AsyncPrefetchSlotsManager;
+}
 
 class QueryRegistryFeature final : public ArangodFeature {
  public:
@@ -40,6 +43,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   }
 
   QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
+  ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
@@ -101,6 +105,8 @@ class QueryRegistryFeature final : public ArangodFeature {
     return &_cursorsMemoryUsage;
   }
 
+  aql::AsyncPrefetchSlotsManager& asyncPrefetchSlotsManager() noexcept;
+
  private:
   bool _trackingEnabled;
   bool _trackSlowQueries;
@@ -141,8 +147,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
-
-  std::atomic<size_t> _asyncPrefetchSlotsUsed;
+  std::unique_ptr<aql::AsyncPrefetchSlotsManager> _asyncPrefetchSlotsManager;
 
   metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;

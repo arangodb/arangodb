@@ -26,6 +26,7 @@
 #include "QueryRegistryFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -207,7 +208,6 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
       _slowStreamingQueryThreshold(10.0),
       _queryRegistryTTL(0.0),
       _queryCacheMode("off"),
-      _asyncPrefetchSlotsUsed(0),
       _queryTimes(metrics.add(arangodb_aql_query_time{})),
       _slowQueryTimes(metrics.add(arangodb_aql_slow_query_time{})),
       _totalQueryExecutionTime(
@@ -238,6 +238,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
   _queryCacheMaxEntrySize = properties.maxEntrySize;
   _queryCacheIncludeSystem = properties.includeSystem;
 }
+
+QueryRegistryFeature::~QueryRegistryFeature() = default;
 
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -814,6 +816,9 @@ void QueryRegistryFeature::prepare() {
   // create the query registry
   _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
+
+  _asyncPrefetchSlotsManager = std::make_unique<aql::AsyncPrefetchSlotsManager>(
+      _maxAsyncPrefetchSlotsTotal, _maxAsyncPrefetchSlotsPerQuery);
 }
 
 void QueryRegistryFeature::beginShutdown() {
@@ -830,38 +835,6 @@ void QueryRegistryFeature::stop() {
 void QueryRegistryFeature::unprepare() {
   // clear the query registry
   QUERY_REGISTRY.store(nullptr, std::memory_order_release);
-}
-
-size_t QueryRegistryFeature::leaseAsyncPrefetchSlots(size_t value) noexcept {
-  // reduce value to the allowed per-query maximum
-  value = std::min(_maxAsyncPrefetchSlotsPerQuery, value);
-
-  if (value == 0) {
-    return 0;
-  }
-
-  // check if global (per-server) total is below the configured total maximum
-  size_t expected = _asyncPrefetchSlotsUsed.load(std::memory_order_relaxed);
-  TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
-  // as long as we have slots left, try to allocate some
-  while (expected < _maxAsyncPrefetchSlotsTotal) {
-    size_t target = std::min(_maxAsyncPrefetchSlotsTotal, expected + value);
-    TRI_ASSERT(target > expected);
-    if (_asyncPrefetchSlotsUsed.compare_exchange_weak(
-            expected, target, std::memory_order_relaxed)) {
-      return target - expected;
-    }
-    TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
-  };
-}
-
-void QueryRegistryFeature::returnAsyncPrefetchSlots(size_t value) noexcept {
-  if (value == 0) {
-    return;
-  }
-  [[maybe_unused]] size_t previous =
-      _asyncPrefetchSlotsUsed.fetch_sub(value, std::memory_order_relaxed);
-  TRI_ASSERT(previous >= value);
 }
 
 void QueryRegistryFeature::updateMetrics() {
@@ -887,6 +860,12 @@ void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
   _slowQueryTimes.count(time);
+}
+
+aql::AsyncPrefetchSlotsManager&
+QueryRegistryFeature::asyncPrefetchSlotsManager() noexcept {
+  TRI_ASSERT(_asyncPrefetchSlotsManager != nullptr);
+  return *_asyncPrefetchSlotsManager;
 }
 
 }  // namespace arangodb

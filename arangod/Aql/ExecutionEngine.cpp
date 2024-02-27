@@ -27,6 +27,7 @@
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/EngineInfoContainerCoordinator.h"
 #include "Aql/EngineInfoContainerDBServerServerBased.h"
 #include "Aql/ExecutionBlockImpl.h"
@@ -249,7 +250,10 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
       _root(nullptr),
       _resultRegister(RegisterId::maxRegisterId),
       _initializeCursorCalled(false),
-      _asyncPrefetchSlotsReserved(0) {
+      _asyncPrefetchSlotsManager(query.vocbase()
+                                     .server()
+                                     .getFeature<QueryRegistryFeature>()
+                                     .asyncPrefetchSlotsManager()) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }
@@ -259,14 +263,14 @@ ExecutionEngine::~ExecutionEngine() {
   if (_sharedState) {  // ensure no async task is working anymore
     _sharedState->invalidate();
   }
+}
 
-  if (_asyncPrefetchSlotsReserved > 0) {
-    // return leased slots to QueryRegistryFeature
-    _query.vocbase()
-        .server()
-        .getFeature<QueryRegistryFeature>()
-        .returnAsyncPrefetchSlots(_asyncPrefetchSlotsReserved);
-  }
+void ExecutionEngine::leaseAsyncPrefetchSlots(size_t value) {
+  _asyncPrefetchSlotsReservation = _asyncPrefetchSlotsManager.leaseSlots(value);
+}
+
+size_t ExecutionEngine::asyncPrefetchSlotsLeased() const noexcept {
+  return _asyncPrefetchSlotsReservation.value();
 }
 
 struct SingleServerQueryInstanciator final
@@ -278,7 +282,7 @@ struct SingleServerQueryInstanciator final
 
   explicit SingleServerQueryInstanciator(ExecutionEngine& engine) noexcept
       : engine(engine),
-        asyncPrefetchSlotsLeft(engine.asyncPrefetchSlotsReserved()) {}
+        asyncPrefetchSlotsLeft(engine.asyncPrefetchSlotsLeased()) {}
 
   void after(ExecutionNode* en) override {
     if (en->getType() == ExecutionNode::TRAVERSAL ||
@@ -772,21 +776,7 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // that would use large amounts of async prefetching slots.
     // the QueryRegistryFeature keeps an overview of how many slots have been
     // leased by the currently running queries.
-    size_t numAsyncPrefetchNodesInPlan = plan.asyncPrefetchNodes();
-    if (numAsyncPrefetchNodesInPlan > 0) {
-      size_t asyncPrefetchSlots =
-          query.vocbase()
-              .server()
-              .getFeature<QueryRegistryFeature>()
-              .leaseAsyncPrefetchSlots(numAsyncPrefetchNodesInPlan);
-      // we may get less slots than we asked for
-      TRI_ASSERT(asyncPrefetchSlots <= numAsyncPrefetchNodesInPlan);
-      if (asyncPrefetchSlots > 0) {
-        // the ExecutionEngine object is later responsible for returning the
-        // actually leased slots to the QueryRegistryFeature.
-        retEngine->asyncPrefetchSlotsReserved(asyncPrefetchSlots);
-      }
-    }
+    retEngine->leaseAsyncPrefetchSlots(plan.asyncPrefetchNodes());
 
     SingleServerQueryInstanciator inst(*retEngine);
     plan.root()->walk(inst);
