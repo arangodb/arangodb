@@ -336,6 +336,7 @@ jobs:
           name: Copy test results
           when: always
           command: |
+            ls -la ./work/
             mkdir test-results
             find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:

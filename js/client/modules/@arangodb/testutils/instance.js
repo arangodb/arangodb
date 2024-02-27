@@ -693,6 +693,7 @@ class instance {
     }
     let backup = {};
     if (this.options.isSan) {
+      print("Using sanOptions ", this.sanOptions);
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
         for (const [keyOne, valueOne] of Object.entries(value)) {
@@ -797,6 +798,7 @@ class instance {
     }
 
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
+      print("processing ", value);
       const { upstream, local } = value;
       let fn = `${local}.arangod.${this.pid}`;
       if (this.options.extremeVerbosity) {
@@ -805,6 +807,7 @@ class instance {
       if (fs.exists(fn)) {
         let content = fs.read(fn);
         if (upstream) {
+          print("found file ", fn, " - writing file ", `${upstream}.arangod.${this.pid}`);
           fs.write(`${upstream}.arangod.${this.pid}`, content);
         }
         if (content.length > 10) {
