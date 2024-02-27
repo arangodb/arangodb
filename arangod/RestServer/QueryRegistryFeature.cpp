@@ -843,20 +843,16 @@ size_t QueryRegistryFeature::leaseAsyncPrefetchSlots(size_t value) noexcept {
   // check if global (per-server) total is below the configured total maximum
   size_t expected = _asyncPrefetchSlotsUsed.load(std::memory_order_relaxed);
   TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
-  do {
+  // as long as we have slots left, try to allocate some
+  while (expected < _maxAsyncPrefetchSlotsTotal) {
     size_t target = std::min(_maxAsyncPrefetchSlotsTotal, expected + value);
-    if (target == expected) {
-      // no slots left
-      return 0;
-    }
     TRI_ASSERT(target > expected);
     if (_asyncPrefetchSlotsUsed.compare_exchange_weak(
-            expected, target, std::memory_order_relaxed,
-            std::memory_order_relaxed)) {
+            expected, target, std::memory_order_relaxed)) {
       return target - expected;
     }
     TRI_ASSERT(expected <= _maxAsyncPrefetchSlotsTotal);
-  } while (true);
+  };
 }
 
 void QueryRegistryFeature::returnAsyncPrefetchSlots(size_t value) noexcept {
