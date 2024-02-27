@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index usage
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -54,9 +51,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanNonEmpty : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -65,9 +64,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanSkipped : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " LIMIT 500, 1000 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -76,9 +77,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanLimited : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " LIMIT 0, 100 RETURN doc").getExtra().stats;
 
       assertEqual(0, stats.filtered);
@@ -87,9 +90,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFiltered : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 RETURN doc").getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -98,9 +103,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFilteredSkipped : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 500, 1000 RETURN doc").getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -109,9 +116,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testFullScanFilteredLimited : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 LIMIT 0, 10 RETURN doc",{},{fullCount: true}).getExtra().stats;
 
       assertEqual(900, stats.filtered);
@@ -120,9 +129,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testIndexScan : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "hash", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 RETURN doc").getExtra().stats;
 
@@ -132,9 +143,11 @@ function optimizerQueryStatsTestSuite () {
     },
 
     testIndexScanFiltered : function () {
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ value: i % 10 });
+        docs.push({ value: i % 10 });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "hash", fields: ["value"] });
       let stats = db._query("FOR doc IN " + c.name() + " FILTER doc.value == 3 && doc._key != 'peng' RETURN doc").getExtra().stats;
 
