@@ -50,9 +50,11 @@ function optimizerRuleTestSuite() {
     setUp : function () {
       internal.db._drop(colName);
       c = internal.db._create(colName, {numberOfShards: 5});
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "skiplist", fields: [ "value" ] });
     },
 
@@ -94,9 +96,11 @@ function optimizerRuleTestSuite() {
     
     testSortAscKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " SORT doc.value ASC RETURN doc";
       let plan = db._createStatement(query).explain().plan;
       assertNotEqual(-1, plan.rules.indexOf(ruleName));
@@ -150,9 +154,11 @@ function optimizerRuleTestSuite() {
     
     testCollectHashKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value WITH COUNT INTO l OPTIONS { method: 'hash' } RETURN { value, l }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
@@ -173,9 +179,11 @@ function optimizerRuleTestSuite() {
     
     testCollectSortedKeepGatherNonUnique : function () {
       // add the same values again
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ value: i });
+        docs.push({ value: i });
       }
+      c.insert(docs);
       let query = "FOR doc IN " + colName + " COLLECT value = doc.value WITH COUNT INTO l OPTIONS { method: 'sorted' } RETURN { value, l }";
       let plan = db._createStatement(query).explain().plan;
       let nodes = plan.nodes.filter(function(n) { return n.type === 'CollectNode'; });
