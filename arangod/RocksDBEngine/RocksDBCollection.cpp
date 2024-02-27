@@ -1548,10 +1548,11 @@ Result RocksDBCollection::insertDocument(transaction::Methods* trx,
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (options.isRestore && ServerState::instance()->isDBServer()) {
+    rocksdb::PinnableSlice ps;
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
                                 RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), nullptr);
+                            key->string(), &ps);
     if (s.ok()) {
       // the LocalDocumentId should not have existed before...
       res.reset(TRI_ERROR_ARANGO_CONFLICT,
@@ -1893,10 +1894,11 @@ Result RocksDBCollection::modifyDocument(
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (options.isRestore && ServerState::instance()->isDBServer()) {
+    rocksdb::PinnableSlice ps;
     rocksdb::Status s =
         mthds->GetForUpdate(RocksDBColumnFamilyManager::get(
                                 RocksDBColumnFamilyManager::Family::Documents),
-                            key->string(), nullptr);
+                            key->string(), &ps);
     if (s.ok()) {
       // the LocalDocumentId should not have existed before...
       res.reset(TRI_ERROR_ARANGO_CONFLICT,
