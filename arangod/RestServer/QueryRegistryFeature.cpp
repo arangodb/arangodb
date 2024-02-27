@@ -26,7 +26,6 @@
 #include "QueryRegistryFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
@@ -817,8 +816,8 @@ void QueryRegistryFeature::prepare() {
   _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
 
-  _asyncPrefetchSlotsManager = std::make_unique<aql::AsyncPrefetchSlotsManager>(
-      _maxAsyncPrefetchSlotsTotal, _maxAsyncPrefetchSlotsPerQuery);
+  _asyncPrefetchSlotsManager.configure(_maxAsyncPrefetchSlotsTotal,
+                                       _maxAsyncPrefetchSlotsPerQuery);
 }
 
 void QueryRegistryFeature::beginShutdown() {
@@ -864,8 +863,7 @@ void QueryRegistryFeature::trackSlowQuery(double time) {
 
 aql::AsyncPrefetchSlotsManager&
 QueryRegistryFeature::asyncPrefetchSlotsManager() noexcept {
-  TRI_ASSERT(_asyncPrefetchSlotsManager != nullptr);
-  return *_asyncPrefetchSlotsManager;
+  return _asyncPrefetchSlotsManager;
 }
 
 }  // namespace arangodb

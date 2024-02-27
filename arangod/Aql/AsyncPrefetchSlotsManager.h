@@ -59,15 +59,19 @@ class AsyncPrefetchSlotsManager {
   AsyncPrefetchSlotsManager& operator=(AsyncPrefetchSlotsManager const&) =
       delete;
 
-  AsyncPrefetchSlotsManager(size_t maxSlotsTotal, size_t maxSlotsPerQuery);
+  AsyncPrefetchSlotsManager() noexcept;
+  AsyncPrefetchSlotsManager(size_t maxSlotsTotal,
+                            size_t maxSlotsPerQuery) noexcept;
+
+  void configure(size_t maxSlotsTotal, size_t maxSlotsPerQuery) noexcept;
 
   AsyncPrefetchSlotsReservation leaseSlots(size_t value) noexcept;
 
  private:
   void returnSlots(size_t value) noexcept;
 
-  size_t const _maxSlotsTotal;
-  size_t const _maxSlotsPerQuery;
+  size_t _maxSlotsTotal;
+  size_t _maxSlotsPerQuery;
 
   std::atomic<size_t> _slotsUsed;
 };

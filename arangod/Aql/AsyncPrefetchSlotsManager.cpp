@@ -24,6 +24,7 @@
 #include "AsyncPrefetchSlotsManager.h"
 #include "Assertions/Assert.h"
 
+#include <algorithm>
 #include <utility>
 
 namespace arangodb::aql {
@@ -63,11 +64,20 @@ void AsyncPrefetchSlotsReservation::returnSlots() noexcept {
   TRI_ASSERT(_slotsReserved == 0);
 }
 
-AsyncPrefetchSlotsManager::AsyncPrefetchSlotsManager(size_t maxSlotsTotal,
-                                                     size_t maxSlotsPerQuery)
+AsyncPrefetchSlotsManager::AsyncPrefetchSlotsManager() noexcept
+    : AsyncPrefetchSlotsManager(0, 0) {}
+
+AsyncPrefetchSlotsManager::AsyncPrefetchSlotsManager(
+    size_t maxSlotsTotal, size_t maxSlotsPerQuery) noexcept
     : _maxSlotsTotal(maxSlotsTotal),
       _maxSlotsPerQuery(maxSlotsPerQuery),
       _slotsUsed(0) {}
+
+void AsyncPrefetchSlotsManager::configure(size_t maxSlotsTotal,
+                                          size_t maxSlotsPerQuery) noexcept {
+  _maxSlotsTotal = maxSlotsTotal;
+  _maxSlotsPerQuery = maxSlotsPerQuery;
+}
 
 AsyncPrefetchSlotsReservation AsyncPrefetchSlotsManager::leaseSlots(
     size_t value) noexcept {

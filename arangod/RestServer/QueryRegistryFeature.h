@@ -24,15 +24,13 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
 
 #include <atomic>
 
 namespace arangodb {
-namespace aql {
-class AsyncPrefetchSlotsManager;
-}
 
 class QueryRegistryFeature final : public ArangodFeature {
  public:
@@ -147,7 +145,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
-  std::unique_ptr<aql::AsyncPrefetchSlotsManager> _asyncPrefetchSlotsManager;
+  aql::AsyncPrefetchSlotsManager _asyncPrefetchSlotsManager;
 
   metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;
