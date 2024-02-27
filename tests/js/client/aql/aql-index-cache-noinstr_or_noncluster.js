@@ -32,7 +32,6 @@ const internal = require('internal');
 const { deriveTestSuite } = require('@arangodb/test-helper');
 const isCluster = require("internal").isCluster();
 const canUseFailAt =  internal.debugCanUseFailAt();
-const versionHas = require("@arangodb/test-helper").versionHas;
   
 // we do not want to run these tests for cluster sanitizer runs since they are very resource intensive
 
