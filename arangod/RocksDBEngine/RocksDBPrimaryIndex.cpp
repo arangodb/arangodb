@@ -534,9 +534,6 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
               }
             }
             options.adaptive_readahead = true;
-#if 0            
-            options.async_io = true;
-#endif
           });
       TRI_ASSERT(_mustSeek);
 
