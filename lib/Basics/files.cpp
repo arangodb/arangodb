@@ -87,9 +87,7 @@ using namespace arangodb;
 namespace {
 
 // whether or not we can use the splice system call on Linux
-#ifdef __linux__
 bool canUseSplice = true;
-#endif
 
 /// @brief names of blocking files
 std::vector<std::pair<std::string, int>> OpenedFiles;
@@ -208,9 +206,7 @@ static std::string LocateConfigDirectoryEnv() {
   return r;
 }
 
-#ifdef __linux__
 void TRI_SetCanUseSplice(bool value) noexcept { ::canUseSplice = value; }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -1292,7 +1288,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
   bool rc = true;
 
-#ifdef __linux__
   if (::canUseSplice) {
     // Linux-specific file-copying code based on splice()
     // The splice() system call first appeared in Linux 2.6.17; library support
@@ -1345,7 +1340,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
     return rc;
   }
-#endif
 
   // systems other than Linux use regular file-copying.
   // note: regular file copying will also be used on Linux

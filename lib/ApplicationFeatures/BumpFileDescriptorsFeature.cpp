@@ -59,9 +59,7 @@ void BumpFileDescriptorsFeature::collectOptions(
           "The minimum number of file descriptors needed to start (0 = no "
           "minimum)",
           new UInt64Parameter(&_descriptorsMinimum),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                       arangodb::options::Flags::OsLinux,
-                                       arangodb::options::Flags::OsMac))
+          arangodb::options::makeFlags())
       .setIntroducedIn(31200);
 }
 

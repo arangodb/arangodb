@@ -776,7 +776,6 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
 
 #ifdef ARANGODB_HAVE_INITGROUPS
 void initGroups(std::string const& userName, gid_t groupId) noexcept {
-#ifdef __linux__
   // For Linux, calling initgroups poses problems with statically linked
   // binaries, since /etc/nsswitch.conf can then lead to crashes on
   // older Linux distributions. Therefore, we need to do the groups lookup
@@ -801,10 +800,6 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
     setgroups(groupIds.size(), groupIds.data());
   } catch (std::exception const&) {
   }
-#else
-  // For other unixes (including Mac), we can use the OS call.
-  initgroups(userName.c_str(), groupId);
-#endif
 }
 #endif
 }  // namespace arangodb::basics::FileUtils

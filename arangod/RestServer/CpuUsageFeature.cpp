@@ -32,7 +32,6 @@
 
 namespace arangodb {
 
-#if defined(__linux__)
 struct CpuUsageFeature::SnapshotProvider {
   SnapshotProvider();
   ~SnapshotProvider();
@@ -103,16 +102,6 @@ size_t CpuUsageFeature::SnapshotProvider::readStatFile(
   buffer[offset] = '\0';
   return offset;
 }
-#else
-struct CpuUsageFeature::SnapshotProvider {
-  bool canTakeSnapshot() const noexcept { return false; }
-
-  bool tryTakeSnapshot(CpuUsageSnapshot&) noexcept {
-    TRI_ASSERT(false);  // should never be called!
-    return false;
-  }
-};
-#endif
 
 CpuUsageFeature::CpuUsageFeature(Server& server)
     : ArangodFeature{server, *this},

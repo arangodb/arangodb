@@ -215,8 +215,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   exit(EXIT_FAILURE);
 }
 
-#ifdef __linux__
-
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
@@ -235,15 +233,12 @@ static void f() {
   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
   pthread_once(&once_control, gg);
 }
-#endif
 
 int main(int argc, char* argv[]) {
-#ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
-#endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
@@ -275,7 +270,6 @@ int main(int argc, char* argv[]) {
   // so the process does not have to be terminated. On Windows, we have
   // to do this because the solution below is not possible. In these
   // cases, we need outside help to get the process restarted.
-#if defined(__linux__)
   res = chdir(workdir.c_str());
   if (res != 0) {
     std::cerr << "WARNING: could not change into directory '" << workdir << "'"
@@ -285,5 +279,4 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
               << std::endl;
   }
-#endif
 }
