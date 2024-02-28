@@ -55,7 +55,7 @@ const testPaths = {
   'resilience_replication2': [tu.pathForTesting('client/resilience/replication2')],
 };
 
-class resilienceRunner extends tu.runLocalInArangoshRunner {
+class resilienceRunner extends tu.runInArangoshRunner {
   postStart() {
     global.theInstanceManager = this.instanceManager;
     return { state: true };
