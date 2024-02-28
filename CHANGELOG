@@ -1,6 +1,9 @@
 devel
 -----
 
+* FE-316: Edge collection import example now correctly reflects the required
+  `from` and `to` attributes.
+
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.
