@@ -406,10 +406,10 @@ the following commands in a terminal:
 
 ### Temporary files and temp directories
 
-Depending on the platform, ArangoDB tries to locate the temporary directory:
+ArangoDB tries to locate the temporary directory like this:
 
-- Linux/Mac: the environment variable `TMPDIR` is evaluated.
-- all platforms: `--temp.path` overrules the above system provided settings.
+- the environment variable `TMPDIR` is evaluated.
+- the startup option `--temp.path` overrules the above system provided settings.
 
 Our testing framework uses this path in the cluster test cases to set an
 environment variable `ARANGOTEST_ROOT_DIR` which is global to the running

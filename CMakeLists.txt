@@ -348,32 +348,25 @@ if (VERBOSE)
 endif ()
 
 ################################################################################
-## OPERATION SYSTEM
+## OPERATING SYSTEM
 ################################################################################
 
-option(HOMEBREW
-  "whether to install for homebrew"
-  Off
-)
-
-if (UNIX)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
-    set(LINUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
-    set(NETBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
-    set(OPENBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
-    set(GNU TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
-    set(BSDI TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
-    set(SYSV5 TRUE)
-  endif ()
+if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
+  set(LINUX TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
+  set(FREEBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
+  set(NETBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
+  set(OPENBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
+  set(GNU TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
+  set(BSDI TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
+  set(FREEBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
+  set(SYSV5 TRUE)
 endif ()
 
 # ------------------------------------------------------------------------------
@@ -386,21 +379,13 @@ option(
   ON
 )
 
-if (LINUX)
-  option(
-    USE_LIBUNWIND
-    "use libunwind for stack traces"
-    ON
-  )
-else ()
-  SET(USE_LIBUNWIND OFF)
-endif ()
+option(
+  USE_LIBUNWIND
+  "use libunwind for stack traces"
+  ON
+)
 
-if (LINUX)
-   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
-else ()
-   set(USE_BUILD_ID_READER OFF)
-endif ()
+option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
 
 if (USE_BUILD_ID_READER)
   add_definitions(-DUSE_BUILD_ID_READER=true)
@@ -884,9 +869,7 @@ if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
   message(FATAL_ERROR "expecting ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
 else ()
   file(READ "${CMAKE_CURRENT_LIST_DIR}/VERSIONS" ARANGODB_VERSIONS_CONTENT)
-  if (LINUX)
-    set (TARGET_OS "LINUX")
-  endif ()
+  set (TARGET_OS "LINUX")
 
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
