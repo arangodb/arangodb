@@ -1,7 +1,7 @@
-import { Index } from "arangojs/indexes";
 import { ArangojsResponse } from "arangojs/lib/request";
 import useSWR from "swr";
 import { getApiRouteForCurrentDB } from "../../../utils/arangoClient";
+import { CollectionIndex } from "./CollectionIndex.types";
 
 interface EngineResponse extends ArangojsResponse {
   body: {
@@ -16,9 +16,9 @@ interface EngineResponse extends ArangojsResponse {
 
 export const useSupportedIndexTypes = () => {
   const { data, ...rest } = useSWR<EngineResponse>(`/engine`, path => {
-    return (getApiRouteForCurrentDB().get(path) as any) as Promise<
-      EngineResponse
-    >;
+    return getApiRouteForCurrentDB().get(
+      path
+    ) as any as Promise<EngineResponse>;
   });
 
   const indexes = data?.body.supports.indexes;
@@ -34,7 +34,7 @@ export const useSupportedIndexTypes = () => {
 
 const indexTypeOptions: {
   label: string;
-  value: Index["type"];
+  value: CollectionIndex["type"];
 }[] = [
   {
     label: "Persistent Index",
@@ -53,8 +53,12 @@ const indexTypeOptions: {
     value: "ttl"
   },
   {
-    label: "ZKD Index (EXPERIMENTAL)",
-    value: "zkd"
+    label: "MDI Index",
+    value: "mdi"
+  },
+  {
+    label: "MDI Index (Prefixed)",
+    value: "mdi-prefixed"
   },
   {
     label: "Inverted Index",
