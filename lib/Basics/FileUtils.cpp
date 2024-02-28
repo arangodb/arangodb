@@ -733,13 +733,6 @@ std::optional<uid_t> findUser(std::string const& nameOrId) noexcept {
 }
 
 std::optional<std::string> findUserName(uid_t id) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getpwuid function.
-  struct passwd* pwent = getpwuid(id);
-  if (pwent != nullptr) {
-    return {std::string(pwent->pw_name)};
-  }
-#else
   // For Linux (and other Unixes), we avoid this function because it
   // poses problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -753,31 +746,12 @@ std::optional<std::string> findUserName(uid_t id) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif
 
 #ifdef ARANGODB_HAVE_GETGRGID
 std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getgrgid and getgrnam functions.
-  bool valid = false;
-  int gidNumber = NumberUtils::atoi_positive<int>(
-      nameOrId.data(), nameOrId.data() + nameOrId.size(), valid);
-
-  if (valid && gidNumber >= 0) {
-    group* g = getgrgid(gidNumber);
-    if (g != nullptr) {
-      return {gidNumber};
-    }
-  } else {
-    group* g = getgrnam(nameOrId.c_str());
-    if (g != nullptr) {
-      return {g->gr_gid};
-    }
-  }
-#else
   // For Linux (and other Unixes), we avoid these functions because they
   // pose problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -796,7 +770,6 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif

@@ -33,7 +33,7 @@
 #include <WinSock2.h>
 #endif
 
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__)
 #include <fcntl.h>
 #endif
 #include <openssl/opensslv.h>
@@ -630,7 +630,7 @@ bool SslClientConnection::readable() {
 }
 
 bool SslClientConnection::setSocketToNonBlocking() {
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__)
   _socketFlags = fcntl(_socket.fileDescriptor, F_GETFL, 0);
   if (_socketFlags == -1) {
     _errorDetails = "Socket file descriptor read returned with error " +
@@ -655,7 +655,7 @@ bool SslClientConnection::setSocketToNonBlocking() {
 
 bool SslClientConnection::cleanUpSocketFlags() {
   TRI_ASSERT(_isSocketNonBlocking);
-#if defined(__linux__) || defined(__APPLE__)
+#if defined(__linux__)
   if (fcntl(_socket.fileDescriptor, F_SETFL, _socketFlags & ~O_NONBLOCK) ==
       -1) {
     _errorDetails = "Attempt to make socket blocking generated error " +

@@ -116,9 +116,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
-#elif __APPLE__
-  // TODO: improve MacOS version detection
-  _operatingSystem = "macos";
 #else
   _operatingSystem = "unknown";
 #endif

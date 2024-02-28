@@ -847,14 +847,6 @@ ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length) {
 bool TRI_fsync(int fd) {
   int res = fsync(fd);
 
-#ifdef __APPLE__
-
-  if (res == 0) {
-    res = fcntl(fd, F_FULLFSYNC, 0);
-  }
-
-#endif
-
   if (res == 0) {
     return true;
   } else {
@@ -1881,13 +1873,7 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     return {TRI_errno(), TRI_last_error()};
   }
 
-#ifdef __APPLE__
-  // at least on macOS f_bsize produces incorrect results. it is unclear
-  // yet if we need to use f_frsize on Linux as well.
-  auto const factor = static_cast<uint64_t>(stat.f_frsize);
-#else
   auto const factor = static_cast<uint64_t>(stat.f_bsize);
-#endif
 
   totalSpace = factor * static_cast<uint64_t>(stat.f_blocks);
 
