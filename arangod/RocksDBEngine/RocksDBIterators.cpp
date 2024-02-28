@@ -241,8 +241,8 @@ class RocksDBAllIndexIterator final : public IndexIterator {
               ro.iterate_upper_bound = &_upperBound;
             }
             ro.readOwnWrites = static_cast<bool>(canReadOwnWrites());
-#if 0            
             ro.adaptive_readahead = true;
+#if 0            
             ro.async_io = true;
 #endif
           });
