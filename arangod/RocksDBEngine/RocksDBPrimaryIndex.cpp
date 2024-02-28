@@ -533,8 +533,10 @@ class RocksDBPrimaryIndexRangeIterator final : public IndexIterator {
                 options.iterate_upper_bound = &_rangeBound;
               }
             }
+#if 0            
             options.adaptive_readahead = true;
             options.async_io = true;
+#endif
           });
       TRI_ASSERT(_mustSeek);
 
