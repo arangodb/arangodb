@@ -504,9 +504,7 @@ RAM than this threshold value are aborted automatically with error 32
           "The interval for automatic, non-requested disk syncs (in "
           "milliseconds, 0 = turn automatic syncing off)",
           new UInt64Parameter(&_syncInterval),
-          arangodb::options::makeFlags(arangodb::options::Flags::OsLinux,
-                                       arangodb::options::Flags::OsMac,
-                                       arangodb::options::Flags::OnDBServer,
+          arangodb::options::makeFlags(arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
       .setLongDescription(R"(Automatic synchronization of data from RocksDB's
 write-ahead logs to disk is only performed for not-yet synchronized data, and

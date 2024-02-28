@@ -49,9 +49,7 @@ class FileSystemFeature final
 
  private:
   // whether or not to use the splice() syscall on Linux
-#ifdef __linux__
   bool _useSplice = true;
-#endif
 };
 
 }  // namespace arangodb

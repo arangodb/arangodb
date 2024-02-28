@@ -666,22 +666,16 @@ number of cross-page I/O operations.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-#ifdef __linux__
   options->addOption(
       "--rocksdb.use-direct-reads", "Use O_DIRECT for reading files.",
       new BooleanParameter(&_useDirectReads),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-direct-io-for-flush-and-compaction",
       "Use O_DIRECT for writing files for flush and compaction.",
       new BooleanParameter(&_useDirectIoForFlushAndCompaction),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
-#endif
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-fsync",
@@ -1319,7 +1313,6 @@ version.)");
           new BooleanParameter(&_useJemallocAllocator),
           arangodb::options::makeFlags(arangodb::options::Flags::Experimental,
                                        arangodb::options::Flags::Uncommon,
-                                       arangodb::options::Flags::OsLinux,
                                        arangodb::options::Flags::OnAgent,
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
@@ -1560,7 +1553,6 @@ limited number of edge collections/shards/indexes.)");
           "Should be set to false only to opt out of using io_uring.",
           new BooleanParameter(&ioUringEnabled),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon,
-                                       arangodb::options::Flags::OsLinux,
                                        arangodb::options::Flags::OnAgent,
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
