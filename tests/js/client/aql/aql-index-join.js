@@ -1082,10 +1082,10 @@ const IndexJoinTestSuite = function () {
     testLateMaterialized: function () {
       const A = createCollection("A", ["x"]);
       A.ensureIndex({type: "persistent", fields: ["x"]});
-      fillCollection("A", singleAttributeGenerator(20, "x", x => `${x}`));
+      fillCollection("A", singleAttributeGenerator(100, "x", x => `${x}`));
       const B = createCollection("B", ["x"]);
       B.ensureIndex({type: "persistent", fields: ["x"]});
-      fillCollection("B", singleAttributeGenerator(20, "x", x => `${x}`));
+      fillCollection("B", singleAttributeGenerator(100, "x", x => `${x}`));
 
       const query = `
         for doc1 in A
@@ -1095,7 +1095,6 @@ const IndexJoinTestSuite = function () {
             limit 20
             return [doc1.x, doc2]
       `;
-
       const plan = db._createStatement({query, options: queryOptions}).explain().plan;
       const nodes = plan.nodes.map(x => x.type);
 

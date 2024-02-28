@@ -219,8 +219,8 @@ AsyncPrefetchEligibility DocumentProducingNode::canUseAsyncPrefetching()
 bool DocumentProducingNode::recalculateProjections(ExecutionPlan* plan) {
   auto filterProjectionsHash = _filterProjections.hash();
   auto projectionsHash = _projections.hash();
-  TRI_ASSERT(!_projections.hasOutputRegisters());
-  TRI_ASSERT(!_filterProjections.hasOutputRegisters());
+  TRI_ASSERT(!_projections.hasOutputRegisters()) << _projections;
+  TRI_ASSERT(!_filterProjections.hasOutputRegisters()) << _filterProjections;
   _filterProjections.clear();
   _projections.clear();
 

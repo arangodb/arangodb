@@ -134,6 +134,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
         // index does not cover any fields
         continue;
       }
+      if (index->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        // rule can only be applied for inverted indexes
+        continue;
+      }
       auto const* var = indexNode->outVariable();
       std::vector<latematerialized::NodeExpressionWithAttrs> nodesToChange;
       if (indexNode->hasFilter()) {
@@ -340,11 +344,11 @@ void arangodb::aql::lateDocumentMaterializationRule(
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
           if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
             return std::make_unique<materialize::MaterializeSearchNode>(
-                plan.get(), plan->nextId(), *localDocIdTmp, *var);
+                plan.get(), plan->nextId(), *localDocIdTmp, *var, *var);
           }
           return std::make_unique<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), indexNode->collection(),
-              *localDocIdTmp, *var);
+              *localDocIdTmp, *var, *var);
         };
         auto* materializeNode = plan->registerNode(makeMaterializer());
         TRI_ASSERT(materializeNode);

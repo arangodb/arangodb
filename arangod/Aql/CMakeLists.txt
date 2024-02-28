@@ -109,6 +109,7 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRuleBatchMaterializeDocuments.cpp
   OptimizerRulePropagateConstantAttributes.cpp
+  OptimizerRulePushDownLateMaterialization.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp
   OptimizerRulesCluster.cpp
