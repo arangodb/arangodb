@@ -81,6 +81,7 @@ class RocksDBBackgroundThread;
 class RocksDBDumpManager;
 class RocksDBKey;
 class RocksDBLogValue;
+class RocksDBRateLimiterThread;
 class RocksDBRecoveryHelper;
 class RocksDBReplicationManager;
 class RocksDBSettingsManager;
@@ -679,6 +680,8 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
 
   /// @brief whether or not the DB existed at startup
   bool _dbExisted;
+
+  std::shared_ptr<RocksDBRateLimiterThread> _rateLimiter;
 
   // code to pace ingest rate of writes to reduce chances of compactions getting
   // too far behind and blocking incoming writes

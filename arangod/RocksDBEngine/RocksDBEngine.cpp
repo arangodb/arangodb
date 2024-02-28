@@ -100,6 +100,7 @@
 #include "RocksDBEngine/RocksDBLogValue.h"
 #include "RocksDBEngine/RocksDBOptimizerRules.h"
 #include "RocksDBEngine/RocksDBOptionFeature.h"
+#include "RocksDBEngine/RocksDBRateLimiterThread.h"
 #include "RocksDBEngine/RocksDBRecoveryManager.h"
 #include "RocksDBEngine/RocksDBReplicationManager.h"
 #include "RocksDBEngine/RocksDBReplicationTailing.h"
@@ -356,6 +357,11 @@ RocksDBEngine::~RocksDBEngine() {
 void RocksDBEngine::shutdownRocksDBInstance() noexcept {
   if (_db == nullptr) {
     return;
+  }
+
+  if (_rateLimiter != nullptr) {
+    _rateLimiter->beginShutdown();
+    _rateLimiter.reset();
   }
 
   // turn off RocksDBThrottle, and release our pointers to it
@@ -1062,11 +1068,18 @@ void RocksDBEngine::start() {
   }
 
   if (_useThrottle) {
+#if 0    
     _throttleListener = std::make_shared<RocksDBThrottle>(
         _throttleSlots, _throttleFrequency, _throttleScalingFactor,
         _throttleMaxWriteRate, _throttleSlowdownWritesTrigger,
         _throttleLowerBoundBps);
     _dbOptions.listeners.push_back(_throttleListener);
+#endif
+    _rateLimiter = std::make_shared<RocksDBRateLimiterThread>(
+        *this, _throttleSlots, _throttleFrequency, _throttleScalingFactor,
+        _throttleLowerBoundBps, _throttleMaxWriteRate,
+        _throttleSlowdownWritesTrigger);
+    _dbOptions.listeners.push_back(_rateLimiter);
   }
 
   _errorListener = std::make_shared<RocksDBBackgroundErrorListener>();
@@ -1134,9 +1147,15 @@ void RocksDBEngine::start() {
     FATAL_ERROR_EXIT();
   }
 
+#if 0
   // give throttle access to families
   if (_useThrottle) {
     _throttleListener->setFamilies(cfHandles);
+  }
+#endif
+
+  if (_rateLimiter != nullptr) {
+    _rateLimiter->setFamilies(cfHandles);
   }
 
   TRI_ASSERT(_db != nullptr);
@@ -1208,6 +1227,11 @@ void RocksDBEngine::start() {
           << "could not start rocksdb sync thread";
       FATAL_ERROR_EXIT();
     }
+  }
+
+  if (_rateLimiter != nullptr && !_rateLimiter->start()) {
+    LOG_TOPIC("f0bba", ERR, Logger::ENGINES)
+        << "could not start rocksdb rate limiter thread";
   }
 
   TRI_ASSERT(_db != nullptr);
