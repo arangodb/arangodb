@@ -103,7 +103,7 @@ auto DocumentLeaderState::resign() && noexcept
   for (auto const& trx : activeTransactions) {
     auto tid = trx.first.asLeaderTransactionId();
     if (auto abortRes = basics::catchToResult([&]() {
-          return _transactionManager.abortManagedTrx(tid, gid.database);
+          return _transactionManager.abortManagedTrx(tid, gid.database).get();
         });
         abortRes.fail()) {
       LOG_CTX("1b665", WARN, loggerContext)
@@ -228,8 +228,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
       // register tombstones in the trx managers for the leader trx id.
       auto tid = trxId.asLeaderTransactionId();
       if (auto abortRes = basics::catchToResult([&]() {
-            return self->_transactionManager.abortManagedTrx(
-                tid, self->gid.database);
+            return self->_transactionManager
+                .abortManagedTrx(tid, self->gid.database)
+                .get();
           });
           abortRes.fail()) {
         LOG_CTX("462a9", DEBUG, self->loggerContext)
