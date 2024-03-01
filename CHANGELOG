@@ -11,6 +11,9 @@ devel
   - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
   - `--rocksdb.throttle-slots` was changed from 120 to 128.
   - `--rocksdb.throttle-scaling-factor` was changed from 17 to 64.
+  - `--rocksdb.pending-compactions-slowdown-trigger` was changed from 128KB to 1GB.
+  - `--rocksdb.recycle-log-file-num` was changed from 0 to 4.
+  - `--rocksdb.partition-files-for-documents` was changed from false to true.
 
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
