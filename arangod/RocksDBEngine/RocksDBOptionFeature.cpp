@@ -269,8 +269,8 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0StopTrigger(256),
       // pending compactions slowdown trigger is set to 1GB
       _pendingCompactionBytesSlowdownTrigger(1024ULL * 1024ULL * 1024ULL),
-      // pending compactions stop trigger is set to 16GB
-      _pendingCompactionBytesStopTrigger(16ULL * 1024ULL * 1024ULL * 1024ULL),
+      // pending compactions stop trigger is set to 32GB
+      _pendingCompactionBytesStopTrigger(32ULL * 1024ULL * 1024ULL * 1024ULL),
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),

@@ -735,7 +735,13 @@ class RocksDBEngine final : public StorageEngine, public ICompactKeyRange {
   // its job is slow down the rate of change in the current throttle.
   // we do not want sudden changes in one or two intervals to swing
   // the write rate value wildly. the goal is a nice, even value.
-  uint64_t _rateLimiterScalingFactor = 64;
+  // note that the write rate is reduced by applying the reduction
+  // divided by the full scaling factor, and that the write rate is
+  // increased by applying the increase divided by half of the
+  // scaling factor, i.e.
+  // - write_rate = old_write_rate + increase / (scaling_factor / 2)
+  // - write_rate = old_write_rate - decrease / scaling_factor
+  uint64_t _rateLimiterScalingFactor = 192;
   // min write rate enforced by rate limiter
   uint64_t _rateLimiterMinWriteRate = 10 * 1024 * 1024;
   // max write rate enforced by rate limiter (0 = unlimited)
