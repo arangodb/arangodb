@@ -104,11 +104,7 @@ std::string const kBlockCacheTypeLRU = "lru";
 std::string const kBlockCacheTypeHyperClock = "hyper-clock";
 
 std::unordered_set<std::string> const blockCacheTypes = {
-    {kBlockCacheTypeLRU},
-#ifdef ARANGODB_ROCKSDB8
-    {kBlockCacheTypeHyperClock}
-#endif
-};
+    {kBlockCacheTypeLRU}, {kBlockCacheTypeHyperClock}};
 
 // checksum types
 std::string const kChecksumTypeCRC32C = "crc32c";
@@ -254,18 +250,12 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _targetFileSizeMultiplier(rocksDBDefaults.target_file_size_multiplier),
       _blockCacheSize(::defaultBlockCacheSize()),
       _blockCacheShardBits(-1),
-#ifdef ARANGODB_ROCKSDB8
       _blockCacheEstimatedEntryCharge(0),
-#endif
       _minBlobSize(256),
       _blobFileSize(1ULL << 30),
-#ifdef ARANGODB_ROCKSDB8
       _blobFileStartingLevel(0),
-#endif
       _enableBlobFiles(false),
-#ifdef ARANGODB_ROCKSDB8
       _enableBlobCache(false),
-#endif
       _blobGarbageCollectionAgeCutoff(0.25),
       _blobGarbageCollectionForceThreshold(1.0),
       _bloomBitsPerKey(10.0),
@@ -277,8 +267,10 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _level0CompactionTrigger(2),
       _level0SlowdownTrigger(16),
       _level0StopTrigger(256),
-      _pendingCompactionBytesSlowdownTrigger(128 * 1024ull),
-      _pendingCompactionBytesStopTrigger(16 * 1073741824ull),
+      // pending compactions slowdown trigger is set to 1GB
+      _pendingCompactionBytesSlowdownTrigger(1024ULL * 1024ULL * 1024ULL),
+      // pending compactions stop trigger is set to 16GB
+      _pendingCompactionBytesStopTrigger(16ULL * 1024ULL * 1024ULL * 1024ULL),
       // note: this is a default value from RocksDB (db/column_family.cc,
       // kAdjustedTtl):
       _periodicCompactionTtl(30 * 24 * 60 * 60),
@@ -292,7 +284,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _compactionStyle(::kCompactionStyleLevel),
       // stay at format version 5 for now so downgrading back to the older
       // RocksDB 7.2 is possible with the datafiles from the newer version
-      // of RocksDB
+      // of RocksDB. Later go to format version 6
       _formatVersion(5),
       // note: the following option has historically had a default value of
       // false in RocksDB. RocksDB 9.1 changes the default value to true.
@@ -302,9 +294,7 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
           rocksDBTableOptionsDefaults.enable_index_compression),
       _useJemallocAllocator(false),
       _prepopulateBlockCache(false),
-#ifdef ARANGODB_ROCKSDB8
       _prepopulateBlobCache(false),
-#endif
       _reserveTableBuilderMemory(true),
       _reserveTableReaderMemory(true),
       _reserveFileMetadataMemory(true),
@@ -339,7 +329,6 @@ RocksDBOptionFeature::RocksDBOptionFeature(Server& server)
       _partitionFilesForVPackIndexCf(false),
       _partitionFilesForMdiIndexCf(false),
       _maxWriteBufferNumberCf{0, 0, 0, 0, 0, 0, 0, 0, 0, 0} {
-
   if (_totalWriteBufferSize == 0) {
     // unlimited write buffer size... now set to some fraction of physical RAM
     _totalWriteBufferSize = ::defaultTotalWriteBufferSize();
@@ -791,7 +780,6 @@ are stopped to allow compaction to catch up.)");
       .setLongDescription(R"(The recommended value is to set this equal to
 `max-background-flushes`. The default value is `number of processors / 2`.)");
 
-#ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.block-cache-estimated-entry-charge",
                   "The estimated charge of cache entries (in bytes) for the "
@@ -804,9 +792,7 @@ are stopped to allow compaction to catch up.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100 /*adjust when option is enabled*/);
-#endif
 
-#ifdef ARANGODB_ROCKSDB8
   TRI_ASSERT(::blockCacheTypes.contains(_blockCacheType));
   options
       ->addOption("--rocksdb.block-cache-type",
@@ -815,7 +801,6 @@ are stopped to allow compaction to catch up.)");
                   new DiscreteValuesParameter<StringParameter>(
                       &_blockCacheType, ::blockCacheTypes))
       .setIntroducedIn(31100 /*adjust when option is enabled*/);
-#endif
 
   options
       ->addOption(
@@ -1168,7 +1153,6 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
-#ifdef ARANGODB_ROCKSDB8
   options
       ->addOption(
           "--rocksdb.enable-blob-cache",
@@ -1182,7 +1166,6 @@ version.)");
               arangodb::options::Flags::OnDBServer,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100 /*adjust when option is enabled*/);
-#endif
 
   options
       ->addOption("--rocksdb.min-blob-size",
@@ -1211,7 +1194,6 @@ version.)");
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
-#ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.blob-file-starting-level",
                   "The level from which on to use blob files in the documents "
@@ -1224,7 +1206,6 @@ version.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100 /*adjust when option is enabled*/);
-#endif
 
   options
       ->addOption(
@@ -1291,7 +1272,6 @@ version.)");
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100);
 
-#ifdef ARANGODB_ROCKSDB8
   options
       ->addOption("--rocksdb.prepopulate-blob-cache",
                   "Pre-populate the blob cache on flushes.",
@@ -1304,7 +1284,6 @@ version.)");
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31100 /*adjust when option is enabled*/);
-#endif
 
   options
       ->addOption(
@@ -1640,7 +1619,6 @@ void RocksDBOptionFeature::validateOptions(
     }
   }
 
-#ifdef ARANGODB_ROCKSDB8
   if (_blockCacheType == ::kBlockCacheTypeLRU &&
       options->processingResult().touched(
           "--rocksdb.block-cache-estimated-entry-charge")) {
@@ -1648,7 +1626,6 @@ void RocksDBOptionFeature::validateOptions(
         << "Setting value of '--rocksdb.block-cache-estimated-entry-charge' "
            "has no effect when using LRU block cache";
   }
-#endif
 
   if (_enforceBlockCacheSizeLimit && !options->processingResult().touched(
                                          "--rocksdb.block-cache-shard-bits")) {
@@ -1703,11 +1680,6 @@ void RocksDBOptionFeature::prepare() {
   }
 
   if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
-#ifndef ARANGODB_ROCKSDB8
-    // cannot be reached with RocksDB 7.2
-    ADB_PROD_ASSERT(false);
-#endif
-
     LOG_TOPIC("26f64", WARN, Logger::ENGINES)
         << "using block cache type 'hyper-clock' is experimental and not "
            "supported for production usage";
@@ -1784,10 +1756,8 @@ void RocksDBOptionFeature::start() {
       << ", use_jemalloc_allocator: " << _useJemallocAllocator
       << ", block_cache_size: " << _blockCacheSize
       << ", block_cache_shard_bits: " << _blockCacheShardBits
-#ifdef ARANGODB_ROCKSDB8
       << ", block_cache_estimated_entry_charge: "
       << _blockCacheEstimatedEntryCharge
-#endif
       << ", block_cache_strict_capacity_limit: " << std::boolalpha
       << _enforceBlockCacheSizeLimit
       << ", cache_index_and_filter_blocks: " << std::boolalpha
@@ -1807,14 +1777,10 @@ void RocksDBOptionFeature::start() {
       << ", format_version: " << _formatVersion
       << ", bloom_bits_per_key: " << _bloomBitsPerKey
       << ", enable_blob_files: " << std::boolalpha << _enableBlobFiles
-#ifdef ARANGODB_ROCKSDB8
       << ", enable_blob_cache: " << std::boolalpha << _enableBlobCache
-#endif
       << ", min_blob_size: " << _minBlobSize
       << ", blob_file_size: " << _blobFileSize
-#ifdef ARANGODB_ROCKSDB8
       << ", blob_file_starting_level: " << _blobFileStartingLevel
-#endif
       << ", blob_compression type: " << _blobCompressionType
       << ", enable_blob_garbage_collection: " << std::boolalpha
       << _enableBlobGarbageCollection
@@ -1822,9 +1788,7 @@ void RocksDBOptionFeature::start() {
       << _blobGarbageCollectionAgeCutoff
       << ", blob_garbage_collection_force_threshold: "
       << _blobGarbageCollectionForceThreshold
-#ifdef ARANGODB_ROCKSDB8
       << ", prepopulate_blob_cache: " << std::boolalpha << _prepopulateBlobCache
-#endif
       << ", enable_index_compression: " << std::boolalpha
       << _enableIndexCompression
       << ", prepopulate_block_cache: " << std::boolalpha
@@ -2045,7 +2009,6 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       opts.memory_allocator = allocator;
 
       result.block_cache = rocksdb::NewLRUCache(opts);
-#ifdef ARANGODB_ROCKSDB8
     } else if (_blockCacheType == ::kBlockCacheTypeHyperClock) {
       rocksdb::HyperClockCacheOptions opts(
           _blockCacheSize, _blockCacheEstimatedEntryCharge,
@@ -2053,7 +2016,6 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
           allocator);
 
       result.block_cache = opts.MakeSharedCache();
-#endif
     } else {
       TRI_ASSERT(false);
     }
@@ -2079,7 +2041,6 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
       _prepopulateBlockCache
           ? rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kFlushOnly
           : rocksdb::BlockBasedTableOptions::PrepopulateBlockCache::kDisable;
-#ifdef ARANGODB_ROCKSDB8
   result.cache_usage_options.options_overrides.insert(
       {rocksdb::CacheEntryRole::kFilterConstruction,
        {/*.charged = */ _reserveTableBuilderMemory
@@ -2095,10 +2056,6 @@ rocksdb::BlockBasedTableOptions RocksDBOptionFeature::doGetTableOptions()
        {/*.charged = */ _reserveFileMetadataMemory
             ? rocksdb::CacheEntryRoleOptions::Decision::kEnabled
             : rocksdb::CacheEntryRoleOptions::Decision::kDisabled}});
-#else
-  result.reserve_table_builder_memory = _reserveTableBuilderMemory;
-  result.reserve_table_reader_memory = _reserveTableReaderMemory;
-#endif
 
   result.block_align = _blockAlignDataBlocks;
 
@@ -2134,7 +2091,6 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
     result.blob_garbage_collection_age_cutoff = _blobGarbageCollectionAgeCutoff;
     result.blob_garbage_collection_force_threshold =
         _blobGarbageCollectionForceThreshold;
-#ifdef ARANGODB_ROCKSDB8
     result.blob_file_starting_level = _blobFileStartingLevel;
     result.prepopulate_blob_cache =
         _prepopulateBlobCache ? rocksdb::PrepopulateBlobCache::kFlushOnly
@@ -2143,7 +2099,6 @@ rocksdb::ColumnFamilyOptions RocksDBOptionFeature::getColumnFamilyOptions(
       // use whatever block cache we use for blobs as well
       result.blob_cache = getTableOptions().block_cache;
     }
-#endif
     if (_partitionFilesForDocumentsCf) {
       // partition .sst files by object id prefix
       result.sst_partitioner_factory =

@@ -53,15 +53,13 @@ thread_local std::chrono::steady_clock::time_point flushStart =
 
 RocksDBRateLimiterThread::RocksDBRateLimiterThread(
     RocksDBEngine& engine, uint64_t numSlots, uint64_t frequency,
-    uint64_t scalingFactor, uint64_t minWriteRate, uint64_t maxWriteRate,
-    uint64_t slowdownWritesTrigger)
+    uint64_t scalingFactor, uint64_t minWriteRate, uint64_t maxWriteRate)
     : Thread(engine.server(), "RocksDBRateLimiter"),
       _engine(engine),
       _db(nullptr),
       _numSlots(numSlots),
       _frequency(frequency),
       _scalingFactor(scalingFactor),
-      _slowdownWritesTrigger(slowdownWritesTrigger),
       _minWriteRate(minWriteRate),
       _maxWriteRate(maxWriteRate),
       _currentRate(0),
@@ -79,7 +77,7 @@ RocksDBRateLimiterThread::RocksDBRateLimiterThread(
 RocksDBRateLimiterThread::~RocksDBRateLimiterThread() { shutdown(); }
 
 void RocksDBRateLimiterThread::OnFlushBegin(
-    rocksdb::DB* db, rocksdb::FlushJobInfo const& flush_job_info) {
+    rocksdb::DB* /*db*/, rocksdb::FlushJobInfo const& /*flush_job_info*/) {
   // save start time in thread-local storage
   ::flushStart = std::chrono::steady_clock::now();
 }
@@ -99,24 +97,58 @@ void RocksDBRateLimiterThread::OnFlushCompleted(
     flushSize += blob.total_blob_bytes;
   }
 
+  LOG_TOPIC("09fd4", TRACE, Logger::ENGINES)
+      << "rocksdb flush completed. flush size: " << flushSize
+      << ", micros: " << flushTime.count();
+
   // update values in current history slot
   std::lock_guard<std::mutex> guard{_mutex};
-  TRI_ASSERT(_currentHistoryIndex < _history.size());
-  _history[_currentHistoryIndex].first += flushSize;
-  _history[_currentHistoryIndex].second += flushTime;
-
-  LOG_DEVEL << "FLUSH COMPLETED. " << flushSize
-            << ", TIME: " << flushTime.count()
-            << ", INDEX: " << _currentHistoryIndex;
+  size_t currentHistoryIndex = actualHistoryIndex();
+  TRI_ASSERT(currentHistoryIndex < _history.size());
+  _history[currentHistoryIndex].totalBytes += flushSize;
+  _history[currentHistoryIndex].totalTime += flushTime;
+  // intentionally do not adjust compaction debt here.
+  // the compaction debt is stored only at the end of every
+  // interval, querying the value from a RocksDB metric.
 }
 
 void RocksDBRateLimiterThread::OnCompactionCompleted(
-    rocksdb::DB* db, rocksdb::CompactionJobInfo const& ci) {}
+    rocksdb::DB* db, rocksdb::CompactionJobInfo const& ci) {
+  uint64_t rate = _currentRate.load(std::memory_order_relaxed);
+  if (rate < _minWriteRate) {
+    // rate was not yet set. let RocksDB figure out the initial write rates
+    return;
+  }
+  // after a compaction has finished, set the write rate in RocksDB again.
+  // this is necessary because RocksDB overrides the write rate we are
+  // setting from the outside with its own values.
+
+  // must acquire mutex here to avoid races in _db member in setRateInRocksDB
+  std::unique_lock guard{_mutex};
+  setRateInRocksDB(rate, "compaction completed");
+}
+
+void RocksDBRateLimiterThread::OnStallConditionsChanged(
+    rocksdb::WriteStallInfo const& /*info*/) {
+  uint64_t rate = _currentRate.load(std::memory_order_relaxed);
+  if (rate < _minWriteRate) {
+    // rate was not yet set. let RocksDB figure out the initial write rates
+    return;
+  }
+  // after stall conditions changed, set the write rate in RocksDB again.
+  // this is necessary because RocksDB overrides the write rate we are
+  // setting from the outside with its own values.
+
+  // must acquire mutex here to avoid races in _db member in setRateInRocksDB
+  std::unique_lock guard{_mutex};
+  setRateInRocksDB(rate, "stall conditions changed");
+}
 
 void RocksDBRateLimiterThread::beginShutdown() {
   Thread::beginShutdown();
 
   std::lock_guard guard{_mutex};
+  _delayToken.reset();
   _cv.notify_all();
 }
 
@@ -129,33 +161,58 @@ void RocksDBRateLimiterThread::run() {
       // initialized properly
       if (!_engine.inRecovery() && !_families.empty()) {
         TRI_ASSERT(_db != nullptr);
+        size_t currentHistoryIndex = actualHistoryIndex();
+
+        // set the compaction debt value once for the current slot, using the
+        // metrics provided by RocksDB. these include compaction debt for all
+        // column families combined, including files on level 0.
+        TRI_ASSERT(_history[currentHistoryIndex].compactionDebt == 0);
+        _history[currentHistoryIndex].compactionDebt =
+            computePendingCompactionBytes();
 
         // sum up all recorded values from history
         uint64_t totalSize = 0;
         std::chrono::microseconds totalTime{};
+        uint64_t totalCompactionDebt = 0;
         size_t filledSlots = 0;
+        size_t compactionSlots = 0;
 
         for (auto const& it : _history) {
-          if (it.first > 0) {
-            totalSize += it.first;
-            totalTime += it.second;
+          if (it.totalBytes > 0) {
+            // take all slots into account in which flushes happened.
+            totalSize += it.totalBytes;
+            totalTime += it.totalTime;
             ++filledSlots;
           }
+
+          // use compaction debt values from every slot, including those
+          // for which there was not compaction debt. we will calculate an
+          // average over the compaction debt in all slots, because the
+          // compaction metrics produced by RocksDB is very volatile.
+          totalCompactionDebt += it.compactionDebt;
+          ++compactionSlots;
         }
 
-        // if we have too few data points (e.g. less than 3), it is not good
-        // to use an average. only do the averaging and adjust the write rate
-        // in case enough things happened and we have enough data to do the
-        // averages.
+        // if we have too few data points (e.g. less than 3) with flushes,
+        // it is not good to use an average. only do the averaging and adjust
+        // the write rate in case enough writes happened and we have enough
+        // data to do the averages.
         if (filledSlots >= 3) {
           auto tc = totalTime.count();
           TRI_ASSERT(tc > 0);
 
+          // target write rate based only on how much data was flushed.
           uint64_t targetRate = (totalSize * 1'000'000) / tc;
 
-          uint64_t pendingCompactionBytes = computePendingCompactionBytes();
+          // calculate average compaction debt, averaging the compaction debt
+          // metrics from RocksDB over the entire history.
+          uint64_t pendingCompactionBytes = 0;
+          if (compactionSlots > 0) {
+            pendingCompactionBytes = totalCompactionDebt / compactionSlots;
+          }
 
           auto internalRocksDB = dynamic_cast<rocksdb::DBImpl*>(_db);
+          TRI_ASSERT(internalRocksDB != nullptr);
 
           double percentReached = 0.0;
           if (uint64_t compactionHardLimit =
@@ -167,55 +224,78 @@ void RocksDBRateLimiterThread::run() {
             // use it to slow down the writes.
             uint64_t threshold = compactionHardLimit / 4;
             if (pendingCompactionBytes > threshold) {
-              // we are above the threshold, so penalize writes with compaction
-              // debt
-              percentReached =
+              // we are above the threshold, so penalize writes so that
+              // compaction can keep up long-term. the closer we are to the stop
+              // trigger, the more we will subtract from the target write rate.
+              percentReached = std::min<double>(
+                  0.99,
                   static_cast<double>(pendingCompactionBytes - threshold) /
-                  static_cast<double>(compactionHardLimit - threshold);
-              targetRate -= (1.0 - percentReached) * targetRate;
+                      static_cast<double>(compactionHardLimit - threshold));
+              targetRate -= percentReached * targetRate;
             }
           }
 
+          // fetch our old write rate
           uint64_t oldRate = _currentRate.load(std::memory_order_relaxed);
+          // calculate the new write rate. to reduce volatility, the new
+          // write rate will be based on the old write rate, and the
+          // difference between target write rate and old write rate is
+          // only applied gradually (using a scaling factor). the larger
+          // the scaling factor is, the smoother the write rate adjustments
+          // will be, but the slower the reaction to changes will be.
           uint64_t newRate = std::invoke([&]() {
             if (oldRate == 0) {
+              // never had a write rate set. use our initially calculated
+              // target write rate as the starting point.
               return targetRate;
             }
             if (targetRate > oldRate) {
-              return oldRate + (targetRate - oldRate) / _scalingFactor;
+              // increase write rate. for this used a reduced scaling factor
+              // (scaling factor / 2), so that increases in the write rate
+              // will be propagated more quickly than reductions.
+              return oldRate + (targetRate - oldRate) / (_scalingFactor / 2);
             } else {
+              // decreate write rate. for this use the original scaling factor.
               return oldRate - (oldRate - targetRate) / _scalingFactor;
             }
           });
 
+          // write rate must always be between configured minimum and maximum
+          // write rates.
           newRate = std::clamp(newRate, _minWriteRate, _maxWriteRate);
 
-          LOG_DEVEL << "TOTAL BYTES: " << totalSize
-                    << ", TARGET: " << targetRate << ", OLD: " << oldRate
-                    << ", NEW: " << newRate << ", DIFF: " << (newRate - oldRate)
-                    << ", PENDING COMPACTION: " << pendingCompactionBytes
-                    << " (" << (percentReached * 100.0) << "%)";
+          LOG_TOPIC("37e36", INFO, Logger::ENGINES)
+              << "rocksdb rate limiter total bytes flushed: " << totalSize
+              << ", total micros: " << tc << ", target rate: " << targetRate
+              << ", old rate: " << oldRate << ", new rate: " << newRate
+              << ", rate diff: " << (int64_t(newRate) - int64_t(oldRate))
+              << ", current compaction debt: "
+              << _history[currentHistoryIndex].compactionDebt
+              << ", average compaction debt: "
+              << (compactionSlots > 0 ? (totalCompactionDebt / compactionSlots)
+                                      : 0)
+              << ", compaction stop trigger percent reached: "
+              << (percentReached * 100.0) << "%";
 
           // update global rate
           _currentRate.store(newRate, std::memory_order_relaxed);
 
-          // adjust value in RocksDB
-          // execute this under RocksDB's DB mutex
-          rocksdb::InstrumentedMutexLock db_mutex(internalRocksDB->mutex());
-          auto& writeController = const_cast<rocksdb::WriteController&>(
-              internalRocksDB->write_controller());
-          if (writeController.max_delayed_write_rate() < newRate) {
-            writeController.set_max_delayed_write_rate(newRate);
+          setRateInRocksDB(newRate, "rate limiter calculation");
+          if (_delayToken == nullptr) {
+            _delayToken =
+                ((rocksdb::WriteController&)internalRocksDB->write_controller())
+                    .GetDelayToken(newRate);
           }
-          writeController.set_delayed_write_rate(newRate);
         }
 
-        // bump current history index and check for index overflow
-        if (++_currentHistoryIndex >= _history.size()) {
-          _currentHistoryIndex = 0;
-        }
-        // and clear current entry for all things to come
-        _history[_currentHistoryIndex] = {};
+        // bump current history index. it is fine if this counter is larger than
+        // the history size or even if it overflows.
+        ++_currentHistoryIndex;
+        currentHistoryIndex = actualHistoryIndex();
+
+        // reset current slot for all things to come
+        _history[currentHistoryIndex] = {
+            .compactionDebt = 0, .totalBytes = 0, .totalTime = {}};
       }
 
       // wait until we are woken up
@@ -225,10 +305,17 @@ void RocksDBRateLimiterThread::run() {
           << "caught exception in rocksdb rate limiter thread: " << ex.what();
     }
   }
+
+  std::unique_lock guard{_mutex};
+  _delayToken.reset();
 }
 
 uint64_t RocksDBRateLimiterThread::currentRate() const noexcept {
   return _currentRate.load(std::memory_order_relaxed);
+}
+
+size_t RocksDBRateLimiterThread::actualHistoryIndex() const noexcept {
+  return _currentHistoryIndex % _history.size();
 }
 
 void RocksDBRateLimiterThread::setFamilies(
@@ -247,13 +334,42 @@ uint64_t RocksDBRateLimiterThread::computePendingCompactionBytes() const {
   TRI_ASSERT(_db != nullptr);
   int64_t pendingCompactionBytes = 0;
 
+  // sum up the estimated compaction bytes for all column families.
+  // the estimated compaction bytes in RocksDB are calculated when RocksDB
+  // installs a new version (i.e. the set of .sst files changes).
+  // the calculated value includes files on all levels, including level 0.
   std::string result;
   for (auto const& cf : _families) {
     if (_db->GetProperty(
             cf, rocksdb::DB::Properties::kEstimatePendingCompactionBytes,
             &result)) {
-      pendingCompactionBytes += std::stoll(result);
+      try {
+        pendingCompactionBytes += std::stoll(result);
+      } catch (...) {
+        // in theory, std::stoll can throw
+      }
     }
   }
   return pendingCompactionBytes;
+}
+
+void RocksDBRateLimiterThread::setRateInRocksDB(uint64_t rate,
+                                                std::string_view /*context*/) {
+  // must be called with the mutex held.
+  // note: context currently has no purpose, but can be used for manual
+  // debugging
+  if (_db == nullptr || rate < _minWriteRate) {
+    return;
+  }
+  auto internalRocksDB = dynamic_cast<rocksdb::DBImpl*>(_db);
+  // adjust write rate value in RocksDB. execute this under RocksDB's DB mutex.
+  // these parts of RocksDB are normally not exposed publicly, so this is
+  // quite a hack.
+  rocksdb::InstrumentedMutexLock db_mutex(internalRocksDB->mutex());
+  auto& writeController = const_cast<rocksdb::WriteController&>(
+      internalRocksDB->write_controller());
+  if (writeController.max_delayed_write_rate() < rate) {
+    writeController.set_max_delayed_write_rate(rate);
+  }
+  writeController.set_delayed_write_rate(rate);
 }

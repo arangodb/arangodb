@@ -31,7 +31,9 @@
 #include <chrono>
 #include <condition_variable>
 #include <cstdint>
+#include <memory>
 #include <mutex>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -40,6 +42,7 @@ class DB;
 class ColumnFamilyHandle;
 struct CompactionJobInfo;
 struct FlushJobInfo;
+class WriteControllerToken;
 }  // namespace rocksdb
 
 namespace arangodb {
@@ -50,8 +53,7 @@ class RocksDBRateLimiterThread final : public Thread,
  public:
   RocksDBRateLimiterThread(RocksDBEngine& engine, uint64_t numSlots,
                            uint64_t frequency, uint64_t scalingFactor,
-                           uint64_t minWriteRate, uint64_t maxWriteRate,
-                           uint64_t slowdownWritesTrigger);
+                           uint64_t minWriteRate, uint64_t maxWriteRate);
   ~RocksDBRateLimiterThread();
 
   uint64_t currentRate() const noexcept;
@@ -64,7 +66,10 @@ class RocksDBRateLimiterThread final : public Thread,
                         rocksdb::FlushJobInfo const& flush_job_info) override;
 
   void OnCompactionCompleted(rocksdb::DB* db,
-                             rocksdb::CompactionJobInfo const& ci) override;
+                             rocksdb::CompactionJobInfo const& /*ci*/) override;
+
+  void OnStallConditionsChanged(
+      rocksdb::WriteStallInfo const& /*info*/) override;
 
   void beginShutdown() override;
 
@@ -75,6 +80,10 @@ class RocksDBRateLimiterThread final : public Thread,
 
  private:
   uint64_t computePendingCompactionBytes() const;
+  // must be called with _mutex held
+  size_t actualHistoryIndex() const noexcept;
+  // must be called with _mutex held
+  void setRateInRocksDB(uint64_t rate, std::string_view context);
 
   RocksDBEngine& _engine;
 
@@ -85,7 +94,6 @@ class RocksDBRateLimiterThread final : public Thread,
   uint64_t _numSlots;
   uint64_t _frequency;  // provided in ms
   uint64_t _scalingFactor;
-  uint64_t _slowdownWritesTrigger;
   uint64_t _minWriteRate;
   uint64_t _maxWriteRate;
 
@@ -95,7 +103,19 @@ class RocksDBRateLimiterThread final : public Thread,
   std::condition_variable _cv;
 
   // protected by _mutex
-  std::vector<std::pair<uint64_t, std::chrono::microseconds>> _history;
+  struct HistoryEntry {
+    uint64_t compactionDebt{0};
+    uint64_t totalBytes{0};
+    std::chrono::microseconds totalTime{};
+  };
+  std::vector<HistoryEntry> _history;
+  // current rate limiting round. will start at 0 and will increase until
+  // overflow. do not use it to access entries inside _history, as this will
+  // produce out-of-bounds-accesses. instead use actualHistoryIndex() to
+  // access the history items inside the valid range
   size_t _currentHistoryIndex;
+
+  // protected by _mutex
+  std::unique_ptr<rocksdb::WriteControllerToken> _delayToken;
 };
 }  // namespace arangodb
