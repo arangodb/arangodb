@@ -7,9 +7,13 @@ devel
   adjusted as well:
 
   - `--rocksdb.compaction-read-ahead-size` was changed from 2MB to 8MB.
-  - `--rocksdb.format-version` was changed from 5 to 6.
   - `--rocksdb.max-subcompactions` was changed from 2 to 4.
   - `--rocksdb.max-total-wal-size` was changed from 80MB to 256MB.
+  - `--rocksdb.throttle-slots` was changed from 120 to 128.
+  - `--rocksdb.throttle-scaling-factor` was changed from 17 to 64.
+
+  The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
+  obsoleted.
 
 
 3.12.0-alpha.1 (XXXX-XX-XX)
