@@ -375,11 +375,11 @@ struct OptimizerRule {
     lateMaterialiationOffsetInfoRule,
 #endif
 
-    pushDownLateMaterialization,
-
     // replace adjacent index nodes with a join node if the indexes qualify
     // for it.
     joinIndexNodesRule,
+
+    pushDownLateMaterialization,
 
     // introduce a new out variable for late materialization blocks
     materializeIntoSeparateVariable,
