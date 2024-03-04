@@ -381,6 +381,22 @@ void addTernaryConditionsIfPresent(Parser* parser) {
   }
 }
 
+void insertTernaryConditionVariable(Parser* parser, AstNode* condition, YYLTYPE const& yylloc) {
+  std::string variableName = parser->ast()->variables()->nextName();
+  AstNode* conditionNode = parser->ast()->createNodeLet(variableName.data(), variableName.size(), condition, false);
+  parser->ast()->addOperation(conditionNode);
+  
+  auto variable = parser->ast()->scopes()->getVariable(variableName, false);
+
+  if (variable == nullptr) {
+    // variable does not exist
+    parser->registerParseError(TRI_ERROR_INTERNAL, "use of unknown variable '%s' in ternary operator", variableName, yylloc.first_line, yylloc.first_column);
+  }
+
+  AstNode* reference = parser->ast()->createNodeReference(variable);
+  parser->pushTernaryCondition(reference);
+}
+
 } // namespace
 
 %}
@@ -1805,7 +1821,7 @@ operator_binary:
 
 operator_ternary:
     expression T_QUESTION {
-      parser->pushTernaryCondition($1);
+      insertTernaryConditionVariable(parser, $1, yylloc);
     } expression T_COLON {
       // get condition for true part of ternary operator and remove it from the stack
       AstNode* condition = parser->popTernaryCondition();
@@ -1820,7 +1836,7 @@ operator_ternary:
       parser->popTernaryCondition();
     }
   | expression T_QUESTION {
-      parser->pushTernaryCondition($1);
+      insertTernaryConditionVariable(parser, $1, yylloc);
     } T_COLON expression {
       $$ = parser->ast()->createNodeTernaryOperator($1, $5);
       parser->popTernaryCondition();
