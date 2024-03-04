@@ -325,10 +325,10 @@ jobs:
       - run:
           name: Create Docker Image
           command: |
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
             cd scripts/docker/deploy
             mkdir install
             tar -xzf ../../../install.tar.gz -C install
-            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
             curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
             # TODO
             #  - download rclone
