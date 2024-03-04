@@ -3,6 +3,8 @@
 
 * FE-436: rename `multi_delimiter` analyzer property to `delimiters` on web UI.
 
+* Updated ArangoDB Starter to v0.18.3-preview-2.
+
 * FE-424: Adjusted Foxx service install button placement.
 
 * Add startup progress reporting for RocksDB .sst file checksum computation.
@@ -10,8 +12,6 @@
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.
-
-* Updated ArangoDB Starter to v0.18.2.
 
 * Updated rclone to v1.65.2 (built with go1.21.6).
 
