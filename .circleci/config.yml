@@ -58,6 +58,7 @@ jobs:
   generate-config:
     docker:
       - image: cimg/python:3.11.1
+    resource_class: small
     executor: continuation/default
     parameters:
       definitions:
@@ -81,17 +82,28 @@ jobs:
           name: Determine enterprise branch
           command: |
             ssh-keyscan github.com >> ~/.ssh/known_hosts
-            if ["" == ""]; then
+            if [ "<< pipeline.parameters.enterprise-branch >>" == "" ]; then
               set +e
+              DEFAULT_ENTERPRISE_BRANCH=`curl -s https://api.github.com/repos/arangodb/arangodb/commits/$CIRCLE_SHA1/pulls | jq -e -r ".[0].base.ref"`
+              if [ "$?" == "0" ] ; then
+                echo "Found associated PR, using base branch '$DEFAULT_ENTERPRISE_BRANCH' as default enterprise branch"
+              elif [[ "$CIRCLE_BRANCH" =~ ^[0-9]+\.[0-9]+(\.[0-9]+)$ ]]; then
+                echo "Building for release branch '$CIRCLE_BRANCH' - using that als default enterprise branch"
+                DEFAULT_ENTERPRISE_BRANCH=$CIRCLE_BRANCH
+              else
+                echo "Did not find associated PR, falling back to '<< parameters.default-enterprise-branch >>' as default enterprise branch"
+                DEFAULT_ENTERPRISE_BRANCH=<< parameters.default-enterprise-branch >>
+              fi
+
               git ls-remote --exit-code --heads git@github.com:arangodb/enterprise.git "$CIRCLE_BRANCH"
               if [ "$?" == "0" ] ; then
                 ENTERPRISE_BRANCH=$CIRCLE_BRANCH
               else
-                ENTERPRISE_BRANCH=devel
+                ENTERPRISE_BRANCH=$DEFAULT_ENTERPRISE_BRANCH
               fi
               set -e
             else
-              ENTERPRISE_BRANCH=
+              ENTERPRISE_BRANCH=<< pipeline.parameters.enterprise-branch >>
             fi
             ENTERPRISE_COMMIT=`git ls-remote --heads git@github.com:arangodb/enterprise.git $ENTERPRISE_BRANCH | cut -f1`
             echo "Using enterprise branch $ENTERPRISE_BRANCH (sha $ENTERPRISE_COMMIT)"
