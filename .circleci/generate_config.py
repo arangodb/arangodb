@@ -4,6 +4,7 @@ from collections import namedtuple
 from datetime import date
 import argparse
 import os
+import re
 import sys
 import traceback
 import yaml
@@ -388,6 +389,10 @@ def add_create_docker_image_job(workflow, build_config, build_job, args):
         else "arangodb/arangodb-test"
     )
     branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
+    match = re.fullmatch("(.+\/)?(.+)", branch)
+    if match:
+        branch = match.group(2)
+
     sha1 = os.environ.get("CIRCLE_SHA1")
     if sha1 is None:
         sha1 = "unknown-sha1"
