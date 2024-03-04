@@ -136,6 +136,15 @@ class Parser {
   /// @brief peek at a temporary value from the parser's stack
   void* peekStack();
 
+  /// @brief push a ternary condition onto the stack
+  void pushTernaryCondition(AstNode* node);
+
+  /// @brief pop a ternary condition from the stack
+  AstNode* popTernaryCondition();
+
+  /// @brief return a view of the current ternary conditions
+  std::vector<AstNode*> const& peekTernaryConditions();
+
  private:
   /// @brief a pointer to the start of the query string
   QueryString const& queryString() const { return _queryString; }
@@ -168,6 +177,9 @@ class Parser {
 
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
+
+  /// @brief stack of the ternary operator conditions currently active
+  std::vector<AstNode*> _ternaryConditions;
 };
 }  // namespace aql
 }  // namespace arangodb

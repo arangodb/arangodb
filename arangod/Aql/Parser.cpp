@@ -238,3 +238,19 @@ void* Parser::peekStack() {
 
   return _stack.back();
 }
+
+void Parser::pushTernaryCondition(AstNode* node) {
+  _ternaryConditions.push_back(node);
+}
+
+AstNode* Parser::popTernaryCondition() {
+  TRI_ASSERT(!_ternaryConditions.empty());
+
+  AstNode* result = _ternaryConditions.back();
+  _ternaryConditions.pop_back();
+  return result;
+}
+
+std::vector<AstNode*> const& Parser::peekTernaryConditions() {
+  return _ternaryConditions;
+}

@@ -266,7 +266,6 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
   return true;
 }
 
-
 /// @brief validate the WINDOW specification
 bool validateWindowSpec(Parser* parser, AstNode const* spec,
                         int line, int column) {
@@ -364,6 +363,22 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
     wrapperNode->addMember(variableNode);
   }
   return wrapperNode;
+}
+
+void addTernaryConditionsIfPresent(Parser* parser) {
+  AstNode* filterCondition = nullptr;
+  for (auto const& it : parser->peekTernaryConditions()) {
+    if (filterCondition == nullptr) {
+      filterCondition = it;
+    } else {
+      filterCondition = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, filterCondition, it);
+    }
+  }
+       
+  if (filterCondition != nullptr) {
+    auto node = parser->ast()->createNodeFilter(filterCondition);
+    parser->ast()->addOperation(node);
+  }
 }
 
 } // namespace
@@ -1789,11 +1804,26 @@ operator_binary:
   ;
 
 operator_ternary:
-    expression T_QUESTION expression T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
+    expression T_QUESTION {
+      parser->pushTernaryCondition($1);
+    } expression T_COLON {
+      // get condition for true part of ternary operator and remove it from the stack
+      AstNode* condition = parser->popTernaryCondition();
+      if (condition != nullptr) {
+        // negate the condition and push the negated version onto the stack
+        condition = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, condition);
+        parser->pushTernaryCondition(condition);
+      }
+    } expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $4, $7);
+      // clean up the ternary condition
+      parser->popTernaryCondition();
     }
-  | expression T_QUESTION T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $4);
+  | expression T_QUESTION {
+      parser->pushTernaryCondition($1);
+    } T_COLON expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $5);
+      parser->popTernaryCondition();
     }
   ;
 
@@ -1811,6 +1841,8 @@ expression_or_query:
   | {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
+
+      addTernaryConditionsIfPresent(parser);
     } query {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2197,6 +2229,8 @@ reference:
   | T_OPEN {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
+      
+      addTernaryConditionsIfPresent(parser);
     } query T_CLOSE {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
