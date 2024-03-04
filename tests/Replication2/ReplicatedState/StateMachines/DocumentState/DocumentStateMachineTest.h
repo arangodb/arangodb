@@ -96,8 +96,10 @@ struct DocumentStateMachineTest : testing::Test {
       TRI_voc_document_operation_e op = TRI_VOC_DOCUMENT_OPERATION_INSERT) {
     using namespace replicated_state::document;
 
-    return DocumentLogEntry{ReplicatedOperation::buildDocumentOperation(
-        op, TransactionId{tid}, shardId, velocypack::SharedSlice(), "root")};
+    return DocumentLogEntry{
+        ReplicatedOperation{ReplicatedOperation::buildDocumentOperation(
+            op, TransactionId{tid}, shardId, velocypack::SharedSlice(),
+            "root")}};
   }
 
   auto createRealTransactionHandler()

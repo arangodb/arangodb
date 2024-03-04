@@ -229,14 +229,9 @@ auto DocumentLeaderState::recoverEntries(std::unique_ptr<EntryIterator> ptr)
                     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                                    msg.str());
                   }
-                  // all entries until here have already been applied; there are
-                  // no open transactions; it is safe to increase the lowest
-                  // safe index now. Then we can create the index.
-                  increaseAndPersistLowestSafeIndexForReplayTo(
-                      self->loggerContext,
-                      lowestSafeIndexesForReplayGuard.get(), *self->getStream(),
-                      op.shard, idx);
-                  return data.transactionHandler->applyEntry(op);
+                  return data.transactionHandler->applyEntry(
+                      op, idx, lowestSafeIndexesForReplayGuard.get(),
+                      *self->getStream());
                 },
                 [&](auto const& op) {
                   return data.transactionHandler->applyEntry(op);

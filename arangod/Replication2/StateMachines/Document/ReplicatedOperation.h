@@ -32,15 +32,15 @@
 
 namespace arangodb::replication2::replicated_state::document {
 
+template<typename T, typename... U>
+concept IsAnyOf = (std::same_as<T, U> || ...);
+
 /*
  * When a log entry is received, the ReplicatedOperation tells the state machine
  * what it has to do (i.e. start a transaction, drop a shard, ...).
  */
 struct ReplicatedOperation {
   ReplicatedOperation() = default;
-
-  explicit ReplicatedOperation(auto operation)
-      : ReplicatedOperation(std::in_place, operation) {}
 
   struct DocumentOperation {
     TransactionId tid;
@@ -62,8 +62,8 @@ struct ReplicatedOperation {
 
     explicit DocumentOperation(TransactionId tid, ShardID shard,
                                velocypack::SharedSlice payload,
-                               std::optional<Options> options,
-                               std::string_view userName);
+                               std::string_view userName,
+                               std::optional<Options> options = std::nullopt);
 
     friend auto operator==(DocumentOperation const& a,
                            DocumentOperation const& b) -> bool {
@@ -155,7 +155,10 @@ struct ReplicatedOperation {
         -> bool = default;
   };
 
-  struct Insert : DocumentOperation {};
+  struct Insert : DocumentOperation {
+    using DocumentOperation::DocumentOperation;
+    Insert(DocumentOperation op) : DocumentOperation(std::move(op)) {}
+  };
 
   struct Update : DocumentOperation {};
 
@@ -163,12 +166,42 @@ struct ReplicatedOperation {
 
   struct Remove : DocumentOperation {};
 
- public:
+  template<typename Op>
+  requires IsAnyOf<std::remove_cvref_t<Op>,                  //
+                   ReplicatedOperation::AbortAllOngoingTrx,  //
+                   ReplicatedOperation::Commit,              //
+                   ReplicatedOperation::IntermediateCommit,  //
+                   ReplicatedOperation::Abort,               //
+                   ReplicatedOperation::Truncate,            //
+                   ReplicatedOperation::CreateShard,         //
+                   ReplicatedOperation::ModifyShard,         //
+                   ReplicatedOperation::DropShard,           //
+                   ReplicatedOperation::CreateIndex,         //
+                   ReplicatedOperation::DropIndex,           //
+                   ReplicatedOperation::Insert,              //
+                   ReplicatedOperation::Update,              //
+                   ReplicatedOperation::Replace,             //
+                   ReplicatedOperation::Remove>
+  explicit ReplicatedOperation(Op operation)
+      : ReplicatedOperation(std::in_place, operation) {}
+
   using OperationType =
       std::variant<AbortAllOngoingTrx, Commit, IntermediateCommit, Abort,
                    Truncate, CreateShard, ModifyShard, DropShard, CreateIndex,
                    DropIndex, Insert, Update, Replace, Remove>;
+
   OperationType operation;
+
+  using UserTransactionOperation =
+      std::variant<Truncate, Insert, Update, Replace, Remove,
+                   IntermediateCommit, Commit, Abort>;
+  explicit ReplicatedOperation(UserTransactionOperation operation)
+      : ReplicatedOperation(std::visit(
+            [](auto&& op) {
+              return ReplicatedOperation(std::in_place,
+                                         std::forward<decltype(op)>(op));
+            },
+            std::move(operation))) {}
 
   static auto fromOperationType(OperationType op) noexcept
       -> ReplicatedOperation;
@@ -200,36 +233,21 @@ struct ReplicatedOperation {
       TRI_voc_document_operation_e const& op, TransactionId tid, ShardID shard,
       velocypack::SharedSlice payload, std::string_view userName,
       std::optional<DocumentOperation::Options> options = std::nullopt) noexcept
-      -> ReplicatedOperation;
+      -> UserTransactionOperation;
 
   friend auto operator==(ReplicatedOperation const&, ReplicatedOperation const&)
       -> bool = default;
+
+  friend auto operator==(ReplicatedOperation const&,
+                         ReplicatedOperation::OperationType const&) -> bool;
+  friend auto operator==(ReplicatedOperation::OperationType const&,
+                         ReplicatedOperation const&) -> bool;
 
  private:
   template<typename... Args>
   explicit ReplicatedOperation(std::in_place_t, Args&&... args) noexcept
       : operation(std::forward<Args>(args)...) {}
 };
-
-template<typename T, typename... U>
-concept IsAnyOf = (std::same_as<T, U> || ...);
-
-template<typename T>
-concept AnyOperation = IsAnyOf<std::remove_cvref_t<T>,                   //
-                               ReplicatedOperation::AbortAllOngoingTrx,  //
-                               ReplicatedOperation::Commit,              //
-                               ReplicatedOperation::IntermediateCommit,  //
-                               ReplicatedOperation::Abort,               //
-                               ReplicatedOperation::Truncate,            //
-                               ReplicatedOperation::CreateShard,         //
-                               ReplicatedOperation::ModifyShard,         //
-                               ReplicatedOperation::DropShard,           //
-                               ReplicatedOperation::CreateIndex,         //
-                               ReplicatedOperation::DropIndex,           //
-                               ReplicatedOperation::Insert,              //
-                               ReplicatedOperation::Update,              //
-                               ReplicatedOperation::Replace,             //
-                               ReplicatedOperation::Remove>;
 
 template<class T>
 concept ModifiesUserTransaction = IsAnyOf<std::remove_cvref_t<T>,         //
@@ -259,16 +277,6 @@ template<class T>
 concept UserTransaction =
     ModifiesUserTransaction<T> || FinishesUserTransactionOrIntermediate<T>;
 
-using UserTransactionOperation =
-    std::variant<ReplicatedOperation::Truncate,            //
-                 ReplicatedOperation::Insert,              //
-                 ReplicatedOperation::Update,              //
-                 ReplicatedOperation::Replace,             //
-                 ReplicatedOperation::Remove,              //
-                 ReplicatedOperation::IntermediateCommit,  //
-                 ReplicatedOperation::Commit,              //
-                 ReplicatedOperation::Abort>;
-
 template<class T>
 concept DataDefinition = IsAnyOf<std::remove_cvref_t<T>,            //
                                  ReplicatedOperation::CreateShard,  //
@@ -283,6 +291,11 @@ using DataDefinitionOperation =
                  ReplicatedOperation::DropShard,    //
                  ReplicatedOperation::CreateIndex,  //
                  ReplicatedOperation::DropIndex>;
+
+auto operator==(ReplicatedOperation const&,
+                ReplicatedOperation::OperationType const&) -> bool;
+auto operator==(ReplicatedOperation::OperationType const&,
+                ReplicatedOperation const&) -> bool;
 
 auto operator<<(std::ostream&, ReplicatedOperation const&) -> std::ostream&;
 auto operator<<(std::ostream&, ReplicatedOperation::OperationType const&)

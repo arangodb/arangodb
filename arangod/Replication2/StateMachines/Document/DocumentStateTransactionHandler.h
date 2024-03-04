@@ -25,7 +25,10 @@
 #include "Replication2/LoggerContext.h"
 #include "Replication2/ReplicatedLog/LogCommon.h"
 #include "Replication2/StateMachines/Document/DocumentStateErrorHandler.h"
+#include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "Replication2/StateMachines/Document/ReplicatedOperation.h"
+#include "Replication2/StateMachines/Document/LowestSafeIndexesForReplay.h"
+#include "Replication2/Streams/Streams.h"
 
 #include "Basics/Guarded.h"
 #include "Transaction/Options.h"
@@ -75,15 +78,11 @@ struct IDocumentStateTransactionHandler {
       ReplicatedOperation::DropShard const&) noexcept -> Result = 0;
   // TODO These should return futures, and maybe some others, too
   [[nodiscard]] virtual auto applyEntry(
-      ReplicatedOperation::CreateIndex const&) noexcept -> Result = 0;
+      ReplicatedOperation::CreateIndex const&, LogIndex,
+      LowestSafeIndexesForReplay&, streams::Stream<DocumentState>&) noexcept
+      -> Result = 0;
   [[nodiscard]] virtual auto applyEntry(
       ReplicatedOperation::DropIndex const&) noexcept -> Result = 0;
-
-  // convenience functions
-  [[nodiscard]] auto applyEntry(ReplicatedOperation const& operation) noexcept
-      -> Result;
-  [[nodiscard]] auto applyEntry(
-      ReplicatedOperation::OperationType const& operation) noexcept -> Result;
 
   virtual void removeTransaction(TransactionId tid) = 0;
 
@@ -125,8 +124,9 @@ class DocumentStateTransactionHandler
       -> Result override;
   auto applyEntry(ReplicatedOperation::DropShard const& shard) noexcept
       -> Result override;
-  auto applyEntry(ReplicatedOperation::CreateIndex const& index) noexcept
-      -> Result override;
+  auto applyEntry(ReplicatedOperation::CreateIndex const& index, LogIndex,
+                  LowestSafeIndexesForReplay&,
+                  streams::Stream<DocumentState>&) noexcept -> Result override;
   auto applyEntry(ReplicatedOperation::DropIndex const& index) noexcept
       -> Result override;
 
@@ -155,11 +155,13 @@ class DocumentStateTransactionHandler
   auto applyOp(ReplicatedOperation::DropShard const&) -> Result;
 
   // TODO These should return futures
-  auto applyOp(ReplicatedOperation::CreateIndex const&) -> Result;
+  auto applyOp(ReplicatedOperation::CreateIndex const&, LogIndex index,
+               LowestSafeIndexesForReplay& lowestSafeIndexesForReplay,
+               streams::Stream<DocumentState>& stream) -> Result;
   auto applyOp(ReplicatedOperation::DropIndex const&) -> Result;
 
-  template<typename Op>
-  auto applyAndCatchAndLog(Op op) -> Result;
+  template<typename Op, typename... Args>
+  auto applyAndCatchAndLog(Op&& op, Args&&... args) -> Result;
 
  private:
   GlobalLogIdentifier const _gid;

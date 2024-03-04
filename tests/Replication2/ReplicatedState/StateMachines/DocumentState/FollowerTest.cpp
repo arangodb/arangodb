@@ -254,9 +254,8 @@ TEST_F(DocumentStateFollowerDeathTest,
           applyEntry(An<ReplicatedOperation::Insert const&>()))
       .WillByDefault(Return(Result(TRI_ERROR_WAS_ERLAUBE)));
   std::vector<DocumentLogEntry> entries;
-  entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, shardId,
-      velocypack::SharedSlice(), "root"));
+  entries.emplace_back(ReplicatedOperation{ReplicatedOperation::Insert{
+      TransactionId{6}, shardId, velocypack::SharedSlice(), "root"}});
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   ASSERT_DEATH_CORE_FREE(
       std::ignore = follower->applyEntries(std::move(entryIterator)).get(), "");
@@ -476,12 +475,14 @@ TEST_F(DocumentStateFollowerTest,
   auto stream = follower->stream;
 
   std::vector<DocumentLogEntry> entries;
-  entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, ShardID{1},
-      velocypack::SharedSlice(), "root"));
-  entries.emplace_back(ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
-      velocypack::SharedSlice(), "root"));
+  entries.emplace_back(
+      ReplicatedOperation{ReplicatedOperation::buildDocumentOperation(
+          TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{6}, ShardID{1},
+          velocypack::SharedSlice(), "root")});
+  entries.emplace_back(
+      ReplicatedOperation{ReplicatedOperation::buildDocumentOperation(
+          TRI_VOC_DOCUMENT_OPERATION_INSERT, TransactionId{10}, ShardID{2},
+          velocypack::SharedSlice(), "root")});
   auto entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   res = follower->applyEntries(std::move(entryIterator));
   ASSERT_TRUE(res.get().ok());

@@ -26,22 +26,13 @@
 #include "Basics/application-exit.h"
 #include "Basics/voc-errors.h"
 #include "Logger/LogContextKeys.h"
-#include "Replication2/StateMachines/Document/CreateIndexReplicationCallback.h"
 #include "Replication2/StateMachines/Document/DocumentStateHandlersFactory.h"
 #include "Replication2/StateMachines/Document/DocumentStateShardHandler.h"
 #include "Replication2/StateMachines/Document/DocumentStateTransaction.h"
+#include "Replication2/StateMachines/Document/LowestSafeIndexesForReplayUtils.h"
 #include "VocBase/AccessMode.h"
 
 namespace arangodb::replication2::replicated_state::document {
-
-auto IDocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation const& operation) noexcept -> Result {
-  return applyEntry(operation.operation);
-}
-auto IDocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation::OperationType const& operation) noexcept -> Result {
-  return std::visit([&](auto const& op) { return applyEntry(op); }, operation);
-}
 
 DocumentStateTransactionHandler::DocumentStateTransactionHandler(
     GlobalLogIdentifier gid, TRI_vocbase_t* vocbase,
@@ -180,7 +171,14 @@ auto DocumentStateTransactionHandler::applyOp(
 }
 
 auto DocumentStateTransactionHandler::applyOp(
-    ReplicatedOperation::CreateIndex const& op) -> Result {
+    ReplicatedOperation::CreateIndex const& op, LogIndex index,
+    LowestSafeIndexesForReplay& lowestSafeIndexesForReplay,
+    streams::Stream<DocumentState>& stream) -> Result {
+  // all entries until here have already been applied; there are
+  // no open transactions; it is safe to increase the lowest
+  // safe index now. Then we can safely create the index.
+  increaseAndPersistLowestSafeIndexForReplayTo(
+      _loggerContext, lowestSafeIndexesForReplay, stream, op.shard, index);
   return _shardHandler->ensureIndex(op.shard, op.properties.slice(), nullptr,
                                     nullptr);
 }
@@ -190,9 +188,13 @@ auto DocumentStateTransactionHandler::applyOp(
   return _shardHandler->dropIndex(op.shard, op.indexId);
 }
 
-template<typename Op>
-auto DocumentStateTransactionHandler::applyAndCatchAndLog(Op op) -> Result {
-  auto result = basics::catchToResult([&]() { return applyOp(op); });
+template<typename Op, typename... Args>
+auto DocumentStateTransactionHandler::applyAndCatchAndLog(Op&& op,
+                                                          Args&&... args)
+    -> Result {
+  auto result = basics::catchToResult([&]() {
+    return applyOp(std::forward<Op>(op), std::forward<Args>(args)...);
+  });
   if (result.fail()) {
     LOG_CTX("01202", DEBUG, _loggerContext)
         << "Error occurred while applying operation " << op << " " << result
@@ -251,8 +253,10 @@ Result DocumentStateTransactionHandler::applyEntry(
   return applyAndCatchAndLog(op);
 }
 Result DocumentStateTransactionHandler::applyEntry(
-    ReplicatedOperation::CreateIndex const& op) noexcept {
-  return applyAndCatchAndLog(op);
+    ReplicatedOperation::CreateIndex const& op, LogIndex index,
+    LowestSafeIndexesForReplay& lowestSafeIndexesForReplay,
+    streams::Stream<DocumentState>& stream) noexcept {
+  return applyAndCatchAndLog(op, index, lowestSafeIndexesForReplay, stream);
 }
 Result DocumentStateTransactionHandler::applyEntry(
     ReplicatedOperation::DropIndex const& op) noexcept {

@@ -283,17 +283,16 @@ TEST_F(DocumentStateLeaderTest,
   auto leaderState = factory.constructLeader(std::move(core), stream);
   testing::Mock::VerifyAndClearExpectations(stream.get());
 
-  auto operation = ReplicatedOperation::buildCommitOperation(
-      TransactionId{5}.asFollowerTransactionId());
+  ReplicatedOperation operation{
+      ReplicatedOperation::Commit{TransactionId{5}.asFollowerTransactionId()}};
   EXPECT_FALSE(leaderState->needsReplication(operation));
 
-  operation = ReplicatedOperation::buildDocumentOperation(
-      TRI_VOC_DOCUMENT_OPERATION_INSERT,
+  operation.operation.emplace<ReplicatedOperation::Insert>(
       TransactionId{5}.asFollowerTransactionId(), shardId,
       velocypack::SharedSlice(), "root");
   EXPECT_TRUE(leaderState->needsReplication(operation));
 
-  operation = ReplicatedOperation::buildCommitOperation(
+  operation.operation.emplace<ReplicatedOperation::Commit>(
       TransactionId{5}.asLeaderTransactionId());
   EXPECT_FALSE(leaderState->needsReplication(operation));
 }
@@ -330,7 +329,7 @@ TEST_F(DocumentStateLeaderTest,
   // Try to commit the previous entry, but nothing should get committed
   entries.clear();
   entries.emplace_back(
-      ReplicatedOperation::buildCommitOperation(TransactionId{6}));
+      ReplicatedOperation{ReplicatedOperation::Commit(TransactionId{6})});
   entryIterator = std::make_unique<DocumentLogEntryIterator>(entries);
   EXPECT_CALL(*stream, insert).Times(1);  // AbortAllOngoingTrx
   EXPECT_CALL(*stream, release).Times(1);
@@ -358,7 +357,7 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
       .Times(1)
       .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
         EXPECT_EQ(entry.operation,
-                  ReplicatedOperation::buildCreateShardOperation(
+                  ReplicatedOperation::CreateShard(
                       shardId, TRI_COL_TYPE_DOCUMENT, properties));
         EXPECT_TRUE(waitForSync);
         return LogIndex{12};
@@ -395,8 +394,8 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
       .Times(1)
       .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
         EXPECT_EQ(entry.operation,
-                  ReplicatedOperation::buildModifyShardOperation(
-                      shardId, collectionId, velocypack::SharedSlice()));
+                  ReplicatedOperation::ModifyShard(shardId, collectionId,
+                                                   velocypack::SharedSlice()));
         EXPECT_TRUE(waitForSync);
         return LogIndex{12};
       });
@@ -424,7 +423,7 @@ TEST_F(DocumentStateLeaderTest, leader_create_modify_and_drop_shard) {
       .Times(1)
       .WillOnce([&](DocumentLogEntry const& entry, bool waitForSync) {
         EXPECT_EQ(entry.operation,
-                  ReplicatedOperation::buildDropShardOperation(shardId));
+                  ReplicatedOperation{ReplicatedOperation::DropShard(shardId)});
         EXPECT_TRUE(waitForSync);
         return LogIndex{12};
       });

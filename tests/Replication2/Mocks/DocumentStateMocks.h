@@ -280,7 +280,10 @@ struct MockDocumentStateTransactionHandler
       Result, applyEntry, (ReplicatedOperation::DropShard const&),
       (noexcept, override));
   MOCK_METHOD(  //
-      Result, applyEntry, (ReplicatedOperation::CreateIndex const&),
+      Result, applyEntry,
+      (ReplicatedOperation::CreateIndex const&, LogIndex,
+       replicated_state::document::LowestSafeIndexesForReplay&,
+       streams::Stream<replicated_state::document::DocumentState>&),
       (noexcept, override));
   MOCK_METHOD(  //
       Result, applyEntry, (ReplicatedOperation::DropIndex const&),

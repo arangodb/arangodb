@@ -322,10 +322,9 @@ auto ApplyEntriesHandler<Runtime>::applyEntryAndReleaseIndex(T const& op,
       auto lowestSafeIndexesForReplayGuard =
           this->state->followerState._lowestSafeIndexesForReplay
               .getLockedGuard();
-      increaseAndPersistLowestSafeIndexForReplayTo(
-          this->state->loggerContext, lowestSafeIndexesForReplayGuard.get(),
-          *this->state->followerState.getStream(), op.shard, index);
-      return this->state->followerState._transactionHandler->applyEntry(op);
+      return this->state->followerState._transactionHandler->applyEntry(
+          op, index, lowestSafeIndexesForReplayGuard.get(),
+          *this->state->followerState.getStream());
     } else {
       return this->state->followerState._transactionHandler->applyEntry(op);
     }

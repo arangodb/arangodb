@@ -74,7 +74,7 @@ struct TransactionState {
 namespace message {
 
 struct ProcessEntry {
-  UserTransactionOperation op;
+  ReplicatedOperation::UserTransactionOperation op;
   LogIndex index;
 
   friend inline auto inspect(auto& f, ProcessEntry& x) {
@@ -126,7 +126,8 @@ struct TransactionHandler : HandlerBase<Runtime, TransactionState> {
     }
   }
 
-  void applyEntry(UserTransactionOperation const& op, LogIndex index) {
+  void applyEntry(ReplicatedOperation::UserTransactionOperation const& op,
+                  LogIndex index) {
     std::visit(
         [&](auto&& op) -> void {
           using OpType = std::remove_cvref_t<decltype(op)>;
