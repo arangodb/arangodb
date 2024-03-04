@@ -368,6 +368,8 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 void addTernaryConditionsIfPresent(Parser* parser) {
   AstNode* filterCondition = nullptr;
   for (auto const& it : parser->peekTernaryConditions()) {
+    TRI_ASSERT(!parser->forceInlineTernary()); 
+
     if (filterCondition == nullptr) {
       filterCondition = it;
     } else {
@@ -1821,25 +1823,39 @@ operator_binary:
 
 operator_ternary:
     expression T_QUESTION {
-      insertTernaryConditionVariable(parser, $1, yylloc);
+      // check if we must inline the condition of the ternary operator.
+      // this is the case if we must execute a single expression, e.g. in computed values.
+      // for normal AQL queries we normally want the condition of the ternary operator
+      // to be placed in its own LET node, so we can move it around.
+      if (!parser->forceInlineTernary()) {
+        insertTernaryConditionVariable(parser, $1, yylloc);
+      }
     } expression T_COLON {
-      // get condition for true part of ternary operator and remove it from the stack
-      AstNode* condition = parser->popTernaryCondition();
-      if (condition != nullptr) {
-        // negate the condition and push the negated version onto the stack
-        condition = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, condition);
-        parser->pushTernaryCondition(condition);
+      if (!parser->forceInlineTernary()) {
+        // get condition for true part of ternary operator and remove it from the stack
+        AstNode* condition = parser->popTernaryCondition();
+        if (condition != nullptr) {
+          // negate the condition and push the negated version onto the stack
+          condition = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, condition);
+          parser->pushTernaryCondition(condition);
+        }
       }
     } expression {
       $$ = parser->ast()->createNodeTernaryOperator($1, $4, $7);
-      // clean up the ternary condition
-      parser->popTernaryCondition();
+      if (!parser->forceInlineTernary()) {
+        // clean up the ternary condition
+        parser->popTernaryCondition();
+      }
     }
   | expression T_QUESTION {
-      insertTernaryConditionVariable(parser, $1, yylloc);
+      if (!parser->forceInlineTernary()) {
+        insertTernaryConditionVariable(parser, $1, yylloc);
+      }
     } T_COLON expression {
       $$ = parser->ast()->createNodeTernaryOperator($1, $5);
-      parser->popTernaryCondition();
+      if (!parser->forceInlineTernary()) {
+        parser->popTernaryCondition();
+      }
     }
   ;
 
