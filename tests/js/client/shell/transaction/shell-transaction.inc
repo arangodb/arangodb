@@ -43,7 +43,7 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
-const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
 const compareStringIds = function (l, r) {
   'use strict';
@@ -5717,6 +5717,22 @@ function transactionDatabaseSuite() {
       } finally {
         db._useDatabase(dbn1);
         trx1.abort();
+      }
+    },
+
+    testTransactionsAreDatabaseLocal: function() {
+      db._useDatabase(dbn1);
+      const opts = { collections: { write: [cn] } };
+      const trx = db._createTransaction(opts);
+      trx.collection(cn).insert({ _key: "test" });
+      try {
+        db._useDatabase(dbn2);
+        trx.collection(cn).document("test");
+        fail();
+      } catch(err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      } finally {
+        db._useDatabase(dbn1);
       }
     },
   };
