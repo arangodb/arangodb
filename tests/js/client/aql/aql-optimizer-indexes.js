@@ -1,31 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for index usage
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require('jsunity');
 const assert = require('jsunity').jsUnity.assertions;
@@ -1403,7 +1400,7 @@ function optimizerIndexesTestSuite () {
       var plan = db._createStatement({query: query, bindVars: {}, options: opt}).explain().plan;
       var nodeTypes = plan.nodes.map(function(node) {
         if (node.type === "IndexNode") {
-          assertTrue(node.producesResult);
+          assertFalse(node.producesResult);
           assertEqual("skiplist", node.indexes[0].type);
           assertFalse(node.indexes[0].unique);
         }
@@ -1411,6 +1408,7 @@ function optimizerIndexesTestSuite () {
       });
 
       assertNotEqual(-1, nodeTypes.indexOf("IndexNode"), query);
+      assertNotEqual(-1, nodeTypes.indexOf("MaterializeNode"), query);
 
       var results = db._query(query, {}, opt);
       assertEqual([ 2, 3, 4, 5, 6, 7, 8 ], results.toArray().sort(), query);

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -259,40 +259,6 @@ TEST_F(FilesTest, tst_filesize_non) {
 TEST_F(FilesTest, tst_absolute_paths) {
   std::string path;
 
-#ifdef _WIN32
-  path = TRI_GetAbsolutePath("the-fox", "\\tmp");
-
-  EXPECT_EQ(std::string("\\tmp\\the-fox"), path);
-
-  path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp");
-  EXPECT_EQ(std::string("\\tmp\\the-fox.lol"), path);
-
-  path = TRI_GetAbsolutePath("the-fox.lol", "\\tmp\\the-fox");
-  EXPECT_EQ(std::string("\\tmp\\the-fox\\the-fox.lol"), path);
-
-  path = TRI_GetAbsolutePath("file", "\\");
-  EXPECT_EQ(std::string("\\file"), path);
-
-  path = TRI_GetAbsolutePath(".\\file", "\\");
-  EXPECT_EQ(std::string("\\.\\file"), path);
-
-  path = TRI_GetAbsolutePath("\\file", "\\tmp");
-  EXPECT_EQ(std::string("\\tmp\\file"), path);
-
-  path = TRI_GetAbsolutePath("\\file\\to\\file", "\\tmp");
-  EXPECT_EQ(std::string("\\tmp\\file\\to\\file"), path);
-
-  path = TRI_GetAbsolutePath("file\\to\\file", "\\tmp");
-  EXPECT_EQ(std::string("\\tmp\\file\\to\\file"), path);
-
-  path = TRI_GetAbsolutePath("c:\\file\\to\\file", "abc");
-  EXPECT_EQ(std::string("c:\\file\\to\\file"), path);
-
-  path = TRI_GetAbsolutePath("c:\\file\\to\\file", "\\tmp");
-  EXPECT_EQ(std::string("c:\\file\\to\\file"), path);
-
-#else
-
   path = TRI_GetAbsolutePath("the-fox", "/tmp");
   EXPECT_EQ(std::string("/tmp/the-fox"), path);
 
@@ -319,7 +285,6 @@ TEST_F(FilesTest, tst_absolute_paths) {
 
   path = TRI_GetAbsolutePath("c:file/to/file", "/tmp");
   EXPECT_EQ(std::string("c:file/to/file"), path);
-#endif
 }
 
 TEST_F(FilesTest, tst_normalize) {
@@ -327,51 +292,27 @@ TEST_F(FilesTest, tst_normalize) {
 
   path = "/foo/bar/baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-#else
   EXPECT_EQ(std::string("/foo/bar/baz"), path);
-#endif
 
   path = "\\foo\\bar\\baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
   EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-#else
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-#endif
 
   path = "/foo/bar\\baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-#else
   EXPECT_EQ(std::string("/foo/bar\\baz"), path);
-#endif
 
   path = "/foo/bar/\\baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
-  EXPECT_EQ(std::string("\\foo\\bar\\baz"), path);
-#else
   EXPECT_EQ(std::string("/foo/bar/\\baz"), path);
-#endif
 
   path = "//foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
-  EXPECT_EQ(std::string("\\\\foo\\bar\\baz"), path);
-#else
   EXPECT_EQ(std::string("//foo\\/bar/\\baz"), path);
-#endif
 
   path = "\\\\foo\\/bar/\\baz";
   FileUtils::normalizePath(path);
-#ifdef _WIN32
-  EXPECT_EQ(std::string("\\\\foo\\bar\\baz"), path);
-#else
   EXPECT_EQ(std::string("\\\\foo\\/bar/\\baz"), path);
-#endif
 }
 
 TEST_F(FilesTest, tst_getfilename) {
@@ -395,18 +336,6 @@ TEST_F(FilesTest, tst_getfilename) {
 ////////////////////////////////////////////////////////////////////////////////
 
 TEST_F(FilesTest, tst_dirname) {
-#ifdef _WIN32
-  EXPECT_EQ("C:\\Users\\abc def\\foobar",
-            TRI_Dirname("C:\\Users\\abc def\\foobar\\"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar",
-            TRI_Dirname("C:\\Users\\abc def\\foobar\\baz"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar",
-            TRI_Dirname("C:\\Users\\abc def\\foobar\\baz.text"));
-  EXPECT_EQ("C:\\Users\\abc def\\foobar",
-            TRI_Dirname("C:\\Users\\abc def\\foobar\\VERSION-1.tmp"));
-  EXPECT_EQ("\\Users\\abc def\\foobar",
-            TRI_Dirname("\\Users\\abc def\\foobar\\VERSION-1.tmp"));
-#else
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/"));
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc"));
   EXPECT_EQ("/tmp/abc/def hihi", TRI_Dirname("/tmp/abc/def hihi/abc.txt"));
@@ -418,7 +347,6 @@ TEST_F(FilesTest, tst_dirname) {
   EXPECT_EQ(".", TRI_Dirname(""));
   EXPECT_EQ(".", TRI_Dirname("."));
   EXPECT_EQ("..", TRI_Dirname(".."));
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////

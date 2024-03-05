@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -104,34 +104,6 @@ size_t Collection::count(transaction::Methods* trx,
     THROW_ARANGO_EXCEPTION(res.result);
   }
   return static_cast<size_t>(res.slice().getUInt());
-}
-
-std::unordered_set<std::string> Collection::responsibleServers() const {
-  std::unordered_set<std::string> result;
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-  }
-  return result;
-}
-
-size_t Collection::responsibleServers(
-    std::unordered_set<std::string>& result) const {
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  size_t n = 0;
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-    ++n;
-  }
-  return n;
 }
 
 std::string Collection::distributeShardsLike() const {

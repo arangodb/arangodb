@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -205,7 +205,6 @@ static_assert(!std::is_default_constructible<Root::Arango::Agency::Definition>::
 static_assert(!std::is_default_constructible<Root::Arango::InitDone>::value, CONSTRUCTIBLE_MESSAGE);
 
 // Exclude these on windows, because the constructor is made public there.
-#ifndef _WIN32
 
 // Second, constructors with parent
 static_assert(!std::is_constructible<Root::Arango, Root>::value, CONSTRUCTIBLE_MESSAGE);
@@ -395,7 +394,6 @@ static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Databas
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log, Root::Arango::Plan::ReplicatedLogs::Database, std::string>::value, CONSTRUCTIBLE_MESSAGE);
 static_assert(!std::is_constructible<Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants::Server, Root::Arango::Plan::ReplicatedLogs::Database::Log::ParticipantsConfig::Participants, ServerID>::value, CONSTRUCTIBLE_MESSAGE);
 
-#endif
 // clang-format on
 #undef CONSTRUCTIBLE_MESSAGE
 

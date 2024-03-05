@@ -19,7 +19,6 @@
     "ERROR_NOT_IMPLEMENTED"        : { "code" : 9, "message" : "not implemented" },
     "ERROR_BAD_PARAMETER"          : { "code" : 10, "message" : "bad parameter" },
     "ERROR_FORBIDDEN"              : { "code" : 11, "message" : "forbidden" },
-    "ERROR_OUT_OF_MEMORY_MMAP"     : { "code" : 12, "message" : "out of memory in mmap" },
     "ERROR_CORRUPTED_CSV"          : { "code" : 13, "message" : "csv is corrupt" },
     "ERROR_FILE_NOT_FOUND"         : { "code" : 14, "message" : "file not found" },
     "ERROR_CANNOT_WRITE_FILE"      : { "code" : 15, "message" : "cannot write file" },

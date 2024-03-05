@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,15 +53,16 @@ struct Collection;
 
 class MaterializerExecutorInfos {
  public:
-  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query,
-                            Collection const* collection,
-                            Projections projections)
+  MaterializerExecutorInfos(
+      RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query,
+      Collection const* collection, Projections projections,
+      containers::FlatHashMap<VariableId, RegisterId> variablesToRegisters)
       : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query),
         _collection(collection),
-        _projections(std::move(projections)) {}
+        _projections(std::move(projections)),
+        _variablesToRegisters(std::move(variablesToRegisters)) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -82,6 +83,8 @@ class MaterializerExecutorInfos {
 
   Projections const& projections() const noexcept { return _projections; }
 
+  RegisterId getRegisterForVariable(VariableId var) const noexcept;
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
@@ -90,6 +93,7 @@ class MaterializerExecutorInfos {
   aql::QueryContext& _query;
   Collection const* _collection;
   Projections const _projections;
+  containers::FlatHashMap<VariableId, RegisterId> const _variablesToRegisters;
 };
 
 struct MaterializeExecutorBase {

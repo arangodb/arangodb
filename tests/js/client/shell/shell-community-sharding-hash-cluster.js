@@ -1,28 +1,28 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertNotEqual, assertNull, assertTrue, assertUndefined, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2018 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let arangodb = require("@arangodb");
@@ -54,9 +54,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.insert(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -99,9 +101,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i });
+        docs.push({ _key: "test" + i, value: i });
       }
+      c.insert(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -212,10 +216,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ })._key);
+        docs.push({});
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
 
@@ -230,10 +235,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: i })._key);
+        docs.push({ value: i });
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c.count(true)).sort());
 
@@ -248,10 +254,11 @@ function DocumentShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: null })._key);
+        docs.push({ value: null});
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
 
@@ -349,9 +356,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
+        docs.push({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
       }
+      c.insert(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -384,9 +393,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["_key"], c.properties()["shardKeys"]);
 
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        c.insert({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
+        docs.push({ _key: "test" + i, value: i, _from: "v/test" + i, _to: "v/test" + i });
       }
+      c.insert(docs);
 
       assertEqual([ 188, 192, 198, 204, 218 ], Object.values(c.count(true)).sort());
 
@@ -432,10 +443,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ _from: "v/test" + i, _to: "v/test" + i });
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
 
@@ -450,10 +462,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: i, _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ value: i, _from: "v/test" + i, _to: "v/test" + i });
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 179, 192, 200, 207, 222 ], Object.values(c.count(true)).sort());
 
@@ -468,10 +481,11 @@ function EdgeShardingSuite() {
       assertEqual(5, c.properties()["numberOfShards"]);
       assertEqual(["value"], c.properties()["shardKeys"]);
 
-      let keys = [];
+      let docs = [];
       for (let i = 0; i < 1000; ++i) {
-        keys.push(c.insert({ value: null, _from: "v/test" + i, _to: "v/test" + i })._key);
+        docs.push({ value: null, _from: "v/test" + i, _to: "v/test" + i });
       }
+      let keys = c.insert(docs).map(d => d._key);
 
       assertEqual([ 0, 0, 0, 0, 1000 ], Object.values(c.count(true)).sort());
 

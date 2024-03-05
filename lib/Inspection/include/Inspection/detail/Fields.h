@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -32,12 +32,6 @@
 
 namespace arangodb::inspection::detail {
 
-#ifdef _MSC_VER
-#define EMPTY_BASE __declspec(empty_bases)
-#else
-#define EMPTY_BASE
-#endif
-
 struct Keep {};
 
 struct IgnoreField;
@@ -58,7 +52,7 @@ template<class Inspector, class InnerField, class Invariant>
 struct InvariantField;
 
 template<class Inspector, class Field>
-struct EMPTY_BASE InvariantMixin {
+struct InvariantMixin {
   template<class Predicate>
   [[nodiscard]] auto invariant(Predicate predicate) && {
     return InvariantField<Inspector, Field, Predicate>(
@@ -67,7 +61,7 @@ struct EMPTY_BASE InvariantMixin {
 };
 
 template<class Inspector, class Field>
-struct EMPTY_BASE FallbackMixin {
+struct FallbackMixin {
   template<class U>
   [[nodiscard]] auto fallback(U&& val) && {
     static_assert(std::is_constructible_v<typename Field::value_type, U> ||
@@ -88,7 +82,7 @@ struct EMPTY_BASE FallbackMixin {
 };
 
 template<class Inspector, class Field>
-struct EMPTY_BASE TransformMixin {
+struct TransformMixin {
   template<class T>
   [[nodiscard]] auto transformWith(T transformer) && {
     return TransformField<Inspector, Field, T>(
@@ -144,15 +138,15 @@ using WithTransform =
                        TransformMixin<Inspector, Inner>>;
 
 template<class Inspector, typename DerivedField>
-struct EMPTY_BASE BasicField : InvariantMixin<Inspector, DerivedField>,
-                               FallbackMixin<Inspector, DerivedField>,
-                               TransformMixin<Inspector, DerivedField> {
+struct BasicField : InvariantMixin<Inspector, DerivedField>,
+                    FallbackMixin<Inspector, DerivedField>,
+                    TransformMixin<Inspector, DerivedField> {
   explicit BasicField(std::string_view name) : name(name) {}
   std::string_view name;
 };
 
 template<class Inspector, typename T>
-struct EMPTY_BASE RawField : BasicField<Inspector, RawField<Inspector, T>> {
+struct RawField : BasicField<Inspector, RawField<Inspector, T>> {
   template<class TT>
   RawField(std::string_view name, TT&& value)
       : BasicField<Inspector, RawField>(name), value(std::forward<TT>(value)) {}
@@ -166,7 +160,7 @@ struct IgnoreField {
 };
 
 template<class Inspector, class InnerField, class FallbackValue>
-struct EMPTY_BASE FallbackField
+struct FallbackField
     : Inspector::template FallbackContainer<FallbackValue>,
       WithInvariant<Inspector,
                     FallbackField<Inspector, InnerField, FallbackValue>>,
@@ -180,7 +174,7 @@ struct EMPTY_BASE FallbackField
 };
 
 template<class Inspector, class InnerField, class FallbackFactory>
-struct EMPTY_BASE FallbackFactoryField
+struct FallbackFactoryField
     : Inspector::template FallbackFactoryContainer<FallbackFactory>,
       WithInvariant<Inspector, FallbackFactoryField<Inspector, InnerField,
                                                     FallbackFactory>>,
@@ -195,7 +189,7 @@ struct EMPTY_BASE FallbackFactoryField
 };
 
 template<class Inspector, class InnerField, class Invariant>
-struct EMPTY_BASE InvariantField
+struct InvariantField
     : Inspector::template InvariantContainer<Invariant>,
       WithFallback<Inspector, InvariantField<Inspector, InnerField, Invariant>>,
       WithTransform<Inspector,
@@ -208,7 +202,7 @@ struct EMPTY_BASE InvariantField
 };
 
 template<class Inspector, class InnerField, class Transformer>
-struct EMPTY_BASE TransformField
+struct TransformField
     : WithInvariant<Inspector,
                     TransformField<Inspector, InnerField, Transformer>>,
       WithFallback<Inspector,
@@ -219,8 +213,6 @@ struct EMPTY_BASE TransformField
   InnerField inner;
   Transformer transformer;
 };
-
-#undef EMPTY_BASE
 
 template<class T>
 struct IsRawField : std::false_type {};

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,7 +35,6 @@
 
 namespace arangodb::signals {
 
-#ifndef _WIN32
 /// @brief find out what impact a signal will have to the process we send it.
 SignalType signalType(int signal) noexcept {
   // Some platforms don't have these. To keep our table clean
@@ -120,11 +119,9 @@ SignalType signalType(int signal) noexcept {
       return SignalType::user;
   }
 }
-#endif
 
 /// @brief whether or not the signal is deadly
 bool isDeadly(int signal) noexcept {
-#ifndef _WIN32
   switch (signalType(signal)) {
     case SignalType::term:
       return true;
@@ -141,7 +138,6 @@ bool isDeadly(int signal) noexcept {
     case SignalType::user:  // user signals aren't supposed to be deadly.
       return false;
   }
-#endif
   // well windows... always deadly.
   return true;
 }
@@ -214,7 +210,6 @@ std::string_view name(int signal) noexcept {
 }
 
 std::string_view subtypeName(int signal, int subCode) noexcept {
-#ifndef _WIN32
   // the following meanings are taken from /usr/include/asm-generic/siginfo.h
   switch (signal) {
     case SIGILL: {
@@ -410,7 +405,6 @@ std::string_view subtypeName(int signal, int subCode) noexcept {
     default:
       break;
   }
-#endif
   return "unknown";
 }
 

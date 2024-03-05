@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -390,6 +390,13 @@ std::unique_ptr<ExecutionBlock> IndexNode::createBlock(
 
     for (auto const& var : inVars) {
       TRI_ASSERT(var != nullptr);
+      if (var->id == outVariable()->id &&
+          filterProjections().usesCoveringIndex()) {
+        // if the index covers the filter projections, then don't add the
+        // document variable to the filter vars. It is not used and will cause
+        // an error during register planning.
+        continue;
+      }
       auto regId = variableToRegisterId(var);
       filterVarsToRegs.emplace_back(var->id, regId);
     }
@@ -690,10 +697,6 @@ bool IndexNode::recalculateProjections(ExecutionPlan* plan) {
     // by default, we do not use projections for the filter condition
     _projections.clear();
     _filterProjections.clear();
-    return false;
-  }
-
-  if (isLateMaterialized()) {
     return false;
   }
 

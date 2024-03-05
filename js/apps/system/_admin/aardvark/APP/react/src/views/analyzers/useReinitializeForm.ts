@@ -1,5 +1,4 @@
 import { useField, useFormikContext } from "formik";
-import { useEffect } from "react";
 import { AnalyzerState } from "./Analyzer.types";
 import { useAnalyzersContext } from "./AnalyzersContext";
 import { TYPE_TO_INITIAL_VALUES_MAP } from "./AnalyzersHelpers";
@@ -10,23 +9,27 @@ import { TYPE_TO_INITIAL_VALUES_MAP } from "./AnalyzersHelpers";
 
 export const useReinitializeForm = () => {
   const { setValues, values } = useFormikContext<AnalyzerState>();
-  const [field] = useField("type");
+  const [typeField] = useField("type");
   const [featuresField] = useField("features");
   const { isFormDisabled: isDisabled } = useAnalyzersContext();
-
-  useEffect(() => {
+  const onReinitialize = () => {
     if (isDisabled) {
       return;
     }
+    const initialValues =
+      TYPE_TO_INITIAL_VALUES_MAP[
+        typeField.value as keyof typeof TYPE_TO_INITIAL_VALUES_MAP
+      ];
     const newValues = {
-      ...TYPE_TO_INITIAL_VALUES_MAP[
-        field.value as keyof typeof TYPE_TO_INITIAL_VALUES_MAP
-      ],
-      name: values.name,
+      ...initialValues,
+      type: typeField.value,
+      name: values?.name,
       // adding features which are already set
       features: featuresField.value
     };
     setValues(newValues);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [field.value, isDisabled]);
+  };
+  return {
+    onReinitialize
+  };
 };

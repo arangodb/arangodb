@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -48,10 +48,6 @@
 #endif
 #include <sys/stat.h>
 
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
-
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/StringUtils.h"
@@ -76,21 +72,13 @@ enum class StatResultType {
 };
 
 StatResultType statResultType(TRI_stat_t const& stbuf) {
-#ifdef _WIN32
-  if ((stbuf.st_mode & S_IFMT) == S_IFDIR) {
-    return StatResultType::Directory;
-  }
-#else
   if (S_ISDIR(stbuf.st_mode)) {
     return StatResultType::Directory;
   }
-#endif
 
-#ifndef TRI_HAVE_WIN32_SYMBOLIC_LINK
   if (S_ISLNK(stbuf.st_mode)) {
     return StatResultType::SymLink;
   }
-#endif
 
   if ((stbuf.st_mode & S_IFMT) == S_IFREG) {
     return StatResultType::File;
@@ -110,36 +98,6 @@ StatResultType statResultType(std::string const& path) {
 
 void processFiles(std::string const& directory,
                   std::function<void(std::string const&)> const& cb) {
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-  std::string filter = directory + "\\*";
-  std::wstring f = arangodb::basics::toWString(filter);
-  struct _wfinddata_t oneItem;
-  intptr_t handle = _wfindfirst(f.data(), &oneItem);
-
-  if (handle == -1) {
-    auto res = TRI_set_errno(TRI_ERROR_SYS_ERROR);
-
-    auto message = arangodb::basics::StringUtils::concatT(
-        "failed to enumerate files in directory '", directory,
-        "': ", TRI_last_error());
-    THROW_ARANGO_EXCEPTION_MESSAGE(res, std::move(message));
-  }
-
-  auto guard = arangodb::scopeGuard([&]() noexcept { _findclose(handle); });
-
-  std::string rcs;
-  do {
-    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name,
-                                        wcslen(oneItem.name));
-    if (rcs != "." && rcs != "..") {
-      // run callback function
-      cb(rcs);
-    }
-
-    // advance to next entry
-  } while (_wfindnext(handle, &oneItem) != -1);
-
-#else
   DIR* d = opendir(directory.c_str());
 
   if (d == nullptr) {
@@ -170,7 +128,6 @@ void processFiles(std::string const& directory,
     // advance to next entry
     de = readdir(d);
   }
-#endif
 }
 
 }  // namespace
@@ -200,30 +157,6 @@ std::string removeTrailingSeparator(std::string const& name) {
 
 void normalizePath(std::string& name) {
   std::replace(name.begin(), name.end(), '/', TRI_DIR_SEPARATOR_CHAR);
-
-#ifdef _WIN32
-  // for Windows the situation is a bit more complicated,
-  // as a mere replacement of all forward slashes to backslashes
-  // may leave us with a double backslash for sequences like "bla/\foo".
-  // in this case we collapse duplicate dir separators to a single one.
-  // we intentionally ignore the first 2 characters, because they may
-  // contain a network share filename such as "\\foo\bar"
-
-  size_t const n = name.size();
-  size_t out = 0;
-
-  for (size_t i = 0; i < n; ++i) {
-    if (name[i] == TRI_DIR_SEPARATOR_CHAR && out > 1 &&
-        name[out - 1] == TRI_DIR_SEPARATOR_CHAR) {
-      continue;
-    }
-    name[out++] = name[i];
-  }
-
-  if (out != n) {
-    name.resize(out);
-  }
-#endif
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -518,27 +451,6 @@ bool copyDirectoryRecursive(
   std::string src = source + TRI_DIR_SEPARATOR_STR;
   size_t const srcPrefixLength = src.size();
 
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-  struct _wfinddata_t oneItem;
-  intptr_t handle;
-
-  std::string rcs;
-  std::string flt = source + "\\*";
-
-  std::wstring f = arangodb::basics::toWString(flt);
-
-  handle = _wfindfirst(f.data(), &oneItem);
-
-  if (handle == -1) {
-    error = "directory " + source + " not found";
-    return false;
-  }
-
-  do {
-    rcs = arangodb::basics::fromWString((wchar_t*)oneItem.name,
-                                        wcslen(oneItem.name));
-    char const* fn = (char*)rcs.c_str();
-#else
   DIR* filedir = opendir(source.c_str());
 
   if (filedir == nullptr) {
@@ -556,7 +468,6 @@ bool copyDirectoryRecursive(
   // thread-safety formally, and in addition obsolete readdir_r() altogether
   while ((oneItem = (readdir(filedir))) != nullptr && rc_bool) {
     char const* fn = oneItem->d_name;
-#endif
 
     // Now iterate over the items.
     // check its not the pointer to the upper directory:
@@ -612,12 +523,8 @@ bool copyDirectoryRecursive(
               rc_bool = false;
             }
           } else {
-#ifdef _WIN32
-            rc_bool = TRI_CopyFile(src, dst, error);
-#else
             // optimized version that reuses the already retrieved stat data
             rc_bool = TRI_CopyFile(src, dst, error, &stbuf);
-#endif
           }
           break;
 
@@ -628,16 +535,9 @@ bool copyDirectoryRecursive(
           break;
       }  // switch
     }
-#ifdef TRI_HAVE_WIN32_LIST_FILES
-  } while (_wfindnext(handle, &oneItem) != -1 && rc_bool);
-
-  _findclose(handle);
-
-#else
   }
   closedir(filedir);
 
-#endif
   return rc_bool;
 }
 
@@ -833,13 +733,6 @@ std::optional<uid_t> findUser(std::string const& nameOrId) noexcept {
 }
 
 std::optional<std::string> findUserName(uid_t id) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getpwuid function.
-  struct passwd* pwent = getpwuid(id);
-  if (pwent != nullptr) {
-    return {std::string(pwent->pw_name)};
-  }
-#else
   // For Linux (and other Unixes), we avoid this function because it
   // poses problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -853,31 +746,12 @@ std::optional<std::string> findUserName(uid_t id) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif
 
 #ifdef ARANGODB_HAVE_GETGRGID
 std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getgrgid and getgrnam functions.
-  bool valid = false;
-  int gidNumber = NumberUtils::atoi_positive<int>(
-      nameOrId.data(), nameOrId.data() + nameOrId.size(), valid);
-
-  if (valid && gidNumber >= 0) {
-    group* g = getgrgid(gidNumber);
-    if (g != nullptr) {
-      return {gidNumber};
-    }
-  } else {
-    group* g = getgrnam(nameOrId.c_str());
-    if (g != nullptr) {
-      return {g->gr_gid};
-    }
-  }
-#else
   // For Linux (and other Unixes), we avoid these functions because they
   // pose problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -896,14 +770,12 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif
 
 #ifdef ARANGODB_HAVE_INITGROUPS
 void initGroups(std::string const& userName, gid_t groupId) noexcept {
-#ifdef __linux__
   // For Linux, calling initgroups poses problems with statically linked
   // binaries, since /etc/nsswitch.conf can then lead to crashes on
   // older Linux distributions. Therefore, we need to do the groups lookup
@@ -928,10 +800,6 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
     setgroups(groupIds.size(), groupIds.data());
   } catch (std::exception const&) {
   }
-#else
-  // For other unixes (including Mac), we can use the OS call.
-  initgroups(userName.c_str(), groupId);
-#endif
 }
 #endif
 }  // namespace arangodb::basics::FileUtils

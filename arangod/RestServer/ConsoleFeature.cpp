@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -43,10 +43,8 @@
 
 #include <iostream>
 
-#ifndef _WIN32
 #include <sys/ioctl.h>
 #include <unistd.h>
-#endif
 
 using namespace arangodb::application_features;
 using namespace arangodb::options;
@@ -87,14 +85,12 @@ void ConsoleFeature::beginShutdown() {
 
   _consoleThread->userAbort();
 
-#ifndef _WIN32
   if (isatty(STDIN_FILENO)) {
     char c = '\n';
     // send ourselves a character, so that we can get out of the blocking
     // linenoise function that reads a character from the terminal
     [[maybe_unused]] int res = ioctl(STDIN_FILENO, TIOCSTI, &c);
   }
-#endif
 }
 
 void ConsoleFeature::unprepare() {

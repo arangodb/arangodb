@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -29,11 +29,6 @@
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#if _WIN32
-#include <iostream>
-#include "Basics/win-utils.h"
 #endif
 
 #include "LoggerFeature.h"
@@ -182,11 +177,7 @@ You can adjust the parameter settings at runtime using the
   options
       ->addOption("--log.output,-o",
                   "Log destination(s), e.g. "
-#ifdef _WIN32
-                  "file://C:\\path\\to\\file"
-#else
                   "file:///path/to/file"
-#endif
                   " (any occurrence of $PID is replaced with the process ID).",
                   new VectorParameter<StringParameter>(&_output))
       .setLongDescription(R"(This option allows you to direct the global or
@@ -229,8 +220,7 @@ applied as well.
 
 If you specify `--log.file-group <name>`, then any newly created log file tries
 to use `<name>` as the group name. Note that you have to be a member of that
-group. Otherwise, the group ownership is not changed. This option is only
-available under Linux and macOS. It is not available under Windows.
+group. Otherwise, the group ownership is not changed.
 
 The old `--log.file` option is still available for convenience. It is a
 shortcut for the more general option `--log.output file://filename`.
@@ -693,13 +683,6 @@ void LoggerFeature::validateOptions(std::shared_ptr<ProgramOptions> options) {
 }
 
 void LoggerFeature::prepare() {
-#if _WIN32
-  if (!TRI_InitWindowsEventLog()) {
-    std::cerr << "failed to init event log" << std::endl;
-    FATAL_ERROR_EXIT();
-  }
-#endif
-
   // set maximum length for each log entry
   Logger::defaultLogGroup().maxLogEntryLength(
       std::max<uint32_t>(256, _maxEntryLength));

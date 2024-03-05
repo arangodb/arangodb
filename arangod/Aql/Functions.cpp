@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -112,16 +112,7 @@
 #include <cstdint>
 #include <list>
 
-#ifdef __APPLE__
-#include <regex>
-#endif
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#include <Ws2tcpip.h>
-#else
 #include <arpa/inet.h>
-#endif
 
 #include <absl/crc/crc32c.h>
 #include <absl/strings/escaping.h>
@@ -173,11 +164,6 @@ namespace {
 
 /// @brief an empty AQL value
 static AqlValue const emptyAqlValue;
-
-#ifdef __APPLE__
-std::regex const ipV4LeadingZerosRegex("^(.*?\\.)?0[0-9]+.*$",
-                                       std::regex::optimize);
-#endif
 
 /// @brief mutex used to protect UUID generation
 static std::mutex uuidMutex;
@@ -5805,17 +5791,6 @@ AqlValue functions::IpV4ToNumber(ExpressionContext* expressionContext,
     memset(&addr, 0, sizeof(struct in_addr));
     int result = inet_pton(AF_INET, &buffer[0], &addr);
 
-#ifdef __APPLE__
-    // inet_pton on MacOS accepts leading zeros...
-    // inet_pton on Linux and Windows doesn't
-    // this is the least intrusive solution, but it is not efficient.
-    if (result == 1 &&
-        std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex,
-                         std::regex_constants::match_any)) {
-      result = 0;
-    }
-#endif
-
     if (result == 1) {
       return AqlValue(AqlValueHintUInt(
           basics::hostToBig(*reinterpret_cast<uint32_t*>(&addr))));
@@ -5858,15 +5833,6 @@ AqlValue functions::IsIpV4(ExpressionContext* expressionContext, AstNode const&,
     int result = inet_pton(AF_INET, &buffer[0], &addr);
 
     if (result == 1) {
-#ifdef __APPLE__
-      // inet_pton on MacOS accepts leading zeros...
-      // inet_pton on Linux and Windows doesn't
-      // this is the least intrusive solution, but it is not efficient.
-      if (std::regex_match(&buffer[0], buffer + l, ::ipV4LeadingZerosRegex,
-                           std::regex_constants::match_any)) {
-        return AqlValue(AqlValueHintBool(false));
-      }
-#endif
       return AqlValue(AqlValueHintBool(true));
     }
   }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,14 +53,14 @@ class CollectNode : public ExecutionNode {
       std::vector<GroupVarInfo> const& groupVariables,
       std::vector<AggregateVarInfo> const& aggregateVariables,
       Variable const* expressionVariable, Variable const* outVariable,
-      std::vector<Variable const*> const& keepVariables,
+      std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       bool isDistinctCommand);
 
   CollectNode(
       ExecutionPlan*, arangodb::velocypack::Slice const& base,
       Variable const* expressionVariable, Variable const* outVariable,
-      std::vector<Variable const*> const& keepVariables,
+      std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
       std::unordered_map<VariableId, std::string const> const& variableMap,
       std::vector<GroupVarInfo> const& collectVariables,
       std::vector<AggregateVarInfo> const& aggregateVariables,
@@ -161,7 +161,8 @@ class CollectNode : public ExecutionNode {
   bool hasKeepVariables() const;
 
   /// @brief return the keep variables
-  std::vector<Variable const*> const& keepVariables() const;
+  std::vector<std::pair<Variable const*, std::string>> const& keepVariables()
+      const;
 
   /// @brief restrict the KEEP variables (which may also be the auto-collected
   /// variables of an unrestricted `INTO var`) to the passed `variables`.
@@ -193,7 +194,8 @@ class CollectNode : public ExecutionNode {
   std::vector<Variable const*> getVariablesSetHere() const override final;
 
   static void calculateAccessibleUserVariables(
-      ExecutionNode const& node, std::vector<Variable const*>& userVariables);
+      ExecutionNode const& node,
+      std::vector<std::pair<Variable const*, std::string>>& userVariables);
 
  protected:
   /// @brief export to VelocyPack
@@ -216,8 +218,10 @@ class CollectNode : public ExecutionNode {
   /// @brief output variable to write to (might be null)
   Variable const* _outVariable;
 
-  /// @brief list of variables to keep if INTO is used
-  std::vector<Variable const*> _keepVariables;
+  /// @brief list of variables to keep if INTO is used, the string value
+  /// is the original variable name (which will resist any name change
+  /// throughout query optimization)
+  std::vector<std::pair<Variable const*, std::string>> _keepVariables;
 
   /// @brief map of all variable ids and names (needed to construct group data)
   std::unordered_map<VariableId, std::string const> _variableMap;

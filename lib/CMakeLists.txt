@@ -6,17 +6,10 @@ add_compile_warnings_flags()
 ## LIB_ARANGO
 ################################################################################
 
-if (MSVC)
-  set(LIB_ARANGO_MSVC
-    Basics/win-utils.cpp
-    Zip/iowin32.cpp
-  )
-else ()
-  set(LIB_ARANGO_POSIX
-    Endpoint/EndpointUnixDomain.cpp
-    Endpoint/EndpointSrv.cpp
-  )
-endif ()
+set(LIB_ARANGO_POSIX
+  Endpoint/EndpointUnixDomain.cpp
+  Endpoint/EndpointSrv.cpp
+)
 
 set(LIB_ARANGO_LINENOISE
   Utilities/LinenoiseShell.cpp
@@ -75,6 +68,8 @@ add_library(arango_lightweight STATIC
         Basics/signals.cpp
         Basics/SourceLocation.cpp
         Basics/system-functions.cpp
+        Basics/terminal-utils-posix.cpp
+        Basics/threads-posix.cpp
         Basics/tri-strings.cpp
         Containers/ImmerMemoryPolicy.h
         Logger/Escaper.cpp
@@ -98,18 +93,6 @@ add_library(arango_lightweight STATIC
         ProgramOptions/UnitsHelper.cpp
         Random/RandomGenerator.cpp
 )
-
-if (MSVC)
-  target_sources(arango_lightweight PRIVATE
-          Basics/terminal-utils-win32.cpp
-          Basics/threads-win32.cpp
-          )
-else ()
-  target_sources(arango_lightweight PRIVATE
-          Basics/terminal-utils-posix.cpp
-          Basics/threads-posix.cpp
-          )
-endif ()
 
 target_include_directories(arango_lightweight PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 # some auto-generated headers live here, like "Basics/build.h"
@@ -143,8 +126,6 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango STATIC
-  ${LIB_ARANGO_APPLE}
-  ${LIB_ARANGO_MSVC}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}

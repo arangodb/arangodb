@@ -496,8 +496,8 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(normalize([]), normalize(indexNode.projections));
-        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
+        assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);
@@ -559,8 +559,8 @@ function BaseTestConfig () {
         assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
         assertEqual(1, nodes.filter((n) => n.type === 'SortNode').length);
         let indexNode = nodes.filter((n) => n.type === 'IndexNode')[0];
-        assertEqual(normalize([]), normalize(indexNode.projections));
-        assertFalse(indexNode.indexCoversProjections);
+        assertEqual(normalize(["dt"]), normalize(indexNode.projections));
+        assertTrue(indexNode.indexCoversProjections);
         assertEqual(1, indexNode.indexes.length);
         let index = indexNode.indexes[0];
         assertEqual("persistent", index.type);

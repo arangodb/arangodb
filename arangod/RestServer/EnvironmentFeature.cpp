@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -46,10 +46,8 @@
 #include <string_view>
 #include <vector>
 
-#ifdef __linux__
 #include <sys/sysinfo.h>
 #include <unistd.h>
-#endif
 
 #include <absl/strings/str_cat.h>
 
@@ -64,7 +62,6 @@ static_assert(std::atomic<uint64_t>::is_always_lock_free);
 static_assert(std::atomic<void*>::is_always_lock_free);
 
 namespace {
-#ifdef __linux__
 std::string_view trimProcName(std::string_view content) {
   std::size_t pos = content.find(' ');
   if (pos != std::string_view::npos && pos + 1 < content.size()) {
@@ -83,7 +80,6 @@ std::string_view trimProcName(std::string_view content) {
   }
   return {};
 }
-#endif
 }  // namespace
 
 using namespace arangodb::basics;
@@ -104,7 +100,6 @@ EnvironmentFeature::EnvironmentFeature(Server& server)
 }
 
 void EnvironmentFeature::prepare() {
-#ifdef __linux__
   _operatingSystem = "linux";
   try {
     std::string const versionFilename("/proc/version");
@@ -116,19 +111,9 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // ignore any errors as the log output is just informational
   }
-#elif _WIN32
-  // TODO: improve Windows version detection
-  _operatingSystem = "windows";
-#elif __APPLE__
-  // TODO: improve MacOS version detection
-  _operatingSystem = "macos";
-#else
-  _operatingSystem = "unknown";
-#endif
 
   // find parent process id and name
   std::string parent;
-#ifdef __linux__
   try {
     pid_t parentId = getppid();
     if (parentId) {
@@ -146,7 +131,6 @@ void EnvironmentFeature::prepare() {
     }
   } catch (...) {
   }
-#endif
 
   LOG_TOPIC("75ddc", INFO, Logger::FIXME)
       << "detected operating system: " << _operatingSystem << parent;
@@ -159,7 +143,6 @@ void EnvironmentFeature::prepare() {
         << "address significantly bigger regions of memory";
   }
 
-#ifdef __linux__
 #if defined(__arm__) || defined(__arm64__) || defined(__aarch64__)
   // detect alignment settings for ARM
   {
@@ -264,9 +247,7 @@ void EnvironmentFeature::prepare() {
     }
   }
 #endif
-#endif
 
-#ifdef __linux__
 #ifdef ARANGODB_HAVE_JEMALLOC
   {
     char const* v = getenv("LD_PRELOAD");
@@ -281,7 +262,6 @@ void EnvironmentFeature::prepare() {
     }
   }
 #endif
-#endif
 
   {
     char const* v = getenv("MALLOC_CONF");
@@ -293,7 +273,6 @@ void EnvironmentFeature::prepare() {
     }
   }
 
-#ifdef __linux__
   // check overcommit_memory & overcommit_ratio
   try {
     std::string const memoryFilename("/proc/sys/vm/overcommit_memory");
@@ -360,7 +339,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
-#endif
 
   // Report memory and CPUs found:
   LOG_TOPIC("25362", INFO, Logger::MEMORY)
@@ -371,7 +349,6 @@ void EnvironmentFeature::prepare() {
       << (NumberOfCores::overridden() ? " (overriden by environment variable)"
                                       : "");
 
-#ifdef __linux__
   // test local ipv6 support
   try {
     std::string const ipV6Filename("/proc/net/if_inet6");
@@ -570,8 +547,6 @@ void EnvironmentFeature::prepare() {
   } catch (...) {
     // file not found or value not convertible into integer
   }
-
-#endif
 }
 
 }  // namespace arangodb

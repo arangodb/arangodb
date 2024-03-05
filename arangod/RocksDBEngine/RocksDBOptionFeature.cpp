@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -566,7 +566,7 @@ prevent WAL files from being moved to the archive and being removed.)");
                       arangodb::options::Flags::OnAgent,
                       arangodb::options::Flags::OnDBServer,
                       arangodb::options::Flags::OnSingle))
-      .setLongDescription(R"(Levels above the default of `2` use Snappy
+      .setLongDescription(R"(Levels above the default of `2` use
 compression to reduce the disk space requirements for storing data in these
 levels.)");
 
@@ -659,22 +659,16 @@ number of cross-page I/O operations.)");
           arangodb::options::Flags::OnDBServer,
           arangodb::options::Flags::OnSingle));
 
-#ifdef __linux__
   options->addOption(
       "--rocksdb.use-direct-reads", "Use O_DIRECT for reading files.",
       new BooleanParameter(&_useDirectReads),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-direct-io-for-flush-and-compaction",
       "Use O_DIRECT for writing files for flush and compaction.",
       new BooleanParameter(&_useDirectIoForFlushAndCompaction),
-      arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                   arangodb::options::Flags::OsLinux,
-                                   arangodb::options::Flags::Uncommon));
-#endif
+      arangodb::options::makeFlags(arangodb::options::Flags::Uncommon));
 
   options->addOption(
       "--rocksdb.use-fsync",
@@ -1299,7 +1293,6 @@ version.)");
           new BooleanParameter(&_useJemallocAllocator),
           arangodb::options::makeFlags(arangodb::options::Flags::Experimental,
                                        arangodb::options::Flags::Uncommon,
-                                       arangodb::options::Flags::OsLinux,
                                        arangodb::options::Flags::OnAgent,
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))
@@ -1540,7 +1533,6 @@ limited number of edge collections/shards/indexes.)");
           "Should be set to false only to opt out of using io_uring.",
           new BooleanParameter(&ioUringEnabled),
           arangodb::options::makeFlags(arangodb::options::Flags::Uncommon,
-                                       arangodb::options::Flags::OsLinux,
                                        arangodb::options::Flags::OnAgent,
                                        arangodb::options::Flags::OnDBServer,
                                        arangodb::options::Flags::OnSingle))

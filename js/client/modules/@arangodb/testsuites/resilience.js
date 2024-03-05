@@ -2,28 +2,28 @@
 /* global */
 'use strict';
 
-// /////////////////////////////////////////////////////////////////////////////
-// DISCLAIMER
-// 
-// Copyright 2016-2018 ArangoDB GmbH, Cologne, Germany
-// Copyright 2014 triagens GmbH, Cologne, Germany
-// 
-// Licensed under the Apache License, Version 2.0 (the "License")
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-// 
-//     http://www.apache.org/licenses/LICENSE-2.0
-// 
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// 
-// Copyright holder is ArangoDB GmbH, Cologne, Germany
-// 
-// @author Max Neunhoeffer
-// /////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+// / @author Max Neunhoeffer
+// //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
   'resilience_move': 'resilience "move" tests',
@@ -45,15 +45,12 @@ const _ = require('lodash');
 
 const testPaths = {
   'resilience_move': [tu.pathForTesting('client/resilience/move')],
-  'resilience_move_view': [tu.pathForTesting('client/resilience/move-view')],
-  'resilience_repair': [tu.pathForTesting('client/resilience/repair')],
   'resilience_failover': [tu.pathForTesting('client/resilience/failover')],
   'resilience_failover_failure': [tu.pathForTesting('client/resilience/failover-failure')],
   'resilience_failover_view': [tu.pathForTesting('client/resilience/failover-view')],
   'resilience_transactions': [tu.pathForTesting('client/resilience/transactions')],
   'resilience_sharddist': [tu.pathForTesting('client/resilience/sharddist')],
   'resilience_analyzers': [tu.pathForTesting('client/resilience/analyzers')],
-  'client_resilience': [tu.pathForTesting('client/resilience')],
 };
 
 // //////////////////////////////////////////////////////////////////////////////

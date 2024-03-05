@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -33,12 +33,6 @@
 
 #include "Basics/Common.h"
 #include "Basics/operating-system.h"
-
-#ifdef _WIN32
-#include <windows.h>  // must be before Wincrypt.h
-
-#include <Wincrypt.h>
-#endif
 
 #ifdef TRI_HAVE_UNISTD_H
 #include <unistd.h>
@@ -215,8 +209,6 @@ int32_t RandomDevice::other(int32_t left, uint32_t range) {
 // RandomDeviceDirect
 // -----------------------------------------------------------------------------
 
-#ifndef _WIN32
-
 namespace {
 template<int N>
 class RandomDeviceDirect : public RandomDevice {
@@ -279,13 +271,9 @@ class RandomDeviceDirect : public RandomDevice {
 };
 }  // namespace
 
-#endif
-
 // -----------------------------------------------------------------------------
 // RandomDeviceCombined
 // -----------------------------------------------------------------------------
-
-#ifndef _WIN32
 
 namespace {
 template<int N>
@@ -388,8 +376,6 @@ class RandomDeviceCombined : public RandomDevice {
 };
 }  // namespace
 
-#endif
-
 // -----------------------------------------------------------------------------
 // RandomDeviceMersenne
 // -----------------------------------------------------------------------------
@@ -405,66 +391,6 @@ class RandomDeviceMersenne : public RandomDevice {
 
   std::mt19937 engine;
 };
-
-// -----------------------------------------------------------------------------
-// RandomDeviceWin32
-// -----------------------------------------------------------------------------
-
-#ifdef _WIN32
-
-namespace {
-template<int N>
-class RandomDeviceWin32 : public RandomDevice {
- public:
-  RandomDeviceWin32() : cryptoHandle(0), pos(0) {
-    BOOL result;
-    result = CryptAcquireContext(&cryptoHandle, nullptr, nullptr, PROV_RSA_FULL,
-                                 CRYPT_VERIFYCONTEXT | CRYPT_SILENT);
-    if (cryptoHandle == 0 || result == FALSE) {
-      std::string message("cannot create cryptographic windows handle");
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
-    }
-
-    fillBuffer();
-  }
-
-  ~RandomDeviceWin32() {
-    if (cryptoHandle != 0) {
-      CryptReleaseContext(cryptoHandle, 0);
-    }
-  }
-
-  uint32_t random() override {
-    if (pos >= N) {
-      fillBuffer();
-    }
-
-    return buffer[pos++];
-  }
-
- private:
-  void fillBuffer() {
-    DWORD n = sizeof(buffer);
-    BYTE* ptr = reinterpret_cast<BYTE*>(&buffer);
-
-    // fill the buffer with random characters
-    int result = CryptGenRandom(cryptoHandle, n, ptr);
-    if (result == 0) {
-      LOG_TOPIC("cec47", FATAL, arangodb::Logger::FIXME)
-          << "read on random device failed: nothing read";
-      FATAL_ERROR_EXIT();
-    }
-    pos = 0;
-  }
-
- private:
-  HCRYPTPROV cryptoHandle;
-  uint32_t buffer[N];
-  size_t pos;
-};
-}  // namespace
-
-#endif
 
 // -----------------------------------------------------------------------------
 // RandomGenerator
@@ -489,7 +415,6 @@ void RandomGenerator::ensureDeviceIsInitialized() {
       break;
     }
 
-#ifndef _WIN32
     case RandomType::RANDOM: {
       _device.reset(new RandomDeviceDirect<1024>("/dev/random"));
       break;
@@ -504,14 +429,6 @@ void RandomGenerator::ensureDeviceIsInitialized() {
       _device.reset(new RandomDeviceCombined<600>("/dev/random"));
       break;
     }
-#endif
-
-#ifdef _WIN32
-    case RandomType::WINDOWS_CRYPT: {
-      _device.reset(new RandomDeviceWin32<1024>());
-      break;
-    }
-#endif
 
     default: {
       THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,

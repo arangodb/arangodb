@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,11 +36,7 @@
 /// @brief invalid process id
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-#define TRI_INVALID_PROCESS_ID (0)
-#else
 #define TRI_INVALID_PROCESS_ID (-1)
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns information about the process
@@ -79,23 +75,12 @@ typedef enum {
 /// @brief identifier of an external process
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifndef _WIN32
 struct ExternalId {
   TRI_pid_t _pid;
   int _readPipe;
   int _writePipe;
   ExternalId();
 };
-#else
-struct ExternalId {
-  TRI_pid_t _pid;
-  HANDLE _readPipe;
-  HANDLE _writePipe;
-
-  ExternalId();
-  virtual ~ExternalId() = default;
-};
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief external process description
@@ -105,10 +90,6 @@ struct ExternalProcess : public ExternalId {
   std::string _executable;
   size_t _numberArguments = 0;
   char** _arguments = nullptr;
-
-#ifdef _WIN32
-  HANDLE _process = nullptr;
-#endif
 
   TRI_external_status_e _status = TRI_EXT_NOT_STARTED;
   int64_t _exitStatus = 0;

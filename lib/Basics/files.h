@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -22,10 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#ifdef _WIN32
-#include "Basics/win-utils.h"
-#endif
 
 #include <cstddef>
 #include <functional>
@@ -44,13 +40,11 @@ class EncryptionFeature;
 
 struct stat;
 
-#ifdef __linux__
 // whether or not the splice system call should be used for file-copying.
 // by default, splice() will be used for file-copying on Linux, but there are
 // filesystems that don't support it. for those, we can turn the usage of
 // splice() off calling this function with a value of false.
 void TRI_SetCanUseSplice(bool value) noexcept;
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -368,15 +362,10 @@ ErrorCode TRI_GetTempName(char const* directory, std::string& result,
 /// @brief copies a file from source to dest.
 ////////////////////////////////////////////////////////////////////////////////
 
-#ifdef _WIN32
-bool TRI_CopyFile(std::string const& src, std::string const& dst,
-                  std::string& error);
-#else
 // this API allows passing already retrieved stat info to the copy routine, in
 // order to avoid extra stat calls
 bool TRI_CopyFile(std::string const& src, std::string const& dst,
                   std::string& error, struct stat* statbuf = nullptr);
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief copies the file Attributes from source to dest.

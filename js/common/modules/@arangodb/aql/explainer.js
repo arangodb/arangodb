@@ -2040,7 +2040,13 @@ function processQuery(query, explain, planIndex) {
             accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
           }
         }
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable) + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
+        let varString = '';
+        if (node.outVariable.id !== node.oldDocVariable.id) {
+          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        } else {
+          varString = variableName(node.oldDocVariable);
+        }
+        return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';

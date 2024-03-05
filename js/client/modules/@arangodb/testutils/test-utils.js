@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -162,11 +162,6 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
     return false;
   }
 
-  if (testname.indexOf('-nonwindows') !== -1 && platform.substr(0, 3) === 'win') {
-    whichFilter.filter = 'non-windows';
-    return false;
-  }
-
   if (testname.indexOf('-nonmac') !== -1 && platform.substr(0, 6) === 'darwin') {
     whichFilter.filter = 'non-mac';
     return false;
@@ -195,6 +190,11 @@ function filterTestcaseByOptions (testname, options, whichFilter) {
 
   if ((testname.indexOf('-noinstr') !== -1) && (options.isInstrumented)) {
     whichFilter.filter = 'skip when built with an instrumented build';
+    return false;
+  }
+
+  if ((testname.indexOf('-noinstr_or_noncluster') !== -1) && (options.isInstrumented && options.cluster)) {
+    whichFilter.filter = 'skip when built with an instrumented build and running in cluster mode';
     return false;
   }
 

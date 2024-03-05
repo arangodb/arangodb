@@ -1,22 +1,7 @@
 if (USE_ENTERPRISE)
 
-  if (MSVC AND NOT(SKIP_PACKAGING))
-    set(ARANGO_BACKUP_FRIENDLY_STRING  "arangobackup - hot backup tool")
-    generate_product_version(ProductVersionFiles_arangobackup
-      NAME arangobackup
-      FILE_DESCRIPTION ${ARANGO_BACKUP_FRIENDLY_STRING}
-      ICON ${ARANGO_ICON}
-      COMPANY_NAME ${ARANGODB_PACKAGE_VENDOR}
-      VERSION_MAJOR ${CPACK_PACKAGE_VERSION_MAJOR}
-      VERSION_MINOR ${CPACK_PACKAGE_VERSION_MINOR}
-      VERSION_PATCH ${CPACK_PACKAGE_VERSION_PATCH}
-      VERSION_REVISION ${BUILD_ID}
-    )
-  endif ()
-
   add_executable(${BIN_ARANGOBACKUP}
     ${ProductVersionFiles_arangobackup}
-    ${CMAKE_SOURCE_DIR}/cmake/activeCodePage.manifest
     BackupFeature.cpp
     arangobackup.cpp
   )
@@ -25,7 +10,6 @@ if (USE_ENTERPRISE)
 
   target_link_libraries(${BIN_ARANGOBACKUP}
     arango
-    ${MSVC_LIBS}
     ${SYSTEM_LIBRARIES}
     boost_system
     boost_boost
@@ -50,8 +34,6 @@ if (USE_ENTERPRISE)
     add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
   endif ()
 
-  if (UNIX) 
-    add_dependencies(${BIN_ARANGOBACKUP} man)
-  endif ()
+  add_dependencies(${BIN_ARANGOBACKUP} man)
 endif () # USE_ENTERPRISE
 

@@ -27,18 +27,6 @@ endif ()
 
 string(TOUPPER ${CMAKE_BUILD_TYPE} CMAKE_BUILD_TYPE_UPPER)
 
-if (APPLE)
-  if (NOT CMAKE_OSX_DEPLOYMENT_TARGET OR "${CMAKE_OSX_DEPLOYMENT_TARGET}" STREQUAL "")
-    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR "ENV{MACOSX_DEPLOYMENT_TARGET}" STREQUAL "")
-      message(FATAL_ERROR "environment variable MACOSX_DEPLOYMENT_TARGET is missing")
-    else ()
-      set(CMAKE_OSX_DEPLOYMENT_TARGET "$ENV{MACOSX_DEPLOYMENT_TARGET}" CACHE STRING "deployment target for MacOSX; adjust to your system")
-    endif ()
-  else ()
-    set($ENV{MACOSX_DEPLOYMENT_TARGET} ${CMAKE_OSX_DEPLOYMENT_TARGET})
-  endif ()
-endif ()
-
 # where to find CMAKE modules
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -51,7 +39,7 @@ option(USE_FRONTEND "build the browser-based frontend (requires yarn and nodejs)
 option(VERBOSE "be verbose about flags used" OFF)
 
 # treat warnings as errors on some platforms
-option(USE_FAIL_ON_WARNINGS "treat warnings as errors (MSVC and MacOS only)" ON)
+option(USE_FAIL_ON_WARNINGS "treat warnings as errors" ON)
 
 # use strictly required OpenSSL version (from ./VERSIONS file)
 option(USE_STRICT_OPENSSL_VERSION "use strictly required OpenSSL version (from ./VERSIONS file)" OFF)
@@ -85,7 +73,7 @@ set(ARANGODB_VERSION_MINOR "12")
 
 # when building the nightly ARANGODB_VERSION_PATCH will be set
 if (NOT DEFINED ARANGODB_VERSION_PATCH)
-  set(ARANGODB_VERSION_PATCH "0")
+  set(ARANGODB_VERSION_PATCH "1")
   set(ARANGODB_VERSION_RELEASE_TYPE "devel")
   set(ARANGODB_VERSION_RELEASE_NUMBER "")
 else()
@@ -128,28 +116,6 @@ message(STATUS "ARANGODB VERSION: ${ARANGODB_VERSION}")
 message(STATUS "ARANGODB JS VERSION: ${ARANGODB_JS_VERSION}")
 
 ################################################################################
-# Windows version
-################################################################################
-
-# PATCH needs to be numeric for the windows rc file
-set(ARANGODB_WINDOWS_UPSTREAM "${ARANGODB_VERSION}")
-
-if (ARANGODB_VERSION_PATCH GREATER -1)
-  set(ARANGODB_WINDOWS_PATCH "${ARANGODB_VERSION_PATCH}")
-else()
-  set(ARANGODB_WINDOWS_PATCH 1337)
-endif()
-
-message(STATUS "WINDOWS VERSION: ${ARANGODB_WINDOWS_UPSTREAM}")
-
-if (MSVC)
-  option(USE_CCACHE
-    "whether we want to use ccache"
-    OFF
-  )
-endif ()
-
-################################################################################
 # SNAP version
 ################################################################################
 
@@ -161,11 +127,7 @@ message(STATUS "SNAP REVISION: ${ARANGODB_SNAP_REVISION}")
 #
 # ------------------------------------------------------------------------------
 
-if (WIN32)
-  project(arangodb3 LANGUAGES CXX C VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
-else ()
-  project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
-endif ()
+project(arangodb3 LANGUAGES CXX C ASM VERSION ${ARANGODB_VERSION_MAJOR}.${ARANGODB_VERSION_MINOR})
 
 # Enable CMake's Testing facilities.
 #
@@ -192,11 +154,7 @@ endif()
 option(STATIC_EXECUTABLES "produce static executables" OFF)
 if (STATIC_EXECUTABLES)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -static")
-  if (WINDOWS)
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".lib")
-  else ()
-    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-  endif ()
+  set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 endif()
 
 # enable V8/JavaScript in executables. 
@@ -273,13 +231,26 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
 )
+
+option(ARANGODB_BUILD_DATE "Specific build date set from the outside (leave empty to auto-generate)" "")
+if (ARANGODB_BUILD_DATE STREQUAL "")
+  if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h")
+    # auto-generate build date
+    string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+    set(GENERATE_BUILD_DATE ON)
+  else ()
+    # build-date.h file already exists. whatever is in there will be kept
+    set(GENERATE_BUILD_DATE OFF)
+  endif ()
+else ()
+  # forcefully recreate build-date.h file from provided date
+  set(GENERATE_BUILD_DATE ON)
+endif ()
 
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
@@ -288,9 +259,9 @@ if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
     "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
     NEWLINE_STYLE UNIX
     )
-else()
+else ()
   set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
-endif()
+endif ()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"
@@ -390,82 +361,44 @@ if (VERBOSE)
 endif ()
 
 ################################################################################
-## OPERATION SYSTEM
+## OPERATING SYSTEM
 ################################################################################
 
-option(HOMEBREW
-  "whether to install for homebrew"
-  Off
-)
-
-if (WIN32)
-  set(WINDOWS TRUE)
-  set(MSBUILD TRUE)
-
-  add_definitions(-D_USE_MATH_DEFINES)
-  add_definitions(-DNOMINMAX)
-  add_definitions(-D_WIN32_WINNT=0x600)
-  add_definitions(-DINCL_EXTRA_HTON_FUNCTIONS)
-  add_definitions(-DPSAPI_VERSION=1)
-
-elseif (UNIX AND NOT APPLE)
-  if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
-    set(LINUX TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
-    set(NETBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
-    set(OPENBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
-    set(GNU TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
-    set(BSDI TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
-    set(FREEBSD TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
-    set(SYSV5 TRUE)
-  endif ()
-elseif (APPLE)
-  if (CMAKE_SYSTEM_NAME MATCHES ".*Darwin.*")
-    set(DARWIN TRUE)
-  elseif (CMAKE_SYSTEM_NAME MATCHES ".*MacOS.*")
-    set(DARWIN TRUE)
-  endif ()
-  find_program(BREW brew)
+if(CMAKE_SYSTEM_NAME MATCHES ".*Linux")
+  set(LINUX TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kFreeBSD.*")
+  set(FREEBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kNetBSD.*|NetBSD.*")
+  set(NETBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "kOpenBSD.*|OpenBSD.*")
+  set(OPENBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*GNU.*")
+  set(GNU TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES ".*BSDI.*")
+  set(BSDI TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "DragonFly.*|FreeBSD")
+  set(FREEBSD TRUE)
+elseif (CMAKE_SYSTEM_NAME MATCHES "SYSV5.*")
+  set(SYSV5 TRUE)
 endif ()
 
 # ------------------------------------------------------------------------------
 # user options
 # ------------------------------------------------------------------------------
 
-if (WINDOWS)
-  SET(USE_JEMALLOC OFF)
-elseif (APPLE)
-  SET(USE_JEMALLOC OFF)
-else ()
-  option(
-    USE_JEMALLOC
-    "use jemalloc memory allocator"
-    ON
-  )
-endif ()
+option(
+  USE_JEMALLOC
+  "use jemalloc memory allocator"
+  ON
+)
 
-if (LINUX)
-  option(
-    USE_LIBUNWIND
-    "use libunwind for stack traces"
-    ON
-  )
-else ()
-  SET(USE_LIBUNWIND OFF)
-endif ()
+option(
+  USE_LIBUNWIND
+  "use libunwind for stack traces"
+  ON
+)
 
-if (LINUX)
-   option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
-else ()
-   set(USE_BUILD_ID_READER OFF)
-endif ()
+option(USE_BUILD_ID_READER "Add code to read arangod's build-id from within arangod" ON)
 
 if (USE_BUILD_ID_READER)
   add_definitions(-DUSE_BUILD_ID_READER=true)
@@ -473,16 +406,14 @@ else ()
   add_definitions(-DUSE_BUILD_ID_READER=false)
 endif ()
 
-if (NOT MSVC)
 # Guess whether we're using mold
-  execute_process(
-    COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
-    OUTPUT_VARIABLE LINKER_VERSION_OUT)
-  if (LINKER_VERSION_OUT MATCHES ^mold)
-    SET(LINKER_IS_MOLD TRUE)
-  else ()
-    SET(LINKER_IS_MOLD FALSE)
-  endif ()
+execute_process(
+  COMMAND ${CMAKE_CXX_COMPILER} ${CMAKE_EXE_LINKER_FLAGS} -Wl,--version
+  OUTPUT_VARIABLE LINKER_VERSION_OUT)
+if (LINKER_VERSION_OUT MATCHES ^mold)
+  SET(LINKER_IS_MOLD TRUE)
+else ()
+  SET(LINKER_IS_MOLD FALSE)
 endif ()
 
 # mold doesn't support the linker scripts currently used for the build id reader, and will result in the error
@@ -516,22 +447,20 @@ endif()
 # /usr/bin/ch(mod|own) to prevent the search
 # to find those files the NO_DEFAULT_PATH
 # argument is passed
-if (NOT WINDOWS)
-  find_program (MAKE make gmake)
+find_program (MAKE make gmake)
 
-  find_program(
-    CHMOD_EXECUTABLE chmod
-    PATHS "/bin/" "/usr/bin/"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
-  find_program(
-    CHOWN_EXECUTABLE chown
-    PATHS "/bin" "/usr/bin"
-    NO_DEFAULT_PATH
-  )
-  message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
-endif()
+find_program(
+  CHMOD_EXECUTABLE chmod
+  PATHS "/bin/" "/usr/bin/"
+  NO_DEFAULT_PATH
+)
+message(STATUS "chmod found in ${CHMOD_EXECUTABLE}")
+find_program(
+  CHOWN_EXECUTABLE chown
+  PATHS "/bin" "/usr/bin"
+  NO_DEFAULT_PATH
+)
+message(STATUS "chown found in ${CHOWN_EXECUTABLE}")
 
 ################################################################################
 ## ARCHITECTURE
@@ -559,65 +488,14 @@ include(CheckCompilerVersion)
 
 CheckCompilerVersion(
   11.2 # GCC
-  14.0 # Clang
-  19.32 # MSVC
+  16.0 # Clang
 )
 
-if (MSVC)
-  set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
-  set(BASE_FLAGS     "${BASE_FLAGS} /D WIN32 /D _WINDOWS /W3 /MP")
-  set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} /GR /EHsc /Zc:__cplusplus")
-  # Increase the reserved stack size for all threads to 4MB
-  # Note: this is only _reserved_ memory, not necessarily _committed_ memory
-  set(BASE_LD_FLAGS  "${BASE_LD_FLAGS} /STACK:4194304")
-  if (MSVC_VERSION VERSION_GREATER_EQUAL 1930)
-    # see https://docs.microsoft.com/en-us/cpp/overview/cpp-conformance-improvements?view=msvc-170#error-on-a-non-dependent-static_assert
-    set(BASE_C_FLAGS "/Zc:static_assert- ${BASE_C_FLAGS}")
-    set(BASE_CXX_FLAGS "/Zc:static_assert- ${BASE_CXX_FLAGS}")
+if (CMAKE_COMPILER_IS_CLANG) 
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "16.0")
+    message(WARNING "ArangoDB requires clang 16.0 or newer, building with older compiler versions is unsupported")
   endif()
-endif ()
-
-# FIXME: refactor/cleanup check below
-if (CMAKE_COMPILER_IS_GNUCC)
-  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "11.0")
-    message(WARNING "ArangoDB requires g++ 11.0 or newer, building with older compiler versions is unsupported")
-  elseif(CMAKE_CXX_COMPILER_VERSION VERSION_GREATER "11.9.9")
-    message(WARNING "ArangoDB doesn't support g++ 12.0 yet, building with newer compiler versions is unsupported")
-  endif()
-  set(BASE_C_FLAGS "${BASE_C_FLAGS}")
-endif ()
-
-if(MSVC)
-  # MSVC2018.1 - MSVC2018.7 does not correctly support alignas()
-  if (MSVC_VERSION VERSION_LESS 1915)
-    message(FATAL_ERROR "ArangoDB doesn't support MSVC less than 2017 update 15.8!")
-  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1915 AND MSVC_VERSION VERSION_LESS 1920)
-    message(WARNING "ArangoDB requires MSVC 2019 update 16.4 or newer, building with older compiler versions is unsupported")
-    # according to https://developercommunity.visualstudio.com/solutions/616098/view.html,
-    # the following define is not necessary anymore, as it should be fixed in MSVC 16.0:
-    # MSVC2018.8 requires the following define
-    add_definitions(-D_ENABLE_EXTENDED_ALIGNED_STORAGE)
-  elseif (MSVC_VERSION VERSION_GREATER_EQUAL 1920 AND MSVC_VERSION VERSION_LESS 1924)
-    message(FATAL_ERROR "ArangoDB requires at least MSVC 2019 update 16.4!")
-  endif()
-endif()
-
-if (CMAKE_COMPILER_IS_CLANG AND NOT MSVC) # exclude clang-cl
-  if (APPLE)
-    if (NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET} OR ENV{MACOSX_DEPLOYMENT_TARGET} STREQUAL "")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++")
-    else ()
-      set(BASE_C_FLAGS "${BASE_C_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_CXX_FLAGS "${BASE_CXX_FLAGS} -stdlib=libc++ -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-      set(BASE_LD_FLAGS "${BASE_LD_FLAGS} -mmacosx-version-min=$ENV{MACOSX_DEPLOYMENT_TARGET}")
-    endif ()
-    add_definitions("-Wno-deprecated-declarations")
-  else ()
-    if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "10.0")
-      message(WARNING "ArangoDB requires clang 10.0 or newer, building with older compiler versions is unsupported")
-    endif()
-    list(APPEND BASE_LIBS atomic)
-  endif ()
+  list(APPEND BASE_LIBS atomic)
 endif ()
 
 # need c++20
@@ -627,39 +505,12 @@ set(CMAKE_CXX_STANDARD 20)
 # -std=c++20).
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-if(MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # we need to exclude clang-cl
-  # We need to use c++latest instead of c++20 because <format>, <ranges>, and the formatting part of <chrono> will
-  # remain restricted to /std:c++latest due to WG21's upcoming changes.
-  # For more details on this see https://github.com/microsoft/STL/issues/1814#issuecomment-845572895")
-  set(CMAKE_CXX20_STANDARD_COMPILE_OPTION "-std:c++latest")
-  set(CMAKE_CXX20_EXTENSION_COMPILE_OPTION "-std:c++latest")
-endif ()
-
 # need threads
 find_package(Threads REQUIRED)
 
-if (MSVC)
-  configure_file("Installation/Windows/vcproj.user/arangod.vcxproj.user" ${CMAKE_BINARY_DIR})
-  add_definitions("-D_CRT_SECURE_NO_WARNINGS=1")
-  add_definitions("-DFD_SETSIZE=8192")
-  add_definitions("-DU_STATIC_IMPLEMENTATION=1")
-
-  # bcrypt is needed for SSL
-  set(MSVC_LIBS Shlwapi.lib;crypt32.lib;bcrypt.lib;WINMM.LIB;Ws2_32.lib;Psapi.lib)
-
-  set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} /SUBSYSTEM:CONSOLE /SAFESEH:NO /MACHINE:x64 /ignore:4099 ${BASE_LD_FLAGS}"
-  )
-  # We currently need to disable ICF because unfortunately we have some code
-  # that depends on unique addresses for functions or read-only data members.
-  set(CMAKE_EXE_LINKER_FLAGS_MINSIZEREL     "/DEBUG /OPT:REF /OPT:NOICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELEASE        "/OPT:REF /OPT:NOICF")
-  set(CMAKE_EXE_LINKER_FLAGS_RELWITHDEBINFO "/DEBUG /OPT:REF /OPT:NOICF")
-else ()
-  set(CMAKE_EXE_LINKER_FLAGS
-    "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
-  )
-endif ()
+set(CMAKE_EXE_LINKER_FLAGS
+  "${CMAKE_EXE_LINKER_FLAGS} ${BASE_LD_FLAGS}"
+)
 
 ################################################################################
 ## TARGET ARCHITECTURE
@@ -674,9 +525,7 @@ set(BASE_FLAGS "${BASE_FLAGS} ${ARCHITECTURE_OPTIMIZATIONS}")
 
 # iresearch uses backtrace, so we need to find and link libexecinfo
 # for the case that we are on libmusl and not on glibc
-if (NOT WIN32)
-  find_package(Backtrace)
-endif()
+find_package(Backtrace)
 
 if (Backtrace_LIBRARY)
   set(BT_LIBS ${Backtrace_LIBRARY} CACHE PATH "Debug Helper libraries")
@@ -795,13 +644,7 @@ endif()
 ## LIBRARY RESOLV
 ################################################################################
 
-if (NOT WINDOWS)
-  set(SYS_LIBS ${SYS_LIBS} resolv)
-
-  if (NOT DARWIN)
-    set(SYS_LIBS ${SYS_LIBS} rt)
-  endif ()
-endif ()
+set(SYS_LIBS ${SYS_LIBS} resolv rt)
 
 # ------------------------------------------------------------------------------
 # IMPLICIT INCLUDES AND LIBRARY DIRECTORIES
@@ -902,21 +745,13 @@ endfunction()
 
 function(add_compile_warnings_flags)
   if (USE_FAIL_ON_WARNINGS)
-    if (MSVC)
-      add_compile_options(/WX /D_WINSOCK_DEPRECATED_NO_WARNINGS)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang") # clang-cl.exe
-        # There's a warning about /MP being unused if compiling only a single file
-        add_compile_options(-Wno-unused-command-line-argument)
-      endif()
-    else ()
-      add_compile_options(-Werror -Wno-error=deprecated-declarations)
-      if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-        # This option has too many false positives
-        add_compile_options(-Wno-error=maybe-uninitialized)
-        # This prevents useful partial initializations
-        add_compile_options(-Wno-missing-field-initializers)
-      endif()
-    endif ()
+    add_compile_options(-Werror -Wno-error=deprecated-declarations)
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+      # This option has too many false positives
+      add_compile_options(-Wno-error=maybe-uninitialized)
+      # This prevents useful partial initializations
+      add_compile_options(-Wno-missing-field-initializers)
+    endif()
   endif ()
 endfunction()
 
@@ -926,174 +761,82 @@ endif ()
 
 
 # compiler options
-if (MSVC)
-  message(STATUS "Compiler type MSVC: ${CMAKE_CXX_COMPILER}")
+set(EXTRA_C_FLAGS "")
+set(EXTRA_CXX_FLAGS "")
 
-  if (USE_MINIMAL_DEBUGINFO)
-    message(FATAL_ERROR "USE_MINIMAL_DEBUGINFO is not supported for this compiler")
-  endif ()
-
-  set(BASE_FLAGS "/wd4996 ${BASE_FLAGS}")
-
-  set(CMAKE_C_FLAGS                ""                                      CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"     CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL     "/MT /O1"                               CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE        "/MT /O2"                               CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                           CACHE INTERNAL "C release with debug info flags")
-
-  set(CMAKE_CXX_FLAGS                ""                                    CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "/D _DEBUG /MTd /Zi /Ob0 /Od /RTC1"   CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "/MT /O1"                             CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "/MT /O2"                             CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "/MT /Zi /O2"                         CACHE INTERNAL "C++ release with debug info flags")
-
-  if(USE_CCACHE)
-    find_program(CCACHE ccache REQUIRED)
-
-    if(CCACHE)
-      message(STATUS "Using ccache: ${CCACHE}")
-
-      # if ccache is installed with Chocolatey on Windows, the found exe is a shim file hiding the real location.
-      # get real location by querying for the target.
-      execute_process(
-          COMMAND powershell
-              "${CCACHE} --shimgen-help | Select-String -SimpleMatch "Target:"| ForEach-Object { ($_ -split \"'\")[1]  }" 
-          OUTPUT_VARIABLE CCACHE_REAL
-          RESULT_VARIABLE CCACHE_RESULT_CODE
-          OUTPUT_STRIP_TRAILING_WHITESPACE
-      )
-
-      if(CCACHE_RESULT_CODE)
-        set( CCACHE ${CCACHE_REAL} )
-        message(STATUS "Resolved ccache SHIM: '${CCACHE_REAL}'")
-      endif()
-
-      # copy ccache as cl to build directory, this integrates ccache without cmake needing any other setup than a new tool path.
-      # this solution also does not require administrative rights on Windows.
-      file(COPY_FILE 
-        ${CCACHE} ${CMAKE_BINARY_DIR}/cl.exe
-        ONLY_IF_DIFFERENT
-      )
-
-      set(CMAKE_VS_GLOBALS
-        "CLToolExe=cl.exe"
-        "CLToolPath=${CMAKE_BINARY_DIR}"
-        "TrackFileAccess=false"
-        "UseMultiToolTask=true"
-        "DebugInformationFormat=OldStyle"
-      )
-
-      if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG}")
-      elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE}")
-      elseif(CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
-        string(REPLACE "/Zi" "/Z7" CMAKE_CXX_FLAGS_RELWITHDEBINFO "${CMAKE_CXX_FLAGS_RELWITHDEBINFO}")
-        string(REPLACE "/Zi" "/Z7" CMAKE_C_FLAGS_RELWITHDEBINFO "${CMAKE_C_FLAGS_RELWITHDEBINFO}")
-      endif()
-    else(CCACHE)
-      message(STATUS "CCACHE NOT FOUND")
-    endif(CCACHE)
-  endif(USE_CCACHE)
-
-  add_definitions(/bigobj)
-  if (CMAKE_COMPILER_IS_CLANG) # clang-cl
-    set(BASE_FLAGS "-Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
   endif()
-else () # NOT MSVC
-  set(EXTRA_C_FLAGS "")
-  set(EXTRA_CXX_FLAGS "")
-
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
-    message(STATUS "Compiler type GNU: ${CMAKE_CXX_COMPILER}")
-    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-    set(EXTRA_CXX_FLAGS "-Wsuggest-override -Wnon-virtual-dtor")
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_EQUAL "11.1.0")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=nonnull")
-    endif()
-    if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
-      # the following warning types need to be suppressed with newer
-      # versions of g++, as they produce a lot of false positives.
-      # if the no-error directives are removed, a lot 3rdParty libraries
-      # such as date, fmt, and immer cannot be compiled anymore.
-      # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
-    endif()
-  elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
-    set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
-    set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
-    
-    if (NOT DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
-      # clang 11 and higher supports -Wsuggest-override. older versions don't
-      set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
-    endif ()
-
-    if (DARWIN AND CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "12.0" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS "12.1")
-      # With the introduction of apple clang version 12.0.0 (clang-1200.0.32.2) the warning "range-loop-analysis" is now
-      # enabled by default or changed analysis behaviour. The compiler now complains about "wrong" usage of
-      # VPackObjectIterator and VPackArrayIterator - which is not the case.
-      #
-      # See example here: https://github.com/arangodb/arangodb/pull/12730
-      #
-      # Since we're stopping compilation on Apple in any warning case, we need to temporary disable that warning and
-      # check upcoming versions if the compiler behaviour will be fixed.
-      set(EXTRA_C_FLAGS "-Wno-range-loop-analysis")
-      set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-range-loop-analysis")
-    endif ()
-  else ()
-    # unknown compiler
-    message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
-    set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "13.0.0")
+    # the following warning types need to be suppressed with newer
+    # versions of g++, as they produce a lot of false positives.
+    # if the no-error directives are removed, a lot 3rdParty libraries
+    # such as date, fmt, and immer cannot be compiled anymore.
+    # https://gcc.gnu.org/bugzilla/buglist.cgi?bug_status=__open__&content=stringop-overread&no_redirect=1&product=gcc
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=dangling-reference")
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=array-bounds")
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=overloaded-virtual")
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overflow")
+    set(EXTRA_CXX_FLAGS "${EXTRA_CXX_FLAGS} -Wno-error=stringop-overread")
+  endif()
+elseif (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  message(STATUS "Compiler type CLANG: ${CMAKE_CXX_COMPILER}")
+  set(BASE_FLAGS "-Wall -Wextra -Wno-unused-parameter -Wno-deprecated-declarations ${BASE_FLAGS}")
+  set(EXTRA_CXX_FLAGS "-Wnon-virtual-dtor")
+  
+  if (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL "11.0")
+    # clang 11 and higher supports -Wsuggest-override. older versions don't
+    set(EXTRA_CXX_FLAGS "-Wsuggest-override ${EXTRA_CXX_FLAGS}")
   endif ()
+else ()
+  # unknown compiler
+  message(STATUS "Compiler type UNKNOWN: ${CMAKE_CXX_COMPILER}")
+  set(BASE_FLAGS "-Wall ${BASE_FLAGS}")
+endif ()
 
-  # flags for builds without debug symbols
-  set(NODEBUGINFO_FLAGS "-g0")
+# flags for builds without debug symbols
+set(NODEBUGINFO_FLAGS "-g0")
 
-  # flags for builds with debug symbols
-  if (USE_MINIMAL_DEBUGINFO)
-    # minimal debug symbols
-    set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
-  else ()
-    # full debug symbols
-    set(DEBUGINFO_FLAGS "-g -gz")
-  endif ()
+# flags for builds with debug symbols
+if (USE_MINIMAL_DEBUGINFO)
+  # minimal debug symbols
+  set(DEBUGINFO_FLAGS "-g1 -gno-column-info -gz")
+else ()
+  # full debug symbols
+  set(DEBUGINFO_FLAGS "-g -gz")
+endif ()
 
-  # c
-  # note: when building one of the build types, CMake will automatically combine
-  # the base flags from CMAKE_C_FLAGS with build type-specific flags in 
-  # CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
-  # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
-  set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
-  set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
-  set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
-  set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
+# c
+# note: when building one of the build types, CMake will automatically combine
+# the base flags from CMAKE_C_FLAGS with build type-specific flags in 
+# CMAKE_C_FLAGS_${CMAKE_BUILD_TYPE}.
+# there is no need to repeat the base flags in the build-type specific flags!
+set(CMAKE_C_FLAGS                  ""                                                CACHE INTERNAL "default C compiler flags")
+set(CMAKE_C_FLAGS_DEBUG            "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C debug flags")
+set(CMAKE_C_FLAGS_MINSIZEREL       "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C minimal size flags")
+set(CMAKE_C_FLAGS_RELEASE          "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C release flags")
+set(CMAKE_C_FLAGS_RELWITHDEBINFO   "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C release with debug info flags")
 
-  # cxx
-  # note: when building one of the build types, CMake will automatically combine
-  # the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
-  # CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
-  # there is no need to repeat the base flags in the build-type specific flags!
-  set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
-  set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
-  set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
-  set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
-  set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
+# cxx
+# note: when building one of the build types, CMake will automatically combine
+# the base flags from CMAKE_CXX_FLAGS with build type-specific flags in 
+# CMAKE_CXX_FLAGS_${CMAKE_BUILD_TYPE}.
+# there is no need to repeat the base flags in the build-type specific flags!
+set(CMAKE_CXX_FLAGS                ""                                                CACHE INTERNAL "default C++ compiler flags")
+set(CMAKE_CXX_FLAGS_DEBUG          "${DEBUGINFO_FLAGS} -O0 -D_DEBUG=1"               CACHE INTERNAL "C++ debug flags")
+set(CMAKE_CXX_FLAGS_MINSIZEREL     "${NODEBUGINFO_FLAGS} -Os"                        CACHE INTERNAL "C++ minimal size flags")
+set(CMAKE_CXX_FLAGS_RELEASE        "${NODEBUGINFO_FLAGS} -O3 -fomit-frame-pointer"   CACHE INTERNAL "C++ release flags")
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "${DEBUGINFO_FLAGS} -O3 -fno-omit-frame-pointer"  CACHE INTERNAL "C++ release with debug info flags")
 
-  if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-      # On Darwin -fstandalone-debug is enabled by default, so we don't need
-      # to add it for AppleClang.
-      set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
-      set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
-  endif ()
-
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # On Darwin -fstandalone-debug is enabled by default, so we don't need
+    # to add it for AppleClang.
+    set(CMAKE_CXX_FLAGS_DEBUG             "${CMAKE_CXX_FLAGS_DEBUG} -fstandalone-debug")
+    set(CMAKE_CXX_FLAGS_RELWITHDEBINFO    "${CMAKE_CXX_FLAGS_RELWITHDEBINFO} -fstandalone-debug")
 endif ()
 
 # put together the final flags
@@ -1139,13 +882,7 @@ if (NOT EXISTS "${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
   message(FATAL_ERROR "expecting ${CMAKE_CURRENT_LIST_DIR}/VERSIONS")
 else ()
   file(READ "${CMAKE_CURRENT_LIST_DIR}/VERSIONS" ARANGODB_VERSIONS_CONTENT)
-  if (LINUX)
-    set (TARGET_OS "LINUX")
-  elseif (DARWIN)
-    set (TARGET_OS "MACOS")
-  elseif (WIN32)
-    set (TARGET_OS "WINDOWS")
-  endif ()
+  set (TARGET_OS "LINUX")
 
   if (USE_STRICT_OPENSSL_VERSION)
     set (OPENSSL_VERSION_PATTERN ".*OPENSSL_${TARGET_OS}[ ]+\"([^\"]*).*")
@@ -1189,19 +926,7 @@ if (DEFINED OPENSSL_ROOT_DIR AND NOT "${OPENSSL_ROOT_DIR}" STREQUAL "")
   message ("Use OPENSSL_ROOT_DIR: ${OPENSSL_ROOT_DIR}")
 endif ()
 
-if (WIN32)
-  # Attempt to find ArangoDB CI compiled OpenSSL
-  message ("Attempt to find ArangoDB CI compiled OpenSSL at ${OPENSSL_ROOT_DIR}:")
-  set (OPENSSL_USE_STATIC_LIBS TRUE)
-  set (OPENSSL_MSVC_STATIC_RT TRUE)
-  include ("${CMAKE_CURRENT_LIST_DIR}/cmake/custom/ArangoDB_FindOpenSSL_WIN32.cmake")
-  if (NOT OPENSSL_FOUND)
-    message ("System-wide attempt to find OpenSSL:")
-    find_package(OpenSSL REQUIRED)
-  endif ()
-else ()
-  find_package(OpenSSL REQUIRED)
-endif ()
+find_package(OpenSSL REQUIRED)
 
 if (OPENSSL_FOUND AND USE_STRICT_OPENSSL_VERSION)
   if (NOT "${OPENSSL_VERSION}" MATCHES "${ARANGODB_REQUIRED_OPENSSL_VERSION}")
@@ -1286,12 +1011,6 @@ link_directories("${PROJECT_BINARY_DIR}/bin")
 ################################################################################
 ## PATHS, installation, packages, frontend
 ################################################################################
-
-if (MSVC)
-  # versioning
-  set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/Installation/Windows/version")
-  include(generate_product_version)
-endif()
 
 add_subdirectory(Documentation)
 include(ArangoDBInstall)
