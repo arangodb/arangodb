@@ -783,6 +783,8 @@ class ClusterInfo final {
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       ShardID shardID);
 
+  futures::Future<ResultT<ServerID>> getLeaderForShard(ShardID shard);
+
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
                                      ShardID const& shard) const;
