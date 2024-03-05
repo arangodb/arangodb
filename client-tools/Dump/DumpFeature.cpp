@@ -932,7 +932,8 @@ of the dump protocol on the server side. It is only supported with ArangoDB
 servers running version 3.12 or higher.
 If the dump should be restored into versions of ArangoDB older than 3.12, this
 option should be turned off.)")
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
   // option was renamed in 3.12
   options->addOldOption("--use-experimental-dump", "--parallel-dump");
 
@@ -944,31 +945,35 @@ option should be turned off.)")
       .setLongDescription(R"(This option only has effect when the option
 `--parallel-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
-single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
-      .setIntroducedIn(31200);
+single collection/shard from multiple files.)")
+      .setIntroducedIn(31010)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-worker-threads",
-                  "Number of worker threads on each dbserver.",
+                  "Number of worker threads on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-prefetch-batches",
-                  "Number of batches to prefetch on each dbserver.",
+                  "Number of batches to prefetch on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverPrefetchBatches),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--local-writer-threads", "Number of local writer threads.",
                   new UInt64Parameter(&_options.localWriterThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 
   options
       ->addOption("--local-network-threads",
@@ -977,7 +982,8 @@ single collection/shard from multiple files, i.e. ArangoDB 3.12 or higher.)")
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008)
+      .setIntroducedIn(31102);
 }
 
 void DumpFeature::validateOptions(
