@@ -100,15 +100,17 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
             continue;
           }
           auto shards = ci.getShardList(std::to_string(cc->id().id()));
-          for (ShardID const& shard : *shards) {
-            auto sss = ci.getResponsibleServer(shard);
-            if (std::string_view{server} == sss->at(0)) {
-              if (numCollections == 0) {
-                builder.add(key, VPackValue(VPackValueType::Array));
-              }
-              builder.add(VPackValue(shard));
-              numCollections++;
+          TRI_ASSERT(shards != nullptr);
+          for (ShardID shard : *shards) {
+            auto maybeServer = ci.getLeaderForShard(shard).get();
+            if (maybeServer.get() != server) {
+              continue;
             }
+            if (numCollections == 0) {
+              builder.add(key, VPackValue(VPackValueType::Array));
+            }
+            builder.add(VPackValue(shard));
+            numCollections++;
           }
         }
         return true;  // continue
