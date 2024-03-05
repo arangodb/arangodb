@@ -1126,7 +1126,7 @@
     render: function () {
       this.collectionName = window.location.hash.split('/')[1];
 
-      $(this.el).html(this.template.render());
+      $(this.el).html(this.template.render({}));
 
       if (this.type === 2) {
         this.type = 'document';
