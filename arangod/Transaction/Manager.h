@@ -277,10 +277,11 @@ class Manager final : public IManager {
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
       TransactionId tid, ManagedTrx& mtrx);
 
-  Result updateTransaction(TransactionId tid, transaction::Status status,
-                           bool clearServers,
-                           /* use nullopt to operate across all databases */
-                           std::optional<std::string_view> database);
+  Result updateTransaction(
+      TransactionId tid, transaction::Status status, bool clearServers,
+      // TODO - use a better solution
+      std::string const& database =
+          "" /* leave empty to operate across all databases */);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(

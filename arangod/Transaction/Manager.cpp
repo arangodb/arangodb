@@ -1055,7 +1055,7 @@ Result Manager::abortManagedTrx(TransactionId tid,
 
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
                                   bool clearServers,
-                                  std::optional<std::string_view> database) {
+                                  std::string const& database) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
@@ -1090,20 +1090,21 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
-      ADB_PROD_ASSERT(database.has_value());
+      ADB_PROD_ASSERT(database != "");
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
           tid, _feature, MetaType::Tombstone,
           ttlForType(_feature, MetaType::Tombstone), nullptr,
           arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
-      inserted.first->second.db = database.value();
+      inserted.first->second.db = database;
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ false));
     }
 
     ManagedTrx& mtrx = it->second;
-    if (!::authorized(mtrx.user) || (database && mtrx.db != *database)) {
+    if (!::authorized(mtrx.user) ||
+        (!database.empty() && mtrx.db != database)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ true));
     }
@@ -1336,8 +1337,7 @@ bool Manager::garbageCollect(bool abortAll) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
     try {
-      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true,
-                                     std::nullopt);
+      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
       // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
       // successfully aborts, so ignore this error.
       // we can also get the TRI_ERROR_LOCKED error in case we cannot
@@ -1400,8 +1400,7 @@ bool Manager::abortManagedTrx(
   }
 
   for (TransactionId tid : toAbort) {
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true,
-                                   std::nullopt);
+    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
     if (res.fail() &&
         !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)
