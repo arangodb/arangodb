@@ -181,8 +181,7 @@ class Manager final : public IManager {
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
   /// @brief get the meta transaction state
-  transaction::Status getManagedTrxStatus(TransactionId,
-                                          std::string const& database) const;
+  transaction::Status getManagedTrxStatus(TransactionId) const;
 
   Result commitManagedTrx(TransactionId, std::string const& database);
   Result abortManagedTrx(TransactionId, std::string const& database) override;
@@ -278,10 +277,10 @@ class Manager final : public IManager {
   std::shared_ptr<ManagedContext> buildManagedContextUnderLock(
       TransactionId tid, ManagedTrx& mtrx);
 
-  Result updateTransaction(
-      TransactionId tid, transaction::Status status, bool clearServers,
-      std::string const& database =
-          "" /* leave empty to operate across all databases */);
+  Result updateTransaction(TransactionId tid, transaction::Status status,
+                           bool clearServers,
+                           /* use nullopt to operate across all databases */
+                           std::optional<std::string_view> database);
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(
@@ -294,6 +293,9 @@ class Manager final : public IManager {
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
+
+  bool isAuthorized(ManagedTrx const& trx) const;
+  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
 
  private:
   ManagerFeature& _feature;

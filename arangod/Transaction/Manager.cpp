@@ -22,10 +22,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Manager.h"
+#include <optional>
+#include <string_view>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -35,6 +38,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "CrashHandler/CrashHandler.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
@@ -48,6 +52,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/vocbase.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
@@ -829,7 +834,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       return nullptr;
     }
 
-    if (mtrx.expired() || !::authorized(mtrx.user)) {
+    if (mtrx.expired() || !isAuthorized(mtrx)) {
       return nullptr;  // no need to return anything
     }
 
@@ -953,9 +958,9 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end() ||
-        !::authorized(it->second.user)) {
+        !isAuthorized(it->second)) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-          << "managed transaction " << tid << " not found";
+          << "managed transaction " << tid << " not found or inaccessible";
       TRI_ASSERT(false);
       return;
     }
@@ -997,14 +1002,12 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 }
 
 /// @brief get the transaction state
-transaction::Status Manager::getManagedTrxStatus(
-    TransactionId tid, std::string const& database) const {
+transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   size_t bucket = getBucket(tid);
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() ||
-      !::authorized(it->second.user) || it->second.db != database) {
+  if (it == _transactions[bucket]._managed.end() || !isAuthorized(it->second)) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -1055,7 +1058,7 @@ Result Manager::abortManagedTrx(TransactionId tid,
 
 Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
                                   bool clearServers,
-                                  std::string const& database) {
+                                  std::optional<std::string_view> database) {
   TRI_ASSERT(status == transaction::Status::COMMITTED ||
              status == transaction::Status::ABORTED);
 
@@ -1090,20 +1093,20 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
+      ADB_PROD_ASSERT(database.has_value());
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
           tid, _feature, MetaType::Tombstone,
           ttlForType(_feature, MetaType::Tombstone), nullptr,
           arangodb::cluster::CallbackGuard{});
       inserted.first->second.finalStatus = transaction::Status::ABORTED;
-      inserted.first->second.db = database;
+      inserted.first->second.db = database.value();
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ false));
     }
 
     ManagedTrx& mtrx = it->second;
-    if (!::authorized(mtrx.user) ||
-        (!database.empty() && mtrx.db != database)) {
+    if (!::authorized(mtrx.user) || (database && mtrx.db != *database)) {
       return res.reset(TRI_ERROR_TRANSACTION_NOT_FOUND,
                        buildErrorMessage(tid, status, /*found*/ true));
     }
@@ -1336,7 +1339,8 @@ bool Manager::garbageCollect(bool abortAll) {
     LOG_TOPIC("6fbaf", INFO, Logger::TRANSACTIONS) << "garbage collecting "
                                                    << "transaction " << tid;
     try {
-      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+      Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true,
+                                     std::nullopt);
       // updateTransaction can return TRI_ERROR_TRANSACTION_ABORTED when it
       // successfully aborts, so ignore this error.
       // we can also get the TRI_ERROR_LOCKED error in case we cannot
@@ -1399,7 +1403,8 @@ bool Manager::abortManagedTrx(
   }
 
   for (TransactionId tid : toAbort) {
-    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true);
+    Result res = updateTransaction(tid, Status::ABORTED, /*clearSrvs*/ true,
+                                   std::nullopt);
     if (res.fail() &&
         !res.is(TRI_ERROR_CLUSTER_FOLLOWER_TRANSACTION_COMMIT_PERFORMED)) {
       LOG_TOPIC("2bf48", INFO, Logger::TRANSACTIONS)
@@ -1479,9 +1484,9 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder, &database](TransactionId tid,
-                                          ManagedTrx const& trx) {
-    if (::authorized(trx.user) && trx.db == database) {
+  iterateManagedTrx([this, &builder, &database](TransactionId tid,
+                                                ManagedTrx const& trx) {
+    if (isAuthorized(trx, database)) {
       builder.openObject(true);
       builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state",
@@ -1603,6 +1608,27 @@ bool Manager::storeManagedState(
       tid, _feature, MetaType::Managed, ttl, std::move(state),
       std::move(rGuard));
   return it.second;
+}
+
+bool Manager::isAuthorized(ManagedTrx const& trx) const {
+  auto const& exec = arangodb::ExecContext::current();
+  return isAuthorized(trx, exec.database());
+}
+
+bool Manager::isAuthorized(ManagedTrx const& trx,
+                           std::string_view database) const {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
+    // if we are a superuser, we do not check the database.
+    // This is necessary because we have a few code paths where we no longer
+    // have the ExecContext with the user who initiated the request (e.g., the
+    // RestDocumentHandler has the _activeTrx member, but when that gets
+    // destroyed and thereby releases the transaction, the ExecContext is
+    // already gone).
+    // TODO - this should be improved in a separate step
+    return true;
+  }
+  return trx.user == exec.user() && trx.db == database;
 }
 
 std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
