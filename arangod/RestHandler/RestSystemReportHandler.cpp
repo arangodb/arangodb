@@ -61,7 +61,6 @@ RestSystemReportHandler::RestSystemReportHandler(ArangodServer& server,
                          std::to_string(Thread::currentProcessId()) + " 2>&1"},
             {"top", "time top -b -n 1 2>&1"}}) {}
 
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
 namespace {
 std::string exec(std::string const& cmd) {
   std::array<char, 128> buffer;
@@ -77,7 +76,6 @@ std::string exec(std::string const& cmd) {
   return result;
 }
 }  // namespace
-#endif
 
 bool RestSystemReportHandler::isAdminUser() const {
   if (!ExecContext::isAuthEnabled()) {
@@ -109,7 +107,7 @@ RestStatus RestSystemReportHandler::execute() {
   {
     VPackObjectBuilder o(&result);
 
-#if defined(__unix__) || (defined(__APPLE__) && defined(__MACH__))
+#if defined(__unix__)
     while (true) {
       if (steady_clock::now() - start > seconds(60)) {
         generateError(ResponseCode::BAD, TRI_ERROR_LOCK_TIMEOUT);

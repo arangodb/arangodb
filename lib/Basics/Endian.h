@@ -28,32 +28,15 @@
 #include <cstring>
 #include <type_traits>
 
-#ifdef __APPLE__
-#include <libkern/OSByteOrder.h>
-#include <machine/endian.h>
-#elif __linux__
 #include <endian.h>
-#else
-#pragma messsage("unsupported os or compiler")
-#endif
 
 namespace arangodb {
 namespace basics {
 
-#ifdef __APPLE__
-#if BYTE_ORDER == LITTLE_ENDIAN
-static constexpr bool isLittleEndian() { return true; }
-#elif BYTE_ORDER == BIG_ENDIAN
-static constexpr bool isLittleEndian() { return false; }
-#endif
-#elif __linux__
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 static constexpr bool isLittleEndian() { return true; }
 #elif __BYTE_ORDER == __BIG_ENDIAN
 static constexpr bool isLittleEndian() { return false; }
-#endif
-#else
-#pragma messsage("unsupported os or compiler")
 #endif
 
 template<typename T, size_t size>
@@ -63,134 +46,39 @@ template<typename T>
 struct EndianTraits<T, 2> {
   typedef typename std::make_unsigned<T>::type type;
 
-  inline static type htole(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToLittleInt16(in);
-#elif __linux__
-    return htole16(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htole(type in) { return htole16(in); }
 
-  inline static type letoh(type in) {
-#ifdef __APPLE__
-    return OSSwapLittleToHostInt16(in);
-#elif __linux__
-    return le16toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type letoh(type in) { return le16toh(in); }
 
-  inline static type htobe(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToBigInt16(in);
-#elif __linux__
-    return htobe16(in);
-#else
-    return in;
-#endif
-  }
-  inline static type betoh(type in) {
-#ifdef __APPLE__
-    return OSSwapBigToHostInt16(in);
-#elif __linux__
-    return be16toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htobe(type in) { return htobe16(in); }
+
+  inline static type betoh(type in) { return be16toh(in); }
 };
 
 template<typename T>
 struct EndianTraits<T, 4> {
   typedef typename std::make_unsigned<T>::type type;
 
-  inline static type htole(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToLittleInt32(in);
-#elif __linux__
-    return htole32(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htole(type in) { return htole32(in); }
 
-  inline static type letoh(type in) {
-#ifdef __APPLE__
-    return OSSwapLittleToHostInt32(in);
-#elif __linux__
-    return le32toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type letoh(type in) { return le32toh(in); }
 
-  inline static type htobe(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToBigInt32(in);
-#elif __linux__
-    return htobe32(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htobe(type in) { return htobe32(in); }
 
-  inline static type betoh(type in) {
-#ifdef __APPLE__
-    return OSSwapBigToHostInt32(in);
-#elif __linux__
-    return be32toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type betoh(type in) { return be32toh(in); }
 };
 
 template<typename T>
 struct EndianTraits<T, 8> {
   typedef typename std::make_unsigned<T>::type type;
 
-  inline static type htole(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToLittleInt64(in);
-#elif __linux__
-    return htole64(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htole(type in) { return htole64(in); }
 
-  inline static type letoh(type in) {
-#ifdef __APPLE__
-    return OSSwapLittleToHostInt64(in);
-#elif __linux__
-    return le64toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type letoh(type in) { return le64toh(in); }
 
-  inline static type htobe(type in) {
-#ifdef __APPLE__
-    return OSSwapHostToBigInt64(in);
-#elif __linux__
-    return htobe64(in);
-#else
-    return in;
-#endif
-  }
+  inline static type htobe(type in) { return htobe64(in); }
 
-  inline static type betoh(type in) {
-#ifdef __APPLE__
-    return OSSwapBigToHostInt64(in);
-#elif __linux__
-    return be64toh(in);
-#else
-    return in;
-#endif
-  }
+  inline static type betoh(type in) { return be64toh(in); }
 };
 
 template<bool>

@@ -199,11 +199,11 @@ function extractMaxVersion (matchEngine, versionDoc) {
     }
     let versionRange = info.engines.arangodb;
 
-    if (!versionRange || semver.outside(serverVersion, versionRange, '<')) {
+    if (!versionRange || semver.outside(serverVersion, versionRange, '<', {includePrerelease: true})) {
       // Explicitly backwards-incompatible with the server version: ignore
       continue;
     }
-    if (!matchEngine || semver.satisfies(serverVersion, versionRange)) {
+    if (!matchEngine || semver.satisfies(serverVersion, versionRange, {includePrerelease: true})) {
       return version;
     }
   }

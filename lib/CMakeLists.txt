@@ -126,7 +126,6 @@ if (USE_ENTERPRISE)
 endif()
 
 add_library(arango STATIC
-  ${LIB_ARANGO_APPLE}
   ${LIB_ARANGO_POSIX}
   ${LIB_ARANGO_LINENOISE}
   ${LIB_ARANGO_DATE}

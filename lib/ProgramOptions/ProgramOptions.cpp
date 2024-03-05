@@ -307,14 +307,9 @@ VPackBuilder ProgramOptions::toVelocyPack(
           builder.add("requiresValue",
                       VPackValue(option.parameter->requiresValue()));
 
-          // OS support
+          // OS support (hard coded to ["Linux"] right now)
           builder.add("os", VPackValue(VPackValueType::Array));
-          if (option.hasFlag(arangodb::options::Flags::OsLinux)) {
-            builder.add(VPackValue("linux"));
-          }
-          if (option.hasFlag(arangodb::options::Flags::OsMac)) {
-            builder.add(VPackValue("macos"));
-          }
+          builder.add(VPackValue("linux"));
           builder.close();
 
           // component support

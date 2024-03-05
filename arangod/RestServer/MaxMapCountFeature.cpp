@@ -56,7 +56,6 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
 
   // in case we cannot determine the number of max_map_count, we will
   // assume an effectively unlimited number of mappings
-#ifdef __linux__
   // test max_map_count value in /proc/sys/vm
   try {
     std::string value = basics::FileUtils::slurp("/proc/sys/vm/max_map_count");
@@ -65,13 +64,11 @@ uint64_t MaxMapCountFeature::actualMaxMappings() {
   } catch (...) {
     // file not found or values not convertible into integers
   }
-#endif
 
   return maxMappings;
 }
 
 uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
-#ifdef __linux__
   uint64_t expected = 65530;  // Linux kernel default
 
   uint64_t nproc = NumberOfCores::getValue();
@@ -83,7 +80,4 @@ uint64_t MaxMapCountFeature::minimumExpectedMaxMappings() {
   }
 
   return expected;
-#else
-  return 0;
-#endif
 }

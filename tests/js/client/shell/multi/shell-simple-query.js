@@ -336,9 +336,10 @@ function SimpleQueryRemoveByKeysSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testRemoveMixed: function () {
-      var keys = [ ];
+      let keys = [];
+      let docs = [];
       for (var i = 0; i < 500; ++i) {
-        c.insert({ _key: 'test' + i });
+        docs.push({ _key: 'test' + i });
 
         if (i % 2 === 0) {
           keys.push('test' + i);
@@ -346,6 +347,7 @@ function SimpleQueryRemoveByKeysSuite () {
           keys.push('foobar' + i);
         }
       }
+      c.insert(docs);
 
       var result = c.removeByKeys(keys);
 
@@ -398,11 +400,13 @@ function SimpleQueryRemoveByKeysSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testRemove: function () {
-      var keys = [ ];
-      for (var i = 0; i < 1000; ++i) {
-        c.insert({ _key: 'test' + i, value: i });
+      let keys = [];
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ _key: 'test' + i, value: i });
         keys.push('test' + i);
       }
+      c.insert(docs);
 
       var result = c.removeByKeys(keys);
       assertEqual({ removed: 1000, ignored: 0 }, result);
@@ -415,11 +419,13 @@ function SimpleQueryRemoveByKeysSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testRemoveTwice: function () {
-      var keys = [ ];
-      for (var i = 0; i < 1000; ++i) {
-        c.insert({ _key: 'test' + i, value: i });
+      let keys = [];
+      let docs = [];
+      for (let i = 0; i < 1000; ++i) {
+        docs.push({ _key: 'test' + i, value: i });
         keys.push('test' + i);
       }
+      c.insert(docs);
 
       var result = c.removeByKeys(keys);
       assertEqual({ removed: 1000, ignored: 0 }, result);
@@ -458,14 +464,16 @@ function SimpleQueryRemoveByKeysSuite () {
 // //////////////////////////////////////////////////////////////////////////////
 
     testRemovePartial: function () {
-      var keys = [ ];
+      let keys = [];
+      let docs = [];
       for (var i = 0; i < 2000; ++i) {
-        c.insert({ _key: 'test' + i, value: i });
+        docs.push({ _key: 'test' + i, value: i });
 
         if (i % 2 === 0) {
           keys.push('test' + i);
         }
       }
+      c.insert(docs);
 
       // result should have been de-duplicated?
       var result = c.removeByKeys(keys);

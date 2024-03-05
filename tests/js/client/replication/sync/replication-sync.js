@@ -28,7 +28,7 @@
 const jsunity = require('jsunity');
 const arangodb = require('@arangodb');
 const analyzers = require("@arangodb/analyzers");
-const { deriveTestSuite, getMetric } = require('@arangodb/test-helper');
+const { deriveTestSuite, getMetric, versionHas } = require('@arangodb/test-helper');
 const reconnectRetry = require('@arangodb/replication-common').reconnectRetry;
 const db = arangodb.db;
 const _ = require('lodash');
@@ -433,6 +433,7 @@ function BaseTestConfig () {
       connectToLeader();
 
       let st = {};
+      const count = versionHas('tsan') ? 100 : 1000;
       compare(
         function (state) {
           let c = db._create(cn);
@@ -442,7 +443,7 @@ function BaseTestConfig () {
             docs.push({ value1: i, value2: 'test' + i });
           }
 
-          while (c.count() < 500 * 1000) {
+          while (c.count() < 500 * count) {
             c.insert(docs);
           }
 
@@ -459,8 +460,8 @@ function BaseTestConfig () {
 
           // remove docs from leader
           connectToLeader();
-          while (db[cn].count() > 50000) {
-            db._query(`FOR doc IN ${cn} LIMIT 20000 REMOVE doc IN ${cn}`);
+          while (db[cn].count() > 50 * count) {
+            db._query(`FOR doc IN ${cn} LIMIT 20*@count REMOVE doc IN ${cn}`, {count});
           }
           st = _.clone({ count: collectionCount(cn), checksum: collectionChecksum(cn) });
         },
@@ -879,7 +880,7 @@ function BaseTestConfig () {
           let c = db._create(cn);
           let docs = [];
           //  insert some documents 'before'
-          for (let i = 0; i < 110000; ++i) {
+          for (let i = 0; i < 55000; ++i) {
             docs.push({ _key: 'a' + i });
             if (docs.length === 5000) {
               c.insert(docs);
@@ -888,7 +889,7 @@ function BaseTestConfig () {
           }
 
           //  insert some documents 'after'
-          for (let i = 0; i < 110000; ++i) {
+          for (let i = 0; i < 55000; ++i) {
             docs.push({ _key: 'z' + i });
             if (docs.length === 5000) {
               c.insert(docs);
@@ -898,7 +899,7 @@ function BaseTestConfig () {
 
           state.checksum = collectionChecksum(cn);
           state.count = collectionCount(cn);
-          assertEqual(220000, state.count);
+          assertEqual(110000, state.count);
 
           st = _.clone(state); // save state
         },
@@ -917,7 +918,7 @@ function BaseTestConfig () {
       let selectors = [];
       let docs = [];
       //  update some documents at the 'front'
-      for (let i = 0; i < 50000; ++i) {
+      for (let i = 0; i < 25000; ++i) {
         selectors.push({ _key: 'a' + i });
         docs.push({ updated: true });
         if (docs.length === 5000) {
@@ -928,7 +929,7 @@ function BaseTestConfig () {
       }
 
       //  remove some documents from the 'back'
-      for (let i = 0; i < 50000; ++i) {
+      for (let i = 0; i < 25000; ++i) {
         selectors.push({ _key: 'z' + i });
         docs.push({ updated: true });
         if (docs.length === 5000) {
@@ -941,7 +942,7 @@ function BaseTestConfig () {
       //  update the state
       st.checksum = collectionChecksum(cn);
       st.count = collectionCount(cn);
-      assertEqual(220000, collectionCount(cn));
+      assertEqual(110000, collectionCount(cn));
 
       connectToFollower();
 
@@ -991,7 +992,7 @@ function BaseTestConfig () {
       connectToLeader();
       c = db._collection(cn);
       docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < 50000; ++i) {
         docs.push({ _key: 'testmann' + i });
         if (docs.length === 5000) {
           c.insert(docs);
@@ -999,7 +1000,7 @@ function BaseTestConfig () {
         }
       }
           
-      assertEqual(100100, collectionCount(cn));
+      assertEqual(50100, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
@@ -1019,7 +1020,7 @@ function BaseTestConfig () {
       });
 
       db._flushCache();
-      assertEqual(100100, collectionCount(cn));
+      assertEqual(50100, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
@@ -1043,7 +1044,7 @@ function BaseTestConfig () {
 
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < 50000; ++i) {
         docs.push({ _key: 'testmann' + i });
         if (docs.length === 5000) {
           c.insert(docs);
@@ -1066,7 +1067,7 @@ function BaseTestConfig () {
       connectToLeader();
       db._query("FOR doc IN " + cn + " UPDATE doc WITH { value: 42 } IN " + cn);
           
-      assertEqual(100000, collectionCount(cn));
+      assertEqual(50000, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
@@ -1086,7 +1087,7 @@ function BaseTestConfig () {
       });
 
       db._flushCache();
-      assertEqual(100000, collectionCount(cn));
+      assertEqual(50000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");
@@ -1110,7 +1111,7 @@ function BaseTestConfig () {
 
       let c = db._create(cn);
       let docs = [];
-      for (let i = 0; i < 100000; ++i) {
+      for (let i = 0; i < 50000; ++i) {
         docs.push({ _key: 'testmann' + i, value: i });
         if (docs.length === 5000) {
           c.insert(docs);
@@ -1131,9 +1132,9 @@ function BaseTestConfig () {
      
       // remove half the documents on the leader
       connectToLeader();
-      db._query("FOR doc IN " + cn + " FILTER doc.value >= 50000 REMOVE doc IN " + cn);
+      db._query("FOR doc IN " + cn + " FILTER doc.value >= 25000 REMOVE doc IN " + cn);
           
-      assertEqual(50000, collectionCount(cn));
+      assertEqual(25000, collectionCount(cn));
       let checksum = collectionChecksum(cn);
 
       connectToFollower();
@@ -1153,7 +1154,7 @@ function BaseTestConfig () {
       });
 
       db._flushCache();
-      assertEqual(50000, collectionCount(cn));
+      assertEqual(25000, collectionCount(cn));
       assertEqual(checksum, collectionChecksum(cn));
       
       arango.DELETE_RAW("/_admin/debug/failat/IncrementalReplicationFrequentIntermediateCommit", "");

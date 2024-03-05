@@ -38,9 +38,11 @@ function optimizerRuleTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1"] });
     },
     
@@ -330,9 +332,11 @@ function optimizerRuleIndexesTestSuite () {
     setUpAll : function () {
       db._drop(cn);
       let c = db._create(cn, { numberOfShards: 2 });
+      let docs = [];
       for (let i = 0; i < 2000; ++i) {
-        c.insert({ _key: "test" + i, value1: i, value2: i, value3: i });
+        docs.push({ _key: "test" + i, value1: i, value2: i, value3: i });
       }
+      c.insert(docs);
       c.ensureIndex({ type: "persistent", fields: ["value1", "value2"] });
     },
     
@@ -365,7 +369,7 @@ function optimizerRuleIndexesTestSuite () {
       queries.forEach(function(query) {
         let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-use-index-for-sort"] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("push-down-late-materialization"), query);
         assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = db._query(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } }).toArray().length;
         assertEqual(query[1], result, query);

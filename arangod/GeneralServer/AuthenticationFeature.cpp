@@ -135,9 +135,7 @@ ArangoDB APIs and the web interface. Only setting
           "--server.authentication-unix-sockets",
           "Whether to use authentication for requests via UNIX domain sockets.",
           new BooleanParameter(&_authenticationUnixSockets),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                       arangodb::options::Flags::OsLinux,
-                                       arangodb::options::Flags::OsMac))
+          arangodb::options::makeFlags())
       .setLongDescription(R"(If you set this option to `false`, authentication
 for requests coming in via UNIX domain sockets is turned off on the server-side.
 Clients located on the same host as the ArangoDB server can use UNIX domain

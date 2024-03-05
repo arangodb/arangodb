@@ -4459,7 +4459,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
@@ -4493,7 +4493,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), true);
 
             dbCollectNode->addDependency(previous);
@@ -4552,8 +4552,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
-                std::vector<Variable const*>(), collectNode->variableMap(),
-                false);
+                std::vector<std::pair<Variable const*, std::string>>{},
+                collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -8948,8 +8948,9 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
-                        true);
+  plan->findNodesOfType(
+      nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN, EN::MATERIALIZE},
+      true);
 
   auto replace = [&plan](ExecutionNode* self, Projections& p,
                          Variable const* searchVariable, size_t index) {
@@ -8978,13 +8979,26 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
       size_t index = 0;
       for (auto& it : joinNode->getIndexInfos()) {
-        if (it.isLateMaterialized) {
-          // For late materialization in join nodes, that variables
-          // are already set by the optimizer rule for late materialization
-          continue;
-        }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
+    } else if (n->getType() == EN::MATERIALIZE) {
+      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(n);
+      if (matNode == nullptr) {
+        continue;
+      }
+
+      containers::FlatHashSet<AttributeNamePath> attributes;
+      if (utils::findProjections(matNode, &matNode->outVariable(),
+                                 /*expectedAttribute*/ "",
+                                 /*excludeStartNodeFilterCondition*/ true,
+                                 attributes)) {
+        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+          matNode->projections() = Projections(std::move(attributes));
+        }
+      }
+
+      modified |= replace(n, matNode->projections(), &matNode->outVariable(),
+                          /*index*/ 0);
     } else {
       // IndexNode or EnumerateCollectionNode.
       TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||

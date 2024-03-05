@@ -36,13 +36,7 @@ using namespace arangodb::aql;
 
 size_t QueryOptions::defaultMemoryLimit = 0U;
 size_t QueryOptions::defaultMaxNumberOfPlans = 128U;
-#ifdef __APPLE__
-// On OSX the default stack size for worker threads (non-main thread) is 512kb
-// which is rather low, so we have to use a lower default
-size_t QueryOptions::defaultMaxNodesPerCallstack = 150U;
-#else
 size_t QueryOptions::defaultMaxNodesPerCallstack = 250U;
-#endif
 size_t QueryOptions::defaultSpillOverThresholdNumRows = 5000000ULL;
 size_t QueryOptions::defaultSpillOverThresholdMemoryUsage =
     134217728ULL;                                                // 128 MB

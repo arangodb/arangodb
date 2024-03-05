@@ -120,8 +120,7 @@ size_t encodeCount(size_t count, coding::Type type, coding::Options options,
 // 1. Validation true
 // 2. Validation false kIsMaintainer true
 // 3. Validation false kIsMaintainer false
-#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && defined(__linux__) && \
-    !defined(__aarch64__)
+#if defined(ARANGODB_ENABLE_MAINTAINER_MODE) && !defined(__aarch64__)
 constexpr bool kIsMaintainer = true;
 #else
 constexpr bool kIsMaintainer = false;
