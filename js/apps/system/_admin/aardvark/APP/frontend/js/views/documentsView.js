@@ -73,6 +73,7 @@
           self.renderNotFound(this.collection.collectionID);
         } else {
           this.type = type;
+          $(`.upload-info.${this.type}`).show();
           if (responseData) {
             this.collectionName = responseData.name;
           } else {
@@ -1125,13 +1126,13 @@
     render: function () {
       this.collectionName = window.location.hash.split('/')[1];
 
+      $(this.el).html(this.template.render());
+
       if (this.type === 2) {
         this.type = 'document';
       } else if (this.type === 3) {
         this.type = 'edge';
       }
-
-      $(this.el).html(this.template.render({type: this.type}));
 
       this.tableView.setElement($(this.table)).drawLoading();
 
