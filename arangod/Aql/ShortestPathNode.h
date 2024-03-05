@@ -23,10 +23,10 @@
 
 #pragma once
 
+#include "Aql/Executor/ShortestPathExecutor.h"
 #include "Aql/GraphNode.h"
 #include "Graph/Options/TwoSidedEnumeratorOptions.h"
 #include "Graph/PathManagement/PathValidatorOptions.h"
-#include "ShortestPathExecutor.h"
 
 namespace arangodb {
 
