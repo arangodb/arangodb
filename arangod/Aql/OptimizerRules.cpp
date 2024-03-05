@@ -1780,7 +1780,10 @@ void arangodb::aql::moveCalculationsDownRule(
   VarSet usedHere;
   bool modified = false;
 
+  size_t i = 0;
   for (auto const& n : nodes) {
+    bool const isLastVariable = ++i == nodes.size();
+
     // this is the variable that the calculation will set
     Variable const* variable = nullptr;
 
@@ -1889,6 +1892,14 @@ void arangodb::aql::moveCalculationsDownRule(
       // and re-insert into after the last "good" node
       plan->insertDependency(lastNode->getFirstParent(), n);
       modified = true;
+
+      // any changes done here may affect the following iterations
+      // of this optimizer rule, so we need to recalculate the
+      // variable usage here.
+      if (!isLastVariable) {
+        plan->clearVarUsageComputed();
+        plan->findVarUsage();
+      }
     }
   }
 

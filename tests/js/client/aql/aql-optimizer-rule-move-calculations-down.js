@@ -512,20 +512,20 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCollection1: function () {
-      var expected = [];
-      for (var i = 0; i < 100; ++i) {
+      let expected = [];
+      for (let i = 0; i < 100; ++i) {
         expected.push("test" + i + "-" + i);
       }
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = CONCAT(i._key, '-', i.value) SORT i.value RETURN result";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
@@ -539,17 +539,17 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCollection2: function () {
-      var expected = ["test43-43", "test44-44"];
+      const expected = ["test43-43", "test44-44"];
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = CONCAT(i._key, '-', i.value) FILTER i.value > 42 SORT i.value LIMIT 2 RETURN result";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
@@ -559,17 +559,17 @@ function optimizerRuleTestSuite () {
     },
 
     testCollection3: function () {
-      var expected = ["test0-0", "test1-1"];
+      const expected = ["test0-0", "test1-1"];
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = CONCAT(i._key, '-', i.value) SORT i.value LIMIT 2 RETURN result";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
@@ -579,20 +579,20 @@ function optimizerRuleTestSuite () {
     },
 
     testCollection4: function () {
-      var expected = [];
-      for (var i = 0; i < 100; ++i) {
+      let expected = [];
+      for (let i = 0; i < 100; ++i) {
         expected.push("test" + i + "-" + i);
       }
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = (RETURN CONCAT(i._key, '-', i.value)) SORT i.value RETURN result[0]";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
@@ -606,17 +606,17 @@ function optimizerRuleTestSuite () {
     ////////////////////////////////////////////////////////////////////////////////
 
     testCollection5: function () {
-      var expected = ["test43-43", "test44-44"];
+      const expected = ["test43-43", "test44-44"];
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = (RETURN CONCAT(i._key, '-', i.value)) FILTER i.value > 42 SORT i.value LIMIT 2 RETURN result[0]";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
@@ -626,17 +626,17 @@ function optimizerRuleTestSuite () {
     },
 
     testCollection6: function () {
-      var expected = ["test0-0", "test1-1"];
+      const expected = ["test0-0", "test1-1"];
 
-      var query =
+      const query =
         "FOR i IN " +
         cn +
         " LET result = (RETURN CONCAT(i._key, '-', i.value)) SORT i.value LIMIT 2 RETURN result[0]";
-      var planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
-      var planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
+      const planDisabled = db._createStatement({query, bindVars: {}, options: paramDisabled}).explain();
+      const planEnabled = db._createStatement({query, bindVars: {}, options: paramEnabled}).explain();
 
-      var resultDisabled = db._query(query, {}, paramDisabled);
-      var resultEnabled = db._query(query, {}, paramEnabled);
+      const resultDisabled = db._query(query, {}, paramDisabled);
+      const resultEnabled = db._query(query, {}, paramEnabled);
 
       assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query);
       assertNotEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query);
