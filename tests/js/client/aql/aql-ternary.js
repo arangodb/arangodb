@@ -442,7 +442,32 @@ RETURN upsertDoc
       assertFalse(doc.hasOwnProperty('bar'), doc);
       assertEqual("foo", doc._key);
       assertEqual(3, c.count());
-    }
+    },
+
+    testMustNotExecuteUnreachableConditions : function () {
+      const query = `
+RETURN NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2'))
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+    
+    testMustNotExecuteUnreachableConditionsNested : function () {
+      // nested ternary operators, with conditions that can only be evaluated
+      // at runtime.
+      // we must only evaluate the chain NOOPT(true) -> NOOPT(true) here.
+      // evaluating any other chain will lead to an ASSERT(false) error.
+      const query = `
+RETURN NOOPT(true) ? 
+  (NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2'))) : 
+  (NOOPT(true) ? NOOPT(ASSERT(false, 'ass 3')) : NOOPT(ASSERT(false, 'ass 4')))
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+
   };
 }
 

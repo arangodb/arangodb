@@ -1,7 +1,47 @@
 devel
 -----
 
-* 
+* Guarantee conditional-only evaluation of the operands of the AQL ternary
+  operator.
+
+  Given an AQL ternary condition such as
+
+      condition ? truePart : falsePart
+
+  the `truePart` expression is now guaranteed to be executed only if the
+  `condition` is truish, and the `falsePart` is guaranteed to be evaluated
+  only if the `condition` is falsy.
+  In previous versions of ArangoDB the `truePart` and `falsePart` operands 
+  of the ternary operator were sometimes evaluated eagerly and out-of-line
+  if the operands were subqueries.
+
+  The ternary operator's condition is now pulled out and made available under
+  a separate temporary variable. For example, the query
+
+      RETURN condition ? truePart : falsePart
+
+  will internally be rewritten as
+
+      LET tmp1 = condition
+      RETURN tmp1 ? truePart : falsePart
+
+  In case the operands are subqueries and must be executed conditionally,
+  the query is evaluated as
+
+      LET tmp1 = condition
+      LET tmp2 = (
+        FILTER tmp1
+        truePart
+      )
+      LET tmp3 = (
+        FILTER ! tmp1
+        falsePart
+      )
+      RETURN tmp1 ? tmp2 : tmp3
+
+  This guarantees that the condition is only evaluated once, and that the
+  `truePart` and `falsePart` operands are only executed if `condition` was
+  `true` or `false`, respectively.
 
 
 3.12.0-alpha.1 (XXXX-XX-XX)
