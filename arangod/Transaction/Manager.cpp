@@ -22,8 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Manager.h"
-#include <optional>
-#include <string_view>
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
@@ -38,12 +36,9 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
-#include "CrashHandler/CrashHandler.h"
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -72,6 +67,8 @@
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
+#include <optional>
+#include <string_view>
 #include <thread>
 
 namespace {
