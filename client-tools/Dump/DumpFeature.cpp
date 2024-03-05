@@ -815,6 +815,7 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008)
       .setIntroducedIn(31102);
   options
       ->addOption(
@@ -828,24 +829,27 @@ void DumpFeature::collectOptions(
 `--use-experimental-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
 single collection/shard from multiple files.)")
+      .setIntroducedIn(31010)
       .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-worker-threads",
-                  "Number of worker threads on each dbserver.",
+                  "Number of worker threads on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008)
       .setIntroducedIn(31102);
 
   options
       ->addOption("--dbserver-prefetch-batches",
-                  "Number of batches to prefetch on each dbserver.",
+                  "Number of batches to prefetch on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverPrefetchBatches),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008)
       .setIntroducedIn(31102);
 
   options
@@ -854,6 +858,7 @@ single collection/shard from multiple files.)")
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008)
       .setIntroducedIn(31102);
 
   options
@@ -864,6 +869,7 @@ single collection/shard from multiple files.)")
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31008)
       .setIntroducedIn(31102);
 }
 
