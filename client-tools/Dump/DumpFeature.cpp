@@ -754,7 +754,7 @@ void DumpFeature::collectOptions(
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Experimental,
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008);
 
   options
       ->addOption(
@@ -768,28 +768,28 @@ void DumpFeature::collectOptions(
 `--use-experimental-dump` is set to `true`. Restoring split files also
 requires an arangorestore version that is capable of restoring data of a
 single collection/shard from multiple files.)")
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31010);
 
   options
       ->addOption("--dbserver-worker-threads",
-                  "Number of worker threads on each dbserver.",
+                  "Number of worker threads on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008);
   options
       ->addOption("--dbserver-prefetch-batches",
-                  "Number of batches to prefetch on each dbserver.",
+                  "Number of batches to prefetch on each DB-Server.",
                   new UInt64Parameter(&_options.dbserverPrefetchBatches),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008);
   options
       ->addOption("--local-writer-threads", "Number of local writer threads.",
                   new UInt64Parameter(&_options.localWriterThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008);
   options
       ->addOption("--local-network-threads",
                   "Number of local network threads, i.e. how many requests "
@@ -797,7 +797,7 @@ single collection/shard from multiple files.)")
                   new UInt64Parameter(&_options.dbserverWorkerThreads),
                   arangodb::options::makeDefaultFlags(
                       arangodb::options::Flags::Uncommon))
-      .setIntroducedIn(31200);
+      .setIntroducedIn(31008);
 }
 
 void DumpFeature::validateOptions(
