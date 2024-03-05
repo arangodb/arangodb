@@ -1,7 +1,13 @@
 devel
 -----
 
-* 
+* Fix BTS-1807: transactions are bound to the user who started it, and the
+  database it was started for. However, there was a code path that was missing
+  the database check, which allowed the transaction id to be used in a request
+  to a different database. The request would not return an error, but it would
+  actually be executed in the context of the original database, and not the one
+  specified in the request.
+  With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
 
 
 3.12.0-alpha.1 (XXXX-XX-XX)
