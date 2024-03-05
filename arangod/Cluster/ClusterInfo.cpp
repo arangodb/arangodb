@@ -4633,7 +4633,7 @@ futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
 
     if (servers->front().starts_with('_')) {
       readLocker.unlock();
-      LOG_TOPIC("b1dc5", INFO, Logger::CLUSTER)
+      LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
           << "getLeaderForShard: found resigned leader for shard " << shardID
           << ", waiting for half a second...";
       co_await SchedulerFeature::SCHEDULER->delay(
