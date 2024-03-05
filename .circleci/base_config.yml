@@ -120,6 +120,12 @@ jobs:
       - attach_workspace:
           at: .
       - run:
+          name: Checkout rta-makedata
+          command: |
+            # we are only interested in the rta-makedata submodule because we want to run eslint on it,
+            # but we do not care about the other submodules (specifically we do _not_ want to clone v8)
+            git submodule update --init 3rdParty/rta-makedata
+      - run:
           name: Install pyyaml
           command: |
             python -m pip install --upgrade pip
