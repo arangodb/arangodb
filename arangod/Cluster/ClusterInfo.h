@@ -785,6 +785,9 @@ class ClusterInfo final {
 
   futures::Future<ResultT<ServerID>> getLeaderForShard(ShardID shard);
 
+  futures::Future<Result> getLeadersForShards(std::span<ShardID const> shard,
+                                              std::span<ServerID> result);
+
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
                                      ShardID const& shard) const;

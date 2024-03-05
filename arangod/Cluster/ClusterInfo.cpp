@@ -103,6 +103,8 @@
 
 #include <chrono>
 
+#include "Containers/Enumerate.h"
+
 namespace arangodb {
 /// @brief internal helper struct for counting the number of shards etc.
 struct ShardStatistics {
@@ -4607,6 +4609,16 @@ ClusterInfo::getResponsibleServer(ShardID shardID) {
 
 futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
     ShardID shardID) {
+  ServerID resultBuffer;
+  auto result = co_await getLeadersForShards({&shardID, 1}, {&resultBuffer, 1});
+  if (result.fail()) {
+    co_return result;
+  }
+  co_return resultBuffer;
+}
+
+futures::Future<Result> ClusterInfo::getLeadersForShards(
+    std::span<ShardID const> shards, std::span<ServerID> result) {
   if (!_currentProt.isValid) {
     Result r = waitForCurrent(1).get();
     if (r.fail()) {
@@ -4614,34 +4626,45 @@ futures::Future<ResultT<ServerID>> ClusterInfo::getLeaderForShard(
     }
   }
 
+  auto const resolveShards = [&]() -> Result {
+    for (auto [i, shardID] : enumerate(shards)) {
+      // _shardsToCurrentServers is a map-type <ShardId,
+      // std::shared_ptr<std::vector<ServerId>>>
+      auto it = _shardsToCurrentServers.find(shardID);
+      if (it == _shardsToCurrentServers.end()) {
+        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+      }
+      auto& servers = it->second;
+      TRI_ASSERT(servers != nullptr);
+      TRI_ASSERT(!servers->empty());
+
+      if (servers->front().starts_with('_')) {
+        LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
+            << "getLeaderForShard: found resigned leader for shard " << shardID
+            << ", waiting for half a second...";
+        return TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED;
+      }
+      result[i] = ServerID{servers->front()};
+    }
+
+    return TRI_ERROR_NO_ERROR;
+  };
+
   while (true) {
     if (_server.isStopping()) {
       co_return {TRI_ERROR_SHUTTING_DOWN};
     }
 
-    READ_LOCKER(readLocker, _currentProt.lock);
-    // _shardsToCurrentServers is a map-type <ShardId,
-    // std::shared_ptr<std::vector<ServerId>>>
-    auto it = _shardsToCurrentServers.find(shardID);
-    if (it == _shardsToCurrentServers.end()) {
-      co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+    {
+      READ_LOCKER(readLocker, _currentProt.lock);
+      if (auto resolveResult = resolveShards();
+          resolveResult != TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED) {
+        co_return resolveResult;
+      }
     }
 
-    auto& servers = it->second;
-    TRI_ASSERT(servers != nullptr);
-    TRI_ASSERT(!servers->empty());
-
-    if (servers->front().starts_with('_')) {
-      readLocker.unlock();
-      LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
-          << "getLeaderForShard: found resigned leader for shard " << shardID
-          << ", waiting for half a second...";
-      co_await SchedulerFeature::SCHEDULER->delay(
-          "getLeaderForShard", std::chrono::milliseconds(500));
-      continue;
-    }
-
-    co_return ServerID{servers->front()};
+    co_await SchedulerFeature::SCHEDULER->delay("getLeaderForShard",
+                                                std::chrono::milliseconds(500));
   }
 
   ADB_UNREACHABLE;
