@@ -21,9 +21,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Executor/AqlExecutorTestCase.h"
 #include "gtest/gtest.h"
-
-#include "AqlExecutorTestCase.h"
 
 #include "Aql/AqlItemBlockInputRange.h"
 #include "Aql/ExecutionState.h"

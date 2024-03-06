@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorInfos.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Futures/Future.h"
 
 #include <velocypack/Builder.h>
