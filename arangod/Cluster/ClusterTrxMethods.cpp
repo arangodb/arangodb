@@ -85,37 +85,6 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
       }
 
       // coordinator starts transaction on shard leaders
-#ifdef USE_ENTERPRISE
-      if (col.collection()->isSmart() &&
-          col.collection()->type() == TRI_COL_TYPE_EDGE) {
-        auto names = col.collection()->realNames();
-        auto& ci = col.collection()
-                       ->vocbase()
-                       .server()
-                       .getFeature<ClusterFeature>()
-                       .clusterInfo();
-        for (std::string const& name : names) {
-          auto cc = ci.getCollectionNT(state.vocbase().name(), name);
-          if (!cc) {
-            continue;
-          }
-          auto shards = ci.getShardList(std::to_string(cc->id().id()));
-          TRI_ASSERT(shards != nullptr);
-          for (ShardID shard : *shards) {
-            auto maybeServer = ci.getLeaderForShard(shard).get();
-            if (maybeServer.get() != server) {
-              continue;
-            }
-            if (numCollections == 0) {
-              builder.add(key, VPackValue(VPackValueType::Array));
-            }
-            builder.add(VPackValue(shard));
-            numCollections++;
-          }
-        }
-        return true;  // continue
-      }
-#endif
       std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
       for (auto const& pair : *shardIds) {
         TRI_ASSERT(!pair.second.empty());
