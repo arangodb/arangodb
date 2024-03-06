@@ -210,10 +210,14 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
       // Invariant, we can only WRITE if we do not have other failover
       // candidates
       READ_LOCKER(readLockerData, _dataLock);
-      TRI_ASSERT(_followers->size() == _failoverCandidates->size());
+      TRI_ASSERT(_followers->size() == _failoverCandidates->size())
+          << "followers = " << *_followers
+          << " failover-candidates = " << *_failoverCandidates;
       // Our follower list only contains followers, numFollowers + leader
       // needs to be at least writeConcern.
-      TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern());
+      TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern())
+          << "followers.size() = " << _followers->size()
+          << " write-concern = " << _docColl->writeConcern();
 #endif
       return WriteState::ALLOWED;
     }

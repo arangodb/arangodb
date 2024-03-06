@@ -248,7 +248,6 @@ static void handleLeadership(uint64_t planIndex, LogicalCollection& collection,
     std::vector<ServerID> failoverCandidates =
         currentInfo->failoverCandidates(shardId);
     followers->takeOverLeadership(failoverCandidates, realInsyncFollowers);
-    followers->allowedToWrite();
     transaction::cluster::abortFollowerTransactionsOnShard(collection.id());
 
     TRI_IF_FAILURE("HandleLeadership::after") {
