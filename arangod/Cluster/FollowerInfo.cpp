@@ -39,6 +39,7 @@
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "VocBase/LogicalCollection.h"
+#include "VocBase/VocbaseMetrics.h"
 
 using namespace arangodb;
 namespace StringUtils = arangodb::basics::StringUtils;
@@ -121,9 +122,12 @@ FollowerInfo::FollowerInfo(arangodb::LogicalCollection* d)
     : _followers(std::make_shared<std::vector<ServerID>>()),
       _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
       _docColl(d),
-      _theLeader(""),
       _theLeaderTouched(false),
-      _canWrite(_docColl->replicationFactor() <= 1) {
+      _canWrite(
+          metrics::InstrumentedBool::Metrics{
+              .false_counter =
+                  d->vocbase().metrics().shards_read_only_by_write_concern},
+          _docColl->replicationFactor() <= 1) {
   // On replicationfactor 1 we do not have any failover servers to maintain.
   // This should also disable satellite tracking.
 }
@@ -145,6 +149,7 @@ Result FollowerInfo::add(ServerID const& sid) {
   std::shared_ptr<std::vector<ServerID>> v;
 
   {
+    WRITE_LOCKER(canWriteLocker, _canWriteLock);
     WRITE_LOCKER(writeLocker, _dataLock);
     // First check if there is anything to do:
     for (auto const& s : *_followers) {
@@ -156,6 +161,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
+    _canWrite = _followers->size() + 1 >= _docColl->writeConcern();
     {
       // insertIntoCandidates
       if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
@@ -447,8 +453,7 @@ void FollowerInfo::takeOverLeadership(
     _followers = std::move(emptyFollowers);
   }
 
-  // We disallow writes until the first write.
-  _canWrite = false;
+  _canWrite = _followers->size() + 1 >= _docColl->writeConcern();
   // Take over leadership
   _theLeader.clear();
   _theLeaderTouched = true;
@@ -682,4 +687,15 @@ uint64_t FollowerInfo::getFollowingTermId(ServerID const& s) const noexcept {
     return 1;
   }
   return it->second;
+}
+
+void FollowerInfo::setTheLeader(const std::string& who) {
+  // Empty leader => we are now new leader.
+  // This needs to be handled with takeOverLeadership
+  TRI_ASSERT(!who.empty());
+  WRITE_LOCKER(canWriteLocker, _canWriteLock);
+  WRITE_LOCKER(writeLocker, _dataLock);
+  _theLeader = who;
+  _theLeaderTouched = true;
+  _canWrite = true;
 }

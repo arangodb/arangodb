@@ -30,6 +30,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/WriteLocker.h"
 #include "Cluster/ClusterTypes.h"
+#include "Metrics/InstrumentedBool.h"
 
 namespace arangodb {
 
@@ -82,7 +83,7 @@ class FollowerInfo {
   std::string _theLeader;
   bool _theLeaderTouched;
   // flag if we have enough insnc followers and can pass through writes
-  bool _canWrite;
+  metrics::InstrumentedBool _canWrite;
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d);
@@ -192,14 +193,7 @@ class FollowerInfo {
   /// @brief set leadership
   //////////////////////////////////////////////////////////////////////////////
 
-  void setTheLeader(std::string const& who) {
-    // Empty leader => we are now new leader.
-    // This needs to be handled with takeOverLeadership
-    TRI_ASSERT(!who.empty());
-    WRITE_LOCKER(writeLocker, _dataLock);
-    _theLeader = who;
-    _theLeaderTouched = true;
-  }
+  void setTheLeader(std::string const& who);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get the leader

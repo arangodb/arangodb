@@ -61,6 +61,7 @@
 #include "Logger/LogMacros.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/ConnectionPool.h"
 #include "Network/NetworkFeature.h"
 #include "Replication/DatabaseReplicationApplier.h"
@@ -94,10 +95,11 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/LogicalDataSource.h"
 #include "VocBase/LogicalView.h"
-#include "VocBase/VocBaseLogManager.h"
-#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/CreateCollectionBody.h"
+#include "VocBase/Properties/DatabaseConfiguration.h"
 #include "VocBase/Properties/UserInputCollectionProperties.h"
+#include "VocBase/VocBaseLogManager.h"
+#include "VocBase/VocbaseMetrics.h"
 
 #include <thread>
 #include <absl/strings/str_cat.h>
@@ -1337,6 +1339,14 @@ TRI_vocbase_t::TRI_vocbase_t(CreateDatabaseInfo&& info,
 
   metrics::Gauge<uint64_t>* numberOfCursorsMetric = nullptr;
   metrics::Gauge<uint64_t>* memoryUsageMetric = nullptr;
+
+  if (_info.server().hasFeature<metrics::MetricsFeature>()) {
+    metrics::MetricsFeature& feature =
+        _info.server().getFeature<metrics::MetricsFeature>();
+    _metrics = VocbaseMetrics::create(feature, _info.getName());
+  } else {
+    _metrics = std::make_unique<VocbaseMetrics>();
+  }
 
   if (_info.server().hasFeature<QueryRegistryFeature>()) {
     QueryRegistryFeature& feature =
