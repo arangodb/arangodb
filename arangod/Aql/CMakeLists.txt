@@ -21,6 +21,7 @@ add_library(arango_aql STATIC
   AstNode.cpp
   AstResources.cpp
   AsyncExecutor.cpp
+  AsyncPrefetchSlotsManager.cpp
   AttributeAccessor.cpp
   AttributeNamePath.cpp
   BindParameters.cpp
