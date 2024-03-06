@@ -70,6 +70,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
+        // leader sends transaction to its followers
         TRI_IF_FAILURE("buildTransactionBodyEmpty") {
           return true;  // continue
         }
@@ -81,20 +82,19 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           builder.add(VPackValue(col.collectionName()));
           numCollections++;
         }
-        return true;  // continue
-      }
-
-      // coordinator starts transaction on shard leaders
-      std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
-      for (auto const& pair : *shardIds) {
-        TRI_ASSERT(!pair.second.empty());
-        // only add shard where server is leader
-        if (!pair.second.empty() && pair.second[0] == server) {
-          if (numCollections == 0) {
-            builder.add(key, VPackValue(VPackValueType::Array));
+      } else {
+        // coordinator starts transaction on shard leaders
+        std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          TRI_ASSERT(!pair.second.empty());
+          // only add shard where server is leader
+          if (!pair.second.empty() && pair.second[0] == server) {
+            if (numCollections == 0) {
+              builder.add(key, VPackValue(VPackValueType::Array));
+            }
+            builder.add(VPackValue(pair.first));
+            numCollections++;
           }
-          builder.add(VPackValue(pair.first));
-          numCollections++;
         }
       }
       return true;
