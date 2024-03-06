@@ -86,17 +86,17 @@ AsyncPrefetchSlotsReservation AsyncPrefetchSlotsManager::leaseSlots(
 
   if (value > 0) {
     // check if global (per-server) total is below the configured total maximum
-    size_t expected = _slotsUsed.load(std::memory_order_relaxed);
-    TRI_ASSERT(expected <= _maxSlotsTotal);
+    size_t current= _slotsUsed.load(std::memory_order_relaxed);
+    TRI_ASSERT(current <= _maxSlotsTotal);
     // as long as we have slots left, try to allocate some
-    while (expected < _maxSlotsTotal) {
-      size_t target = std::min(_maxSlotsTotal, expected + value);
-      TRI_ASSERT(target > expected);
-      if (_slotsUsed.compare_exchange_weak(expected, target,
+    while (current < _maxSlotsTotal) {
+      size_t target = std::min(_maxSlotsTotal, current + value);
+      TRI_ASSERT(target > current);
+      if (_slotsUsed.compare_exchange_weak(current, target,
                                            std::memory_order_relaxed)) {
-        return {this, target - expected};
+        return {this, target - current};
       }
-      TRI_ASSERT(expected <= _maxSlotsTotal);
+      TRI_ASSERT(current <= _maxSlotsTotal);
     }
   }
   return {};
