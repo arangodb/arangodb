@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -135,9 +135,7 @@ ArangoDB APIs and the web interface. Only setting
           "--server.authentication-unix-sockets",
           "Whether to use authentication for requests via UNIX domain sockets.",
           new BooleanParameter(&_authenticationUnixSockets),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                       arangodb::options::Flags::OsLinux,
-                                       arangodb::options::Flags::OsMac))
+          arangodb::options::makeFlags())
       .setLongDescription(R"(If you set this option to `false`, authentication
 for requests coming in via UNIX domain sockets is turned off on the server-side.
 Clients located on the same host as the ArangoDB server can use UNIX domain

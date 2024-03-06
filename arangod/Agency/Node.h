@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -39,21 +39,8 @@
 #include <velocypack/Slice.h>
 #include <velocypack/String.h>
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
 #include <immer/map.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 namespace arangodb::cluster::paths {
 class Path;

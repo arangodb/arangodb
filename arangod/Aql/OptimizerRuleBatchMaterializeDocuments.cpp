@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,10 +17,13 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
+#include "Aql/CollectNode.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
@@ -108,26 +111,38 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     }
 
     if (indexNode->estimateCost().estimatedNrItems < 100) {
-      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
-               << "estimated number of items too small";
-      continue;
+      TRI_IF_FAILURE("batch-materialize-no-estimation") {
+        // do nothing here
+      }
+      else {
+        LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+                 << "estimated number of items too small ("
+                 << indexNode->estimateCost().estimatedNrItems << ")";
+        continue;
+      }
     }
 
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
-    indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
-                                   {});
+    auto oldOutVariable = indexNode->outVariable();
+    // a later optimizer rule will change the actual document output variable
+    auto newOutVariable = oldOutVariable;
+
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
-        *indexNode->outVariable());
+        *newOutVariable, *oldOutVariable);
+
     plan->insertAfter(indexNode, materialized);
+
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
       TRI_ASSERT(!indexNode->projections().hasOutputRegisters());
       // move projections from index node into materialize node
       materialized->projections(std::move(indexNode->projections()));
     }
+    indexNode->setLateMaterialized(docIdVar, indexNode->getIndexes()[0]->id(),
+                                   {});
     modified = true;
   }
 

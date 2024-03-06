@@ -23,7 +23,6 @@ endif ()
 
 add_executable(${BIN_ARANGOD}
   RestServer/arangod.cpp
-  ../cmake/activeCodePage.manifest
   ${ProductVersionFiles}
 )
   
@@ -42,9 +41,7 @@ endif ()
 if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGOD} jemalloc_build)
 endif ()
-if (UNIX) 
-  add_dependencies(${BIN_ARANGOD} man)
-endif ()
+add_dependencies(${BIN_ARANGOD} man)
 
 target_include_directories(${BIN_ARANGOD} PRIVATE
   "${PROJECT_SOURCE_DIR}/arangod"

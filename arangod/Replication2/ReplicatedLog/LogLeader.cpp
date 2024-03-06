@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -73,21 +73,8 @@
 #include "Replication2/Storage/IStorageEngineMethods.h"
 #include "Replication2/Storage/IteratorPosition.h"
 
-#if (_MSC_VER >= 1)
-// suppress warnings:
-#pragma warning(push)
-// conversion from 'size_t' to 'immer::detail::rbts::count_t', possible loss of
-// data
-#pragma warning(disable : 4267)
-// result of 32-bit shift implicitly converted to 64 bits (was 64-bit shift
-// intended?)
-#pragma warning(disable : 4334)
-#endif
 #include <immer/flex_vector.hpp>
 #include <immer/flex_vector_transient.hpp>
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
 using namespace arangodb;
 using namespace arangodb::replication2;
@@ -273,63 +260,78 @@ void replicated_log::LogLeader::executeAppendEntriesRequests(
         auto currentLITK = request.lowestIndexToKeep;
         // cppcheck-suppress accessMoved
         follower->_impl->appendEntries(std::move(request))
-            .thenFinal(
-                [weakParentLog = req->_parentLog, followerWeak = req->_follower,
-                 lastIndex = lastIndex, currentCommitIndex, currentLITK,
-                 currentTerm = logLeader->_currentTerm, messageId, startTime,
-                 logMetrics](futures::Try<AppendEntriesResult>&& res) noexcept {
-                  // This has to remain noexcept, because the code below is not
-                  // exception safe
-                  auto const endTime = std::chrono::steady_clock::now();
+            .thenFinal([weakParentLog = req->_parentLog,
+                        followerWeak = req->_follower, lastIndex = lastIndex,
+                        currentCommitIndex, currentLITK,
+                        currentTerm = logLeader->_currentTerm, messageId,
+                        startTime, logMetrics](
+                           futures::Try<AppendEntriesResult>&& res) noexcept {
+              // This has to remain noexcept, because the code below is not
+              // exception safe
+              auto const endTime = std::chrono::steady_clock::now();
 
-                  auto self = weakParentLog.lock();
-                  auto follower = followerWeak.lock();
-                  if (self != nullptr && follower != nullptr) {
-                    using namespace std::chrono_literals;
-                    auto const duration = endTime - startTime;
-                    self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
-                        duration / 1us);
-                    LOG_CTX("8ff44", TRACE, follower->logContext)
-                        << "received append entries response, messageId = "
-                        << messageId;
-                    auto [preparedRequests, resolvedPromises] = std::invoke(
-                        [&]() -> std::pair<std::vector<std::optional<
-                                               PreparedAppendEntryRequest>>,
-                                           ResolvedPromiseSet> {
-                          auto guarded = self->acquireMutex();
-                          if (!guarded->_didResign) {
-                            // TODO: This can throw when we register the
-                            // Callback
-                            return guarded->handleAppendEntriesResponse(
-                                *follower, lastIndex, currentCommitIndex,
-                                currentLITK, currentTerm, std::move(res),
-                                endTime - startTime, messageId);
-                          } else {
-                            LOG_CTX("da116", DEBUG, follower->logContext)
-                                << "received response from follower but leader "
-                                   "already resigned, messageId = "
-                                << messageId;
-                          }
-                          return {};
-                        });
+              auto self = weakParentLog.lock();
+              auto follower = followerWeak.lock();
+              if (self != nullptr && follower != nullptr) {
+                using namespace std::chrono_literals;
+                auto const duration = endTime - startTime;
+                self->_logMetrics->replicatedLogAppendEntriesRttUs->count(
+                    duration / 1us);
+                LOG_CTX("8ff44", TRACE, follower->logContext)
+                    << "received append entries response, messageId = "
+                    << messageId;
+                auto responseResult = basics::catchToResultT(
+                    [&]() -> std::pair<std::vector<std::optional<
+                                           PreparedAppendEntryRequest>>,
+                                       ResolvedPromiseSet> {
+                      auto guarded = self->acquireMutex();
+                      if (!guarded->_didResign) {
+                        return guarded->handleAppendEntriesResponse(
+                            *follower, lastIndex, currentCommitIndex,
+                            currentLITK, currentTerm, std::move(res),
+                            endTime - startTime, messageId);
+                      } else {
+                        LOG_CTX("da116", DEBUG, follower->logContext)
+                            << "received response from follower but leader "
+                               "already resigned, messageId = "
+                            << messageId;
+                      }
+                      return {};
+                    });
+                if (responseResult.fail()) {
+                  LOG_TOPIC("a32de", DEBUG, Logger::REPLICATION2)
+                      << "appendEntries failed " << responseResult.result();
 
-                    handleResolvedPromiseSet(self->_scheduler.get(),
-                                             std::move(resolvedPromises),
-                                             logMetrics);
-                    executeAppendEntriesRequests(std::move(preparedRequests),
-                                                 logMetrics,
-                                                 self->_scheduler.get());
-                  } else {
-                    if (follower == nullptr) {
-                      LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
-                          << "follower already gone.";
-                    } else {
-                      LOG_CTX("de300", DEBUG, follower->logContext)
-                          << "parent log already gone, messageId = "
-                          << messageId;
-                    }
+                  if (responseResult.is(
+                          TRI_ERROR_REPLICATION_REPLICATED_LOG_PARTICIPANT_GONE)) {
+                    // Ignore resign errors
+                    return;
                   }
-                });
+
+                  ADB_PROD_ASSERT(responseResult.ok())
+                      << "appendEntries failed with an unhandled error: "
+                      << responseResult.result();
+                }
+
+                auto [preparedRequests, resolvedPromises] =
+                    std::move(responseResult.get());
+
+                handleResolvedPromiseSet(self->_scheduler.get(),
+                                         std::move(resolvedPromises),
+                                         logMetrics);
+                executeAppendEntriesRequests(std::move(preparedRequests),
+                                             logMetrics,
+                                             self->_scheduler.get());
+              } else {
+                if (follower == nullptr) {
+                  LOG_TOPIC("6f490", DEBUG, Logger::REPLICATION2)
+                      << "follower already gone.";
+                } else {
+                  LOG_CTX("de300", DEBUG, follower->logContext)
+                      << "parent log already gone, messageId = " << messageId;
+                }
+              }
+            });
       });
     }
   }

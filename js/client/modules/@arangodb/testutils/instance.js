@@ -5,14 +5,14 @@
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
 // /
-// / Copyright 2016 ArangoDB GmbH, Cologne, Germany
-// / Copyright 2014 triagens GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -226,7 +226,7 @@ class instance {
     this.jwtFiles = null;
 
     this.sanOptions = _.clone(this.options.sanOptions);
-    this.sanFiles = [];
+    this.sanitizerLogPaths = {};
 
     this._makeArgsArangod();
 
@@ -460,7 +460,7 @@ class instance {
         'foxx.force-update-on-startup': true
       });
       if (!this.args.hasOwnProperty('cluster.default-replication-factor')) {
-        this.args['cluster.default-replication-factor'] = (platform.substr(0, 3) === 'win') ? '1':'2';
+        this.args['cluster.default-replication-factor'] = '2';
       }
     }
     if (this.args.hasOwnProperty('server.jwt-secret')) {
@@ -473,8 +473,11 @@ class instance {
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
+        this.sanOptions[key]['log_exe_name'] = "true";
+        const origPath = this.sanOptions[key]['log_path'];
         this.sanOptions[key]['log_path'] = oneLogFile;
-        this.sanFiles.push(oneLogFile);
+        this.sanitizerLogPaths[key] = { upstream: origPath, local: oneLogFile };
       }
     }
   }
@@ -690,6 +693,7 @@ class instance {
     }
     let backup = {};
     if (this.options.isSan) {
+      print("Using sanOptions ", this.sanOptions);
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
         for (const [keyOne, valueOne] of Object.entries(value)) {
@@ -789,23 +793,32 @@ class instance {
   };
 
   fetchSanFileAfterExit() {
-    if (this.options.isSan) {
-      this.sanFiles.forEach(fileName => {
-        let fn = `${fileName}.arangod.${this.pid}`;
-        if (this.options.extremeVerbosity) {
-          print(`checking for ${fn}: ${fs.exists(fn)}`);
+    if (!this.options.isSan) {
+      return;
+    }
+
+    for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
+      print("processing ", value);
+      const { upstream, local } = value;
+      let fn = `${local}.arangod.${this.pid}`;
+      if (this.options.extremeVerbosity) {
+        print(`checking for ${fn}: ${fs.exists(fn)}`);
+      }
+      if (fs.exists(fn)) {
+        let content = fs.read(fn);
+        if (upstream) {
+          print("found file ", fn, " - writing file ", `${upstream}.arangod.${this.pid}`);
+          fs.write(`${upstream}.arangod.${this.pid}`, content);
         }
-        if (fs.exists(fn)) {
-          let content = fs.read(fn);
-          if (content.length > 10) {
-            crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
-            crashUtils.GDB_OUTPUT += content;
-            this.serverCrashedLocal = true;
-          }
+        if (content.length > 10) {
+          crashUtils.GDB_OUTPUT += `Report of '${this.name}' in ${fn} contains: \n`;
+          crashUtils.GDB_OUTPUT += content;
+          this.serverCrashedLocal = true;
         }
-      });
+      }
     }
   }
+  
   waitForExitAfterDebugKill() {
     // Crashutils debugger kills our instance, but we neet to get
     // testing.js sapwned-PID-monitoring adjusted.
@@ -907,11 +920,7 @@ class instance {
 
       if (res.hasOwnProperty('signal') &&
           ((res.signal === 11) ||
-           (res.signal === 6) ||
-           // Windows sometimes has random numbers in signal...
-           (platform.substr(0, 3) === 'win')
-          )
-         ) {
+           (res.signal === 6))) {
         msg = 'health Check Signal(' + res.signal + ') ';
         this.analyzeServerCrash(msg);
         this.serverCrashedLocal = true;

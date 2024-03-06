@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -74,8 +74,6 @@ class IndexExecutorInfos {
       bool oneIndexCondition,
       std::vector<transaction::Methods::IndexHandle> indexes, Ast* ast,
       IndexIteratorOptions options,
-      IndexNode::IndexValuesVars const& outNonMaterializedIndVars,
-      IndexNode::IndexValuesRegisters&& outNonMaterializedIndRegs,
       IndexNode::IndexFilterCoveringVars filterCoveringVars);
 
   IndexExecutorInfos() = delete;
@@ -117,17 +115,7 @@ class IndexExecutorInfos {
   bool hasNonConstParts() const;
 
   bool isLateMaterialized() const noexcept {
-    return !_outNonMaterializedIndRegs.second.empty();
-  }
-
-  IndexNode::IndexValuesVars const& getOutNonMaterializedIndVars()
-      const noexcept {
-    return _outNonMaterializedIndVars;
-  }
-
-  IndexNode::IndexValuesRegisters const& getOutNonMaterializedIndRegs()
-      const noexcept {
-    return _outNonMaterializedIndRegs;
+    return _options.forLateMaterialization;
   }
 
   IndexNode::IndexFilterCoveringVars const& getFilterCoveringVars()
@@ -173,9 +161,6 @@ class IndexExecutorInfos {
   NonConstExpressionContainer _nonConstExpressions;
 
   RegisterId _outputRegisterId;
-
-  IndexNode::IndexValuesVars const& _outNonMaterializedIndVars;
-  IndexNode::IndexValuesRegisters _outNonMaterializedIndRegs;
 
   /// @brief true if one of the indexes uses more than one expanded attribute,
   /// e.g. the index is on values[*].name and values[*].type

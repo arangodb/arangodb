@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -165,13 +165,6 @@ class IndexNode : public ExecutionNode,
   std::vector<transaction::Methods::IndexHandle> const& getIndexes() const;
 
   bool isLateMaterialized() const noexcept {
-    TRI_ASSERT((_outNonMaterializedDocId == nullptr &&
-                _outNonMaterializedIndVars.second.empty()) ||
-               _outNonMaterializedDocId != nullptr)
-        << std::boolalpha << "_outNonMaterializedDocId == nullptr = "
-        << (_outNonMaterializedDocId == nullptr)
-        << " _outNonMaterializedIndVars.second.empty() = "
-        << _outNonMaterializedIndVars.second.empty();
     return _outNonMaterializedDocId != nullptr;
   }
 
@@ -216,7 +209,7 @@ class IndexNode : public ExecutionNode,
 
   bool isProduceResult() const override;
 
-  std::pair<Variable const*, IndexValuesVars> getLateMaterializedInfo() const;
+  aql::Variable const* getLateMaterializedDocIdOutVar() const;
 
   // returns the single index pointer if the IndexNode uses a single index,
   // nullptr otherwise
@@ -258,9 +251,6 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
-
-  /// @brief output variables to non-materialized document index references
-  IndexValuesVars _outNonMaterializedIndVars;
 };
 
 }  // namespace aql

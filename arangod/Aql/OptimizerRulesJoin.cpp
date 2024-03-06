@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,6 +17,8 @@
 /// limitations under the License.
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
@@ -120,8 +122,6 @@ struct IndexOffsets {
 
 using IndicesOffsets = std::map<ExecutionNodeId, IndexOffsets>;
 
-}  // namespace
-
 bool indexNodeQualifies(IndexNode const& indexNode) {
   // not yet supported:
   // - IndexIteratorOptions: sorted, ascending, evalFCalls, useCache,
@@ -182,96 +182,6 @@ bool indexNodeQualifies(IndexNode const& indexNode) {
   }
 
   LOG_JOIN_OPTIMIZER_RULE << "IndexNode qualifies for joining";
-  return true;
-}
-
-bool joinConditionMatches(ExecutionPlan& plan, AstNode const* lhs,
-                          AstNode const* rhs, IndexNode const* i1,
-                          IndexNode const* i2) {
-  std::pair<Variable const*, std::vector<arangodb::basics::AttributeName>>
-      usedVar;
-  LOG_JOIN_OPTIMIZER_RULE << "called with i1: " << i1->outVariable()->name
-                          << ", i2: " << i2->outVariable()->name
-                          << ", lhs: " << lhs->getTypeString()
-                          << ", rhs: " << rhs->getTypeString();
-  if (lhs->type == NODE_TYPE_REFERENCE) {
-    Variable const* other = static_cast<Variable const*>(lhs->getData());
-    LOG_JOIN_OPTIMIZER_RULE << "lhs is a reference to " << other->name
-                            << ". looking for " << i1->outVariable()->name;
-    auto setter = plan.getVarSetBy(other->id);
-    if (setter != nullptr && (setter->getType() == EN::INDEX ||
-                              setter->getType() == EN::ENUMERATE_COLLECTION)) {
-      LOG_JOIN_OPTIMIZER_RULE << "lhs is set by index|enum";
-      auto* documentNode =
-          ExecutionNode::castTo<DocumentProducingNode*>(setter);
-      auto const& p = documentNode->projections();
-      for (size_t i = 0; i < p.size(); ++i) {
-        if (p[i].path.get()[0] == i1->getIndexes()[0]->fields()[0][0].name) {
-          usedVar.first = documentNode->outVariable();
-          for (auto const& it : p[i].path.get()) {
-            usedVar.second.emplace_back(it);
-          }
-          LOG_JOIN_OPTIMIZER_RULE << "lhs matched outvariable "
-                                  << usedVar.first->name << ", "
-                                  << p[i].path.get();
-          break;
-        }
-      }
-    }
-  }
-
-  if (usedVar.first == nullptr && !lhs->isAttributeAccessForVariable(
-                                      usedVar, /*allowIndexedAccess*/ false)) {
-    // lhs is not an attribute access
-    return false;
-  }
-  if (usedVar.first != i1->outVariable() ||
-      usedVar.second != i1->getIndexes()[0]->fields()[0]) {
-    // lhs doesn't match i1's FOR loop index field
-    return false;
-  }
-  // lhs matches i1's FOR loop index field
-
-  usedVar.first = nullptr;
-  usedVar.second.clear();
-
-  if (rhs->type == NODE_TYPE_REFERENCE) {
-    Variable const* other = static_cast<Variable const*>(rhs->getData());
-    LOG_JOIN_OPTIMIZER_RULE << "rhs is a reference to " << other->name
-                            << ". looking for " << i2->outVariable()->name;
-    auto setter = plan.getVarSetBy(other->id);
-    if (setter != nullptr && (setter->getType() == EN::INDEX ||
-                              setter->getType() == EN::ENUMERATE_COLLECTION)) {
-      LOG_JOIN_OPTIMIZER_RULE << "rhs is set by index|enum";
-      auto* documentNode =
-          ExecutionNode::castTo<DocumentProducingNode*>(setter);
-      auto const& p = documentNode->projections();
-      for (size_t i = 0; i < p.size(); ++i) {
-        if (p[i].path.get()[0] == i2->getIndexes()[0]->fields()[0][0].name) {
-          usedVar.first = documentNode->outVariable();
-          for (auto const& it : p[i].path.get()) {
-            usedVar.second.emplace_back(it);
-          }
-          LOG_JOIN_OPTIMIZER_RULE << "rhs matched outvariable "
-                                  << usedVar.first->name << ", "
-                                  << p[i].path.get();
-          break;
-        }
-      }
-    }
-  }
-
-  if (usedVar.first == nullptr && !rhs->isAttributeAccessForVariable(
-                                      usedVar, /*allowIndexedAccess*/ false)) {
-    // rhs is not an attribute access
-    return false;
-  }
-  if (usedVar.first != i2->outVariable() ||
-      usedVar.second != i2->getIndexes()[0]->fields()[0]) {
-    // rhs doesn't match i2's FOR loop index field
-    return false;
-  }
-  // rhs matches i2's FOR loop index field
   return true;
 }
 
@@ -415,27 +325,6 @@ void getIndexAttributes(IndexNode const* candidate,
                         std::vector<basics::AttributeName>& resultVector) {
   arangodb::basics::TRI_ParseAttributeString(constantAttribute, resultVector,
                                              false);
-}
-
-std::pair<bool, size_t> attributeMatchesWithPosLocal(
-    transaction::Methods::IndexHandle idx,
-    std::vector<basics::AttributeName> const& attribute,
-    bool isPrimary = false) {
-  size_t pos = 0;
-  for (auto const& it : idx->fields()) {
-    if (basics::AttributeName::isIdentical(attribute, it, true)) {
-      return {true, pos};
-    }
-    pos++;
-  }
-  if (isPrimary) {
-    static std::vector<basics::AttributeName> const vec_id{
-        {StaticStrings::IdString, false}};
-    return basics::AttributeName::isIdentical(attribute, vec_id, true)
-               ? std::pair<bool, size_t>(true, pos)
-               : std::pair<bool, size_t>(false, -1);
-  }
-  return {false, -1};
 }
 
 std::pair<bool, size_t> doIndexAttributesMatch(
@@ -1083,44 +972,7 @@ void findCandidates(IndexNode* indexNode,
   }
 }
 
-Projections translateLMIndexVarsToProjections(
-    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
-    transaction::Methods::IndexHandle index) {
-  // Translate the late materialize "projections" description
-  // into the usual projections description
-  auto& coveredFields = index->coveredFields();
-
-  std::vector<AttributeNamePath> projectedAttributes;
-  for (auto [var, fieldIndex] : indexVars.second) {
-    auto& field = coveredFields[fieldIndex];
-    std::vector<std::string> fieldCopy;
-    fieldCopy.reserve(field.size());
-    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
-                   [&](auto const& attr) {
-                     TRI_ASSERT(attr.shouldExpand == false);
-                     return attr.name;
-                   });
-    projectedAttributes.emplace_back(std::move(fieldCopy),
-                                     plan->getAst()->query().resourceMonitor());
-  }
-
-  Projections projections{std::move(projectedAttributes)};
-
-  std::size_t i = 0;
-  for (auto [var, fieldIndex] : indexVars.second) {
-    auto& proj = projections[i++];
-    proj.coveringIndexPosition = fieldIndex;
-    proj.coveringIndexCutoff = fieldIndex;
-    proj.variable = var;
-    proj.levelsToClose = proj.startsAtLevel = 0;
-    proj.type = proj.path.size() > 1 ? AttributeNamePath::Type::MultiAttribute
-                                     : AttributeNamePath::Type::SingleAttribute;
-  }
-
-  projections.setCoveringContext(index->collection().id(), index);
-  return projections;
-}
-
+}  // namespace
 void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                                        std::unique_ptr<ExecutionPlan> plan,
                                        OptimizerRule const& rule) {
@@ -1212,14 +1064,10 @@ void arangodb::aql::joinIndexNodesRule(Optimizer* opt,
                   .constantFields = computedConstantFields};
 
               if (c->isLateMaterialized()) {
-                TRI_ASSERT(c->projections().empty());
                 info.isLateMaterialized = true;
 
-                auto [outVar, indexVars] = c->getLateMaterializedInfo();
-                TRI_ASSERT(indexVars.first == c->getIndexes()[0]->id());
-                info.outDocIdVariable = outVar;
-                info.projections = translateLMIndexVarsToProjections(
-                    plan.get(), indexVars, c->getIndexes()[0]);
+                info.outDocIdVariable = c->getLateMaterializedDocIdOutVar();
+                info.projections = c->projections();
               }
 
               indexInfos.emplace_back(std::move(info));

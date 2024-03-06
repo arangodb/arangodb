@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -49,11 +49,6 @@
 #include "VocBase/Methods/Tasks.h"
 #endif
 
-#ifdef _WIN32
-#include <stdio.h>
-#include <windows.h>
-#endif
-
 using namespace arangodb::application_features;
 using namespace arangodb::basics;
 using namespace arangodb::options;
@@ -74,7 +69,6 @@ size_t defaultNumberOfThreads() {
 // atomic flag to track shutdown requests
 std::atomic<bool> receivedShutdownRequest{false};
 
-#ifndef _WIN32
 // id of process that will not be used to send SIGHUP requests
 constexpr pid_t processIdUnspecified{std::numeric_limits<pid_t>::min()};
 
@@ -82,7 +76,6 @@ static_assert(processIdUnspecified != 0, "minimum pid number must be != 0");
 
 // id of process that requested a log rotation via SIGHUP
 std::atomic<pid_t> processIdRequestingLogRotate{processIdUnspecified};
-#endif
 
 }  // namespace
 
@@ -341,20 +334,11 @@ void SchedulerFeature::prepare() {
           : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
                                   _nrMaximalThreads);
 
-// wait for windows fix or implement operator new
-#if (_MSC_VER >= 1)
-#pragma warning(push)
-#pragma warning(disable : 4316)  // Object allocated on the heap may not be
-                                 // aligned for this type
-#endif
   auto sched = std::make_unique<SupervisedScheduler>(
       server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
       _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
       _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
       _metricsFeature);
-#if (_MSC_VER >= 1)
-#pragma warning(pop)
-#endif
 
   SCHEDULER = sched.get();
 
@@ -408,9 +392,6 @@ uint64_t SchedulerFeature::maximalThreads() const noexcept {
 void SchedulerFeature::signalStuffInit() {
   arangodb::signals::maskAllSignalsServer();
 
-#ifdef _WIN32
-// Windows does not support POSIX signal handling
-#else
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
@@ -424,7 +405,6 @@ void SchedulerFeature::signalStuffInit() {
     LOG_TOPIC("91d20", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handler for SIGPIPE";
   }
-#endif
 
   buildHangupHandler();
 }
@@ -437,82 +417,11 @@ void SchedulerFeature::signalStuffDeinit() {
     exitSignals->cancel();
   }
 
-#ifndef _WIN32
   if (_asioHandler->_hangupSignals != nullptr) {
     _asioHandler->_hangupSignals->cancel();
     _asioHandler->_hangupSignals.reset();
   }
-#endif
 }
-
-#ifdef _WIN32
-bool CtrlHandler(DWORD eventType) {
-  bool shutdown = false;
-  std::string shutdownMessage;
-
-  switch (eventType) {
-    case CTRL_BREAK_EVENT: {
-      shutdown = true;
-      shutdownMessage = "control-break received";
-      break;
-    }
-
-    case CTRL_C_EVENT: {
-      shutdown = true;
-      shutdownMessage = "control-c received";
-      break;
-    }
-
-    case CTRL_CLOSE_EVENT: {
-      shutdown = true;
-      shutdownMessage = "window-close received";
-      break;
-    }
-
-    case CTRL_LOGOFF_EVENT: {
-      shutdown = true;
-      shutdownMessage = "user-logoff received";
-      break;
-    }
-
-    case CTRL_SHUTDOWN_EVENT: {
-      shutdown = true;
-      shutdownMessage = "system-shutdown received";
-      break;
-    }
-
-    default: {
-      shutdown = false;
-      break;
-    }
-  }
-
-  if (shutdown == false) {
-    LOG_TOPIC("ec3b4", ERR, arangodb::Logger::FIXME)
-        << "Invalid CTRL HANDLER event received - ignoring event";
-    return true;
-  }
-
-  if (!::receivedShutdownRequest.exchange(true)) {
-    LOG_TOPIC("3278a", INFO, arangodb::Logger::FIXME)
-        << shutdownMessage << ", beginning shut down sequence";
-
-    application_features::ApplicationServer::CTRL_C.store(true);
-
-    return true;
-  }
-
-  // ........................................................................
-  // user is desperate to kill the server!
-  // ........................................................................
-
-  LOG_TOPIC("18daf", INFO, arangodb::Logger::FIXME)
-      << shutdownMessage << ", terminating";
-  _exit(EXIT_FAILURE);  // quick exit for windows
-  return true;
-}
-
-#else
 
 extern "C" void c_exit_handler(int signal, siginfo_t* info, void*) {
   if (signal == SIGQUIT || signal == SIGTERM || signal == SIGINT) {
@@ -571,10 +480,8 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
         ::processIdRequestingLogRotate.store(::processIdUnspecified);
       });
 }
-#endif
 
 void SchedulerFeature::buildHangupHandler() {
-#ifndef _WIN32
   struct sigaction action;
   memset(&action, 0, sizeof(action));
   sigfillset(&action.sa_mask);
@@ -587,20 +494,9 @@ void SchedulerFeature::buildHangupHandler() {
     LOG_TOPIC("b7ed0", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handler for hang up";
   }
-#endif
 }
 
 void SchedulerFeature::buildControlCHandler() {
-#ifdef _WIN32
-  {
-    int result = SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, true);
-
-    if (result == 0) {
-      LOG_TOPIC("e21e8", WARN, arangodb::Logger::FIXME)
-          << "unable to install control-c handler";
-    }
-  }
-#else
   // Signal masking on POSIX platforms
   //
   // POSIX allows signals to be blocked using functions such as sigprocmask()
@@ -626,7 +522,6 @@ void SchedulerFeature::buildControlCHandler() {
     LOG_TOPIC("e666b", ERR, arangodb::Logger::FIXME)
         << "cannot initialize signal handlers for SIGINT/SIGQUIT/SIGTERM";
   }
-#endif
 }
 
 }  // namespace arangodb

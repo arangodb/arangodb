@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,6 +24,7 @@
 #include "VocbaseInfo.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/application-exit.h"
 #include "Basics/FeatureFlags.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
@@ -35,7 +36,6 @@
 #include "RestServer/DatabaseFeature.h"
 #include "Utils/Events.h"
 #include "Utilities/NameValidator.h"
-#include "VocBase/Methods/Databases.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -103,26 +103,6 @@ Result CreateDatabaseInfo::load(std::string_view name, VPackSlice options,
   _name = name;
 
   Result res = extractOptions(options, true /*getId*/, false /*getName*/);
-  if (res.ok()) {
-    res = extractUsers(users);
-  }
-  if (!res.ok()) {
-    return res;
-  }
-
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  _valid = true;
-#endif
-
-  return checkOptions();
-}
-
-Result CreateDatabaseInfo::load(std::string_view name, uint64_t id,
-                                VPackSlice options, VPackSlice users) {
-  _name = name;
-  _id = id;
-
-  Result res = extractOptions(options, false /*getId*/, false /*getUser*/);
   if (res.ok()) {
     res = extractUsers(users);
   }
@@ -255,6 +235,13 @@ Result CreateDatabaseInfo::extractOptions(VPackSlice options, bool extractId,
     _writeConcern = vocopts.writeConcern;
     _sharding = vocopts.sharding;
     if (!ServerState::instance()->isSingleServer()) {
+      if (!arangodb::replication2::EnableReplication2) {
+        if (vocopts.replicationVersion == replication::Version::TWO) {
+          return Result(TRI_ERROR_NOT_IMPLEMENTED,
+                        "Replication version 2 is disabled in this binary, "
+                        "cannot create replication version 2 databases.");
+        }
+      }
       // Just ignore Replication2 for SingleServers
       _replicationVersion = vocopts.replicationVersion;
     }
@@ -297,15 +284,14 @@ Result CreateDatabaseInfo::checkOptions() {
 
   if (_replicationVersion == replication::Version::TWO &&
       !replication2::EnableReplication2) {
-    LOG_TOPIC("8fdd7", ERR, Logger::REPLICATION2)
+    LOG_TOPIC("8fdd7", FATAL, Logger::REPLICATION2)
         << "Replication version 2 is disabled in this binary, but loading a "
            "version 2 database "
         << "(named '" << _name << "'). "
-        << "Creating such databases is disabled. Loading a version 2 database "
-           "that was created with another binary will work, but it is strongly "
-           "discouraged to use it in production. Please dump the data, and "
+        << "Creating such databases is disabled. Please dump the data, and "
            "recreate the database with replication version 1 (the default), "
            "and then restore the data.";
+    FATAL_ERROR_EXIT();
   }
 
   if (_validateNames) {

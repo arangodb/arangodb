@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -1111,6 +1111,45 @@ bool findProjections(ExecutionNode* n, Variable const* v,
   }
 
   return true;
+}
+
+Projections translateLMIndexVarsToProjections(
+    ExecutionPlan* plan, IndexNode::IndexValuesVars const& indexVars,
+    transaction::Methods::IndexHandle index) {
+  // Translate the late materialize "projections" description
+  // into the usual projections description
+  auto& coveredFields = index->coveredFields();
+
+  std::vector<AttributeNamePath> projectedAttributes;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& field = coveredFields[fieldIndex];
+    std::vector<std::string> fieldCopy;
+    fieldCopy.reserve(field.size());
+    std::transform(field.begin(), field.end(), std::back_inserter(fieldCopy),
+                   [&](auto const& attr) {
+                     TRI_ASSERT(attr.shouldExpand == false);
+                     return attr.name;
+                   });
+    projectedAttributes.emplace_back(std::move(fieldCopy),
+                                     plan->getAst()->query().resourceMonitor());
+  }
+
+  Projections projections{std::move(projectedAttributes)};
+
+  std::size_t i = 0;
+  for (auto [var, fieldIndex] : indexVars.second) {
+    auto& proj = projections[i++];
+    proj.coveringIndexPosition = fieldIndex;
+    proj.coveringIndexCutoff = proj.path.size();
+    proj.variable = var;
+    proj.levelsToClose = proj.startsAtLevel = 0;
+    proj.type = proj.path.type();
+  }
+
+  if (index->covers(projections)) {
+    projections.setCoveringContext(index->collection().id(), index);
+  }
+  return projections;
 }
 
 /// @brief Gets the best fitting index for one specific condition.

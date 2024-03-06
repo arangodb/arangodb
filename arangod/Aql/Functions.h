@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,9 +25,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Basics/ErrorCode.h"
-
-#include <velocypack/Sink.h>
-
 #include "Containers/SmallVector.h"
 
 #include <span>
@@ -35,14 +32,20 @@
 
 namespace arangodb {
 class Result;
+
 namespace transaction {
 class Methods;
 }
 
-namespace aql {
+namespace velocypack {
+class Slice;
+}
 
+namespace aql {
 struct AstNode;
 class ExpressionContext;
+
+namespace functions {
 
 using VPackFunctionParameters = containers::SmallVector<AqlValue, 4>;
 using VPackFunctionParametersView = std::span<AqlValue const>;
@@ -61,16 +64,27 @@ void registerInvalidArgumentWarning(ExpressionContext* expressionContext,
                                     std::string_view functionName);
 
 // Returns zero-terminated function name from the given FCALL node.
-std::string_view getFunctionName(const AstNode& node) noexcept;
+std::string_view getFunctionName(AstNode const& node) noexcept;
+
+bool getBooleanParameter(VPackFunctionParametersView parameters,
+                         size_t startParameter, bool defaultValue);
 
 AqlValue const& extractFunctionParameterValue(
     VPackFunctionParametersView parameters, size_t position);
 
-namespace functions {
+AqlValue numberValue(double value, bool nullify);
+
+std::string extractCollectionName(transaction::Methods* trx,
+                                  VPackFunctionParametersView parameters,
+                                  size_t position);
+
+template<typename T>
+void appendAsString(velocypack::Options const& vopts, T& buffer,
+                    AqlValue const& value);
 
 /// @brief helper function. not callable as a "normal" AQL function
 template<typename T>
-void Stringify(velocypack::Options const* vopts, T& buffer,
+void stringify(velocypack::Options const* vopts, T& buffer,
                arangodb::velocypack::Slice slice);
 
 AqlValue IsNull(arangodb::aql::ExpressionContext*, AstNode const&,

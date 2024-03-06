@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -596,6 +596,14 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
       "{\"name\": \"testCollection\", \"id\": 42}");
   auto collection = vocbase.createCollection(collectionJson->slice());
   ASSERT_FALSE(!collection);
+  // create an index node
+  auto indexJson = arangodb::velocypack::Parser::fromJson(
+      "{\"type\": \"hash\", \"id\": 2086177, \"fields\": [\"obj.a\", "
+      "\"obj.b\", \"obj.c\"]}");
+  auto createdIndex = false;
+  auto index = collection->createIndex(indexJson->slice(), createdIndex).get();
+  ASSERT_TRUE(createdIndex);
+  ASSERT_FALSE(!index);
 
   auto ctx = std::make_shared<arangodb::transaction::StandaloneContext>(
       vocbase, arangodb::transaction::OperationOriginTestCase{});
@@ -632,6 +640,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -678,6 +700,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -732,6 +768,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -786,6 +836,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -840,6 +904,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -887,6 +965,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"
@@ -941,6 +1033,20 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
         "  \"depth\" : 1,"
         "  \"id\" : 9,"
         "  \"indexes\" : ["
+        "    {"
+        "      \"deduplicate\" : true,"
+        "      \"fields\" : ["
+        "        \"obj.a\","
+        "        \"obj.b\","
+        "        \"obj.c\""
+        "      ],"
+        "      \"id\" : \"2086177\","
+        "      \"name\" : \"idx_1648634948960124928\","
+        "      \"selectivityEstimate\" : 1,"
+        "      \"sparse\" : false,"
+        "      \"type\" : \"hash\","
+        "      \"unique\" : false"
+        "    }"
         "  ],"
         "  \"nrRegs\" : ["
         "  ],"

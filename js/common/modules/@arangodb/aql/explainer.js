@@ -2026,10 +2026,27 @@ function processQuery(query, explain, planIndex) {
 
       case 'MaterializeNode':
         let annotations = '';
+        let accessString = '';
         if (node.projections) {
           annotations += projections(node, 'projections', 'projections');
+          // produce LET nodes for each projection output register
+          let parts = [];
+          node.projections.forEach((p) => {
+            if (p.hasOwnProperty('variable')) {
+              parts.push(variableName(p.variable) + ' = ' + variableName(node.outVariable) + '.' + p.path.map((p) => attribute(p)).join('.'));
+            }
+          });
+          if (parts.length) {
+            accessString = '   ' + keyword('LET') + ' ' + parts.join(', ') + accessString;
+          }
         }
-        return keyword('MATERIALIZE') + ' ' + variableName(node.outVariable) + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '');
+        let varString = '';
+        if (node.outVariable.id !== node.oldDocVariable.id) {
+          varString = variableName(node.oldDocVariable) + ' ' + keyword('INTO') + ' ' + variableName(node.outVariable);
+        } else {
+          varString = variableName(node.oldDocVariable);
+        }
+        return keyword('MATERIALIZE') + ' ' + varString + (annotations.length > 0 ? annotation(` /*${annotations} */`) : '') + accessString;
       case 'OffsetMaterializeNode':
         return keyword('LET ') + variableName(node.outVariable) + ' = ' +
                func('OFFSET_INFO') + '(' + variableName(node.viewVariable) + ', ' + buildExpression(node.options) + ')';

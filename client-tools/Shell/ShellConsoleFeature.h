@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -36,7 +36,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   explicit ShellConsoleFeature(Server& server);
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
-  void prepare() override final;
   void start() override final;
   void unprepare() override final;
 
@@ -52,9 +51,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   std::string const& prompt() const { return _prompt; }
 
  private:
-#ifdef _WIN32
-  bool _cygwinShell;
-#endif
   bool _quiet;
   bool _colors;
   bool _useHistory;
@@ -90,19 +86,6 @@ class ShellConsoleFeature final : public ArangoshFeature {
   Prompt buildPrompt(ClientFeature*);
   void startPager();
   void stopPager();
-
-#ifdef _WIN32
- private:
-  void _print2(std::string const&);
-  void _print(std::string const&);
-
- private:
-  int _consoleAttribute;
-  int _consoleColor;
-  int _defaultAttribute;
-  int _defaultColor;
-  int _defaultBackground;
-#endif
 
  private:
   bool _promptError;

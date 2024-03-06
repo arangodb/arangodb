@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -60,23 +60,14 @@ using namespace arangodb::basics;
 
 namespace {
 
-#ifndef _WIN32
 // ever-increasing counter for thread numbers.
 // not used on Windows
 std::atomic<uint64_t> NEXT_THREAD_ID(1);
-#endif
 
 // helper struct to assign and retrieve a thread id
 struct ThreadNumber {
   ThreadNumber() noexcept
-      :
-#ifdef _WIN32
-        value(static_cast<uint64_t>(GetCurrentThreadId())) {
-  }
-#else
-        value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {
-  }
-#endif
+      : value(NEXT_THREAD_ID.fetch_add(1, std::memory_order_seq_cst)) {}
 
   uint64_t get() const noexcept { return value; }
 
@@ -157,13 +148,7 @@ void Thread::startThread(void* arg) {
 }
 
 /// @brief returns the process id
-TRI_pid_t Thread::currentProcessId() {
-#ifdef _WIN32
-  return _getpid();
-#else
-  return getpid();
-#endif
-}
+TRI_pid_t Thread::currentProcessId() { return getpid(); }
 
 /// @brief returns the thread process id
 uint64_t Thread::currentThreadNumber() noexcept {
@@ -172,14 +157,10 @@ uint64_t Thread::currentThreadNumber() noexcept {
 
 /// @brief returns the thread id
 TRI_tid_t Thread::currentThreadId() {
-#ifdef TRI_HAVE_WIN32_THREADS
-  return GetCurrentThreadId();
-#else
 #ifdef TRI_HAVE_POSIX_THREADS
   return pthread_self();
 #else
 #error "Thread::currentThreadId not implemented"
-#endif
 #endif
 }
 
@@ -262,27 +243,7 @@ void Thread::shutdown() {
       // we must ignore any errors here, but TRI_DetachThread will log them
       TRI_DetachThread(&_thread);
     } else {
-#ifdef __APPLE__
-      // MacOS does not provide an implemenation of pthread_timedjoin_np which
-      // is used in TRI_JoinThreadWithTimeout, so instead we simply wait for
-      // _state to be set to STOPPED.
-
-      std::uint32_t n = _terminationTimeout / 100;
-      for (std::uint32_t i = 0; i < n || _terminationTimeout == INFINITE; ++i) {
-        if (_state.load() == ThreadState::STOPPED) {
-          break;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      }
-
-      // we still have to wait here until the thread has terminated, but this
-      // should happen immediately after _state has been set to STOPPED!
-      auto ret = _state.load() == ThreadState::STOPPED
-                     ? TRI_JoinThread(&_thread)
-                     : TRI_ERROR_FAILED;
-#else
       auto ret = TRI_JoinThreadWithTimeout(&_thread, _terminationTimeout);
-#endif
 
       if (ret != TRI_ERROR_NO_ERROR) {
         LOG_TOPIC("825a5", FATAL, arangodb::Logger::FIXME)

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -168,8 +168,6 @@ ErrorCode TRI_JoinThread(TRI_thread_t* thread) {
   }
 }
 
-#ifndef __APPLE__
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief waits for a thread to finish within the specified timeout (in ms).
 ////////////////////////////////////////////////////////////////////////////////
@@ -199,8 +197,6 @@ ErrorCode TRI_JoinThreadWithTimeout(TRI_thread_t* thread,
   }
   return TRI_ERROR_NO_ERROR;
 }
-
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief detaches a thread

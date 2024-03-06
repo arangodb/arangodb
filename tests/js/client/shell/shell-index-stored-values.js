@@ -1,28 +1,28 @@
 /*jshint globalstrict:false, strict:false */
 /*global assertEqual, assertNotEqual, assertTrue, assertFalse, assertUndefined, assertNull, fail */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2014-2021 ArangoDB GmbH, Cologne, Germany
-/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -383,28 +383,33 @@ function indexStoredValuesPlanSuite() {
     
     testExecutionPlanUsedForMaterializeOneAttribute: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
-      const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value2 LIMIT 3 RETURN doc"; 
+      internal.debugSetFailAt("batch-materialize-no-estimation");
+      const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value2 LIMIT 3 RETURN doc";
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual(normalize([]), normalize(nodes[1].projections));
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
+      internal.debugClearFailAt();
     },
     
     testExecutionPlanUsedForMaterializeMultipleAttributes: function () {
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2", "value3"] });
+      internal.debugSetFailAt("batch-materialize-no-estimation");
       const query =" FOR doc IN " + cn + " FILTER doc.value1 <= 10 SORT doc.value3 LIMIT 3 RETURN doc"; 
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual(normalize([]), normalize(nodes[1].projections));
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(normalize(["value3"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
+      internal.debugClearFailAt();
     },
 
     testExecutionPlanUsedWhenMultipleCandidates: function () {
       c.ensureIndex({ type: "persistent", fields: ["value2"], storedValues: ["value1"] });
+
       c.ensureIndex({ type: "persistent", fields: ["value1"], storedValues: ["value2"] });
       c.ensureIndex({ type: "persistent", fields: ["value3"] });
       const query =" FOR doc IN " + cn + " RETURN [doc.value1, doc.value2]"; 
@@ -945,8 +950,8 @@ function indexStoredValuesResultsSuite() {
       const query = `FOR doc IN ${cn} FILTER doc.value1 < ${n} SORT doc.value2 DESC LIMIT ${n} RETURN doc`; 
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual([], nodes[1].projections);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(normalize(["value2"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
       
@@ -966,8 +971,8 @@ function indexStoredValuesResultsSuite() {
       const query = `FOR doc IN ${cn} FILTER doc.value1 < ${n} SORT doc.value3 DESC LIMIT ${n} RETURN doc`; 
       let nodes = helper.AQL_EXPLAIN(query).plan.nodes;
       assertEqual(1, nodes.filter((n) => n.type === 'IndexNode').length);
-      assertFalse(nodes[1].indexCoversProjections);
-      assertEqual([], nodes[1].projections);
+      assertTrue(nodes[1].indexCoversProjections);
+      assertEqual(normalize(["value3"]), normalize(nodes[1].projections));
       assertEqual(0, nodes.filter((n) => n.type === 'EnumerateCollectionNode').length);
       assertEqual(1, nodes.filter((n) => n.type === 'MaterializeNode').length);
       

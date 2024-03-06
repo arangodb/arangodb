@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -139,20 +139,6 @@ void ServerState::findHost(std::string const& fallback) {
     } catch (...) {
     }
   }
-
-#ifdef __APPLE__
-  static_assert(sizeof(uuid_t) == 16, "");
-  uuid_t localUuid;
-  struct timespec timeout;
-  timeout.tv_sec = 5;
-  timeout.tv_nsec = 0;
-  int res = gethostuuid(localUuid, &timeout);
-  if (res == 0) {
-    _host = StringUtils::encodeHex(reinterpret_cast<char*>(localUuid),
-                                   sizeof(uuid_t));
-    return;
-  }
-#endif
 
   // Finally, as a last resort, take the fallback, coming from
   // the ClusterFeature with the value of --cluster.my-address

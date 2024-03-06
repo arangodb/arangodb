@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -35,7 +35,7 @@ using namespace arangodb;
 namespace arangodb::terminal_utils {
 
 /// @brief returns the terminal size
-#if !defined(TRI_HAVE_SYS_IOCTL_H) && !defined(TRI_WIN32_CONSOLE)
+#if !defined(TRI_HAVE_SYS_IOCTL_H)
 TerminalSize defaultTerminalSize() {
   auto getFromEnvironment = [](char const* name, int defaultValue) {
     char* e = getenv(name);
@@ -73,19 +73,6 @@ void setStdinVisibility(bool visible) noexcept {
     tty.c_lflag &= ~ECHO;
   }
   (void)tcsetattr(STDIN_FILENO, TCSANOW, &tty);
-#else
-#ifdef _WIN32
-  HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
-  DWORD mode;
-  GetConsoleMode(hStdin, &mode);
-
-  if (visible) {
-    mode |= ENABLE_ECHO_INPUT;
-  } else {
-    mode &= ~ENABLE_ECHO_INPUT;
-  }
-  SetConsoleMode(hStdin, mode);
-#endif
 #endif
 }
 

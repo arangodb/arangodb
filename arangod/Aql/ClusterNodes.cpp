@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -641,7 +641,6 @@ void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
     it.var = Variable::replace(it.var, replacements);
-    it.attributePath.clear();
   }
 }
 
@@ -650,22 +649,33 @@ void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         std::span<std::string_view> attribute,
                                         Variable const* replaceVariable,
                                         size_t /*index*/) {
-  auto equal = [](auto const& v1, auto const& v2) {
-    size_t n = v1.size();
-    if (n != v2.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < n; ++i) {
-      if (v1[i] != v2[i]) {
-        return false;
-      }
-    }
-    return true;
-  };
   for (auto& it : _elements) {
-    if (it.var == searchVariable && equal(it.attributePath, attribute)) {
+    if (it.var == searchVariable) {
+      // if the attribute path is  $var.a.b and we replace $var.a by $other,
+      // the attribute path should become just `b`, i.e. $other.b.
+
+      auto it2 = attribute.begin();
+      auto it1 = it.attributePath.begin();
+
+      bool isPrefix = true;
+      while (it2 != attribute.end()) {
+        if (it1 == it.attributePath.end() || *it1 != *it2) {
+          // this path does not match the prefix
+          isPrefix = false;
+          break;
+        }
+        ++it1;
+        ++it2;
+      }
+
+      if (!isPrefix) {
+        continue;
+      }
+
+      // it1 now points to the remainder. Remove the prefix.
+      it.attributePath.erase(it.attributePath.cbegin(), it1);
+
       it.var = replaceVariable;
-      it.attributePath.clear();
     }
   }
 }

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,9 +26,6 @@
 #include <string_view>
 #include <type_traits>
 #include "RestServer/DatabaseFeature.h"
-#ifdef _WIN32
-#include <iostream>
-#endif
 
 // The list of includes for the features is defined in the following file -
 // please add new includes there!
@@ -218,34 +215,6 @@ static int runServer(int argc, char** argv, ArangoGlobalContext& context) {
   exit(EXIT_FAILURE);
 }
 
-#if _WIN32
-static int ARGC;
-static char** ARGV;
-
-static void WINAPI ServiceMain(DWORD dwArgc, LPSTR* lpszArgv) {
-  if (!TRI_InitWindowsEventLog()) {
-    return;
-  }
-  // register the service ctrl handler,  lpszArgv[0] contains service name
-  ServiceStatus =
-      RegisterServiceCtrlHandlerA(lpszArgv[0], (LPHANDLER_FUNCTION)ServiceCtrl);
-
-  // set start pending
-  SetServiceStatus(SERVICE_START_PENDING, 0, 1, 10000, 0);
-
-  TRI_GET_ARGV(ARGC, ARGV);
-  ArangoGlobalContext context(ARGC, ARGV, SBIN_DIRECTORY);
-  runServer(ARGC, ARGV, context);
-
-  // service has stopped
-  SetServiceStatus(SERVICE_STOPPED, NO_ERROR, 0, 0, 0);
-  TRI_CloseWindowsEventlog();
-}
-
-#endif
-
-#ifdef __linux__
-
 // The following is a hack which is currently (September 2019) needed to
 // let our static executables compiled with libmusl and gcc 8.3.0 properly
 // detect that we are a multi-threaded application.
@@ -264,36 +233,16 @@ static void f() {
   static pthread_once_t once_control = PTHREAD_ONCE_INIT;
   pthread_once(&once_control, gg);
 }
-#endif
 
 int main(int argc, char* argv[]) {
-#ifdef __linux__
   // Do not delete this! See above for an explanation.
   if (argc >= 1 && strcmp(argv[0], "not a/valid name") == 0) {
     f();
   }
-#endif
 
   std::string workdir(arangodb::basics::FileUtils::currentDirectory().result());
 
   TRI_GET_ARGV(argc, argv);
-#if _WIN32
-  if (argc > 1 && std::string_view(argv[1]) == "--start-service") {
-    ARGC = argc;
-    ARGV = argv;
-
-    SERVICE_TABLE_ENTRY ste[] = {
-        {TEXT(const_cast<char*>("")), (LPSERVICE_MAIN_FUNCTION)ServiceMain},
-        {nullptr, nullptr}};
-
-    if (!StartServiceCtrlDispatcher(ste)) {
-      std::cerr << "FATAL: StartServiceCtrlDispatcher has failed with "
-                << GetLastError() << std::endl;
-      exit(EXIT_FAILURE);
-    }
-    return 0;
-  }
-#endif
   ArangoGlobalContext context(argc, argv, SBIN_DIRECTORY);
 
   arangodb::restartAction = nullptr;
@@ -321,7 +270,6 @@ int main(int argc, char* argv[]) {
   // so the process does not have to be terminated. On Windows, we have
   // to do this because the solution below is not possible. In these
   // cases, we need outside help to get the process restarted.
-#if defined(__linux__) || defined(__APPLE__)
   res = chdir(workdir.c_str());
   if (res != 0) {
     std::cerr << "WARNING: could not change into directory '" << workdir << "'"
@@ -331,5 +279,4 @@ int main(int argc, char* argv[]) {
     std::cerr << "WARNING: could not execvp ourselves, restore will not work!"
               << std::endl;
   }
-#endif
 }

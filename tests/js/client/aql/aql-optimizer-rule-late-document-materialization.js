@@ -1,32 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertTrue, assertFalse, assertEqual, assertNotEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for late document materialization rule
-///
-/// @file
-///
-/// DISCLAIMER
-///
-/// Copyright 2019 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Yuriy Popov
 /// @author Copyright 2019, ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 let jsunity = require("jsunity");
 let db = require("@arangodb").db;
@@ -35,7 +32,7 @@ let isCluster = internal.isCluster();
 
 
 function lateDocumentMaterializationRuleTestSuite () {
-  const ruleName = "late-document-materialization";
+  const ruleName = "batch-materialize-documents";
   const projectionRuleName = "reduce-extraction-to-projection";
   const earlyPruningRuleName = "move-filters-into-enumerate";
   const numOfCollectionIndexes = 2;
@@ -139,9 +136,14 @@ function lateDocumentMaterializationRuleTestSuite () {
 
       prefixIndexCollection.save({_key: "c0", obj: {a: {sa: "a_val_0"}, b: {sb: "b_val_0"}}});
       prefixIndexCollection.save({_key: "c1", obj: {a: {sa: "a_val_1"}, b: {sb: "b_val_1"}}});
+
+      // usually the batch materialize rule only does something if there are enough documents in the collection
+      // by enabling this failure point we can trick the optimizer into always applying the optimization
+      require('internal').debugSetFailAt("batch-materialize-no-estimation");
     },
 
     tearDownAll : function () {
+      require('internal').debugClearFailAt("batch-materialize-no-estimation");
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         try { db._drop(collectionNames[i]); } catch(e) {}
         for (j = 0; j < numOfExpCollections; ++j) {
@@ -154,91 +156,11 @@ function lateDocumentMaterializationRuleTestSuite () {
       try { db._drop(projectionsCoveredByIndexCollectionName); } catch(e) {}
       try { db._drop(prefixIndexCollectionName); } catch(e) {}
     },
-    testIssue10845() {
-      // this tests a regression described in https://github.com/arangodb/arangodb/issues/10845#issuecomment-575723029:
-      // when there is a collection with an index in a query, all LIMITs in the query may be inspected.
-      // however, each LIMIT was supposed to be present underneath a FOR loop, otherwise
-      // the query could crash. This test is here to just make sure there are no crashes.
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "LET results = (FOR d IN " + collectionNames[i]  + " FILTER d.obj.a == 'a_val' SORT d.obj.c DESC RETURN d) FOR p IN results " +
-          "LET validFrom = (RETURN IS_NULL(p.valid_from) ? 0 : p.valid_from) " +
-          "LET validTo = (RETURN IS_NULL(p.valid_to) ? 253370764800000 : p.valid_to) " +
-          "LET inactive = (RETURN (validFrom[0] > 1579279781654 || validTo[0] < 1579279781654)) " +
-          "RETURN (inactive[0]) ? MERGE(p, {inactive: true}) : p";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
     testNotAppliedDueToNoFilter() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " SORT d.obj.c LIMIT 10 RETURN d";
         let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToSort() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.b LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToNoSort() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToUsedInInnerSort() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c ASC SORT d.obj.b LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToNoLimit() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToLimitOnWrongNode() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
-                    "SORT d.obj.c LET c = CHAR_LENGTH(d.obj.d) * 2 SORT CONCAT(d.obj.c, c) LIMIT 10 RETURN { doc: d, sc: c}";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToNoReferences() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT RAND() LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToUpdateDoc() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' UPDATE d IN " + collectionNames[i] + " SORT d.obj.c LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToExpansion() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        for (j = 0; j < numOfExpCollections; ++j) {
-          let filterSort;
-          if (i === 0) {
-            filterSort = "'a_val' IN d.tags.hop[*].foo.fo SORT d.tags.hop[*].baz.bz";
-          } else {
-            filterSort = "'hop_array_val' IN d.tags.hop[*] SORT NOOPT(d.tags.hop[*])";
-          }
-          let query = "FOR d IN " + expCollectionNames[i * numOfCollectionIndexes + j] + " FILTER " + filterSort + " LIMIT 10 RETURN d";
-          let plan = db._createStatement(query).explain().plan;
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
       }
     },
     testNotAppliedDueToEarlyPruningAndNotInIndex() {
@@ -271,71 +193,43 @@ function lateDocumentMaterializationRuleTestSuite () {
       assertEqual(-1, plan.rules.indexOf(ruleName));
       assertNotEqual(-1, plan.rules.indexOf(projectionRuleName));
     },
-    testNotAppliedDueToSubqueryWithDocumentAccess() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
-                    "LET a = NOOPT(d.obj.b) " +
-                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d, c.obj.a) RETURN p) " +
-                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
-    testNotAppliedDueToSubqueryWithReturnDocument() {
-      for (i = 0; i < numOfCollectionIndexes; ++i) {
-        let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
-                    "LET a = NOOPT(d.obj.b) " +
-                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = NOOPT(CONCAT(d.obj.a, c.obj.a)) RETURN d) " +
-                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
-        let plan = db._createStatement(query).explain().plan;
-        assertEqual(-1, plan.rules.indexOf(ruleName));
-      }
-    },
     testQueryResultsWithSubqueryWithDocumentAccessByAttribute() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
-                    "LET a = NOOPT(d.obj.b) " +
-                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) RETURN p) " +
-                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+            "LET a = NOOPT(d.obj.b) " +
+            "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) RETURN p) " +
+            "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = db._createStatement(query).explain().plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query).toArray();
-          assertEqual(2, result.length);
-          let expectedKeys = new Set(['c0', 'c2']);
-          result.forEach(function(doc) {
-            assertTrue(expectedKeys.has(doc._key));
-            expectedKeys.delete(doc._key);
-          });
-          assertEqual(0, expectedKeys.size);
-        } else {
-          // on cluster this will not be applied as remote node placed before sort node
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = db._query(query).toArray();
+        assertEqual(2, result.length);
+        let expectedKeys = new Set(['c0', 'c2']);
+        result.forEach(function (doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       }
     },
     testQueryResultsWithInnerSubqueriesWithDocumentAccessByAttribute() {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' " +
-                    "LET a = NOOPT(d.obj.b) " +
-                    "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) " +
-                      "LET f = SUM(FOR k IN " + collectionNames[i] + " LET r = CONCAT(c.obj.a, k.obj.a) RETURN CONCAT(c.obj.c, r)) RETURN CONCAT(d.obj.c, p, f)) " +
-                    "SORT CONCAT(a, e) LIMIT 10 RETURN d";
+            "LET a = NOOPT(d.obj.b) " +
+            "LET e = SUM(FOR c IN " + collectionNames[(i + 1) % numOfCollectionIndexes] + " LET p = CONCAT(d.obj.a, c.obj.a) " +
+            "LET f = SUM(FOR k IN " + collectionNames[i] + " LET r = CONCAT(c.obj.a, k.obj.a) RETURN CONCAT(c.obj.c, r)) RETURN CONCAT(d.obj.c, p, f)) " +
+            "SORT CONCAT(a, e) LIMIT 10 RETURN d";
         let plan = db._createStatement(query).explain().plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query).toArray();
-          assertEqual(2, result.length);
-          let expectedKeys = new Set(['c0', 'c2']);
-          result.forEach(function(doc) {
-            assertTrue(expectedKeys.has(doc._key));
-            expectedKeys.delete(doc._key);
-          });
-          assertEqual(0, expectedKeys.size);
-        } else {
-          // on cluster this will not be applied as remote node placed before sort node
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = db._query(query).toArray();
+        assertEqual(2, result.length);
+        let expectedKeys = new Set(['c0', 'c2']);
+        result.forEach(function (doc) {
+          assertTrue(expectedKeys.has(doc._key));
+          expectedKeys.delete(doc._key);
+        });
+        assertEqual(0, expectedKeys.size);
       }
     },
     testQueryResultsWithSubqueryWithoutDocumentAccess() {
@@ -432,20 +326,15 @@ function lateDocumentMaterializationRuleTestSuite () {
       for (i = 0; i < numOfCollectionIndexes; ++i) {
         let query = "FOR d IN " + collectionNames[i] + " FILTER d.obj.a == 'a_val' SORT d.obj.c LET c = CONCAT(NOOPT(d.obj.d), '-C') LIMIT 10 RETURN c";
         let plan = db._createStatement(query).explain().plan;
-        if (!isCluster) {
-          assertNotEqual(-1, plan.rules.indexOf(ruleName));
-          let result = db._query(query).toArray();
-          assertEqual(2, result.length);
-          let expected = new Set(['d_val-C', 'd_val_2-C']);
-          result.forEach(function(doc) {
-            assertTrue(expected.has(doc));
-            expected.delete(doc);
-          });
-          assertEqual(0, expected.size);
-        } else {
-          // on cluster this will not be applied as calculation node will be moved up
-          assertEqual(-1, plan.rules.indexOf(ruleName));
-        }
+        assertNotEqual(-1, plan.rules.indexOf(ruleName));
+        let result = db._query(query).toArray();
+        assertEqual(2, result.length);
+        let expected = new Set(['d_val-C', 'd_val_2-C']);
+        result.forEach(function (doc) {
+          assertTrue(expected.has(doc));
+          expected.delete(doc);
+        });
+        assertEqual(0, expected.size);
       }
     },
     testQueryResultsSkipSome() {
@@ -630,20 +519,6 @@ function lateDocumentMaterializationRuleTestSuite () {
         expected.delete(doc.key);
       });
       assertEqual(0, expected.size);
-    },
-
-    testIssue14819: function () {
-      let query = "FOR doc IN UNION((FOR doc IN " + severalIndexesCollectionName + " FILTER doc.a >= 1 && doc.a <= 10 COLLECT dt = DATE_FORMAT(DATE_TRUNC(doc.a, 'day'), '%yyyy-%mm-%dd') AGGREGATE sum = SUM(doc.b) LIMIT 1000000 RETURN { dt, sum }), []) LIMIT 1000000 RETURN doc";
-      let plans = db._createStatement({query, bindVars: null, options: { allPlans: true }}).explain().plans; 
-      assertEqual(2, plans.length);
-      // preferred plan without late materialization
-      let plan = plans[0];
-      assertEqual(-1, plan.rules.indexOf(ruleName));
-      // other plan, with late materialization
-      plan = plans[1];
-      assertNotEqual(-1, plan.rules.indexOf(ruleName));
-      let result = db._query(query).toArray();
-      assertEqual(0, result.length);
     },
 
     // fullCount was too low

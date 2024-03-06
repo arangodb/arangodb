@@ -52,7 +52,6 @@ yet.
 - [Running](#running)
 - [Debugging](#debugging)
   - [Linux Core Dumps](#linux-core-dumps)
-  - [Windows Core Dumps](#windows-core-dumps)
 - [Unittests](#unittests)
   - [invoking driver tests](#driver-tests) via scripts/unittests
   - [capturing test HTTP communication](#running-tcpdump--windump-for-the-sut) but
@@ -407,11 +406,10 @@ the following commands in a terminal:
 
 ### Temporary files and temp directories
 
-Depending on the platform, ArangoDB tries to locate the temporary directory:
+ArangoDB tries to locate the temporary directory like this:
 
-- Linux/Mac: the environment variable `TMPDIR` is evaluated.
-- Windows: the [W32 API function GetTempPath()](https://msdn.microsoft.com/en-us/library/windows/desktop/aa364992%28v=vs.85%29.aspx) is called
-- all platforms: `--temp.path` overrules the above system provided settings.
+- the environment variable `TMPDIR` is evaluated.
+- the startup option `--temp.path` overrules the above system provided settings.
 
 Our testing framework uses this path in the cluster test cases to set an
 environment variable `ARANGOTEST_ROOT_DIR` which is global to the running
@@ -722,110 +720,6 @@ These commands give useful information about the incident:
 The first gives the full stacktrace including variables of the last active
 thread, the later one the stacktraces of all threads.
 
-#### Windows Core Dumps
-
-For the average \*nix user Windows debugging has some awkward methods.
-
-##### Windows Core Dump Generation
-
-Core dumps can be created using the task manager; switch it to detail view, the
-context menu offers to _create dump file_; the generated file ends in a
-directory that explorer hides from you - AppData - you have to type that in the
-location bar. This however only for running processes which is not as useful as
-having dumps of crashing processes.
-
-While it is a common feature to turn on core dumps with the system facilities on
-\*nix systems, it is not as easy in Windows. You need an external program from
-the _Sysinternals package_:
-[ProcDump](https://technet.microsoft.com/en-us/sysinternals/dd996900.aspx).
-First look up the PID of arangod, you can find it in the brackets in the
-ArangoDB logfile. Then invoke _procdump_ like this:
-
-    procdump -accepteula -e -ma <PID-of-arangod>
-
-It will keep on running and monitor arangod until eventually a crash happens.
-You will then get a core dump if an incident occurs or _Dump count not reached._
-if nothing happened, _Dump count reached._ if a dump was written - the filename
-will be printed above.
-
-##### Windows Debugging Symbols
-
-Releases are supported by a public symbol server so you will be able to debug
-cores. Please replace `XX` with the major and minor release number (e.g. `38`
-for v3.8). Note that you should run the latest version of a release series
-before reporting bugs. Either
-[WinDbg](https://docs.microsoft.com/de-de/windows-hardware/drivers/debugger/debugger-download-tools)
-or Visual Studio support setting the symbol path via the environment variable or
-in the menu. Given we want to store the symbols on `E:\symbol_cache` we add the
-ArangoDB symbolserver like this:
-
-    set _NT_SYMBOL_PATH=SRV*e:\symbol_cache\arango*https://download.arangodb.com/symsrv_arangodbXX/;SRV*e:\symbol_cache\ms*http://msdl.microsoft.com/download/symbols
-
-You then will be able to see stack traces in the debugger.
-
-You may also try to download the symbols manually using:
-
-    symchk.exe arangod.exe /s SRV*e:/symbol_cache/cache*https://download.arangodb.com/symsrv_arangodbXX/
-
-The symbolserver over at https://download.arangodb.com/symsrv_arangodbXX/ is
-browseable; thus you can easily download the files you need by hand. It
-contains of a list of directories corresponding to the components of ArangoDB, e.g.:
-
-- lib - the basic arangodb libraries needed by all components
-- lib/V8 - the basic V8 wrappers needed by all components
-- arangod - the server process
-- the client utilities:
-  - arangobackup
-  - arangobench
-  - arangodump
-  - arangoexport
-  - arangoimport
-  - arangorestore
-  - arangosh
-  - arangovpack
-
-In these directories you will find subdirectories with the hash corresponding to
-the id of the binaries. Their date should correspond to the release date of
-their respective arango release.
-
-This means i.e. for ArangoDB 3.1.11:
-
-https://download.arangodb.com/symsrv_arangodb31/arangod.pdb/A8B899D2EDFC40E994C30C32FCE5FB346/arangod.pd_
-
-This file is a microsoft cabinet file, which is a little bit compressed. You
-can extract it by invoking `cabextract` or dismantle it so the Windows Explorer
-offers you its proper handler by renaming it to .cab; click on the now named
-`arangod.cab`, copy the contained arangod.pdb into your symbol path.
-
-##### Windows Core Dump Analysis
-
-While Visual studio may carry a nice shiny GUI, the concept of GUI fails
-miserably e.g. in test automation. Getting an overview over all running threads
-is a tedious task with it. Here the commandline version of
-[WinDbg](http://www.windbg.org/) cdb comes to the aid. `testing.js` utilizes it
-to obtain automatical stack traces for crashes. We run it like that:
-
-    cdb -z <dump file> -c 'kp; ~*kb; dv; !analyze -v; q'
-
-These commands for `-c` mean:
-kp print curren threads backtrace with arguments
-~\*kb print all threads stack traces
-dv analyze local variables (if)
-!analyze -v print verbose analysis
-q quit the debugger
-
-If you don't specify them via `-c` you can also use them in an interactive
-manner.
-
-Alternatively you can also directly specify the symbol path via the `-y`
-parameter (replace XX):
-
-    cdb -z <dump file> -y 'SRV*e:\symbol_cache*https://download.arangodb.com/symsrv_arangodbXX;SRV*e:\symbol_cache\ms*http://msdl.microsoft'
-
-and use the commands above to obtain stacktraces.
-
----
-
 ## Unittests
 
 ### Dependencies
@@ -860,17 +754,18 @@ There are several major places where unittests live:
 Special patterns in the test filenames are used to select tests to be executed
 or skipped depending on parameters:
 
-| Substring       | Description                                                                                                                                                                                                                                                                                                                                                                                   |
-| :-------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `-cluster`      | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
-| `-noncluster`   | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
-| `-noasan`        | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                           |
-|  `-noinstr`      | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
-|  `-nocov`        | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                              | 
-| `-timecritical` | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
-| `-spec`         | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
-| `-nightly`      | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
-| `-grey`         | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date. |
+| Substring                | Description                                                                                                                                                                                                                                                                                                                                                                                   |
+| :----------------------- | :-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `-cluster`               | These tests will only run if clustering is tested (option 'cluster' needs to be true).                                                                                                                                                                                                                                                                                                        |
+| `-noncluster`            | These tests will only run if no cluster is used (option 'cluster' needs to be false)                                                                                                                                                                                                                                                                                                          |
+| `-noinstr_or_noncluster` | These tests will not be ran if instrumented binaries are used and we are running in cluster mode                                                                                                                                                                                                                                                                                              |
+| `-noasan`                | These tests will not be ran if *san instrumented binaries are used                                                                                                                                                                                                                                                                                                                            |
+|  `-noinstr`              | These tests will not be ran if instrumented binaries are used, be it *san or gcov                                                                                                                                                                                                                                                                                                             | 
+|  `-nocov`                | These tests will not be ran if gcov instrumented binaries are used.                                                                                                                                                                                                                                                                                                                           | 
+| `-timecritical`          | These tests are critical to execution time - and thus may fail if arangod is to slow. This may happen i.e. if you run the tests in valgrind, so you want to avoid them since they will fail anyways. To skip them, set the option `skipTimeCritical` to _true_.                                                                                                                               |
+| `-spec`                  | These tests are run using the mocha framework instead of jsunity.                                                                                                                                                                                                                                                                                                                             |
+| `-nightly`               | These tests produce a certain thread on infrastructure or the test system, and therefore should only be executed once per day.                                                                                                                                                                                                                                                                |
+| `-grey`                  | These tests are currently listed as "grey", which means that they are known to be unstable or broken. These tests will not be executed by the testing framework if the option `--skipGrey` is given. If `--onlyGrey` option is given then non-"grey" tests are skipped. See `tests/Greylist.txt` for up-to-date information about greylisted tests. Please help to keep this file up to date. |
 
 ### JavaScript Framework
 
@@ -907,8 +802,6 @@ Run specific gtest tests:
 Controlling the place where the test-data is stored:
 
     TMPDIR=/some/other/path ./scripts/unittest shell_client_aql
-
-(Linux/Mac case. On Windows `TMP` or `TEMP` - as returned by `GetTempPathW` are the way to go)
 
 Note that the `arangodbtests` executable is not compiled and shipped for
 production releases (`-DUSE_GOOGLE_TESTS=off`).
@@ -1261,26 +1154,6 @@ make sure that your current shell has sudo enabled. Try like this:
 
 The pcap file will end up in your tests temporary directory. You may need to
 press an additional `ctrl+c` to force stop the sudo'ed tcpdump.
-
-On Windows you can use TShark, you need a npcap enabled installation. List your
-devices to sniff on using the -D option:
-
-    c:/Program\ Files/wireshark/tshark.exe  -D
-    1. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Npcap Loopback Adapter)
-    2. \Device\NPF_{XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX} (Ethernet)
-    3. \\.\USBPcap1 (USBPcap1)
-
-Choose the `Npcap Loopback Adapter` number - 1:
-
-    ./scripts/unittest http_server \
-      --sniff true \
-      --cleanup false \
-      --sniffDevice 1 \
-      --sniffProgram 'c:/Program Files/wireshark/tshark.exe' \
-      --forceJson true
-
-You can later on use Wireshark to inspect the capture files.
-(please note that `--forceJson` will downgrade the communication VPACK->JSON for better readability)
 
 ### Evaluating json test reports from previous testruns
 

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/BumpFileDescriptorsFeature.h"
+#include "ApplicationFeatures/GreetingsFeature.h"
 #include "Basics/FileUtils.h"
 #include "Basics/NumberOfCores.h"
 #include "Basics/Result.h"
@@ -969,7 +970,8 @@ arangodb::Result processInputDirectory(
               << "sent " << stats.totalBatches << " data batch(es) of "
               << formatSize(stats.totalSent) << " total size"
               << ", queued jobs: " << std::get<0>(queueStats)
-              << ", workers: " << std::get<1>(queueStats);
+              << ", total workers: " << std::get<1>(queueStats)
+              << ", idle workers: " << std::get<2>(queueStats);
           start = now;
         }
 
@@ -1536,6 +1538,7 @@ Result RestoreFeature::RestoreMainJob::restoreData(
   }
 
   TRI_ASSERT(datafile);
+
   // check if we are dealing with compressed file(s)
   bool const isCompressed = datafile->path().ends_with(".gz");
   // check if we are dealing with multiple files (created via `--split-file
@@ -2149,6 +2152,7 @@ void RestoreFeature::validateOptions(
 }
 
 void RestoreFeature::prepare() {
+  logLGPLNotice();
   if (!_options.inputPath.empty() &&
       _options.inputPath.back() == TRI_DIR_SEPARATOR_CHAR) {
     // trim trailing slash from path because it may cause problems on ...
