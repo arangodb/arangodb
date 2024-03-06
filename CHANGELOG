@@ -10,8 +10,12 @@ devel
   With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
 
 
-3.12.0-alpha.1 (XXXX-XX-XX)
+3.12.0-alpha.1 (2024-03-06)
 ---------------------------
+
+* Updated ArangoDB Starter to v0.18.3.
+
+* FE-436: rename `multi_delimiter` analyzer property to `delimiters` on web UI.
 
 * FE-424: Adjusted Foxx service install button placement.
 
@@ -20,8 +24,6 @@ devel
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.
-
-* Updated ArangoDB Starter to v0.18.2.
 
 * Updated rclone to v1.65.2 (built with go1.21.6).
 
