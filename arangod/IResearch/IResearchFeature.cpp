@@ -181,7 +181,7 @@ aql::AqlValue dummyFunc(aql::ExpressionContext*, aql::AstNode const& node,
       "ArangoSearch function '%s' is designed to be used only within a "
       "corresponding SEARCH statement of ArangoSearch view. Please ensure "
       "function signature is correct.",
-      getFunctionName(node).data());
+      aql::functions::getFunctionName(node).data());
 }
 
 aql::AqlValue offsetInfoFunc(aql::ExpressionContext* ctx,
@@ -209,7 +209,7 @@ aql::AqlValue contextFunc(aql::ExpressionContext* ctx, aql::AstNode const&,
 // Register invalid argument warning
 inline aql::AqlValue errorAqlValue(aql::ExpressionContext* ctx,
                                    char const* afn) {
-  aql::registerInvalidArgumentWarning(ctx, afn);
+  aql::functions::registerInvalidArgumentWarning(ctx, afn);
   return aql::AqlValue{aql::AqlValueHintNull{}};
 }
 
@@ -304,7 +304,7 @@ aql::AqlValue dummyScorerFunc(aql::ExpressionContext*, aql::AstNode const& node,
       "ArangoSearch scorer function '%s' are designed to "
       "be used only outside SEARCH statement within a context of ArangoSearch "
       "view. Please ensure function signature is correct.",
-      aql::getFunctionName(node).data());
+      aql::functions::getFunctionName(node).data());
 }
 
 uint32_t computeThreadsCount(uint32_t threads, uint32_t threadsLimit,
