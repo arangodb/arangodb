@@ -150,7 +150,7 @@ bool normalize(std::string& out, std::string_view type,
 
 aql::AqlValue aqlFnTokens(aql::ExpressionContext* expressionContext,
                           aql::AstNode const&,
-                          aql::VPackFunctionParametersView args) {
+                          aql::functions::VPackFunctionParametersView args) {
   if (ADB_UNLIKELY(args.empty() || args.size() > 2)) {
     std::string_view const message =
         "invalid arguments count while computing result for function 'TOKENS'";

@@ -37,7 +37,7 @@ using namespace arangodb::aql;
 /// @brief create the function
 Function::Function(std::string const& name, char const* arguments,
                    std::underlying_type<Flags>::type flags,
-                   FunctionImplementation implementation)
+                   functions::FunctionImplementation implementation)
     : name(name),
       arguments(arguments),
       flags(flags),
@@ -82,7 +82,7 @@ Function::Function(std::string const& name, char const* arguments,
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 // constructor to create a function stub. only used from tests
 Function::Function(std::string const& name,
-                   FunctionImplementation implementation)
+                   functions::FunctionImplementation implementation)
     : name(name),
       arguments("."),
       flags(makeFlags()),
