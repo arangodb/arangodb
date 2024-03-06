@@ -110,6 +110,7 @@ add_library(arango_aql STATIC
   Optimizer.cpp
   OptimizerRuleBatchMaterializeDocuments.cpp
   OptimizerRulePropagateConstantAttributes.cpp
+  OptimizerRulePushDownLateMaterialization.cpp
   OptimizerRuleReplaceEqualAttributeAccess.cpp
   OptimizerRules.cpp
   OptimizerRulesCluster.cpp
@@ -190,6 +191,7 @@ if (USE_V8)
     V8ErrorHandler.cpp)
 endif()
 
+add_subdirectory(Function)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql

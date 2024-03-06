@@ -132,19 +132,11 @@ void VPackFeature::collectOptions(
       {"json", "json-pretty", "vpack", "vpack-hex"}};
 
   options->addOption("--input-file",
-#ifdef __linux__
                      "The input file (leave empty or use \"-\" for stdin).",
-#else
-                     "The input file.",
-#endif
                      new StringParameter(&_inputFile));
 
   options->addOption("--output-file",
-#ifdef __linux__
                      "The output file (leave empty or use \"+\" for stdout).",
-#else
-                     "The output file.",
-#endif
                      new StringParameter(&_outputFile));
 
   options
@@ -171,7 +163,6 @@ void VPackFeature::start() {
   *_result = EXIT_SUCCESS;
 
   bool toStdOut = false;
-#ifdef __linux__
   // treat "-" as stdin. quick hack for linux
   if (_inputFile.empty() || _inputFile == "-") {
     _inputFile = "/proc/self/fd/0";
@@ -182,7 +173,6 @@ void VPackFeature::start() {
     _outputFile = "/proc/self/fd/1";
     toStdOut = true;
   }
-#endif
 
   // read ipnut
   std::string input = basics::FileUtils::slurp(_inputFile);

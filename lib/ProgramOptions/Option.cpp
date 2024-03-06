@@ -53,16 +53,6 @@ Option::Option(std::string const& value, std::string const& description,
     shorthand = stripShorthand(name.substr(pos + 1));
     name.resize(pos);
   }
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  // at least one OS must be supported
-  if (!hasFlag(arangodb::options::Flags::OsLinux) &&
-      !hasFlag(arangodb::options::Flags::OsMac) &&
-      !hasFlag(arangodb::options::Flags::Obsolete)) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_INTERNAL, std::string("option ") + value +
-                                " needs to be supported on at least one OS");
-  }
-#endif
 }
 
 void Option::toVelocyPack(velocypack::Builder& builder, bool detailed) const {

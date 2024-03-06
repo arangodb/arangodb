@@ -106,34 +106,6 @@ size_t Collection::count(transaction::Methods* trx,
   return static_cast<size_t>(res.slice().getUInt());
 }
 
-std::unordered_set<std::string> Collection::responsibleServers() const {
-  std::unordered_set<std::string> result;
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-  }
-  return result;
-}
-
-size_t Collection::responsibleServers(
-    std::unordered_set<std::string>& result) const {
-  auto& clusterInfo =
-      _vocbase->server().getFeature<ClusterFeature>().clusterInfo();
-
-  size_t n = 0;
-  auto shardIds = this->shardIds();
-  for (auto const& it : *shardIds) {
-    auto servers = clusterInfo.getResponsibleServer(it);
-    result.emplace((*servers)[0]);
-    ++n;
-  }
-  return n;
-}
-
 std::string Collection::distributeShardsLike() const {
   return getCollection()->distributeShardsLike();
 }

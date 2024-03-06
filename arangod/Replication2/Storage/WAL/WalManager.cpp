@@ -58,7 +58,6 @@ void WalManager::createDirectories(std::filesystem::path path) {
         << path.string() + " with error " + e.what();
   }
 
-#ifdef __linux__
   do {
     auto fd = ::open(path.c_str(), O_DIRECTORY | O_RDONLY);
     ADB_PROD_ASSERT(fd >= 0) << "failed to open directory " << path.string()
@@ -69,7 +68,6 @@ void WalManager::createDirectories(std::filesystem::path path) {
     ::close(fd);
     path = path.parent_path();
   } while (path.has_relative_path());
-#endif
 }
 
 }  // namespace arangodb::replication2::storage::wal

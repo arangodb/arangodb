@@ -311,13 +311,19 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), slice, "outVariable", true);
 
       // keepVariables
-      std::vector<Variable const*> keepVariables;
-      VPackSlice keepVariablesSlice = slice.get("keepVariables");
-      if (keepVariablesSlice.isArray()) {
+      std::vector<std::pair<Variable const*, std::string>> keepVariables;
+      if (VPackSlice keepVariablesSlice = slice.get("keepVariables");
+          keepVariablesSlice.isArray()) {
         for (VPackSlice it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
               Variable::varFromVPack(plan->getAst(), it, "variable");
-          keepVariables.emplace_back(variable);
+          if (auto name = it.get("name"); name.isString()) {
+            keepVariables.emplace_back(
+                std::make_pair(variable, name.copyString()));
+          } else {
+            keepVariables.emplace_back(
+                std::make_pair(variable, variable->name));
+          }
         }
       }
 
@@ -357,9 +363,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
-          std::string const type = it.get("type").copyString();
+          std::string type = it.get("type").copyString();
           aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, type});
+              AggregateVarInfo{outVar, inVar, std::move(type)});
         }
       }
 
@@ -3006,6 +3012,7 @@ constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
 constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
 constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
 constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
+constexpr std::string_view kMaterializeNodeOldDocVar = "oldDocVariable";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
@@ -3019,10 +3026,12 @@ MaterializeNode* materialize::createMaterializeNode(
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  aql::Variable const& inDocId,
-                                 aql::Variable const& outVariable)
+                                 aql::Variable const& outVariable,
+                                 aql::Variable const& oldDocVariable)
     : ExecutionNode(plan, id),
       _inNonMaterializedDocId(&inDocId),
-      _outVariable(&outVariable) {}
+      _outVariable(&outVariable),
+      _oldDocVariable(&oldDocVariable) {}
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice base)
@@ -3030,7 +3039,9 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
       _inNonMaterializedDocId(aql::Variable::varFromVPack(
           plan->getAst(), base, kMaterializeNodeInNmDocParam, true)),
       _outVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, kMaterializeNodeOutVariableParam)) {}
+          plan->getAst(), base, kMaterializeNodeOutVariableParam)),
+      _oldDocVariable(aql::Variable::varFromVPack(plan->getAst(), base,
+                                                  kMaterializeNodeOldDocVar)) {}
 
 void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
@@ -3039,6 +3050,9 @@ void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
 
   nodes.add(VPackValue(kMaterializeNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
+
+  nodes.add(VPackValue(kMaterializeNodeOldDocVar));
+  _oldDocVariable->toVelocyPack(nodes);
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
@@ -3063,11 +3077,10 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
-                                             ExecutionNodeId id,
-                                             aql::Variable const& inDocId,
-                                             aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable) {}
+MaterializeSearchNode::MaterializeSearchNode(
+    ExecutionPlan* plan, ExecutionNodeId id, aql::Variable const& inDocId,
+    aql::Variable const& outVariable, aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable) {}
 
 MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice base)
@@ -3105,7 +3118,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {});
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {}, {});
 
   return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3115,15 +3128,17 @@ ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
                                             bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  return cloneHelper(std::make_unique<MaterializeSearchNode>(
-                         plan, _id, *_inNonMaterializedDocId, *_outVariable),
-                     withDependencies);
+  return cloneHelper(
+      std::make_unique<MaterializeSearchNode>(
+          plan, _id, *_inNonMaterializedDocId, *_outVariable, *_oldDocVariable),
+      withDependencies);
 }
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
-    aql::Variable const& inDocId, aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable),
+    aql::Variable const& inDocId, aql::Variable const& outVariable,
+    aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable),
       CollectionAccessingNode(collection) {}
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(ExecutionPlan* plan,
@@ -3147,15 +3162,41 @@ void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
   }
 }
 
+std::vector<Variable const*> MaterializeRocksDBNode::getVariablesSetHere()
+    const {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
+    return std::vector<Variable const*>{_outVariable};
+  } else {
+    std::vector<Variable const*> vars;
+    vars.reserve(projections().size());
+    std::transform(projections().projections().begin(),
+                   projections().projections().end(), std::back_inserter(vars),
+                   [](auto const& p) { return p.variable; });
+    return vars;
+  }
+}
+
 std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
+  auto writableOutputRegisters = RegIdSet{};
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
+
   RegisterId outDocumentRegId;
-  {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end())
+        << "variable not found = " << _outVariable->id;
     outDocumentRegId = it->second.registerId;
+    writableOutputRegisters.emplace(outDocumentRegId);
+  } else {
+    for (auto const& p : projections().projections()) {
+      auto reg = getRegisterPlan()->variableToRegisterId(p.variable);
+      varsToRegs.emplace(p.variable->id, reg);
+      writableOutputRegisters.emplace(reg);
+    }
   }
   RegisterId inNmDocIdRegId;
   {
@@ -3167,14 +3208,13 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   if (inNmDocIdRegId.isValid()) {
     readableInputRegisters.emplace(inNmDocIdRegId);
   }
-  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos =
-      MaterializerExecutorInfos(inNmDocIdRegId, outDocumentRegId,
-                                engine.getQuery(), collection(), _projections);
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection(),
+      _projections, std::move(varsToRegs));
 
   return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3185,7 +3225,9 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
   TRI_ASSERT(plan);
 
   auto c = std::make_unique<MaterializeRocksDBNode>(
-      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable);
+      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable,
+      *_oldDocVariable);
+  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

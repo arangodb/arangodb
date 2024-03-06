@@ -1,10 +1,6 @@
 devel
 -----
 
-
-3.12.0-alpha.1 (XXXX-XX-XX)
----------------------------
-
 * Allow limiting the amount of async prefetching operations for AQL queries.
   Since version 3.12, AQL queries can make use of async prefetching. While this
   is normally beneficial for query performance, the async prefetch operations
@@ -24,6 +20,18 @@ devel
   option. These options prevent that running a lot of AQL queries with async
   prefetching fully congests the scheduler queue, and also they prevent large
   AQL queries to use up all async prefetching capacity on their own.
+
+* Fix BTS-1807: transactions are bound to the user who started it, and the
+  database they were started for. However, there was a code path that was missing
+  the database check, which allowed the transaction id to be used in a request
+  to a different database. The request would not return an error, but it would
+  actually be executed in the context of the original database, and not the one
+  specified in the request.
+  With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
+
+
+3.12.0-alpha.1 (XXXX-XX-XX)
+---------------------------
 
 * FE-424: Adjusted Foxx service install button placement.
 

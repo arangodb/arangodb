@@ -63,11 +63,7 @@ namespace arangodb {
 
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
     : ArangodFeature{server, *this},
-#ifdef __linux__
       _countDescriptorsInterval(60 * 1000),
-#else
-      _countDescriptorsInterval(0),
-#endif
       _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
@@ -87,8 +83,7 @@ void FileDescriptorsFeature::collectOptions(
           "file descriptors for the process is determined "
           "(0 = disable counting).",
           new UInt64Parameter(&_countDescriptorsInterval),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                       arangodb::options::Flags::OsLinux))
+          arangodb::options::makeFlags())
       .setIntroducedIn(31100);
 }
 
@@ -114,7 +109,6 @@ void FileDescriptorsFeature::prepare() {
 }
 
 void FileDescriptorsFeature::countOpenFiles() {
-#ifdef __linux__
   try {
     size_t numFiles = FileUtils::countFiles("/proc/self/fd");
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
@@ -126,7 +120,6 @@ void FileDescriptorsFeature::countOpenFiles() {
     LOG_TOPIC("0a654", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process";
   }
-#endif
 }
 
 void FileDescriptorsFeature::countOpenFilesIfNeeded() {

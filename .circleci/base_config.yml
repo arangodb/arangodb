@@ -11,6 +11,12 @@ parameters:
     type: string
     default: public.ecr.aws/b0b8h2r4/test-ubuntu:23.10-fc8ee57e
   # Unused here, but it will be forwarded from config and will cause errors if not defined
+  enterprise-branch:
+    type: string
+    default: ""
+  dont-cancel-pipelines:
+    type: boolean
+    default: false
   nightly:
     type: boolean
     default: false
@@ -317,9 +323,9 @@ jobs:
           command: |
             mkdir work
             if [ << pipeline.parameters.sanitizer >> = "alubsan" ]; then
-              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/asan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
-              export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/lsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
-              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/ubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
+              export ASAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:handle_ioctl=true:check_initialization_order=true:detect_container_overflow=true:detect_stack_use_after_return=false:detect_odr_violation=1:strict_init_order=true"
+              export LSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:suppressions=lsan_arangodb_suppressions.txt:print_suppressions=0"
+              export UBSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/alubsan.log:print_stacktrace=1:suppressions=ubsan_arangodb_suppressions.txt:print_suppressions=0"
               export SAN_MODE=alubsan
             elif [ << pipeline.parameters.sanitizer >> = "tsan" ]; then
               export TSAN_OPTIONS="log_exe_name=true:log_path=`pwd`/work/tsan.log:detect_deadlocks=true:second_deadlock_stack=1:suppressions=tsan_arangodb_suppressions.txt:print_suppressions=0"
@@ -336,6 +342,7 @@ jobs:
           name: Copy test results
           when: always
           command: |
+            ls -la ./work/
             mkdir test-results
             find testrunXml -iname *xml -exec cp "{}" --target-directory=./test-results \;
       - store_artifacts:

@@ -53,15 +53,16 @@ struct Collection;
 
 class MaterializerExecutorInfos {
  public:
-  MaterializerExecutorInfos(RegisterId inNmDocId, RegisterId outDocRegId,
-                            aql::QueryContext& query,
-                            Collection const* collection,
-                            Projections projections)
+  MaterializerExecutorInfos(
+      RegisterId inNmDocId, RegisterId outDocRegId, aql::QueryContext& query,
+      Collection const* collection, Projections projections,
+      containers::FlatHashMap<VariableId, RegisterId> variablesToRegisters)
       : _inNonMaterializedDocRegId(inNmDocId),
         _outMaterializedDocumentRegId(outDocRegId),
         _query(query),
         _collection(collection),
-        _projections(std::move(projections)) {}
+        _projections(std::move(projections)),
+        _variablesToRegisters(std::move(variablesToRegisters)) {}
 
   MaterializerExecutorInfos() = delete;
   MaterializerExecutorInfos(MaterializerExecutorInfos&&) = default;
@@ -82,6 +83,8 @@ class MaterializerExecutorInfos {
 
   Projections const& projections() const noexcept { return _projections; }
 
+  RegisterId getRegisterForVariable(VariableId var) const noexcept;
+
  private:
   /// @brief register to store local document id
   RegisterId const _inNonMaterializedDocRegId;
@@ -90,6 +93,7 @@ class MaterializerExecutorInfos {
   aql::QueryContext& _query;
   Collection const* _collection;
   Projections const _projections;
+  containers::FlatHashMap<VariableId, RegisterId> const _variablesToRegisters;
 };
 
 struct MaterializeExecutorBase {

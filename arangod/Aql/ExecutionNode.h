@@ -1227,7 +1227,8 @@ class MaterializeNode : public ExecutionNode {
  protected:
   MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
                   aql::Variable const& inDocId,
-                  aql::Variable const& outVariable);
+                  aql::Variable const& outVariable,
+                  aql::Variable const& oldDocVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1252,7 +1253,7 @@ class MaterializeNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override;
 
   /// @brief return out variable
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
@@ -1260,6 +1261,12 @@ class MaterializeNode : public ExecutionNode {
   aql::Variable const& docIdVariable() const noexcept {
     return *_inNonMaterializedDocId;
   }
+
+  aql::Variable const& oldDocVariable() const noexcept {
+    return *_oldDocVariable;
+  }
+
+  void setDocOutVariable(Variable const& var) noexcept { _outVariable = &var; }
 
  protected:
   /// @brief export to VelocyPack
@@ -1272,13 +1279,17 @@ class MaterializeNode : public ExecutionNode {
 
   /// @brief the variable produced by materialization
   Variable const* _outVariable;
+
+  /// @brief old document variable that is materialized
+  Variable const* _oldDocVariable;
 };
 
 class MaterializeSearchNode : public MaterializeNode {
  public:
   MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
                         aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+                        aql::Variable const& outVariable,
+                        aql::Variable const& oldDocVariable);
 
   MaterializeSearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1302,7 +1313,8 @@ class MaterializeRocksDBNode : public MaterializeNode,
   MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
                          aql::Collection const* collection,
                          aql::Variable const& inDocId,
-                         aql::Variable const& outVariable);
+                         aql::Variable const& outVariable,
+                         aql::Variable const& oldDocVariable);
 
   MaterializeRocksDBNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1317,9 +1329,12 @@ class MaterializeRocksDBNode : public MaterializeNode,
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }
 
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
   void projections(Projections proj) noexcept {
     _projections = std::move(proj);
   }
+  Projections& projections() noexcept { return _projections; }
   Projections const& projections() const noexcept { return _projections; }
 
  protected:

@@ -30,6 +30,4 @@ if (USE_JEMALLOC)
   add_dependencies(${BIN_ARANGODUMP} jemalloc_build)
 endif ()
 
-if (UNIX) 
-  add_dependencies(${BIN_ARANGODUMP} man)
-endif ()
+add_dependencies(${BIN_ARANGODUMP} man)

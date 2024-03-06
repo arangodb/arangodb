@@ -369,7 +369,7 @@ function optimizerRuleIndexesTestSuite () {
       queries.forEach(function(query) {
         let result = db._createStatement({query: query[0], bindVars: null, options: { optimizer: { rules: ["-use-index-for-sort"] } }}).explain();
         assertEqual(-1, result.plan.rules.indexOf(ruleName), query);
-        assertNotEqual(-1, result.plan.rules.indexOf(lateRuleName), query);
+        assertNotEqual(-1, result.plan.rules.indexOf("push-down-late-materialization"), query);
         assertEqual(0, result.plan.nodes.filter(function(n) { return n.type === 'FilterNode'; }).length);
         result = db._query(query[0], null, { optimizer: { rules: ["-use-index-for-sort"] } }).toArray().length;
         assertEqual(query[1], result, query);
