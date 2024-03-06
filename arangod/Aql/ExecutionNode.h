@@ -506,13 +506,9 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
-  }
+  bool isAsyncPrefetchEnabled() const noexcept;
 
-  void setIsAsyncPrefetchEnabled(bool v) noexcept {
-    _isAsyncPrefetchEnabled = v;
-  }
+  void setIsAsyncPrefetchEnabled(bool v) noexcept;
 
   bool isCallstackSplitEnabled() const noexcept {
     return _isCallstackSplitEnabled;

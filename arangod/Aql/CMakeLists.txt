@@ -20,6 +20,7 @@ add_library(arango_aql STATIC
   AstHelper.cpp
   AstNode.cpp
   AstResources.cpp
+  AsyncPrefetchSlotsManager.cpp
   AttributeAccessor.cpp
   AttributeNamePath.cpp
   BindParameters.cpp
@@ -155,6 +156,7 @@ if (USE_V8)
 endif()
 
 add_subdirectory(Executor)
+add_subdirectory(Function)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql

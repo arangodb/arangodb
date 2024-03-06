@@ -181,8 +181,7 @@ class Manager final : public IManager {
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
   /// @brief get the meta transaction state
-  transaction::Status getManagedTrxStatus(TransactionId,
-                                          std::string const& database) const;
+  transaction::Status getManagedTrxStatus(TransactionId) const;
 
   Result commitManagedTrx(TransactionId, std::string const& database);
   Result abortManagedTrx(TransactionId, std::string const& database) override;
@@ -280,6 +279,7 @@ class Manager final : public IManager {
 
   Result updateTransaction(
       TransactionId tid, transaction::Status status, bool clearServers,
+      // TODO - use a better solution
       std::string const& database =
           "" /* leave empty to operate across all databases */);
 
@@ -294,6 +294,9 @@ class Manager final : public IManager {
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
+
+  bool isAuthorized(ManagedTrx const& trx) const;
+  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
 
  private:
   ManagerFeature& _feature;

@@ -114,7 +114,7 @@ struct TestDate {
     return _date->toJson() + " => " + (_isValid ? "true" : "false");
   }
 
-  void buildParams(VPackFunctionParameters& input) const {
+  void buildParams(aql::functions::VPackFunctionParameters& input) const {
     input.emplace_back(_date->slice());
   }
 
@@ -172,7 +172,7 @@ struct TestDate {
            (_isValid ? "true" : "false");
   }
 
-  void buildParams(VPackFunctionParameters& input) const {
+  void buildParams(aql::functions::VPackFunctionParameters& input) const {
     for (VPackSlice it : VPackArrayIterator(_argBuilder.slice())) {
       input.emplace_back(it);
     }
@@ -428,7 +428,7 @@ struct TestDate {
     return _input->toJson() + " => " + _result;
   }
 
-  void buildParams(VPackFunctionParameters& input) const {
+  void buildParams(aql::functions::VPackFunctionParameters& input) const {
     VPackSlice s = _input->slice();
     for (VPackSlice it : VPackArrayIterator(s)) {
       input.emplace_back(it);

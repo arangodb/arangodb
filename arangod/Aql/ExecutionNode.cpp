@@ -594,13 +594,13 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
 
-  _isAsyncPrefetchEnabled =
-      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
+  setIsAsyncPrefetchEnabled(VelocyPackHelper::getBooleanValue(
+      slice, "isAsyncPrefetchEnabled", false));
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
 
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     plan->getAst()->setContainsAsyncPrefetch();
   }
 }
@@ -1106,7 +1106,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   // serialize these flags in all modes, but only if they are enabled.
   // this works because they default to false, and helps to keep the output
   // small.
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     builder.add("isAsyncPrefetchEnabled", VPackValue(true));
   }
   if (_isCallstackSplitEnabled) {
@@ -1183,6 +1183,21 @@ bool ExecutionNode::isInSplicedSubquery() const noexcept {
 
 void ExecutionNode::setIsInSplicedSubquery(bool const value) noexcept {
   _isInSplicedSubquery = value;
+}
+
+bool ExecutionNode::isAsyncPrefetchEnabled() const noexcept {
+  return _isAsyncPrefetchEnabled;
+}
+
+void ExecutionNode::setIsAsyncPrefetchEnabled(bool v) noexcept {
+  if (v != _isAsyncPrefetchEnabled) {
+    _isAsyncPrefetchEnabled = v;
+    if (v) {
+      _plan->increaseAsyncPrefetchNodes();
+    } else {
+      _plan->decreaseAsyncPrefetchNodes();
+    }
+  }
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and

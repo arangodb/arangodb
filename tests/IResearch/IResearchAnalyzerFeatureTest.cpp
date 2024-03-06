@@ -393,15 +393,19 @@ std::map<std::string_view, Analyzer> const& staticAnalyzers() {
 
 // AqlValue entries must be explicitly deallocated
 struct VPackFunctionParametersWrapper {
-  arangodb::aql::VPackFunctionParameters instance;
+  arangodb::aql::functions::VPackFunctionParameters instance;
   VPackFunctionParametersWrapper() = default;
   ~VPackFunctionParametersWrapper() {
     for (auto& entry : instance) {
       entry.destroy();
     }
   }
-  arangodb::aql::VPackFunctionParameters* operator->() { return &instance; }
-  arangodb::aql::VPackFunctionParameters& operator*() { return instance; }
+  arangodb::aql::functions::VPackFunctionParameters* operator->() {
+    return &instance;
+  }
+  arangodb::aql::functions::VPackFunctionParameters& operator*() {
+    return instance;
+  }
 };
 
 // AqlValue entrys must be explicitly deallocated
@@ -3447,7 +3451,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // test invalid arg count
   // Zero count (less than expected)
   {
-    arangodb::aql::VPackFunctionParameters args;
+    arangodb::aql::functions::VPackFunctionParameters args;
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, args)),
                  arangodb::basics::Exception);
   }

@@ -177,7 +177,7 @@ function testSuite() {
       let body = JSON.stringify({
         type : "multi_delimiter",
         name : name,
-        properties : { delimiter : ["❤", "foo"] } ,
+        properties : { delimiters : ["❤", "foo"] } ,
       });
 
 

@@ -146,7 +146,7 @@ void RestTransactionHandler::executeGetState() {
     return;
   }
 
-  transaction::Status status = mgr->getManagedTrxStatus(tid, _vocbase.name());
+  transaction::Status status = mgr->getManagedTrxStatus(tid);
 
   if (status == transaction::Status::UNDEFINED) {
     generateError(rest::ResponseCode::NOT_FOUND,

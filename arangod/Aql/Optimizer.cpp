@@ -243,24 +243,24 @@ void Optimizer::initializeRules(ExecutionPlan* plan,
                        }));
 
     int index = -1;
-    for (auto& rule : OptimizerRulesFeature::rules()) {
+    for (auto const& rule : rules) {
       // insert position of rule inside OptimizerRulesFeature::_rules
       _rules.emplace_back(++index);
-      if (rule.isDisabledByDefault()) {
+      if (rule.isDisabledByDefault() || plan->isDisabledRule(rule.level)) {
         disableRule(plan, rule.level);
       }
     }
-  }
 
-  // enable/disable rules as per user request
-  for (auto const& name : queryOptions.optimizerRules) {
-    if (name.empty()) {
-      continue;
-    }
-    if (name[0] == '-') {
-      disableRule(plan, name);
-    } else {
-      enableRule(plan, name);
+    // enable/disable rules as per user request
+    for (auto const& name : queryOptions.optimizerRules) {
+      if (name.empty()) {
+        continue;
+      }
+      if (name[0] == '-') {
+        disableRule(plan, name);
+      } else {
+        enableRule(plan, name);
+      }
     }
   }
 }
