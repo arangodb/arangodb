@@ -45,6 +45,15 @@ struct FutureSharedLock {
   struct SharedState;
 
  public:
+  struct SharedUnlocker {
+    void operator()(SharedState* lock) { lock->unlockShared(); }
+  };
+
+  struct ExclusiveUnlocker {
+    void operator()(SharedState* lock) { lock->unlockExclusive(); }
+  };
+
+  template<typename Unlocker>
   struct LockGuard {
     LockGuard() = default;
 
@@ -67,7 +76,7 @@ struct FutureSharedLock {
 
     void unlock() noexcept {
       TRI_ASSERT(_lock != nullptr);
-      _lock->unlock();
+      Unlocker{}(_lock);
       _lock = nullptr;
     }
 
@@ -83,72 +92,95 @@ struct FutureSharedLock {
     SharedState* _lock = nullptr;
   };
 
-  using FutureType = Future<LockGuard>;
+  using FutureSharedType = Future<LockGuard<SharedUnlocker>>;
+  using FutureExclusiveType = Future<LockGuard<ExclusiveUnlocker>>;
 
   explicit FutureSharedLock(Scheduler& scheduler)
       : _sharedState(std::make_shared<SharedState>(scheduler)) {}
 
-  FutureType asyncLockShared() {
+  FutureSharedType asyncLockShared() {
     return _sharedState->asyncLockShared([](auto) {});
   }
 
-  FutureType asyncLockExclusive() {
+  FutureExclusiveType asyncLockExclusive() {
     return _sharedState->asyncLockExclusive([](auto) {});
   }
 
-  FutureType asyncTryLockSharedFor(std::chrono::milliseconds timeout) {
+  FutureSharedType asyncTryLockSharedFor(std::chrono::milliseconds timeout) {
     return _sharedState->asyncLockShared([this, timeout](auto node) {
       _sharedState->scheduleTimeout(node, timeout);
     });
   }
 
-  FutureType asyncTryLockExclusiveFor(std::chrono::milliseconds timeout) {
+  FutureExclusiveType asyncTryLockExclusiveFor(
+      std::chrono::milliseconds timeout) {
     return _sharedState->asyncLockExclusive([this, timeout](auto node) {
       _sharedState->scheduleTimeout(node, timeout);
     });
   }
 
+  void unlockShared() { unlock(); }
+  void unlockExclusive() { unlock(); }
   void unlock() { _sharedState->unlock(); }
 
  private:
-  struct Node {
-    explicit Node(bool exclusive) : exclusive(exclusive) {}
+  struct NotifyGotLock {};
 
-    Promise<LockGuard> promise;
+  struct Node {
+    virtual ~Node() = default;
+    virtual void resolve(SharedState* lock) = 0;
+    virtual void resolveWithError(::ErrorCode) = 0;
     typename Scheduler::WorkHandle _workItem;
-    bool exclusive;
+    bool exclusive = false;
+  };
+
+  template<typename Unlocker>
+  struct TypedNode : Node {
+    TypedNode() {
+      this->exclusive = std::is_same_v<Unlocker, ExclusiveUnlocker>;
+    }
+
+    void resolve(SharedState* lock) final {
+      promise.setValue(LockGuard<Unlocker>{lock});
+    }
+
+    void resolveWithError(::ErrorCode code) final {
+      promise.setException(::arangodb::basics::Exception(code, ADB_HERE));
+    }
+
+    Promise<LockGuard<Unlocker>> promise;
   };
 
   struct SharedState : std::enable_shared_from_this<SharedState> {
     explicit SharedState(Scheduler& scheduler) : _scheduler(scheduler) {}
 
     template<class Func>
-    FutureType asyncLockExclusive(Func blockedFunc) {
+    FutureExclusiveType asyncLockExclusive(Func blockedFunc) {
       std::lock_guard lock(_mutex);
       if (_lockCount == 0) {
         TRI_ASSERT(_queue.empty());
         ++_lockCount;
         _exclusive = true;
-        return {LockGuard(this)};
+        return {LockGuard<ExclusiveUnlocker>(this)};
       }
 
-      auto it = insertNode(true);
+      auto [node, it] = insertNode<ExclusiveUnlocker>();
       blockedFunc(it);
-      return (*it)->promise.getFuture();
+      return node->promise.getFuture();
     }
 
     template<class Func>
-    FutureType asyncLockShared(Func blockedFunc) {
+    FutureSharedType asyncLockShared(Func blockedFunc) {
       std::lock_guard lock(_mutex);
       if (_lockCount == 0 || (!_exclusive && _queue.empty())) {
         ++_lockCount;
         _exclusive = false;
-        return {LockGuard(this)};
+        return {LockGuard<SharedUnlocker>(this)};
       }
 
-      auto it = insertNode(false);
+      auto [node, it] = insertNode<SharedUnlocker>();
       blockedFunc(it);
-      return (*it)->promise.getFuture();
+      return node->promise.getFuture();
     }
 
     void unlock() {
@@ -159,7 +191,7 @@ struct FutureSharedLock {
         auto& node = _queue.back();
         _lockCount = 1;
         _exclusive = node->exclusive;
-        scheduleNode(*node);
+        scheduleNode(std::move(node));
         _queue.pop_back();
 
         // if we are in shared mode, we can schedule all following shared
@@ -167,16 +199,18 @@ struct FutureSharedLock {
         if (!_exclusive) {
           while (!_queue.empty() && !_queue.back()->exclusive) {
             ++_lockCount;
-            scheduleNode(*_queue.back());
+            scheduleNode(std::move(_queue.back()));
             _queue.pop_back();
           }
         }
       }
     }
 
-    auto insertNode(bool exclusive) {
-      _queue.emplace_front(std::make_shared<Node>(exclusive));
-      return _queue.begin();
+    template<typename Unlocker>
+    auto insertNode() {
+      auto node = std::make_shared<TypedNode<Unlocker>>();
+      _queue.emplace_front(node);
+      return std::make_pair(node, _queue.begin());
     }
 
     void removeNode(
@@ -190,7 +224,7 @@ struct FutureSharedLock {
         if (!_exclusive) {
           while (!_queue.empty() && !_queue.back()->exclusive) {
             ++_lockCount;
-            scheduleNode(*_queue.back());
+            scheduleNode(std::move(_queue.back()));
             _queue.pop_back();
           }
         }
@@ -200,12 +234,11 @@ struct FutureSharedLock {
       }
     }
 
-    void scheduleNode(Node& node) {
+    void scheduleNode(std::shared_ptr<Node>&& node) {
       // TODO in theory `this` can die before execute callback
       //  so probably better to use `shared_from_this()`, but it's slower
-      _scheduler.queue([promise = std::move(node.promise), this]() mutable {
-        promise.setValue(LockGuard(this));
-      });
+      _scheduler.queue(
+          [node = std::move(node), this]() mutable { node->resolve(this); });
     }
 
     void scheduleTimeout(
@@ -224,10 +257,9 @@ struct FutureSharedLock {
                   // otherwise the iterator must still be valid!
                   me->removeNode(queueIterator);
                   lock.unlock();
-                  nodePtr->promise.setException(::arangodb::basics::Exception(
-                      cancelled ? TRI_ERROR_REQUEST_CANCELED
-                                : TRI_ERROR_LOCK_TIMEOUT,
-                      ADB_HERE));
+                  nodePtr->resolveWithError(cancelled
+                                                ? TRI_ERROR_REQUEST_CANCELED
+                                                : TRI_ERROR_LOCK_TIMEOUT);
                 }
               }
             }
