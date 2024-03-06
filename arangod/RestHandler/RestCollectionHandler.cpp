@@ -189,6 +189,7 @@ futures::Future<RestStatus> RestCollectionHandler::handleCommandGet() {
         VPackObjectBuilder obj(&_builder, true);
         obj->add("checksum", VPackValue(std::to_string(checksum)));
         obj->add("revision", VPackValue(revId.toString()));
+        obj->add("TEST", VPackValue("Compiled from devel branch"));
 
         // We do not need a transaction here
         methods::Collections::Context ctxt(coll);
