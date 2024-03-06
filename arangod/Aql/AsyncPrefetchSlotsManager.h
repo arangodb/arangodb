@@ -35,8 +35,7 @@ class AsyncPrefetchSlotsReservation {
   AsyncPrefetchSlotsReservation& operator=(
       AsyncPrefetchSlotsReservation const&) = delete;
 
-  AsyncPrefetchSlotsReservation() noexcept;
-  AsyncPrefetchSlotsReservation(AsyncPrefetchSlotsManager* manager,
+  AsyncPrefetchSlotsReservation(AsyncPrefetchSlotsManager& manager,
                                 size_t slotsReserved) noexcept;
   AsyncPrefetchSlotsReservation& operator=(
       AsyncPrefetchSlotsReservation&&) noexcept;
@@ -47,7 +46,7 @@ class AsyncPrefetchSlotsReservation {
  private:
   void returnSlots() noexcept;
 
-  AsyncPrefetchSlotsManager* _manager;
+  AsyncPrefetchSlotsManager& _manager;
   size_t _slotsReserved;
 };
 

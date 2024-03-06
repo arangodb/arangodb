@@ -253,7 +253,8 @@ ExecutionEngine::ExecutionEngine(EngineId eId, QueryContext& query,
       _asyncPrefetchSlotsManager(query.vocbase()
                                      .server()
                                      .getFeature<QueryRegistryFeature>()
-                                     .asyncPrefetchSlotsManager()) {
+                                     .asyncPrefetchSlotsManager()),
+      _asyncPrefetchSlotsReservation(_asyncPrefetchSlotsManager, 0) {
   TRI_ASSERT(_sharedState != nullptr);
   _blocks.reserve(8);
 }

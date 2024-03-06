@@ -29,23 +29,16 @@
 
 namespace arangodb::aql {
 
-AsyncPrefetchSlotsReservation::AsyncPrefetchSlotsReservation() noexcept
-    : _manager(nullptr), _slotsReserved(0) {}
-
 AsyncPrefetchSlotsReservation::AsyncPrefetchSlotsReservation(
-    AsyncPrefetchSlotsManager* manager, size_t slotsReserved) noexcept
-    : _manager(manager), _slotsReserved(slotsReserved) {
-  // if number of slots is > 0, we must have a manager
-  TRI_ASSERT(_slotsReserved == 0 || _manager != nullptr);
-}
+    AsyncPrefetchSlotsManager& manager, size_t slotsReserved) noexcept
+    : _manager(manager), _slotsReserved(slotsReserved) {}
 
 AsyncPrefetchSlotsReservation& AsyncPrefetchSlotsReservation::operator=(
     AsyncPrefetchSlotsReservation&& other) noexcept {
   if (this != &other) {
     returnSlots();
-    if (other._manager != nullptr) {
-      _manager = other._manager;
-    }
+    // must be using the same manager instance
+    TRI_ASSERT(&_manager == &other._manager);
     _slotsReserved = std::exchange(other._slotsReserved, 0);
   }
   return *this;
@@ -56,8 +49,8 @@ AsyncPrefetchSlotsReservation::~AsyncPrefetchSlotsReservation() {
 }
 
 void AsyncPrefetchSlotsReservation::returnSlots() noexcept {
-  if (_manager != nullptr && _slotsReserved > 0) {
-    _manager->returnSlots(_slotsReserved);
+  if (_slotsReserved > 0) {
+    _manager.returnSlots(_slotsReserved);
     _slotsReserved = 0;
     // leave _manager in place
   }
@@ -86,7 +79,7 @@ AsyncPrefetchSlotsReservation AsyncPrefetchSlotsManager::leaseSlots(
 
   if (value > 0) {
     // check if global (per-server) total is below the configured total maximum
-    size_t current= _slotsUsed.load(std::memory_order_relaxed);
+    size_t current = _slotsUsed.load(std::memory_order_relaxed);
     TRI_ASSERT(current <= _maxSlotsTotal);
     // as long as we have slots left, try to allocate some
     while (current < _maxSlotsTotal) {
@@ -94,12 +87,12 @@ AsyncPrefetchSlotsReservation AsyncPrefetchSlotsManager::leaseSlots(
       TRI_ASSERT(target > current);
       if (_slotsUsed.compare_exchange_weak(current, target,
                                            std::memory_order_relaxed)) {
-        return {this, target - current};
+        return {*this, target - current};
       }
       TRI_ASSERT(current <= _maxSlotsTotal);
     }
   }
-  return {};
+  return {*this, 0};
 }
 
 void AsyncPrefetchSlotsManager::returnSlots(size_t value) noexcept {
