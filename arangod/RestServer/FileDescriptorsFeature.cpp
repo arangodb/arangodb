@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,11 +63,7 @@ namespace arangodb {
 
 FileDescriptorsFeature::FileDescriptorsFeature(Server& server)
     : ArangodFeature{server, *this},
-#ifdef __linux__
       _countDescriptorsInterval(60 * 1000),
-#else
-      _countDescriptorsInterval(0),
-#endif
       _fileDescriptorsCurrent(server.getFeature<metrics::MetricsFeature>().add(
           arangodb_file_descriptors_current{})),
       _fileDescriptorsLimit(server.getFeature<metrics::MetricsFeature>().add(
@@ -87,8 +83,7 @@ void FileDescriptorsFeature::collectOptions(
           "file descriptors for the process is determined "
           "(0 = disable counting).",
           new UInt64Parameter(&_countDescriptorsInterval),
-          arangodb::options::makeFlags(arangodb::options::Flags::DefaultNoOs,
-                                       arangodb::options::Flags::OsLinux))
+          arangodb::options::makeFlags())
       .setIntroducedIn(31100);
 }
 
@@ -114,7 +109,6 @@ void FileDescriptorsFeature::prepare() {
 }
 
 void FileDescriptorsFeature::countOpenFiles() {
-#ifdef __linux__
   try {
     size_t numFiles = FileUtils::countFiles("/proc/self/fd");
     _fileDescriptorsCurrent.store(numFiles, std::memory_order_relaxed);
@@ -126,7 +120,6 @@ void FileDescriptorsFeature::countOpenFiles() {
     LOG_TOPIC("0a654", DEBUG, Logger::SYSCALL)
         << "unable to count number of open files for arangod process";
   }
-#endif
 }
 
 void FileDescriptorsFeature::countOpenFilesIfNeeded() {

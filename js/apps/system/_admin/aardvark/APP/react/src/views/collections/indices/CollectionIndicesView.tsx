@@ -39,7 +39,7 @@ export const CollectionIndicesView = () => {
 const IndexViewHeader = ({ onOpen }: { onOpen: () => void }) => {
   const { stats } = useCollectionIndicesContext();
   return (
-    <Stack direction="row" marginBottom="4" alignItems="self-start" spacing="6">
+    <Stack direction="row" marginBottom="4" alignItems="baseline" spacing="6">
       <Heading size="lg">Indexes</Heading>
       <Flex gap="2" alignItems="baseline">
         <Stat gap="2">

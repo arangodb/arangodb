@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -733,13 +733,6 @@ std::optional<uid_t> findUser(std::string const& nameOrId) noexcept {
 }
 
 std::optional<std::string> findUserName(uid_t id) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getpwuid function.
-  struct passwd* pwent = getpwuid(id);
-  if (pwent != nullptr) {
-    return {std::string(pwent->pw_name)};
-  }
-#else
   // For Linux (and other Unixes), we avoid this function because it
   // poses problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -753,31 +746,12 @@ std::optional<std::string> findUserName(uid_t id) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif
 
 #ifdef ARANGODB_HAVE_GETGRGID
 std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
-#ifdef __APPLE__
-  // For Mac we use the getgrgid and getgrnam functions.
-  bool valid = false;
-  int gidNumber = NumberUtils::atoi_positive<int>(
-      nameOrId.data(), nameOrId.data() + nameOrId.size(), valid);
-
-  if (valid && gidNumber >= 0) {
-    group* g = getgrgid(gidNumber);
-    if (g != nullptr) {
-      return {gidNumber};
-    }
-  } else {
-    group* g = getgrnam(nameOrId.c_str());
-    if (g != nullptr) {
-      return {g->gr_gid};
-    }
-  }
-#else
   // For Linux (and other Unixes), we avoid these functions because they
   // pose problems when we build static binaries with glibc (because of
   // /etc/nsswitch.conf).
@@ -796,14 +770,12 @@ std::optional<gid_t> findGroup(std::string const& nameOrId) noexcept {
     }
   } catch (std::exception const&) {
   }
-#endif
   return {std::nullopt};
 }
 #endif
 
 #ifdef ARANGODB_HAVE_INITGROUPS
 void initGroups(std::string const& userName, gid_t groupId) noexcept {
-#ifdef __linux__
   // For Linux, calling initgroups poses problems with statically linked
   // binaries, since /etc/nsswitch.conf can then lead to crashes on
   // older Linux distributions. Therefore, we need to do the groups lookup
@@ -828,10 +800,6 @@ void initGroups(std::string const& userName, gid_t groupId) noexcept {
     setgroups(groupIds.size(), groupIds.data());
   } catch (std::exception const&) {
   }
-#else
-  // For other unixes (including Mac), we can use the OS call.
-  initgroups(userName.c_str(), groupId);
-#endif
 }
 #endif
 }  // namespace arangodb::basics::FileUtils

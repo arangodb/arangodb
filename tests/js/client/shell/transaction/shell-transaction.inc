@@ -1,18 +1,16 @@
 /* jshint globalstrict:false, strict:false, maxlen: 200 */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief ArangoTransaction sTests
-// /
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2018 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License")
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +18,7 @@
 // / See the License for the specific language governing permissions and
 // / limitations under the License.
 // /
-// / Copyright holder is triAGENS GmbH, Cologne, Germany
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
 // /
 // / @author Simon Grätzer
 // //////////////////////////////////////////////////////////////////////////////
@@ -45,7 +43,7 @@ const deriveTestSuite = require('@arangodb/test-helper').deriveTestSuite;
 const analyzers = require('@arangodb/analyzers');
 const ArangoTransaction = require('@arangodb/arango-transaction').ArangoTransaction;
 const isCluster = internal.isCluster();
-const isReplication2Enabled = require('internal').db._version(true).details['replication2-enabled'] === 'true';
+const isReplication2Enabled = internal.db._version(true).details['replication2-enabled'] === 'true';
 
 const compareStringIds = function (l, r) {
   'use strict';
@@ -5719,6 +5717,22 @@ function transactionDatabaseSuite() {
       } finally {
         db._useDatabase(dbn1);
         trx1.abort();
+      }
+    },
+
+    testTransactionsAreDatabaseLocal: function() {
+      db._useDatabase(dbn1);
+      const opts = { collections: { write: [cn] } };
+      const trx = db._createTransaction(opts);
+      trx.collection(cn).insert({ _key: "test" });
+      try {
+        db._useDatabase(dbn2);
+        trx.collection(cn).document("test");
+        fail();
+      } catch(err) {
+        assertEqual(internal.errors.ERROR_TRANSACTION_NOT_FOUND.code, err.errorNum);
+      } finally {
+        db._useDatabase(dbn1);
       }
     },
   };

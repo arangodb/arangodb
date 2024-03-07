@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -786,18 +786,34 @@ collection access or traversal, shortest path, or k-shortest paths query.)");
                R"(Try to read from the underlying collections of a View as late
 as possible if the involved attributes are covered by the View index.)");
 
-  // apply late materialization for index queries
+  // apply late materialization for inverted index queries.
+  // note: this rule is only used for inverted indexes but not for other
+  // index types
   registerRule("late-document-materialization", lateDocumentMaterializationRule,
                OptimizerRule::lateDocumentMaterializationRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Try to read from collections as late as possible if the
-involved attributes are covered by regular indexes.)");
+involved attributes are covered by inverted indexes.)");
 
   // apply late materialization for index queries
   registerRule("batch-materialize-documents", batchMaterializeDocumentsRule,
                OptimizerRule::batchMaterializeDocumentsRule,
                OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
                R"(Batch document lookup from indexes.)");
+
+  // push down materialization nodes to reduce the number of documents
+  registerRule("push-down-late-materialization",
+               pushDownLateMaterializationRule,
+               OptimizerRule::pushDownLateMaterialization,
+               OptimizerRule::makeFlags(OptimizerRule::Flags::CanBeDisabled),
+               R"(Push down late materialization.)");
+
+  registerRule("materialize-into-separate-variable",
+               materializeIntoSeparateVariable,
+               OptimizerRule::materializeIntoSeparateVariable,
+               // rule cannot be disabled because it is crucial for correctness
+               OptimizerRule::makeFlags(),
+               R"(Introduce a separate variable for late materialization.)");
 
 #ifdef USE_ENTERPRISE
   // apply late materialization for offset infos

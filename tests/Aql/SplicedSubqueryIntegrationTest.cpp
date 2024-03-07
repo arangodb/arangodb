@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2020 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -21,13 +21,16 @@
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/AqlItemBlockHelper.h"
+#include "Aql/Executor/AqlExecutorTestCase.h"
+#include "Aql/Executor/TestEmptyExecutorHelper.h"
+#include "Aql/Executor/TestLambdaExecutor.h"
+#include "Aql/Executor/TestLambdaExecutor.h"
+#include "Aql/WaitingExecutionBlockMock.h"
+#include "Aql/WaitingExecutionBlockMock.h"
+#include "Mocks/Servers.h"
 #include "gtest/gtest.h"
 
-#include "AqlItemBlockHelper.h"
-#include "Mocks/Servers.h"
-#include "TestEmptyExecutorHelper.h"
-#include "TestLambdaExecutor.h"
-#include "WaitingExecutionBlockMock.h"
 #include "fakeit.hpp"
 
 #include "Aql/AqlCallStack.h"
@@ -35,25 +38,16 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/IdExecutor.h"
-#include "Aql/LimitExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/LimitExecutor.h"
+#include "Aql/Executor/ReturnExecutor.h"
+#include "Aql/Executor/SubqueryEndExecutor.h"
+#include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ReturnExecutor.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SubqueryEndExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
-
-#include "Aql/AqlExecutorTestCase.h"
-#include "Aql/TestLambdaExecutor.h"
-#include "Aql/WaitingExecutionBlockMock.h"
-
-// TODO: remove me
-#include "Logger/LogMacros.h"
-#include "Logger/Logger.h"
-#include "Logger/LoggerStream.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

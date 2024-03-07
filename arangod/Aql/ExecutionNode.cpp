@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,38 +25,39 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
-#include "Aql/AsyncExecutor.h"
-#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ConstFetcher.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/EnumerateListExecutor.h"
 #include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/AsyncExecutor.h"
+#include "Aql/Executor/CalculationExecutor.h"
+#include "Aql/Executor/EmptyExecutorInfos.h"
+#include "Aql/Executor/EnumerateCollectionExecutor.h"
+#include "Aql/Executor/EnumerateListExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/LimitExecutor.h"
+#include "Aql/Executor/MaterializeExecutor.h"
+#include "Aql/Executor/NoResultsExecutor.h"
+#include "Aql/Executor/ReturnExecutor.h"
 #include "Aql/Expression.h"
-#include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
-#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
-#include "Aql/LimitExecutor.h"
-#include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
-#include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -311,13 +312,19 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable::varFromVPack(plan->getAst(), slice, "outVariable", true);
 
       // keepVariables
-      std::vector<Variable const*> keepVariables;
-      VPackSlice keepVariablesSlice = slice.get("keepVariables");
-      if (keepVariablesSlice.isArray()) {
+      std::vector<std::pair<Variable const*, std::string>> keepVariables;
+      if (VPackSlice keepVariablesSlice = slice.get("keepVariables");
+          keepVariablesSlice.isArray()) {
         for (VPackSlice it : VPackArrayIterator(keepVariablesSlice)) {
           Variable const* variable =
               Variable::varFromVPack(plan->getAst(), it, "variable");
-          keepVariables.emplace_back(variable);
+          if (auto name = it.get("name"); name.isString()) {
+            keepVariables.emplace_back(
+                std::make_pair(variable, name.copyString()));
+          } else {
+            keepVariables.emplace_back(
+                std::make_pair(variable, variable->name));
+          }
         }
       }
 
@@ -357,9 +364,9 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
-          std::string const type = it.get("type").copyString();
+          std::string type = it.get("type").copyString();
           aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, type});
+              AggregateVarInfo{outVar, inVar, std::move(type)});
         }
       }
 
@@ -587,13 +594,13 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
 
-  _isAsyncPrefetchEnabled =
-      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
+  setIsAsyncPrefetchEnabled(VelocyPackHelper::getBooleanValue(
+      slice, "isAsyncPrefetchEnabled", false));
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
 
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     plan->getAst()->setContainsAsyncPrefetch();
   }
 }
@@ -1099,7 +1106,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   // serialize these flags in all modes, but only if they are enabled.
   // this works because they default to false, and helps to keep the output
   // small.
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     builder.add("isAsyncPrefetchEnabled", VPackValue(true));
   }
   if (_isCallstackSplitEnabled) {
@@ -1176,6 +1183,21 @@ bool ExecutionNode::isInSplicedSubquery() const noexcept {
 
 void ExecutionNode::setIsInSplicedSubquery(bool const value) noexcept {
   _isInSplicedSubquery = value;
+}
+
+bool ExecutionNode::isAsyncPrefetchEnabled() const noexcept {
+  return _isAsyncPrefetchEnabled;
+}
+
+void ExecutionNode::setIsAsyncPrefetchEnabled(bool v) noexcept {
+  if (v != _isAsyncPrefetchEnabled) {
+    _isAsyncPrefetchEnabled = v;
+    if (v) {
+      _plan->increaseAsyncPrefetchNodes();
+    } else {
+      _plan->decreaseAsyncPrefetchNodes();
+    }
+  }
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and
@@ -2991,6 +3013,7 @@ constexpr std::string_view kMaterializeNodeInNmDocParam = "inNmDocId";
 constexpr std::string_view kMaterializeNodeOutVariableParam = "outVariable";
 constexpr std::string_view kMaterializeNodeMultiNodeParam = "multiNode";
 constexpr std::string_view kMaterializeNodeInLocalDocIdParam = "inLocalDocId";
+constexpr std::string_view kMaterializeNodeOldDocVar = "oldDocVariable";
 }  // namespace
 
 MaterializeNode* materialize::createMaterializeNode(
@@ -3004,10 +3027,12 @@ MaterializeNode* materialize::createMaterializeNode(
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
                                  aql::Variable const& inDocId,
-                                 aql::Variable const& outVariable)
+                                 aql::Variable const& outVariable,
+                                 aql::Variable const& oldDocVariable)
     : ExecutionNode(plan, id),
       _inNonMaterializedDocId(&inDocId),
-      _outVariable(&outVariable) {}
+      _outVariable(&outVariable),
+      _oldDocVariable(&oldDocVariable) {}
 
 MaterializeNode::MaterializeNode(ExecutionPlan* plan,
                                  arangodb::velocypack::Slice base)
@@ -3015,7 +3040,9 @@ MaterializeNode::MaterializeNode(ExecutionPlan* plan,
       _inNonMaterializedDocId(aql::Variable::varFromVPack(
           plan->getAst(), base, kMaterializeNodeInNmDocParam, true)),
       _outVariable(aql::Variable::varFromVPack(
-          plan->getAst(), base, kMaterializeNodeOutVariableParam)) {}
+          plan->getAst(), base, kMaterializeNodeOutVariableParam)),
+      _oldDocVariable(aql::Variable::varFromVPack(plan->getAst(), base,
+                                                  kMaterializeNodeOldDocVar)) {}
 
 void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
                                      unsigned /*flags*/) const {
@@ -3024,6 +3051,9 @@ void MaterializeNode::doToVelocyPack(velocypack::Builder& nodes,
 
   nodes.add(VPackValue(kMaterializeNodeOutVariableParam));
   _outVariable->toVelocyPack(nodes);
+
+  nodes.add(VPackValue(kMaterializeNodeOldDocVar));
+  _oldDocVariable->toVelocyPack(nodes);
 }
 
 CostEstimate MaterializeNode::estimateCost() const {
@@ -3048,11 +3078,10 @@ std::vector<Variable const*> MaterializeNode::getVariablesSetHere() const {
   return std::vector<Variable const*>{_outVariable};
 }
 
-MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
-                                             ExecutionNodeId id,
-                                             aql::Variable const& inDocId,
-                                             aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable) {}
+MaterializeSearchNode::MaterializeSearchNode(
+    ExecutionPlan* plan, ExecutionNodeId id, aql::Variable const& inDocId,
+    aql::Variable const& outVariable, aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable) {}
 
 MaterializeSearchNode::MaterializeSearchNode(ExecutionPlan* plan,
                                              arangodb::velocypack::Slice base)
@@ -3090,7 +3119,7 @@ std::unique_ptr<ExecutionBlock> MaterializeSearchNode::createBlock(
                                            std::move(writableOutputRegisters));
 
   auto executorInfos = MaterializerExecutorInfos(
-      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {});
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), nullptr, {}, {});
 
   return std::make_unique<ExecutionBlockImpl<MaterializeSearchExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3100,15 +3129,17 @@ ExecutionNode* MaterializeSearchNode::clone(ExecutionPlan* plan,
                                             bool withDependencies) const {
   TRI_ASSERT(plan);
 
-  return cloneHelper(std::make_unique<MaterializeSearchNode>(
-                         plan, _id, *_inNonMaterializedDocId, *_outVariable),
-                     withDependencies);
+  return cloneHelper(
+      std::make_unique<MaterializeSearchNode>(
+          plan, _id, *_inNonMaterializedDocId, *_outVariable, *_oldDocVariable),
+      withDependencies);
 }
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(
     ExecutionPlan* plan, ExecutionNodeId id, aql::Collection const* collection,
-    aql::Variable const& inDocId, aql::Variable const& outVariable)
-    : MaterializeNode(plan, id, inDocId, outVariable),
+    aql::Variable const& inDocId, aql::Variable const& outVariable,
+    aql::Variable const& oldDocVariable)
+    : MaterializeNode(plan, id, inDocId, outVariable, oldDocVariable),
       CollectionAccessingNode(collection) {}
 
 MaterializeRocksDBNode::MaterializeRocksDBNode(ExecutionPlan* plan,
@@ -3132,15 +3163,41 @@ void MaterializeRocksDBNode::doToVelocyPack(velocypack::Builder& nodes,
   }
 }
 
+std::vector<Variable const*> MaterializeRocksDBNode::getVariablesSetHere()
+    const {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
+    return std::vector<Variable const*>{_outVariable};
+  } else {
+    std::vector<Variable const*> vars;
+    vars.reserve(projections().size());
+    std::transform(projections().projections().begin(),
+                   projections().projections().end(), std::back_inserter(vars),
+                   [](auto const& p) { return p.variable; });
+    return vars;
+  }
+}
+
 std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
     ExecutionEngine& engine) const {
   ExecutionNode const* previousNode = getFirstDependency();
   TRI_ASSERT(previousNode != nullptr);
+
+  auto writableOutputRegisters = RegIdSet{};
+  containers::FlatHashMap<VariableId, RegisterId> varsToRegs;
+
   RegisterId outDocumentRegId;
-  {
+  if (projections().empty() || !projections().hasOutputRegisters()) {
     auto it = getRegisterPlan()->varInfo.find(_outVariable->id);
-    TRI_ASSERT(it != getRegisterPlan()->varInfo.end());
+    TRI_ASSERT(it != getRegisterPlan()->varInfo.end())
+        << "variable not found = " << _outVariable->id;
     outDocumentRegId = it->second.registerId;
+    writableOutputRegisters.emplace(outDocumentRegId);
+  } else {
+    for (auto const& p : projections().projections()) {
+      auto reg = getRegisterPlan()->variableToRegisterId(p.variable);
+      varsToRegs.emplace(p.variable->id, reg);
+      writableOutputRegisters.emplace(reg);
+    }
   }
   RegisterId inNmDocIdRegId;
   {
@@ -3152,14 +3209,13 @@ std::unique_ptr<ExecutionBlock> MaterializeRocksDBNode::createBlock(
   if (inNmDocIdRegId.isValid()) {
     readableInputRegisters.emplace(inNmDocIdRegId);
   }
-  auto writableOutputRegisters = RegIdSet{outDocumentRegId};
 
   auto registerInfos = createRegisterInfos(std::move(readableInputRegisters),
                                            std::move(writableOutputRegisters));
 
-  auto executorInfos =
-      MaterializerExecutorInfos(inNmDocIdRegId, outDocumentRegId,
-                                engine.getQuery(), collection(), _projections);
+  auto executorInfos = MaterializerExecutorInfos(
+      inNmDocIdRegId, outDocumentRegId, engine.getQuery(), collection(),
+      _projections, std::move(varsToRegs));
 
   return std::make_unique<ExecutionBlockImpl<MaterializeRocksDBExecutor>>(
       &engine, this, std::move(registerInfos), std::move(executorInfos));
@@ -3170,7 +3226,9 @@ ExecutionNode* MaterializeRocksDBNode::clone(ExecutionPlan* plan,
   TRI_ASSERT(plan);
 
   auto c = std::make_unique<MaterializeRocksDBNode>(
-      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable);
+      plan, _id, collection(), *_inNonMaterializedDocId, *_outVariable,
+      *_oldDocVariable);
+  c->_projections = _projections;
   CollectionAccessingNode::cloneInto(*c);
   return cloneHelper(std::move(c), withDependencies);
 }

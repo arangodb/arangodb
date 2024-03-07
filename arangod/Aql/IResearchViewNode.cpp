@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,12 +28,12 @@
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/EmptyExecutorInfos.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IResearchViewExecutor.tpp"
-#include "Aql/NoResultsExecutor.h"
+#include "Aql/Executor/EmptyExecutorInfos.h"
+#include "Aql/Executor/IResearchViewExecutor.tpp"
+#include "Aql/Executor/NoResultsExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/RegisterPlan.h"
@@ -48,10 +48,10 @@
 #include "Containers/HashSet.h"
 #include "IResearch/AqlHelper.h"
 #include "IResearch/IResearchCommon.h"
-#include "IResearch/IResearchView.h"
-#include "IResearch/IResearchInvertedIndex.h"
-#include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/IResearchFeature.h"
+#include "IResearch/IResearchInvertedIndex.h"
+#include "IResearch/IResearchView.h"
+#include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
 #include "IResearch/ViewSnapshot.h"
 #include "RocksDBEngine/RocksDBEngine.h"
@@ -59,7 +59,6 @@
 #include "StorageEngine/TransactionState.h"
 #include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
-#include "types.h"
 
 #include "utils/misc.hpp"
 

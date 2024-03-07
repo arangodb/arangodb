@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -181,8 +181,7 @@ class Manager final : public IManager {
   void returnManagedTrx(TransactionId, bool isSideUser) noexcept;
 
   /// @brief get the meta transaction state
-  transaction::Status getManagedTrxStatus(TransactionId,
-                                          std::string const& database) const;
+  transaction::Status getManagedTrxStatus(TransactionId) const;
 
   Result commitManagedTrx(TransactionId, std::string const& database);
   Result abortManagedTrx(TransactionId, std::string const& database) override;
@@ -280,6 +279,7 @@ class Manager final : public IManager {
 
   Result updateTransaction(
       TransactionId tid, transaction::Status status, bool clearServers,
+      // TODO - use a better solution
       std::string const& database =
           "" /* leave empty to operate across all databases */);
 
@@ -294,6 +294,9 @@ class Manager final : public IManager {
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
+
+  bool isAuthorized(ManagedTrx const& trx) const;
+  bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
 
  private:
   ManagerFeature& _feature;

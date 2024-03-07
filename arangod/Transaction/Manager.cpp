@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -26,6 +26,7 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ScopeGuard.h"
@@ -38,8 +39,6 @@
 #include "Futures/Utilities.h"
 #include "GeneralServer/AuthenticationFeature.h"
 #include "Logger/LogMacros.h"
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
@@ -48,6 +47,7 @@
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
+#include "VocBase/vocbase.h"
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
 #include "Transaction/History.h"
 #endif
@@ -67,6 +67,8 @@
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
+#include <optional>
+#include <string_view>
 #include <thread>
 
 namespace {
@@ -829,7 +831,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
       return nullptr;
     }
 
-    if (mtrx.expired() || !::authorized(mtrx.user)) {
+    if (mtrx.expired() || !isAuthorized(mtrx)) {
       return nullptr;  // no need to return anything
     }
 
@@ -953,9 +955,9 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end() ||
-        !::authorized(it->second.user)) {
+        !isAuthorized(it->second)) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
-          << "managed transaction " << tid << " not found";
+          << "managed transaction " << tid << " not found or inaccessible";
       TRI_ASSERT(false);
       return;
     }
@@ -997,14 +999,12 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 }
 
 /// @brief get the transaction state
-transaction::Status Manager::getManagedTrxStatus(
-    TransactionId tid, std::string const& database) const {
+transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   size_t bucket = getBucket(tid);
   READ_LOCKER(writeLocker, _transactions[bucket]._lock);
 
   auto it = _transactions[bucket]._managed.find(tid);
-  if (it == _transactions[bucket]._managed.end() ||
-      !::authorized(it->second.user) || it->second.db != database) {
+  if (it == _transactions[bucket]._managed.end() || !isAuthorized(it->second)) {
     return transaction::Status::UNDEFINED;
   }
 
@@ -1090,6 +1090,7 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     auto& buck = _transactions[bucket];
     auto it = buck._managed.find(tid);
     if (it == buck._managed.end()) {
+      ADB_PROD_ASSERT(database != "");
       // insert a tombstone for an aborted transaction that we never saw before
       auto inserted = buck._managed.try_emplace(
           tid, _feature, MetaType::Tombstone,
@@ -1479,9 +1480,9 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder, &database](TransactionId tid,
-                                          ManagedTrx const& trx) {
-    if (::authorized(trx.user) && trx.db == database) {
+  iterateManagedTrx([this, &builder, &database](TransactionId tid,
+                                                ManagedTrx const& trx) {
+    if (isAuthorized(trx, database)) {
       builder.openObject(true);
       builder.add("id", VPackValue(std::to_string(tid.id())));
       builder.add("state",
@@ -1603,6 +1604,27 @@ bool Manager::storeManagedState(
       tid, _feature, MetaType::Managed, ttl, std::move(state),
       std::move(rGuard));
   return it.second;
+}
+
+bool Manager::isAuthorized(ManagedTrx const& trx) const {
+  auto const& exec = arangodb::ExecContext::current();
+  return isAuthorized(trx, exec.database());
+}
+
+bool Manager::isAuthorized(ManagedTrx const& trx,
+                           std::string_view database) const {
+  auto const& exec = arangodb::ExecContext::current();
+  if (exec.isSuperuser()) {
+    // if we are a superuser, we do not check the database.
+    // This is necessary because we have a few code paths where we no longer
+    // have the ExecContext with the user who initiated the request (e.g., the
+    // RestDocumentHandler has the _activeTrx member, but when that gets
+    // destroyed and thereby releases the transaction, the ExecContext is
+    // already gone).
+    // TODO - this should be improved in a separate step
+    return true;
+  }
+  return trx.user == exec.user() && trx.db == database;
 }
 
 std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(

@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
@@ -65,6 +66,10 @@ class ExecutionEngine {
 
   /// @brief destroy the engine, frees all assigned blocks
   TEST_VIRTUAL ~ExecutionEngine();
+
+  void leaseAsyncPrefetchSlots(size_t value);
+
+  size_t asyncPrefetchSlotsLeased() const noexcept;
 
   // @brief create an execution engine from a plan
   static void instantiateFromPlan(Query& query, ExecutionPlan& plan,
@@ -174,6 +179,10 @@ class ExecutionEngine {
 
   /// @brief whether or not initializeCursor was called
   bool _initializeCursorCalled;
+
+  AsyncPrefetchSlotsManager& _asyncPrefetchSlotsManager;
+
+  AsyncPrefetchSlotsReservation _asyncPrefetchSlotsReservation;
 };
 
 }  // namespace arangodb::aql

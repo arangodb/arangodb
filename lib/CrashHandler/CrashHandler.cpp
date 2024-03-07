@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -63,10 +63,8 @@
 #include <libunwind.h>
 #endif
 
-#ifdef __linux__
 #include <sys/auxv.h>
 #include <elf.h>
-#endif
 
 namespace {
 
@@ -146,11 +144,9 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
   buffer.append(", thread ")
       .appendUInt64(uint64_t(arangodb::Thread::currentThreadNumber()));
 
-#ifdef __linux__
   // append thread name
   arangodb::ThreadNameFetcher nameFetcher;
   buffer.append(" [").append(nameFetcher.get()).append("]");
-#endif
 
   // append signal number and name
   bool printed = false;
@@ -185,7 +181,6 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
 
   buffer.append(": ").append(context);
 
-#ifdef __linux__
   {
     // AT_PHDR points to the program header, which is located after the ELF
     // header. This allows us to calculate the base address of the executable.
@@ -220,7 +215,6 @@ void buildLogMessage(SmallString& buffer, std::string_view context, int signal,
     appendRegister(", r14: 0x", REG_R14);
     appendRegister(", r15: 0x", REG_R15);
   }
-#endif
 #endif
 }
 
@@ -261,12 +255,8 @@ void logBacktrace() try {
 
   // log backtrace, of up to maxFrames depth
   {
-#ifdef __linux__
     // The address of the program headers of the executable.
     long base = getauxval(AT_PHDR) - sizeof(Elf64_Ehdr);
-#else
-    long base = 0;
-#endif
 
     unw_cursor_t cursor;
     // unw_word_t ip, sp;

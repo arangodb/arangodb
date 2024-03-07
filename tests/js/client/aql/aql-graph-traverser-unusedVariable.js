@@ -1,19 +1,16 @@
 /* jshint esnext: true */
 
 // //////////////////////////////////////////////////////////////////////////////
-// / @brief Spec for the AQL FOR x IN GRAPH name statement
-// /
-// / @file
-// /
 // / DISCLAIMER
 // /
-// / Copyright 2014 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 // /
-// / Licensed under the Apache License, Version 2.0 (the "License");
+// / Licensed under the Business Source License 1.1 (the "License");
 // / you may not use this file except in compliance with the License.
 // / You may obtain a copy of the License at
 // /
-// /     http://www.apache.org/licenses/LICENSE-2.0
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 // /
 // / Unless required by applicable law or agreed to in writing, software
 // / distributed under the License is distributed on an "AS IS" BASIS,
@@ -53,14 +50,18 @@ function unusedVariableSuite() {
       var i;
 
       var c = db._create(gn + 'v');
+      let docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_key: 'test' + i});
+        docs.push({_key: 'test' + i});
       }
+      c.insert(docs);
 
       c = db._createEdgeCollection(gn + 'e');
+      docs = [];
       for (i = 0; i < 10000; ++i) {
-        c.insert({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
+        docs.push({_from: gn + 'v/test' + i, _to: gn + 'v/test' + (i+1)});
       }
+      c.insert(docs);
     },
 
     tearDownAll: function () {

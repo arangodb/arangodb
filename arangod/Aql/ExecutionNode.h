@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -506,13 +506,9 @@ class ExecutionNode {
 
   void setIsInSplicedSubquery(bool) noexcept;
 
-  bool isAsyncPrefetchEnabled() const noexcept {
-    return _isAsyncPrefetchEnabled;
-  }
+  bool isAsyncPrefetchEnabled() const noexcept;
 
-  void setIsAsyncPrefetchEnabled(bool v) noexcept {
-    _isAsyncPrefetchEnabled = v;
-  }
+  void setIsAsyncPrefetchEnabled(bool v) noexcept;
 
   bool isCallstackSplitEnabled() const noexcept {
     return _isCallstackSplitEnabled;
@@ -1231,7 +1227,8 @@ class MaterializeNode : public ExecutionNode {
  protected:
   MaterializeNode(ExecutionPlan* plan, ExecutionNodeId id,
                   aql::Variable const& inDocId,
-                  aql::Variable const& outVariable);
+                  aql::Variable const& outVariable,
+                  aql::Variable const& oldDocVariable);
 
   MaterializeNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1256,7 +1253,7 @@ class MaterializeNode : public ExecutionNode {
   void getVariablesUsedHere(VarSet& vars) const override;
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final;
+  std::vector<Variable const*> getVariablesSetHere() const override;
 
   /// @brief return out variable
   aql::Variable const& outVariable() const noexcept { return *_outVariable; }
@@ -1264,6 +1261,12 @@ class MaterializeNode : public ExecutionNode {
   aql::Variable const& docIdVariable() const noexcept {
     return *_inNonMaterializedDocId;
   }
+
+  aql::Variable const& oldDocVariable() const noexcept {
+    return *_oldDocVariable;
+  }
+
+  void setDocOutVariable(Variable const& var) noexcept { _outVariable = &var; }
 
  protected:
   /// @brief export to VelocyPack
@@ -1276,13 +1279,17 @@ class MaterializeNode : public ExecutionNode {
 
   /// @brief the variable produced by materialization
   Variable const* _outVariable;
+
+  /// @brief old document variable that is materialized
+  Variable const* _oldDocVariable;
 };
 
 class MaterializeSearchNode : public MaterializeNode {
  public:
   MaterializeSearchNode(ExecutionPlan* plan, ExecutionNodeId id,
                         aql::Variable const& inDocId,
-                        aql::Variable const& outVariable);
+                        aql::Variable const& outVariable,
+                        aql::Variable const& oldDocVariable);
 
   MaterializeSearchNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1306,7 +1313,8 @@ class MaterializeRocksDBNode : public MaterializeNode,
   MaterializeRocksDBNode(ExecutionPlan* plan, ExecutionNodeId id,
                          aql::Collection const* collection,
                          aql::Variable const& inDocId,
-                         aql::Variable const& outVariable);
+                         aql::Variable const& outVariable,
+                         aql::Variable const& oldDocVariable);
 
   MaterializeRocksDBNode(ExecutionPlan* plan, arangodb::velocypack::Slice base);
 
@@ -1321,9 +1329,12 @@ class MaterializeRocksDBNode : public MaterializeNode,
   bool alwaysCopiesRows() const override { return false; }
   bool isIncreaseDepth() const override { return false; }
 
+  std::vector<Variable const*> getVariablesSetHere() const override final;
+
   void projections(Projections proj) noexcept {
     _projections = std::move(proj);
   }
+  Projections& projections() noexcept { return _projections; }
   Projections const& projections() const noexcept { return _projections; }
 
  protected:

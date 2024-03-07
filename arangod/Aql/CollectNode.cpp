@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -24,16 +24,16 @@
 #include "CollectNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/CountCollectExecutor.h"
-#include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/HashedCollectExecutor.h"
+#include "Aql/Executor/CountCollectExecutor.h"
+#include "Aql/Executor/DistinctCollectExecutor.h"
+#include "Aql/Executor/HashedCollectExecutor.h"
+#include "Aql/Executor/SortedCollectExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SortedCollectExecutor.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/WalkerWorker.h"
 #include "Transaction/Methods.h"
@@ -47,7 +47,7 @@ using namespace arangodb::aql;
 CollectNode::CollectNode(
     ExecutionPlan* plan, arangodb::velocypack::Slice const& base,
     Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
+    std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
@@ -68,7 +68,7 @@ CollectNode::CollectNode(
     std::vector<GroupVarInfo> const& groupVariables,
     std::vector<AggregateVarInfo> const& aggregateVariables,
     Variable const* expressionVariable, Variable const* outVariable,
-    std::vector<Variable const*> const& keepVariables,
+    std::vector<std::pair<Variable const*, std::string>> const& keepVariables,
     std::unordered_map<VariableId, std::string const> const& variableMap,
     bool isDistinctCommand)
     : ExecutionNode(plan, id),
@@ -135,7 +135,8 @@ void CollectNode::doToVelocyPack(VPackBuilder& nodes,
       for (auto const& it : _keepVariables) {
         VPackObjectBuilder obj(&nodes);
         nodes.add(VPackValue("variable"));
-        it->toVelocyPack(nodes);
+        it.first->toVelocyPack(nodes);
+        nodes.add("name", VPackValue(it.second));
       }
     }
   }
@@ -239,11 +240,11 @@ CollectNode::calcInputVariableNames() const {
 
     // iterate over all our variables
     for (auto const& x : _keepVariables) {
-      auto const it = varInfo.find(x->id);
+      auto const it = varInfo.find(x.first->id);
 
       if (it != varInfo.end()) {
         variableNames.emplace_back(
-            std::make_pair(x->name, (*it).second.registerId));
+            std::make_pair(x.second, (*it).second.registerId));
       }
     }
   }
@@ -572,8 +573,9 @@ namespace {
 //      the whole spliced subquery handling could be removed here to simplify
 //      the code.
 [[nodiscard]] auto calculateAccessibleUserVariables(
-    ExecutionNode const& node, std::vector<Variable const*>& userVariables,
-    bool const encounteredLoop, int const subqueryDepth) -> bool {
+    ExecutionNode const& node,
+    std::vector<std::pair<Variable const*, std::string>>& userVariables,
+    bool encounteredLoop, int subqueryDepth) -> bool {
   TRI_ASSERT(subqueryDepth >= 0);
   auto const recSubqueryDepth = [&]() {
     if (node.getType() == ExecutionNode::SUBQUERY_END) {
@@ -620,7 +622,7 @@ namespace {
     // Add all variables of the current node
     for (auto const& v : node.getVariablesSetHere()) {
       if (v->isUserDefined()) {
-        userVariables.emplace_back(v);
+        userVariables.emplace_back(std::make_pair(v, v->name));
       }
     }
   }
@@ -631,7 +633,8 @@ namespace {
 }  // namespace
 
 void CollectNode::calculateAccessibleUserVariables(
-    ExecutionNode const& node, std::vector<Variable const*>& userVariables) {
+    ExecutionNode const& node,
+    std::vector<std::pair<Variable const*, std::string>>& userVariables) {
   // This is just a wrapper around the static function with the same name:
   std::ignore =
       ::calculateAccessibleUserVariables(node, userVariables, false, 0);
@@ -643,8 +646,9 @@ void CollectNode::replaceVariables(
     variable.inVar = Variable::replace(variable.inVar, replacements);
   }
   for (auto& variable : _keepVariables) {
-    auto old = variable;
-    variable = Variable::replace(old, replacements);
+    // we are intentionally *not* replacing the variable name here!
+    auto old = variable.first;
+    variable.first = Variable::replace(old, replacements);
   }
   for (auto& variable : _aggregateVariables) {
     variable.inVar = Variable::replace(variable.inVar, replacements);
@@ -679,8 +683,8 @@ void CollectNode::getVariablesUsedHere(VarSet& vars) const {
   // or are calculated automatically in ExecutionPlan::fromNodeCollect
   // during ExecutionPlan::instantiateFromAst in case of an all-embracing
   // `INTO var`.
-  for (auto& x : _keepVariables) {
-    vars.emplace(x);
+  for (auto const& x : _keepVariables) {
+    vars.emplace(x.first);
   }
 }
 
@@ -781,7 +785,8 @@ void CollectNode::expressionVariable(Variable const* variable) {
 
 bool CollectNode::hasKeepVariables() const { return !_keepVariables.empty(); }
 
-std::vector<Variable const*> const& CollectNode::keepVariables() const {
+std::vector<std::pair<Variable const*, std::string>> const&
+CollectNode::keepVariables() const {
   return _keepVariables;
 }
 
@@ -791,10 +796,9 @@ void CollectNode::restrictKeepVariables(
   remainingKeepVariables.reserve(
       std::min(_keepVariables.size(), variables.size()));
 
-  std::copy_if(
-      _keepVariables.begin(), _keepVariables.end(),
-      std::back_inserter(remainingKeepVariables),
-      [&](auto const& var) { return variables.find(var) != variables.end(); });
+  std::copy_if(_keepVariables.begin(), _keepVariables.end(),
+               std::back_inserter(remainingKeepVariables),
+               [&](auto const& var) { return variables.contains(var.first); });
 
   _keepVariables = std::move(remainingKeepVariables);
 }

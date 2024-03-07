@@ -1,30 +1,29 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global assertTrue, assertFalse, assertEqual */
 
-////////////////////////////////////////////////////////////////////////////////
-/// @brief tests for produces result
-///
-/// DISCLAIMER
-///
-/// Copyright 2010-2012 triagens GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is triAGENS GmbH, Cologne, Germany
-///
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
 /// @author Jan Steemann
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -39,9 +38,11 @@ function optimizerIndexOnlyPrimaryTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, a: (i % 10), b: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, a: (i % 10), b: i });
       }
+      c.insert(docs);
     },
 
     tearDownAll : function () {
@@ -124,9 +125,11 @@ function optimizerIndexOnlyEdgeTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._createEdgeCollection("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, _from: "test/" + (i % 10), _to: "test/" + i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, _from: "test/" + (i % 10), _to: "test/" + i });
       }
+      c.insert(docs);
       require('@arangodb/test-helper').waitForEstimatorSync();
     },
 
@@ -142,15 +145,27 @@ function optimizerIndexOnlyEdgeTestSuite () {
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc RETURN doc._to`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" SORT doc RETURN doc._a`,
         `FOR doc IN ${c.name()} FILTER doc._from == "test/123" RETURN doc`,
+      ];
+     
+      queries.forEach(function(query) {
+        let plan = db._createStatement(query).explain().plan;
+        let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
+        assertEqual(1, nodes.length);
+        assertEqual(normalize([]), normalize(nodes[0].projections), query);
+        assertFalse(nodes[0].producesResult);
+        assertFalse(nodes[0].indexCoversProjections);
+      });
+
+      queries = [
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._from RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc._to RETURN doc`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._to`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._from`,
         `FOR doc IN ${c.name()} FILTER doc._to == "test/123" SORT doc RETURN doc._a`,
-        `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`
+        `FOR doc IN ${c.name()} FILTER doc._to == "test/123" RETURN doc`,
       ];
-     
+
       queries.forEach(function(query) {
         let plan = db._createStatement(query).explain().plan;
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
@@ -258,9 +273,11 @@ function optimizerIndexOnlyVPackTestSuite () {
       db._drop("UnitTestsCollection");
       c = db._create("UnitTestsCollection");
 
-      for (var i = 0; i < 2000; ++i) {
-        c.save({ _key: "test" + i, a: (i % 10), b: i });
+      let docs = [];
+      for (let i = 0; i < 2000; ++i) {
+        docs.push({ _key: "test" + i, a: (i % 10), b: i });
       }
+      c.insert(docs);
     },
 
     tearDown : function () {
@@ -320,7 +337,7 @@ function optimizerIndexOnlyVPackTestSuite () {
         let nodes = plan.nodes.filter(function(n) { return n.type === 'IndexNode'; });
         assertEqual(1, nodes.length);
         assertEqual([], nodes[0].projections);
-        assertTrue(nodes[0].producesResult);
+        assertFalse(nodes[0].producesResult);
         assertFalse(nodes[0].indexCoversProjections);
       });
     },

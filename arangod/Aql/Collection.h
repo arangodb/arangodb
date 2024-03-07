@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -82,15 +82,8 @@ struct Collection {
   /// @brief count the number of documents in the collection
   size_t count(transaction::Methods* trx, transaction::CountType type) const;
 
-  /// @brief returns the responsible servers for the collection
-  std::unordered_set<std::string> responsibleServers() const;
-
   /// @brief returns the "distributeShardsLike" attribute for the collection
   std::string distributeShardsLike() const;
-
-  /// @brief fills the set with the responsible servers for the collection
-  /// returns the number of responsible servers found for the collection
-  size_t responsibleServers(std::unordered_set<std::string>&) const;
 
   /// @brief returns the shard ids of a collection
   std::shared_ptr<std::vector<ShardID> const> shardIds() const;

@@ -1,25 +1,28 @@
 /*jshint globalstrict:false, strict:false, maxlen: 500 */
 /*global fail, assertEqual, assertNotEqual, assertTrue, assertFalse */
 
-////////////////////////////////////////////////////////////////////////////////
-/// DISCLAIMER
-///
-/// Copyright 2010-2016 ArangoDB GmbH, Cologne, Germany
-///
-/// Licensed under the Apache License, Version 2.0 (the "License");
-/// you may not use this file except in compliance with the License.
-/// You may obtain a copy of the License at
-///
-///     http://www.apache.org/licenses/LICENSE-2.0
-///
-/// Unless required by applicable law or agreed to in writing, software
-/// distributed under the License is distributed on an "AS IS" BASIS,
-/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-/// See the License for the specific language governing permissions and
-/// limitations under the License.
-///
-/// Copyright holder is ArangoDB GmbH, Cologne, Germany
-////////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////////
+// / DISCLAIMER
+// /
+// / Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+// / Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+// /
+// / Licensed under the Business Source License 1.1 (the "License");
+// / you may not use this file except in compliance with the License.
+// / You may obtain a copy of the License at
+// /
+// /     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+// /
+// / Unless required by applicable law or agreed to in writing, software
+// / distributed under the License is distributed on an "AS IS" BASIS,
+// / WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// / See the License for the specific language governing permissions and
+// / limitations under the License.
+// /
+// / Copyright holder is ArangoDB GmbH, Cologne, Germany
+// /
+/// @author Wilfried Goesgens
+// //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
 const db = require("@arangodb").db;
@@ -37,11 +40,11 @@ const batchMaterializeRule = "batch-materialize-documents";
 function IndexBatchMaterializeTestSuite() {
 
   function makeCollection(name) {
-    const c = db._create(name);
-    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b"]});
+    const c = db._create(name, {numberOfShards: 3});
+    c.ensureIndex({type: "persistent", fields: ["x"], storedValues: ["b", "z"]});
     c.ensureIndex({type: "persistent", fields: ["y"]});
     c.ensureIndex({type: "persistent", fields: ["z", "w"]});
-    c.ensureIndex({type: "persistent", fields: ["u"], unique: true});
+    c.ensureIndex({type: "persistent", fields: ["u", "_key"], unique: true});
     return c;
   }
 
@@ -72,10 +75,14 @@ function IndexBatchMaterializeTestSuite() {
     }
   }
 
-  function checkResult(query) {
-    const expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
+  function checkResult(query, resultIsSorted = false) {
+    let expected = db._createStatement({query, optimizer: {rules: [`-${batchMaterializeRule}`]}}).execute().toArray();
+    let actual = db._createStatement({query}).execute().toArray();
 
-    const actual = db._createStatement({query}).execute().toArray();
+    if (!resultIsSorted) {
+      expected = _.sortBy(expected, ['_key']);
+      actual = _.sortBy(expected, ['_key']);
+    }
 
     assertEqual(actual, expected);
   }
@@ -96,7 +103,7 @@ function IndexBatchMaterializeTestSuite() {
       assertEqual(indexNode.outNmDocId.id, materializeNode.inNmDocId.id);
 
       checkResult(query);
-      return {plan, indexNode, materializeNode};
+      return {plan, nodes, indexNode, materializeNode};
     } catch (e) {
       db._explain(query);
       throw e;
@@ -190,6 +197,111 @@ function IndexBatchMaterializeTestSuite() {
           RETURN doc
       `;
       expectNoOptimization(query);
+    },
+
+    testMaterializeSortStoredValues: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          SORT doc.b
+          RETURN doc
+      `;
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"]]);
+      assertEqual(normalize(materializeNode.projections), []);
+
+      // expect `MATERIALIZE` to be after `SORT`
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+    },
+
+    testMaterializeFilterStoredValues: function () {
+      const query = `
+        FOR doc IN ${collection}
+          FILTER doc.x > 5
+          FILTER NOOPT(doc.b > 7)
+          RETURN doc
+      `;
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"]]);
+      assertEqual(normalize(materializeNode.projections), []);
+
+      // expect `MATERIALIZE` to be after `FILTER`
+      assertNotEqual(nodes.indexOf('FilterNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+    },
+
+    testMaterializeDoubleFilterStoredValues: function () {
+      const query = `
+        FOR d1 IN ${collection}
+          FILTER d1.x > 5
+          SORT d1.b
+          LIMIT 100
+          FILTER d1.z < 18
+          RETURN d1.w`;
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), [["b"], ["z"]]);
+      assertEqual(normalize(materializeNode.projections), [["w"]]);
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+      if (!internal.isCluster()) {
+        assertNotEqual(nodes.indexOf('FilterNode'), -1);
+        assertTrue(nodes.indexOf('FilterNode') < nodes.indexOf('MaterializeNode'));
+      }
+    },
+
+    testMaterializeIndexScanSubquery: function() {
+      const query = `
+        FOR d1 IN ${collection} 
+          FILTER d1.x > 5
+          LET e = SUM(FOR c IN ${collection} LET p = d1.b + c.x LIMIT 10 RETURN p)
+          SORT e
+          LIMIT 10
+          RETURN d1
+      `;
+
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      if (!internal.isCluster()) {
+        assertEqual(normalize(indexNode.projections), [["b"]]);
+        assertEqual(normalize(materializeNode.projections), []);
+        assertNotEqual(nodes.indexOf('SortNode'), -1);
+        assertNotEqual(nodes.indexOf('LimitNode'), -1);
+        assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+        assertNotEqual(nodes.indexOf('SubqueryEndNode'), -1);
+        assertTrue(nodes.indexOf('LimitNode') < nodes.indexOf('MaterializeNode'));
+        assertTrue(nodes.indexOf('SortNode') < nodes.indexOf('MaterializeNode'));
+        assertTrue(nodes.indexOf('SubqueryEndNode') < nodes.indexOf('MaterializeNode'));
+      } else {
+        // Subqueries Start nodes are always on the coordinator, thus the materialize node will stay
+        // right below the IndexNode.
+        assertEqual(normalize(indexNode.projections), []);
+        assertEqual(normalize(materializeNode.projections), []);
+      }
+    },
+
+    testMaterializeIndexScanSubqueryFullDoc: function() {
+      const query = `
+        FOR d1 IN ${collection} 
+          FILTER d1.x > 5
+          LET e = SUM(FOR c IN ${collection} LET p = d1 LIMIT 10 RETURN p)
+          SORT e
+          LIMIT 10
+          RETURN d1
+      `;
+
+      const {materializeNode, indexNode, nodes} = expectOptimization(query);
+      assertEqual(normalize(indexNode.projections), []);
+      assertEqual(normalize(materializeNode.projections), []);
+      assertNotEqual(nodes.indexOf('SortNode'), -1);
+      assertNotEqual(nodes.indexOf('LimitNode'), -1);
+      assertNotEqual(nodes.indexOf('MaterializeNode'), -1);
+      assertNotEqual(nodes.indexOf('SubqueryEndNode'), -1);
+      assertTrue(nodes.indexOf('LimitNode') > nodes.indexOf('MaterializeNode'));
+      assertTrue(nodes.indexOf('SortNode') > nodes.indexOf('MaterializeNode'));
+      assertTrue(nodes.indexOf('SubqueryEndNode') > nodes.indexOf('MaterializeNode'));
     },
 
     testMaterializeIndexScanProjections: function () {

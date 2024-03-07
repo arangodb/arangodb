@@ -1,14 +1,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 /// DISCLAIMER
 ///
-/// Copyright 2014-2023 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
 /// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
 ///
-/// Licensed under the Apache License, Version 2.0 (the "License");
+/// Licensed under the Business Source License 1.1 (the "License");
 /// you may not use this file except in compliance with the License.
 /// You may obtain a copy of the License at
 ///
-///     http://www.apache.org/licenses/LICENSE-2.0
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
 ///
 /// Unless required by applicable law or agreed to in writing, software
 /// distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,25 +28,26 @@
 #include "Aql/Ast.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"
-#include "Aql/DistributeExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/DistributeExecutor.h"
+#include "Aql/Executor/EmptyExecutorInfos.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/ParallelUnsortedGatherExecutor.h"
+#include "Aql/Executor/RemoteExecutor.h"
+#include "Aql/Executor/ScatterExecutor.h"
+#include "Aql/Executor/SingleRemoteModificationExecutor.h"
+#include "Aql/Executor/SortingGatherExecutor.h"
+#include "Aql/Executor/UnsortedGatherExecutor.h"
 #include "Aql/GraphNode.h"
-#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultiDependencySingleRowFetcher.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/ParallelUnsortedGatherExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/RemoteExecutor.h"
-#include "Aql/ScatterExecutor.h"
-#include "Aql/SingleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"
-#include "Aql/SortingGatherExecutor.h"
-#include "Aql/UnsortedGatherExecutor.h"
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
@@ -641,7 +642,6 @@ void GatherNode::replaceVariables(
     std::unordered_map<VariableId, Variable const*> const& replacements) {
   for (auto& it : _elements) {
     it.var = Variable::replace(it.var, replacements);
-    it.attributePath.clear();
   }
 }
 
@@ -650,22 +650,33 @@ void GatherNode::replaceAttributeAccess(ExecutionNode const* self,
                                         std::span<std::string_view> attribute,
                                         Variable const* replaceVariable,
                                         size_t /*index*/) {
-  auto equal = [](auto const& v1, auto const& v2) {
-    size_t n = v1.size();
-    if (n != v2.size()) {
-      return false;
-    }
-    for (size_t i = 0; i < n; ++i) {
-      if (v1[i] != v2[i]) {
-        return false;
-      }
-    }
-    return true;
-  };
   for (auto& it : _elements) {
-    if (it.var == searchVariable && equal(it.attributePath, attribute)) {
+    if (it.var == searchVariable) {
+      // if the attribute path is  $var.a.b and we replace $var.a by $other,
+      // the attribute path should become just `b`, i.e. $other.b.
+
+      auto it2 = attribute.begin();
+      auto it1 = it.attributePath.begin();
+
+      bool isPrefix = true;
+      while (it2 != attribute.end()) {
+        if (it1 == it.attributePath.end() || *it1 != *it2) {
+          // this path does not match the prefix
+          isPrefix = false;
+          break;
+        }
+        ++it1;
+        ++it2;
+      }
+
+      if (!isPrefix) {
+        continue;
+      }
+
+      // it1 now points to the remainder. Remove the prefix.
+      it.attributePath.erase(it.attributePath.cbegin(), it1);
+
       it.var = replaceVariable;
-      it.attributePath.clear();
     }
   }
 }
