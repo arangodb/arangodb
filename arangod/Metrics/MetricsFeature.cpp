@@ -131,9 +131,8 @@ std::shared_ptr<Metric> MetricsFeature::doAdd(Builder& builder) {
   return (*it).second;
 }
 
-std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
+std::shared_ptr<Metric> MetricsFeature::doEnsureMetric(Builder& builder) {
   auto metric = builder.build();
-  metric->setDynamic();
   TRI_ASSERT(metric != nullptr);
   MetricKeyView key{metric->name(), metric->labels()};
   {
@@ -150,6 +149,12 @@ std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
   // version.
   auto [it, inserted] = _registry.try_emplace(key, metric);
   return (*it).second;
+}
+
+std::shared_ptr<Metric> MetricsFeature::doAddDynamic(Builder& builder) {
+  auto metric = doEnsureMetric(builder);
+  metric->setDynamic();
+  return metric;
 }
 
 Metric* MetricsFeature::get(MetricKeyView const& key) const {

@@ -34,7 +34,7 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     if (!databaseName.empty()) {
       builder.addLabel("database", databaseName);
     }
-    return &mf.addDynamic(std::move(builder));
+    return &mf.ensureMetric(std::move(builder));
   };
 
   auto metrics = std::make_unique<VocbaseMetrics>();
