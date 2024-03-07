@@ -1827,18 +1827,12 @@ void arangodb::aql::moveCalculationsDownRule(
         usedHere.clear();
         current->getVariablesUsedHere(usedHere);
 
-        bool done = false;
-        for (auto const& v : usedHere) {
-          if (v == variable) {
-            // the node we're looking at needs the variable we're setting.
-            // can't push further!
-            done = true;
-            break;
-          }
-        }
+        bool const done = std::find(usedHere.begin(), usedHere.end(),
+                                    variable) != usedHere.end();
 
         if (done) {
-          // done with optimizing this calculation node
+          // the node we're looking at needs the variable we're setting.
+          // can't push further!
           break;
         }
       }
