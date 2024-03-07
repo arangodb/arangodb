@@ -25,38 +25,39 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/Ast.h"
-#include "Aql/AsyncExecutor.h"
-#include "Aql/CalculationExecutor.h"
 #include "Aql/ClusterNodes.h"
 #include "Aql/CollectNode.h"
 #include "Aql/Collection.h"
 #include "Aql/ConstFetcher.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/EnumerateListExecutor.h"
 #include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/AsyncExecutor.h"
+#include "Aql/Executor/CalculationExecutor.h"
+#include "Aql/Executor/EmptyExecutorInfos.h"
+#include "Aql/Executor/EnumerateCollectionExecutor.h"
+#include "Aql/Executor/EnumerateListExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/LimitExecutor.h"
+#include "Aql/Executor/MaterializeExecutor.h"
+#include "Aql/Executor/NoResultsExecutor.h"
+#include "Aql/Executor/ReturnExecutor.h"
 #include "Aql/Expression.h"
-#include "Aql/FilterExecutor.h"
 #include "Aql/Function.h"
 #include "Aql/IResearchViewNode.h"
-#include "Aql/IdExecutor.h"
 #include "Aql/IndexNode.h"
 #include "Aql/JoinNode.h"
-#include "Aql/LimitExecutor.h"
-#include "Aql/MaterializeExecutor.h"
 #include "Aql/ModificationNodes.h"
 #include "Aql/MultipleRemoteModificationNode.h"
 #include "Aql/MutexNode.h"
-#include "Aql/NoResultsExecutor.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ReturnExecutor.h"
 #include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
 #include "Aql/SortNode.h"
@@ -593,13 +594,13 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   _isInSplicedSubquery =
       VelocyPackHelper::getBooleanValue(slice, "isInSplicedSubquery", false);
 
-  _isAsyncPrefetchEnabled =
-      VelocyPackHelper::getBooleanValue(slice, "isAsyncPrefetchEnabled", false);
+  setIsAsyncPrefetchEnabled(VelocyPackHelper::getBooleanValue(
+      slice, "isAsyncPrefetchEnabled", false));
 
   _isCallstackSplitEnabled = VelocyPackHelper::getBooleanValue(
       slice, "isCallstackSplitEnabled", false);
 
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     plan->getAst()->setContainsAsyncPrefetch();
   }
 }
@@ -1105,7 +1106,7 @@ void ExecutionNode::toVelocyPack(velocypack::Builder& builder,
   // serialize these flags in all modes, but only if they are enabled.
   // this works because they default to false, and helps to keep the output
   // small.
-  if (_isAsyncPrefetchEnabled) {
+  if (isAsyncPrefetchEnabled()) {
     builder.add("isAsyncPrefetchEnabled", VPackValue(true));
   }
   if (_isCallstackSplitEnabled) {
@@ -1182,6 +1183,21 @@ bool ExecutionNode::isInSplicedSubquery() const noexcept {
 
 void ExecutionNode::setIsInSplicedSubquery(bool const value) noexcept {
   _isInSplicedSubquery = value;
+}
+
+bool ExecutionNode::isAsyncPrefetchEnabled() const noexcept {
+  return _isAsyncPrefetchEnabled;
+}
+
+void ExecutionNode::setIsAsyncPrefetchEnabled(bool v) noexcept {
+  if (v != _isAsyncPrefetchEnabled) {
+    _isAsyncPrefetchEnabled = v;
+    if (v) {
+      _plan->increaseAsyncPrefetchNodes();
+    } else {
+      _plan->decreaseAsyncPrefetchNodes();
+    }
+  }
 }
 
 /// @brief replace a dependency, returns true if the pointer was found and

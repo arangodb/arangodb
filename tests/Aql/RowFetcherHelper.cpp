@@ -25,15 +25,13 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "RowFetcherHelper.h"
-#include "VelocyPackHelper.h"
 
 #include "Aql/AqlItemBlock.h"
-#include "Aql/FilterExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/SortExecutor.h"
-
-#include "Logger/LogMacros.h"
+#include "Basics/VelocyPackHelper.h"
 
 #include <velocypack/Buffer.h>
 #include <velocypack/Iterator.h>

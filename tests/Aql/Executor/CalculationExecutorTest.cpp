@@ -1,0 +1,381 @@
+////////////////////////////////////////////////////////////////////////////////
+/// DISCLAIMER
+///
+/// Copyright 2014-2024 ArangoDB GmbH, Cologne, Germany
+/// Copyright 2004-2014 triAGENS GmbH, Cologne, Germany
+///
+/// Licensed under the Business Source License 1.1 (the "License");
+/// you may not use this file except in compliance with the License.
+/// You may obtain a copy of the License at
+///
+///     https://github.com/arangodb/arangodb/blob/devel/LICENSE
+///
+/// Unless required by applicable law or agreed to in writing, software
+/// distributed under the License is distributed on an "AS IS" BASIS,
+/// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+/// See the License for the specific language governing permissions and
+/// limitations under the License.
+///
+/// Copyright holder is ArangoDB GmbH, Cologne, Germany
+///
+/// @author Tobias Goedderz
+/// @author Michael Hackstein
+/// @author Heiko Kernbach
+/// @author Jan Christoph Uhde
+////////////////////////////////////////////////////////////////////////////////
+
+#include "gtest/gtest.h"
+
+#include "Aql/Executor/AqlExecutorTestCase.h"
+#include "Aql/AqlItemBlockHelper.h"
+
+#include "Aql/AqlCall.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/Ast.h"
+#include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/CalculationExecutor.h"
+#include "Aql/Expression.h"
+#include "Aql/OutputAqlItemRow.h"
+#include "Aql/Query.h"
+#include "Aql/SingleRowFetcher.h"
+#include "Basics/GlobalResourceMonitor.h"
+#include "Basics/ResourceUsage.h"
+#include "Transaction/Context.h"
+#include "Transaction/Methods.h"
+
+#include <velocypack/Builder.h>
+
+// required for QuerySetup
+#include "Mocks/Servers.h"
+
+using namespace arangodb;
+using namespace arangodb::aql;
+
+namespace {
+AstNode* initializeReference(Ast& ast, Variable& var) {
+  ast.scopes()->start(ScopeType::AQL_SCOPE_MAIN);
+  ast.scopes()->addVariable(&var);
+  AstNode* a = ast.createNodeReference("a");
+  ast.scopes()->endCurrent();
+  return a;
+}
+}  // namespace
+
+namespace arangodb {
+namespace tests {
+namespace aql {
+
+using CalculationExecutorInputParam = std::tuple<SplitType>;
+
+// TODO Add tests for both
+// CalculationExecutor<CalculationType::V8Condition> and
+// CalculationExecutor<CalculationType::Reference>!
+
+class CalculationExecutorTest
+    : public AqlExecutorTestCaseWithParam<CalculationExecutorInputParam> {
+ protected:
+  ExecutionState state;
+  AqlItemBlockManager itemBlockManager;
+  Ast ast;
+  AstNode* one;
+  Variable var;
+  AstNode* a;
+  AstNode* node;
+  ExecutionPlan plan;
+  Expression expr;
+  RegisterId outRegID;
+  RegisterId inRegID;
+  RegisterInfos registerInfos;
+  arangodb::GlobalResourceMonitor global{};
+  arangodb::ResourceMonitor resourceMonitor{global};
+
+  CalculationExecutorTest()
+      : itemBlockManager(monitor),
+        ast(*fakedQuery.get()),
+        one(ast.createNodeValueInt(1)),
+        var("a", 0, false, resourceMonitor),
+        a(::initializeReference(ast, var)),
+        node(ast.createNodeBinaryOperator(
+            AstNodeType::NODE_TYPE_OPERATOR_BINARY_PLUS, a, one)),
+        plan(&ast, false),
+        expr(&ast, node),
+        outRegID(1),
+        inRegID(0),
+        registerInfos(RegIdSet{inRegID}, RegIdSet{outRegID}, 1 /*in width*/,
+                      2 /*out width*/, RegIdSet{} /*to clear*/,
+                      RegIdSetStack{{}} /*to keep*/) {}
+
+  auto getSplit() -> SplitType {
+    auto [split] = GetParam();
+    return split;
+  }
+
+  auto buildInfos() -> CalculationExecutorInfos {
+    std::vector<std::pair<VariableId, RegisterId>> varToRegs{
+        std::make_pair(var.id, inRegID)};
+    return CalculationExecutorInfos{outRegID, *fakedQuery.get(), expr,
+                                    std::move(varToRegs)};
+  }
+};
+
+template<size_t... vs>
+const SplitType splitIntoBlocks = SplitType{std::vector<std::size_t>{vs...}};
+template<size_t step>
+const SplitType splitStep = SplitType{step};
+
+INSTANTIATE_TEST_CASE_P(CalculationExecutor, CalculationExecutorTest,
+                        ::testing::Values(splitIntoBlocks<2, 3>,
+                                          splitIntoBlocks<3, 4>, splitStep<1>,
+                                          splitStep<2>));
+
+TEST_P(CalculationExecutorTest, reference_empty_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue({})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({1}, {})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run();
+}
+
+TEST_P(CalculationExecutorTest, reference_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}, RowBuilder<2>{3, 3},
+                                     RowBuilder<2>{4, 4}, RowBuilder<2>{5, 5},
+                                     RowBuilder<2>{6, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, reference_some_input_skip) {
+  AqlCall call{};
+  call.offset = 4;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{3, 3}, RowBuilder<2>{4, 4},
+                                     RowBuilder<2>{5, 5}, RowBuilder<2>{6, 6}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, reference_some_input_limit) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, reference_some_input_limit_fullcount) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  call.fullCount = true;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Reference>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{0, 0}, RowBuilder<2>{1, 1},
+                                     RowBuilder<2>{R"("a")", R"("a")"},
+                                     RowBuilder<2>{2, 2}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, condition_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, condition_some_input_skip) {
+  AqlCall call{};
+  call.offset = 4;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput({0, 1},
+                    MatrixBuilder<2>{RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                                     RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, condition_some_input_limit) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+TEST_P(CalculationExecutorTest, condition_some_input_limit_fullcount) {
+  AqlCall call{};
+  call.hardLimit = 4u;
+  call.fullCount = true;
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::Condition>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(4)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+
+#ifdef USE_V8
+// Could be fixed and enabled if one enabled the V8 engine
+TEST_P(CalculationExecutorTest, DISABLED_v8condition_some_input) {
+  AqlCall call{};
+  ExecutionStats stats{};
+
+  makeExecutorTestHelper<2, 2>()
+      .addConsumer<CalculationExecutor<CalculationType::V8Condition>>(
+          std::move(registerInfos), buildInfos())
+      .setInputValue(MatrixBuilder<2>{
+          RowBuilder<2>{0, NoneEntry{}}, RowBuilder<2>{1, NoneEntry{}},
+          RowBuilder<2>{R"("a")", NoneEntry{}}, RowBuilder<2>{2, NoneEntry{}},
+          RowBuilder<2>{3, NoneEntry{}}, RowBuilder<2>{4, NoneEntry{}},
+          RowBuilder<2>{5, NoneEntry{}}, RowBuilder<2>{6, NoneEntry{}}})
+      .setInputSplitType(getSplit())
+      .setCall(call)
+      .expectOutput(
+          {0, 1},
+          MatrixBuilder<2>{RowBuilder<2>{0, 1}, RowBuilder<2>{1, 2},
+                           RowBuilder<2>{R"("a")", 1}, RowBuilder<2>{2, 3},
+                           RowBuilder<2>{3, 4}, RowBuilder<2>{4, 5},
+                           RowBuilder<2>{5, 6}, RowBuilder<2>{6, 7}})
+      .allowAnyOutputOrder(false)
+      .expectSkipped(0)
+      .expectedState(ExecutionState::DONE)
+      .run(true);
+}
+#endif
+
+}  // namespace aql
+}  // namespace tests
+}  // namespace arangodb
