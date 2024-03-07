@@ -75,7 +75,7 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
-      _exclusiveLock(_schedulerWrapper),
+      _exclusiveLock(FutureLock ::Metrics{}, _schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
@@ -1692,7 +1692,9 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockWrite() noexcept {
+  _exclusiveLockGuard.emplace<std::monostate>();
+}
 
 /// @brief read locks a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
@@ -1713,7 +1715,9 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockRead() {
+  _exclusiveLockGuard.emplace<std::monostate>();
+}
 
 /// @brief lock a collection, with a timeout
 futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
@@ -1732,17 +1736,21 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
   bool gotLock = false;
   if (mode == AccessMode::Type::WRITE) {
     auto result =
-        co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
+        co_await asTry(_exclusiveLock.try_lock_exclusive_for(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
-      result.get().release();
+      TRI_ASSERT(std::holds_alternative<std::monostate>(_exclusiveLockGuard))
+          << "guard should be empty but it isn't!";
+      _exclusiveLockGuard.emplace<1>(std::move(result.get()));
     }
   } else {
     auto result =
-        co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
+        co_await asTry(_exclusiveLock.try_lock_shared_for(timeout_ms));
     gotLock = result.hasValue();
     if (gotLock) {
-      result.get().release();
+      TRI_ASSERT(std::holds_alternative<std::monostate>(_exclusiveLockGuard))
+          << "guard should be empty but it isn't!";
+      _exclusiveLockGuard.emplace<2>(std::move(result.get()));
     }
   }
 

@@ -28,6 +28,7 @@
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ResultT.h"
 #include "Containers/MerkleTree.h"
+#include "Metrics/InstrumentedMutex.h"
 #include "RocksDBEngine/RocksDBCommon.h"
 #include "RocksDBEngine/RocksDBMetadata.h"
 #include "StorageEngine/PhysicalCollection.h"
@@ -204,8 +205,14 @@ class RocksDBMetaCollection : public PhysicalCollection {
   };
 
   SchedulerWrapper _schedulerWrapper;
-  using FutureLock = arangodb::futures::FutureSharedLock<SchedulerWrapper>;
+  using FutureLock =
+      InstrumentedMutex<arangodb::futures::FutureSharedLock<SchedulerWrapper>>;
   mutable FutureLock _exclusiveLock;
+  using ExclusiveLock =
+      decltype(std::declval<FutureLock>().lock_exclusive().get());
+  using SharedLock = decltype(std::declval<FutureLock>().lock_shared().get());
+  std::variant<std::monostate, ExclusiveLock, SharedLock> _exclusiveLockGuard;
+
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;
 
