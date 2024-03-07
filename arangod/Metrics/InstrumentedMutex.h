@@ -48,6 +48,34 @@ struct InstrumentedMutexTraits {
     m.lock_shared();
   }
   { return fn(std::shared_lock(m)); }
+
+  template<typename F>
+  auto try_lock_shared(Mutex& m, F&& fn) requires requires {
+    m.try_lock_shared();
+  }
+  { return fn(std::shared_lock(m, std::try_to_lock)); }
+
+  template<typename F, typename Duration>
+  auto try_lock_exclusive_for(Mutex& m, Duration d, F&& fn) requires requires {
+    m.try_lock_for(d);
+  }
+  {
+    if (m.try_lock_for(d)) {
+      return fn(std::unique_lock(m, std::adopt_lock));
+    }
+    return fn(std::unique_lock(m, std::defer_lock));
+  }
+
+  template<typename F, typename Duration>
+  auto try_lock_shared_for(Mutex& m, Duration d, F&& fn) requires requires {
+    m.try_lock_for(d);
+  }
+  {
+    if (m.try_lock_shared_for(d)) {
+      return fn(std::shared_lock(m, std::adopt_lock));
+    }
+    return fn(std::shared_lock(m, std::defer_lock));
+  }
 };
 
 template<typename Mutex, typename LockGuard>

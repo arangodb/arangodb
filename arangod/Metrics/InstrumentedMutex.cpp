@@ -75,24 +75,95 @@ struct InstrumentedMutexLockGuardTraits<
 
 template struct InstrumentedMutex<futures::FutureSharedLock<MyScheduler>>;
 
-void test(InstrumentedMutex<futures::FutureSharedLock<MyScheduler>>& im) {
-  auto guard = im.try_lock_exclusive_for(std::chrono::seconds{10}).get();
-
-  guard.unlock();
-
-  auto guard2 = im.try_lock_shared_for(std::chrono::seconds{10}).get();
-
-  guard2.unlock();
+void test2(InstrumentedMutex<std::mutex>& im) {
+  {
+    auto guard = im.lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive();
+    guard.unlock();
+  }
 }
 
-void test2(InstrumentedMutex<std::mutex>& im) {
-  auto guard = im.try_lock_exclusive();
+void test2(InstrumentedMutex<std::shared_mutex>& im) {
+  {
+    auto guard = im.lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.lock_shared();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_shared();
+    guard.unlock();
+  }
+}
 
-  guard.unlock();
+void test2(InstrumentedMutex<std::timed_mutex>& im) {
+  {
+    auto guard = im.lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive_for(std::chrono::milliseconds{1});
+    guard.unlock();
+  }
+}
 
-  // auto guard2 = im.try_lock_shared_for(std::chrono::seconds{10}).get();
-  //
-  // guard2.unlock();
+void test2(InstrumentedMutex<std::shared_timed_mutex>& im) {
+  {
+    auto guard = im.lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive_for(std::chrono::milliseconds{1});
+    guard.unlock();
+  }
+  {
+    auto guard = im.lock_shared();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_shared();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_shared_for(std::chrono::milliseconds{1});
+    guard.unlock();
+  }
+}
+
+void test2(InstrumentedMutex<futures::FutureSharedLock<MyScheduler>>& im) {
+  {
+    auto guard = im.lock_exclusive().get();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_exclusive_for(std::chrono::milliseconds{1}).get();
+    guard.unlock();
+  }
+  {
+    auto guard = im.lock_shared().get();
+    guard.unlock();
+  }
+  {
+    auto guard = im.try_lock_shared_for(std::chrono::milliseconds{1}).get();
+    guard.unlock();
+  }
 }
 
 }  // namespace arangodb
