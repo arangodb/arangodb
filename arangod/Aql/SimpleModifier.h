@@ -24,11 +24,11 @@
 #pragma once
 
 #include "Aql/ExecutionBlock.h"
-#include "Aql/ExecutionState.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionState.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/InsertModifier.h"
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorInfos.h"
 #include "Aql/RemoveModifier.h"
 #include "Aql/UpdateReplaceModifier.h"
 

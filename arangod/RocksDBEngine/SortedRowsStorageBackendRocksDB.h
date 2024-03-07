@@ -23,8 +23,8 @@
 
 #pragma once
 
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/SortedRowsStorageBackend.h"
-#include "Aql/SortExecutor.h"
 #include "RocksDBEngine/RocksDBMethodsMemoryTracker.h"
 
 #include <cstddef>

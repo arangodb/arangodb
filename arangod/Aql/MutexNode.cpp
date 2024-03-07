@@ -24,7 +24,7 @@
 #include "MutexNode.h"
 
 #include "Aql/DistributeConsumerNode.h"
-#include "Aql/MutexExecutor.h"
+#include "Aql/Executor/MutexExecutor.h"
 
 #include <velocypack/Builder.h>
 #include <velocypack/Iterator.h>

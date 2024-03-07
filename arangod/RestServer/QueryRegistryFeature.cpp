@@ -186,6 +186,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
 #endif
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
+      _maxAsyncPrefetchSlotsTotal(256),
+      _maxAsyncPrefetchSlotsPerQuery(32),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
       _peakMemoryUsageThreshold(1073741824),  // 1GB
@@ -235,6 +237,8 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server,
   _queryCacheMaxEntrySize = properties.maxEntrySize;
   _queryCacheIncludeSystem = properties.includeSystem;
 }
+
+QueryRegistryFeature::~QueryRegistryFeature() = default;
 
 void QueryRegistryFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {
@@ -696,6 +700,32 @@ lookups.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31007);
+
+  options
+      ->addOption(
+          "--query.max-total-async-prefetch-slots",
+          "The maximum total number of slots available for asynchronous "
+          "prefetching across all AQL queries.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsTotal),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
+
+  options
+      ->addOption(
+          "--query.max-query-async-prefetch-slots",
+          "The maximum per-query number of slots available for asynchronous "
+          "prefetching inside any AQL query.",
+          new SizeTParameter(&_maxAsyncPrefetchSlotsPerQuery),
+          arangodb::options::makeFlags(
+              arangodb::options::Flags::DefaultNoComponents,
+              arangodb::options::Flags::OnCoordinator,
+              arangodb::options::Flags::OnDBServer,
+              arangodb::options::Flags::OnSingle))
+      .setIntroducedIn(31200);
 }
 
 void QueryRegistryFeature::validateOptions(
@@ -705,6 +735,17 @@ void QueryRegistryFeature::validateOptions(
     LOG_TOPIC("2af5f", FATAL, Logger::AQL)
         << "invalid value for `--query.global-memory-limit`. expecting 0 or a "
            "value >= `--query.memory-limit`";
+    FATAL_ERROR_EXIT();
+  }
+
+  if (_maxAsyncPrefetchSlotsPerQuery > _maxAsyncPrefetchSlotsTotal) {
+    LOG_TOPIC("84882", FATAL, Logger::AQL)
+        << "invalid values for `--query.max-total-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsTotal
+        << ") / `--query.max-query-async-prefetch-slots` ("
+        << _maxAsyncPrefetchSlotsPerQuery
+        << "). the latter option must not be set to a higher value than the "
+           "former";
     FATAL_ERROR_EXIT();
   }
 
@@ -774,9 +815,10 @@ void QueryRegistryFeature::prepare() {
   // create the query registry
   _queryRegistry = std::make_unique<aql::QueryRegistry>(_queryRegistryTTL);
   QUERY_REGISTRY.store(_queryRegistry.get(), std::memory_order_release);
-}
 
-void QueryRegistryFeature::start() {}
+  _asyncPrefetchSlotsManager.configure(_maxAsyncPrefetchSlotsTotal,
+                                       _maxAsyncPrefetchSlotsPerQuery);
+}
 
 void QueryRegistryFeature::beginShutdown() {
   TRI_ASSERT(_queryRegistry != nullptr);
@@ -817,6 +859,11 @@ void QueryRegistryFeature::trackSlowQuery(double time) {
   // query is already counted here as normal query, so don't count it
   // again in _queryTimes or _totalQueryExecutionTime
   _slowQueryTimes.count(time);
+}
+
+aql::AsyncPrefetchSlotsManager&
+QueryRegistryFeature::asyncPrefetchSlotsManager() noexcept {
+  return _asyncPrefetchSlotsManager;
 }
 
 }  // namespace arangodb

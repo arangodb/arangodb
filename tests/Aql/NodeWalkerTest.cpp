@@ -22,9 +22,8 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Executor/AqlExecutorTestCase.h"
 #include "gtest/gtest.h"
-
-#include "AqlExecutorTestCase.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;

@@ -43,9 +43,41 @@ devel
   `truePart` and `falsePart` operands are only executed if `condition` was
   `true` or `false`, respectively.
 
+* Allow limiting the amount of async prefetching operations for AQL queries.
+  Since version 3.12, AQL queries can make use of async prefetching. While this
+  is normally beneficial for query performance, the async prefetch operations
+  may cause congestion in the ArangoDB scheduler and interfere with other
+  operations.
+  In order to control the maximum amount of prefetch operations, the following
+  startup options have been added:
+  
+  - `--query.max-total-async-prefetch-slots`: the maximum total number of slots
+    available for asynchronous prefetching, across all AQL queries.
+  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of 
+    slots available for asynchronous prefetching inside any AQL query.
 
-3.12.0-alpha.1 (XXXX-XX-XX)
+  That means the total number of concurrent prefetch operations across all AQL
+  queries can be limited using the first option, and the maximum number of 
+  prefetch operations in every single AQL query can be capped with the second
+  option. These options prevent that running a lot of AQL queries with async
+  prefetching fully congests the scheduler queue, and also they prevent large
+  AQL queries to use up all async prefetching capacity on their own.
+
+* Fix BTS-1807: transactions are bound to the user who started it, and the
+  database they were started for. However, there was a code path that was missing
+  the database check, which allowed the transaction id to be used in a request
+  to a different database. The request would not return an error, but it would
+  actually be executed in the context of the original database, and not the one
+  specified in the request.
+  With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
+
+
+3.12.0-alpha.1 (2024-03-06)
 ---------------------------
+
+* Updated ArangoDB Starter to v0.18.3.
+
+* FE-436: rename `multi_delimiter` analyzer property to `delimiters` on web UI.
 
 * FE-424: Adjusted Foxx service install button placement.
 
@@ -54,8 +86,6 @@ devel
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.
-
-* Updated ArangoDB Starter to v0.18.2.
 
 * Updated rclone to v1.65.2 (built with go1.21.6).
 
