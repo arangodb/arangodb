@@ -347,6 +347,7 @@ jobs:
             # TODO
             #  - download rclone
             docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
+            echo "Pushing image << parameters.tag >>"
             docker push << parameters.tag >>
 
   run-linux-tests:
