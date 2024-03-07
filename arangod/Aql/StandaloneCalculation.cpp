@@ -270,6 +270,14 @@ Result StandaloneCalculation::validateQuery(
     TRI_ASSERT(ast);
     auto qs = arangodb::aql::QueryString(queryString);
     Parser parser(queryContext, *ast, qs);
+    if (isComputedValue) {
+      // force the condition of the ternary operator (condition ? truePart :
+      // falsePart) to be always inlined and not be extracted into its own LET
+      // node. if we don't set this boolean flag here, then a ternary operator
+      // could create additional LET nodes, which is not supported inside
+      // computed values.
+      parser.setForceInlineTernary();
+    }
     parser.parse();
     ast->validateAndOptimize(
         queryContext.trxForOptimization(),
