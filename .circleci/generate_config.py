@@ -384,9 +384,9 @@ def add_create_docker_image_job(workflow, build_config, build_job, args):
     edition = "ee" if build_config.enterprise else "ce"
     arch = "amd64" if build_config.arch == "x64" else "arm64"
     image = (
-        "arangodb/enterprise-test"
+        "public.ecr.aws/b0b8h2r4/enterprise-preview"
         if build_config.enterprise
-        else "arangodb/arangodb-test"
+        else "public.ecr.aws/b0b8h2r4/arangodb-preview"
     )
     branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
     match = re.fullmatch("(.+\/)?(.+)", branch)
