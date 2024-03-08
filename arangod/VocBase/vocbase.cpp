@@ -1390,6 +1390,7 @@ TRI_vocbase_t::TRI_vocbase_t(TRI_vocbase_t::MockConstruct,
       _versionTracker(versionTracker),
       _extendedNames(extendedNames),
       _info(std::move(info)),
+      _metrics(std::make_unique<VocbaseMetrics>()),
       _logManager(std::make_shared<VocBaseLogManager>(*this, name())) {}
 #endif
 
