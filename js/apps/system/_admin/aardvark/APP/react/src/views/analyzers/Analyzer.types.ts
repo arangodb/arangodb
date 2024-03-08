@@ -40,7 +40,7 @@ type DelimiterState = {
 type MultiDelimiterState = {
   type: "multi_delimiter";
   properties: {
-    delimiter: Array<string>;
+    delimiters: Array<string>;
   };
 };
 
