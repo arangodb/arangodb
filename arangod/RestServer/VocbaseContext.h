@@ -37,7 +37,8 @@ class VocbaseContext final : public arangodb::ExecContext {
  public:
   ~VocbaseContext();
 
-  static VocbaseContext* create(GeneralRequest& req, TRI_vocbase_t& vocbase);
+  static std::shared_ptr<VocbaseContext> create(GeneralRequest& req,
+                                                TRI_vocbase_t& vocbase);
   TEST_VIRTUAL TRI_vocbase_t& vocbase() const { return _vocbase; }
 
   /// @brief upgrade to internal superuser
@@ -71,7 +72,10 @@ class VocbaseContext final : public arangodb::ExecContext {
   /// should be used to indicate a canceled request / thread
   std::atomic<bool> _canceled;
 
-  VocbaseContext(GeneralRequest& req, TRI_vocbase_t& vocbase,
+  class ConstructorToken {};
+
+ public:
+  VocbaseContext(ConstructorToken, GeneralRequest& req, TRI_vocbase_t& vocbase,
                  ExecContext::Type type, auth::Level systemLevel,
                  auth::Level dbLevel, bool isAdminUser);
   VocbaseContext(VocbaseContext const&) = delete;
