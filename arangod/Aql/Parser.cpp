@@ -48,7 +48,7 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _stack() {
+      _forceInlineTernary(false) {
   _stack.reserve(4);
 
   _queryStringStart = _queryString.data();
@@ -238,3 +238,25 @@ void* Parser::peekStack() {
 
   return _stack.back();
 }
+
+void Parser::pushTernaryCondition(AstNode* node) {
+  _ternaryConditions.push_back(node);
+}
+
+AstNode* Parser::popTernaryCondition() {
+  TRI_ASSERT(!_ternaryConditions.empty());
+
+  AstNode* result = _ternaryConditions.back();
+  _ternaryConditions.pop_back();
+  return result;
+}
+
+std::vector<AstNode*> const& Parser::peekTernaryConditions() {
+  return _ternaryConditions;
+}
+
+void Parser::setForceInlineTernary() noexcept { _forceInlineTernary = true; }
+
+/// @brief whether or not the ternary operator's condition must
+/// always be inlined.
+bool Parser::forceInlineTernary() const noexcept { return _forceInlineTernary; }

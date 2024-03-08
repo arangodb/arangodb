@@ -24,16 +24,16 @@
 #include "WindowNode.h"
 
 #include "Aql/Ast.h"
-#include "Aql/CountCollectExecutor.h"
-#include "Aql/DistinctCollectExecutor.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/CountCollectExecutor.h"
+#include "Aql/Executor/DistinctCollectExecutor.h"
+#include "Aql/Executor/WindowExecutor.h"
 #include "Aql/QueryContext.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
-#include "Aql/WindowExecutor.h"
 #include "Transaction/Methods.h"
 
 #include <velocypack/Builder.h>

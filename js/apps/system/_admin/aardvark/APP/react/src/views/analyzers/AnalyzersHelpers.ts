@@ -168,7 +168,7 @@ export const TYPE_TO_INITIAL_VALUES_MAP: {
   multi_delimiter: {
     type: "multi_delimiter",
     properties: {
-      delimiter: []
+      delimiters: []
     }
   },
   wildcard: {

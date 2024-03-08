@@ -726,7 +726,7 @@ AqlValue Expression::executeSimpleExpressionObject(ExpressionContext& ctx,
       VPackSlice slice = materializer.slice(result);
 
       buffer->clear();
-      functions::Stringify(&vopts, adapter, slice);
+      functions::stringify(&vopts, adapter, slice);
 
       if (mustCheckUniqueness) {
         // prevent duplicate keys from being used
