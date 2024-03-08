@@ -1,3 +1,7 @@
+### Connected PRs
+- [ ] Enterprise PR:
+- [ ] Docs PR: 
+
 ### Scope & Purpose
 
 *(Please describe the changes in this PR for reviewers, motivation, rationale - **mandatory**)*
@@ -23,9 +27,6 @@
 #### Related Information
 
 *(Please reference tickets / specification / other PRs etc)*
-
-- [ ] Docs PR: 
-- [ ] Enterprise PR:
 - [ ] GitHub issue / Jira ticket:
 - [ ] Design document: 
 
