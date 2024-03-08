@@ -181,6 +181,11 @@ ComputedValues::ComputedValue::ComputedValue(
 
   auto qs = aql::QueryString(expressionString);
   aql::Parser parser(*_queryContext, *ast, qs);
+  // force the condition of the ternary operator (condition ? truePart :
+  // falsePart) to be always inlined and not be extracted into its own LET node.
+  // if we don't set this boolean flag here, then a ternary operator could
+  // create additional LET nodes, which is not supported inside computed values.
+  parser.setForceInlineTernary();
   // will throw if there is any error, but the expression should have been
   // validated before
   parser.parse();

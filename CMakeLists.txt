@@ -231,13 +231,26 @@ set(INSTALL_CONFIGFILES_LIST)
 # update files containing VERSION information
 # ------------------------------------------------------------------------------
 
-string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
-
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/build.h.in"
   "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build.h"
   NEWLINE_STYLE UNIX
 )
+
+option(ARANGODB_BUILD_DATE "Specific build date set from the outside (leave empty to auto-generate)" "")
+if (ARANGODB_BUILD_DATE STREQUAL "")
+  if (NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h")
+    # auto-generate build date
+    string(TIMESTAMP ARANGODB_BUILD_DATE "%Y-%m-%d %H:%M:%S")
+    set(GENERATE_BUILD_DATE ON)
+  else ()
+    # build-date.h file already exists. whatever is in there will be kept
+    set(GENERATE_BUILD_DATE OFF)
+  endif ()
+else ()
+  # forcefully recreate build-date.h file from provided date
+  set(GENERATE_BUILD_DATE ON)
+endif ()
 
 if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
   set(GENERATE_BUILD_DATE ON CACHE INTERNAL "whether we should generate the build date")
@@ -246,9 +259,9 @@ if (NOT DEFINED GENERATE_BUILD_DATE OR GENERATE_BUILD_DATE)
     "${CMAKE_CURRENT_BINARY_DIR}/lib/Basics/build-date.h"
     NEWLINE_STYLE UNIX
     )
-else()
+else ()
   set(GENERATE_BUILD_DATE OFF CACHE INTERNAL "whether we should generate the build date")
-endif()
+endif ()
 
 configure_file(
   "${CMAKE_CURRENT_SOURCE_DIR}/lib/Basics/VERSION.in"

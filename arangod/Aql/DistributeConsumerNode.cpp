@@ -26,7 +26,7 @@
 #include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.tpp"
-#include "Aql/IdExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Basics/VelocyPackHelper.h"

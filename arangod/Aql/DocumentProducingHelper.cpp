@@ -25,8 +25,8 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/DocumentExpressionContext.h"
-#include "Aql/EnumerateCollectionExecutor.h"
-#include "Aql/IndexExecutor.h"
+#include "Aql/Executor/EnumerateCollectionExecutor.h"
+#include "Aql/Executor/IndexExecutor.h"
 #include "Aql/LateMaterializedExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"

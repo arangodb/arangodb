@@ -21,9 +21,7 @@
 /// @author Julia Puget
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Aql/MultipleRemoteModificationNode.h"
-
-#include <velocypack/Iterator.h>
+#include "MultipleRemoteModificationNode.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Ast.h"
@@ -31,14 +29,15 @@
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/IdExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
+#include "Aql/Executor/MultipleRemoteModificationExecutor.h"
 #include "Aql/OptimizerRulesFeature.h"
-
-#include "Aql/MultipleRemoteModificationExecutor.h"
 #include "Aql/SortRegister.h"
 #include "Aql/types.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::basics;

@@ -31,7 +31,6 @@
 #include "Aql/ProfileLevel.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShortestPathExecutor.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Indexes/Index.h"

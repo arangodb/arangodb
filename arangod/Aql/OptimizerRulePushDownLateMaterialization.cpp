@@ -26,6 +26,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/IndexNode.h"
+#include "Aql/JoinNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerUtils.h"
@@ -61,34 +62,39 @@ void replaceVariableDownwards(
   }
 }
 
-bool checkCalculation(ExecutionPlan* plan,
-                      materialize::MaterializeNode const* matNode,
-                      ExecutionNode* other) {
+bool extractRelevantAttributes(
+    ExecutionNode* node, aql::Variable const& var,
+    containers::FlatHashSet<aql::AttributeNamePath>& attributes) {
+  switch (node->getType()) {
+    case arangodb::aql::ExecutionNode::CALCULATION: {
+      auto* calc = ExecutionNode::castTo<CalculationNode*>(node);
+      return Ast::getReferencedAttributesRecursive(
+          calc->expression()->node(), &var, "", attributes,
+          node->plan()->getAst()->query().resourceMonitor());
+    }
+
+    case arangodb::aql::ExecutionNode::SUBQUERY: {
+      auto* sub = ExecutionNode::castTo<SubqueryNode*>(node);
+      return arangodb::aql::utils::findProjections(
+          sub->getSubquery()->getSingleton(), &var, "", false, attributes);
+    }
+
+    default:
+      return false;
+  }
+}
+
+bool checkPossibleProjection(ExecutionPlan* plan,
+                             materialize::MaterializeNode const* matNode,
+                             ExecutionNode* other) {
   LOG_RULE << "ATTEMPT TO MOVE PAST CALCULATION";
   if (!usesOutVariable(matNode, other)) {
     return true;
   }
 
-  TRI_ASSERT(other->getType() == EN::CALCULATION);
-  auto* calc = ExecutionNode::castTo<CalculationNode*>(other);
-
-  auto* matOriginNode =
-      matNode->plan()->getVarSetBy(matNode->docIdVariable().id);
-  if (matOriginNode->getType() != EN::INDEX) {
-    return false;
-  }
-
-  auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
-  TRI_ASSERT(indexNode->isLateMaterialized());
-  auto index = indexNode->getSingleIndex();
-  if (index == nullptr) {
-    return false;
-  }
-
   containers::FlatHashSet<aql::AttributeNamePath> attributes;
-  bool notUsingFullDocument = Ast::getReferencedAttributesRecursive(
-      calc->expression()->node(), &matNode->outVariable(), "", attributes,
-      matNode->plan()->getAst()->query().resourceMonitor());
+  bool notUsingFullDocument =
+      extractRelevantAttributes(other, matNode->outVariable(), attributes);
   if (!notUsingFullDocument) {
     LOG_RULE << "CALCULATION USES FULL DOCUMENT";
     return false;
@@ -98,78 +104,61 @@ bool checkCalculation(ExecutionPlan* plan,
     LOG_RULE << attr;
   }
 
-  auto proj = indexNode->projections();  // copy intentional
-  TRI_ASSERT(!proj.hasOutputRegisters())
-      << "projection output registers shouldn't be set at this point";
-  proj.addPaths(attributes);
-
-  if (index->covers(proj)) {
-    LOG_RULE << "INDEX COVERS ATTRIBTUES";
-    indexNode->projections() = std::move(proj);
-    indexNode->projections().setCoveringContext(indexNode->collection()->id(),
-                                                index);
-    TRI_ASSERT(indexNode->projections().usesCoveringIndex());
-    return true;
-  } else {
-    LOG_RULE << "INDEX DOES NOT COVER " << proj;
-  }
-
-  return false;
-}
-
-bool checkSubquery(ExecutionPlan* plan,
-                   materialize::MaterializeNode const* matNode,
-                   ExecutionNode* other) {
-  LOG_RULE << "ATTEMPT TO MOVE PAST SUBQUERY";
-  if (!usesOutVariable(matNode, other)) {
-    LOG_RULE << "SUBQUERY DOES NOT USE MATERIALIZE OUT VARIABLE";
-    return true;
-  }
-
-  TRI_ASSERT(other->getType() == EN::SUBQUERY);
-  auto* sub = ExecutionNode::castTo<SubqueryNode*>(other);
-
   auto* matOriginNode =
       matNode->plan()->getVarSetBy(matNode->docIdVariable().id);
-  if (matOriginNode->getType() != EN::INDEX) {
-    return false;
-  }
+  if (matOriginNode->getType() == EN::INDEX) {
+    LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO INDEX NODE";
+    auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
+    TRI_ASSERT(indexNode->isLateMaterialized());
+    auto index = indexNode->getSingleIndex();
+    if (index == nullptr) {
+      return false;
+    }
 
-  auto* indexNode = ExecutionNode::castTo<IndexNode*>(matOriginNode);
-  TRI_ASSERT(indexNode->isLateMaterialized());
-  auto index = indexNode->getSingleIndex();
-  if (index == nullptr) {
-    return false;
-  }
+    auto proj = indexNode->projections();  // copy intentional
+    TRI_ASSERT(!proj.hasOutputRegisters())
+        << "projection output registers shouldn't be set at this point";
+    proj.addPaths(attributes);
 
-  containers::FlatHashSet<aql::AttributeNamePath> attributes;
-  bool notUsingFullDocument = arangodb::aql::utils::findProjections(
-      sub->getSubquery()->getSingleton(), &matNode->outVariable(), "", false,
-      attributes);
-  if (!notUsingFullDocument) {
-    LOG_RULE << "SUBQUERY USES FULL DOCUMENT";
-    // if the subquery uses the full document, we can not move past it
-    return false;
-  }
+    if (index->covers(proj)) {
+      LOG_RULE << "INDEX COVERS ATTRIBTUES";
+      indexNode->projections() = std::move(proj);
+      indexNode->projections().setCoveringContext(indexNode->collection()->id(),
+                                                  index);
+      TRI_ASSERT(indexNode->projections().usesCoveringIndex());
+      return true;
+    } else {
+      LOG_RULE << "INDEX DOES NOT COVER " << proj;
+    }
+  } else if (matOriginNode->getType() == EN::JOIN) {
+    LOG_RULE << "ATTEMPT TO ADD PROJECTIONS TO JOIN NODE";
+    auto* joinNode = ExecutionNode::castTo<JoinNode*>(matOriginNode);
+    auto& indexes = joinNode->getIndexInfos();
 
-  LOG_RULE << "SUBQUERY ATTRIBUTES: ";
-  for (auto const& attr : attributes) {
-    LOG_RULE << attr;
-  }
+    // find the index with the out variable of the materializer
+    auto idx =
+        std::find_if(indexes.begin(), indexes.end(), [&](auto const& idx) {
+          return idx.outVariable->id == matNode->outVariable().id;
+        });
 
-  auto proj = indexNode->projections();  // copy intentional
-  TRI_ASSERT(!proj.hasOutputRegisters())
-      << "projection output registers shouldn't be set at this point";
-  proj.addPaths(attributes);
+    // this node is the out variable, there has to be an index that produces it
+    TRI_ASSERT(idx != indexes.end());
+    TRI_ASSERT(idx->isLateMaterialized);
 
-  if (index->covers(proj)) {
-    LOG_RULE << "INDEX COVERS ATTRIBTUES";
-    indexNode->projections() = std::move(proj);
-    indexNode->projections().setCoveringContext(indexNode->collection()->id(),
-                                                index);
-    return true;
-  } else {
-    LOG_RULE << "INDEX DOES NOT COVER " << proj;
+    auto proj = idx->projections;  // copy intentional
+    TRI_ASSERT(!proj.hasOutputRegisters())
+        << "projection output registers shouldn't be set at this point";
+    proj.addPaths(attributes);
+
+    if (idx->index->covers(proj)) {
+      LOG_RULE << "INDEX COVERS ATTRIBTUES";
+      idx->projections = std::move(proj);
+      idx->projections.setCoveringContext(idx->collection->id(), idx->index);
+      TRI_ASSERT(idx->projections.usesCoveringIndex());
+      return true;
+    } else {
+      LOG_RULE << "INDEX DOES NOT COVER " << proj;
+    }
   }
 
   return false;
@@ -185,13 +174,9 @@ bool canMovePastNode(ExecutionPlan* plan,
     case EN::SORT:
     case EN::FILTER:
       return !usesOutVariable(matNode, other);
-    case EN::SUBQUERY:
-      return checkSubquery(plan, matNode, other);
     case EN::CALCULATION:
-      // TODO This is very pessimistic. In fact we could move the materialize
-      // node down, if the index supports
-      //      projecting the required attribute.
-      return checkCalculation(plan, matNode, other);
+    case EN::SUBQUERY:
+      return checkPossibleProjection(plan, matNode, other);
     default:
       break;
   }
