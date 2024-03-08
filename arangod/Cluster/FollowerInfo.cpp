@@ -701,8 +701,8 @@ void FollowerInfo::setTheLeader(const std::string& who) {
   // Empty leader => we are now new leader.
   // This needs to be handled with takeOverLeadership
   TRI_ASSERT(!who.empty());
-  WRITE_LOCKER(canWriteLocker, _canWriteLock);
   WRITE_LOCKER(writeLocker, _dataLock);
   _theLeader = who;
   _theLeaderTouched = true;
+  _writeConcernReached = true;
 }
