@@ -23,6 +23,7 @@
 
 #include "RocksDBOptimizerRules.h"
 
+#include "Aql/Ast.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
@@ -31,7 +32,6 @@
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/LimitNode.h"
-#include "Aql/ExecutionNode/ModificationNodes.h"
 #include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
@@ -47,6 +47,8 @@
 #include "Indexes/Index.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <initializer_list>
 
 using namespace arangodb;
 using namespace arangodb::aql;

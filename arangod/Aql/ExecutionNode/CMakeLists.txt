@@ -21,7 +21,13 @@ target_sources(arango_aql PRIVATE
   MaterializeNode.cpp
   MaterializeRocksDBNode.cpp
   MaterializeSearchNode.cpp
-  ModificationNodes.cpp
+  InsertNode.cpp
+  ModificationNode.cpp
+  RemoveNode.cpp
+  ReplaceNode.cpp
+  UpdateNode.cpp
+  UpdateReplaceNode.cpp
+  UpsertNode.cpp
   MultipleRemoteModificationNode.cpp  
   MutexNode.cpp
   NoResultsNode.cpp

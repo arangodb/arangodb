@@ -25,11 +25,12 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionNode/JoinNode.h"
-#include "Aql/ExecutionNode/ModificationNodes.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
