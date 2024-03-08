@@ -14,7 +14,7 @@ export const MultiDelimiterConfig = ({
     <Grid templateColumns={"1fr 1fr"} columnGap="4">
       <CreatableMultiSelectControl
         isDisabled={isDisabled}
-        name={`${basePropertiesPath}.delimiter`}
+        name={`${basePropertiesPath}.delimiters`}
         label="Delimiters"
       />
     </Grid>
