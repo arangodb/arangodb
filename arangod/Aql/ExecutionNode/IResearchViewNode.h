@@ -25,6 +25,7 @@
 #pragma once
 
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/DataAccessingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"

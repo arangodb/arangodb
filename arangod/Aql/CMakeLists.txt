@@ -115,6 +115,8 @@ add_library(arango_aql STATIC
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
+  SortElement.cpp
+  SortInformation.cpp
   SortRegister.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp

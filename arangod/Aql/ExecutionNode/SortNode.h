@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/SortElement.h"
+#include "Aql/SortInformation.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"

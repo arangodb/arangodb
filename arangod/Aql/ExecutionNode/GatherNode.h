@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "VocBase/voc-types.h"

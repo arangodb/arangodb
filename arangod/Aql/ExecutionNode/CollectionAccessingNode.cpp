@@ -30,6 +30,7 @@
 #include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
 #include "Basics/VelocyPackHelper.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Indexes/Index.h"

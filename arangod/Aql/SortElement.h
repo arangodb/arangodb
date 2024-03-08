@@ -18,42 +18,34 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
-
-#include "Aql/SortElement.h"
-#include "Aql/SortRegister.h"
-#include "Aql/types.h"
 
 #include <string>
 #include <vector>
 
 namespace arangodb::aql {
-class ExecutionNode;
-class ExecutionPlan;
-template<typename T>
-struct RegisterPlanT;
-using RegisterPlan = RegisterPlanT<ExecutionNode>;
+struct Variable;
 
-/// @brief sort element for block, consisting of register, sort direction,
-/// and a possible attribute path to dig into the document
-struct SortRegister {
-  SortRegister(SortRegister&) = delete;  // we can not copy the ireseach scorer
-  SortRegister(SortRegister&&) = default;
+/// @brief sort element, consisting of variable, sort direction, and a possible
+/// attribute path to dig into the document
+struct SortElement {
+  Variable const* var;
+  bool ascending;
+  std::vector<std::string> attributePath;
 
-  std::vector<std::string> const& attributePath;
-  RegisterId reg;
-  bool asc;
+  SortElement(Variable const* v, bool asc);
 
-  SortRegister(RegisterId reg, SortElement const& element) noexcept;
+  SortElement(Variable const* v, bool asc, std::vector<std::string> path);
 
-  static void fill(ExecutionPlan const& /*execPlan*/,
-                   RegisterPlan const& regPlan,
-                   std::vector<SortElement> const& elements,
-                   std::vector<SortRegister>& sortRegisters);
-};  // SortRegister
+  /// @brief stringify a sort element. note: the output of this should match the
+  /// stringification output of an AstNode for an attribute access
+  /// (e.g. foo.bar => $0.bar)
+  std::string toString() const;
+};
+
+using SortElementVector = std::vector<SortElement>;
 
 }  // namespace arangodb::aql

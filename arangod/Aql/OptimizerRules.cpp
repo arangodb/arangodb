@@ -68,6 +68,8 @@
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
+#include "Aql/SortElement.h"
+#include "Aql/SortInformation.h"
 #include "Aql/TraversalConditionFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"

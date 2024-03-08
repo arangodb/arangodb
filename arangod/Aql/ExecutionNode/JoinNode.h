@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/Projections.h"
 #include "Aql/types.h"
 #include "Indexes/Index.h"
 #include "Indexes/IndexIterator.h"

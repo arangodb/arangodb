@@ -18,42 +18,25 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/SortElement.h"
-#include "Aql/SortRegister.h"
-#include "Aql/types.h"
-
-#include <string>
-#include <vector>
+#include "Aql/ExecutionNodeId.h"
 
 namespace arangodb::aql {
-class ExecutionNode;
-class ExecutionPlan;
-template<typename T>
-struct RegisterPlanT;
-using RegisterPlan = RegisterPlanT<ExecutionNode>;
+struct Collection;
+struct Variable;
 
-/// @brief sort element for block, consisting of register, sort direction,
-/// and a possible attribute path to dig into the document
-struct SortRegister {
-  SortRegister(SortRegister&) = delete;  // we can not copy the ireseach scorer
-  SortRegister(SortRegister&&) = default;
-
-  std::vector<std::string> const& attributePath;
-  RegisterId reg;
-  bool asc;
-
-  SortRegister(RegisterId reg, SortElement const& element) noexcept;
-
-  static void fill(ExecutionPlan const& /*execPlan*/,
-                   RegisterPlan const& regPlan,
-                   std::vector<SortElement> const& elements,
-                   std::vector<SortRegister>& sortRegisters);
-};  // SortRegister
+class DataAccessingNode {
+ public:
+  virtual ~DataAccessingNode() = default;
+  virtual Collection const* collection() const = 0;
+  virtual bool isUsedAsSatellite() const = 0;
+  virtual void useAsSatelliteOf(ExecutionNodeId) = 0;
+  virtual Collection const* prototypeCollection() const = 0;
+  virtual void setPrototype(Collection const*, Variable const*) = 0;
+};
 
 }  // namespace arangodb::aql

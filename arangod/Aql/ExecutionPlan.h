@@ -28,6 +28,7 @@
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/SortElement.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/FlatHashMap.h"

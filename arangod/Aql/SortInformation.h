@@ -18,42 +18,35 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
 #pragma once
 
-#include "Aql/SortElement.h"
-#include "Aql/SortRegister.h"
-#include "Aql/types.h"
-
 #include <string>
+#include <tuple>
 #include <vector>
 
 namespace arangodb::aql {
 class ExecutionNode;
-class ExecutionPlan;
-template<typename T>
-struct RegisterPlanT;
-using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
-/// @brief sort element for block, consisting of register, sort direction,
-/// and a possible attribute path to dig into the document
-struct SortRegister {
-  SortRegister(SortRegister&) = delete;  // we can not copy the ireseach scorer
-  SortRegister(SortRegister&&) = default;
+/// @brief this is an auxilliary struct for processed sort criteria information
+struct SortInformation {
+  enum Match {
+    unequal,                // criteria are unequal
+    otherLessAccurate,      // leftmost sort criteria are equal, but other sort
+                            // criteria are less accurate than ourselves
+    ourselvesLessAccurate,  // leftmost sort criteria are equal, but our own
+                            // sort criteria is less accurate than the other
+    allEqual                // all criteria are equal
+  };
 
-  std::vector<std::string> const& attributePath;
-  RegisterId reg;
-  bool asc;
+  std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
+  bool isValid = true;
+  bool isDeterministic = true;
+  bool isComplex = false;
 
-  SortRegister(RegisterId reg, SortElement const& element) noexcept;
-
-  static void fill(ExecutionPlan const& /*execPlan*/,
-                   RegisterPlan const& regPlan,
-                   std::vector<SortElement> const& elements,
-                   std::vector<SortRegister>& sortRegisters);
-};  // SortRegister
+  Match isCoveredBy(SortInformation const& other);
+};
 
 }  // namespace arangodb::aql

@@ -27,6 +27,7 @@
 #include "RegisterPlan.h"
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 

@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/QueryContext.h"
+#include "Aql/Variable.h"
 #include "Graph/BaseOptions.h"
 
 #include <absl/strings/str_cat.h>

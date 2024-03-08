@@ -18,34 +18,49 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortRegister.h"
+#include "SortInformation.h"
 
-#include "Aql/RegisterPlan.h"
-#include "Aql/Variable.h"
+#include <cstddef>
 
-namespace arangodb::aql {
+using namespace arangodb;
+using namespace arangodb::aql;
 
-SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
-    : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
-
-void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
-                        RegisterPlan const& regPlan,
-                        std::vector<SortElement> const& elements,
-                        std::vector<SortRegister>& sortRegisters) {
-  sortRegisters.reserve(elements.size());
-  auto const& vars = regPlan.varInfo;
-
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto const it = vars.find(varId);
-    TRI_ASSERT(it != vars.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    sortRegisters.emplace_back(it->second.registerId, p);
+SortInformation::Match SortInformation::isCoveredBy(
+    SortInformation const& other) {
+  if (!isValid || !other.isValid) {
+    return unequal;
   }
-}
 
-}  // namespace arangodb::aql
+  if (isComplex || other.isComplex) {
+    return unequal;
+  }
+
+  size_t const n = criteria.size();
+  for (size_t i = 0; i < n; ++i) {
+    if (other.criteria.size() <= i) {
+      return otherLessAccurate;
+    }
+
+    auto ours = criteria[i];
+    auto theirs = other.criteria[i];
+
+    if (std::get<2>(ours) != std::get<2>(theirs)) {
+      // sort order is different
+      return unequal;
+    }
+
+    if (std::get<1>(ours) != std::get<1>(theirs)) {
+      // sort criterion is different
+      return unequal;
+    }
+  }
+
+  if (other.criteria.size() > n) {
+    return ourselvesLessAccurate;
+  }
+
+  return allEqual;
+}

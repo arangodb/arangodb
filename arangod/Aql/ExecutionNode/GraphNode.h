@@ -25,6 +25,7 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/Projections.h"
 #include "Aql/types.h"
 #include "Cluster/ClusterTypes.h"
 #include "Transaction/OperationOrigin.h"
@@ -33,6 +34,7 @@
 
 #include <velocypack/Builder.h>
 
+#include <memory>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -45,7 +47,12 @@ struct BaseOptions;
 class Graph;
 }  // namespace graph
 
+namespace velocypack {
+class Slice;
+}
+
 namespace aql {
+class Collections;
 
 // @brief This is a pure virtual super-class for all AQL graph operations
 //        It does the generally required:

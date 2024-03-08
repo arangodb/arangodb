@@ -60,6 +60,7 @@
 #include "Aql/Query.h"
 #include "Aql/Range.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/VelocyPackHelper.h"
 
@@ -1667,57 +1668,4 @@ auto ExecutionNode::getVarsValid() const noexcept -> VarSet const& {
 auto ExecutionNode::getVarsValidStack() const noexcept -> VarSetStack const& {
   TRI_ASSERT(_varUsageValid);
   return _varsValidStack;
-}
-
-SortElement::SortElement(Variable const* v, bool asc)
-    : var(v), ascending(asc) {}
-
-SortElement::SortElement(Variable const* v, bool asc,
-                         std::vector<std::string> path)
-    : var(v), ascending(asc), attributePath(std::move(path)) {}
-
-std::string SortElement::toString() const {
-  std::string result("$");
-  result += std::to_string(var->id);
-  for (auto const& it : attributePath) {
-    result += "." + it;
-  }
-  return result;
-}
-
-SortInformation::Match SortInformation::isCoveredBy(
-    SortInformation const& other) {
-  if (!isValid || !other.isValid) {
-    return unequal;
-  }
-
-  if (isComplex || other.isComplex) {
-    return unequal;
-  }
-
-  size_t const n = criteria.size();
-  for (size_t i = 0; i < n; ++i) {
-    if (other.criteria.size() <= i) {
-      return otherLessAccurate;
-    }
-
-    auto ours = criteria[i];
-    auto theirs = other.criteria[i];
-
-    if (std::get<2>(ours) != std::get<2>(theirs)) {
-      // sort order is different
-      return unequal;
-    }
-
-    if (std::get<1>(ours) != std::get<1>(theirs)) {
-      // sort criterion is different
-      return unequal;
-    }
-  }
-
-  if (other.criteria.size() > n) {
-    return ourselvesLessAccurate;
-  }
-
-  return allEqual;
 }

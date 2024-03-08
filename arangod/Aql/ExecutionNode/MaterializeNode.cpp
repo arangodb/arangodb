@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
 #include "Aql/ExecutionNode/MaterializeSearchNode.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Variable.h"
 
 #include <string_view>
 

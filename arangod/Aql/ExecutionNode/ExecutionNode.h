@@ -62,17 +62,12 @@
 #include <unordered_map>
 
 #include "Aql/CostEstimate.h"
-#include "Aql/ExecutionNode/CollectionAccessingNode.h"
-#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/IndexHint.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/Variable.h"
+#include "Aql/SortElement.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Basics/Identifier.h"
-#include "Basics/ResourceUsage.h"
 #include "Basics/TypeTraits.h"
 #include "Containers/HashSet.h"
 
@@ -113,26 +108,6 @@ enum class AsyncPrefetchEligibility {
   // disable prefetching for entire query
   kDisableGlobally,
 };
-
-/// @brief sort element, consisting of variable, sort direction, and a possible
-/// attribute path to dig into the document
-
-struct SortElement {
-  Variable const* var;
-  bool ascending;
-  std::vector<std::string> attributePath;
-
-  SortElement(Variable const* v, bool asc);
-
-  SortElement(Variable const* v, bool asc, std::vector<std::string> path);
-
-  /// @brief stringify a sort element. note: the output of this should match the
-  /// stringification output of an AstNode for an attribute access
-  /// (e.g. foo.bar => $0.bar)
-  std::string toString() const;
-};
-
-typedef std::vector<SortElement> SortElementVector;
 
 /// @brief class ExecutionNode, abstract base class of all execution Nodes
 class ExecutionNode {
@@ -309,18 +284,6 @@ class ExecutionNode {
   /// @brief get the node and its dependencies as a vector
   void getDependencyChain(std::vector<ExecutionNode*>& result,
                           bool includeSelf);
-
-  /// @brief inspect one index; only skiplist indices which match attrs in
-  /// sequence.
-  /// returns a a qualification how good they match;
-  ///      match->index==nullptr means no match at all.
-  enum MatchType {
-    FORWARD_MATCH,
-    REVERSE_MATCH,
-    NOT_COVERED_IDX,
-    NOT_COVERED_ATTR,
-    NO_MATCH
-  };
 
   /// @brief make a new node the (only) parent of the node
   void setParent(ExecutionNode* p);
@@ -619,25 +582,6 @@ class ExecutionNode {
  private:
   bool doWalk(WalkerWorkerBase<ExecutionNode>& worker, bool subQueryFirst,
               FlattenType flattenType);
-};
-
-/// @brief this is an auxilliary struct for processed sort criteria information
-struct SortInformation {
-  enum Match {
-    unequal,                // criteria are unequal
-    otherLessAccurate,      // leftmost sort criteria are equal, but other sort
-                            // criteria are less accurate than ourselves
-    ourselvesLessAccurate,  // leftmost sort criteria are equal, but our own
-                            // sort criteria is less accurate than the other
-    allEqual                // all criteria are equal
-  };
-
-  std::vector<std::tuple<ExecutionNode const*, std::string, bool>> criteria;
-  bool isValid = true;
-  bool isDeterministic = true;
-  bool isComplex = false;
-
-  Match isCoveredBy(SortInformation const& other);
 };
 
 }  // namespace aql

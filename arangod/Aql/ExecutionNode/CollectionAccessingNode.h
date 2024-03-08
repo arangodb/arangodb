@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Aql/CollectionAccess.h"
+#include "Aql/ExecutionNode/DataAccessingNode.h"
 #include "Aql/ExecutionNodeId.h"
-#include "Basics/debugging.h"
 #include "Cluster/Utils/ShardID.h"
 
 #include <optional>
@@ -44,17 +44,6 @@ struct Collection;
 class ExecutionPlan;
 struct Variable;
 
-class DataAccessingNode {
- public:
-  virtual ~DataAccessingNode() = default;
-  virtual aql::Collection const* collection() const = 0;
-  virtual bool isUsedAsSatellite() const = 0;
-  virtual void useAsSatelliteOf(ExecutionNodeId) = 0;
-  virtual aql::Collection const* prototypeCollection() const = 0;
-  virtual void setPrototype(arangodb::aql::Collection const*,
-                            arangodb::aql::Variable const*) = 0;
-};
-
 class CollectionAccessingNode : public DataAccessingNode {
  public:
   explicit CollectionAccessingNode(aql::Collection const* collection);
@@ -62,7 +51,6 @@ class CollectionAccessingNode : public DataAccessingNode {
                           arangodb::velocypack::Slice slice);
   virtual ~CollectionAccessingNode() = default;
 
- public:
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     unsigned flags) const;
 

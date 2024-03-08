@@ -23,9 +23,11 @@
 
 #include "ConditionFinder.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/ExecutionNode/NoResultsNode.h"

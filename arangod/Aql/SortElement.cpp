@@ -18,34 +18,28 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ///
-/// @author Andrey Abramov
-/// @author Vasiliy Nabatchikov
+/// @author Max Neunhoeffer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "SortRegister.h"
+#include "SortElement.h"
 
-#include "Aql/RegisterPlan.h"
 #include "Aql/Variable.h"
 
-namespace arangodb::aql {
+using namespace arangodb;
+using namespace arangodb::aql;
 
-SortRegister::SortRegister(RegisterId reg, SortElement const& element) noexcept
-    : attributePath(element.attributePath), reg(reg), asc(element.ascending) {}
+SortElement::SortElement(Variable const* v, bool asc)
+    : var(v), ascending(asc) {}
 
-void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
-                        RegisterPlan const& regPlan,
-                        std::vector<SortElement> const& elements,
-                        std::vector<SortRegister>& sortRegisters) {
-  sortRegisters.reserve(elements.size());
-  auto const& vars = regPlan.varInfo;
+SortElement::SortElement(Variable const* v, bool asc,
+                         std::vector<std::string> path)
+    : var(v), ascending(asc), attributePath(std::move(path)) {}
 
-  for (auto const& p : elements) {
-    auto const varId = p.var->id;
-    auto const it = vars.find(varId);
-    TRI_ASSERT(it != vars.end());
-    TRI_ASSERT(it->second.registerId.isValid());
-    sortRegisters.emplace_back(it->second.registerId, p);
+std::string SortElement::toString() const {
+  std::string result("$");
+  result += std::to_string(var->id);
+  for (auto const& it : attributePath) {
+    result += "." + it;
   }
+  return result;
 }
-
-}  // namespace arangodb::aql

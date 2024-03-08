@@ -3,6 +3,7 @@ target_sources(arango_aql PRIVATE
   CalculationNode.cpp
   CollectNode.cpp
   CollectionAccessingNode.cpp  
+  DataAccessingNode.h
   DistributeConsumerNode.cpp
   DistributeNode.cpp
   DocumentProducingNode.cpp  

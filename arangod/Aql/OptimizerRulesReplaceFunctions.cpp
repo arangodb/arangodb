@@ -44,6 +44,7 @@
 #include "Aql/IndexHint.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Query.h"
+#include "Aql/SortElement.h"
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/StaticStrings.h"
