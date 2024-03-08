@@ -24,16 +24,14 @@
 
 #include "IResearchExpressionContext.h"
 
-#include "Aql/AqlItemBlock.h"
 #include "Aql/AqlFunctionsInternalCache.h"
+#include "Aql/AqlItemBlock.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/QueryContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Basics/StaticStrings.h"
+#include "Containers/HashSet.h"
 
-#include <Containers/HashSet.h>
-
-namespace arangodb {
-namespace iresearch {
+namespace arangodb::iresearch {
 
 using namespace arangodb::aql;
 
@@ -165,9 +163,4 @@ AqlValue ViewExpressionContext::getVariableValue(Variable const* var,
   return value;
 }
 
-}  // namespace iresearch
-}  // namespace arangodb
-
-// -----------------------------------------------------------------------------
-// --SECTION--                                                       END-OF-FILE
-// -----------------------------------------------------------------------------
+}  // namespace arangodb::iresearch

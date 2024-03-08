@@ -35,6 +35,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
 #include <absl/strings/str_cat.h>

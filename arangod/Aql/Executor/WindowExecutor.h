@@ -25,11 +25,11 @@
 
 #include "Aql/Aggregator.h"
 #include "Aql/AqlValueGroup.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/Stats.h"
-#include "Aql/WindowNode.h"
 #include "Aql/types.h"
 
 #include <deque>

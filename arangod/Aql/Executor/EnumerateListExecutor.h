@@ -32,6 +32,7 @@
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/QueryExpressionContext.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"

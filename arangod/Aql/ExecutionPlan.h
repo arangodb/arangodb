@@ -23,10 +23,8 @@
 
 #pragma once
 
-#include <array>
-
 #include "Aql/CollectOptions.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/RegisterPlan.h"
@@ -36,6 +34,7 @@
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <array>
 #include <string_view>
 
 namespace arangodb {
@@ -52,6 +51,7 @@ class Collections;
 class ExecutionNode;
 struct OptimizerRule;
 class QueryContext;
+class SubqueryNode;
 
 class ExecutionPlan {
  public:

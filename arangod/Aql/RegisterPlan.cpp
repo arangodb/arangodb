@@ -26,14 +26,7 @@
 
 #include "RegisterPlan.h"
 
-#include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/IndexNode.h"
-#include "Aql/ModificationNodes.h"
-#include "Aql/SubqueryEndExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Basics/Exceptions.h"
 #include "Containers/Enumerate.h"
 

@@ -28,24 +28,19 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/MutexNode.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/Executor/DistributeExecutor.h"
 #include "Aql/Executor/MutexExecutor.h"
 #include "Aql/Executor/ScatterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/MutexNode.h"
 #include "Aql/Query.h"
 #include "Aql/SkipResult.h"
 #include "Basics/Exceptions.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
-#include "Basics/VelocyPackHelper.h"
-#include "Cluster/ClusterInfo.h"
-#include "Cluster/ServerState.h"
 #include "Transaction/Methods.h"
 #include "Transaction/StandaloneContext.h"
-#include "Utils/SingleCollectionTransaction.h"
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
@@ -57,8 +52,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-using VelocyPackHelper = arangodb::basics::VelocyPackHelper;
 
 ClientsExecutorInfos::ClientsExecutorInfos(std::vector<std::string> clientIds)
     : _clientIds(std::move(clientIds)) {

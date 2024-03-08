@@ -25,11 +25,12 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/OptimizerRules.h"
 #include "Aql/OptimizerRulesFeature.h"
-#include "Aql/QueryOptions.h"
 #include "Aql/ProfileLevel.h"
+#include "Aql/QueryOptions.h"
 #include "Basics/debugging.h"
 #include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"

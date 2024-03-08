@@ -24,15 +24,10 @@
 
 #include "SortRegister.h"
 
-#include "Aql/AqlValue.h"
-#include "Aql/ClusterNodes.h"
-#include "Aql/ExecutionPlan.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/SortNode.h"
-#include "Basics/ResourceUsage.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 // -----------------------------------------------------------------------------
 // -- SECTION --                                                    SortRegister
@@ -57,5 +52,4 @@ void SortRegister::fill(ExecutionPlan const& /*execPlan*/,
   }
 }
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

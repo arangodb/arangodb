@@ -23,7 +23,7 @@
 
 #include "TraverserEngineShardLists.h"
 
-#include "Aql/GraphNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/QueryContext.h"
 #include "Graph/BaseOptions.h"
 

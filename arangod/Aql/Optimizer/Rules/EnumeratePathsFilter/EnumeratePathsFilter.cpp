@@ -20,17 +20,16 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+
 #include "EnumeratePathsFilter.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Optimizer.h"
-#include "Aql/EnumeratePathsNode.h"
+#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
 #include "Containers/SmallVector.h"
 
-#include "Aql/Optimizer/Rules/EnumeratePathsFilter/EnumeratePathsFilterMatcher.h"
-
-#include "Logger/LogMacros.h"
 using namespace arangodb;
 using namespace arangodb::aql;
 

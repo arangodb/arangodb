@@ -27,7 +27,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Ast.h"
 #include "Aql/AttributeAccessor.h"
-#include "Aql/ExecutionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"

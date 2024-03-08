@@ -26,13 +26,10 @@ add_library(arango_aql STATIC
   BindParameters.cpp
   BlocksWithClients.cpp
   CalculationNodeVarFinder.cpp
-  ClusterNodes.cpp
   ClusterQuery.cpp
-  CollectNode.cpp
   CollectOptions.cpp
   Collection.cpp
   CollectionAccess.cpp
-  CollectionAccessingNode.cpp
   Collections.cpp
   Condition.cpp
   ConditionFinder.cpp
@@ -40,18 +37,14 @@ add_library(arango_aql STATIC
   CostEstimate.cpp
   DependencyProxy.cpp
   DistributeClientBlock.cpp
-  DistributeConsumerNode.cpp
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
-  DocumentProducingNode.cpp
   EdgeConditionBuilder.cpp
   EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
-  EnumeratePathsNode.cpp
   ExecutionBlock.cpp
   ExecutionEngine.cpp
-  ExecutionNode.cpp
   ExecutionNodeId.cpp
   ExecutionPlan.cpp
   ExecutionState.cpp
@@ -61,27 +54,20 @@ add_library(arango_aql STATIC
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
-  GraphNode.cpp
   GraphOptimizerRules.cpp
-  IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
   InAndOutRowExpressionContext.cpp
   IndexHint.cpp
   IndexJoinStrategy.cpp
-  IndexNode.cpp
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  JoinNode.cpp
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
   LimitStats.cpp
-  ModificationNodes.cpp
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
-  MultipleRemoteModificationNode.cpp
-  MutexNode.cpp
   NodeFinder.cpp
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
@@ -125,27 +111,21 @@ add_library(arango_aql STATIC
   SharedAqlItemBlockPtr.cpp
   SharedQueryState.cpp
   ShortStringStorage.cpp
-  ShortestPathNode.cpp
   SimpleModifier.cpp
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
-  SortNode.cpp
   SortRegister.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
-  SubqueryEndExecutionNode.cpp
-  SubqueryStartExecutionNode.cpp
   Timing.cpp
   TraversalConditionFinder.cpp
-  TraversalNode.cpp
   TraverserEngineShardLists.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
   VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  WindowNode.cpp
   grammar.cpp
   tokens.cpp
 )
@@ -155,6 +135,7 @@ if (USE_V8)
     V8ErrorHandler.cpp)
 endif()
 
+add_subdirectory(ExecutionNode)
 add_subdirectory(Executor)
 add_subdirectory(Function)
 add_subdirectory(Optimizer)

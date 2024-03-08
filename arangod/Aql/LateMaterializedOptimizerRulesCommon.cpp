@@ -22,10 +22,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
-#include "Aql/IResearchViewNode.h"
-#include "IResearch/IResearchViewSort.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
+#include "IResearch/IResearchViewSort.h"
 
 using namespace arangodb::aql;
 

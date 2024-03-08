@@ -24,11 +24,15 @@
 #include "ConditionFinder.h"
 
 #include "Aql/Condition.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
 #include "Basics/tryEmplaceHelper.h"
 
 using namespace arangodb::aql;
@@ -251,8 +255,7 @@ bool ConditionFinder::handleFilterCondition(
   if (conditionIsImpossible) {
     // condition is always false
     for (auto const& x : en->getParents()) {
-      auto noRes = new NoResultsNode(_plan, _plan->nextId());
-      _plan->registerNode(noRes);
+      auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
       _plan->insertDependency(x, noRes);
       _producesEmptyResult = true;
     }
