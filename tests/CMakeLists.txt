@@ -95,9 +95,13 @@ set(ARANGODB_TESTS_SOURCES
   Aql/BlockCollector.cpp
   Aql/DependencyProxyMock.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
-  Aql/EnumeratePathsNodeTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionNodeTest.cpp
+  Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
+  Aql/ExecutionNode/ExecutionNodeTest.cpp
+  Aql/ExecutionNode/IndexNodeTest.cpp
+  Aql/ExecutionNode/MockTypedNode.cpp
+  Aql/ExecutionNode/ShortestPathNodeTest.cpp
+  Aql/ExecutionNode/TraversalNodeTest.cpp
   Aql/Executor/AqlExecutorTestCase.cpp
   Aql/Executor/AsyncExecutorTest.cpp
   Aql/Executor/CalculationExecutorTest.cpp
@@ -141,11 +145,9 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Function/NgramMatchFunctionTest.cpp
   Aql/Function/NgramPosSimilarityFunctionTest.cpp
   Aql/Function/NgramSimilarityFunctionTest.cpp
-  Aql/IndexNodeTest.cpp
   Aql/InputRangeTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
-  Aql/MockTypedNode.cpp
   Aql/NodeWalkerTest.cpp
   Aql/ParserTest.cpp
   Aql/ProjectionsTest.cpp
@@ -155,12 +157,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/RegisterPlanTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ShadowRowForwardingTest.cpp
-  Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
   Aql/SortLimitTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/TraversalNodeTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerClusterTest.cpp
