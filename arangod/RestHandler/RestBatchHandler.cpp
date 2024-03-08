@@ -214,8 +214,7 @@ bool RestBatchHandler::executeNextHandler() {
   }
 
   // inject the request context from the framing (batch) request
-  // the "false" means the context is not responsible for resource handling
-  request->setRequestContext(_request->requestContext(), false);
+  request->setRequestContext(_request->requestContext());
   request->setDatabaseName(_request->databaseName());
 
   if (bodyLength > 0) {
