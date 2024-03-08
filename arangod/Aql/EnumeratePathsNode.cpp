@@ -30,7 +30,7 @@
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/EnumeratePathsExecutor.h"
+#include "Aql/Executor/EnumeratePathsExecutor.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
@@ -41,11 +41,10 @@
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Queues/FifoQueue.h"
 #include "Graph/ShortestPathOptions.h"
+#include "Graph/algorithm-aliases.h"
 #include "Indexes/Index.h"
 #include "OptimizerUtils.h"
 #include "Utils/CollectionNameResolver.h"
-
-#include "Graph/algorithm-aliases.h"
 
 #include <velocypack/Iterator.h>
 

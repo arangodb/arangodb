@@ -32,7 +32,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/DependencyProxy.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/FilterExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"

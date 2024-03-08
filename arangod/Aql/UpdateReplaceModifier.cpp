@@ -25,9 +25,9 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
-#include "Aql/ModificationExecutor.h"
-#include "Aql/ModificationExecutorAccumulator.h"
-#include "Aql/ModificationExecutorHelpers.h"
+#include "Aql/Executor/ModificationExecutor.h"
+#include "Aql/Executor/ModificationExecutorAccumulator.h"
+#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Common.h"
 #include "Transaction/Methods.h"

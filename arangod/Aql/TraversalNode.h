@@ -24,9 +24,9 @@
 #pragma once
 
 #include "Aql/EdgeConditionBuilder.h"
+#include "Aql/Executor/TraversalExecutor.h"
 #include "Aql/GraphNode.h"
 #include "Aql/PruneExpressionEvaluator.h"
-#include "Aql/TraversalExecutor.h"
 #include "Graph/Types/UniquenessLevel.h"
 #include "VocBase/LogicalCollection.h"
 

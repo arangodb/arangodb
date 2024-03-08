@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include "Aql/SortedRowsStorageBackend.h"
+#include "Aql/Executor/SortExecutor.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Aql/SortExecutor.h"
+#include "Aql/SortedRowsStorageBackend.h"
 
 #include <cstddef>
 #include <cstdint>

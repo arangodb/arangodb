@@ -266,7 +266,6 @@ bool validateAggregates(Parser* parser, AstNode const* aggregates,
   return true;
 }
 
-
 /// @brief validate the WINDOW specification
 bool validateWindowSpec(Parser* parser, AstNode const* spec,
                         int line, int column) {
@@ -364,6 +363,40 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
     wrapperNode->addMember(variableNode);
   }
   return wrapperNode;
+}
+
+void addTernaryConditionsIfPresent(Parser* parser) {
+  AstNode* filterCondition = nullptr;
+  for (auto const& it : parser->peekTernaryConditions()) {
+    TRI_ASSERT(!parser->forceInlineTernary()); 
+
+    if (filterCondition == nullptr) {
+      filterCondition = it;
+    } else {
+      filterCondition = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, filterCondition, it);
+    }
+  }
+       
+  if (filterCondition != nullptr) {
+    auto node = parser->ast()->createNodeFilter(filterCondition);
+    parser->ast()->addOperation(node);
+  }
+}
+
+void insertTernaryConditionVariable(Parser* parser, AstNode* condition, YYLTYPE const& yylloc) {
+  std::string variableName = parser->ast()->variables()->nextName();
+  AstNode* conditionNode = parser->ast()->createNodeLet(variableName.data(), variableName.size(), condition, false);
+  parser->ast()->addOperation(conditionNode);
+  
+  auto variable = parser->ast()->scopes()->getVariable(variableName, false);
+
+  if (variable == nullptr) {
+    // variable does not exist
+    parser->registerParseError(TRI_ERROR_INTERNAL, "use of unknown variable '%s' in ternary operator", variableName, yylloc.first_line, yylloc.first_column);
+  }
+
+  AstNode* reference = parser->ast()->createNodeReference(variable);
+  parser->pushTernaryCondition(reference);
 }
 
 } // namespace
@@ -1789,11 +1822,40 @@ operator_binary:
   ;
 
 operator_ternary:
-    expression T_QUESTION expression T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $3, $5);
+    expression T_QUESTION {
+      // check if we must inline the condition of the ternary operator.
+      // this is the case if we must execute a single expression, e.g. in computed values.
+      // for normal AQL queries we normally want the condition of the ternary operator
+      // to be placed in its own LET node, so we can move it around.
+      if (!parser->forceInlineTernary()) {
+        insertTernaryConditionVariable(parser, $1, yylloc);
+      }
+    } expression T_COLON {
+      if (!parser->forceInlineTernary()) {
+        // get condition for true part of ternary operator and remove it from the stack
+        AstNode* condition = parser->popTernaryCondition();
+        if (condition != nullptr) {
+          // negate the condition and push the negated version onto the stack
+          condition = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, condition);
+          parser->pushTernaryCondition(condition);
+        }
+      }
+    } expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $4, $7);
+      if (!parser->forceInlineTernary()) {
+        // clean up the ternary condition
+        parser->popTernaryCondition();
+      }
     }
-  | expression T_QUESTION T_COLON expression {
-      $$ = parser->ast()->createNodeTernaryOperator($1, $4);
+  | expression T_QUESTION {
+      if (!parser->forceInlineTernary()) {
+        insertTernaryConditionVariable(parser, $1, yylloc);
+      }
+    } T_COLON expression {
+      $$ = parser->ast()->createNodeTernaryOperator($1, $5);
+      if (!parser->forceInlineTernary()) {
+        parser->popTernaryCondition();
+      }
     }
   ;
 
@@ -1811,6 +1873,8 @@ expression_or_query:
   | {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
+
+      addTernaryConditionsIfPresent(parser);
     } query {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2197,6 +2261,8 @@ reference:
   | T_OPEN {
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
+      
+      addTernaryConditionsIfPresent(parser);
     } query T_CLOSE {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
