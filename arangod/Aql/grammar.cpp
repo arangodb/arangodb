@@ -1111,7 +1111,7 @@ static const yytype_int16 yyrline[] =
     2192,  2195,  2201,  2204,  2210,  2242,  2245,  2248,  2252,  2261,
     2261,  2276,  2291,  2304,  2317,  2317,  2355,  2355,  2406,  2409,
     2415,  2419,  2426,  2429,  2432,  2435,  2438,  2444,  2449,  2454,
-    2465,  2473,  2480,  2488,  2495,  2498,  2503
+    2465,  2473,  2480,  2488,  2496,  2499,  2504
 };
 #endif
 
@@ -5724,38 +5724,39 @@ yyreduce:
   case 273: /* bind_parameter_datasource_expected: "bind parameter"  */
 #line 2488 "grammar.y"
                 {
+      // convert normal value bind parameter into datasource bind parameter
       std::string_view name((yyvsp[0].strval).value, (yyvsp[0].strval).length);
       (yyval.node) = parser->ast()->createNodeParameterDatasource(name);
     }
-#line 5730 "grammar.cpp"
+#line 5731 "grammar.cpp"
     break;
 
   case 274: /* object_element_name: "identifier"  */
-#line 2495 "grammar.y"
+#line 2496 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 5738 "grammar.cpp"
+#line 5739 "grammar.cpp"
     break;
 
   case 275: /* object_element_name: "quoted string"  */
-#line 2498 "grammar.y"
+#line 2499 "grammar.y"
                     {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 5746 "grammar.cpp"
+#line 5747 "grammar.cpp"
     break;
 
   case 276: /* variable_name: "identifier"  */
-#line 2503 "grammar.y"
+#line 2504 "grammar.y"
              {
       (yyval.strval) = (yyvsp[0].strval);
     }
-#line 5754 "grammar.cpp"
+#line 5755 "grammar.cpp"
     break;
 
 
-#line 5758 "grammar.cpp"
+#line 5759 "grammar.cpp"
 
       default: break;
     }

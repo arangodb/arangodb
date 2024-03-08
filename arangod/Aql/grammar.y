@@ -2486,6 +2486,7 @@ bind_parameter_datasource_expected:
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }
   | T_PARAMETER {
+      // convert normal value bind parameter into datasource bind parameter
       std::string_view name($1.value, $1.length);
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }

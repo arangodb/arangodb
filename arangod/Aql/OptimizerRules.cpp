@@ -5885,19 +5885,19 @@ struct RemoveRedundantOr {
       if (hasRedundantConditionWalker(rhs) &&
           !hasRedundantConditionWalker(lhs) && lhs->isConstant()) {
         if (!isComparisonSet) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
           isComparisonSet = true;
           return true;
         }
 
-        int lowhigh = isCompatibleBound(Ast::ReverseOperator(type), lhs);
+        int lowhigh = isCompatibleBound(Ast::reverseOperator(type), lhs);
         if (lowhigh == 0) {
           return false;
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
         }
         return true;
@@ -7242,10 +7242,10 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
     AstNode* root = pair.second->nodeForModification();
     auto pre = [&](AstNode const* node) -> bool {
-      return node == root || Ast::IsAndOperatorType(node->type);
+      return node == root || Ast::isAndOperatorType(node->type);
     };
     auto visitor = [&](AstNode* node) -> AstNode* {
-      if (Ast::IsAndOperatorType(node->type)) {
+      if (Ast::isAndOperatorType(node->type)) {
         std::vector<AstNode*> keep;  // always shallow copy node
         for (std::size_t i = 0; i < node->numMembers(); i++) {
           AstNode* child = node->getMemberUnchecked(i);

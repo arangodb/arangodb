@@ -420,7 +420,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   parser.parse();
 
   // put in bind parameters
-  parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+  parser.ast()->injectBindParametersFirstStage(_bindParameters,
+                                               this->resolver());
+  parser.ast()->injectBindParametersSecondStage(_bindParameters);
+  _bindParameters.validateAllUsed();
 
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
@@ -1021,7 +1024,10 @@ QueryResult Query::explain() {
     parser.parse();
 
     // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+    parser.ast()->injectBindParametersFirstStage(_bindParameters,
+                                                 this->resolver());
+    parser.ast()->injectBindParametersSecondStage(_bindParameters);
+    _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);

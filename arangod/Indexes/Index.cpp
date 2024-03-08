@@ -1026,7 +1026,7 @@ AttributeAccessParts::AttributeAccessParts(aql::AstNode const* comparison,
     // got value == a.b  ->  flip the two sides
     attribute = comparison->getMember(1);
     value = comparison->getMember(0);
-    opType = aql::Ast::ReverseOperator(opType);
+    opType = aql::Ast::reverseOperator(opType);
   }
 
   TRI_ASSERT(attribute->type == aql::NODE_TYPE_ATTRIBUTE_ACCESS);

@@ -446,9 +446,15 @@ class Ast {
   /// @brief create an AST n-ary operator
   AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
 
-  /// @brief injects bind parameters into the AST
-  void injectBindParameters(BindParameters& parameters,
-                            CollectionNameResolver const& resolver);
+  /// @brief injects first-stage bind parameter values into the AST
+  /// (i.e. collection bind parameters and bound attribute names,
+  /// e.g. @@foo and `doc.@attr`).
+  void injectBindParametersFirstStage(BindParameters& parameters,
+                                      CollectionNameResolver const& resolver);
+
+  /// @brief injects second-stage bind parameter values into the AST
+  /// (i.e. all value bind parameters)
+  void injectBindParametersSecondStage(BindParameters& parameters);
 
   /// @brief replace variables
   ///        the unlock parameter will unlock the variable node before it
@@ -507,19 +513,24 @@ class Ast {
   AstNode const* deduplicateArray(AstNode const*);
 
   /// @brief check if an operator is reversible
-  static bool IsReversibleOperator(AstNodeType);
+  static bool isReversibleOperator(AstNodeType) noexcept;
 
-  /// @brief get the reversed operator for a comparison operator
-  static AstNodeType ReverseOperator(AstNodeType);
+  /// @brief get the reversed operator for a comparison operator.
+  /// throws when called for an operator that is not reversible.
+  static AstNodeType reverseOperator(AstNodeType type);
 
-  /// @brief get the n-ary operator type equivalent for a binary operator type
-  static AstNodeType NaryOperatorType(AstNodeType);
+  /// throws when called for an operator that is not negatable.
+  static AstNodeType negateOperator(AstNodeType type);
+
+  /// @brief get the n-ary operator type equivalent for a binary operator type.
+  /// throws when called for an invalid operator type.
+  static AstNodeType naryOperatorType(AstNodeType);
 
   /// @brief return whether this is an `AND` operator
-  static bool IsAndOperatorType(AstNodeType);
+  static bool isAndOperatorType(AstNodeType type) noexcept;
 
   /// @brief return whether this is an `OR` operator
-  static bool IsOrOperatorType(AstNodeType);
+  static bool isOrOperatorType(AstNodeType type) noexcept;
 
   /// @brief create an AST node from vpack
   AstNode* nodeFromVPack(velocypack::Slice, bool copyStringValues);
@@ -541,7 +552,37 @@ class Ast {
 
   AstNode const* getSubqueryForVariable(Variable const* variable) const;
 
+  /** Make sure to replace the AstNode* you pass into TraverseAndModify
+   *  if it was changed. This is necessary because the function itself
+   *  has only access to the node but not its parent / owner.
+   */
+  /// @brief traverse the AST, using pre- and post-order visitors
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<bool(AstNode const*)> const&,
+                                    std::function<AstNode*(AstNode*)> const&,
+                                    std::function<void(AstNode const*)> const&);
+
+  /// @brief traverse the AST using a depth-first visitor
+  static AstNode* traverseAndModify(AstNode*,
+                                    std::function<AstNode*(AstNode*)> const&);
+
+  /// @brief traverse the AST, using pre- and post-order visitors
+  static void traverseReadOnly(AstNode const*,
+                               std::function<bool(AstNode const*)> const&,
+                               std::function<void(AstNode const*)> const&);
+
+  /// @brief traverse the AST using a depth-first visitor, with const nodes
+  static void traverseReadOnly(AstNode const*,
+                               std::function<void(AstNode const*)> const&);
+
+  /// @brief normalize a function name
+  static std::pair<std::string, bool> normalizeFunctionName(
+      std::string_view name);
+
  private:
+  /// @brief replace a bind parameter with its value equivalent.
+  AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);
+
   /// @brief make condition from example
   AstNode* makeConditionFromExample(AstNode const*);
 
@@ -597,35 +638,6 @@ class Ast {
   /// @brief optimizes an object literal or an object expression
   AstNode* optimizeObject(AstNode*);
 
- public:
-  /** Make sure to replace the AstNode* you pass into TraverseAndModify
-   *  if it was changed. This is necessary because the function itself
-   *  has only access to the node but not its parent / owner.
-   */
-  /// @brief traverse the AST, using pre- and post-order visitors
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<bool(AstNode const*)> const&,
-                                    std::function<AstNode*(AstNode*)> const&,
-                                    std::function<void(AstNode const*)> const&);
-
-  /// @brief traverse the AST using a depth-first visitor
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*)> const&);
-
-  /// @brief traverse the AST, using pre- and post-order visitors
-  static void traverseReadOnly(AstNode const*,
-                               std::function<bool(AstNode const*)> const&,
-                               std::function<void(AstNode const*)> const&);
-
-  /// @brief traverse the AST using a depth-first visitor, with const nodes
-  static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*)> const&);
-
-  /// @brief normalize a function name
-  static std::pair<std::string, bool> normalizeFunctionName(
-      std::string_view name);
-
- private:
   /// @brief create a node of the specified type
   AstNode* createNode(AstNodeType);
 
@@ -638,7 +650,8 @@ class Ast {
   AstNode* createNodeCollectionNoValidation(std::string_view name,
                                             AccessMode::Type accessType);
 
-  void extractCollectionsFromGraph(AstNode const* graphNode);
+  void extractCollectionsFromGraph(BindParameters& parameter,
+                                   AstNode* graphNode);
 
   /// @brief copies node payload from node into copy. this is *not* copying
   /// the subnodes
@@ -647,13 +660,6 @@ class Ast {
   bool hasFlag(AstPropertyFlag flag) const noexcept {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
-
- public:
-  /// @brief negated comparison operators
-  static std::unordered_map<int, AstNodeType> const NegatedOperators;
-
-  /// @brief reverse comparison operators
-  static std::unordered_map<int, AstNodeType> const ReversedOperators;
 
  private:
   /// @brief the query
