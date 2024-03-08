@@ -32,7 +32,7 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Executor/ConstrainedSortExecutor.h"
 #include "Aql/Executor/SortExecutor.h"
 #include "Aql/Executor/SubqueryStartExecutor.h"

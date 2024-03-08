@@ -25,8 +25,8 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
 #include "Aql/Query.h"
-#include "Aql/ShortestPathNode.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/ShortestPathOptions.h"
 #include "Mocks/Servers.h"

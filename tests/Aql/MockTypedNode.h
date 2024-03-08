@@ -23,7 +23,7 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 
 namespace arangodb::tests::aql {

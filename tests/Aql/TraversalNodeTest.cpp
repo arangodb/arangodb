@@ -25,9 +25,9 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Query.h"
-#include "Aql/TraversalNode.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Mocks/Servers.h"

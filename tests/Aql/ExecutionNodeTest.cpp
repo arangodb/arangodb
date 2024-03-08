@@ -26,12 +26,12 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Query.h"
-#include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SubqueryEndExecutionNode.h"
+#include "Aql/ExecutionNode/SubqueryStartExecutionNode.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
-
-#include "Logger/LogMacros.h"
 
 #include "velocypack/Builder.h"
 

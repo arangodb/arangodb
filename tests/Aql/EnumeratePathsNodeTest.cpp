@@ -25,7 +25,7 @@
 #include "gtest/gtest.h"
 
 #include "Aql/Ast.h"
-#include "Aql/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/Query.h"
 #include "Graph/BaseOptions.h"
 #include "Graph/ShortestPathOptions.h"

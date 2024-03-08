@@ -25,7 +25,7 @@
 #include "Aql/Ast.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionBlock.h"
-#include "Aql/IndexNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
 #include "Aql/Query.h"
 #include "Aql/SharedQueryState.h"
 #include "Basics/GlobalResourceMonitor.h"
