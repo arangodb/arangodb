@@ -127,7 +127,7 @@ void assertMinHashMatchThrow(char const* args) {
 }  // namespace
 
 #if USE_ENTERPRISE
-#include "tests/Aql/MinHashFunctionsTestEE.hpp"
+#include "tests/Aql/MinHashFunctionsTestEE.h"
 #else
 TEST(MinHashErrorFunctionTest, test) { assertMinHashErrorThrow("[ 400 ]"); }
 TEST(MinHashCountFunctionTest, test) { assertMinHashCountThrow("[ 0.5 ]"); }

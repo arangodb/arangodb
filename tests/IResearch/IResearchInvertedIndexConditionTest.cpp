@@ -1038,5 +1038,5 @@ TEST_F(IResearchInvertedIndexConditionTest,
 }
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.hpp"
+#include "tests/IResearch/IResearchInvertedIndexConditionTestEE.h"
 #endif
