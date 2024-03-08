@@ -83,7 +83,8 @@ class FollowerInfo {
   std::string _theLeader;
   bool _theLeaderTouched;
   // flag if we have enough insnc followers and can pass through writes
-  metrics::InstrumentedBool _canWrite;
+  bool _canWrite;
+  metrics::InstrumentedBool _writeConcernReached;
 
  public:
   explicit FollowerInfo(arangodb::LogicalCollection* d);

@@ -123,7 +123,8 @@ FollowerInfo::FollowerInfo(arangodb::LogicalCollection* d)
       _failoverCandidates(std::make_shared<std::vector<ServerID>>()),
       _docColl(d),
       _theLeaderTouched(false),
-      _canWrite(
+      _canWrite(_docColl->replicationFactor() <= 1),
+      _writeConcernReached(
           metrics::InstrumentedBool::Metrics{
               .false_counter =
                   d->vocbase().metrics().shards_read_only_by_write_concern},
@@ -149,7 +150,6 @@ Result FollowerInfo::add(ServerID const& sid) {
   std::shared_ptr<std::vector<ServerID>> v;
 
   {
-    WRITE_LOCKER(canWriteLocker, _canWriteLock);
     WRITE_LOCKER(writeLocker, _dataLock);
     // First check if there is anything to do:
     for (auto const& s : *_followers) {
@@ -161,7 +161,7 @@ Result FollowerInfo::add(ServerID const& sid) {
     v = std::make_shared<std::vector<ServerID>>(*_followers);
     v->push_back(sid);  // add a single entry
     _followers = v;     // will cast to std::vector<ServerID> const
-    _canWrite = _followers->size() + 1 >= _docColl->writeConcern();
+    _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
     {
       // insertIntoCandidates
       if (std::find(_failoverCandidates->begin(), _failoverCandidates->end(),
@@ -218,6 +218,7 @@ FollowerInfo::WriteState FollowerInfo::allowedToWrite() {
       TRI_ASSERT(_followers->size() + 1 >= _docColl->writeConcern())
           << "followers.size() = " << _followers->size()
           << " write-concern = " << _docColl->writeConcern();
+      TRI_ASSERT(_writeConcernReached);
 #endif
       return WriteState::ALLOWED;
     }
@@ -328,6 +329,7 @@ Result FollowerInfo::remove(ServerID const& sid) {
 
   Result agencyRes = persistInAgency(true);
   if (agencyRes.ok()) {
+    _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
     // +1 for the leader (me)
     if (_followers->size() + 1 < _docColl->writeConcern()) {
       _canWrite = false;
@@ -369,6 +371,7 @@ void FollowerInfo::clear() {
   _followers = std::make_shared<std::vector<ServerID>>();
   _failoverCandidates = std::make_shared<std::vector<ServerID>>();
   _canWrite = false;
+  _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
 }
 
 //////////////////////////////////////////////////////////////////////////////
@@ -457,7 +460,8 @@ void FollowerInfo::takeOverLeadership(
     _followers = std::move(emptyFollowers);
   }
 
-  _canWrite = _followers->size() + 1 >= _docColl->writeConcern();
+  _canWrite = false;
+  _writeConcernReached = _followers->size() + 1 >= _docColl->writeConcern();
   // Take over leadership
   _theLeader.clear();
   _theLeaderTouched = true;
@@ -701,5 +705,4 @@ void FollowerInfo::setTheLeader(const std::string& who) {
   WRITE_LOCKER(writeLocker, _dataLock);
   _theLeader = who;
   _theLeaderTouched = true;
-  _canWrite = true;
 }
