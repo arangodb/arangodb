@@ -75,16 +75,7 @@ class ModificationNode : public ExecutionNode, public CollectionAccessingNode {
   ModificationOptions& getOptions() { return _options; }
 
   /// @brief getVariablesSetHere
-  std::vector<Variable const*> getVariablesSetHere() const override final {
-    std::vector<Variable const*> v;
-    if (_outVariableOld != nullptr) {
-      v.emplace_back(_outVariableOld);
-    }
-    if (_outVariableNew != nullptr) {
-      v.emplace_back(_outVariableNew);
-    }
-    return v;
-  }
+  std::vector<Variable const*> getVariablesSetHere() const override final;
 
   /// @brief return the "$OLD" out variable
   Variable const* getOutVariableOld() const { return _outVariableOld; }

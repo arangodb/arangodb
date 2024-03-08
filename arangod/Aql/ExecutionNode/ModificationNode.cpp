@@ -85,6 +85,17 @@ CostEstimate ModificationNode::estimateCost() const {
   return estimate;
 }
 
+std::vector<Variable const*> ModificationNode::getVariablesSetHere() const {
+  std::vector<Variable const*> v;
+  if (_outVariableOld != nullptr) {
+    v.emplace_back(_outVariableOld);
+  }
+  if (_outVariableNew != nullptr) {
+    v.emplace_back(_outVariableNew);
+  }
+  return v;
+}
+
 AsyncPrefetchEligibility ModificationNode::canUseAsyncPrefetching()
     const noexcept {
   return AsyncPrefetchEligibility::kDisableGlobally;

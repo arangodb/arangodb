@@ -24,43 +24,17 @@
 
 #pragma once
 
-#include "Aql/Collection.h"
+#include "Aql/ModificationExecutorFlags.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/RegisterPlan.h"
 #include "Utils/OperationOptions.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <velocypack/Slice.h>
 
 namespace arangodb::aql {
-
+struct Collection;
 class ExecutionEngine;
 class QueryContext;
-
-struct BoolWrapper {
-  explicit BoolWrapper(bool b) { _value = b; }
-  operator bool() const noexcept { return _value; }
-  bool _value;
-};
-
-struct ProducesResults : BoolWrapper {
-  explicit ProducesResults(bool b) : BoolWrapper(b) {}
-};
-struct ConsultAqlWriteFilter : BoolWrapper {
-  explicit ConsultAqlWriteFilter(bool b) : BoolWrapper(b) {}
-};
-struct IgnoreErrors : BoolWrapper {
-  explicit IgnoreErrors(bool b) : BoolWrapper(b) {}
-};
-struct DoCount : BoolWrapper {
-  explicit DoCount(bool b) : BoolWrapper(b) {}
-};
-struct IsReplace : BoolWrapper {
-  explicit IsReplace(bool b) : BoolWrapper(b) {}
-};
-struct IgnoreDocumentNotFound : BoolWrapper {
-  explicit IgnoreDocumentNotFound(bool b) : BoolWrapper(b) {}
-};
 
 struct ModificationExecutorInfos {
   ModificationExecutorInfos(

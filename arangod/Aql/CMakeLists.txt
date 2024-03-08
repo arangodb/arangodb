@@ -65,6 +65,7 @@ add_library(arango_aql STATIC
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
   LimitStats.cpp
+  ModificationExecutorFlags.h
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp

@@ -24,6 +24,7 @@
 #include "ModificationExecutorHelpers.h"
 
 #include "Aql/AqlValue.h"
+#include "Aql/Collection.h"
 #include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Basics/Result.h"
 #include "Basics/StaticStrings.h"

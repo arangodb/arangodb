@@ -44,25 +44,12 @@ class UpdateReplaceNode : public ModificationNode {
                     Variable const* inDocVariable,
                     Variable const* inKeyVariable,
                     Variable const* outVariableOld,
-                    Variable const* outVariableNew)
-      : ModificationNode(plan, id, collection, options, outVariableOld,
-                         outVariableNew),
-        _inDocVariable(inDocVariable),
-        _inKeyVariable(inKeyVariable) {
-    TRI_ASSERT(_inDocVariable != nullptr);
-    // _inKeyVariable might be a nullptr
-  }
+                    Variable const* outVariableNew);
 
   UpdateReplaceNode(ExecutionPlan*, arangodb::velocypack::Slice const&);
 
   /// @brief getVariablesUsedHere, modifying the set in-place
-  void getVariablesUsedHere(VarSet& vars) const override final {
-    vars.emplace(_inDocVariable);
-
-    if (_inKeyVariable != nullptr) {
-      vars.emplace(_inKeyVariable);
-    }
-  }
+  void getVariablesUsedHere(VarSet& vars) const override final;
 
   void replaceVariables(std::unordered_map<VariableId, Variable const*> const&
                             replacements) override;

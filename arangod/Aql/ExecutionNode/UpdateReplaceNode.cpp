@@ -28,10 +28,26 @@
 #include "Aql/Executor/ModificationExecutor.h"
 #include "Aql/Variable.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 
 namespace arangodb::aql {
+
+UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan, ExecutionNodeId id,
+                                     Collection const* collection,
+                                     ModificationOptions const& options,
+                                     Variable const* inDocVariable,
+                                     Variable const* inKeyVariable,
+                                     Variable const* outVariableOld,
+                                     Variable const* outVariableNew)
+    : ModificationNode(plan, id, collection, options, outVariableOld,
+                       outVariableNew),
+      _inDocVariable(inDocVariable),
+      _inKeyVariable(inKeyVariable) {
+  TRI_ASSERT(_inDocVariable != nullptr);
+  // _inKeyVariable might be a nullptr
+}
 
 UpdateReplaceNode::UpdateReplaceNode(ExecutionPlan* plan,
                                      arangodb::velocypack::Slice const& base)
@@ -51,6 +67,15 @@ void UpdateReplaceNode::doToVelocyPack(VPackBuilder& nodes,
   if (_inKeyVariable != nullptr) {
     nodes.add(VPackValue("inKeyVariable"));
     _inKeyVariable->toVelocyPack(nodes);
+  }
+}
+
+/// @brief getVariablesUsedHere, modifying the set in-place
+void UpdateReplaceNode::getVariablesUsedHere(VarSet& vars) const {
+  vars.emplace(_inDocVariable);
+
+  if (_inKeyVariable != nullptr) {
+    vars.emplace(_inKeyVariable);
   }
 }
 

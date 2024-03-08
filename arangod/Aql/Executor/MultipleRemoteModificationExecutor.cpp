@@ -26,6 +26,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
 #include "Basics/Exceptions.h"
@@ -35,6 +36,24 @@
 #include "VocBase/LogicalCollection.h"
 
 namespace arangodb::aql {
+
+MultipleRemoteModificationInfos::MultipleRemoteModificationInfos(
+    ExecutionEngine* engine, RegisterId inputRegister,
+    RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+    RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+    OperationOptions options, aql::Collection const* aqlCollection,
+    ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+    IgnoreDocumentNotFound ignoreDocumentNotFound, bool hasParent,
+    bool isExclusive)
+    : ModificationExecutorInfos(
+          engine, inputRegister, RegisterPlan::MaxRegisterId,
+          RegisterPlan::MaxRegisterId, outputNewRegisterId, outputOldRegisterId,
+          outputRegisterId, query, std::move(options), aqlCollection,
+          ExecutionBlock::DefaultBatchSize, ProducesResults(false),
+          consultAqlWriteFilter, ignoreErrors, DoCount(true), IsReplace(false),
+          ignoreDocumentNotFound),
+      _hasParent(hasParent),
+      _isExclusive(isExclusive) {}
 
 MultipleRemoteModificationExecutor::MultipleRemoteModificationExecutor(
     Fetcher& fetcher, Infos& info)

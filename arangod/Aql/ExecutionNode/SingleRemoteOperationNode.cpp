@@ -29,6 +29,7 @@
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ExecutionPlan.h"
+#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/Executor/SingleRemoteModificationExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"

@@ -30,6 +30,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/Executor/ModificationExecutorInfos.h"
+#include "Aql/ModificationExecutorFlags.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Variable.h"
 
