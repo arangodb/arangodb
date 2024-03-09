@@ -419,11 +419,14 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
-  // put in bind parameters
-  parser.ast()->injectBindParametersFirstStage(_bindParameters,
-                                               this->resolver());
-  parser.ast()->injectBindParametersSecondStage(_bindParameters);
-  _bindParameters.validateAllUsed();
+  // put in collection and attribute name bind parameters (e.g. @@collection or
+  // doc.@attr).
+  _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
+
+  // put in value bind parameters. TODO: move this further down in the process,
+  // so that the optimizer can run with value bind parameters still unreplaced
+  // in the AST.
+  _ast->injectBindParametersSecondStage(_bindParameters);
 
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
@@ -492,6 +495,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 executor if we are in one
   exitV8Executor();
+
+  // validate that all bind parameters are in use
+  _bindParameters.validateAllUsed();
 
   return plan;
 }
