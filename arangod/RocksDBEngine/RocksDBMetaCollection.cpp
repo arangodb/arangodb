@@ -211,7 +211,7 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
     auto [lockGuard, res] =
-        co_await lockWrite(transaction::Options::defaultLockTimeout);
+        co_await lockExclusive(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
@@ -918,7 +918,7 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
   auto const lambda = [this]() -> futures::Future<Result> {
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto [lockGuard, res] = co_await lockWrite(/*timeout*/ 180.0);
+    auto [lockGuard, res] = co_await lockExclusive(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
       TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
@@ -1702,7 +1702,7 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 }
 
 /// @brief write locks a collection, with a timeout
-auto RocksDBMetaCollection::lockWrite(double timeout)
+auto RocksDBMetaCollection::lockExclusive(double timeout)
     -> futures::Future<std::pair<ExclusiveLock, ErrorCode>> {
   return this->doLock<AccessMode::Type::WRITE>(timeout);
 }
@@ -1713,7 +1713,7 @@ void RocksDBMetaCollection::unlockExclusive(ExclusiveLock guard) noexcept {
 }
 
 /// @brief read locks a collection, with a timeout
-auto RocksDBMetaCollection::lockRead(double timeout)
+auto RocksDBMetaCollection::lockShared(double timeout)
     -> futures::Future<std::pair<SharedLock, ErrorCode>> {
   TRI_IF_FAILURE("assertLockTimeoutLow") {
     if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {

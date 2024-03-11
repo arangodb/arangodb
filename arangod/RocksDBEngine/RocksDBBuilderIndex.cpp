@@ -764,7 +764,7 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 
 futures::Future<bool> RocksDBBuilderIndex::Locker::lock() {
   if (!_lock.owns_lock()) {
-    auto [guard, res] = co_await _collection->lockWrite();
+    auto [guard, res] = co_await _collection->lockExclusive();
     if (res != TRI_ERROR_NO_ERROR) {
       co_return false;
     }

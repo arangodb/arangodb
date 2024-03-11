@@ -358,13 +358,13 @@ futures::Future<Result> RocksDBTransactionCollection::doLock(
   if (AccessMode::isExclusive(type)) {
     // exclusive locking means we'll be acquiring the collection's RW lock in
     // write mode
-    auto [guard, error] = co_await physical->lockWrite(timeout);
+    auto [guard, error] = co_await physical->lockExclusive(timeout);
     _writeLockGuard = std::move(guard);
     res = error;
   } else {
     // write locking means we'll be acquiring the collection's RW lock in read
     // mode
-    auto [guard, error] = co_await physical->lockRead(timeout);
+    auto [guard, error] = co_await physical->lockShared(timeout);
     _writeLockGuard = std::move(guard);
     res = error;
   }

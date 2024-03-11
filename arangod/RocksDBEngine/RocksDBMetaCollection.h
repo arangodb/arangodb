@@ -149,10 +149,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
       decltype(std::declval<FutureLock>().lock_exclusive().get());
   using SharedLock = decltype(std::declval<FutureLock>().lock_shared().get());
 
-  futures::Future<std::pair<ExclusiveLock, ErrorCode>> lockWrite(
+  futures::Future<std::pair<ExclusiveLock, ErrorCode>> lockExclusive(
       double timeout = 0.0);
   void unlockExclusive(ExclusiveLock) noexcept;
-  futures::Future<std::pair<SharedLock, ErrorCode>> lockRead(
+  futures::Future<std::pair<SharedLock, ErrorCode>> lockShared(
       double timeout = 0.0);
   void unlockShared(SharedLock) noexcept;
 
