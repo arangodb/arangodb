@@ -24,12 +24,10 @@
 #pragma once
 
 #include "Aql/AqlCallSet.h"
-#include "Aql/ClusterNodes.h"
-#include "Aql/Executor/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Executor/EmptyExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Containers/SmallVector.h"
 
 namespace arangodb {
 

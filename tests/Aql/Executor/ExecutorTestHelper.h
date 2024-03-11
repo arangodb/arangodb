@@ -27,7 +27,7 @@
 
 #include "Aql/AqlItemBlockHelper.h"
 #include "Aql/ExecutionBlockPipeline.h"
-#include "Aql/MockTypedNode.h"
+#include "Aql/ExecutionNode/MockTypedNode.h"
 #include "Aql/WaitingExecutionBlockMock.h"
 #include "Mocks/Servers.h"
 
@@ -37,7 +37,8 @@
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/ExecutionStats.h"
 #include "Aql/OutputAqlItemRow.h"

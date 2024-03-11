@@ -32,13 +32,12 @@
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/types.h"
 
-#include <iosfwd>
 #include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class InputAqlItemRow;
 class RegisterInfos;
@@ -148,5 +147,4 @@ class LimitExecutor {
   bool _didProduceRows = false;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"

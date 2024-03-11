@@ -24,17 +24,15 @@
 #include "AsyncExecutor.h"
 
 #include "Aql/AqlValue.h"
-#include "Aql/Query.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/Query.h"
 #include "Aql/QueryOptions.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Basics/ScopeGuard.h"
-
-#include "Logger/LogMacros.h"
 
 #include <algorithm>
 #include <utility>

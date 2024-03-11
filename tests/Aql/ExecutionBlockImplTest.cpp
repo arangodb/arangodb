@@ -37,6 +37,7 @@
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/Query.h"

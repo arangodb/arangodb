@@ -24,6 +24,7 @@
 
 #include "ModificationExecutorInfos.h"
 
+#include "Aql/Collection.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/QueryContext.h"
 #include "Cluster/ServerState.h"

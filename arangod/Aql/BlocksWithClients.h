@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlock.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
