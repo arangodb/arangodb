@@ -91,15 +91,12 @@ bool resolveRequestContext(ArangodServer& server, GeneralRequest& req) {
   TRI_ASSERT(!vocbase->isDangling());
 
   // FIXME(gnusi): modify VocbaseContext to accept VocbasePtr
-  std::unique_ptr<VocbaseContext> guard(
-      VocbaseContext::create(req, *vocbase.release()));
-  if (!guard) {
+  auto context = VocbaseContext::create(req, *vocbase.release());
+  if (!context) {
     return false;
   }
-
-  // the vocbase context is now responsible for releasing the vocbase
-  req.setRequestContext(guard.get(), true);
-  guard.release();
+  // the VocbaseContext is now responsible for releasing the vocbase
+  req.setRequestContext(std::move(context));
 
   // the "true" means the request is the owner of the context
   return true;
@@ -779,7 +776,7 @@ CommTask::Flow CommTask::canAccessPath(auth::TokenCache::Entry const& token,
   bool userAuthenticated = req.authenticated();
   Flow result = userAuthenticated ? Flow::Continue : Flow::Abort;
 
-  VocbaseContext* vc = static_cast<VocbaseContext*>(req.requestContext());
+  auto vc = basics::downCast<VocbaseContext>(req.requestContext());
   TRI_ASSERT(vc != nullptr);
   // deny access to database with NONE
   if (result == Flow::Continue &&

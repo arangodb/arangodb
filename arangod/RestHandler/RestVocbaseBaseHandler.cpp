@@ -213,7 +213,7 @@ RestVocbaseBaseHandler::RestVocbaseBaseHandler(ArangodServer& server,
                                                GeneralRequest* request,
                                                GeneralResponse* response)
     : RestBaseHandler(server, request, response),
-      _context(*static_cast<VocbaseContext*>(request->requestContext())),
+      _context(static_cast<VocbaseContext&>(*request->requestContext())),
       _vocbase(_context.vocbase()),
       _scopeVocbaseValues(
           LogContext::makeValue()
