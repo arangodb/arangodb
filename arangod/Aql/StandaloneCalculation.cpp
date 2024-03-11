@@ -276,7 +276,7 @@ Result StandaloneCalculation::validateQuery(
       // node. if we don't set this boolean flag here, then a ternary operator
       // could create additional LET nodes, which is not supported inside
       // computed values.
-      parser.setForceInlineTernary();
+      parser.pushForceInlineConditionals();
     }
     parser.parse();
     ast->validateAndOptimize(

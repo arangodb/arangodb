@@ -48,7 +48,7 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _forceInlineTernary(false) {
+      _forceInlineConditionalsRequests(0) {
   _stack.reserve(4);
 
   _queryStringStart = _queryString.data();
@@ -239,24 +239,29 @@ void* Parser::peekStack() {
   return _stack.back();
 }
 
-void Parser::pushTernaryCondition(AstNode* node) {
-  _ternaryConditions.push_back(node);
-}
+void Parser::pushConditional(AstNode* node) { _conditionals.push_back(node); }
 
-AstNode* Parser::popTernaryCondition() {
-  TRI_ASSERT(!_ternaryConditions.empty());
+AstNode* Parser::popConditional() {
+  TRI_ASSERT(!_conditionals.empty());
 
-  AstNode* result = _ternaryConditions.back();
-  _ternaryConditions.pop_back();
+  AstNode* result = _conditionals.back();
+  _conditionals.pop_back();
   return result;
 }
 
-std::vector<AstNode*> const& Parser::peekTernaryConditions() {
-  return _ternaryConditions;
+std::vector<AstNode*> const& Parser::peekConditionals() {
+  return _conditionals;
 }
 
-void Parser::setForceInlineTernary() noexcept { _forceInlineTernary = true; }
+void Parser::pushForceInlineConditionals() noexcept {
+  ++_forceInlineConditionalsRequests;
+}
 
-/// @brief whether or not the ternary operator's condition must
-/// always be inlined.
-bool Parser::forceInlineTernary() const noexcept { return _forceInlineTernary; }
+void Parser::popForceInlineConditionals() noexcept {
+  TRI_ASSERT(_forceInlineConditionalsRequests > 0);
+  --_forceInlineConditionalsRequests;
+}
+
+bool Parser::forceInlineConditionals() const noexcept {
+  return _forceInlineConditionalsRequests > 0;
+}

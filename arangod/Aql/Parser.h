@@ -26,8 +26,7 @@
 #include "Aql/Ast.h"
 #include "Basics/Common.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 struct AstNode;
 class QueryContext;
 struct QueryResult;
@@ -43,10 +42,6 @@ class Parser {
 
   /// @brief destroy the parser
   ~Parser();
-
-  /// @brief force ternary operator conditions to be always
-  /// inlined.
-  void setForceInlineTernary() noexcept;
 
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
@@ -139,18 +134,23 @@ class Parser {
   /// @brief peek at a temporary value from the parser's stack
   void* peekStack();
 
-  /// @brief push a ternary condition onto the stack
-  void pushTernaryCondition(AstNode* node);
+  /// @brief push a condition onto the stack
+  void pushConditional(AstNode* node);
 
-  /// @brief pop a ternary condition from the stack
-  AstNode* popTernaryCondition();
+  /// @brief pop a condition from the stack
+  AstNode* popConditional();
 
-  /// @brief return a view of the current ternary conditions
-  std::vector<AstNode*> const& peekTernaryConditions();
+  /// @brief return a view of the current conditions
+  std::vector<AstNode*> const& peekConditionals();
 
-  /// @brief whether or not the ternary operator's condition must
-  /// always be inlined.
-  bool forceInlineTernary() const noexcept;
+  /// @brief force conditional operator expression to be always inlined
+  void pushForceInlineConditionals() noexcept;
+
+  /// @brief unforce conditional operator expression to be always inlined
+  void popForceInlineConditionals() noexcept;
+
+  /// @brief whether or not conditional operators must always be inlined
+  bool forceInlineConditionals() const noexcept;
 
  private:
   /// @brief a pointer to the start of the query string
@@ -185,15 +185,13 @@ class Parser {
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
 
-  /// @brief stack of the ternary operator conditions currently active
-  std::vector<AstNode*> _ternaryConditions;
+  /// @brief stack of the conditionals currently active
+  std::vector<AstNode*> _conditionals;
 
-  /// @brief whether or not the ternary operator's condition must
-  /// always be inlined.
-  bool _forceInlineTernary;
+  /// @brief whether or not conditional operators must  be inlined (value > 0).
+  size_t _forceInlineConditionalsRequests;
 };
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql
 
 /// @brief forward for the parse function provided by the parser (.y)
 int Aqlparse(arangodb::aql::Parser*);
