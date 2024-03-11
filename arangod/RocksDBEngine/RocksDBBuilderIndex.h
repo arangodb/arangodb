@@ -148,15 +148,15 @@ class RocksDBBuilderIndex final : public RocksDBIndex {
       std::shared_ptr<std::function<arangodb::Result(double)>> = nullptr);
 
   struct Locker {
-    explicit Locker(RocksDBCollection* c) : _collection(c), _locked(false) {}
-    ~Locker() { unlock(); }
+    explicit Locker(RocksDBCollection* c) : _collection(c) {}
+    ~Locker() { _lock.unlock(); }
     futures::Future<bool> lock();
     void unlock();
-    bool isLocked() const { return _locked; }
+    bool isLocked() const { return _lock.owns_lock(); }
 
    private:
     RocksDBCollection* const _collection;
-    bool _locked;
+    RocksDBMetaCollection::ExclusiveLock _lock;
   };
 
   /// @brief fill the index, assume already locked exclusively

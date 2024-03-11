@@ -63,11 +63,6 @@ class RocksDBMetaCollection : public PhysicalCollection {
   RevisionId revision(arangodb::transaction::Methods* trx) const override final;
   uint64_t numberDocuments(transaction::Methods* trx) const override final;
 
-  futures::Future<ErrorCode> lockWrite(double timeout = 0.0);
-  void unlockWrite() noexcept;
-  futures::Future<ErrorCode> lockRead(double timeout = 0.0);
-  void unlockRead();
-
   void freeMemory() noexcept override;
 
   /// recalculate counts for collection in case of failure, blocks other writes
@@ -140,6 +135,26 @@ class RocksDBMetaCollection : public PhysicalCollection {
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
+  struct SchedulerWrapper {
+    using WorkHandle = Scheduler::WorkHandle;
+    template<typename F>
+    void queue(F&&);
+    template<typename F>
+    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
+  };
+
+  using FutureLock =
+      InstrumentedMutex<arangodb::futures::FutureSharedLock<SchedulerWrapper>>;
+  using ExclusiveLock =
+      decltype(std::declval<FutureLock>().lock_exclusive().get());
+  using SharedLock = decltype(std::declval<FutureLock>().lock_shared().get());
+
+  futures::Future<std::pair<ExclusiveLock, ErrorCode>> lockWrite(
+      double timeout = 0.0);
+  void unlockExclusive(ExclusiveLock) noexcept;
+  futures::Future<std::pair<SharedLock, ErrorCode>> lockRead(
+      double timeout = 0.0);
+  void unlockShared(SharedLock) noexcept;
 
  private:
   bool needToPersistRevisionTree(
@@ -158,8 +173,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
   Result applyUpdatesForTransaction(containers::RevisionTree& tree,
                                     rocksdb::SequenceNumber commitSeq,
                                     std::unique_lock<std::mutex>& lock) const;
-
-  futures::Future<ErrorCode> doLock(double timeout, AccessMode::Type mode);
+  template<AccessMode::Type Access,
+           typename R = std::conditional_t<Access == AccessMode::Type::WRITE,
+                                           ExclusiveLock, SharedLock>>
+  futures::Future<std::pair<R, ErrorCode>> doLock(double timeout);
   bool haveBufferedOperations(std::unique_lock<std::mutex> const& lock) const;
   std::unique_ptr<containers::RevisionTree> allocateEmptyRevisionTree(
       std::size_t depth) const;
@@ -194,24 +211,10 @@ class RocksDBMetaCollection : public PhysicalCollection {
 
  protected:
   RocksDBMetadata _meta;  /// collection metadata
+
   /// @brief collection lock used for write access
-
-  struct SchedulerWrapper {
-    using WorkHandle = Scheduler::WorkHandle;
-    template<typename F>
-    void queue(F&&);
-    template<typename F>
-    WorkHandle queueDelayed(F&&, std::chrono::milliseconds);
-  };
-
   SchedulerWrapper _schedulerWrapper;
-  using FutureLock =
-      InstrumentedMutex<arangodb::futures::FutureSharedLock<SchedulerWrapper>>;
   mutable FutureLock _exclusiveLock;
-  using ExclusiveLock =
-      decltype(std::declval<FutureLock>().lock_exclusive().get());
-  using SharedLock = decltype(std::declval<FutureLock>().lock_shared().get());
-  std::variant<std::monostate, ExclusiveLock, SharedLock> _exclusiveLockGuard;
 
   /// @brief collection lock used for recalculation count values
   mutable std::mutex _recalculationLock;

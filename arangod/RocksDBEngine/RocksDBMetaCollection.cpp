@@ -194,10 +194,10 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
-    auto res = co_await lockWrite(transaction::Options::defaultLockTimeout);
+    auto [lockGuard, res] =
+        co_await lockWrite(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
+      TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -900,12 +900,11 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
   }
 
   auto const lambda = [this]() -> futures::Future<Result> {
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = co_await lockWrite(/*timeout*/ 180.0);
+    auto [lockGuard, res] = co_await lockWrite(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
+      TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -971,7 +970,7 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
     }
 
     // unlock the collection again
-    lockGuard.fire();
+    lockGuard.unlock();
 
     TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
       std::this_thread::sleep_for(
@@ -1687,17 +1686,19 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 }
 
 /// @brief write locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
+auto RocksDBMetaCollection::lockWrite(double timeout)
+    -> futures::Future<std::pair<ExclusiveLock, ErrorCode>> {
+  return this->doLock<AccessMode::Type::WRITE>(timeout);
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept {
-  _exclusiveLockGuard.emplace<std::monostate>();
+void RocksDBMetaCollection::unlockExclusive(ExclusiveLock guard) noexcept {
+  guard.unlock();
 }
 
 /// @brief read locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+auto RocksDBMetaCollection::lockRead(double timeout)
+    -> futures::Future<std::pair<SharedLock, ErrorCode>> {
   TRI_IF_FAILURE("assertLockTimeoutLow") {
     if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
       // In the test we expect that fast path locking is done with 2s timeout.
@@ -1711,17 +1712,18 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
       TRI_ASSERT(timeout > 10);
     }
   }
-  return doLock(timeout, AccessMode::Type::READ);
+  return doLock<AccessMode::Type::READ>(timeout);
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() {
-  _exclusiveLockGuard.emplace<std::monostate>();
+void RocksDBMetaCollection::unlockShared(SharedLock guard) noexcept {
+  guard.unlock();
 }
 
 /// @brief lock a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
-    double timeout, AccessMode::Type mode) {
+template<AccessMode::Type mode, typename R>
+futures::Future<std::pair<R, ErrorCode>> RocksDBMetaCollection::doLock(
+    double timeout) {
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
@@ -1733,30 +1735,16 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
   auto timeout_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::duration<double>(timeout));
 
-  bool gotLock = false;
-  if (mode == AccessMode::Type::WRITE) {
-    auto result =
-        co_await asTry(_exclusiveLock.try_lock_exclusive_for(timeout_ms));
-    gotLock = result.hasValue();
-    if (gotLock) {
-      TRI_ASSERT(std::holds_alternative<std::monostate>(_exclusiveLockGuard))
-          << "guard should be empty but it isn't!";
-      _exclusiveLockGuard.emplace<1>(std::move(result.get()));
+  auto result = co_await asTry([&] {
+    if constexpr (mode == AccessMode::Type::WRITE) {
+      return _exclusiveLock.try_lock_exclusive_for(timeout_ms);
+    } else {
+      return _exclusiveLock.try_lock_shared_for(timeout_ms);
     }
-  } else {
-    auto result =
-        co_await asTry(_exclusiveLock.try_lock_shared_for(timeout_ms));
-    gotLock = result.hasValue();
-    if (gotLock) {
-      TRI_ASSERT(std::holds_alternative<std::monostate>(_exclusiveLockGuard))
-          << "guard should be empty but it isn't!";
-      _exclusiveLockGuard.emplace<2>(std::move(result.get()));
-    }
-  }
-
-  if (gotLock) {
-    // keep the lock and exit
-    co_return TRI_ERROR_NO_ERROR;
+  }());
+  bool gotLock = result.hasValue();
+  if (gotLock && result.get().owns_lock()) {
+    co_return std::make_pair(std::move(result.get()), TRI_ERROR_NO_ERROR);
   }
 
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
@@ -1764,7 +1752,7 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
       << AccessMode::typeString(mode) << " lock on collection '"
       << _logicalCollection.name() << "'";
 
-  co_return TRI_ERROR_LOCK_TIMEOUT;
+  co_return std::make_pair(R{}, TRI_ERROR_LOCK_TIMEOUT);
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(

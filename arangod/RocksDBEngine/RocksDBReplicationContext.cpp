@@ -264,17 +264,13 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
 
     // only DBServers require a corrected document count
     const double to = ServerState::instance()->isDBServer() ? 10.0 : 1.0;
-    auto lockGuard = scopeGuard([rcoll]() noexcept { rcoll->unlockWrite(); });
-    if (!_patchCount.empty() && _patchCount == cname &&
-        co_await rcoll->lockWrite(to) == TRI_ERROR_NO_ERROR) {
-      // fetch number docs and snapshot under exclusive lock
-      // this should enable us to correct the count later
-      documentCountAdjustmentTicket =
-          rcoll->meta().documentCountAdjustmentTicket();
-    } else {
-      lockGuard.cancel();
+    if (!_patchCount.empty() && _patchCount == cname) {
+      auto [guard, res] = co_await rcoll->lockWrite(to);
+      if (res == TRI_ERROR_NO_ERROR) {
+        documentCountAdjustmentTicket =
+            rcoll->meta().documentCountAdjustmentTicket();
+      }
     }
-
     // re-acquire the mutex. we need it for checking and modifying _iterators.
     writeLocker.lock();
 

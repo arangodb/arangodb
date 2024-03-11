@@ -763,19 +763,19 @@ Result catchup(rocksdb::DB* rootDB, RocksDBIndex& ridx,
 }  // namespace
 
 futures::Future<bool> RocksDBBuilderIndex::Locker::lock() {
-  if (!_locked) {
-    if (co_await _collection->lockWrite() != TRI_ERROR_NO_ERROR) {
+  if (!_lock.owns_lock()) {
+    auto [guard, res] = co_await _collection->lockWrite();
+    if (res != TRI_ERROR_NO_ERROR) {
       co_return false;
     }
-    _locked = true;
+    _lock = std::move(guard);
   }
   co_return true;
 }
 
 void RocksDBBuilderIndex::Locker::unlock() {
-  if (_locked) {
-    _collection->unlockWrite();
-    _locked = false;
+  if (_lock) {
+    _lock.unlock();
   }
 }
 
