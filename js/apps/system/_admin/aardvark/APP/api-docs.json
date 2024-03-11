@@ -2,7 +2,7 @@
  "info": {
   "description": "ArangoDB REST API Interface",
   "title": "ArangoDB",
-  "version": "3.11.8"
+  "version": "3.11.9"
  },
  "openapi": "3.1.0",
  "paths": {
@@ -4726,7 +4726,7 @@
           "type": "array"
          },
          "distributeShardsLike": {
-          "description": "The name of another collection. If this property is set in a cluster, the\ncollection copies the `replicationFactor`, `numberOfShards` and `shardingStrategy`\nproperties from the specified collection (referred to as the _prototype collection_)\nand distributes the shards of this collection in the same way as the shards of\nthe other collection. In an Enterprise Edition cluster, this data co-location is\nutilized to optimize queries.\n\nYou need to use the same number of `shardKeys` as the prototype collection, but\nyou can use different attributes.\n\nThe default is `\"\"`.\n\n\u003e **INFO:**\nUsing this parameter has consequences for the prototype\ncollection. It can no longer be dropped, before the sharding-imitating\ncollections are dropped. Equally, backups and restores of imitating\ncollections alone generate warnings (which can be overridden)\nabout a missing sharding prototype.\n",
+          "description": "The name of another collection. If this property is set in a cluster, the\ncollection copies the `replicationFactor`, `numberOfShards`, `shardingStrategy`, and `writeConcern`\nproperties from the specified collection (referred to as the _prototype collection_)\nand distributes the shards of this collection in the same way as the shards of\nthe other collection. In an Enterprise Edition cluster, this data co-location is\nutilized to optimize queries.\n\nYou need to use the same number of `shardKeys` as the prototype collection, but\nyou can use different attributes.\n\nThe default is `\"\"`.\n\n\u003e **INFO:**\nUsing this parameter has consequences for the prototype\ncollection. It can no longer be dropped, before the sharding-imitating\ncollections are dropped. Equally, backups and restores of imitating\ncollections alone generate warnings (which can be overridden)\nabout a missing sharding prototype.\n",
           "type": "string"
          },
          "isDisjoint": {
@@ -4810,7 +4810,7 @@
           "type": "boolean"
          },
          "writeConcern": {
-          "description": "Write concern for this collection (default: 1).\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`. _(cluster only)_\n",
+          "description": "Write concern for this collection (default: 1).\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
           "type": "integer"
          }
         },
@@ -4875,7 +4875,7 @@
            "type": "array"
           },
           "distributeShardsLike": {
-           "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards` and `shardingStrategy` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
+           "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards`, `shardingStrategy`, and `writeConcern` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
            "type": "string"
           },
           "globallyUniqueId": {
@@ -4977,7 +4977,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -5154,6 +5154,15 @@
       "in": "path",
       "name": "collection-name",
       "required": true,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
       "schema": {
        "type": "string"
       }
@@ -5387,7 +5396,7 @@
            "type": "array"
           },
           "distributeShardsLike": {
-           "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards` and `shardingStrategy` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
+           "description": "The name of another collection. This collection uses the `replicationFactor`,\n`numberOfShards`, `shardingStrategy`, and `writeConcern` properties of the other collection and\nthe shards of this collection are distributed in the same way as the shards of\nthe other collection.\n",
            "type": "string"
           },
           "globallyUniqueId": {
@@ -5489,7 +5498,7 @@
            "type": "boolean"
           },
           "writeConcern": {
-           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`. _(cluster only)_\n",
+           "description": "Determines how many copies of each shard are required to be\nin-sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
            "type": "integer"
           }
          },
@@ -5594,7 +5603,7 @@
           "type": "boolean"
          },
          "writeConcern": {
-          "description": "Write concern for this collection (default: 1).\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`. _(cluster only)_\n",
+          "description": "Write concern for this collection (default: 1).\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the current database's\ndefault `writeConcern`, which uses the `--cluster.write-concern`\nstartup option as default, which defaults to `1`. _(cluster only)_\n",
           "type": "integer"
          }
         },
@@ -5677,7 +5686,7 @@
   },
   "/_api/collection/{collection-name}/responsibleShard": {
    "put": {
-    "description": "Returns the ID of the shard that is responsible for the given document\n(if the document exists) or that would be responsible if such document\nexisted.\n\nThe request must body must contain a JSON document with at least the\ncollection's shard key attributes set to some values.\n\nThe response is a JSON object with a `shardId` attribute, which will\ncontain the ID of the responsible shard.\n\n\u003e **INFO:**\nThis method is only available on Coordinators in cluster deployments.\n",
+    "description": "Returns the ID of the shard that is responsible for the given document\n(if the document exists) or that would be responsible if such document\nexisted.\n\nThe request must body must contain a JSON document with at least the\ncollection's shard key attributes set to some values.\n\nThe response is a JSON object with a `shardId` attribute, which will\ncontain the ID of the responsible shard.\n\n\u003e **INFO:**\nThis method is only available in cluster deployments on Coordinators.\n",
     "operationId": "getResponsibleShard",
     "parameters": [
      {
@@ -5759,7 +5768,7 @@
   },
   "/_api/collection/{collection-name}/shards": {
    "get": {
-    "description": "By default returns a JSON array with the shard IDs of the collection.\n\nIf the `details` parameter is set to `true`, it will return a JSON object with the\nshard IDs as object attribute keys, and the responsible servers for each shard mapped to them.\nIn the detailed response, the leader shards will be first in the arrays.\n\n\u003e **INFO:**\nThis method is only available on Coordinators in cluster deployments.\n",
+    "description": "By default returns a JSON array with the shard IDs of the collection.\n\nIf the `details` parameter is set to `true`, it will return a JSON object with the\nshard IDs as object attribute keys, and the responsible servers for each shard mapped to them.\nIn the detailed response, the leader shards will be first in the arrays.\n\n\u003e **INFO:**\nThis method is only available in cluster deployments on Coordinators.\n",
     "operationId": "getCollectionShards",
     "parameters": [
      {
@@ -5831,6 +5840,15 @@
       "required": false,
       "schema": {
        "type": "boolean"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
       }
      }
     ],
@@ -8261,7 +8279,7 @@
             "type": "string"
            },
            "writeConcern": {
-            "description": "Default write concern for new collections created in this database.\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`. _(cluster only)_\n",
+            "description": "Default write concern for new collections created in this database.\nIt determines how many copies of each shard are required to be\nin sync on the different DB-Servers. If there are less than these many copies\nin the cluster, a shard refuses to write. Writes to shards with enough\nup-to-date copies succeed at the same time, however. The value of\n`writeConcern` cannot be greater than `replicationFactor`.\n\nIf `distributeShardsLike` is set, the `writeConcern`\nis that of the prototype collection.\nFor SatelliteCollections, the `writeConcern` is automatically controlled to\nequal the number of DB-Servers and has a value of `0`.\nOtherwise, the default value is controlled by the `--cluster.write-concern`\nstartup option, which defaults to `1`. _(cluster only)_\n",
             "type": "number"
            }
           },
@@ -8456,6 +8474,15 @@
       "schema": {
        "type": "boolean"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -8581,6 +8608,15 @@
       "required": false,
       "schema": {
        "type": "boolean"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
       }
      }
     ],
@@ -8729,6 +8765,15 @@
       "schema": {
        "type": "boolean"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -8842,6 +8887,15 @@
       "required": false,
       "schema": {
        "type": "boolean"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
       }
      }
     ],
@@ -9078,6 +9132,15 @@
       "schema": {
        "type": "boolean"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -9187,6 +9250,15 @@
       "description": "You can conditionally remove a document based on a target revision id by\nusing the `if-match` HTTP header.\n",
       "in": "header",
       "name": "If-Match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
@@ -9479,6 +9551,15 @@
       "schema": {
        "type": "string"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -9610,6 +9691,15 @@
       "description": "You can conditionally replace a document based on a target revision id by\nusing the `if-match` HTTP header.\n",
       "in": "header",
       "name": "If-Match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
@@ -12477,6 +12567,15 @@
       "schema": {
        "type": "boolean"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -13313,6 +13412,15 @@
       "schema": {
        "type": "string"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "responses": {
@@ -13615,6 +13723,15 @@
       "schema": {
        "type": "string"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "responses": {
@@ -13899,6 +14016,15 @@
       "description": "If the \"If-Match\" header is given, then it must contain exactly one ETag. The document is updated,\nif it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the ETag in an attribute rev in the URL.\n",
       "in": "header",
       "name": "if-match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
@@ -14361,6 +14487,15 @@
       "description": "If the \"If-Match\" header is given, then it must contain exactly one ETag. The document is updated,\nif it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the ETag in an attribute rev in the URL.\n",
       "in": "header",
       "name": "if-match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
@@ -15694,6 +15829,15 @@
       "schema": {
        "type": "boolean"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "requestBody": {
@@ -15998,6 +16142,15 @@
       "schema": {
        "type": "string"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "responses": {
@@ -16280,6 +16433,15 @@
       "schema": {
        "type": "string"
       }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
      }
     ],
     "responses": {
@@ -16554,6 +16716,15 @@
       "description": "If the \"If-Match\" header is given, then it must contain exactly one ETag. The document is updated,\nif it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the ETag in an attribute rev in the URL.\n",
       "in": "header",
       "name": "if-match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
@@ -16956,6 +17127,15 @@
       "description": "If the \"If-Match\" header is given, then it must contain exactly one ETag. The document is updated,\nif it has the same revision as the given ETag. Otherwise a HTTP 412 is returned. As an alternative\nyou can supply the ETag in an attribute rev in the URL.\n",
       "in": "header",
       "name": "if-match",
+      "required": false,
+      "schema": {
+       "type": "string"
+      }
+     },
+     {
+      "description": "To make this operation a part of a Stream Transaction, set this header to the\ntransaction ID returned by the `POST /_api/transaction/begin` call.\n",
+      "in": "header",
+      "name": "x-arango-trx-id",
       "required": false,
       "schema": {
        "type": "string"
