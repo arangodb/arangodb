@@ -180,11 +180,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::NONE, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RO));
   }
 
@@ -194,11 +196,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::RO, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_FALSE(logicalView->canUse(arangodb::auth::Level::RW));
   }
@@ -210,11 +214,13 @@ TEST_F(LogicalViewTest, test_auth) {
     auto logicalView = vocbase.createView(viewJson->slice(), false);
     struct ExecContext : public arangodb::ExecContext {
       ExecContext()
-          : arangodb::ExecContext(arangodb::ExecContext::Type::Default, "",
+          : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                  arangodb::ExecContext::Type::Default, "",
                                   "testVocbase", arangodb::auth::Level::NONE,
                                   arangodb::auth::Level::RW, false) {}
-    } execContext;
-    arangodb::ExecContextScope execContextScope(&execContext);
+    };
+    auto execContext = std::make_shared<ExecContext>();
+    arangodb::ExecContextScope execContextScope(execContext);
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RO));
     EXPECT_TRUE(logicalView->canUse(arangodb::auth::Level::RW));
   }
