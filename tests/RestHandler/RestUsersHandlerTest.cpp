@@ -200,12 +200,14 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Default, userName,
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Default, userName,
                                 "", arangodb::auth::Level::RW,
                                 arangodb::auth::Level::NONE, true) {
     }  // ExecContext::isAdminUser() == true
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
   auto* authFeature = arangodb::AuthenticationFeature::instance();
   auto* userManager = authFeature->userManager();
   userManager->setGlobalVersion(0);  // required for UserManager::loadFromDB()
@@ -233,7 +235,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -256,7 +258,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                    .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
   // test auth missing (revoke)
@@ -287,7 +289,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -310,7 +312,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                    .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(
+         execContext->collectionAuthLevel(
              vocbase->name(), "testDataSource")));  // not modified from above
   }
 
@@ -345,7 +347,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK, grantResponce.responseCode());
@@ -358,7 +360,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
              slice.get(vocbase->name() + "/testDataSource").copyString()));
     EXPECT_TRUE(
         (arangodb::auth::Level::RW ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
   // test auth collection (revoke)
@@ -397,7 +399,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::ACCEPTED,
@@ -415,7 +417,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
          false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
   // test auth view (grant)
@@ -449,7 +451,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = grantHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -472,7 +474,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                    .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
   // test auth view (revoke)
@@ -511,7 +513,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::NOT_FOUND,
@@ -534,7 +536,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
                                    .getNumber<int>()}));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(
+         execContext->collectionAuthLevel(
              vocbase->name(), "testDataSource")));  // not modified from above
   }
 
@@ -569,7 +571,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::NONE ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = grantWildcardHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_EQ(arangodb::rest::ResponseCode::OK,
@@ -583,7 +585,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
              slice.get(vocbase->name() + "/*").copyString()));
     EXPECT_TRUE(
         (arangodb::auth::Level::RW ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
   }
 
   // test auth wildcard (revoke)
@@ -622,7 +624,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
 
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(vocbase->name(), "testDataSource")));
+         execContext->collectionAuthLevel(vocbase->name(), "testDataSource")));
     auto status = revokeWildcardHandler.execute();
     EXPECT_EQ(arangodb::RestStatus::DONE, status);
     EXPECT_TRUE((arangodb::rest::ResponseCode::ACCEPTED ==
@@ -640,7 +642,7 @@ TEST_F(RestUsersHandlerTest, test_collection_auth) {
          false == slice.get(arangodb::StaticStrings::Error).getBoolean()));
     EXPECT_TRUE(
         (arangodb::auth::Level::RO ==
-         execContext.collectionAuthLevel(
+         execContext->collectionAuthLevel(
              vocbase->name(),
              "testDataSource")));  // unchanged since revocation is only for
                                    // exactly matching collection names
