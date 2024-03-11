@@ -44,7 +44,10 @@ class Parser {
   /// @brief destroy the parser
   ~Parser();
 
- public:
+  /// @brief force ternary operator conditions to be always
+  /// inlined.
+  void setForceInlineTernary() noexcept;
+
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
 
@@ -136,6 +139,19 @@ class Parser {
   /// @brief peek at a temporary value from the parser's stack
   void* peekStack();
 
+  /// @brief push a ternary condition onto the stack
+  void pushTernaryCondition(AstNode* node);
+
+  /// @brief pop a ternary condition from the stack
+  AstNode* popTernaryCondition();
+
+  /// @brief return a view of the current ternary conditions
+  std::vector<AstNode*> const& peekTernaryConditions();
+
+  /// @brief whether or not the ternary operator's condition must
+  /// always be inlined.
+  bool forceInlineTernary() const noexcept;
+
  private:
   /// @brief a pointer to the start of the query string
   QueryString const& queryString() const { return _queryString; }
@@ -168,6 +184,13 @@ class Parser {
 
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
+
+  /// @brief stack of the ternary operator conditions currently active
+  std::vector<AstNode*> _ternaryConditions;
+
+  /// @brief whether or not the ternary operator's condition must
+  /// always be inlined.
+  bool _forceInlineTernary;
 };
 }  // namespace aql
 }  // namespace arangodb

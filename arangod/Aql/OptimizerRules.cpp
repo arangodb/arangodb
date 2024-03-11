@@ -1780,7 +1780,10 @@ void arangodb::aql::moveCalculationsDownRule(
   VarSet usedHere;
   bool modified = false;
 
+  size_t i = 0;
   for (auto const& n : nodes) {
+    bool const isLastVariable = ++i == nodes.size();
+
     // this is the variable that the calculation will set
     Variable const* variable = nullptr;
 
@@ -1811,28 +1814,34 @@ void arangodb::aql::moveCalculationsDownRule(
       auto current = stack.back();
       stack.pop_back();
 
-      bool done = false;
+      auto const currentType = current->getType();
+      bool tryToPushIntoSubquery = false;
 
-      usedHere.clear();
-      current->getVariablesUsedHere(usedHere);
-      for (auto const& v : usedHere) {
-        if (v == variable) {
+      if (currentType == EN::SUBQUERY && !current->isVarUsedLater(variable)) {
+        current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
+        while (current->hasDependency()) {
+          current = current->getFirstDependency();
+        }
+        tryToPushIntoSubquery = true;
+      } else {
+        usedHere.clear();
+        current->getVariablesUsedHere(usedHere);
+
+        bool const done = std::find(usedHere.begin(), usedHere.end(),
+                                    variable) != usedHere.end();
+
+        if (done) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
-          done = true;
           break;
         }
       }
 
-      if (done) {
-        // done with optimizing this calculation node
-        break;
-      }
-
-      auto const currentType = current->getType();
-
-      if (currentType == EN::FILTER || currentType == EN::SORT ||
-          currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
+      if (tryToPushIntoSubquery) {
+        lastNode = current;
+      } else if (currentType == EN::FILTER || currentType == EN::SORT ||
+                 currentType == EN::LIMIT || currentType == EN::SUBQUERY ||
+                 currentType == EN::SINGLETON) {
         // we found something interesting that justifies moving our node down
         if (currentType == EN::LIMIT &&
             arangodb::ServerState::instance()->isCoordinator()) {
@@ -1851,7 +1860,6 @@ void arangodb::aql::moveCalculationsDownRule(
         }
 
         lastNode = current;
-
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
@@ -1878,6 +1886,14 @@ void arangodb::aql::moveCalculationsDownRule(
       // and re-insert into after the last "good" node
       plan->insertDependency(lastNode->getFirstParent(), n);
       modified = true;
+
+      // any changes done here may affect the following iterations
+      // of this optimizer rule, so we need to recalculate the
+      // variable usage here.
+      if (!isLastVariable) {
+        plan->clearVarUsageComputed();
+        plan->findVarUsage();
+      }
     }
   }
 

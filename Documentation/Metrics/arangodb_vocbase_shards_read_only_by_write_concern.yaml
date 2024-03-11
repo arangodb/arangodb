@@ -1,0 +1,22 @@
+name: arangodb_vocbase_shards_read_only_by_write_concern
+introducedIn: "3.12.1"
+help: |
+  Number of shards that are read-only due to an undercut of the write concern.
+unit: number
+type: gauge
+category: Replication
+complexity: simple
+exposedBy:
+  - dbserver
+description: |
+  Number of shards that are in read-only mode because there are not at least write concern many in-sync replicas.
+troubleshoot: |
+  If this metrics has a value greater than 0, then some
+  action is indicated. During an upgrade or when some DB-Server was
+  restarted, it can happen that shard followers are out of sync and thus
+  the write concern is undercut. Normally, shards should get in sync on
+  their own, so observation and waiting is a good measure at first.
+  However, if the situation persists, something is wrong, potentially
+  some constant server crash (maybe out of memory crashes?) or another
+  situation preventing shards to get in sync.
+  Contact ArangoDB customer support in this case.
