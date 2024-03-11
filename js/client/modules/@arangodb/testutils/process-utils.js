@@ -627,7 +627,7 @@ function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
   }
 
   let ret = executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
-  ret.message += config.getLogFile();
+  ret.message += `\nContents of log file ${config['log.file']}:\n` + config.getLogFile();
   return ret;
 }
 
