@@ -55,7 +55,6 @@
 #endif
 
 #include <absl/strings/str_cat.h>
-#include <boost/algorithm/string.hpp>
 #include <fuerte/connection.h>
 #include <fuerte/jwt.h>
 #include <fuerte/requests.h>
