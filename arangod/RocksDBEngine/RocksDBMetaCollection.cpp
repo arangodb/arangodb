@@ -1723,7 +1723,7 @@ auto RocksDBMetaCollection::lockRead(double timeout)
   }
   TRI_IF_FAILURE("assertLockTimeoutHigh") {
     if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
-      // In the test we expect that an lazy locking happens on the follower
+      // In the test we expect that a lazy locking happens on the follower
       // with the default timeout of more than 2 seconds:
       TRI_ASSERT(timeout > 10);
     }

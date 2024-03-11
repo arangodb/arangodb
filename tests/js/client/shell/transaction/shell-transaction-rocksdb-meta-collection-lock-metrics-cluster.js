@@ -39,10 +39,11 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
   const getAllMetrics = function () {
     return getCompleteMetricsValues([
-      "arangodb_vocbase_meta_collection_lock_pending_exclusive",
-      "arangodb_vocbase_meta_collection_lock_pending_shared",
-      "arangodb_vocbase_meta_collection_lock_locked_exclusive",
-      "arangodb_vocbase_meta_collection_lock_locked_shared"]
+          "arangodb_vocbase_meta_collection_lock_pending_exclusive",
+          "arangodb_vocbase_meta_collection_lock_pending_shared",
+          "arangodb_vocbase_meta_collection_lock_locked_exclusive",
+          "arangodb_vocbase_meta_collection_lock_locked_shared"],
+        "dbservers"
     );
   };
 
@@ -80,13 +81,12 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
       const trx = db._createTransaction({collections: {write: [collection]}});
       trx.collection(collection).insert({});
 
-      // keep in mind that the followers lock the shards as well
       {
         assertMetrics({
           arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
           arangodb_vocbase_meta_collection_lock_pending_shared: 0,
           arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 2,
+          arangodb_vocbase_meta_collection_lock_locked_shared: 1,
         });
       }
 
@@ -115,12 +115,11 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
       const trx = db._createTransaction({collections: {exclusive: [collection]}});
       trx.collection(collection).insert({});
 
-      // keep in mind that the followers lock the shards as well
       {
         assertMetrics({
           arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
           arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 2,
+          arangodb_vocbase_meta_collection_lock_locked_exclusive: 1,
           arangodb_vocbase_meta_collection_lock_locked_shared: 0,
         });
       }
