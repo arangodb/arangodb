@@ -23,12 +23,10 @@
 
 #include "IResearchAqlAnalyzer.h"
 
-#include "utils/hash_utils.hpp"
-#include "utils/object_pool.hpp"
-
 #include "Aql/AqlCallList.h"
 #include "Aql/AqlCallStack.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/Expression.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/Optimizer.h"
@@ -36,13 +34,14 @@
 #include "Aql/Parser.h"
 #include "Aql/QueryString.h"
 #include "Aql/StandaloneCalculation.h"
+#include "Basics/FunctionUtils.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Basics/FunctionUtils.h"
-#include "Inspection/VPack.h"
+#include "Containers/HashSet.h"
 #include "IResearch/IResearchCommon.h"
 #include "IResearch/VelocyPackHelper.h"
+#include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Transaction/Hints.h"
@@ -51,7 +50,8 @@
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/vocbase.h"
 
-#include <Containers/HashSet.h>
+#include "utils/hash_utils.hpp"
+#include "utils/object_pool.hpp"
 
 #include <absl/strings/str_cat.h>
 

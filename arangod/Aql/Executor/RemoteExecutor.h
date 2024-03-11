@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Aql/AqlExecuteResult.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
 #include "Aql/RegisterInfos.h"
 #include "Basics/Result.h"
 

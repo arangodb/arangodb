@@ -32,6 +32,7 @@
 #include "../Mocks/Servers.h"
 
 #include "Aql/Query.h"
+#include "Aql/Variable.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/StaticStrings.h"
