@@ -24,7 +24,7 @@
 
 using namespace arangodb;
 
-DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_writeconcern, std::uint64_t,
+DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_write_concern, std::uint64_t,
               "Number of shards that are in read-only mode because the number "
               "of in-sync replicas is lower than the write-concern");
 
