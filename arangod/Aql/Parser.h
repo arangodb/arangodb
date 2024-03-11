@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Aql/Ast.h"
+#include "Aql/LazyConditions.h"
 #include "Basics/Common.h"
 
 namespace arangodb::aql {
@@ -34,14 +35,27 @@ class QueryString;
 
 /// @brief the parser
 class Parser {
-  Parser(Parser const&) = delete;
-
  public:
+  struct LazyCondition {
+    // the actual condition expression (always non-null)
+    AstNode* condition;
+    // the variable node that is assigned the condition expression's result.
+    // this is null initially, but can be populated on demand
+    AstNode* variable = nullptr;
+  };
+
+  Parser(Parser const&) = delete;
+  Parser& operator=(Parser const&) = delete;
+
   /// @brief create the parser
   explicit Parser(QueryContext&, Ast&, QueryString&);
 
   /// @brief destroy the parser
   ~Parser();
+
+  /// @brief return a reference to the lazy conditions manager
+  LazyConditions const& lazyConditions() const;
+  LazyConditions& lazyConditions();
 
   /// @brief return the ast during parsing
   Ast* ast() { return &_ast; }
@@ -79,11 +93,7 @@ class Parser {
   void decreaseOffset(size_t offset) { _offset -= offset; }
 
   /// @brief fill the output buffer with a fragment of the query
-  void fillBuffer(char* result, size_t length) {
-    memcpy(result, _buffer, length);
-    _buffer += length;
-    _remainingLength -= length;
-  }
+  void fillBuffer(char* result, size_t length);
 
   /// @brief set data for write queries
   bool configureWriteQuery(AstNode const*, AstNode* optionNode);
@@ -132,25 +142,7 @@ class Parser {
   void* popStack();
 
   /// @brief peek at a temporary value from the parser's stack
-  void* peekStack();
-
-  /// @brief push a condition onto the stack
-  void pushConditional(AstNode* node);
-
-  /// @brief pop a condition from the stack
-  AstNode* popConditional();
-
-  /// @brief return a view of the current conditions
-  std::vector<AstNode*> const& peekConditionals();
-
-  /// @brief force conditional operator expression to be always inlined
-  void pushForceInlineConditionals() noexcept;
-
-  /// @brief unforce conditional operator expression to be always inlined
-  void popForceInlineConditionals() noexcept;
-
-  /// @brief whether or not conditional operators must always be inlined
-  bool forceInlineConditionals() const noexcept;
+  void* peekStack() const;
 
  private:
   /// @brief a pointer to the start of the query string
@@ -185,11 +177,8 @@ class Parser {
   /// @brief a stack of things, used temporarily during parsing
   std::vector<void*> _stack;
 
-  /// @brief stack of the conditionals currently active
-  std::vector<AstNode*> _conditionals;
-
-  /// @brief whether or not conditional operators must  be inlined (value > 0).
-  size_t _forceInlineConditionalsRequests;
+  /// @brief stack for handling of lazy conditions
+  LazyConditions _lazyConditions;
 };
 }  // namespace arangodb::aql
 

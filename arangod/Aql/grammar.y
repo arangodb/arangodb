@@ -365,24 +365,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
   return wrapperNode;
 }
 
-void addConditionsIfPresent(Parser* parser) {
-  AstNode* filterCondition = nullptr;
-  for (auto const& it : parser->peekConditionals()) {
-    TRI_ASSERT(!parser->forceInlineConditionals()); 
-
-    if (filterCondition == nullptr) {
-      filterCondition = it;
-    } else {
-      filterCondition = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, filterCondition, it);
-    }
-  }
-       
-  if (filterCondition != nullptr) {
-    auto node = parser->ast()->createNodeFilter(filterCondition);
-    parser->ast()->addOperation(node);
-  }
-}
-
+/*
 AstNode* insertConditional(Parser* parser, bool negated, AstNode* condition, YYLTYPE const& yylloc) {
   std::string variableName = parser->ast()->variables()->nextName();
   AstNode* conditionNode = parser->ast()->createNodeLet(variableName.data(), variableName.size(), condition, false);
@@ -404,6 +387,7 @@ AstNode* insertConditional(Parser* parser, bool negated, AstNode* condition, YYL
   }
   return reference;
 }
+*/
 
 } // namespace
 
@@ -847,9 +831,9 @@ for_statement:
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating a potential SEARCH condition, which must remain a single
       // condition
-      parser->pushForceInlineConditionals();
+      parser->lazyConditions().pushForceInline();
     } for_options {
-      parser->popForceInlineConditionals();
+      parser->lazyConditions().popForceInline();
 
       // now we can handle the optional SEARCH condition and OPTIONS.
       AstNode* variableNode = static_cast<AstNode*>(parser->popStack());
@@ -905,9 +889,9 @@ for_statement:
 
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating the PRUNE condition, which must remain a single condition
-      parser->pushForceInlineConditionals();
+      parser->lazyConditions().pushForceInline();
     } prune_and_options {
-      parser->popForceInlineConditionals();
+      parser->lazyConditions().popForceInline();
 
       auto graphInfoNode = static_cast<AstNode*>(parser->popStack());
       auto variablesNode = static_cast<AstNode*>(parser->popStack());
@@ -1668,20 +1652,18 @@ function_name:
 
 function_call:
     function_name T_OPEN {
-      parser->pushStack($1.value);
-
-      auto node = parser->ast()->createNodeArray();
-      parser->pushStack(node);
+      auto args = parser->ast()->createNodeArray();
+      parser->pushStack(args);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall(static_cast<char const*>(parser->popStack()), list, false);
+      auto args = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeFunctionCall(/*function name*/ {$1.value, $1.length}, args, false);
     }
   | T_LIKE T_OPEN {
-      auto node = parser->ast()->createNodeArray();
-      parser->pushStack(node);
+      auto args = parser->ast()->createNodeArray();
+      parser->pushStack(args);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      auto list = static_cast<AstNode const*>(parser->popStack());
-      $$ = parser->ast()->createNodeFunctionCall("LIKE", list, false);
+      auto args = static_cast<AstNode const*>(parser->popStack());
+      $$ = parser->ast()->createNodeFunctionCall("LIKE", args, false);
     }
   ;
 
@@ -1849,96 +1831,71 @@ operator_ternary:
       // this is the case if we must execute a single expression, e.g. in computed values.
       // for normal AQL queries we normally want the condition of the ternary operator
       // to be placed in its own LET node, so we can move it around.
-      if (!parser->forceInlineConditionals()) {
-        // if the condition is not inlined, the condition expression is assigned to a
-        // temporary variable using a LET statement. insertConditional() also pushes
-        // this LET variable onto the stack of conditions to honor in any subqueries that
-        // are started inside the ternary operator.
-        // for example, consider the following query:
-        //   RETURN IS_ARRAY(values) ? (FOR v IN values ...) : (FOR i IN 1..10 ...)
-        // if the condition is not forced to be inlined, the generated AST for the query
-        // will look like this:
-        //   LET tmp1 = IS_ARRAY(values)
-        //   LET tmp2 = (
-        //     FILTER tmp1
-        //     FOR v IN values
-        //       ...
-        //   )
-        //   LET tmp3 = (
-        //     FILTER !tmp1
-        //     FOR i IN 1..10
-        //       ...
-        //   )
-        //   RETURN tmp1 ? tmp2 : tmp3
-        // this ensures that we execute the ternary's condition expression only once.
-        // this is important because the expression may be expensive or even have side
-        // effects.
-        // additionally, we only execute the true part of the ternary operator if the
-        // condition is truthy, and the false part of the ternary operator only if the
-        // condition is falsy.
-        AstNode* condition = insertConditional(parser, /*negated*/ false, $1, yylloc);
-        parser->pushStack(condition);
-      }
+        
+      // if the condition is not inlined, the condition expression is assigned to a
+      // temporary variable using a LET statement. insertConditional() also pushes
+      // this LET variable onto the stack of conditions to honor in any subqueries that
+      // are started inside the ternary operator.
+      // for example, consider the following query:
+      //   RETURN IS_ARRAY(values) ? (FOR v IN values ...) : (FOR i IN 1..10 ...)
+      // if the condition is not forced to be inlined, the generated AST for the query
+      // will look like this:
+      //   LET tmp1 = IS_ARRAY(values)
+      //   LET tmp2 = (
+      //     FILTER tmp1
+      //     FOR v IN values
+      //       ...
+      //   )
+      //   LET tmp3 = (
+      //     FILTER !tmp1
+      //     FOR i IN 1..10
+      //       ...
+      //   )
+      //   RETURN tmp1 ? tmp2 : tmp3
+      // this ensures that we execute the ternary's condition expression only once.
+      // this is important because the expression may be expensive or even have side
+      // effects.
+      // additionally, we only execute the true part of the ternary operator if the
+      // condition is truthy, and the false part of the ternary operator only if the
+      // condition is falsy.
+      parser->lazyConditions().push($1, /*negated*/ false);
     } expression T_COLON {
-      if (!parser->forceInlineConditionals()) {
-        parser->popConditional();
-        // get condition for true part of ternary operator and leave it on the stack 
-        AstNode* condition = static_cast<AstNode*>(parser->peekStack());
-        TRI_ASSERT(condition != nullptr);
-        // the condition expression was assigned to a variable via a LET statement before
-        TRI_ASSERT(condition->type == NODE_TYPE_REFERENCE);
-        // negate the condition and push the negated version onto the stack
-        condition = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, condition);
-        parser->pushConditional(condition);
-      }
+      LazyCondition previous = parser->lazyConditions().pop();
+      // negate the condition and push the negated version onto the stack
+      parser->lazyConditions().push(previous.condition, /*negated*/ true);
     } expression {
-      AstNode* condition = $1;
-      if (!parser->forceInlineConditionals()) {
-        // finally pop condition from the stack
-        condition = static_cast<AstNode*>(parser->popStack());
-        // clean up the ternary condition
-        parser->popConditional();
-      }
-      $$ = parser->ast()->createNodeTernaryOperator(condition, $4, $7);
+      LazyCondition previous = parser->lazyConditions().pop();
+      $$ = parser->ast()->createNodeTernaryOperator(previous.condition, $4, $7);
     }
   | expression T_QUESTION {
       // shortcut ternary operator: 
       //   condition ? : false part
-      if (!parser->forceInlineConditionals()) {
-        // if the condition is not inlined, the condition expression is assigned to a
-        // temporary variable using a LET statement. insertConditional() also pushes
-        // this LET variable onto the stack of conditions to honor in any subqueries that
-        // are started inside the ternary operator.
-        // for example, consider the following query:
-        //   RETURN !IS_ARRAY(values) ?: (FOR v IN values ...) 
-        // if the condition is not forced to be inlined, the generated AST for the query
-        // will look like this:
-        //   LET tmp1 = !IS_ARRAY(values)
-        //   LET tmp2 = (
-        //     FILTER !tmp1
-        //     FOR v IN values
-        //       ...
-        //   )
-        //   RETURN tmp1 ? tmp1 : tmp2
-        // this ensures that we execute the ternary's condition expression only once.
-        // this is important because the expression may be expensive or even have side
-        // effects.
-        // additionally, we only execute the true part of the ternary operator if the
-        // condition is truthy, and the false part of the ternary operator only if the
-        // condition is falsy.
-        AstNode* condition = insertConditional(parser, /*negated*/ true, $1, yylloc);
-        parser->pushStack(condition);
-      }
+      // 
+      // if the condition is not inlined, the condition expression is assigned to a
+      // temporary variable using a LET statement. insertConditional() also pushes
+      // this LET variable onto the stack of conditions to honor in any subqueries that
+      // are started inside the ternary operator.
+      // for example, consider the following query:
+      //   RETURN !IS_ARRAY(values) ?: (FOR v IN values ...) 
+      // if the condition is not forced to be inlined, the generated AST for the query
+      // will look like this:
+      //   LET tmp1 = !IS_ARRAY(values)
+      //   LET tmp2 = (
+      //     FILTER !tmp1
+      //     FOR v IN values
+      //       ...
+      //   )
+      //   RETURN tmp1 ? tmp1 : tmp2
+      // this ensures that we execute the ternary's condition expression only once.
+      // this is important because the expression may be expensive or even have side
+      // effects.
+      // additionally, we only execute the true part of the ternary operator if the
+      // condition is truthy, and the false part of the ternary operator only if the
+      // condition is falsy.
+      parser->lazyConditions().push($1, /*negated*/ true);
     } T_COLON expression {
-      AstNode* condition = $1;
-      if (!parser->forceInlineConditionals()) {
-        parser->popConditional();
-        condition = static_cast<AstNode*>(parser->popStack());
-        TRI_ASSERT(condition != nullptr);
-        // the condition expression was assigned to a variable via a LET statement before
-        TRI_ASSERT(condition->type == NODE_TYPE_REFERENCE);
-      }
-      $$ = parser->ast()->createNodeTernaryOperator(condition, $5);
+      LazyCondition previous = parser->lazyConditions().pop();
+      $$ = parser->ast()->createNodeTernaryOperator(previous.condition, $5);
     }
   ;
 
@@ -1954,10 +1911,12 @@ expression_or_query:
       $$ = $1;
     }
   | {
+      parser->lazyConditions().flushAssignments();
+
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
 
-      addConditionsIfPresent(parser);
+      parser->lazyConditions().flushFilters();
     } query {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2342,10 +2301,12 @@ reference:
       }
     }
   | T_OPEN {
+      parser->lazyConditions().flushAssignments();
+
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_SUBQUERY);
       parser->ast()->startSubQuery();
       
-      addConditionsIfPresent(parser);
+      parser->lazyConditions().flushFilters();
     } query T_CLOSE {
       AstNode* node = parser->ast()->endSubQuery();
       parser->ast()->scopes()->endCurrent();
@@ -2422,9 +2383,9 @@ reference:
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating the FILTER condition, which must remain a single
       // condition
-      parser->pushForceInlineConditionals();
+      parser->lazyConditions().pushForceInline();
     } optional_array_filter T_ARRAY_CLOSE %prec EXPANSION {
-      parser->popForceInlineConditionals();
+      parser->lazyConditions().popForceInline();
 
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
@@ -2467,9 +2428,9 @@ reference:
       // we are temporarily forcing all conditionals to be inlined, just for
       // evaluating the FILTER condition, which must remain a single
       // condition
-      parser->pushForceInlineConditionals();
+      parser->lazyConditions().pushForceInline();
     } optional_array_filter optional_array_limit optional_array_return T_ARRAY_CLOSE %prec EXPANSION {
-      parser->popForceInlineConditionals();
+      parser->lazyConditions().popForceInline();
 
       auto scopes = parser->ast()->scopes();
       scopes->unstackCurrentVariable();
