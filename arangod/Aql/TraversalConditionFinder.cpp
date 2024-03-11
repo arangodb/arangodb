@@ -24,12 +24,15 @@
 #include "TraversalConditionFinder.h"
 
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
 #include "Aql/Quantifier.h"
 #include "Aql/Query.h"
-#include "Aql/TraversalNode.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "Graph/TraverserOptions.h"
@@ -788,8 +791,7 @@ bool TraversalConditionFinder::before(ExecutionNode* en) {
       if (conditionIsImpossible) {
         // condition is always false
         for (auto const& x : node->getParents()) {
-          auto noRes = new NoResultsNode(_plan, _plan->nextId());
-          _plan->registerNode(noRes);
+          auto noRes = _plan->createNode<NoResultsNode>(_plan, _plan->nextId());
           _plan->insertDependency(x, noRes);
           *_planAltered = true;
         }

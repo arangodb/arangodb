@@ -23,16 +23,17 @@
 
 #pragma once
 
-#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorFlags.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
-namespace arangodb {
-namespace aql {
+#include <memory>
+
+namespace arangodb::aql {
 class ExecutionEngine;
 
 struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
@@ -43,16 +44,7 @@ struct MultipleRemoteModificationInfos : ModificationExecutorInfos {
       OperationOptions options, aql::Collection const* aqlCollection,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound, bool hasParent,
-      bool isExclusive)
-      : ModificationExecutorInfos(
-            engine, inputRegister, RegisterPlan::MaxRegisterId,
-            RegisterPlan::MaxRegisterId, outputNewRegisterId,
-            outputOldRegisterId, outputRegisterId, query, std::move(options),
-            aqlCollection, ExecutionBlock::DefaultBatchSize,
-            ProducesResults(false), consultAqlWriteFilter, ignoreErrors,
-            DoCount(true), IsReplace(false), ignoreDocumentNotFound),
-        _hasParent(hasParent),
-        _isExclusive(isExclusive) {}
+      bool isExclusive);
 
   bool _hasParent;  // node->hasParent();
   bool _isExclusive;
@@ -98,5 +90,4 @@ struct MultipleRemoteModificationExecutor {
   bool _hasFetchedDataRow{false};
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

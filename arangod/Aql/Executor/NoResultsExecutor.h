@@ -25,6 +25,7 @@
 
 #include "Aql/Executor/EmptyExecutorInfos.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/types.h"
 
 #include <memory>
@@ -36,9 +37,6 @@ class Methods;
 
 namespace aql {
 
-template<BlockPassthrough>
-class SingleRowFetcher;
-class RegisterInfos;
 class NoStats;
 struct AqlCall;
 class OutputAqlItemRow;

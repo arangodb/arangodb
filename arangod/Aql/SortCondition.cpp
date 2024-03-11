@@ -24,6 +24,7 @@
 #include "SortCondition.h"
 
 #include "Aql/AstNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Basics/Exceptions.h"

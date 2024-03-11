@@ -24,7 +24,7 @@
 #pragma once
 
 #include "Aql/AqlCallSet.h"
-#include "Aql/ClusterNodes.h"
+#include "Aql/ExecutionNode/GatherNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"

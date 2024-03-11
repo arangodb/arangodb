@@ -24,8 +24,7 @@
 #include "MutexExecutor.h"
 
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/MutexNode.h"
+#include "Aql/ExecutionNode/MutexNode.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Basics/Exceptions.h"
 #include "Basics/debugging.h"

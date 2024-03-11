@@ -30,7 +30,7 @@
 #include "Aql/AqlValueGroup.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/LimitStats.h"
 #include "Aql/OutputAqlItemRow.h"

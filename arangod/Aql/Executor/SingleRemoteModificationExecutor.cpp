@@ -26,11 +26,16 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Collection.h"
 #include "Aql/OutputAqlItemRow.h"
+#include "Aql/RegisterPlan.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/QueryContext.h"
 #include "Basics/StaticStrings.h"
 #include "Cluster/ServerState.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <velocypack/Builder.h>
+
+#include <memory>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -56,6 +61,25 @@ std::unique_ptr<VPackBuilder> merge(VPackSlice document, std::string const& key,
   return builder;
 }
 }  // namespace
+
+SingleRemoteModificationInfos::SingleRemoteModificationInfos(
+    ExecutionEngine* engine, RegisterId inputRegister,
+    RegisterId outputNewRegisterId, RegisterId outputOldRegisterId,
+    RegisterId outputRegisterId, arangodb::aql::QueryContext& query,
+    OperationOptions options, aql::Collection const* aqlCollection,
+    ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
+    IgnoreDocumentNotFound ignoreDocumentNotFound, std::string key,
+    bool hasParent, bool replaceIndex)
+    : ModificationExecutorInfos(
+          engine, inputRegister, RegisterPlan::MaxRegisterId,
+          RegisterPlan::MaxRegisterId, outputNewRegisterId, outputOldRegisterId,
+          outputRegisterId, query, std::move(options), aqlCollection,
+          /*batchSize*/ 1, ProducesResults(false), consultAqlWriteFilter,
+          ignoreErrors, DoCount(true), IsReplace(false),
+          ignoreDocumentNotFound),
+      _key(std::move(key)),
+      _hasParent(hasParent),
+      _replaceIndex(replaceIndex) {}
 
 template<typename Modifier>
 SingleRemoteModificationExecutor<Modifier>::SingleRemoteModificationExecutor(

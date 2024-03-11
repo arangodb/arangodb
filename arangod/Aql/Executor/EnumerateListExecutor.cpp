@@ -32,16 +32,19 @@
 #include "Aql/Expression.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/QueryContext.h"
+#include "Aql/QueryExpressionContext.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
 
 #include <absl/strings/str_cat.h>
 
+#include <optional>
+
 using namespace arangodb;
 using namespace arangodb::aql;
-using namespace arangodb::basics;
 
 namespace {
 void throwArrayExpectedException(AqlValue const& value) {
@@ -55,54 +58,67 @@ void throwArrayExpectedException(AqlValue const& value) {
 
 }  // namespace
 
-EnumerateListExpressionContext::EnumerateListExpressionContext(
-    transaction::Methods& trx, QueryContext& context,
-    AqlFunctionsInternalCache& cache,
-    std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-    VariableId outputVariableId)
-    : QueryExpressionContext(trx, context, cache),
-      _varsToRegister(varsToRegister),
-      _outputVariableId(outputVariableId),
-      _currentValue{AqlValueHintNull{}} {}
+namespace arangodb::aql {
 
-AqlValue EnumerateListExpressionContext::getVariableValue(
-    Variable const* variable, bool doCopy, bool& mustDestroy) const {
-  return QueryExpressionContext::getVariableValue(
-      variable, doCopy, mustDestroy,
-      [this](Variable const* variable, bool doCopy,
-             bool& mustDestroy) -> AqlValue {
-        mustDestroy = doCopy;
-        auto const searchId = variable->id;
-        if (searchId == _outputVariableId) {
-          if (doCopy) {
-            return _currentValue.clone();
-          }
-          return _currentValue;
-        }
-        for (auto const& [varId, regId] : _varsToRegister) {
-          if (varId == searchId) {
-            TRI_ASSERT(_inputRow.has_value());
+class EnumerateListExpressionContext final : public QueryExpressionContext {
+ public:
+  EnumerateListExpressionContext(
+      transaction::Methods& trx, QueryContext& context,
+      AqlFunctionsInternalCache& cache,
+      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
+      VariableId outputVariableId)
+      : QueryExpressionContext(trx, context, cache),
+        _varsToRegister(varsToRegister),
+        _outputVariableId(outputVariableId),
+        _currentValue{AqlValueHintNull{}} {}
+
+  ~EnumerateListExpressionContext() override = default;
+
+  AqlValue getVariableValue(Variable const* variable, bool doCopy,
+                            bool& mustDestroy) const override {
+    return QueryExpressionContext::getVariableValue(
+        variable, doCopy, mustDestroy,
+        [this](Variable const* variable, bool doCopy,
+               bool& mustDestroy) -> AqlValue {
+          mustDestroy = doCopy;
+          auto const searchId = variable->id;
+          if (searchId == _outputVariableId) {
             if (doCopy) {
-              return _inputRow->get().getValue(regId).clone();
+              return _currentValue.clone();
             }
-            return _inputRow->get().getValue(regId);
+            return _currentValue;
           }
-        }
-        THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            absl::StrCat("variable not found '", variable->name,
-                         "' in EnumerateListExpressionContext"));
-      });
-}
+          for (auto const& [varId, regId] : _varsToRegister) {
+            if (varId == searchId) {
+              TRI_ASSERT(_inputRow.has_value());
+              if (doCopy) {
+                return _inputRow->get().getValue(regId).clone();
+              }
+              return _inputRow->get().getValue(regId);
+            }
+          }
+          THROW_ARANGO_EXCEPTION_MESSAGE(
+              TRI_ERROR_INTERNAL,
+              absl::StrCat("variable not found '", variable->name,
+                           "' in EnumerateListExpressionContext"));
+        });
+  }
 
-void EnumerateListExpressionContext::adjustCurrentValue(AqlValue const& value) {
-  _currentValue = value;
-}
+  void adjustCurrentValue(AqlValue const& value) { _currentValue = value; }
 
-void EnumerateListExpressionContext::adjustCurrentRow(
-    InputAqlItemRow const& inputRow) {
-  _inputRow = inputRow;
-}
+  void adjustCurrentRow(InputAqlItemRow const& inputRow) {
+    _inputRow = inputRow;
+  }
+
+ private:
+  /// @brief temporary storage for expression data context
+  std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
+  std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
+  VariableId _outputVariableId;
+  AqlValue _currentValue;
+};
+
+}  // namespace arangodb::aql
 
 EnumerateListExecutorInfos::EnumerateListExecutorInfos(
     RegisterId inputRegister, RegisterId outputRegister, QueryContext& query,
@@ -160,6 +176,8 @@ EnumerateListExecutor::EnumerateListExecutor(Fetcher& fetcher,
         _infos.getVarsToRegs(), _infos.getOutputVariableId());
   }
 }
+
+EnumerateListExecutor::~EnumerateListExecutor() = default;
 
 void EnumerateListExecutor::initializeNewRow(
     AqlItemBlockInputRange& inputRange) {

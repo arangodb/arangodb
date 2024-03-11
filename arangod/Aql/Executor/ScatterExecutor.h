@@ -24,8 +24,8 @@
 #pragma once
 
 #include "Aql/BlocksWithClients.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/RegisterInfos.h"
 
 namespace arangodb {
