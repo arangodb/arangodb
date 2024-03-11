@@ -25,8 +25,8 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-var jsunity = require("jsunity");
-var db = require("@arangodb").db;
+const jsunity = require("jsunity");
+const db = require("@arangodb").db;
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief test suite
@@ -50,7 +50,7 @@ function arrayStringExcerpt(array, index, before, after) {
 }
 
 function sortTestSuite () {
-  var c;
+  let c;
 
   return {
     setUpAll : function () {
@@ -134,9 +134,9 @@ function sortTestSuite () {
 
       assertEqual([
           'SingletonNode',
-          'CalculationNode',
-          'CalculationNode',
           'SubqueryStartNode',
+          'CalculationNode',
+          'CalculationNode',
           'EnumerateListNode',
           'SortNode',
           'SubqueryEndNode',
@@ -145,6 +145,7 @@ function sortTestSuite () {
           'EnumerateListNode',
           'ReturnNode',
         ],
+        
         db._createStatement(query).explain().plan.nodes.map(node => node.type)
       );
       assertEqual([500, 500], result.toArray());
@@ -156,4 +157,3 @@ function sortTestSuite () {
 jsunity.run(sortTestSuite);
 
 return jsunity.done();
-

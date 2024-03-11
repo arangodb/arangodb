@@ -474,6 +474,8 @@ class instance {
       }
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneLogFile = fs.join(rootDir, key.toLowerCase().split('_')[0] + '.log');
+        // we need the log files to contain the exe name, otherwise our code to pick them up won't find them
+        this.sanOptions[key]['log_exe_name'] = "true";
         const origPath = this.sanOptions[key]['log_path'];
         this.sanOptions[key]['log_path'] = oneLogFile;
         this.sanitizerLogPaths[key] = { upstream: origPath, local: oneLogFile };
@@ -692,6 +694,7 @@ class instance {
     }
     let backup = {};
     if (this.options.isSan) {
+      print("Using sanOptions ", this.sanOptions);
       for (const [key, value] of Object.entries(this.sanOptions)) {
         let oneSet = "";
         for (const [keyOne, valueOne] of Object.entries(value)) {
@@ -796,6 +799,7 @@ class instance {
     }
 
     for (const [key, value] of Object.entries(this.sanitizerLogPaths)) {
+      print("processing ", value);
       const { upstream, local } = value;
       let fn = `${local}.arangod.${this.pid}`;
       if (this.options.extremeVerbosity) {
@@ -804,6 +808,7 @@ class instance {
       if (fs.exists(fn)) {
         let content = fs.read(fn);
         if (upstream) {
+          print("found file ", fn, " - writing file ", `${upstream}.arangod.${this.pid}`);
           fs.write(`${upstream}.arangod.${this.pid}`, content);
         }
         if (content.length > 10) {

@@ -23,41 +23,60 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
-#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryEndExecutionNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/SubqueryStartExecutionNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/IndexNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/IndexStreamIterator.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
-#include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/SortElement.h"
+#include "Aql/SortInformation.h"
 #include "Aql/TraversalConditionFinder.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
-#include "Aql/WindowNode.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/NumberUtils.h"
@@ -71,13 +90,9 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
-#include "Logger/LogMacros.h"
 
 #include <span>
 #include <tuple>
@@ -1780,7 +1795,10 @@ void arangodb::aql::moveCalculationsDownRule(
   VarSet usedHere;
   bool modified = false;
 
+  size_t i = 0;
   for (auto const& n : nodes) {
+    bool const isLastVariable = ++i == nodes.size();
+
     // this is the variable that the calculation will set
     Variable const* variable = nullptr;
 
@@ -1811,28 +1829,34 @@ void arangodb::aql::moveCalculationsDownRule(
       auto current = stack.back();
       stack.pop_back();
 
-      bool done = false;
+      auto const currentType = current->getType();
+      bool tryToPushIntoSubquery = false;
 
-      usedHere.clear();
-      current->getVariablesUsedHere(usedHere);
-      for (auto const& v : usedHere) {
-        if (v == variable) {
+      if (currentType == EN::SUBQUERY && !current->isVarUsedLater(variable)) {
+        current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
+        while (current->hasDependency()) {
+          current = current->getFirstDependency();
+        }
+        tryToPushIntoSubquery = true;
+      } else {
+        usedHere.clear();
+        current->getVariablesUsedHere(usedHere);
+
+        bool const done = std::find(usedHere.begin(), usedHere.end(),
+                                    variable) != usedHere.end();
+
+        if (done) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
-          done = true;
           break;
         }
       }
 
-      if (done) {
-        // done with optimizing this calculation node
-        break;
-      }
-
-      auto const currentType = current->getType();
-
-      if (currentType == EN::FILTER || currentType == EN::SORT ||
-          currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
+      if (tryToPushIntoSubquery) {
+        lastNode = current;
+      } else if (currentType == EN::FILTER || currentType == EN::SORT ||
+                 currentType == EN::LIMIT || currentType == EN::SUBQUERY ||
+                 currentType == EN::SINGLETON) {
         // we found something interesting that justifies moving our node down
         if (currentType == EN::LIMIT &&
             arangodb::ServerState::instance()->isCoordinator()) {
@@ -1851,7 +1875,6 @@ void arangodb::aql::moveCalculationsDownRule(
         }
 
         lastNode = current;
-
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
@@ -1878,6 +1901,14 @@ void arangodb::aql::moveCalculationsDownRule(
       // and re-insert into after the last "good" node
       plan->insertDependency(lastNode->getFirstParent(), n);
       modified = true;
+
+      // any changes done here may affect the following iterations
+      // of this optimizer rule, so we need to recalculate the
+      // variable usage here.
+      if (!isLastVariable) {
+        plan->clearVarUsageComputed();
+        plan->findVarUsage();
+      }
     }
   }
 
@@ -4459,7 +4490,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 collectNode->groupVariables(), aggregateVariables, nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
@@ -4493,7 +4524,7 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(),
                 groupVariables, collectNode->aggregateVariables(), nullptr,
-                nullptr, std::vector<Variable const*>(),
+                nullptr, std::vector<std::pair<Variable const*, std::string>>{},
                 collectNode->variableMap(), true);
 
             dbCollectNode->addDependency(previous);
@@ -4552,8 +4583,8 @@ void arangodb::aql::collectInClusterRule(Optimizer* opt,
             auto dbCollectNode = plan->createNode<CollectNode>(
                 plan.get(), plan->nextId(), collectNode->getOptions(), outVars,
                 dbServerAggVars, nullptr, nullptr,
-                std::vector<Variable const*>(), collectNode->variableMap(),
-                false);
+                std::vector<std::pair<Variable const*, std::string>>{},
+                collectNode->variableMap(), false);
 
             dbCollectNode->addDependency(previous);
             target->replaceDependency(previous, dbCollectNode);
@@ -8948,8 +8979,9 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
                                         std::unique_ptr<ExecutionPlan> plan,
                                         OptimizerRule const& rule) {
   containers::SmallVector<ExecutionNode*, 8> nodes;
-  plan->findNodesOfType(nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN},
-                        true);
+  plan->findNodesOfType(
+      nodes, {EN::INDEX, EN::ENUMERATE_COLLECTION, EN::JOIN, EN::MATERIALIZE},
+      true);
 
   auto replace = [&plan](ExecutionNode* self, Projections& p,
                          Variable const* searchVariable, size_t index) {
@@ -8978,13 +9010,26 @@ void arangodb::aql::optimizeProjections(Optimizer* opt,
       auto* joinNode = ExecutionNode::castTo<JoinNode*>(n);
       size_t index = 0;
       for (auto& it : joinNode->getIndexInfos()) {
-        if (it.isLateMaterialized) {
-          // For late materialization in join nodes, that variables
-          // are already set by the optimizer rule for late materialization
-          continue;
-        }
         modified |= replace(n, it.projections, it.outVariable, index++);
       }
+    } else if (n->getType() == EN::MATERIALIZE) {
+      auto* matNode = dynamic_cast<materialize::MaterializeRocksDBNode*>(n);
+      if (matNode == nullptr) {
+        continue;
+      }
+
+      containers::FlatHashSet<AttributeNamePath> attributes;
+      if (utils::findProjections(matNode, &matNode->outVariable(),
+                                 /*expectedAttribute*/ "",
+                                 /*excludeStartNodeFilterCondition*/ true,
+                                 attributes)) {
+        if (attributes.size() <= DocumentProducingNode::kMaxProjections) {
+          matNode->projections() = Projections(std::move(attributes));
+        }
+      }
+
+      modified |= replace(n, matNode->projections(), &matNode->outVariable(),
+                          /*index*/ 0);
     } else {
       // IndexNode or EnumerateCollectionNode.
       TRI_ASSERT(n->getType() == EN::ENUMERATE_COLLECTION ||

@@ -23,19 +23,19 @@
 
 #pragma once
 
-#include <array>
-
 #include "Aql/CollectOptions.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/RegisterPlan.h"
+#include "Aql/SortElement.h"
 #include "Aql/types.h"
 #include "Basics/Common.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/HashSet.h"
 #include "Containers/SmallVector.h"
 
+#include <array>
 #include <string_view>
 
 namespace arangodb {
@@ -52,6 +52,7 @@ class Collections;
 class ExecutionNode;
 struct OptimizerRule;
 class QueryContext;
+class SubqueryNode;
 
 class ExecutionPlan {
  public:
@@ -119,6 +120,13 @@ class ExecutionPlan {
 
   /// @brief disable a specific rule
   void disableRule(int rule);
+
+  /// @brief increase number of async prefetch nodes
+  void increaseAsyncPrefetchNodes() noexcept;
+  /// @brief decrease number of async prefetch nodes
+  void decreaseAsyncPrefetchNodes() noexcept;
+
+  size_t asyncPrefetchNodes() const noexcept;
 
   /// @brief return the next value for a node id
   ExecutionNodeId nextId();
@@ -450,6 +458,8 @@ class ExecutionPlan {
 
   /// @brief number of nodes used in the plan, by type
   std::array<uint32_t, ExecutionNode::MAX_NODE_TYPE_VALUE> _typeCounts;
+
+  size_t _asyncPrefetchNodes;
 };
 
 }  // namespace aql

@@ -56,11 +56,6 @@ enum class Flags : uint16_t {
                    // target host configuration
   FlushOnFirst = 32,  // when we first see this parameter, we will flush the
                       // contents of its default value before setting it.
-  // operating systems
-  OsLinux = 64,  // option can be used on Linux
-  OsMac = 128,   // option can be used on MacOS
-
-  OsAll = OsLinux | OsMac,  // option can be used on all OSes (linux + mac)
 
   // components
   OnCoordinator = 512,  // option can be used on coordinator
@@ -74,9 +69,8 @@ enum class Flags : uint16_t {
   OnAll = OnCluster | OnSingle,  // option can be used everywhere
 
   // defaults
-  Default = OsAll | OnAll,  // default options
+  Default = OnAll,  // default options
 
-  DefaultNoOs = Default & ~OsAll,  // default, but not specifying any OSes
   DefaultNoComponents =
       Default & ~OnAll,  // default, but not specifying any components
 

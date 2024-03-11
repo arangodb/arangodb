@@ -3560,7 +3560,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
+  transaction::Status stats = mgr->getManagedTrxStatus(id);
   if (stats == transaction::Status::UNDEFINED) {
     return {TRI_ERROR_HTTP_NOT_FOUND,
             "no hold read lock job found for id " + std::to_string(id.id())};

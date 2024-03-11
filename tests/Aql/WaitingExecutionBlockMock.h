@@ -25,7 +25,7 @@
 
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/ScatterExecutor.h"
+#include "Aql/Executor/ScatterExecutor.h"
 
 #include <velocypack/Builder.h>
 

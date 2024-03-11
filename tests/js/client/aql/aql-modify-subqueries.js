@@ -1598,7 +1598,7 @@ function ahuacatlModifySuite () {
       const query = `LET x = true ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
       db._query(query);
       assertEqual([1], c1.toArray().map(o => o.value));
-      assertEqual([2], c2.toArray().map(o => o.value));
+      assertEqual([], c2.toArray().map(o => o.value));
     },
 
     // Complementary test to testTernaryEvaluateBothTrue, with a constant `false`
@@ -1609,7 +1609,7 @@ function ahuacatlModifySuite () {
 
       const query = `LET x = false ? (INSERT {value: 1} INTO ${cn}) : (INSERT {value: 2} INTO ${cn2}) RETURN x`;
       db._query(query);
-      assertEqual([1], c1.toArray().map(o => o.value));
+      assertEqual([], c1.toArray().map(o => o.value));
       assertEqual([2], c2.toArray().map(o => o.value));
     },
 
@@ -1623,8 +1623,17 @@ function ahuacatlModifySuite () {
 
       for (let i = 0; i < 10; ++i) {
         db._query(query);
-        assertEqual([1], c1.toArray().map(o => o.value));
-        assertEqual([2], c2.toArray().map(o => o.value));
+        let q1 = c1.toArray().map(o => o.value);
+        let q2 = c2.toArray().map(o => o.value);
+        assertTrue(q1.length === 1 || q2.length === 1, {q1, q2});
+        assertNotEqual(q1.length, q2.length, {q1, q2});
+        if (q1.length) {
+          assertEqual([1], c1.toArray().map(o => o.value));
+          assertEqual([], c2.toArray().map(o => o.value));
+        } else {
+          assertEqual([], c1.toArray().map(o => o.value));
+          assertEqual([2], c2.toArray().map(o => o.value));
+        }
         c1.truncate({ compact: false });
         c2.truncate({ compact: false });
       }

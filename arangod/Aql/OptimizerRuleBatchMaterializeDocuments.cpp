@@ -24,11 +24,12 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Logger/LogMacros.h"
@@ -110,19 +111,30 @@ void arangodb::aql::batchMaterializeDocumentsRule(
     }
 
     if (indexNode->estimateCost().estimatedNrItems < 100) {
-      LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
-               << "estimated number of items too small";
-      continue;
+      TRI_IF_FAILURE("batch-materialize-no-estimation") {
+        // do nothing here
+      }
+      else {
+        LOG_RULE << "INDEX " << indexNode->id() << " FAILED: "
+                 << "estimated number of items too small ("
+                 << indexNode->estimateCost().estimatedNrItems << ")";
+        continue;
+      }
     }
 
     LOG_RULE << "FOUND INDEX NODE " << indexNode->id();
 
     auto docIdVar = plan->getAst()->variables()->createTemporaryVariable();
+    auto oldOutVariable = indexNode->outVariable();
+    // a later optimizer rule will change the actual document output variable
+    auto newOutVariable = oldOutVariable;
 
     auto materialized = plan->createNode<materialize::MaterializeRocksDBNode>(
         plan.get(), plan->nextId(), indexNode->collection(), *docIdVar,
-        *indexNode->outVariable());
+        *newOutVariable, *oldOutVariable);
+
     plan->insertAfter(indexNode, materialized);
+
     if (!indexNode->projections().empty()) {
       TRI_ASSERT(!indexNode->projections().usesCoveringIndex());
       TRI_ASSERT(!indexNode->projections().hasOutputRegisters());

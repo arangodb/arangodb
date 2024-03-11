@@ -87,9 +87,7 @@ using namespace arangodb;
 namespace {
 
 // whether or not we can use the splice system call on Linux
-#ifdef __linux__
 bool canUseSplice = true;
-#endif
 
 /// @brief names of blocking files
 std::vector<std::pair<std::string, int>> OpenedFiles;
@@ -208,9 +206,7 @@ static std::string LocateConfigDirectoryEnv() {
   return r;
 }
 
-#ifdef __linux__
 void TRI_SetCanUseSplice(bool value) noexcept { ::canUseSplice = value; }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief returns the size of a file
@@ -847,14 +843,6 @@ ErrorCode TRI_WriteFile(char const* filename, char const* data, size_t length) {
 bool TRI_fsync(int fd) {
   int res = fsync(fd);
 
-#ifdef __APPLE__
-
-  if (res == 0) {
-    res = fcntl(fd, F_FULLFSYNC, 0);
-  }
-
-#endif
-
   if (res == 0) {
     return true;
   } else {
@@ -1300,7 +1288,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
   bool rc = true;
 
-#ifdef __linux__
   if (::canUseSplice) {
     // Linux-specific file-copying code based on splice()
     // The splice() system call first appeared in Linux 2.6.17; library support
@@ -1353,7 +1340,6 @@ std::string TRI_GetInstallRoot(std::string const& binaryPath,
 
     return rc;
   }
-#endif
 
   // systems other than Linux use regular file-copying.
   // note: regular file copying will also be used on Linux
@@ -1881,13 +1867,7 @@ arangodb::Result TRI_GetDiskSpaceInfo(std::string const& path,
     return {TRI_errno(), TRI_last_error()};
   }
 
-#ifdef __APPLE__
-  // at least on macOS f_bsize produces incorrect results. it is unclear
-  // yet if we need to use f_frsize on Linux as well.
-  auto const factor = static_cast<uint64_t>(stat.f_frsize);
-#else
   auto const factor = static_cast<uint64_t>(stat.f_bsize);
-#endif
 
   totalSpace = factor * static_cast<uint64_t>(stat.f_blocks);
 

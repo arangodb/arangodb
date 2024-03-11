@@ -27,18 +27,26 @@
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/CalculationNodeVarFinder.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/MaterializeSearchNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRule.h"
+#include "Aql/Projections.h"
 #include "Aql/Query.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Basics/DownCast.h"
 #include "Basics/StringUtils.h"
@@ -50,7 +58,6 @@
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchViewCoordinator.h"
 #include "IResearch/Search.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/LogicalCollection.h"
 
 #include <utils/misc.hpp>
@@ -1054,7 +1061,7 @@ void lateDocumentMaterializationArangoSearchRule(
         // insert a materialize node
         auto* materializeNode = plan->registerNode(
             std::make_unique<materialize::MaterializeSearchNode>(
-                plan.get(), plan->nextId(), *localDocIdTmp, var));
+                plan.get(), plan->nextId(), *localDocIdTmp, var, var));
         TRI_ASSERT(materializeNode);
 
         auto* materializeDependency = stickToSortNode ? sortNode : limitNode;

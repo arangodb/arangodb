@@ -93,6 +93,9 @@ class ExecContext : public RequestContext {
   /// @brief current user, may be empty for internal users
   std::string const& user() const { return _user; }
 
+  /// @brief current database
+  std::string const& database() const { return _database; }
+
   // std::string const& database() const { return _database; }
   /// @brief authentication level on _system. Always RW for superuser
   auth::Level systemAuthLevel() const noexcept { return _systemDbAuthLevel; }

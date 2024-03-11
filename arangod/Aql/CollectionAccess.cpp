@@ -24,8 +24,8 @@
 #include "CollectionAccess.h"
 
 #include "Aql/Collections.h"
-#include "Aql/CollectionAccessingNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Basics/debugging.h"
 

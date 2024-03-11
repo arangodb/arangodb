@@ -34,8 +34,6 @@ if (USE_ENTERPRISE)
     add_dependencies(${BIN_ARANGOBACKUP} jemalloc_build)
   endif ()
 
-  if (UNIX) 
-    add_dependencies(${BIN_ARANGOBACKUP} man)
-  endif ()
+  add_dependencies(${BIN_ARANGOBACKUP} man)
 endif () # USE_ENTERPRISE
 

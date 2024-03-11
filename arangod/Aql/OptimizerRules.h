@@ -24,16 +24,18 @@
 
 #pragma once
 
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/Common.h"
-#include "ClusterNodes.h"
 #include "Containers/SmallUnorderedMap.h"
-#include "ExecutionNode.h"
 #include "VocBase/vocbase.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 class Optimizer;
 class ExecutionNode;
 class SubqueryNode;
@@ -400,5 +402,9 @@ void replaceEqualAttributeAccesses(Optimizer*, std::unique_ptr<ExecutionPlan>,
 void batchMaterializeDocumentsRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
                                    OptimizerRule const&);
 
-}  // namespace aql
-}  // namespace arangodb
+void pushDownLateMaterializationRule(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const&);
+void materializeIntoSeparateVariable(Optimizer*, std::unique_ptr<ExecutionPlan>,
+                                     OptimizerRule const&);
+
+}  // namespace arangodb::aql

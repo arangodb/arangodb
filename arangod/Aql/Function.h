@@ -106,10 +106,11 @@ struct Function {
   /// @brief create the function
   Function(std::string const& name, char const* arguments,
            std::underlying_type<Flags>::type flags,
-           FunctionImplementation implementation);
+           functions::FunctionImplementation implementation);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  Function(std::string const& name, FunctionImplementation implementation);
+  Function(std::string const& name,
+           functions::FunctionImplementation implementation);
 #endif
 
   /// @brief whether or not the function is based on V8
@@ -150,7 +151,7 @@ struct Function {
   size_t maxRequiredArguments;
 
   /// @brief C++ implementation of the function
-  FunctionImplementation const implementation;
+  functions::FunctionImplementation const implementation;
 
   /// @brief function argument conversion information
   std::vector<Conversion> conversions;

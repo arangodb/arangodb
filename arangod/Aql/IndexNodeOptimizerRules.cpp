@@ -27,9 +27,13 @@
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
+#include "Aql/ExecutionNode/MaterializeSearchNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/LateMaterializedOptimizerRulesCommon.h"
 #include "Aql/Optimizer.h"
 #include "Aql/QueryContext.h"
@@ -132,6 +136,10 @@ void arangodb::aql::lateDocumentMaterializationRule(
       auto& index = indexes.front();
       if (index->coveredFields().empty()) {
         // index does not cover any fields
+        continue;
+      }
+      if (index->type() != Index::TRI_IDX_TYPE_INVERTED_INDEX) {
+        // rule can only be applied for inverted indexes
         continue;
       }
       auto const* var = indexNode->outVariable();
@@ -340,11 +348,11 @@ void arangodb::aql::lateDocumentMaterializationRule(
         auto makeMaterializer = [&]() -> std::unique_ptr<ExecutionNode> {
           if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
             return std::make_unique<materialize::MaterializeSearchNode>(
-                plan.get(), plan->nextId(), *localDocIdTmp, *var);
+                plan.get(), plan->nextId(), *localDocIdTmp, *var, *var);
           }
           return std::make_unique<materialize::MaterializeRocksDBNode>(
               plan.get(), plan->nextId(), indexNode->collection(),
-              *localDocIdTmp, *var);
+              *localDocIdTmp, *var, *var);
         };
         auto* materializeNode = plan->registerNode(makeMaterializer());
         TRI_ASSERT(materializeNode);

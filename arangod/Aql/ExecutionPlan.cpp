@@ -27,35 +27,48 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortNode.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
-#include "Graph/ShortestPathOptions.h"
 #include "Graph/PathType.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -467,8 +480,8 @@ ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries(),
-      _typeCounts{} {}
+      _typeCounts{},
+      _asyncPrefetchNodes(0) {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -538,6 +551,21 @@ ExecutionPlan::~ExecutionPlan() {
   plan->findVarUsage();
 
   return plan;
+}
+
+/// @brief increase number of async prefetch nodes
+void ExecutionPlan::increaseAsyncPrefetchNodes() noexcept {
+  ++_asyncPrefetchNodes;
+}
+
+/// @brief decrease number of async prefetch nodes
+void ExecutionPlan::decreaseAsyncPrefetchNodes() noexcept {
+  TRI_ASSERT(_asyncPrefetchNodes > 0);
+  --_asyncPrefetchNodes;
+}
+
+size_t ExecutionPlan::asyncPrefetchNodes() const noexcept {
+  return _asyncPrefetchNodes;
 }
 
 void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
@@ -620,6 +648,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
+  plan->_asyncPrefetchNodes = _asyncPrefetchNodes;
 
   return plan;
 }
@@ -943,8 +972,9 @@ Variable const* ExecutionPlan::getOutVariable(ExecutionNode const* node) const {
   }
 
   THROW_ARANGO_EXCEPTION_MESSAGE(
-      TRI_ERROR_INTERNAL, std::string("invalid node type '") +
-                              node->getTypeString() + "' in getOutVariable");
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("invalid node type '", node->getTypeString(),
+                   "' in getOutVariable"));
 }
 
 /// @brief creates an anonymous COLLECT node (for a DISTINCT)
@@ -958,10 +988,10 @@ CollectNode* ExecutionPlan::createAnonymousCollect(
       GroupVarInfo{out, previous->outVariable()}};
   std::vector<AggregateVarInfo> const aggregateVariables{};
 
-  auto en = createNode<CollectNode>(this, nextId(), CollectOptions(),
-                                    groupVariables, aggregateVariables, nullptr,
-                                    nullptr, std::vector<Variable const*>(),
-                                    _ast->variables()->variables(false), true);
+  auto en = createNode<CollectNode>(
+      this, nextId(), CollectOptions(), groupVariables, aggregateVariables,
+      nullptr, nullptr, std::vector<std::pair<Variable const*, std::string>>{},
+      _ast->variables()->variables(false), true);
 
   en->aggregationMethod(CollectOptions::CollectMethod::DISTINCT);
   en->specialized();
@@ -1785,7 +1815,7 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     }
   }
 
-  std::vector<Variable const*> keepVariables;
+  std::vector<std::pair<Variable const*, std::string>> keepVariables;
   auto const keep = node->getMember(5);
 
   if (keep->type != NODE_TYPE_NOP) {
@@ -1797,7 +1827,8 @@ ExecutionNode* ExecutionPlan::fromNodeCollect(ExecutionNode* previous,
     for (size_t i = 0; i < keepVarsSize; ++i) {
       auto ref = keep->getMember(i);
       TRI_ASSERT(ref->type == NODE_TYPE_REFERENCE);
-      keepVariables.emplace_back(static_cast<Variable const*>(ref->getData()));
+      auto var = static_cast<Variable const*>(ref->getData());
+      keepVariables.emplace_back(std::make_pair(var, var->name));
     }
   } else if (into->type != NODE_TYPE_NOP && expression->type == NODE_TYPE_NOP) {
     // `COLLECT ... INTO var ...` with neither an explicit expression
@@ -2928,16 +2959,16 @@ struct Shower final
       case ExecutionNode::CALCULATION: {
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " $" + std::to_string(calcNode.outVariable()->id) + " = ";
+        auto type = absl::StrCat(node.getTypeString(), " $",
+                                 calcNode.outVariable()->id, " = ");
         calcNode.expression()->stringify(type);
         return type;
       }
       case ExecutionNode::FILTER: {
         auto const& filterNode =
             *ExecutionNode::castTo<FilterNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " $" + std::to_string(filterNode.inVariable()->id);
+        auto type = absl::StrCat(node.getTypeString(), " $",
+                                 filterNode.inVariable()->id);
         return type;
       }
       case ExecutionNode::TRAVERSAL:
@@ -2952,10 +2983,10 @@ struct Shower final
       }
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " " + indexNode->collection()->name();
-        type += std::string{" -> "} + indexNode->outVariable()->name;
-        type += std::string{" "} + indexNode->condition()->root()->toString();
+        auto type = absl::StrCat(node.getTypeString(), " ",
+                                 indexNode->collection()->name(), " -> ",
+                                 indexNode->outVariable()->name, " ",
+                                 indexNode->condition()->root()->toString());
         return type;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
@@ -2966,10 +2997,8 @@ struct Shower final
       case ExecutionNode::UPSERT: {
         auto const& colAccess =
             *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
-        type += " (";
-        type += colAccess.collection()->name();
-        type += ")";
+        auto type = absl::StrCat(node.getTypeString(), " (",
+                                 colAccess.collection()->name(), ")");
         if (colAccess.isUsedAsSatellite()) {
           type += " used as satellite";
         }
