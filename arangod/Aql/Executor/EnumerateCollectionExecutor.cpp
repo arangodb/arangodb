@@ -32,7 +32,6 @@
 #include "Aql/Collection.h"
 #include "Aql/DocumentProducingHelper.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/IndexNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Projections.h"

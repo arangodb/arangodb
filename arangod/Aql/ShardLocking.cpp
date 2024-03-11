@@ -21,17 +21,16 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <algorithm>
-
 #include "ShardLocking.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/JoinNode.h"
-#include "Aql/ModificationNodes.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
 #include "Aql/OptimizerRule.h"
 #include "Aql/Query.h"
 #include "Cluster/ClusterFeature.h"
@@ -41,6 +40,8 @@
 #include "Utilities/NameValidator.h"
 
 #include <absl/strings/str_cat.h>
+
+#include <algorithm>
 
 using namespace arangodb;
 using namespace arangodb::aql;

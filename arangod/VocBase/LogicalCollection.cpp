@@ -206,7 +206,9 @@ LogicalCollection::LogicalCollection(TRI_vocbase_t& vocbase, VPackSlice info,
 
   if (ServerState::instance()->isDBServer() ||
       !ServerState::instance()->isRunningInCluster()) {
-    _followers = std::make_unique<FollowerInfo>(this);
+    if (!isAStub) {
+      _followers = std::make_unique<FollowerInfo>(this);
+    }
   }
 
   TRI_ASSERT(_physical != nullptr);

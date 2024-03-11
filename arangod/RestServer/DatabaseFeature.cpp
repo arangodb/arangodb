@@ -268,6 +268,7 @@ DatabaseFeature::DatabaseFeature(Server& server)
   startsAfter<EngineSelectorFeature>();
   startsAfter<InitDatabaseFeature>();
   startsAfter<StorageEngineFeature>();
+  startsAfter<metrics::MetricsFeature>();
 }
 
 DatabaseFeature::~DatabaseFeature() = default;

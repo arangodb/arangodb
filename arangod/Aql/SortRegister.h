@@ -24,14 +24,19 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/SortElement.h"
+#include "Aql/SortRegister.h"
 #include "Aql/types.h"
 
 #include <string>
 #include <vector>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+class ExecutionNode;
+class ExecutionPlan;
+template<typename T>
+struct RegisterPlanT;
+using RegisterPlan = RegisterPlanT<ExecutionNode>;
 
 /// @brief sort element for block, consisting of register, sort direction,
 /// and a possible attribute path to dig into the document
@@ -51,5 +56,4 @@ struct SortRegister {
                    std::vector<SortRegister>& sortRegisters);
 };  // SortRegister
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

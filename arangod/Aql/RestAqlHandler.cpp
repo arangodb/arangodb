@@ -30,7 +30,7 @@
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"

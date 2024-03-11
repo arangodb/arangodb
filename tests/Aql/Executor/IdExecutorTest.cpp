@@ -31,7 +31,7 @@
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ConstFetcher.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/Executor/SubqueryStartExecutor.h"
 #include "Aql/InputAqlItemRow.h"

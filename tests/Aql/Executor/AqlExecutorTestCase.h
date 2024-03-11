@@ -29,7 +29,7 @@
 #include "ExecutorTestHelper.h"
 
 #include "Aql/AqlItemBlockManager.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Basics/GlobalResourceMonitor.h"
 #include "Basics/ResourceUsage.h"
 

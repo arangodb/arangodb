@@ -29,7 +29,6 @@
 #include "Aql/AqlValue.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
-#include "Aql/SingleRowFetcher.h"
 #include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 

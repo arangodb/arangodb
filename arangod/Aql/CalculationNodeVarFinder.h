@@ -23,12 +23,11 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 #include "Containers/SmallVector.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class CalculationNodeVarFinder final
     : public WalkerWorker<ExecutionNode, WalkerUniqueness::NonUnique> {
@@ -63,5 +62,5 @@ class CalculationNodeVarExistenceFinder final
     return _isCalculationNodesFound;
   }
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql
