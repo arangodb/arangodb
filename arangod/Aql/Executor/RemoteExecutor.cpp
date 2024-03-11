@@ -359,7 +359,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   }
 
   arangodb::network::EndpointSpec spec;
-  auto res = network::resolveDestination(nf, _server, spec);
+  auto res = network::resolveDestination(nf, _server, spec).get();
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }
