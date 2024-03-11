@@ -69,7 +69,7 @@ const randomModificationDepth = () => {
 ////////////////////////////////////////////////////////////////////////////////
 
 function ahuacatlSubqueryChaos() {
-  /// Some queries that caused errors before. We don't have the seeds
+  /// Some queries that caused errors before. For some we don't have the seeds
   /// to create them, unfortunately, so we test them in here verbatim.
   const specificQueries = {
     q1: {
@@ -141,11 +141,44 @@ function ahuacatlSubqueryChaos() {
            RETURN {fv0, sq1, sq7}`,
       collectionNames: [],
     },
+    // this is a simplified version of the two seeded queries below
+    q5: {
+      queryString: `FOR v IN 1..2
+        LET sq1 = (UPSERT { value: 0 } INSERT { value: 0 } UPDATE {updated: true} IN col
+          COLLECT WITH COUNT INTO cnt
+          RETURN cnt)
+        LIMIT 1
+        RETURN sq1`,
+      collectionNames: ["col"]
+    },
+    q6: {
+      modifying: true,
+      numberSubqueries: 2, 
+      seed: 2226,
+      showReproduce: true,
+    },
+    q7: {
+      modifying: true,
+      numberSubqueries: 2,
+      seed: 3581,
+      showReproduce: true,
+    }
   };
   return {
     testSpecificQueries: function () {
       for (const [key, value] of Object.entries(specificQueries)) {
-        ct.testQuery(value, {});
+        if (value.hasOwnProperty("queryString")) {
+          const opts = value.testOptions || {};
+          ct.testQuery(value, opts);
+        } else if (value.hasOwnProperty("seed")) {
+          if (value.modifying) {
+            ct.testModifyingQueryWithSeed(value);
+        } else {
+            ct.testQueryWithSeed(value);
+          }
+        } else {
+          throw new Error("Query needs to define either queryString or seed.");
+        }
       }
     },
 
