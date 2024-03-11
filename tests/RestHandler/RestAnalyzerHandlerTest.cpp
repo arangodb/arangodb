@@ -116,7 +116,7 @@ class RestAnalyzerHandlerTest
                                 arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
   };
-  std::shared_ptr<ExecContext> execContext = std::make_shared<ExecContext>();
+  std::shared_ptr<ExecContext> execContext;
   arangodb::ExecContextScope execContextScope;  // (execContext);
 
   RestAnalyzerHandlerTest()
@@ -127,7 +127,7 @@ class RestAnalyzerHandlerTest
         dbFeature(server.getFeature<arangodb::DatabaseFeature>()),
         authFeature(server.getFeature<arangodb::AuthenticationFeature>()),
         userManager(authFeature.userManager()),
-        execContext(),
+        execContext(std::make_shared<ExecContext>()),
         execContextScope(execContext) {
     grantOnDb(arangodb::StaticStrings::SystemDatabase,
               arangodb::auth::Level::RW);
