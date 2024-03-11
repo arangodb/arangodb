@@ -1,11 +1,11 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Updated ArangoDB Starter to v0.18.4 and arangosync to v2.19.7.
+
 * BTS-1808: fix arangodump format for ZKD indexes. Previously the structural
   dump of ZKD indexes was missing the "fieldValueTypes" attribute, which was
   necessary to restore a ZKD index at least in the cluster.
-
-* Updated ArangoDB Starter to v0.18.4-preview-1 and arangosync to v2.19.7-preview-1
 
 
 v3.11.8 (2024-02-22)
