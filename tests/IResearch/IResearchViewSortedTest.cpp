@@ -39,9 +39,9 @@
 
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/Ast.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/ExpressionContext.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Basics/VelocyPackHelper.h"

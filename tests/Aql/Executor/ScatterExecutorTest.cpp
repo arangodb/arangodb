@@ -28,10 +28,10 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlCallStack.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/ExecutionBlockImpl.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
 #include "Aql/Executor/ScatterExecutor.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterInfos.h"

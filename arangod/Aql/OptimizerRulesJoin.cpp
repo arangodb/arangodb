@@ -27,14 +27,15 @@
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
 #include "Aql/IndexStreamIterator.h"
-#include "Aql/JoinNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
@@ -59,7 +60,6 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
-#include <bitset>
 #include <span>
 #include <tuple>
 

@@ -25,8 +25,8 @@
 
 #include "Aql/AqlCall.h"
 #include "Aql/AqlItemBlockInputRange.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionState.h"
-#include "Aql/GraphNode.h"
 #include "Aql/InputAqlItemRow.h"
 #include "Aql/RegisterInfos.h"
 #include "Transaction/Methods.h"
