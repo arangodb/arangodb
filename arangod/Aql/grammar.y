@@ -365,30 +365,6 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
   return wrapperNode;
 }
 
-/*
-AstNode* insertConditional(Parser* parser, bool negated, AstNode* condition, YYLTYPE const& yylloc) {
-  std::string variableName = parser->ast()->variables()->nextName();
-  AstNode* conditionNode = parser->ast()->createNodeLet(variableName.data(), variableName.size(), condition, false);
-  parser->ast()->addOperation(conditionNode);
-  
-  auto variable = parser->ast()->scopes()->getVariable(variableName, false);
-
-  if (variable == nullptr) {
-    // variable does not exist
-    parser->registerParseError(TRI_ERROR_INTERNAL, "use of unknown variable '%s' in conditional operator", variableName, yylloc.first_line, yylloc.first_column);
-  }
-
-  AstNode* reference = parser->ast()->createNodeReference(variable);
-  if (negated) {
-    AstNode* negation = parser->ast()->createNodeUnaryOperator(NODE_TYPE_OPERATOR_UNARY_NOT, reference);
-    parser->pushConditional(negation);
-  } else { 
-    parser->pushConditional(reference);
-  }
-  return reference;
-}
-*/
-
 } // namespace
 
 %}
