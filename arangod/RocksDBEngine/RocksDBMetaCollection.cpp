@@ -53,6 +53,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/VocbaseMetrics.h"
 
 #include <velocypack/Iterator.h>
 
@@ -75,7 +76,22 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
-      _exclusiveLock(FutureLock ::Metrics{}, _schedulerWrapper),
+      _exclusiveLock(
+          FutureLock ::Metrics{
+              .pendingExclusive = collection.vocbase()
+                                      .metrics()
+                                      .meta_collection_lock_pending_exclusive,
+              .pendingShared = collection.vocbase()
+                                   .metrics()
+                                   .meta_collection_lock_pending_shared,
+              .lockExclusive = collection.vocbase()
+                                   .metrics()
+                                   .meta_collection_lock_locked_exclusive,
+              .lockShared = collection.vocbase()
+                                .metrics()
+                                .meta_collection_lock_locked_shared,
+          },
+          _schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
