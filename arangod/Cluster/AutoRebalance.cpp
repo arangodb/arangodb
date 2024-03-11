@@ -230,29 +230,36 @@ ShardImbalance AutoRebalanceProblem::computeShardImbalance() const {
 
 std::vector<double> AutoRebalanceProblem::piCoefficients(
     Collection const& c) const {
-  std::vector<double> tmp;
-  tmp.resize(dbServers.size(), 0);
+  std::vector<double> leaders;
+  leaders.resize(dbServers.size(), 0);
+  std::vector<bool> haveShards;
+  haveShards.resize(dbServers.size(), 0);
+  uint32_t dbServersAffected = 0;
   if (c.shards.size() == 1) {
-    return tmp;  // No contribution for 1 shard collections
+    return leaders;  // No contribution for 1 shard collections
   }
   double sum = 0;
   for (auto const sindex : c.shards) {
-    tmp[shards[sindex].leader] += 1.0;
+    leaders[shards[sindex].leader] += 1.0;
     sum += 1.0;
-  }
-  uint32_t dbServersAffected = 0;
-  for (auto& t : tmp) {
-    if (t > 0.1) {
+    if (!haveShards[shards[sindex].leader]) {
+      haveShards[shards[sindex].leader] = true;
       ++dbServersAffected;
+    }
+    for (auto const f : shards[sindex].followers) {
+      if (!haveShards[f]) {
+        haveShards[f] = true;
+        ++dbServersAffected;
+      }
     }
   }
   double avg = sum / dbServersAffected;
   for (size_t i = 0; i < dbServers.size(); ++i) {
-    if (tmp[i] > 0.1) {  // only if affected
-      tmp[i] = pow(tmp[i] - avg, 2.0) * _piFactor;
+    if (haveShards[i]) {  // only if affected
+      leaders[i] = pow(leaders[i] - avg, 2.0) * _piFactor;
     }
   }
-  return tmp;
+  return leaders;
 }
 
 LeaderImbalance AutoRebalanceProblem::computeLeaderImbalance() const {
