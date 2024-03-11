@@ -28,7 +28,7 @@ const jsunity = require("jsunity");
 const ct = require("@arangodb/test-generators/subquery-chaos-test");
 const helper = require("@arangodb/aql-helper");
 
-const numberOfQueriesGenerated = 100;
+const numberOfQueriesGenerated = 200;
 const randomDepth = () => {
   const val = Math.random();
   if (val < 0.3) {
