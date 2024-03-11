@@ -59,9 +59,6 @@ namespace arangodb::futures {
 template<typename T>
 class Future;
 
-void logExecContextSwitch(ExecContext const* previous,
-                          ExecContext const* next) noexcept;
-
 template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
