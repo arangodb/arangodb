@@ -1656,11 +1656,17 @@ operator_unary:
   ;
 
 operator_binary:
-    expression T_OR expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, $1, $3);
+    expression T_OR {
+      parser->lazyConditions().push($1, /*negated*/ true);
+    } expression {
+      LazyCondition previous = parser->lazyConditions().pop();
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_OR, previous.condition, $4);
     }
-  | expression T_AND expression {
-      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, $1, $3);
+  | expression T_AND {
+      parser->lazyConditions().push($1, /*negated*/ false);
+    } expression {
+      LazyCondition previous = parser->lazyConditions().pop();
+      $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_AND, previous.condition, $4);
     }
   | expression T_PLUS expression {
       $$ = parser->ast()->createNodeBinaryOperator(NODE_TYPE_OPERATOR_BINARY_PLUS, $1, $3);
