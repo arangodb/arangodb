@@ -29,15 +29,12 @@
 GeneralRequestMock::GeneralRequestMock(TRI_vocbase_t& vocbase)
     : arangodb::GeneralRequest(arangodb::ConnectionInfo{}, 1) {
   _authenticated = false;  // must be set before VocbaseContext::create(...)
-  _isRequestContextOwner =
-      false;  // must be set before VocbaseContext::create(...)
-  _context.reset(arangodb::VocbaseContext::create(*this, vocbase));
+  _context = arangodb::VocbaseContext::create(*this, vocbase);
   _context->vocbase().forceUse();  // must be called or ~VocbaseContext() will
                                    // fail at '_vocbase.release()'
   _requestContext =
-      _context
-          .get();  // do not use setRequestContext(...) since '_requestContext'
-                   // has not been initialized and contains garbage
+      _context;  // do not use setRequestContext(...) since '_requestContext'
+                 // has not been initialized and contains garbage
 }
 GeneralRequestMock::~GeneralRequestMock() = default;
 
