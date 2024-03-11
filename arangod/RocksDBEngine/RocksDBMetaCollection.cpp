@@ -2078,3 +2078,6 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   TRI_ASSERT(_tree != nullptr);
   TRI_ASSERT(_compressed.empty());
 }
+
+template struct arangodb::futures::FutureSharedLock<
+    RocksDBMetaCollection::SchedulerWrapper>;

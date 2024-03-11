@@ -347,4 +347,7 @@ class RocksDBMetaCollection : public PhysicalCollection {
   uint64_t _revisionsBufferedMemoryUsage;
 };
 
+extern template struct arangodb::futures::FutureSharedLock<
+    RocksDBMetaCollection::SchedulerWrapper>;
+
 }  // namespace arangodb
