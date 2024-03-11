@@ -163,7 +163,7 @@ function ahuacatlSubqueryChaos() {
       for (var i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testQueryWithSeed({
           numberSubqueries: randomDepth(),
-          seed: Math.trunc(Math.random() * 10000),
+          seed: Math.trunc(Math.random() * 100000),
           showReproduce: true,
           throwOnMismatch: true,
         });
@@ -174,7 +174,7 @@ function ahuacatlSubqueryChaos() {
       for (var i = 0; i < numberOfQueriesGenerated; i++) {
         ct.testModifyingQueryWithSeed({
           numberSubqueries: randomModificationDepth(),
-          seed: Math.trunc(Math.random() * 10000),
+          seed: Math.trunc(Math.random() * 100000),
           showReproduce: true,
           throwOnMismatch: true,
         });
