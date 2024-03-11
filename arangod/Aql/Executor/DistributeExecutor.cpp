@@ -24,9 +24,9 @@
 #include "DistributeExecutor.h"
 
 #include "Aql/AqlCallStack.h"
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
 #include "Aql/Executor/IdExecutor.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/SkipResult.h"

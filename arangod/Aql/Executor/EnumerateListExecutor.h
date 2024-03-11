@@ -30,57 +30,28 @@
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionState.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/QueryExpressionContext.h"
 #include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
 #include "Transaction/Methods.h"
 
 #include <memory>
-#include <optional>
 #include <utility>
+#include <vector>
 
-namespace arangodb {
-namespace transaction {
-class Methods;
-}
-
-namespace aql {
+namespace arangodb::aql {
 
 struct AqlCall;
 class AqlItemBlockInputRange;
+class EnumerateListExpressionContext;
 class Expression;
-class NoStats;
 class OutputAqlItemRow;
 class QueryContext;
 class RegisterInfos;
 template<BlockPassthrough>
 class SingleRowFetcher;
-
-class EnumerateListExpressionContext final : public QueryExpressionContext {
- public:
-  EnumerateListExpressionContext(
-      transaction::Methods& trx, QueryContext& context,
-      AqlFunctionsInternalCache& cache,
-      std::vector<std::pair<VariableId, RegisterId>> const& varsToRegister,
-      VariableId outputVariableId);
-
-  ~EnumerateListExpressionContext() override = default;
-
-  AqlValue getVariableValue(Variable const* variable, bool doCopy,
-                            bool& mustDestroy) const override;
-
-  void adjustCurrentValue(AqlValue const& value);
-  void adjustCurrentRow(InputAqlItemRow const& inputRow);
-
- private:
-  /// @brief temporary storage for expression data context
-  std::optional<std::reference_wrapper<InputAqlItemRow const>> _inputRow;
-  std::vector<std::pair<VariableId, RegisterId>> const& _varsToRegister;
-  VariableId _outputVariableId;
-  AqlValue _currentValue;
-};
 
 class EnumerateListExecutorInfos {
  public:
@@ -131,7 +102,7 @@ class EnumerateListExecutor {
   using Stats = FilterStats;
 
   EnumerateListExecutor(Fetcher&, EnumerateListExecutorInfos&);
-  ~EnumerateListExecutor() = default;
+  ~EnumerateListExecutor();
 
   /**
    * @brief Will fetch a new InputRow if necessary and store their local state
@@ -186,5 +157,4 @@ class EnumerateListExecutor {
   std::unique_ptr<EnumerateListExpressionContext> _expressionContext;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

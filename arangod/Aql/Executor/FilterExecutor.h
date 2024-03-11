@@ -27,10 +27,8 @@
 #pragma once
 
 #include "Aql/ExecutionState.h"
-#include "Aql/RegisterInfos.h"
+#include "Aql/SingleRowFetcher.h"
 #include "Aql/types.h"
-
-#include <memory>
 
 namespace arangodb::aql {
 
@@ -38,10 +36,7 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class OutputAqlItemRow;
-class RegisterInfos;
 class FilterStats;
-template<BlockPassthrough>
-class SingleRowFetcher;
 
 class FilterExecutorInfos {
  public:

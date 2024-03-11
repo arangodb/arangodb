@@ -23,17 +23,19 @@
 
 #pragma once
 
-#include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/Executor/ModificationExecutorInfos.h"
 #include "Aql/InputAqlItemRow.h"
+#include "Aql/ModificationExecutorFlags.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/Stats.h"
 #include "Transaction/Methods.h"
 
-namespace arangodb {
-namespace aql {
+#include <string>
+
+namespace arangodb::aql {
 class ExecutionEngine;
+class QueryContext;
 
 struct SingleRemoteModificationInfos : ModificationExecutorInfos {
   SingleRemoteModificationInfos(
@@ -43,17 +45,7 @@ struct SingleRemoteModificationInfos : ModificationExecutorInfos {
       OperationOptions options, aql::Collection const* aqlCollection,
       ConsultAqlWriteFilter consultAqlWriteFilter, IgnoreErrors ignoreErrors,
       IgnoreDocumentNotFound ignoreDocumentNotFound, std::string key,
-      bool hasParent, bool replaceIndex)
-      : ModificationExecutorInfos(
-            engine, inputRegister, RegisterPlan::MaxRegisterId,
-            RegisterPlan::MaxRegisterId, outputNewRegisterId,
-            outputOldRegisterId, outputRegisterId, query, std::move(options),
-            aqlCollection, /*batchSize*/ 1, ProducesResults(false),
-            consultAqlWriteFilter, ignoreErrors, DoCount(true),
-            IsReplace(false), ignoreDocumentNotFound),
-        _key(std::move(key)),
-        _hasParent(hasParent),
-        _replaceIndex(replaceIndex) {}
+      bool hasParent, bool replaceIndex);
 
   std::string _key;
 
@@ -111,5 +103,4 @@ struct SingleRemoteModificationExecutor {
   ExecutionState _upstreamState;
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

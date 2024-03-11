@@ -92,16 +92,16 @@ set(ARANGODB_TESTS_SOURCES
   Aql/AstNodeTest.cpp
   Aql/AstResourcesTest.cpp
   Aql/AttributeNamePathTest.cpp
-  Aql/BitFunctionsTest.cpp
   Aql/BlockCollector.cpp
-  Aql/DateFunctionsTest.cpp
-  Aql/DecaysFunctionTest.cpp
   Aql/DependencyProxyMock.cpp
-  Aql/DistanceFunctionTest.cpp
   Aql/EngineInfoContainerCoordinatorTest.cpp
-  Aql/EnumeratePathsNodeTest.cpp
   Aql/ExecutionBlockImplTest.cpp
-  Aql/ExecutionNodeTest.cpp
+  Aql/ExecutionNode/EnumeratePathsNodeTest.cpp
+  Aql/ExecutionNode/ExecutionNodeTest.cpp
+  Aql/ExecutionNode/IndexNodeTest.cpp
+  Aql/ExecutionNode/MockTypedNode.cpp
+  Aql/ExecutionNode/ShortestPathNodeTest.cpp
+  Aql/ExecutionNode/TraversalNodeTest.cpp
   Aql/Executor/AqlExecutorTestCase.cpp
   Aql/Executor/AsyncExecutorTest.cpp
   Aql/Executor/CalculationExecutorTest.cpp
@@ -134,19 +134,22 @@ set(ARANGODB_TESTS_SOURCES
   Aql/Executor/UpsertExecutorTest.cpp
   Aql/Executor/WindowExecutorTest.cpp
   Aql/FixedOutputExecutionBlockMock.cpp
-  Aql/InRangeFunctionTest.cpp
-  Aql/IndexNodeTest.cpp
+  Aql/Function/BitFunctionsTest.cpp
+  Aql/Function/DateFunctionsTest.cpp
+  Aql/Function/DecaysFunctionTest.cpp
+  Aql/Function/DistanceFunctionTest.cpp
+  Aql/Function/InRangeFunctionTest.cpp
+  Aql/Function/JaccardFunctionTest.cpp
+  Aql/Function/LevenshteinMatchFunctionTest.cpp
+  Aql/Function/MinHashFunctionsTest.cpp
+  Aql/Function/NgramMatchFunctionTest.cpp
+  Aql/Function/NgramPosSimilarityFunctionTest.cpp
+  Aql/Function/NgramSimilarityFunctionTest.cpp
   Aql/InputRangeTest.cpp
-  Aql/JaccardFunctionTest.cpp
   Aql/JoinStrategy/GenericAndTwoNonUniqueJoinTest.cpp
   Aql/JoinStrategy/TwoIndicesUniqueJoinTest.cpp
-  Aql/LevenshteinMatchFunctionTest.cpp
-  Aql/MinHashFunctionsTest.cpp
-  Aql/MockTypedNode.cpp
-  Aql/NgramMatchFunctionTest.cpp
-  Aql/NgramPosSimilarityFunctionTest.cpp
-  Aql/NgramSimilarityFunctionTest.cpp
   Aql/NodeWalkerTest.cpp
+  Aql/ParserTest.cpp
   Aql/ProjectionsTest.cpp
   Aql/QueryCursorTest.cpp
   Aql/QueryHelper.cpp
@@ -154,12 +157,10 @@ set(ARANGODB_TESTS_SOURCES
   Aql/RegisterPlanTest.cpp
   Aql/RowFetcherHelper.cpp
   Aql/ShadowRowForwardingTest.cpp
-  Aql/ShortestPathNodeTest.cpp
   Aql/SkipResultTest.cpp
   Aql/SortLimitTest.cpp
   Aql/SpliceSubqueryOptimizerRuleTest.cpp
   Aql/SplicedSubqueryIntegrationTest.cpp
-  Aql/TraversalNodeTest.cpp
   Aql/WaitingExecutionBlockMock.cpp
   AsyncAgencyComm/AsyncAgencyCommTest.cpp
   Auth/UserManagerClusterTest.cpp

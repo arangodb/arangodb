@@ -31,7 +31,7 @@
 #include "Aql/RegisterInfos.h"
 #include "Aql/types.h"
 #include "Aql/MultiGet.h"
-#include "Indexes/IndexIterator.h"
+#include "Aql/SingleRowFetcher.h"
 #include "IResearch/SearchDoc.h"
 #include "Transaction/Methods.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
@@ -47,8 +47,6 @@ struct AqlCall;
 class AqlItemBlockInputRange;
 class InputAqlItemRow;
 class RegisterInfos;
-template<BlockPassthrough>
-class SingleRowFetcher;
 struct Collection;
 
 class MaterializerExecutorInfos {

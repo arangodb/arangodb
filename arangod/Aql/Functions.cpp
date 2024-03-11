@@ -27,50 +27,19 @@
 #include "Aql/AstNode.h"
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
-//#include "Aql/Query.h"
-//#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
-//#include "Basics/StringUtils.h"
-//#include "Basics/Utf8Helper.h"
-//#include "Basics/VelocyPackHelper.h"
-//#include "Basics/fpconv.h"
-//#include "Basics/tri-strings.h"
-//#include "Containers/FlatHashSet.h"
-//#include "IResearch/IResearchAnalyzerFeature.h"
-//#include "IResearch/IResearchFilterFactory.h"
-//#include "IResearch/IResearchPDP.h"
-//#include "IResearch/VelocyPackHelper.h"
-//#include "StorageEngine/TransactionState.h"
-//#include "Transaction/Context.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Methods.h"
-//#include "VocBase/KeyGenerator.h"
-//#include "VocBase/LogicalCollection.h"
-
-//#include "analysis/token_attributes.hpp"
-//#include "utils/levenshtein_utils.hpp"
-//#include "utils/ngram_match_utils.hpp"
-//#include "utils/utf8_utils.hpp"
 
 #include <absl/strings/str_cat.h>
-
-//#include <unicode/schriter.h>
-//#include <unicode/stsearch.h>
-//#include <unicode/uchar.h>
-//#include <unicode/unistr.h>
 
 #include <velocypack/Collection.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
 
-//#include <algorithm>
-//#include <cstdint>
-
 using namespace arangodb;
 using namespace arangodb::aql;
-// using namespace basics;
-// using namespace aql;
 
 namespace {
 

@@ -133,7 +133,7 @@ class IResearchFilterMinHashMatchTest
 };
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
+#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.h"
 #else
 TEST_F(IResearchFilterMinHashMatchTest, MinHashMatchCE) {
   assertFilterFail(vocbase(),

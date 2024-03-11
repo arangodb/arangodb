@@ -23,23 +23,29 @@
 
 #include "QuerySnippet.h"
 
-#include "Aql/ClusterNodes.h"
 #include "Aql/Collection.h"
-#include "Aql/CollectionAccessingNode.h"
-#include "Aql/DistributeConsumerNode.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectionAccessingNode.h"
+#include "Aql/ExecutionNode/DistributeConsumerNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/GraphNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/GraphNode.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/WalkerWorker.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ServerState.h"
 
 #ifdef USE_ENTERPRISE
 #include "Enterprise/Aql/LocalGraphNode.h"
 #endif
+
+#include <map>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -49,17 +55,12 @@ namespace {
 DistributeConsumerNode* createConsumerNode(
     ExecutionPlan* plan, ScatterNode* internalScatter,
     std::string_view const distributeId) {
-  auto uniq_consumer = std::make_unique<DistributeConsumerNode>(
+  auto consumer = plan->createNode<DistributeConsumerNode>(
       plan, plan->nextId(), std::string(distributeId));
-  auto consumer = uniq_consumer.get();
-  TRI_ASSERT(consumer != nullptr);
-  // Hand over responsibility to plan, s.t. it can clean up if one of the below
-  // fails
-  plan->registerNode(uniq_consumer.release());
   consumer->setIsInSplicedSubquery(internalScatter->isInSplicedSubquery());
   consumer->addDependency(internalScatter);
   consumer->cloneRegisterPlan(internalScatter);
-  internalScatter->addClient(consumer);
+  internalScatter->addClient(*consumer);
   return consumer;
 }
 
@@ -424,7 +425,7 @@ void QuerySnippet::serializeIntoBuilder(
     _remoteNode->setDistributeId(server);
     // Wire up this server to the global scatter
     TRI_ASSERT(_globalScatter != nullptr);
-    _globalScatter->addClient(_remoteNode);
+    _globalScatter->addClient(*_remoteNode);
 
     // For serialization remove the dependency of Remote
 

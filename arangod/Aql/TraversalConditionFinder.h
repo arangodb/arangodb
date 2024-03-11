@@ -24,11 +24,10 @@
 #pragma once
 
 #include "Aql/Condition.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 /// @brief Traversal condition finder
 class TraversalConditionFinder final
@@ -51,5 +50,5 @@ class TraversalConditionFinder final
   ::arangodb::containers::HashSet<VariableId> _filterVariables;
   bool* _planAltered;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql
