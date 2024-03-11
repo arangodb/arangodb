@@ -129,6 +129,23 @@ jobs:
           command: |
             python3 utils/checkLogIds.py
 
+  check-metrics-docs:
+    docker:
+      - image: cimg/python:3.11.1
+    resource_class: small
+    steps:
+      - attach_workspace:
+          at: .
+      - run:
+          name: Install pyyaml
+          command: |
+            python -m pip install --upgrade pip
+            pip install pyyaml
+      - run:
+          name: Check LogIDs
+          command: |
+            python3 utils/generateAllMetricsDocumentation.py
+
   clang-format:
     docker:
       - image: alpine:3.15
@@ -434,6 +451,10 @@ workflows:
           name: minimal-checkout
       - check-log-ids:
           name: check-log-ids
+          requires:
+            - minimal-checkout
+      - check-metrics-docs:
+          name: check-metrics-docs
           requires:
             - minimal-checkout
       - clang-format:
