@@ -21,14 +21,13 @@
 /// @author Tobias Gödderz
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Executor/AqlExecutorTestCase.h"
+#include "Aql/Executor/TestLambdaExecutor.h"
 #include <gtest/gtest.h>
 
-#include "Aql/AqlExecutorTestCase.h"
-#include "Aql/TestLambdaExecutor.h"
-
-#include "Aql/FilterExecutor.h"
-#include "Aql/SubqueryStartExecutor.h"
-#include "Aql/SubqueryEndExecutor.h"
+#include "Aql/Executor/FilterExecutor.h"
+#include "Aql/Executor/SubqueryEndExecutor.h"
+#include "Aql/Executor/SubqueryStartExecutor.h"
 
 using namespace arangodb;
 using namespace arangodb::tests;

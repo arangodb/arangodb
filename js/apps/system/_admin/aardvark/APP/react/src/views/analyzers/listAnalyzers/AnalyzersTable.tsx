@@ -106,7 +106,11 @@ export const AnalyzersTable = () => {
         table={tableInstance}
         emptyStateMessage="No analyzers found"
         onRowSelect={row => {
-          history.push(`/analyzers/${row.original.name}`);
+          const { encoded: encodedAnalyzerName } = encodeHelper(
+            row.original.name
+          );
+
+          history.push(`/analyzers/${encodedAnalyzerName}`);
         }}
       />
     </Stack>

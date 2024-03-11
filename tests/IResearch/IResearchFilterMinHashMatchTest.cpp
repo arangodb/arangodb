@@ -80,7 +80,7 @@ class IResearchFilterMinHashMatchTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -96,7 +96,7 @@ class IResearchFilterMinHashMatchTest
             arangodb::aql::Function::Flags::CanRunOnDBServerCluster,
             arangodb::aql::Function::Flags::CanRunOnDBServerOneShard),
         [](arangodb::aql::ExpressionContext*, arangodb::aql::AstNode const&,
-           arangodb::aql::VPackFunctionParametersView params) {
+           arangodb::aql::functions::VPackFunctionParametersView params) {
           TRI_ASSERT(!params.empty());
           return params[0];
         }});
@@ -133,7 +133,7 @@ class IResearchFilterMinHashMatchTest
 };
 
 #if USE_ENTERPRISE
-#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.hpp"
+#include "tests/IResearch/IResearchFilterMinHashMatchTestEE.h"
 #else
 TEST_F(IResearchFilterMinHashMatchTest, MinHashMatchCE) {
   assertFilterFail(vocbase(),

@@ -20,89 +20,55 @@ add_library(arango_aql STATIC
   AstHelper.cpp
   AstNode.cpp
   AstResources.cpp
-  AsyncExecutor.cpp
+  AsyncPrefetchSlotsManager.cpp
   AttributeAccessor.cpp
   AttributeNamePath.cpp
   BindParameters.cpp
   BlocksWithClients.cpp
-  CalculationExecutor.cpp
   CalculationNodeVarFinder.cpp
-  ClusterNodes.cpp
   ClusterQuery.cpp
-  CollectNode.cpp
   CollectOptions.cpp
   Collection.cpp
   CollectionAccess.cpp
-  CollectionAccessingNode.cpp
   Collections.cpp
   Condition.cpp
   ConditionFinder.cpp
   ConstFetcher.cpp
-  ConstrainedSortExecutor.cpp
   CostEstimate.cpp
-  CountCollectExecutor.cpp
   DependencyProxy.cpp
-  DistinctCollectExecutor.cpp
   DistributeClientBlock.cpp
-  DistributeConsumerNode.cpp
-  DistributeExecutor.cpp
   DocumentExpressionContext.cpp
   DocumentProducingHelper.cpp
-  DocumentProducingNode.cpp
   EdgeConditionBuilder.cpp
   EdgeConditionBuilderContainer.cpp
   EngineInfoContainerCoordinator.cpp
   EngineInfoContainerDBServerServerBased.cpp
-  EnumerateCollectionExecutor.cpp
-  EnumerateListExecutor.cpp
-  EnumeratePathsExecutor.cpp
-  EnumeratePathsNode.cpp
   ExecutionBlock.cpp
   ExecutionEngine.cpp
-  ExecutionNode.cpp
   ExecutionNodeId.cpp
   ExecutionPlan.cpp
   ExecutionState.cpp
   ExecutionStats.cpp
   ExecutorExpressionContext.cpp
   Expression.cpp
-  FilterExecutor.cpp
   FixedVarExpressionContext.cpp
   Function.cpp
   Functions.cpp
-  GraphNode.cpp
   GraphOptimizerRules.cpp
-  HashedCollectExecutor.cpp
-  IResearchViewNode.cpp
   IResearchViewOptimizerRules.cpp
-  IdExecutor.cpp
   InAndOutRowExpressionContext.cpp
-  IndexExecutor.cpp
   IndexHint.cpp
   IndexJoinStrategy.cpp
-  IndexNode.cpp
   IndexNodeOptimizerRules.cpp
   InputAqlItemRow.cpp
   InsertModifier.cpp
-  JoinExecutor.cpp
-  JoinNode.cpp
   LateMaterializedExpressionContext.cpp
   LateMaterializedOptimizerRulesCommon.cpp
-  LimitExecutor.cpp
   LimitStats.cpp
-  MaterializeExecutor.cpp
-  ModificationExecutor.cpp
-  ModificationExecutorHelpers.cpp
-  ModificationExecutorInfos.cpp
-  ModificationNodes.cpp
+  ModificationExecutorFlags.h
   ModificationOptions.cpp
   MultiAqlItemBlockInputRange.cpp
   MultiDependencySingleRowFetcher.cpp
-  MultipleRemoteModificationExecutor.cpp
-  MultipleRemoteModificationNode.cpp
-  MutexExecutor.cpp
-  MutexNode.cpp
-  NoResultsExecutor.cpp
   NodeFinder.cpp
   NonConstExpression.cpp
   NonConstExpressionContainer.cpp
@@ -118,7 +84,6 @@ add_library(arango_aql STATIC
   OptimizerRulesReplaceFunctions.cpp
   OptimizerUtils.cpp
   OutputAqlItemRow.cpp
-  ParallelUnsortedGatherExecutor.cpp
   Parser.cpp
   Projections.cpp
   PruneExpressionEvaluator.cpp
@@ -139,48 +104,31 @@ add_library(arango_aql STATIC
   RegisterId.cpp
   RegisterInfos.cpp
   RegisterPlan.cpp
-  RemoteExecutor.cpp
   RemoveModifier.cpp
   RestAqlHandler.cpp
-  ReturnExecutor.cpp
-  ScatterExecutor.cpp
   Scopes.cpp
   ShadowAqlItemRow.cpp
   ShardLocking.cpp
   SharedAqlItemBlockPtr.cpp
   SharedQueryState.cpp
   ShortStringStorage.cpp
-  ShortestPathExecutor.cpp
-  ShortestPathNode.cpp
   SimpleModifier.cpp
-  SingleRemoteModificationExecutor.cpp
   SingleRowFetcher.cpp
   SkipResult.cpp
   SortCondition.cpp
-  SortExecutor.cpp
-  SortNode.cpp
+  SortElement.cpp
+  SortInformation.cpp
   SortRegister.cpp
-  SortedCollectExecutor.cpp
   SortedRowsStorageBackendMemory.cpp
   SortedRowsStorageBackendStaged.cpp
-  SortingGatherExecutor.cpp
-  SubqueryEndExecutionNode.cpp
-  SubqueryEndExecutor.cpp
-  SubqueryStartExecutionNode.cpp
-  SubqueryStartExecutor.cpp
   Timing.cpp
   TraversalConditionFinder.cpp
-  TraversalExecutor.cpp
-  TraversalNode.cpp
   TraverserEngineShardLists.cpp
-  UnsortedGatherExecutor.cpp
   UpdateReplaceModifier.cpp
   UpsertModifier.cpp
   VarUsageFinder.cpp
   Variable.cpp
   VariableGenerator.cpp
-  WindowExecutor.cpp
-  WindowNode.cpp
   grammar.cpp
   tokens.cpp
 )
@@ -190,6 +138,9 @@ if (USE_V8)
     V8ErrorHandler.cpp)
 endif()
 
+add_subdirectory(ExecutionNode)
+add_subdirectory(Executor)
+add_subdirectory(Function)
 add_subdirectory(Optimizer)
 
 target_link_libraries(arango_aql

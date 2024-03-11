@@ -69,6 +69,15 @@ class MetricsFeature final : public ArangodFeature {
     return static_cast<typename MetricBuilder::MetricT&>(*doAdd(builder));
   }
 
+  // tries to add the metric. If the metric already exists, it is returned
+  // instead.
+  template<typename MetricBuilder>
+  auto ensureMetric(MetricBuilder&& builder) ->
+      typename MetricBuilder::MetricT& {
+    return static_cast<typename MetricBuilder::MetricT&>(
+        *doEnsureMetric(builder));
+  }
+
   template<typename MetricBuilder>
   auto addShared(MetricBuilder&& builder)  // TODO(MBkkt) Remove this method
       -> std::shared_ptr<typename MetricBuilder::MetricT> {
@@ -113,6 +122,7 @@ class MetricsFeature final : public ArangodFeature {
  private:
   std::shared_ptr<Metric> doAdd(Builder& builder);
   std::shared_ptr<Metric> doAddDynamic(Builder& builder);
+  std::shared_ptr<Metric> doEnsureMetric(Builder& builder);
   std::shared_lock<std::shared_mutex> initGlobalLabels() const;
 
   mutable std::shared_mutex _mutex;

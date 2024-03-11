@@ -27,35 +27,48 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortNode.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
-#include "Graph/ShortestPathOptions.h"
 #include "Graph/PathType.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -467,8 +480,8 @@ ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries(),
-      _typeCounts{} {}
+      _typeCounts{},
+      _asyncPrefetchNodes(0) {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -538,6 +551,21 @@ ExecutionPlan::~ExecutionPlan() {
   plan->findVarUsage();
 
   return plan;
+}
+
+/// @brief increase number of async prefetch nodes
+void ExecutionPlan::increaseAsyncPrefetchNodes() noexcept {
+  ++_asyncPrefetchNodes;
+}
+
+/// @brief decrease number of async prefetch nodes
+void ExecutionPlan::decreaseAsyncPrefetchNodes() noexcept {
+  TRI_ASSERT(_asyncPrefetchNodes > 0);
+  --_asyncPrefetchNodes;
+}
+
+size_t ExecutionPlan::asyncPrefetchNodes() const noexcept {
+  return _asyncPrefetchNodes;
 }
 
 void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
@@ -620,6 +648,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
+  plan->_asyncPrefetchNodes = _asyncPrefetchNodes;
 
   return plan;
 }

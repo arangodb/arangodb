@@ -25,7 +25,7 @@
 
 #include "Mocks/Servers.h"
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.cpp"
 #include "Aql/VarUsageFinder.cpp"
