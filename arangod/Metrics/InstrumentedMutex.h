@@ -87,20 +87,22 @@ struct InstrumentedMutexLockGuardTraits {
   bool owns_lock(LockGuard& guard) { return guard.owns_lock(); }
 };
 
+struct InstrumentedMutexMetrics {
+  metrics::Gauge<uint64_t>* pendingExclusive = nullptr;
+  metrics::Gauge<uint64_t>* pendingShared = nullptr;
+  metrics::Gauge<uint64_t>* lockExclusive = nullptr;
+  metrics::Gauge<uint64_t>* lockShared = nullptr;
+
+  // TODO add histograms, maybe get rid of the scale
+};
+
 template<typename Mutex>
 struct InstrumentedMutex {
   using Traits = InstrumentedMutexTraits<Mutex>;
 
   using Clock = std::chrono::high_resolution_clock;
 
-  struct Metrics {
-    metrics::Gauge<uint64_t>* pendingExclusive = nullptr;
-    metrics::Gauge<uint64_t>* pendingShared = nullptr;
-    metrics::Gauge<uint64_t>* lockExclusive = nullptr;
-    metrics::Gauge<uint64_t>* lockShared = nullptr;
-
-    // TODO add histograms, maybe get rid of the scale
-  };
+  using Metrics = InstrumentedMutexMetrics;
 
   template<typename... Args>
   explicit InstrumentedMutex(Metrics const& metrics, Args&&... args)
@@ -112,6 +114,9 @@ struct InstrumentedMutex {
       InstrumentedMutexLockGuardTraits<Mutex, LockGuard>{}.unlock_shared(
           std::move(guard));
     }
+
+    auto pendingMetrics(Metrics const& m) { return m.pendingShared; }
+    auto lockedMetrics(Metrics const& m) { return m.lockShared; }
   };
   struct UnlockExclusive {
     template<typename LockGuard>
@@ -119,6 +124,9 @@ struct InstrumentedMutex {
       InstrumentedMutexLockGuardTraits<Mutex, LockGuard>{}.unlock_exclusive(
           std::move(guard));
     }
+
+    auto pendingMetrics(Metrics const& m) { return m.pendingExclusive; }
+    auto lockedMetrics(Metrics const& m) { return m.lockExclusive; }
   };
 
   template<typename LockVariant, typename UnlockStrategy>
@@ -175,7 +183,7 @@ struct InstrumentedMutex {
         _mutex, [this, pendingCounter = std::move(pendingCounter)]<typename L>(
                     L&& guard) mutable {
           pendingCounter.reset();
-          return this->make_exclusive_guard(std::forward<L>(guard));
+          return this->make_guard(UnlockExclusive{}, std::forward<L>(guard));
         });
   }
 
@@ -184,13 +192,13 @@ struct InstrumentedMutex {
     t.lock_shared(m, [](auto&&) {});
   }
   {
-    metrics::GaugeCounterGuard<uint64_t> pendingCounter(
-        _metrics.pendingExclusive, 1);
+    metrics::GaugeCounterGuard<uint64_t> pendingCounter(_metrics.pendingShared,
+                                                        1);
     return Traits{}.lock_shared(
         _mutex, [this, pendingCounter = std::move(pendingCounter)]<typename L>(
                     L&& guard) mutable {
           pendingCounter.reset();
-          return this->make_shared_guard(std::forward<L>(guard));
+          return this->make_guard(UnlockShared{}, std::forward<L>(guard));
         });
   }
 
@@ -236,29 +244,10 @@ struct InstrumentedMutex {
     });
   }
 
-  template<typename L>
-  auto make_shared_guard(L&& guard) {
-    return LockGuard<L, UnlockShared>{this, _metrics.lockShared,
-                                      std::forward<L>(guard)};
-  }
-  template<typename L>
-  auto make_shared_guard() {
-    return LockGuard<L, UnlockShared>{};
-  }
-
-  template<typename L>
-  auto make_exclusive_guard(L&& guard) {
-    return LockGuard<L, UnlockExclusive>{this, _metrics.lockExclusive,
-                                         std::forward<L>(guard)};
-  }
-  template<typename L>
-  auto make_exclusive_guard() {
-    return LockGuard<L, UnlockExclusive>{};
-  }
-
+ private:
   template<typename L, typename Strategy>
   auto make_guard(Strategy, L&& guard) {
-    return LockGuard<L, Strategy>{this, _metrics.lockExclusive,
+    return LockGuard<L, Strategy>{this, Strategy{}.lockedMetrics(_metrics),
                                   std::forward<L>(guard)};
   }
   template<typename L, typename Strategy>
@@ -269,9 +258,9 @@ struct InstrumentedMutex {
   template<typename Strategy, typename F>
   auto try_lock_template(Strategy, F&& fn) {
     return std::forward<F>(fn)(
-        [this,
-         pendingCounter = metrics::GaugeCounterGuard<uint64_t>(
-             _metrics.pendingExclusive, 1)]<typename L>(L&& guard) mutable {
+        [this, pendingCounter = metrics::GaugeCounterGuard<uint64_t>(
+                   Strategy{}.pendingMetrics(_metrics), 1)]<typename L>(
+            L&& guard) mutable {
           pendingCounter.reset();
           using LockTraits = InstrumentedMutexLockGuardTraits<Mutex, L>;
           if (LockTraits{}.owns_lock(guard)) {
@@ -286,62 +275,9 @@ struct InstrumentedMutex {
   Mutex _mutex;
 };
 
-namespace futures {
-template<typename>
-struct FutureSharedLock;
-}
-
-template<typename Scheduler>
-struct InstrumentedMutexTraits<futures::FutureSharedLock<Scheduler>> {
-  template<typename F>
-  auto lock_exclusive(futures::FutureSharedLock<Scheduler>& m, F&& fn) {
-    return m.asyncLockExclusive().thenValue(
-        [fn = std::forward<F>(fn)](auto guard) mutable {
-          return std::forward<F>(fn)(std::move(guard));
-        });
-  }
-
-  template<typename F>
-  auto lock_shared(futures::FutureSharedLock<Scheduler>& m, F&& fn) {
-    return m.asyncLockShared().thenValue(
-        [fn = std::forward<F>(fn)](auto guard) mutable {
-          return std::forward<F>(fn)(std::move(guard));
-        });
-  }
-
-  template<typename F, typename Duration>
-  auto try_lock_exclusive_for(futures::FutureSharedLock<Scheduler>& m,
-                              Duration d, F&& fn) {
-    return m
-        .asyncTryLockExclusiveFor(
-            std::chrono::duration_cast<std::chrono::milliseconds>(d))
-        .thenValue([fn = std::forward<F>(fn)](auto guard) mutable {
-          return std::forward<F>(fn)(std::move(guard));
-        });
-  }
-
-  template<typename F, typename Duration>
-  auto try_lock_shared_for(futures::FutureSharedLock<Scheduler>& m, Duration d,
-                           F&& fn) {
-    return m
-        .asyncTryLockSharedFor(
-            std::chrono::duration_cast<std::chrono::milliseconds>(d))
-        .thenValue([fn = std::forward<F>(fn)](auto guard) mutable {
-          return std::forward<F>(fn)(std::move(guard));
-        });
-  }
-};
-
-template<typename Scheduler>
-struct InstrumentedMutexLockGuardTraits<
-    futures::FutureSharedLock<Scheduler>,
-    typename futures::FutureSharedLock<Scheduler>::LockGuard> {
-  using LockGuard = futures::FutureSharedLock<Scheduler>::LockGuard;
-  void unlock_exclusive(LockGuard&& guard) { guard.unlock(); }
-
-  void unlock_shared(LockGuard&& guard) { guard.unlock(); }
-
-  bool owns_lock(LockGuard& guard) { return guard.isLocked(); }
-};
+extern template struct arangodb::InstrumentedMutex<std::mutex>;
+extern template struct arangodb::InstrumentedMutex<std::shared_mutex>;
+extern template struct arangodb::InstrumentedMutex<std::timed_mutex>;
+extern template struct arangodb::InstrumentedMutex<std::shared_timed_mutex>;
 
 }  // namespace arangodb

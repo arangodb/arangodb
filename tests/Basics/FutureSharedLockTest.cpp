@@ -24,6 +24,7 @@
 #include "gtest/gtest.h"
 
 #include "Basics/FutureSharedLock.h"
+#include "Metrics/InstrumentedMutex.h"
 
 #include <chrono>
 #include <deque>
@@ -674,3 +675,6 @@ TEST(FutureSharedLockStressTest, parallel) {
 }
 
 }  // namespace
+
+// explicitly instantiate the instrumented mutex using the correct traits
+template struct arangodb::InstrumentedMutex<FutureSharedLock>;

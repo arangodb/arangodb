@@ -207,6 +207,7 @@ set(ARANGODB_TESTS_SOURCES
   Maintenance/MaintenanceFeatureTest.cpp
   Maintenance/MaintenanceRestHandlerTest.cpp
   Maintenance/MaintenanceTest.cpp
+  Metrics/InstrumentedMutexTest.cpp
   Metrics/MetricsFeatureTest.cpp
   Metrics/MetricsServerTest.cpp
   Metrics/MetricsTest.cpp
