@@ -67,6 +67,7 @@ const termSignal = 15;
 
 let tcpdump;
 let assertLines = [];
+let logCounter = 0;
 
 class ConfigBuilder {
   constructor(type) {
@@ -78,14 +79,17 @@ class ConfigBuilder {
     case 'restore':
       this.config.configuration = fs.join(CONFIG_DIR, 'arangorestore.conf');
       this.executable = ARANGORESTORE_BIN;
+      this.logprefix = 'restore';
       break;
     case 'dump':
       this.config.configuration = fs.join(CONFIG_DIR, 'arangodump.conf');
       this.executable = ARANGODUMP_BIN;
+      this.logprefix = 'dump';
       break;
     case 'import':
       this.config.configuration = fs.join(CONFIG_DIR, 'arangoimport.conf');
       this.executable = ARANGOIMPORT_BIN;
+      this.logprefix = 'import';
       break;
     default:
       throw 'Sorry this type of Arango-Binary is not yet implemented: ' + type;
@@ -155,6 +159,15 @@ class ConfigBuilder {
     if (what["overwrite-collection-prefix"] !== undefined) {
       this.config["overwrite-collection-prefix"] = what["overwrite-collection-prefix"];
     }
+  }
+
+  calculateLogFile() {
+    this.config['log.file'] = fs.join(fs.getTempPath(), `${this.logprefix}_${logCounter}.log`);
+    logCounter += 1;
+  }
+
+  getLogFile() {
+    return fs.read(this.config['log.file']);
   }
 
   setAuth(username, password) {
@@ -608,10 +621,14 @@ function runArangoImportCfg (config, options, rootDir, coreCheck = false) {
 // //////////////////////////////////////////////////////////////////////////////
 
 function runArangoDumpRestoreCfg (config, options, rootDir, coreCheck) {
+  config.calculateLogFile();
   if (options.extremeVerbosity === true) {
     config.print();
   }
-  return executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
+
+  let ret = executeAndWait(config.getExe(), config.toArgv(), options, 'arangorestore', rootDir, coreCheck);
+  ret.message += `\nContents of log file ${config['log.file']}:\n` + config.getLogFile();
+  return ret;
 }
 
 // //////////////////////////////////////////////////////////////////////////////
