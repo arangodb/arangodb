@@ -236,11 +236,11 @@ std::vector<double> AutoRebalanceProblem::piCoefficients(
   std::vector<double> leaders;
   leaders.resize(dbServers.size(), 0);
   std::vector<bool> haveShards;
-  haveShards.resize(dbServers.size(), 0);
-  uint32_t dbServersAffected = 0;
   if (c.shards.size() == 1) {
     return leaders;  // No contribution for 1 shard collections
   }
+  haveShards.resize(dbServers.size(), false);
+  uint32_t dbServersAffected = 0;
   double sum = 0;
   for (auto const sindex : c.shards) {
     leaders[shards[sindex].leader] += 1.0;
