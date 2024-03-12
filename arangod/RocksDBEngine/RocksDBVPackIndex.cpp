@@ -1119,6 +1119,7 @@ class RocksDBVPackIndexIterator final : public IndexIterator {
               }
             }
             options.readOwnWrites = static_cast<bool>(canReadOwnWrites());
+            options.adaptive_readahead = true;
           });
       TRI_ASSERT(_mustSeek);
 
