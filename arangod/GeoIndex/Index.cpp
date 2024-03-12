@@ -323,7 +323,7 @@ void Index::handleNode(aql::AstNode const* node, aql::Variable const* ref,
 void Index::parseCondition(aql::AstNode const* node,
                            aql::Variable const* reference,
                            geo::QueryParams& params, bool legacy) {
-  if (aql::Ast::IsAndOperatorType(node->type)) {
+  if (aql::Ast::isAndOperatorType(node->type)) {
     for (size_t i = 0; i < node->numMembers(); i++) {
       handleNode(node->getMemberUnchecked(i), reference, params, legacy);
     }

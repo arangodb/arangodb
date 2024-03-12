@@ -1160,7 +1160,7 @@ void immutableSearchCondition(Optimizer* opt,
     uint32_t count = 0;
     while (true) {
       auto const type = condition->type;
-      if (!Ast::IsOrOperatorType(type) && !Ast::IsAndOperatorType(type)) {
+      if (!Ast::isOrOperatorType(type) && !Ast::isAndOperatorType(type)) {
         break;
       }
       auto const numMembers = condition->numMembers();
