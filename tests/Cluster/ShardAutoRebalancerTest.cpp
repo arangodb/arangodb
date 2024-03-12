@@ -53,6 +53,7 @@ TEST(AutoShardRebalancer, simple_randomized_test) {
   int res = p.optimize(true, true, true, atMostJobs, moves);
   ASSERT_EQ(res, 0) << "Internal error, should not have happened: " << res
                     << " !";
+  EXPECT_GT(moves.size(), 0);
   EXPECT_LE(moves.size(), atMostJobs);
 }
 

@@ -73,6 +73,9 @@ void AutoRebalanceProblem::createCluster(uint32_t nrDBServer, bool withZones) {
         .zone = withZones ? i : 0,
     });
   }
+  for (auto const& db : dbServers) {
+    serversHealthInfo.insert(db.id);
+  }
 }
 #endif
 
