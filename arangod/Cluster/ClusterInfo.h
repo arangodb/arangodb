@@ -30,6 +30,7 @@
 #include <memory>
 #include <mutex>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -782,6 +783,11 @@ class ClusterInfo final {
 
   std::shared_ptr<ManagedVector<pmr::ServerID> const> getResponsibleServer(
       ShardID shardID);
+
+  futures::Future<ResultT<ServerID>> getLeaderForShard(ShardID shard);
+
+  futures::Future<Result> getLeadersForShards(std::span<ShardID const> shard,
+                                              std::span<ServerID> result);
 
   enum class ShardLeadership { kLeader, kFollower, kUnclear };
   ShardLeadership getShardLeadership(ServerID const& server,
