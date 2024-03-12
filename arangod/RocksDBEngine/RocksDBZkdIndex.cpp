@@ -629,6 +629,10 @@ void RocksDBZkdIndexBase::toVelocyPack(
 
     builder.close();
   }
+
+  // TODO: currently hard-coded to "double". future implementations
+  // of ZKD indexes may make this dynamic
+  builder.add("fieldValueTypes", VPackValue("double"));
 }
 
 Index::FilterCosts RocksDBZkdIndexBase::supportsFilterCondition(
