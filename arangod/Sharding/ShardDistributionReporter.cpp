@@ -453,18 +453,6 @@ void ShardDistributionReporter::helperDistributionForDatabase(
                 }
 
                 auto const& res = response.get();
-                if (Result r = res.combinedResult(); r.fail()) {
-                  if (r.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
-                      r.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
-                      r.isNot(TRI_ERROR_SHUTTING_DOWN)) {
-                    // we got an error that we didnt expect
-                    LOG_TOPIC("bed1e", INFO, arangodb::Logger::CLUSTER)
-                        << "Received invalid response for shard count: "
-                        << r.errorMessage();
-                  }
-                  // ignore this response
-                  continue;
-                }
                 VPackSlice slice = res.slice();
                 if (!slice.isObject()) {
                   LOG_TOPIC("fcbb3", WARN, arangodb::Logger::CLUSTER)
@@ -475,9 +463,20 @@ void ShardDistributionReporter::helperDistributionForDatabase(
 
                 VPackSlice answer = slice.get("count");
                 if (!answer.isNumber()) {
-                  LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
-                      << "Received invalid response for shard count. Shard "
-                      << "distribution inaccurate: " << slice.toJson();
+                  if (Result r = res.combinedResult(); r.fail()) {
+                    if (r.isNot(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND) &&
+                        r.isNot(TRI_ERROR_SHUTTING_DOWN) &&
+                        r.isNot(TRI_ERROR_INTERNAL)) {
+                      // we got an error that we didnt expect.
+                      // note: the collection/shard may not be present initially
+                      // when the follower shard is being created.
+                      // an internal error is returned during tests
+                      LOG_TOPIC("8d7b0", WARN, arangodb::Logger::CLUSTER)
+                          << "Received invalid response for shard count. Shard "
+                          << "distribution inaccurate: " << slice.toJson();
+                    }
+                  }
                   continue;
                 }
 
