@@ -528,8 +528,9 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
   }
 
   LOG_TOPIC("cba32", WARN, Logger::MAINTENANCE)
-      << "startReadLockOnLeader: couldn't POST lock body, "
-      << res.errorMessage() << ", giving up.";
+      << "startReadLockOnLeader: couldn't POST lock body for shard "
+      << getDatabase() << "/" << collection << ": " << res.errorMessage()
+      << ", giving up.";
 
   // We MUSTN'T exit without trying to clean up a lock that was maybe acquired
   if (response.error == fuerte::Error::CouldNotConnect) {
@@ -556,7 +557,8 @@ arangodb::Result SynchronizeShard::getReadLock(network::ConnectionPool* pool,
     }
   } catch (std::exception const& e) {
     LOG_TOPIC("7fcc9", WARN, Logger::MAINTENANCE)
-        << "startReadLockOnLeader: exception in cancel: " << e.what();
+        << "startReadLockOnLeader for shard " << getDatabase() << "/"
+        << collection << ": exception in cancel: " << e.what();
   }
 
   // original response that we received when ordering the lock
@@ -575,10 +577,13 @@ arangodb::Result SynchronizeShard::startReadLockOnLeader(
   arangodb::Result result =
       getReadLockId(pool, endpoint, getDatabase(), clientId, timeout, rlid);
   if (!result.ok()) {
-    LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE) << result.errorMessage();
+    LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE)
+        << "couldn't get read lock id for collection " << getDatabase() << "/"
+        << collection << ": " << result.errorMessage();
   } else {
     LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE)
-        << "Got read lock id: " << rlid;
+        << "Got read lock id for collection " << getDatabase() << "/"
+        << collection << ": " << rlid;
 
     result.reset(
         getReadLock(pool, endpoint, collection, clientId, rlid, soft, timeout));
@@ -1375,7 +1380,7 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     uint64_t lockJobId = 0;
     LOG_TOPIC("b4f2b", DEBUG, Logger::MAINTENANCE)
         << "synchronizeOneShard: startReadLockOnLeader (soft): " << ep << ":"
-        << getDatabase() << ":" << collection.name();
+        << getDatabase() << "/" << collection.name();
     Result res = startReadLockOnLeader(ep, collection.name(), clientId,
                                        lockJobId, true, timeout);
     if (!res.ok()) {
@@ -1398,17 +1403,21 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
                                           clientId, 60.0);
         if (!res.ok()) {
           LOG_TOPIC("b15ee", INFO, Logger::MAINTENANCE)
-              << "Could not cancel soft read lock on leader: "
+              << "Could not cancel soft read lock on leader for "
+              << getDatabase() << "/" << getShard() << ": "
               << res.errorMessage();
         }
       } catch (std::exception const& ex) {
         LOG_TOPIC("e32be", ERR, Logger::MAINTENANCE)
-            << "Failed to cancel soft read lock on leader: " << ex.what();
+            << "Failed to cancel soft read lock on leader for " << getDatabase()
+            << "/" << getShard() << ": " << ex.what();
       }
     });
 
     LOG_TOPIC("5eb37", DEBUG, Logger::MAINTENANCE)
-        << "lockJobId: " << lockJobId;
+        << "starting tailing under read lock from " << lastLogTick << " for "
+        << getDatabase() << "/" << collection.name()
+        << ", read lock id: " << lockJobId;
 
     // From now on, we need to cancel the read lock on the leader regardless
     // if things go wrong or right!
@@ -1457,8 +1466,9 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
       // if this time difference is longer than timeout (300s), we expect
       // to get an error back, because the lock's TTL on the leader expired.
       auto errorMessage = StringUtils::concatT(
-          "synchronizeOneShard: error when cancelling soft read lock: ",
-          res.errorMessage(), " - catchup duration: ",
+          "synchronizeOneShard: error when cancelling soft read lock for ",
+          getDatabase(), "/", getShard(), ": ", res.errorMessage(),
+          " - catchup duration: ",
           std::chrono::duration_cast<std::chrono::seconds>(lockElapsed).count(),
           "s");
       LOG_TOPIC("c37d1", INFO, Logger::MAINTENANCE) << errorMessage;
@@ -1468,13 +1478,14 @@ ResultT<TRI_voc_tick_t> SynchronizeShard::catchupWithReadLock(
     lastLogTick = tickReached;
     if (didTimeout) {
       LOG_TOPIC("e516e", INFO, Logger::MAINTENANCE)
-          << "Renewing softLock for " << getShard() << " on leader: " << leader;
+          << "Renewing softLock for " << getDatabase() << "/" << getShard()
+          << " on leader: " << leader;
     }
   }
   if (didTimeout) {
     LOG_TOPIC("f1a61", WARN, Logger::MAINTENANCE)
-        << "Could not catchup under softLock for " << getShard()
-        << " on leader: " << leader
+        << "Could not catchup under softLock for " << getDatabase() << "/"
+        << getShard() << " on leader: " << leader
         << " now activating hardLock. This is expected under high load.";
   }
   return ResultT<TRI_voc_tick_t>::success(tickReached);
@@ -1490,7 +1501,7 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   uint64_t lockJobId = 0;
   LOG_TOPIC("da129", DEBUG, Logger::MAINTENANCE)
       << "synchronizeOneShard: startReadLockOnLeader: " << ep << ":"
-      << getDatabase() << ":" << collection.name();
+      << getDatabase() << "/" << collection.name();
 
   // we should not yet have an upper bound for WAL tailing.
   // the next call to startReadLockOnLeader may set it if the leader already
@@ -1518,12 +1529,13 @@ Result SynchronizeShard::catchupWithExclusiveLock(
                                         clientId, 60.0);
       if (!res.ok()) {
         LOG_TOPIC("067a8", INFO, Logger::MAINTENANCE)
-            << "Could not cancel hard read lock on leader: "
-            << res.errorMessage();
+            << "Could not cancel hard read lock on leader for " << getDatabase()
+            << "/" << collection.name() << ": " << res.errorMessage();
       }
     } catch (std::exception const& ex) {
       LOG_TOPIC("d7848", ERR, Logger::MAINTENANCE)
-          << "Failed to cancel hard read lock on leader: " << ex.what();
+          << "Failed to cancel hard read lock on leader for " << getDatabase()
+          << "/" << collection.name() << ": " << ex.what();
     }
   });
 
@@ -1540,7 +1552,10 @@ Result SynchronizeShard::catchupWithExclusiveLock(
   // If _followingTermId is 0, then this is a leader before the update,
   // we tolerate this and simply use its ID without a term in this case.
   collection.followers()->setTheLeader(leaderIdWithTerm);
-  LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE) << "lockJobId: " << lockJobId;
+  LOG_TOPIC("d76cb", DEBUG, Logger::MAINTENANCE)
+      << "starting tailing under exclusive lock from " << lastLogTick << " for "
+      << getDatabase() << "/" << collection.name()
+      << ", read lock id: " << lockJobId;
 
   // repurpose tailingSyncer
   tailingSyncer->setLeaderId(leaderIdWithTerm);
@@ -1677,7 +1692,8 @@ Result SynchronizeShard::catchupWithExclusiveLock(
 
   // Report success:
   LOG_TOPIC("3423d", DEBUG, Logger::MAINTENANCE)
-      << "synchronizeOneShard: synchronization worked for shard " << getShard();
+      << "synchronizeOneShard: synchronization worked for shard "
+      << getDatabase() << "/" << getShard();
   result(TRI_ERROR_NO_ERROR);
   return {};
 }
