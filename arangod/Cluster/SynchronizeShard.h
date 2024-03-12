@@ -60,6 +60,8 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
 
   std::string const& clientInfoString() const;
 
+  std::string shardNameForLogging() const;
+
  private:
   arangodb::Result collectionCountOnLeader(std::string const& endpoint,
                                            uint64_t& c);

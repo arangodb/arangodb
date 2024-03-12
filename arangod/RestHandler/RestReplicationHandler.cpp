@@ -2798,6 +2798,10 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   Result res = co_await createBlockingTransaction(id, *col, ttl, lockType,
                                                   rebootId, serverId);
   if (!res.ok()) {
+    LOG_TOPIC("5f00f", DEBUG, Logger::REPLICATION)
+        << "Lock " << id << " for shard " << _vocbase.name() << "/"
+        << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
+        << " could not be created because of: " << res.errorMessage();
     generateError(res);
     co_return;
   }
@@ -2811,7 +2815,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     if (!res.ok()) {
       // this is potentially bad!
       LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
-          << "Lock " << id
+          << "Lock " << id << " for shard " << _vocbase.name() << "/"
+          << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
           << " could not be canceled because of: " << res.errorMessage();
     }
     // indicate that we are not the leader
