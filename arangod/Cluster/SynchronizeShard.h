@@ -66,19 +66,19 @@ class SynchronizeShard : public ActionBase, public ShardDefinition {
   arangodb::Result collectionCountOnLeader(std::string const& endpoint,
                                            uint64_t& c);
 
-  arangodb::Result getReadLock(network::ConnectionPool* pool,
-                               std::string const& endpoint,
-                               std::string const& collection,
-                               std::string const& clientId, uint64_t rlid,
-                               bool soft, double timeout);
+  arangodb::Result requestExclusiveLockOnLeader(network::ConnectionPool* pool,
+                                                std::string const& endpoint,
+                                                std::string const& collection,
+                                                std::string const& clientId,
+                                                uint64_t rlid, double timeout);
 
-  arangodb::Result startReadLockOnLeader(std::string const& endpoint,
-                                         std::string const& collection,
-                                         std::string const& clientId,
-                                         uint64_t& rlid, bool soft,
-                                         double timeout = 300.0);
+  arangodb::Result establishExclusiveLockOnLeader(std::string const& endpoint,
+                                                  std::string const& collection,
+                                                  std::string const& clientId,
+                                                  uint64_t& rlid,
+                                                  double timeout = 300.0);
 
-  arangodb::ResultT<TRI_voc_tick_t> catchupWithReadLock(
+  arangodb::ResultT<TRI_voc_tick_t> catchupWithoutLock(
       std::string const& ep, LogicalCollection const& collection,
       std::string const& clientId, std::string const& leader,
       TRI_voc_tick_t lastLogTick,
