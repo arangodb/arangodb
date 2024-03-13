@@ -2641,11 +2641,11 @@ RestStatus RestAdminClusterHandler::handleRebalancePlan() {
 
   auto p = collectRebalanceInformation(options->databasesExcluded,
                                        options->excludeSystemCollections);
+  p.setPiFactor(options->piFactor);
   auto const imbalanceLeaderBefore = p.computeLeaderImbalance();
   auto const imbalanceShardsBefore = p.computeShardImbalance();
 
   moves.reserve(options->maximumNumberOfMoves);
-  p.setPiFactor(options->piFactor);
   p.optimize(options->leaderChanges, options->moveFollowers,
              options->moveLeaders, options->maximumNumberOfMoves, moves);
 
