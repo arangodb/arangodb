@@ -115,28 +115,27 @@ TEST_F(DocumentStateSnapshotTest,
   // Acquire a new snapshot with a different set of shards
   const ShardID shardId1{123};
   const ShardID shardId2{345};
-  ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
-    return futures::Future<ResultT<SnapshotBatch>>{
-        std::in_place,
-        SnapshotBatch{
-            .snapshotId = SnapshotId{1},
-            .hasMore = true,
-            .operations = {ReplicatedOperation::buildCreateShardOperation(
-                shardId1, TRI_COL_TYPE_DOCUMENT, velocypack::SharedSlice())}}};
+  EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).WillOnce([&]() {
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{.snapshotId = SnapshotId{1}}};
   });
-  ON_CALL(*leaderInterfaceMock, nextSnapshotBatch).WillByDefault([&]() {
-    return futures::Future<ResultT<SnapshotBatch>>{
-        std::in_place,
-        SnapshotBatch{
-            .snapshotId = SnapshotId{1},
-            .hasMore = false,
-            .operations = {ReplicatedOperation::buildCreateShardOperation(
-                shardId2, TRI_COL_TYPE_EDGE, velocypack::SharedSlice())}}};
-  });
-
   // There should be exactly two batches sent
-  EXPECT_CALL(*leaderInterfaceMock, startSnapshot()).Times(1);
-  EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1})).Times(1);
+  EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1}))
+      .WillOnce(Return(futures::Future<ResultT<SnapshotBatch>>{
+          std::in_place,
+          SnapshotBatch{
+              .snapshotId = SnapshotId{1},
+              .hasMore = true,
+              .operations = {ReplicatedOperation::buildCreateShardOperation(
+                  shardId1, TRI_COL_TYPE_DOCUMENT,
+                  velocypack::SharedSlice())}}}))
+      .WillOnce(Return(futures::Future<ResultT<SnapshotBatch>>{
+          std::in_place,
+          SnapshotBatch{
+              .snapshotId = SnapshotId{1},
+              .hasMore = false,
+              .operations = {ReplicatedOperation::buildCreateShardOperation(
+                  shardId2, TRI_COL_TYPE_EDGE, velocypack::SharedSlice())}}}));
   EXPECT_CALL(*leaderInterfaceMock, finishSnapshot(SnapshotId{1})).Times(1);
 
   // The previous shard should be dropped

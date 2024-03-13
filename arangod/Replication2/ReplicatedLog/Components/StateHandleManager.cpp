@@ -84,7 +84,7 @@ void StateHandleManager::becomeFollower(
   guard->stateHandle->becomeFollower(std::move(ptr));
 }
 
-void StateHandleManager::acquireSnapshot(const ParticipantId& leader,
+void StateHandleManager::acquireSnapshot(ParticipantId const& leader,
                                          std::uint64_t version) noexcept {
   if (auto guard = guardedData.getLockedGuard(); guard->stateHandle) {
     // TODO is the correct log index required here?

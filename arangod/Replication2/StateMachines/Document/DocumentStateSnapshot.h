@@ -122,6 +122,11 @@ struct SnapshotBatch {
 
 std::ostream& operator<<(std::ostream& os, SnapshotBatch const& batch);
 
+struct SnapshotConfig {
+  SnapshotId snapshotId;
+  // ShardMap shards;
+};
+
 /*
  * Used to retrieve debug information about a snapshot.
  */
@@ -177,8 +182,7 @@ struct AllSnapshotsStatus {
  */
 class Snapshot {
  public:
-  static inline constexpr std::size_t kBatchSizeLimit{16 * 1024 *
-                                                      1024};  // 16MB
+  static constexpr std::size_t kBatchSizeLimit{16 * 1024 * 1024};  // 16MB
 
   explicit Snapshot(SnapshotId id, GlobalLogIdentifier gid,
                     std::vector<std::shared_ptr<LogicalCollection>> shards,
@@ -190,6 +194,7 @@ class Snapshot {
   Snapshot const& operator=(Snapshot const&) = delete;
   Snapshot const& operator=(Snapshot&&) = delete;
 
+  auto config() -> SnapshotConfig;
   auto fetch() -> ResultT<SnapshotBatch>;
   auto finish() -> Result;
   void abort();
@@ -225,8 +230,8 @@ class Snapshot {
         shards;
   };
 
-  const SnapshotId _id;
-  const GlobalLogIdentifier _gid;
+  SnapshotId const _id;
+  GlobalLogIdentifier const _gid;
   Guarded<SnapshotState> _state;
   Guarded<GuardedData> _guardedData;
 

@@ -67,16 +67,11 @@ TEST_F(DocumentStateFollowerTest,
   // AbortAllOngoingTrx, for simplicity)
   EXPECT_CALL(*transactionHandlerMock,
               applyEntry(An<ReplicatedOperation::AbortAllOngoingTrx const&>()))
-      .Times(3);
+      .Times(2);
   EXPECT_CALL(*leaderInterfaceMock, startSnapshot())
       .Times(1)
-      .WillOnce(Return(futures::Future<ResultT<SnapshotBatch>>{
-          std::in_place,
-          SnapshotBatch{
-              .snapshotId = SnapshotId{1},
-              .hasMore = true,
-              .operations = {
-                  ReplicatedOperation::buildAbortAllOngoingTrxOperation()}}}));
+      .WillOnce(Return(futures::Future<ResultT<SnapshotConfig>>{
+          std::in_place, SnapshotConfig{.snapshotId = SnapshotId{1}}}));
   EXPECT_CALL(*leaderInterfaceMock, nextSnapshotBatch(SnapshotId{1}))
       .Times(1)
       .WillOnce(Return(futures::Future<ResultT<SnapshotBatch>>{
@@ -118,10 +113,8 @@ TEST_F(DocumentStateFollowerTest,
   ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
     acquireSnapshotCalled.store(true);
     acquireSnapshotCalled.notify_one();
-    return futures::Future<ResultT<SnapshotBatch>>{
-        std::in_place,
-        SnapshotBatch{
-            .snapshotId = SnapshotId{1}, .hasMore = true, .operations = {}}};
+    return futures::Future<ResultT<SnapshotConfig>>{
+        std::in_place, SnapshotConfig{.snapshotId = SnapshotId{1}}};
   });
   ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
       .WillByDefault([&](SnapshotId id) {

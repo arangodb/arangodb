@@ -79,6 +79,12 @@ auto inspect(Inspector& f, SnapshotBatch& s) {
 }
 
 template<class Inspector>
+auto inspect(Inspector& f, SnapshotConfig& s) {
+  // TODO
+  return f.object(s).fields(f.field(kStringSnapshotId, s.snapshotId));
+}
+
+template<class Inspector>
 auto inspect(Inspector& f, SnapshotStatistics::ShardStatistics& s) {
   return f.object(s).fields(f.field(kStringTotalDocsToBeSent, s.totalDocs),
                             f.field(kStringDocsSent, s.docsSent));

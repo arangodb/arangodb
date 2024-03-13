@@ -169,12 +169,10 @@ struct DocumentStateMachineTest : testing::Test {
 
     ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
       return futures::Future<
-          ResultT<replicated_state::document::SnapshotBatch>>{
+          ResultT<replicated_state::document::SnapshotConfig>>{
           std::in_place,
-          replicated_state::document::SnapshotBatch{
-              .snapshotId = replicated_state::document::SnapshotId{1},
-              .hasMore = false,
-              .operations = {}}};
+          replicated_state::document::SnapshotConfig{
+              .snapshotId = replicated_state::document::SnapshotId{1}}};
     });
     ON_CALL(*leaderInterfaceMock, nextSnapshotBatch)
         .WillByDefault([&](replicated_state::document::SnapshotId) {

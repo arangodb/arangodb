@@ -103,7 +103,7 @@ struct DocumentLeaderState
   auto snapshotStatus(SnapshotId id) -> ResultT<SnapshotStatus>;
 
   auto snapshotStart(SnapshotParams::Start const& params)
-      -> ResultT<SnapshotBatch>;
+      -> ResultT<SnapshotConfig>;
 
   auto snapshotNext(SnapshotParams::Next const& params)
       -> ResultT<SnapshotBatch>;

@@ -87,8 +87,14 @@ struct DocumentFollowerState
     std::optional<SnapshotId> snapshotId{};
   };
 
+  auto runSnapshotTransfer(
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      std::uint64_t snapshotVersion,
+      futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+      -> futures::Future<SnapshotTransferResult>;
+
   auto handleSnapshotTransfer(
-      std::optional<SnapshotId> snapshotId,
+      SnapshotId snapshotId,
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept

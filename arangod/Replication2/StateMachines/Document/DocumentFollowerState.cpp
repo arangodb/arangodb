@@ -192,8 +192,10 @@ auto DocumentFollowerState::acquireSnapshot(
     return snapshotStartRes.result();
   }
 
-  return handleSnapshotTransfer(std::nullopt, leader, snapshotVersion.get(),
-                                std::move(snapshotStartRes.get()))
+  // TODO It might make sense to merge runSnapshotTransfer into this function,
+  //      and make this function a coroutine.
+  return runSnapshotTransfer(leader, snapshotVersion.get(),
+                             std::move(snapshotStartRes.get()))
       .then([leader, destination, self = shared_from_this()](
                 auto&& tryResult) -> futures::Future<Result> {
         auto snapshotTransferResult =
@@ -279,9 +281,36 @@ auto DocumentFollowerState::acquireSnapshot(
             });
       });
 }
+auto DocumentFollowerState::runSnapshotTransfer(
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    std::uint64_t snapshotVersion,
+    futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
+    -> futures::Future<SnapshotTransferResult> {
+  auto snapshotConfig = co_await std::move(snapshotFuture);
+  if (snapshotConfig.fail()) {
+    auto res = std::move(snapshotConfig).result();
+    LOG_CTX("6686b", ERR, loggerContext)
+        << "Failed to fetch the snapshot configuration: " << res;
+    co_return SnapshotTransferResult{.res = std::move(res),
+                                     .reportFailure = true};
+  }
+  auto snapshotId = snapshotConfig->snapshotId;
+  auto nextBatchRes = basics::catchToResultT(
+      [&]() { return leader->nextSnapshotBatch(snapshotId); });
+  if (nextBatchRes.fail()) {
+    LOG_CTX("a2833", ERR, loggerContext)
+        << "Failed to fetch the next batch of snapshot: " << snapshotId;
+    co_return SnapshotTransferResult{.res = nextBatchRes.result(),
+                                     .reportFailure = true,
+                                     .snapshotId = snapshotId};
+  }
+  co_return co_await handleSnapshotTransfer(snapshotId, std::move(leader),
+                                            snapshotVersion,
+                                            std::move(nextBatchRes.get()));
+}
 
 auto DocumentFollowerState::handleSnapshotTransfer(
-    std::optional<SnapshotId> snapshotId,
+    SnapshotId snapshotId,
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotBatch>>&& snapshotFuture) noexcept
@@ -306,19 +335,13 @@ auto DocumentFollowerState::handleSnapshotTransfer(
                                         .snapshotId = snapshotId};
         }
 
-        if (snapshotId.has_value()) {
-          if (snapshotId != snapshotRes->snapshotId) {
-            auto err = fmt::format("Expected snapshot id {} but got {}",
-                                   *snapshotId, snapshotRes->snapshotId);
-            TRI_ASSERT(snapshotId == snapshotRes->snapshotId) << err;
-            return SnapshotTransferResult{
-                .res = {TRI_ERROR_INTERNAL, err},
-                .reportFailure = true,
-                .snapshotId = snapshotRes->snapshotId};
-          }
-        } else {
-          // First batch of this snapshot, we got the ID now.
-          snapshotId = snapshotRes->snapshotId;
+        if (snapshotId != snapshotRes->snapshotId) {
+          auto err = fmt::format("Expected snapshot id {} but got {}",
+                                 snapshotId, snapshotRes->snapshotId);
+          TRI_ASSERT(snapshotId == snapshotRes->snapshotId) << err;
+          return SnapshotTransferResult{.res = {TRI_ERROR_INTERNAL, err},
+                                        .reportFailure = true,
+                                        .snapshotId = snapshotRes->snapshotId};
         }
 
         auto self = weak.lock();
@@ -398,12 +421,11 @@ auto DocumentFollowerState::handleSnapshotTransfer(
         // If there are more batches to come, fetch the next one
         if (snapshotRes->hasMore) {
           auto nextBatchRes = basics::catchToResultT([&leader, snapshotId]() {
-            return leader->nextSnapshotBatch(*snapshotId);
+            return leader->nextSnapshotBatch(snapshotId);
           });
           if (nextBatchRes.fail()) {
             LOG_CTX("a732f", ERR, self->loggerContext)
-                << "Failed to fetch the next batch of snapshot: "
-                << *snapshotId;
+                << "Failed to fetch the next batch of snapshot: " << snapshotId;
             return SnapshotTransferResult{.res = nextBatchRes.result(),
                                           .reportFailure = true,
                                           .snapshotId = snapshotId};

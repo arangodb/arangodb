@@ -95,6 +95,14 @@ Snapshot::Snapshot(SnapshotId id, GlobalLogIdentifier gid,
       << "Created snapshot with id " << _id;
 }
 
+auto Snapshot::config() -> SnapshotConfig {
+  LOG_CTX("11c7e", TRACE, loggerContext) << "Creating snapshot config";
+  auto guard = _state.getLockedGuard();
+  TRI_ASSERT(std::holds_alternative<state::Ongoing>(guard.get()));
+  // TODO pass additional metadata
+  return SnapshotConfig{.snapshotId = getId()};
+}
+
 auto Snapshot::fetch() -> ResultT<SnapshotBatch> {
   return _state.doUnderLock([&](auto& state) -> ResultT<SnapshotBatch> {
     return std::visit([&](auto& arg) { return generateBatch(arg); }, state);

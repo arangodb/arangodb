@@ -43,7 +43,7 @@ DocumentStateLeaderInterface::DocumentStateLeaderInterface(
       _loggerContext(std::move(loggerContext)) {}
 
 auto DocumentStateLeaderInterface::startSnapshot()
-    -> futures::Future<ResultT<SnapshotBatch>> {
+    -> futures::Future<ResultT<SnapshotConfig>> {
   VPackBuilder builder;
   auto params =
       SnapshotParams::Start{.serverId = ServerState::instance()->getId(),
@@ -55,8 +55,8 @@ auto DocumentStateLeaderInterface::startSnapshot()
                                  _gid.id, "snapshot", "start");
   network::RequestOptions opts;
   opts.database = _gid.database;
-  return postSnapshotRequest<SnapshotBatch>(std::move(path),
-                                            std::move(*builder.steal()), opts);
+  return postSnapshotRequest<SnapshotConfig>(std::move(path),
+                                             std::move(*builder.steal()), opts);
 }
 
 auto DocumentStateLeaderInterface::nextSnapshotBatch(SnapshotId id)
