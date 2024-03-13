@@ -167,6 +167,8 @@ struct DocumentStateMachineTest : testing::Test {
     ON_CALL(*transactionMock, intermediateCommit)
         .WillByDefault(Return(Result{}));
 
+    ON_CALL(*leaderInterfaceMock, participantId)
+        .WillByDefault(ReturnRef(leaderId));
     ON_CALL(*leaderInterfaceMock, startSnapshot).WillByDefault([&]() {
       return futures::Future<
           ResultT<replicated_state::document::SnapshotConfig>>{

@@ -88,6 +88,11 @@ struct DocumentFollowerState
   };
 
   auto runSnapshotTransfer(
+      std::shared_ptr<DocumentFollowerState> self,
+      std::shared_ptr<IDocumentStateLeaderInterface> leader,
+      std::uint64_t snapshotVersion) noexcept -> futures::Future<Result>;
+
+  auto initializeSnapshotTransfer(
       std::shared_ptr<IDocumentStateLeaderInterface> leader,
       std::uint64_t snapshotVersion,
       futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept

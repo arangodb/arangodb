@@ -47,6 +47,7 @@ namespace replication2::replicated_state::document {
  */
 struct IDocumentStateLeaderInterface {
   virtual ~IDocumentStateLeaderInterface() = default;
+  virtual auto participantId() const noexcept -> ParticipantId const& = 0;
   virtual auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> = 0;
   virtual auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> = 0;
@@ -62,6 +63,7 @@ class DocumentStateLeaderInterface
                                         network::ConnectionPool* pool,
                                         LoggerContext loggerContext);
 
+  auto participantId() const noexcept -> ParticipantId const& override;
   auto startSnapshot() -> futures::Future<ResultT<SnapshotConfig>> override;
   auto nextSnapshotBatch(SnapshotId id)
       -> futures::Future<ResultT<SnapshotBatch>> override;

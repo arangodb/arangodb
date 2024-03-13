@@ -96,6 +96,11 @@ auto DocumentStateLeaderInterface::finishSnapshot(SnapshotId id)
       });
 }
 
+auto DocumentStateLeaderInterface::participantId() const noexcept
+    -> ParticipantId const& {
+  return _participantId;
+}
+
 template<class T>
 auto DocumentStateLeaderInterface::postSnapshotRequest(
     std::string path, VPackBufferUInt8 payload,

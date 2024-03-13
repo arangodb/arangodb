@@ -183,105 +183,87 @@ auto DocumentFollowerState::acquireSnapshot(
   // A follower may request a snapshot before leadership has been
   // established. A retry will occur in that case.
   auto leader = _networkHandler->getLeaderInterface(destination);
+
+  return runSnapshotTransfer(shared_from_this(), leader, *snapshotVersion);
+}
+
+auto DocumentFollowerState::runSnapshotTransfer(
+    std::shared_ptr<DocumentFollowerState> self,
+    std::shared_ptr<IDocumentStateLeaderInterface> leader,
+    std::uint64_t snapshotVersion) noexcept -> futures::Future<Result> {
+  auto const& destination = leader->participantId();
   auto snapshotStartRes =
       basics::catchToResultT([&leader]() { return leader->startSnapshot(); });
   if (snapshotStartRes.fail()) {
     LOG_CTX("954e3", DEBUG, loggerContext)
         << "Failed to start snapshot transfer with destination " << destination
         << ": " << snapshotStartRes.result();
-    return snapshotStartRes.result();
+    co_return snapshotStartRes.result();
   }
 
-  // TODO It might make sense to merge runSnapshotTransfer into this function,
-  //      and make this function a coroutine.
-  return runSnapshotTransfer(leader, snapshotVersion.get(),
-                             std::move(snapshotStartRes.get()))
-      .then([leader, destination, self = shared_from_this()](
-                auto&& tryResult) -> futures::Future<Result> {
-        auto snapshotTransferResult =
-            basics::catchToResultT([&] { return tryResult.get(); });
-        if (snapshotTransferResult.fail()) {
-          LOG_CTX("0c6d9", ERR, self->loggerContext)
-              << "Snapshot transfer failed: "
-              << snapshotTransferResult.result();
-          return snapshotTransferResult.result();
-        }
+  auto snapshotTransferResult = co_await initializeSnapshotTransfer(
+      leader, snapshotVersion, std::move(snapshotStartRes.get()));
 
-        if (!snapshotTransferResult->snapshotId.has_value()) {
-          TRI_ASSERT(snapshotTransferResult->res.fail()) << self->gid;
-          LOG_CTX("85628", ERR, self->loggerContext)
-              << "Snapshot transfer failed: " << snapshotTransferResult->res;
-          return snapshotTransferResult->res;
-        }
+  if (!snapshotTransferResult.snapshotId.has_value()) {
+    TRI_ASSERT(snapshotTransferResult.res.fail()) << self->gid;
+    LOG_CTX("85628", ERR, self->loggerContext)
+        << "Snapshot transfer failed: " << snapshotTransferResult.res;
+    co_return snapshotTransferResult.res;
+  }
 
-        LOG_CTX("b4fcb", DEBUG, self->loggerContext)
-            << "Snapshot " << *snapshotTransferResult->snapshotId
-            << " data transfer over, will send finish request: "
-            << snapshotTransferResult->res;
+  auto const snapshotId = *snapshotTransferResult.snapshotId;
 
-        auto snapshotFinishRes = basics::catchToResultT(
-            [&leader, snapshotId = *snapshotTransferResult->snapshotId]() {
-              return leader->finishSnapshot(snapshotId);
-            });
-        if (snapshotFinishRes.fail()) {
-          LOG_CTX("4404d", ERR, self->loggerContext)
-              << "Failed to initiate snapshot finishing procedure with "
-                 "destination "
-              << destination << ": " << snapshotFinishRes.result();
-          return snapshotFinishRes.result();
-        }
+  LOG_CTX("b4fcb", DEBUG, self->loggerContext)
+      << "Snapshot " << snapshotId
+      << " data transfer over, will send finish request: "
+      << snapshotTransferResult.res;
 
-        return std::move(snapshotFinishRes.get())
-            .then([snapshotTransferResult =
-                       std::move(snapshotTransferResult).get()](auto&& tryRes) {
-              auto res = basics::catchToResult([&] { return tryRes.get(); });
-              if (res.fail()) {
-                LOG_TOPIC("0e168", ERR, Logger::REPLICATION2)
-                    << "Failed to finish snapshot "
-                    << *snapshotTransferResult.snapshotId << ": " << res;
-              }
+  auto snapshotFinishRes = co_await leader->finishSnapshot(snapshotId);
 
-              LOG_TOPIC("42ffd", DEBUG, Logger::REPLICATION2)
-                  << "Successfully sent finish command for snapshot  "
-                  << *snapshotTransferResult.snapshotId;
+  if (snapshotFinishRes.fail()) {
+    LOG_TOPIC("0e168", ERR, Logger::REPLICATION2)
+        << "Failed to finish snapshot " << *snapshotTransferResult.snapshotId
+        << ": " << snapshotFinishRes;
+  }
 
-              TRI_ASSERT(snapshotTransferResult.res.fail() ||
-                         (snapshotTransferResult.res.ok() &&
-                          !snapshotTransferResult.reportFailure))
-                  << snapshotTransferResult.res << " "
-                  << snapshotTransferResult.reportFailure;
+  LOG_TOPIC("42ffd", DEBUG, Logger::REPLICATION2)
+      << "Successfully sent finish command for snapshot  "
+      << *snapshotTransferResult.snapshotId;
 
-              if (snapshotTransferResult.reportFailure) {
-                // Some failures don't need to be reported. For example, it's
-                // totally fine for the follower to interrupt a snapshot
-                // transfer while resigning, because there's no point in
-                // continuing it.
-                LOG_TOPIC("2883c", WARN, Logger::REPLICATION2)
-                    << "During the processing of snapshot "
-                    << *snapshotTransferResult.snapshotId
-                    << ", the following problem occurred on the follower: "
-                    << snapshotTransferResult.res;
-                return snapshotTransferResult.res;
-              }
+  TRI_ASSERT(snapshotTransferResult.res.fail() ||
+             (snapshotTransferResult.res.ok() &&
+              !snapshotTransferResult.reportFailure))
+      << snapshotTransferResult.res << " "
+      << snapshotTransferResult.reportFailure;
 
-              LOG_TOPIC("d73cb", DEBUG, Logger::REPLICATION2)
-                  << "Snapshot " << *snapshotTransferResult.snapshotId
-                  << " finished: " << snapshotTransferResult.res;
-              return Result{};
-            })
-            .then([self](auto&& tryRes) {
-              auto res = basics::catchToResult([&] { return tryRes.get(); });
-              if (res.ok()) {
-                // If we replayed a snapshot, we need to wait for views to
-                // settle before we can continue. Otherwise, we would get into
-                // issues with duplicate document ids
-                self->_shardHandler->prepareShardsForLogReplay();
-              }
-              return res;
-            });
-      });
+  if (snapshotTransferResult.reportFailure) {
+    // Some failures don't need to be reported. For example, it's
+    // totally fine for the follower to interrupt a snapshot
+    // transfer while resigning, because there's no point in
+    // continuing it.
+    LOG_TOPIC("2883c", WARN, Logger::REPLICATION2)
+        << "During the processing of snapshot "
+        << *snapshotTransferResult.snapshotId
+        << ", the following problem occurred on the follower: "
+        << snapshotTransferResult.res;
+    co_return snapshotTransferResult.res;
+  }
+
+  if (snapshotTransferResult.res.ok()) {
+    LOG_TOPIC("d73cb", DEBUG, Logger::REPLICATION2)
+        << "Snapshot " << *snapshotTransferResult.snapshotId
+        << " finished: " << snapshotTransferResult.res;
+
+    // If we replayed a snapshot, we need to wait for views to
+    // settle before we can continue. Otherwise, we would get into
+    // issues with duplicate document ids
+    self->_shardHandler->prepareShardsForLogReplay();
+  }
+
+  co_return std::move(snapshotTransferResult).res;
 }
-auto DocumentFollowerState::runSnapshotTransfer(
+
+auto DocumentFollowerState::initializeSnapshotTransfer(
     std::shared_ptr<IDocumentStateLeaderInterface> leader,
     std::uint64_t snapshotVersion,
     futures::Future<ResultT<SnapshotConfig>>&& snapshotFuture) noexcept
