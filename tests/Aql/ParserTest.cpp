@@ -61,23 +61,14 @@ TEST_F(ParserTest, parseSimpleTernaryCondition) {
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
   aql::Parser parser(*queryContext, ast, queryString);
-  ASSERT_FALSE(parser.forceInlineTernary());
+  ASSERT_FALSE(parser.lazyConditions().forceInline());
   parser.parse();
 
   aql::AstNode const* rootNode = ast.root();
   ASSERT_EQ(aql::NODE_TYPE_ROOT, rootNode->type);
-  ASSERT_EQ(2, rootNode->numMembers());
+  ASSERT_EQ(1, rootNode->numMembers());
 
-  aql::AstNode const* letNode = rootNode->getMember(0);
-  ASSERT_EQ(aql::NODE_TYPE_LET, letNode->type);
-  ASSERT_EQ(2, letNode->numMembers());
-  aql::AstNode const* variableNode = letNode->getMember(0);
-  ASSERT_EQ(aql::NODE_TYPE_VARIABLE, variableNode->type);
-  aql::AstNode const* valueNode = letNode->getMember(1);
-  ASSERT_EQ(aql::NODE_TYPE_VALUE, valueNode->type);
-  ASSERT_TRUE(valueNode->isTrue());
-
-  aql::AstNode const* returnNode = rootNode->getMember(1);
+  aql::AstNode const* returnNode = rootNode->getMember(0);
   ASSERT_EQ(aql::NODE_TYPE_RETURN, returnNode->type);
   ASSERT_EQ(1, returnNode->numMembers());
 
@@ -109,8 +100,8 @@ TEST_F(ParserTest, parseSimpleTernaryConditionForceInline) {
       aql::QueryString(std::string_view("RETURN true ? 'true' : 'false'"));
 
   aql::Parser parser(*queryContext, ast, queryString);
-  parser.setForceInlineTernary();
-  ASSERT_TRUE(parser.forceInlineTernary());
+  parser.lazyConditions().pushForceInline();
+  ASSERT_TRUE(parser.lazyConditions().forceInline());
   parser.parse();
 
   aql::AstNode const* rootNode = ast.root();
@@ -149,7 +140,7 @@ TEST_F(ParserTest, parseTernaryWithSubquery) {
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 
   aql::Parser parser(*queryContext, ast, queryString);
-  ASSERT_FALSE(parser.forceInlineTernary());
+  ASSERT_FALSE(parser.lazyConditions().forceInline());
   parser.parse();
 
   aql::AstNode const* rootNode = ast.root();
@@ -247,9 +238,9 @@ TEST_F(ParserTest, parseTernaryWithSubquery) {
   aql::AstNode const* ternaryNode = returnNode->getMember(0);
   ASSERT_EQ(3, ternaryNode->numMembers());
 
+  // "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
   aql::AstNode const* conditionNode = ternaryNode->getMember(0);
-  ASSERT_EQ(aql::NODE_TYPE_VALUE, conditionNode->type);
-  ASSERT_TRUE(conditionNode->isTrue());
+  ASSERT_EQ(aql::NODE_TYPE_REFERENCE, conditionNode->type);
 
   aql::AstNode const* truePart = ternaryNode->getMember(1);
   ASSERT_EQ(aql::NODE_TYPE_REFERENCE, truePart->type);
@@ -270,8 +261,8 @@ TEST_F(ParserTest, parseTernaryWithSubqueryForceInline) {
       "RETURN true ? (FOR i IN 1..10 RETURN i) : (FOR j IN 1..2 RETURN j)"));
 
   aql::Parser parser(*queryContext, ast, queryString);
-  parser.setForceInlineTernary();
-  ASSERT_TRUE(parser.forceInlineTernary());
+  parser.lazyConditions().pushForceInline();
+  ASSERT_TRUE(parser.lazyConditions().forceInline());
   parser.parse();
 
   aql::AstNode const* rootNode = ast.root();

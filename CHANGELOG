@@ -6,18 +6,18 @@ devel
   for leader movements.
 
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
-  operator.
+  operator and the logical AND and OR operators, if any of the operands
+  is a subquery.
 
   Given an AQL ternary condition such as
 
       condition ? truePart : falsePart
 
-  the `truePart` expression is now guaranteed to be executed only if the
-  `condition` is truish, and the `falsePart` is guaranteed to be evaluated
-  only if the `condition` is falsy.
+  the `truePart` expression is now executed only if `condition` is truthy, 
+  and the `falsePart` is evaluated only if `condition` is falsy.
   In previous versions of ArangoDB the `truePart` and `falsePart` operands 
-  of the ternary operator were sometimes evaluated eagerly and out-of-line
-  if the operands were subqueries.
+  of the ternary operator were evaluated eagerly and out-of-line if the 
+  operands were subqueries.
 
   The ternary operator's condition is now pulled out and made available under
   a separate temporary variable. For example, the query
@@ -45,7 +45,11 @@ devel
 
   This guarantees that the condition is only evaluated once, and that the
   `truePart` and `falsePart` operands are only executed if `condition` was
-  `true` or `false`, respectively.
+  truthy or false, respectively.
+
+  Also only evaluate the right-hand operands of logical AND and logical OR if
+  the left-hand operand evalutes to a truthy value (logical AND) or a falsy
+  value (logical OR).
 
 * Allow limiting the amount of async prefetching operations for AQL queries.
   Since version 3.12, AQL queries can make use of async prefetching. While this

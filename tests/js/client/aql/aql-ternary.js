@@ -285,6 +285,29 @@ function TernarySideEffectsTestSuite () {
       db._drop(cn);
     },
     
+    testTernaryConditionOnlyExecutedOnce : function () {
+      const query = `
+RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN i) == 10 ? true : false
+`;
+      
+      let result = db._query(query).toArray();
+      assertEqual([true], result);
+      let numDocs = c.count();
+      assertEqual(10, numDocs);
+    },
+    
+    testTernaryConditionOnlyExecutedOnceWithSubqueries : function () {
+      const query = `
+RETURN LENGTH(FOR i IN 1..10 INSERT {} INTO ${cn} RETURN i) == 10 ? (FOR j IN 1..10 RETURN j) : (FOR j IN 1..5 RETURN j)
+`;
+      
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], result[0]);
+      let numDocs = c.count();
+      assertEqual(10, numDocs);
+    },
+    
     testTernaryWithNonDeterministicCondition : function () {
       const query = `
 FOR i IN 1..1000
@@ -462,6 +485,44 @@ RETURN NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2')
 RETURN NOOPT(true) ? 
   (NOOPT(true) ? NOOPT(ASSERT(true, 'ass 1')) : NOOPT(ASSERT(false, 'ass 2'))) : 
   (NOOPT(true) ? NOOPT(ASSERT(false, 'ass 3')) : NOOPT(ASSERT(false, 'ass 4')))
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+
+    testShortcutTernary : function () {
+      const query = `
+RETURN NOOPT(true) ? : ASSERT(false, 'fail')
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+    
+    testShortcutTernaryFalseCondition : function () {
+      const query = `
+RETURN NOOPT(false) ? : ASSERT(true, 'fail')
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+    
+    testShortcutTernaryWithSubqueryFalse : function () {
+      const query = `
+LET values = NOOPT([1, 2, 3])
+RETURN !IS_ARRAY(values) ? : (FOR i IN values RETURN i)
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual([1, 2, 3], result[0]);
+    },
+
+    testShortcutTernaryWithSubqueryTrue : function () {
+      const query = `
+LET values = NOOPT([1, 2, 3])
+RETURN IS_ARRAY(values) ? : (FOR i IN values RETURN i)
 `;
       let result = db._query(query).toArray();
       assertEqual(1, result.length);
