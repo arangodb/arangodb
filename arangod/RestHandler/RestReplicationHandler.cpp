@@ -2776,6 +2776,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
+  // TODO: the follower will always send "doSoftLockOnly=false" from 3.12.1
+  // onwards. we can remove the entire parameter in the future.
   bool doSoftLock = VelocyPackHelper::getBooleanValue(
       body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;

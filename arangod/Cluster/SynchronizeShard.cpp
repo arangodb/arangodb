@@ -199,6 +199,7 @@ static std::stringstream& AppendShardInformationToMessage(
 static Result getLockIdFromLeader(network::ConnectionPool* pool,
                                   std::string const& endpoint,
                                   std::string const& database,
+                                  std::string const& shard,
                                   std::string const& clientId, double timeout,
                                   uint64_t& id) {
   TRI_ASSERT(timeout > 0);
@@ -223,16 +224,14 @@ static Result getLockIdFromLeader(network::ConnectionPool* pool,
     TRI_ASSERT(idSlice.isObject());
     TRI_ASSERT(idSlice.hasKey(ID));
 
-    std::string error("getLockIdFromLeader: failed to get read lock");
     try {
       id = std::stoull(idSlice.get(ID).copyString());
     } catch (std::exception const&) {
-      error += " - expecting id to be uint64_t ";
-      error += idSlice.toJson();
-      res.reset(TRI_ERROR_INTERNAL, error);
-    } catch (...) {
-      TRI_ASSERT(false);
-      res.reset(TRI_ERROR_INTERNAL, error);
+      res.reset(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("getLockIdFromLeader: failed to get read lock for ",
+                       ::shardNameForLogging(database, shard),
+                       " - expecting id to be uint64_t ", idSlice.toJson()));
     }
   }
 
@@ -469,11 +468,19 @@ Result SynchronizeShard::requestExclusiveLockOnLeader(
     VPackObjectBuilder o(&body);
     body.add(ID, VPackValue(std::to_string(rlid)));
     body.add(COLLECTION, VPackValue(collection));
-    body.add(TTL, VPackValue(timeout));
+    // decrease the lock timeout here so that it is less than the
+    // network timeout for this request. we don't want to get into a
+    // situation in which the lock timeout and the request timeout
+    // are identical, and the request is declared failed locally
+    // before the remote lock timeout has been fully exhausted.
+    body.add(TTL, VPackValue(static_cast<uint64_t>(timeout * 0.8)));
     body.add("serverId",
              VPackValue(arangodb::ServerState::instance()->getId()));
     body.add(StaticStrings::RebootId,
              VPackValue(ServerState::instance()->getRebootId().value()));
+    // TODO: the follower will always send "doSoftLockOnly=false" from 3.12.1
+    // onwards. we can remove the entire parameter in the future here and
+    // on the receiving side.
     body.add(StaticStrings::ReplicationSoftLockOnly, VPackValue(false));
     // the following attribute was added in 3.8.3:
     // with this, the follower indicates to the leader that it is
@@ -572,15 +579,16 @@ Result SynchronizeShard::establishExclusiveLockOnLeader(
   // Read lock id
   rlid = 0;
   network::ConnectionPool* pool = _networkFeature.pool();
-  arangodb::Result result = getLockIdFromLeader(pool, endpoint, getDatabase(),
-                                                clientId, timeout, rlid);
+  arangodb::Result result = getLockIdFromLeader(
+      pool, endpoint, getDatabase(), getShard(), clientId, timeout, rlid);
   if (!result.ok()) {
     LOG_TOPIC("2e5ae", WARN, Logger::MAINTENANCE)
         << "could not get read lock id for " << shardNameForLogging()
         << " from endpoint " << endpoint << ": " << result.errorMessage();
   } else {
     LOG_TOPIC("c8d18", DEBUG, Logger::MAINTENANCE)
-        << "Got read lock id for " << shardNameForLogging() << ": " << rlid;
+        << "Got read lock id for " << shardNameForLogging() << " from endpoint "
+        << endpoint << ": " << rlid;
 
     result.reset(requestExclusiveLockOnLeader(pool, endpoint, collection,
                                               clientId, rlid, timeout));
