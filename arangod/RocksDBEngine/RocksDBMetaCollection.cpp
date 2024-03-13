@@ -1714,6 +1714,10 @@ ErrorCode RocksDBMetaCollection::doLock(double timeout, AccessMode::Type mode) {
   return TRI_ERROR_LOCK_TIMEOUT;
 }
 
+std::string RocksDBMetaCollection::stringifyLockState() const {
+  return _exclusiveLock.stringifyLockState();
+}
+
 bool RocksDBMetaCollection::haveBufferedOperations(
     std::unique_lock<std::mutex> const& lock) const {
   TRI_ASSERT(lock.owns_lock());
