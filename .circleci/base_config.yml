@@ -1,5 +1,9 @@
 version: 2.1
 
+orbs:
+  aws-cli: circleci/aws-cli@4.1.1
+  aws-ecr: circleci/aws-ecr@9.0.1
+  
 parameters:
   enterprise-commit:
     type: string
@@ -15,6 +19,9 @@ parameters:
     type: string
     default: ""
   dont-cancel-pipelines:
+    type: boolean
+    default: false
+  create-docker-images:
     type: boolean
     default: false
   nightly:
@@ -245,7 +252,15 @@ jobs:
       - run:
           name: Configure
           command: |
-            cmake --preset << parameters.preset >> -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DCMAKE_C_COMPILER_LAUNCHER=sccache -DCMAKE_CXX_COMPILER_LAUNCHER=sccache -DOPENSSL_ROOT_DIR=/opt
+            cmake --preset << parameters.preset >> \
+              -DCMAKE_C_COMPILER=<< pipeline.parameters.c-compiler >> \
+              -DCMAKE_CXX_COMPILER=<< pipeline.parameters.cxx-compiler >> \
+              -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" \
+              -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib \
+              -DCMAKE_C_COMPILER_LAUNCHER=sccache \
+              -DCMAKE_CXX_COMPILER_LAUNCHER=sccache \
+              -DOPENSSL_ROOT_DIR=/opt \
+              -DCMAKE_INSTALL_PREFIX=/
       - run:
           name: Build
           command: |
@@ -261,6 +276,18 @@ jobs:
             fi
             echo "Building targets: $TARGETS"
             cmake --build --preset << parameters.preset >> --parallel 8 --target $TARGETS
+      - when:
+          condition: << pipeline.parameters.create-docker-images >>
+          steps:
+            - run:
+                name: Create install package
+                command: |
+                  mkdir install
+                  # Note: ATM this will rebuild the frontend
+                  DESTDIR=`pwd`/install cmake --build --preset << parameters.preset >> --parallel 8 --target install
+                  strip ./install/usr/bin/arango*
+                  strip ./install/usr/sbin/arangod
+                  tar -czf install.tar.gz -C install ./
       - run:
           name: Size leaderboard
           command: |
@@ -285,8 +312,10 @@ jobs:
             - persist_to_workspace:
                 root: .
                 paths:
+                  - VERSIONS
                   - build/compile_commands.json
                   - CMakePresets.json
+                  - install.tar.gz
                   - build/bin
                   - build/etc
                   - build/3rdParty/iresearch/external/snowball/libstemmer/
@@ -303,6 +332,40 @@ jobs:
                   - tsan_arangodb_suppressions.txt
                   - ubsan_arangodb_suppressions.txt
                   - lsan_arangodb_suppressions.txt
+
+  create-docker-image:
+    parameters:
+      resource-class:
+          type: string
+      arch:
+          type: string
+      tag:
+          type: string
+    docker:
+      - image: cimg/base:current
+    resource_class: << parameters.resource-class >>
+    steps:
+      - aws-cli/setup:
+          role_arn: "arn:aws:iam::242063586340:role/CircleCI-Container-Handler"
+      - aws-ecr/ecr_login:
+          public_registry: true
+      - setup_remote_docker:
+            docker_layer_caching: true
+      - attach_workspace:
+          at: .
+      - run:
+          name: Create Docker Image
+          command: |
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" VERSIONS)
+            cd scripts/docker/deploy
+            mkdir install
+            tar -xzf ../../../install.tar.gz -C install
+            curl -s -L -o "install/usr/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+            # TODO
+            #  - download rclone
+            docker build --platform linux/<< parameters.arch >> --build-arg arch=<< parameters.arch >> -t << parameters.tag >> --file deploy-alpine.dockerfile .
+            echo "Pushing image << parameters.tag >>"
+            docker push << parameters.tag >>
 
   run-linux-tests:
     docker:
