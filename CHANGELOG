@@ -5,6 +5,9 @@ devel
   but followers. Previously, this server was then not always considered
   for leader movements.
 
+* Change the default log format. The option log.thread is now by default true.
+  The option log.time-format is now by default `utc-datestring-micros`.
+
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
   operator and the logical AND and OR operators, if any of the operands
   is a subquery.
