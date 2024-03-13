@@ -96,7 +96,7 @@ void BindParameters::validateAllUsed() const {
 /// does not exist. the returned AstNode is a nullptr in case no AstNode was yet
 /// registered for this bind parameter. This is not an error.
 std::pair<VPackSlice, AstNode*> BindParameters::get(
-    std::string const& name) const noexcept {
+    std::string_view name) const noexcept {
   TRI_ASSERT(_processed);
 
   auto it = _parameters.find(name);
@@ -109,8 +109,9 @@ std::pair<VPackSlice, AstNode*> BindParameters::get(
   return (*it).second;
 }
 
-/// @brief register an AstNode for the bind parameter
-void BindParameters::registerNode(std::string const& name, AstNode* node) {
+/// @brief register an AstNode for the bind parameter.
+/// note: the AstNode is not owned by the bind parameters class.
+void BindParameters::registerNode(std::string_view name, AstNode* node) {
   TRI_ASSERT(_processed);
 
   auto it = _parameters.find(name);

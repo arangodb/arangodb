@@ -2175,7 +2175,7 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
                                         BindParameters& parameters) {
   TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
 
-  std::string const param = node->getString();
+  std::string_view param = node->getStringView();
   TRI_ASSERT(!param.empty());
 
   auto [value, cachedNode] = parameters.get(param);

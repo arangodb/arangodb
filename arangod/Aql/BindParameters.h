@@ -23,13 +23,15 @@
 
 #pragma once
 
+#include "Containers/FlatHashMap.h"
+
 #include <velocypack/Slice.h>
 
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <string>
-#include <unordered_map>
+#include <string_view>
 #include <utility>
 
 namespace arangodb {
@@ -42,8 +44,8 @@ namespace aql {
 struct AstNode;
 
 using BindParametersType =
-    std::unordered_map<std::string,
-                       std::pair<arangodb::velocypack::Slice, AstNode*>>;
+    containers::FlatHashMap<std::string,
+                            std::pair<arangodb::velocypack::Slice, AstNode*>>;
 
 class BindParameters {
  public:
@@ -70,10 +72,11 @@ class BindParameters {
   /// does not exist. the returned AstNode is a nullptr in case no AstNode was
   /// yet registered for this bind parameter. This is not an error.
   std::pair<arangodb::velocypack::Slice, AstNode*> get(
-      std::string const& name) const noexcept;
+      std::string_view name) const noexcept;
 
-  /// @brief register an AstNode for the bind parameter
-  void registerNode(std::string const& name, AstNode* node);
+  /// @brief register an AstNode for the bind parameter.
+  /// note: the AstNode is not owned by the bind parameters class.
+  void registerNode(std::string_view name, AstNode* node);
 
   /// @brief run a visitor function on all bind parameters
   void visit(std::function<void(std::string const& key,
