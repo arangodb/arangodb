@@ -1,6 +1,10 @@
 devel
 -----
 
+* Remove "read lock" acquisition calls from shard synchronization because they
+  are now unnecessary. This slightly simplifies the shard synchronization
+  protocol.
+
 * Repair shard rebalancer if some server has no leaders of a collection
   but followers. Previously, this server was then not always considered
   for leader movements.
