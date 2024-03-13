@@ -41,9 +41,9 @@ class Builder;
 namespace aql {
 struct AstNode;
 
-typedef std::unordered_map<std::string,
-                           std::pair<arangodb::velocypack::Slice, AstNode*>>
-    BindParametersType;
+using BindParametersType =
+    std::unordered_map<std::string,
+                       std::pair<arangodb::velocypack::Slice, AstNode*>>;
 
 class BindParameters {
  public:
@@ -59,6 +59,11 @@ class BindParameters {
 
   /// @brief destroy the parameters
   ~BindParameters();
+
+  /// @brief validates that all bind parameters that were declared have
+  /// actually been used in the query.
+  /// will throw if there is at least one declared, but unused bind parameter.
+  void validateAllUsed() const;
 
   /// @brief return a bind parameter value and its corresponding AstNode by
   /// parameter name. will return VPackSlice::noneSlice() if the bind parameter
@@ -102,6 +107,11 @@ class BindParameters {
 
   /// @brief bind parameters map, indexed by name
   BindParametersType _parameters;
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+  /// @brief memory used by bind parameters
+  size_t _memoryUsage;
+#endif
 
   /// @brief internal state
   bool _processed;

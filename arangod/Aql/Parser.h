@@ -36,14 +36,6 @@ class QueryString;
 /// @brief the parser
 class Parser {
  public:
-  struct LazyCondition {
-    // the actual condition expression (always non-null)
-    AstNode* condition;
-    // the variable node that is assigned the condition expression's result.
-    // this is null initially, but can be populated on demand
-    AstNode* variable = nullptr;
-  };
-
   Parser(Parser const&) = delete;
   Parser& operator=(Parser const&) = delete;
 

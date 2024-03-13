@@ -500,6 +500,15 @@ RETURN NOOPT(true) ? : ASSERT(false, 'fail')
       assertEqual(true, result[0]);
     },
     
+    testShortcutTernaryFalseCondition : function () {
+      const query = `
+RETURN NOOPT(false) ? : ASSERT(true, 'fail')
+`;
+      let result = db._query(query).toArray();
+      assertEqual(1, result.length);
+      assertEqual(true, result[0]);
+    },
+    
     testShortcutTernaryWithSubqueryFalse : function () {
       const query = `
 LET values = NOOPT([1, 2, 3])

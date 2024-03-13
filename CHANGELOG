@@ -1,6 +1,10 @@
 devel
 -----
 
+* Repair shard rebalancer if some server has no leaders of a collection
+  but followers. Previously, this server was then not always considered
+  for leader movements.
+
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
   operator and the logical AND and OR operators, if any of the operands
   is a subquery.

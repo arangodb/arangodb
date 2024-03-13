@@ -108,12 +108,7 @@ AstNodeType buildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
   TRI_ASSERT(!Quantifier::isAny(quantifier));
   if (Quantifier::isNone(quantifier)) {
-    auto it = Ast::NegatedOperators.find(type);
-    if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unsupported operator type");
-    }
-    type = it->second;
+    type = Ast::negateOperator(type);
   }
   return type;
 }
