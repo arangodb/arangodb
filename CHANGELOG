@@ -1,6 +1,8 @@
 3.12.0-rc.1 (2024-03-12)
 ------------------------
 
+* FE-437: reinitialize analyzer form when type changes.
+
 * Rebuilt included rclone v1.65.2 with go1.21.8.
 
 * Repair shard rebalancer if some server has no leaders of a collection but
