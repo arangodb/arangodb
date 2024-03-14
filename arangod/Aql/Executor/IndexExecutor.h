@@ -39,13 +39,14 @@
 #include "Transaction/Methods.h"
 
 #include <memory>
+#include <vector>
 
 namespace arangodb {
 class IndexIterator;
 struct ResourceMonitor;
 
 namespace aql {
-
+class Ast;
 class ExecutionEngine;
 class ExecutorExpressionContext;
 class RegisterInfos;

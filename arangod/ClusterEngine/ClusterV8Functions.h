@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 
 struct ClusterV8Functions {

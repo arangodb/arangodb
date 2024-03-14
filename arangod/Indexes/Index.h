@@ -23,21 +23,19 @@
 
 #pragma once
 
-#include <iosfwd>
-#include <string_view>
-
 #include "Aql/AstNode.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
-#include "Basics/Exceptions.h"
+#include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Basics/Result.h"
-#include "Basics/StaticStrings.h"
 #include "Containers/FlatHashSet.h"
 #include "VocBase/Identifiers/IndexId.h"
 #include "VocBase/Identifiers/LocalDocumentId.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
-#include "Basics/MemoryTypes/MemoryTypes.h"
+
+#include <iosfwd>
+#include <string_view>
+#include <vector>
 
 namespace arangodb {
 class IndexIterator;
@@ -53,6 +51,7 @@ class Slice;
 }  // namespace velocypack
 
 namespace aql {
+struct AstNode;
 class Projections;
 class SortCondition;
 struct Variable;
@@ -151,13 +150,7 @@ class Index {
   IndexId id() const { return _iid; }
 
   /// @brief return the index name
-  std::string const& name() const {
-    if (_name == StaticStrings::IndexNameEdgeFrom ||
-        _name == StaticStrings::IndexNameEdgeTo) {
-      return StaticStrings::IndexNameEdge;
-    }
-    return _name;
-  }
+  std::string const& name() const;
 
   /// @brief set the name, if it is currently unset
   void name(std::string const&);
@@ -176,78 +169,24 @@ class Index {
   }
 
   /// @brief return the index fields names
-  std::vector<std::vector<std::string>> fieldNames() const {
-    std::vector<std::vector<std::string>> result;
-    result.reserve(_fields.size());
-
-    for (auto const& it : _fields) {
-      std::vector<std::string> parts;
-      parts.reserve(it.size());
-      for (auto const& it2 : it) {
-        parts.emplace_back(it2.name);
-      }
-      result.emplace_back(std::move(parts));
-    }
-    return result;
-  }
+  std::vector<std::vector<std::string>> fieldNames() const;
 
   /// @brief whether or not the ith attribute is expanded (somewhere)
-  bool isAttributeExpanded(size_t i) const {
-    if (i >= _fields.size()) {
-      return false;
-    }
-    return TRI_AttributeNamesHaveExpansion(_fields[i]);
-  }
+  bool isAttributeExpanded(size_t i) const;
 
   /// @brief whether or not any attribute is expanded
   bool isAttributeExpanded(
-      std::vector<basics::AttributeName> const& attribute) const {
-    for (auto const& it : _fields) {
-      if (!basics::AttributeName::namesMatch(attribute, it)) {
-        continue;
-      }
-      return TRI_AttributeNamesHaveExpansion(it);
-    }
-    return false;
-  }
+      std::vector<basics::AttributeName> const& attribute) const;
 
   /// @brief whether or not any attribute is expanded
   bool attributeMatches(std::vector<basics::AttributeName> const& attribute,
-                        bool isPrimary = false) const {
-    for (auto const& it : _fields) {
-      if (basics::AttributeName::isIdentical(attribute, it, true)) {
-        return true;
-      }
-    }
-    if (isPrimary) {
-      static std::vector<basics::AttributeName> const vec_id{
-          {StaticStrings::IdString, false}};
-      return basics::AttributeName::isIdentical(attribute, vec_id, true);
-    }
-    return false;
-  }
+                        bool isPrimary = false) const;
 
   /// @brief whether or not the given attribute vector matches any of the index
   /// fields In case it does, the position will be returned as well.
   std::pair<bool, size_t> attributeMatchesWithPos(
       std::vector<basics::AttributeName> const& attribute,
-      bool isPrimary = false) const {
-    size_t pos = 0;
-    for (auto const& it : _fields) {
-      if (basics::AttributeName::isIdentical(attribute, it, true)) {
-        return {true, pos};
-      }
-      pos++;
-    }
-    if (isPrimary) {
-      static std::vector<basics::AttributeName> const vec_id{
-          {StaticStrings::IdString, false}};
-      return basics::AttributeName::isIdentical(attribute, vec_id, true)
-                 ? std::pair<bool, size_t>(true, pos)
-                 : std::pair<bool, size_t>(false, -1);
-    }
-    return {false, -1};
-  }
+      bool isPrimary = false) const;
 
   /// @brief whether or not any attribute is expanded
   bool hasExpansion() const { return _useExpansion; }
@@ -360,9 +299,7 @@ class Index {
       std::string_view extra = std::string_view()) const;
 
   /// @brief update the cluster selectivity estimate
-  virtual void updateClusterSelectivityEstimate(double /*estimate*/) {
-    TRI_ASSERT(false);  // should never be called except on Coordinator
-  }
+  virtual void updateClusterSelectivityEstimate(double /*estimate*/);
 
   /// @brief whether or not the index is implicitly unique
   /// this can be the case if the index is not declared as unique,
@@ -476,13 +413,7 @@ class Index {
   /// @param code the error key
   /// @param key the conflicting key
   Result& addErrorMsg(Result& r, ErrorCode code,
-                      std::string_view key = {}) const {
-    if (code != TRI_ERROR_NO_ERROR) {
-      r.reset(code);
-      return addErrorMsg(r, key);
-    }
-    return r;
-  }
+                      std::string_view key = {}) const;
 
   /// @brief generate error result
   /// @param key the conflicting key

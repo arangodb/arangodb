@@ -29,7 +29,6 @@
 
 #include "Aql/AqlValue.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace velocypack {

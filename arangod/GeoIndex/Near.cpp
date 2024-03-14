@@ -35,7 +35,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "Logger/Logger.h"

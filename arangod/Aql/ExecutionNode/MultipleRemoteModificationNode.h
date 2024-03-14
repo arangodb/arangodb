@@ -23,14 +23,13 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/CollectionAccessingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/ModificationOptions.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
+#include "Basics/Exceptions.h"
 #include "VocBase/voc-types.h"
 
 #include <utility>

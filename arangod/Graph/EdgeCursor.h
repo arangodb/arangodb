@@ -27,8 +27,6 @@
 #include <functional>
 #include <string_view>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 
 namespace velocypack {

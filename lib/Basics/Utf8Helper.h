@@ -35,8 +35,6 @@
 #include <unicode/umachine.h>
 #include <unicode/regex.h>
 
-#include "Basics/Common.h"
-
 namespace icu_58 {
 class RegexMatcher;
 }

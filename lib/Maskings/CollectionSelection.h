@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 namespace maskings {
 enum class CollectionSelection { FULL, MASKED, EXCLUDE, STRUCTURE };

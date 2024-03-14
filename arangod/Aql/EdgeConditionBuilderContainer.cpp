@@ -20,15 +20,16 @@
 ///
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
-#include "EdgeConditionBuilderContainer.h"
 
-#include <velocypack/Iterator.h>
+#include "EdgeConditionBuilderContainer.h"
 
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Graph/Graph.h"
+
+#include <velocypack/Iterator.h>
 
 using namespace arangodb::basics;
 using namespace arangodb::aql;
