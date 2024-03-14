@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-437: reinitialize analyzer form when type changes.
+
 * Remove "read lock" acquisition calls from shard synchronization because they
   are now unnecessary. This slightly simplifies the shard synchronization
   protocol.
