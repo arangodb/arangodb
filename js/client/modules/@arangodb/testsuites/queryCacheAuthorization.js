@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 
@@ -136,7 +137,7 @@ function queryCacheAuthorization (options) {
     return bodies;
   };
 
-  pu.run.arangoshCmd(
+  ct.run.arangoshCmd(
     options, instanceManager, {}, [
       '--javascript.execute-string',
       `const users = require('@arangodb/users');

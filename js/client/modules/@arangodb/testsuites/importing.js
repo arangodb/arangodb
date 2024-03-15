@@ -35,6 +35,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const yaml = require('js-yaml');
 
@@ -472,10 +473,10 @@ class importRunner extends tu.runInArangoshRunner {
 
       for (let i = 0; i < impTodos.length; i++) {
         const impTodo = impTodos[i];
-        let cfg = pu.createBaseConfig('import', this.options, this.instanceManager);
+        let cfg = ct.createBaseConfig('import', this.options, this.instanceManager);
         cfg.setWhatToImport(impTodo);
         cfg.setEndpoint(this.instanceManager.endpoint);
-        result[impTodo.id] = pu.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
+        result[impTodo.id] = ct.run.arangoImport(cfg, this.options, this.instanceManager.rootDir, this.options.coreCheck);
         result[impTodo.id].failed = 0;
 
         if (impTodo.expectFailure) {
