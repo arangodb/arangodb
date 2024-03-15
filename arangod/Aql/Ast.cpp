@@ -561,11 +561,21 @@ AstNode* Ast::createNodeFilter(AstNode const* expression) {
 }
 
 /// @brief create an AST filter node for an UPSERT query
-AstNode* Ast::createNodeUpsertFilter(AstNode const* variable,
-                                     AstNode const* object) {
+AstNode* Ast::createNodeUpsertFilter(AstNode const* variable, AstNode* object) {
   AstNode* node = createNode(NODE_TYPE_FILTER);
-  AstNode* example = createNodeExample(variable, object);
 
+  // the example object to match
+  // if this uses bind parameters, then we need to mark these bind
+  // parameters as important, because they can change the semantics of the
+  // operation.
+  Ast::traverseAndModify(object, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
+
+  AstNode* example = createNodeExample(variable, object);
   node->addMember(example);
 
   return node;
@@ -785,20 +795,52 @@ AstNode* Ast::createNodeSort(AstNode const* list) {
 
 /// @brief create an AST sort element node
 AstNode* Ast::createNodeSortElement(AstNode const* expression,
-                                    AstNode const* ascending) {
+                                    AstNode* ascending) {
   AstNode* node = createNode(NODE_TYPE_SORT_ELEMENT);
+
   node->reserve(2);
   node->addMember(expression);
+
+  // ascending / desceding
+  // if this uses bind parameters, then we need to mark these bind
+  // parameters as important, because they can change the semantics of the
+  // operation.
+  Ast::traverseAndModify(ascending, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(ascending);
 
   return node;
 }
 
 /// @brief create an AST limit node
-AstNode* Ast::createNodeLimit(AstNode const* offset, AstNode const* count) {
+AstNode* Ast::createNodeLimit(AstNode* offset, AstNode* count) {
   AstNode* node = createNode(NODE_TYPE_LIMIT);
   node->reserve(2);
+
+  // offset value
+  // if the offset uses bind parameters, e.g. LIMIT @offset, 20,
+  // we need to mark these bind parameters as important ones,
+  // because they could change the semantics of the operation.
+  Ast::traverseAndModify(offset, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(offset);
+
+  // count value
+  // also mark bind parameters as required
+  Ast::traverseAndModify(count, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(count);
 
   return node;
@@ -1032,6 +1074,7 @@ AstNode* Ast::createNodeParameter(std::string_view name) {
 AstNode* Ast::createNodeParameterDatasource(std::string_view name) {
   AstNode* node = createNode(NODE_TYPE_PARAMETER_DATASOURCE);
   node->setStringValue(name.data(), name.size());
+  node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
 
   // insert bind parameter name into list of found parameters
   _bindParameters.emplace(name.data(), name.size());
@@ -1179,12 +1222,16 @@ AstNode* Ast::createNodeAttributeAccess(AstNode const* accessed,
 
 /// @brief create an AST attribute access node w/ bind parameter
 AstNode* Ast::createNodeBoundAttributeAccess(AstNode const* accessed,
-                                             AstNode const* parameter) {
+                                             AstNode* parameter) {
   AstNode* node = createNode(NODE_TYPE_BOUND_ATTRIBUTE_ACCESS);
-  node->reserve(2);
   node->setStringValue(parameter->getStringValue(),
                        parameter->getStringLength());
+
+  node->reserve(2);
   node->addMember(accessed);
+
+  TRI_ASSERT(parameter->type == NODE_TYPE_PARAMETER);
+  parameter->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
   node->addMember(parameter);
 
   _containsBindParameters = true;
@@ -1652,26 +1699,24 @@ AstNode* Ast::createNodeCollectionList(AstNode const* edgeCollections,
   return node;
 }
 
-/// @brief create an AST direction node
-AstNode* Ast::createNodeDirection(uint64_t direction, uint64_t steps) {
+AstNode* Ast::createNodeDirection(uint64_t direction, AstNode* steps) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
   node->reserve(2);
 
+  // direction: INBOUND, OUTBOUND, ANY
   AstNode* dir = createNodeValueInt(direction);
-  AstNode* step = createNodeValueInt(steps);
   node->addMember(dir);
-  node->addMember(step);
 
-  TRI_ASSERT(node->numMembers() == 2);
-  return node;
-}
-
-AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
-  AstNode* node = createNode(NODE_TYPE_DIRECTION);
-  node->reserve(2);
-  AstNode* dir = createNodeValueInt(direction);
-
-  node->addMember(dir);
+  // depth
+  // if the depth uses bind parameters, e.g. @min .. @max,
+  // we need to mark these bind parameters as important ones,
+  // because they could change the semantics of the operation.
+  Ast::traverseAndModify(steps, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(steps);
 
   TRI_ASSERT(node->numMembers() == 2);
@@ -1679,12 +1724,24 @@ AstNode* Ast::createNodeDirection(uint64_t direction, AstNode const* steps) {
 }
 
 AstNode* Ast::createNodeCollectionDirection(uint64_t direction,
-                                            AstNode const* collection) {
+                                            AstNode* collection) {
   AstNode* node = createNode(NODE_TYPE_DIRECTION);
   node->reserve(2);
-  AstNode* dir = createNodeValueInt(direction);
 
+  // direction: INBOUND, OUTBOUND, ANY
+  AstNode* dir = createNodeValueInt(direction);
   node->addMember(dir);
+
+  // the collection name
+  // if this uses bind parameters, then we need to mark these bind
+  // parameters as important, because they can change the semantics of the
+  // operation.
+  Ast::traverseAndModify(collection, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(collection);
 
   TRI_ASSERT(node->numMembers() == 2);
@@ -1692,16 +1749,25 @@ AstNode* Ast::createNodeCollectionDirection(uint64_t direction,
 }
 
 /// @brief create an AST traversal node
-AstNode* Ast::createNodeTraversal(AstNode const* outVars,
-                                  AstNode const* graphInfo) {
+AstNode* Ast::createNodeTraversal(AstNode const* outVars, AstNode* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
+
   AstNode* node = createNode(NODE_TYPE_TRAVERSAL);
   node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
   TRI_ASSERT(graphInfo->numMembers() == 5);
   TRI_ASSERT(outVars->numMembers() > 0);
   TRI_ASSERT(outVars->numMembers() < 4);
+
+  // the graph info (graph name, collection or list of collections).
+  // if this contains bind parameters, mark them as required
+  Ast::traverseAndModify(graphInfo, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
 
   // Add GraphInfo
   for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
@@ -1722,9 +1788,10 @@ AstNode* Ast::createNodeTraversal(AstNode const* outVars,
 
 /// @brief create an AST shortest path node
 AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
-                                     AstNode const* graphInfo) {
+                                     AstNode* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
+
   AstNode* node = createNode(NODE_TYPE_SHORTEST_PATH);
   node->reserve(outVars->numMembers() + graphInfo->numMembers());
 
@@ -1733,6 +1800,15 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
   TRI_ASSERT(outVars->numMembers() < 3);
 
   // Add GraphInfo
+  // the graph info (graph name, collection or list of collections).
+  // if this contains bind parameters, mark them as required
+  Ast::traverseAndModify(graphInfo, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
+
   for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
     node->addMember(graphInfo->getMemberUnchecked(i));
   }
@@ -1752,9 +1828,10 @@ AstNode* Ast::createNodeShortestPath(AstNode const* outVars,
 /// @brief create an AST k-shortest paths, k-paths or all-shortest paths node
 AstNode* Ast::createNodeEnumeratePaths(graph::PathType::Type type,
                                        AstNode const* outVars,
-                                       AstNode const* graphInfo) {
+                                       AstNode* graphInfo) {
   TRI_ASSERT(outVars->type == NODE_TYPE_ARRAY);
   TRI_ASSERT(graphInfo->type == NODE_TYPE_ARRAY);
+
   AstNode* node = createNode(NODE_TYPE_ENUMERATE_PATHS);
   node->reserve(1 + outVars->numMembers() + graphInfo->numMembers());
 
@@ -1771,6 +1848,14 @@ AstNode* Ast::createNodeEnumeratePaths(graph::PathType::Type type,
   TRI_ASSERT(node->numMembers() == 1);
 
   // Add GraphInfo
+  // the graph info (graph name, collection or list of collections).
+  // if this contains bind parameters, mark them as required
+  Ast::traverseAndModify(graphInfo, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   for (size_t i = 0; i < graphInfo->numMembers(); ++i) {
     node->addMember(graphInfo->getMemberUnchecked(i));
   }
@@ -1838,7 +1923,7 @@ AstNode* Ast::createNodeAggregateFunctionCall(std::string_view functionName,
 
 /// @brief create an AST function call node
 AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
-                                     AstNode const* arguments,
+                                     AstNode* arguments,
                                      bool allowInternalFunctions) {
   auto [normalized, isBuiltIn] = normalizeFunctionName(functionName);
 
@@ -1882,6 +1967,24 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
           TRI_ERROR_QUERY_FUNCTION_ARGUMENT_NUMBER_MISMATCH, fname.c_str(),
           static_cast<int>(numExpectedArguments.first),
           static_cast<int>(numExpectedArguments.second));
+    }
+
+    for (size_t i = 0; i < n; ++i) {
+      if (func->getArgumentConversion(i) !=
+          Function::Conversion::RequiredBindParameter) {
+        continue;
+      }
+
+      // if a function depends on collection bind parameters, we need to
+      // mark all these bind parameters as required, so that they are
+      // expanded early in the process.
+      Ast::traverseAndModify(
+          arguments->getMemberUnchecked(i), [](AstNode* node) {
+            if (node->type == NODE_TYPE_PARAMETER) {
+              node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+            }
+            return node;
+          });
     }
 
     if (func->hasFlag(Function::Flags::CanReadDocuments)) {
@@ -1963,8 +2066,19 @@ void Ast::injectBindParametersFirstStage(
     BindParameters& parameters, CollectionNameResolver const& resolver) {
   if (_containsBindParameters || _containsTraversal) {
     auto func = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        if (node->hasFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER)) {
+          // important value bind parameter. replace it right now
+          node = replaceValueBindParameter(node, parameters);
+        } else {
+          // non-important value bind parameter. don't replace it now,
+          // but keep track of that we have seen it being used somewhere.
+          parameters.registerNode(node->getStringView(), nullptr);
+        }
+      } else if (node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
         // found a bind parameter in the query string
+        TRI_ASSERT(
+            node->hasFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER));
         std::string param = node->getString();
         TRI_ASSERT(!param.empty());
 
@@ -2059,6 +2173,8 @@ void Ast::injectBindParametersFirstStage(
         auto name = node->getMember(1);
 
         if (name->type == NODE_TYPE_PARAMETER) {
+          TRI_ASSERT(
+              name->hasFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER));
           // on-the-fly replacement of bind parameter with its value equivalent
           name = replaceValueBindParameter(name, parameters);
         }
@@ -2188,13 +2304,45 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
   auto const constantParameter = node->isConstant();
 
   if (cachedNode != nullptr) {
+    TRI_ASSERT(node != cachedNode);
+    TRI_ASSERT(cachedNode->type != NODE_TYPE_NOP);
     // we have already processed this bind parameter and turned it into
-    // an AstNode before.
+    // a value AstNode before.
     // now only create a shallow copy of the bind parameter.
+    // TODO
+#if 0
     node = shallowCopyForModify(cachedNode);
+#else
+    // node = cachedNode;
+    // node->absorb(cachedNode);
 
-    TRI_ASSERT(!constantParameter || node->hasFlag(DETERMINED_CONSTANT));
-    TRI_ASSERT(!constantParameter || node->hasFlag(VALUE_CONSTANT));
+    TEMPORARILY_UNLOCK_NODE(node);
+    // reset ourselves
+    node->freeComputedValue();
+    node->type = NODE_TYPE_NOP;
+    node->clearFlags();
+    node->setStringValue("", 0);
+    node->clearMembers();
+
+    // take over data from other
+    node->type = cachedNode->type;
+    node->flags = cachedNode->flags;
+    node->value = cachedNode->value;
+    node->members = cachedNode->members;
+
+    TRI_ASSERT(!constantParameter || node->hasFlag(DETERMINED_CONSTANT))
+        << "node: " << AstNode::toString(node)
+        << ", constant: " << constantParameter
+        << ", hasFlag: " << node->hasFlag(DETERMINED_CONSTANT)
+        << ", flags: " << [node]() {
+             std::string result;
+             node->stringifyFlags(result);
+             return result;
+           }();
+    TRI_ASSERT(!constantParameter || node->hasFlag(VALUE_CONSTANT))
+        << "node: " << AstNode::toString(node)
+        << ", constant: " << constantParameter
+        << ", hasFlag: " << node->hasFlag(VALUE_CONSTANT);
     TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
     TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
     TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
@@ -2202,35 +2350,43 @@ AstNode* Ast::replaceValueBindParameter(AstNode* node,
     TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
     TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
     TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
+#endif
   } else {
     // bind parameter containing a value literal. not processed before.
+#if 0
     node = nodeFromVPack(value, true);
-
-    if (node != nullptr) {
-      if (constantParameter) {
-        // already mark node as constant here if parameters are constant
-        node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-      }
-      // mark node as simple
-      node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-      // mark node as executable on db-server
-      node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-      // mark node as deterministic
-      node->setFlag(DETERMINED_NONDETERMINISTIC);
-
-      // finally note that the node was created from a bind parameter
-      node->setFlag(FLAG_BIND_PARAMETER);
-
-      // register the AstNode for this bind parameter, so when the query
-      // string refers to the same bind parameter multiple times, we
-      // don't have to regenerate an AstNode for it. in case a bind
-      // parameter is used multiple times in the query string, upon any
-      // following occurrences the AstNode registered here will be
-      // found, and only a shallow copy of the existing AstNode will be
-      // created. This helps to save memory and processing time for
-      // large bind parameter values.
-      parameters.registerNode(param, node);
+#else
+    AstNode* valueNode = nodeFromVPack(value, true);
+    // patch existing node with the data of valueNode
+    node->absorb(valueNode);
+    TRI_ASSERT(node->type != NODE_TYPE_NOP);
+#endif
+    // if (node != nullptr) {
+    if (constantParameter) {
+      // already mark node as constant here if parameters are constant
+      node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
     }
+    // mark node as simple
+    node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+    // mark node as executable on db-server
+    node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+    // mark node as deterministic
+    node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+    // finally note that the node was created from a bind parameter
+    node->setFlag(FLAG_BIND_PARAMETER);
+
+    // register the AstNode for this bind parameter, so when the query
+    // string refers to the same bind parameter multiple times, we
+    // don't have to regenerate an AstNode for it. in case a bind
+    // parameter is used multiple times in the query string, upon any
+    // following occurrences the AstNode registered here will be
+    // found, and only a shallow copy of the existing AstNode will be
+    // created. This helps to save memory and processing time for
+    // large bind parameter values.
+
+    parameters.registerNode(param, node);
+    //}
   }
 
   return node;
@@ -3008,8 +3164,13 @@ void Ast::copyPayload(AstNode const* node, AstNode* copy) const {
 /// @brief recursively clone a node
 AstNode* Ast::clone(AstNode const* node) {
   AstNodeType const type = node->type;
+
   if (type == NODE_TYPE_NOP) {
     // nop node is a singleton
+    return const_cast<AstNode*>(node);
+  }
+
+  if (type == NODE_TYPE_PARAMETER) {
     return const_cast<AstNode*>(node);
   }
 
@@ -3078,7 +3239,8 @@ AstNode* Ast::shallowCopyForModify(AstNode const* node) {
 AstNode const* Ast::deduplicateArray(AstNode const* node) {
   TRI_ASSERT(node != nullptr);
 
-  if (!node->isArray() || !node->isConstant()) {
+  if (!node->isArray() || !node->isConstant() ||
+      node->containsBindParameter()) {
     return node;
   }
 
@@ -3090,11 +3252,12 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
     return node;
   }
 
-  VPackBuilder temp;
+  VPackBuffer<uint8_t> buffer;
+  VPackBuilder temp(buffer);
 
   if (node->isSorted()) {
-    bool unique = true;
     auto member = node->getMemberUnchecked(0);
+    bool unique = true;
     VPackSlice lhs = member->computeValue(&temp);
     for (size_t i = 1; i < n; ++i) {
       VPackSlice rhs = node->getMemberUnchecked(i)->computeValue(&temp);
@@ -3123,16 +3286,13 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
   for (size_t i = 0; i < n; ++i) {
     auto member = node->getMemberUnchecked(i);
     VPackSlice slice = member->computeValue(&temp);
-
-    if (cache.find(slice) == cache.end()) {
-      cache.try_emplace(slice, member);
-    }
+    cache.try_emplace(slice, member);
   }
 
   // we may have got duplicates. now create a copy of the deduplicated values
   auto copy = createNodeArray(cache.size());
 
-  for (auto& it : cache) {
+  for (auto const& it : cache) {
     copy->addMember(it.second);
   }
   copy->sort();
@@ -3294,7 +3454,7 @@ AstNode* Ast::optimizeUnaryOperatorArithmetic(AstNode* node) {
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* operand = node->getMember(0);
-  if (!operand->isConstant()) {
+  if (!operand->isConstant() || operand->type == NODE_TYPE_PARAMETER) {
     // operand is dynamic, cannot statically optimize it
     return node;
   }
@@ -3378,7 +3538,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* operand = node->getMember(0);
-  if (!operand->isConstant()) {
+  if (!operand->isConstant() || operand->type == NODE_TYPE_PARAMETER) {
     // operand is dynamic, cannot statically optimize it
     return optimizeNotExpression(node);
   }
@@ -3404,7 +3564,7 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (lhs->isConstant()) {
+  if (lhs->isConstant() && !lhs->containsBindParameter()) {
     // left operand is a constant value
     if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
       if (lhs->isFalse()) {
@@ -3426,7 +3586,8 @@ AstNode* Ast::optimizeBinaryOperatorLogical(AstNode* node,
   }
 
   if (canModifyResultType) {
-    if (rhs->isConstant() && lhs->isDeterministic()) {
+    if (rhs->isConstant() && lhs->isDeterministic() &&
+        !rhs->containsBindParameter()) {
       // right operand is a constant value
       if (node->type == NODE_TYPE_OPERATOR_BINARY_AND) {
         if (rhs->isFalse()) {
@@ -3463,6 +3624,10 @@ AstNode* Ast::optimizeBinaryOperatorRelational(
 
   if (lhs == nullptr || rhs == nullptr) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
+  }
+
+  if (lhs->containsBindParameter() || rhs->containsBindParameter()) {
+    return node;
   }
 
   if (lhs->isDeterministic() && rhs->type == NODE_TYPE_ARRAY &&
@@ -3555,7 +3720,8 @@ AstNode* Ast::optimizeBinaryOperatorArithmetic(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (lhs->isConstant() && rhs->isConstant()) {
+  if (lhs->isConstant() && rhs->isConstant() && !lhs->containsBindParameter() &&
+      !rhs->containsBindParameter()) {
     // now calculate the expression result
     if (node->type == NODE_TYPE_OPERATOR_BINARY_PLUS) {
       // arithmetic +
@@ -3713,7 +3879,7 @@ AstNode* Ast::optimizeTernaryOperator(AstNode* node) {
     THROW_ARANGO_EXCEPTION(TRI_ERROR_OUT_OF_MEMORY);
   }
 
-  if (!condition->isConstant()) {
+  if (!condition->isConstant() || condition->type == NODE_TYPE_PARAMETER) {
     return node;
   }
 
@@ -3823,7 +3989,8 @@ AstNode* Ast::optimizeFunctionCall(
     return node;
   }
 
-  if (!node->getMember(0)->isConstant()) {
+  if (!node->getMember(0)->isConstant() ||
+      node->getMember(0)->containsBindParameter()) {
     // arguments to function call are not constant
     return node;
   }
@@ -3916,7 +4083,8 @@ AstNode* Ast::optimizeFor(AstNode* node) {
     return node;
   }
 
-  if (expression->isConstant() && expression->type != NODE_TYPE_ARRAY) {
+  if (expression->isConstant() && expression->type != NODE_TYPE_ARRAY &&
+      !expression->containsBindParameter()) {
     // right-hand operand to FOR statement is no array
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_ARRAY_EXPECTED,
@@ -4229,6 +4397,23 @@ void Ast::traverseReadOnly(AstNode const* node,
   visitor(node);
 }
 
+/// @brief traverse the AST until cb returns true
+bool Ast::contains(AstNode const* node,
+                   std::function<bool(AstNode const*)> const& cb) {
+  bool found = false;
+  traverseReadOnly(
+      node,
+      [&found, &cb](AstNode const* node) -> bool {
+        if (cb(node)) {
+          found = true;
+        }
+        return !found;
+      },
+      ::doNothingVisitor);
+
+  return found;
+}
+
 /// @brief normalize a function name
 std::pair<std::string, bool> Ast::normalizeFunctionName(std::string_view name) {
   std::string functionName(name.data(), name.size());
@@ -4380,6 +4565,7 @@ std::unordered_set<std::string> Ast::bindParameters() const {
 }
 
 Scopes* Ast::scopes() { return &_scopes; }
+
 void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
   TRI_ASSERT(node->type == NODE_TYPE_COLLECTION ||
              node->type == NODE_TYPE_PARAMETER_DATASOURCE);

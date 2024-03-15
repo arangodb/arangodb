@@ -73,6 +73,7 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       skipAudit(false),
+      expandBindParameters(true),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
   {
@@ -213,6 +214,9 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (VPackSlice value = slice.get("count"); value.isBool()) {
     count = value.isTrue();
   }
+  if (VPackSlice value = slice.get("expandBindParameters"); value.isBool()) {
+    expandBindParameters = value.isTrue();
+  }
   if (VPackSlice value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
         value.isTrue() ? ExplainRegisterPlan::Yes : ExplainRegisterPlan::No;
@@ -297,6 +301,7 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
+  builder.add("expandBindParameters", VPackValue(expandBindParameters));
   if (!forceOneShardAttributeValue.empty()) {
     builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));
@@ -306,8 +311,6 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   // the end user cannot override this setting anyway.
 
   builder.add("optimizer", VPackValue(VPackValueType::Object));
-  // hard-coded since 3.8, option will be removed in the future
-  builder.add("inspectSimplePlans", VPackValue(true));
   if (!optimizerRules.empty() || disableOptimizerRules) {
     builder.add("rules", VPackValue(VPackValueType::Array));
     if (disableOptimizerRules) {

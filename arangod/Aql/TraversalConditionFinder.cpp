@@ -168,13 +168,15 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
       if (lhs->isAttributeAccessForVariable(pathVar, true)) {
         // p.xxx  op  whatever
         if (rhs->type != NODE_TYPE_VALUE && rhs->type != NODE_TYPE_ARRAY &&
-            rhs->type != NODE_TYPE_OBJECT && rhs->type != NODE_TYPE_REFERENCE) {
+            rhs->type != NODE_TYPE_OBJECT && rhs->type != NODE_TYPE_REFERENCE &&
+            rhs->type != NODE_TYPE_PARAMETER) {
           return false;
         }
       } else if (rhs->isAttributeAccessForVariable(pathVar, true)) {
         // whatever  op  p.xxx
         if (lhs->type != NODE_TYPE_VALUE && lhs->type != NODE_TYPE_ARRAY &&
-            lhs->type != NODE_TYPE_OBJECT && lhs->type != NODE_TYPE_REFERENCE) {
+            lhs->type != NODE_TYPE_OBJECT && lhs->type != NODE_TYPE_REFERENCE &&
+            lhs->type != NODE_TYPE_PARAMETER) {
           return false;
         }
       }
@@ -229,6 +231,9 @@ bool isSupportedNode(Ast const* ast, Variable const* pathVar,
     case NODE_TYPE_OPERATOR_BINARY_ARRAY_NIN:
     case NODE_TYPE_QUANTIFIER:
     case NODE_TYPE_ARRAY_FILTER:
+    // note: value bind parameters will be replaced before the
+    // query execution starts
+    case NODE_TYPE_PARAMETER:
       return true;
     case NODE_TYPE_FCALL: {
       auto* func = static_cast<Function const*>(node->getData());

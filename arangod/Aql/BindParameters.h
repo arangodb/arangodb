@@ -43,10 +43,6 @@ class Builder;
 namespace aql {
 struct AstNode;
 
-using BindParametersType =
-    containers::FlatHashMap<std::string,
-                            std::pair<arangodb::velocypack::Slice, AstNode*>>;
-
 class BindParameters {
  public:
   BindParameters(BindParameters const&) = delete;
@@ -55,9 +51,8 @@ class BindParameters {
   explicit BindParameters(ResourceMonitor& resourceMonitor);
 
   /// @brief create the parameters
-  explicit BindParameters(
-      ResourceMonitor& resourceMonitor,
-      std::shared_ptr<arangodb::velocypack::Builder> builder);
+  explicit BindParameters(ResourceMonitor& resourceMonitor,
+                          std::shared_ptr<velocypack::Builder> builder);
 
   /// @brief destroy the parameters
   ~BindParameters();
@@ -71,20 +66,17 @@ class BindParameters {
   /// parameter name. will return VPackSlice::noneSlice() if the bind parameter
   /// does not exist. the returned AstNode is a nullptr in case no AstNode was
   /// yet registered for this bind parameter. This is not an error.
-  std::pair<arangodb::velocypack::Slice, AstNode*> get(
+  std::pair<velocypack::Slice, AstNode*> get(
       std::string_view name) const noexcept;
 
   /// @brief register an AstNode for the bind parameter.
   /// note: the AstNode is not owned by the bind parameters class.
+  /// node can be a nullptr. in this case we only track that we
+  /// have seen the bind parameter
   void registerNode(std::string_view name, AstNode* node);
 
-  /// @brief run a visitor function on all bind parameters
-  void visit(std::function<void(std::string const& key,
-                                arangodb::velocypack::Slice value,
-                                AstNode* node)> const& visitor) const;
-
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<arangodb::velocypack::Builder> builder() const;
+  std::shared_ptr<velocypack::Builder> builder() const;
 
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;
@@ -93,23 +85,34 @@ class BindParameters {
   /// the values must be a VelocyPack array
   static void stripCollectionNames(arangodb::velocypack::Slice keys,
                                    std::string const& collectionName,
-                                   arangodb::velocypack::Builder& result);
+                                   velocypack::Builder& result);
 
  private:
   /// @brief process the parameters
   void process();
 
+  /// @brief run a visitor function on all bind parameters
+  void visit(
+      std::function<void(std::string const& key, velocypack::Slice value,
+                         AstNode* node, bool seen)> const& visitor) const;
+
   /// @brief calculates memory usage for a bind parameter
   std::size_t memoryUsage(std::string const& key,
-                          arangodb::velocypack::Slice value) const noexcept;
+                          velocypack::Slice value) const noexcept;
 
   arangodb::ResourceMonitor& _resourceMonitor;
 
   /// @brief the parameter values memory
-  std::shared_ptr<arangodb::velocypack::Builder> _builder;
+  std::shared_ptr<velocypack::Builder> _builder;
+
+  struct BindParameterValue {
+    velocypack::Slice value;
+    AstNode* node;
+    bool seen = false;
+  };
 
   /// @brief bind parameters map, indexed by name
-  BindParametersType _parameters;
+  containers::FlatHashMap<std::string, BindParameterValue> _parameters;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief memory used by bind parameters

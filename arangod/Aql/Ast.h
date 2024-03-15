@@ -199,33 +199,38 @@ class Ast {
                              AstNode const* search, AstNode const* options);
 
   /// @brief create an AST let node, without an IF condition
-  AstNode* createNodeLet(char const*, size_t, AstNode const*, bool);
+  AstNode* createNodeLet(char const* variableName, size_t nameLength,
+                         AstNode const* expression, bool isUserDefinedVariable);
 
   /// @brief create an AST let node, without creating a variable
-  AstNode* createNodeLet(AstNode const*, AstNode const*);
+  AstNode* createNodeLet(AstNode const* variable, AstNode const* expression);
 
   /// @brief create an AST filter node
-  AstNode* createNodeFilter(AstNode const*);
+  AstNode* createNodeFilter(AstNode const* expression);
 
   /// @brief create an AST filter node for an UPSERT query
-  AstNode* createNodeUpsertFilter(AstNode const*, AstNode const*);
+  AstNode* createNodeUpsertFilter(AstNode const* variable, AstNode* object);
 
   /// @brief create an AST return node
-  AstNode* createNodeReturn(AstNode const*);
+  AstNode* createNodeReturn(AstNode const* expression);
 
   /// @brief create an AST remove node
-  AstNode* createNodeRemove(AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeRemove(AstNode const* expression,
+                            AstNode const* collection, AstNode const* options);
 
   /// @brief create an AST insert node
-  AstNode* createNodeInsert(AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeInsert(AstNode const* expression,
+                            AstNode const* collection, AstNode const* options);
 
   /// @brief create an AST update node
-  AstNode* createNodeUpdate(AstNode const*, AstNode const*, AstNode const*,
-                            AstNode const*);
+  AstNode* createNodeUpdate(AstNode const* keyExpression,
+                            AstNode const* docExpression,
+                            AstNode const* collection, AstNode const* options);
 
   /// @brief create an AST replace node
-  AstNode* createNodeReplace(AstNode const*, AstNode const*, AstNode const*,
-                             AstNode const*);
+  AstNode* createNodeReplace(AstNode const* keyExpression,
+                             AstNode const* docExpression,
+                             AstNode const* collection, AstNode const* options);
 
   /// @brief create an AST upsert node
   AstNode* createNodeUpsert(AstNodeType type, AstNode const* docVariable,
@@ -235,31 +240,34 @@ class Ast {
                             bool canReadOwnWrites);
 
   /// @brief create an AST distinct node
-  AstNode* createNodeDistinct(AstNode const*);
+  AstNode* createNodeDistinct(AstNode const* value);
 
   /// @brief create an AST collect node
-  AstNode* createNodeCollect(AstNode const*, AstNode const*, AstNode const*,
-                             AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeCollect(AstNode const* groups, AstNode const* aggregates,
+                             AstNode const* into, AstNode const* intoExpression,
+                             AstNode const* keepVariables,
+                             AstNode const* options);
 
   /// @brief create an AST collect node, COUNT INTO
-  AstNode* createNodeCollectCount(AstNode const*, char const*, size_t length,
-                                  AstNode const*);
+  AstNode* createNodeCollectCount(AstNode const* list, char const* name,
+                                  size_t nameLength, AstNode const* options);
 
   /// @brief create an AST sort node
-  AstNode* createNodeSort(AstNode const*);
+  AstNode* createNodeSort(AstNode const* list);
 
   /// @brief create an AST sort element node
-  AstNode* createNodeSortElement(AstNode const*, AstNode const*);
+  AstNode* createNodeSortElement(AstNode const* expression, AstNode* ascending);
 
   /// @brief create an AST limit node
-  AstNode* createNodeLimit(AstNode const*, AstNode const*);
+  AstNode* createNodeLimit(AstNode* offset, AstNode* count);
 
   /// @brief create an AST window node
   AstNode* createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
                             AstNode const* assignments);
 
   /// @brief create an AST assign node
-  AstNode* createNodeAssign(char const*, size_t, AstNode const*);
+  AstNode* createNodeAssign(char const* variableName, size_t nameLength,
+                            AstNode const* expression);
 
   /// @brief create an AST variable node
   AstNode* createNodeVariable(std::string_view name, bool isUserDefined);
@@ -286,7 +294,7 @@ class Ast {
 
   /// @brief create an AST subquery reference node
   AstNode* createNodeSubqueryReference(std::string_view variableName,
-                                       AstNode const*);
+                                       AstNode const* subquery);
 
   /// @brief create an AST parameter node for a value literal
   AstNode* createNodeParameter(std::string_view name);
@@ -301,77 +309,88 @@ class Ast {
   AstNode* createNodeQuantifier(Quantifier::Type type, AstNode const* value);
 
   /// @brief create an AST unary operator
-  AstNode* createNodeUnaryOperator(AstNodeType, AstNode const*);
+  AstNode* createNodeUnaryOperator(AstNodeType type, AstNode const* operand);
 
   /// @brief create an AST binary operator
-  AstNode* createNodeBinaryOperator(AstNodeType, AstNode const*,
-                                    AstNode const*);
+  AstNode* createNodeBinaryOperator(AstNodeType type, AstNode const* lhs,
+                                    AstNode const* rhs);
 
   /// @brief create an AST binary array operator
-  AstNode* createNodeBinaryArrayOperator(AstNodeType, AstNode const*,
-                                         AstNode const*, AstNode const*);
+  AstNode* createNodeBinaryArrayOperator(AstNodeType type, AstNode const* lhs,
+                                         AstNode const* rhs,
+                                         AstNode const* quantifier);
 
   /// @brief create an AST ternary operator
-  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*);
-  AstNode* createNodeTernaryOperator(AstNode const*, AstNode const*,
-                                     AstNode const*);
+  AstNode* createNodeTernaryOperator(AstNode const* condition,
+                                     AstNode const* falsePart);
+
+  AstNode* createNodeTernaryOperator(AstNode const* condition,
+                                     AstNode const* truePart,
+                                     AstNode const* falsePart);
 
   /// @brief create an AST variable access
-  AstNode* createNodeAccess(Variable const*,
-                            std::vector<basics::AttributeName> const&);
+  AstNode* createNodeAccess(Variable const* variable,
+                            std::vector<basics::AttributeName> const& field);
 
   /// @brief create an AST attribute access node
   /// note that the caller must make sure that char* data remains valid!
-  AstNode* createNodeAttributeAccess(AstNode const*, std::string_view name);
+  AstNode* createNodeAttributeAccess(AstNode const* accessed,
+                                     std::string_view name);
 
   /// @brief create an AST attribute access node for multiple accesses
   AstNode* createNodeAttributeAccess(
-      AstNode const*, std::vector<std::string_view> const& parts);
-  AstNode* createNodeAttributeAccess(AstNode const*,
+      AstNode const* refNode, std::vector<std::string_view> const& parts);
+  AstNode* createNodeAttributeAccess(AstNode const* refNode,
                                      std::vector<std::string> const& parts);
   AstNode* createNodeAttributeAccess(
       AstNode const* node, std::vector<basics::AttributeName> const& attrs);
 
   /// @brief create an AST attribute access node w/ bind parameter
-  AstNode* createNodeBoundAttributeAccess(AstNode const*, AstNode const*);
+  AstNode* createNodeBoundAttributeAccess(AstNode const* accessed,
+                                          AstNode* parameter);
 
   /// @brief create an AST index access node
-  AstNode* createNodeIndexedAccess(AstNode const*, AstNode const*);
+  AstNode* createNodeIndexedAccess(AstNode const* accessed,
+                                   AstNode const* indexValue);
 
   /// @brief create an AST array limit node (offset, count)
-  AstNode* createNodeArrayLimit(AstNode const*, AstNode const*);
+  AstNode* createNodeArrayLimit(AstNode const* offset, AstNode const* count);
 
   /// @brief create an AST array filter node (quantifier, filter)
-  AstNode* createNodeArrayFilter(AstNode const*, AstNode const*);
+  AstNode* createNodeArrayFilter(AstNode const* quantifier,
+                                 AstNode const* filter);
 
   /// @brief create an AST boolean expansion node
-  AstNode* createNodeBooleanExpansion(int64_t, AstNode const*, AstNode const*,
-                                      AstNode const*);
+  AstNode* createNodeBooleanExpansion(int64_t levels, AstNode const* iterator,
+                                      AstNode const* expanded,
+                                      AstNode const* filter);
 
   /// @brief create an AST expansion node
-  AstNode* createNodeExpansion(int64_t, AstNode const*, AstNode const*,
-                               AstNode const*, AstNode const*, AstNode const*);
+  AstNode* createNodeExpansion(int64_t levels, AstNode const* iterator,
+                               AstNode const* expanded, AstNode const* filter,
+                               AstNode const* limit, AstNode const* projection);
 
   /// @brief create an AST iterator node
-  AstNode* createNodeIterator(char const*, size_t, AstNode const*);
+  AstNode* createNodeIterator(char const* variableName, size_t nameLength,
+                              AstNode const* expanded);
 
   /// @brief create an AST null value node
   AstNode* createNodeValueNull();
 
   /// @brief create an AST bool value node
-  AstNode* createNodeValueBool(bool);
+  AstNode* createNodeValueBool(bool value);
 
   /// @brief create an AST int value node
-  AstNode* createNodeValueInt(int64_t);
+  AstNode* createNodeValueInt(int64_t value);
 
   /// @brief create an AST double value node
-  AstNode* createNodeValueDouble(double);
+  AstNode* createNodeValueDouble(double value);
 
   /// @brief create an AST string value node
-  AstNode* createNodeValueString(char const*, size_t);
+  AstNode* createNodeValueString(char const* value, size_t length);
 
   /// @brief create an AST string value node with forced non-constness
-  AstNode* createNodeValueMutableString(char const*, size_t);
+  AstNode* createNodeValueMutableString(char const* value, size_t length);
 
   /// @brief create an AST array node
   AstNode* createNodeArray();
@@ -379,55 +398,55 @@ class Ast {
   AstNode* createNodeArray(size_t members);
 
   /// @brief create an AST unique array node, AND-merged from two other arrays
-  AstNode* createNodeIntersectedArray(AstNode const*, AstNode const*);
+  AstNode* createNodeIntersectedArray(AstNode const* lhs, AstNode const* rhs);
 
   /// @brief create an AST unique array node, OR-merged from two other arrays
-  AstNode* createNodeUnionizedArray(AstNode const*, AstNode const*);
+  AstNode* createNodeUnionizedArray(AstNode const* lhs, AstNode const* rhs);
 
   /// @brief create an AST object node
   AstNode* createNodeObject();
 
   /// @brief create an AST object element node
-  AstNode* createNodeObjectElement(std::string_view name, AstNode const*);
+  AstNode* createNodeObjectElement(std::string_view name,
+                                   AstNode const* expression);
 
   /// @brief create an AST calculated object element node
-  AstNode* createNodeCalculatedObjectElement(AstNode const*, AstNode const*);
+  AstNode* createNodeCalculatedObjectElement(AstNode const* attributeName,
+                                             AstNode const* expression);
 
   /// @brief create an AST with collections node
-  AstNode* createNodeWithCollections(AstNode const*,
+  AstNode* createNodeWithCollections(AstNode const* collections,
                                      CollectionNameResolver const& resolver);
 
   /// @brief create an AST collection list node
-  AstNode* createNodeCollectionList(AstNode const*,
+  AstNode* createNodeCollectionList(AstNode const* edgeCollections,
                                     CollectionNameResolver const& resolver);
 
   /// @brief create an AST direction node
-  AstNode* createNodeDirection(uint64_t, uint64_t);
+  AstNode* createNodeDirection(uint64_t direction, AstNode* steps);
 
   /// @brief create an AST direction node
-  AstNode* createNodeDirection(uint64_t, AstNode const*);
-
-  /// @brief create an AST direction node
-  AstNode* createNodeCollectionDirection(uint64_t, AstNode const*);
+  AstNode* createNodeCollectionDirection(uint64_t direction,
+                                         AstNode* collection);
 
   /// @brief create an AST options node:
   //  Will either return Noop noed, if the input is nullptr
   //  Otherwise return the input node.
-  AstNode const* createNodeOptions(AstNode const*) const;
+  AstNode const* createNodeOptions(AstNode const* options) const;
 
   /// @brief create an AST traversal node
-  AstNode* createNodeTraversal(AstNode const*, AstNode const*);
+  AstNode* createNodeTraversal(AstNode const* outVars, AstNode* graphInfo);
 
   /// @brief create an AST shortest path node
-  AstNode* createNodeShortestPath(AstNode const*, AstNode const*);
+  AstNode* createNodeShortestPath(AstNode const* outVars, AstNode* graphInfo);
 
   /// @brief create an AST k-shortest paths node
-  AstNode* createNodeEnumeratePaths(graph::PathType::Type type, AstNode const*,
-                                    AstNode const*);
+  AstNode* createNodeEnumeratePaths(graph::PathType::Type type,
+                                    AstNode const* outVars, AstNode* graphInfo);
 
   /// @brief create an AST function call node
   AstNode* createNodeFunctionCall(std::string_view functionName,
-                                  AstNode const* arguments,
+                                  AstNode* arguments,
                                   bool allowInternalFunctions);
 
   /// @brief create an AST function call node for aggregate functions
@@ -435,16 +454,16 @@ class Ast {
                                            AstNode const* arguments);
 
   /// @brief create an AST range node
-  AstNode* createNodeRange(AstNode const*, AstNode const*);
+  AstNode* createNodeRange(AstNode const* start, AstNode const* end);
 
   /// @brief create an AST nop node
   AstNode* createNodeNop();
 
   /// @brief create an AST n-ary operator
-  AstNode* createNodeNaryOperator(AstNodeType);
+  AstNode* createNodeNaryOperator(AstNodeType type);
 
   /// @brief create an AST n-ary operator
-  AstNode* createNodeNaryOperator(AstNodeType, AstNode const*);
+  AstNode* createNodeNaryOperator(AstNodeType tpye, AstNode const* child);
 
   /// @brief injects first-stage bind parameter values into the AST
   /// (i.e. collection bind parameters and bound attribute names,
@@ -469,8 +488,9 @@ class Ast {
   /// expression (e.g. inserting c = `a + b` into expression `c + 1` so the
   /// latter
   /// becomes `a + b + 1`
-  static AstNode* replaceVariableReference(AstNode*, Variable const*,
-                                           AstNode const*);
+  static AstNode* replaceVariableReference(AstNode* node,
+                                           Variable const* variable,
+                                           AstNode const* expressionNode);
 
   static size_t validatedParallelism(AstNode const* value);
 
@@ -481,18 +501,19 @@ class Ast {
                            ValidateAndOptimizeOptions const& options);
 
   /// @brief determines the variables referenced in an expression
-  static void getReferencedVariables(AstNode const*, VarSet&);
+  static void getReferencedVariables(AstNode const*, VarSet& result);
 
-  static bool isVarsUsed(AstNode const*, VarSet const&);
+  static bool isVarsUsed(AstNode const* node, VarSet const& result);
 
   /// @brief count how many times a variable is referenced in an expression
-  static size_t countReferences(AstNode const*, Variable const*);
+  static size_t countReferences(AstNode const* node, Variable const* search);
 
   /// @brief determines the attributes and subattributes used in an expression
   /// for the specified variable
   static bool getReferencedAttributesRecursive(
-      AstNode const*, Variable const*, std::string_view expectedAttribute,
-      containers::FlatHashSet<aql::AttributeNamePath>&,
+      AstNode const* node, Variable const* variable,
+      std::string_view expectedAttribute,
+      containers::FlatHashSet<aql::AttributeNamePath>& attributes,
       arangodb::ResourceMonitor& resourceMonitor);
 
   /// @brief replace an attribute access with just the variable
@@ -502,18 +523,18 @@ class Ast {
       Variable const* replaceVariable);
 
   /// @brief recursively clone a node
-  AstNode* clone(AstNode const*);
+  AstNode* clone(AstNode const* node);
 
   /// @brief clone a node, but do not recursively clone subtree
-  AstNode* shallowCopyForModify(AstNode const*);
+  AstNode* shallowCopyForModify(AstNode const* node);
 
   /// @brief deduplicate an array
   /// will return the original node if no modifications were made, and a new
   /// node if the array contained modifications
-  AstNode const* deduplicateArray(AstNode const*);
+  AstNode const* deduplicateArray(AstNode const* node);
 
   /// @brief check if an operator is reversible
-  static bool isReversibleOperator(AstNodeType) noexcept;
+  static bool isReversibleOperator(AstNodeType type) noexcept;
 
   /// @brief get the reversed operator for a comparison operator.
   /// throws when called for an operator that is not reversible.
@@ -524,7 +545,7 @@ class Ast {
 
   /// @brief get the n-ary operator type equivalent for a binary operator type.
   /// throws when called for an invalid operator type.
-  static AstNodeType naryOperatorType(AstNodeType);
+  static AstNodeType naryOperatorType(AstNodeType old);
 
   /// @brief return whether this is an `AND` operator
   static bool isAndOperatorType(AstNodeType type) noexcept;
@@ -536,19 +557,19 @@ class Ast {
   AstNode* nodeFromVPack(velocypack::Slice, bool copyStringValues);
 
   /// @brief resolve an attribute access
-  AstNode const* resolveConstAttributeAccess(AstNode const*);
+  AstNode const* resolveConstAttributeAccess(AstNode const* node);
 
   /// @brief resolve an attribute access, static version
   /// if isValid is set to true, then the returned value is to be trusted. if
   /// isValid is set to false, then the returned value is not to be trued and
   /// the the result is equivalent to an AQL `null` value
-  static AstNode const* resolveConstAttributeAccess(AstNode const*,
+  static AstNode const* resolveConstAttributeAccess(AstNode const* node,
                                                     bool& isValid);
 
   /// @brief optimizes the unary operators + and -
   /// the unary plus will be converted into a simple value node if the operand
   /// of the operation is a constant number
-  AstNode* optimizeUnaryOperatorArithmetic(AstNode*);
+  AstNode* optimizeUnaryOperatorArithmetic(AstNode* node);
 
   AstNode const* getSubqueryForVariable(Variable const* variable) const;
 
@@ -557,23 +578,28 @@ class Ast {
    *  has only access to the node but not its parent / owner.
    */
   /// @brief traverse the AST, using pre- and post-order visitors
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<bool(AstNode const*)> const&,
-                                    std::function<AstNode*(AstNode*)> const&,
-                                    std::function<void(AstNode const*)> const&);
+  static AstNode* traverseAndModify(
+      AstNode* node, std::function<bool(AstNode const*)> const& preVisitor,
+      std::function<AstNode*(AstNode*)> const& visitor,
+      std::function<void(AstNode const*)> const& postVisitor);
 
   /// @brief traverse the AST using a depth-first visitor
-  static AstNode* traverseAndModify(AstNode*,
-                                    std::function<AstNode*(AstNode*)> const&);
+  static AstNode* traverseAndModify(
+      AstNode* node, std::function<AstNode*(AstNode*)> const& visitor);
 
   /// @brief traverse the AST, using pre- and post-order visitors
-  static void traverseReadOnly(AstNode const*,
-                               std::function<bool(AstNode const*)> const&,
-                               std::function<void(AstNode const*)> const&);
+  static void traverseReadOnly(
+      AstNode const* node,
+      std::function<bool(AstNode const*)> const& preVisitor,
+      std::function<void(AstNode const*)> const& postVisitor);
 
   /// @brief traverse the AST using a depth-first visitor, with const nodes
-  static void traverseReadOnly(AstNode const*,
-                               std::function<void(AstNode const*)> const&);
+  static void traverseReadOnly(
+      AstNode const* node, std::function<void(AstNode const*)> const& visitor);
+
+  /// @brief traverse the AST until cb returns true
+  static bool contains(AstNode const* node,
+                       std::function<bool(AstNode const*)> const& cb);
 
   /// @brief normalize a function name
   static std::pair<std::string, bool> normalizeFunctionName(

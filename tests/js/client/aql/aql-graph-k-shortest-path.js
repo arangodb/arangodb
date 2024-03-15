@@ -531,7 +531,7 @@ function kShortestPathsSyntaxTestSuite() {
         db._query(query);
         fail();
       } catch (e) {
-        assertMatch(/K_SHORTEST_PATHS only has one return variable/, e.errorMessage);
+        assertMatch(/K_SHORTEST_PATHS must have one return variable/, e.errorMessage);
       }
     }
   };

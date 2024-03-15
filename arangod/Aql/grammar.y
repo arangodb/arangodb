@@ -141,7 +141,7 @@ void checkOutVariables(Parser* parser,
   }
 }
 
-void validateOptions(Parser* parser, AstNode const* node,
+AstNode* processOptions(Parser* parser, AstNode* node,
                      int line, int column) {
   TRI_ASSERT(node != nullptr);
   if (!node->isObject()) {
@@ -150,6 +150,14 @@ void validateOptions(Parser* parser, AstNode const* node,
   if (!node->isConstant()) {
     parser->registerParseError(TRI_ERROR_QUERY_COMPILE_TIME_OPTIONS, "'OPTIONS' have to be known at query compile time", line, column);
   }
+  // mark all value bind parameters inside OPTIONS as required,
+  // because they can influence the query semantics
+  return Ast::traverseAndModify(node, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
 }
 
 /// @brief check if any of the variables used in the INTO expression were
@@ -545,6 +553,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <node> value_literal;
 %type <node> in_or_into_collection;
 %type <node> in_or_into_collection_name;
+%type <node> bind_parameter_datasource;
 %type <node> bind_parameter;
 %type <node> bind_parameter_datasource_expected;
 %type <strval> variable_name;
@@ -552,7 +561,7 @@ AstNode* transformOutputVariables(Parser* parser, AstNode const* names) {
 %type <intval> update_or_replace;
 %type <node> quantifier;
 %type <node> upsert_input;
-
+%type <node> optional_limit_part;
 
 /* define start token of language */
 %start queryStart
@@ -717,10 +726,10 @@ prune_and_options:
         // Options
         node->addMember(parser->ast()->createNodeNop());
       } else if (::caseInsensitiveEqual(operation, "OPTIONS")) {
-        auto const* optionsArgument = $2->getMember(1);
+        AstNode* optionsArgument = $2->getMember(1);
         /* Only Options */
         TRI_ASSERT(optionsArgument != nullptr);
-        ::validateOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
+        optionsArgument = ::processOptions(parser, optionsArgument, yylloc.first_line, yylloc.first_column);
         // Prune
         node->addMember(parser->ast()->createNodeNop());
         // Options
@@ -742,12 +751,12 @@ prune_and_options:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
       }
       TRI_ASSERT($4 != nullptr);
-      ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
+      AstNode* optionsArgument = ::processOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       // Prune
       node->addMember($2);
       // Options
-      node->addMember($4);
+      node->addMember(optionsArgument);
     }
   ;
 
@@ -766,13 +775,15 @@ traversal_graph_info:
 
 shortest_path_graph_info:
     graph_direction T_SHORTEST_PATH expression T_STRING expression graph_subject options {
-      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
+      AstNode* steps = parser->ast()->createNodeValueInt(1);
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, steps), $3, $5, $6, $7, yyloc);
     }
   ;
 
 k_shortest_paths_graph_info:
     graph_direction T_K_SHORTEST_PATHS expression T_STRING expression graph_subject options {
-      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, 1), $3, $5, $6, $7, yyloc);
+      AstNode* steps = parser->ast()->createNodeValueInt(1);
+      $$ = ::buildShortestPathInfo(parser, $4.value, parser->ast()->createNodeDirection($1, steps), $3, $5, $6, $7, yyloc);
     }
   ;
 
@@ -905,7 +916,7 @@ for_statement:
   | T_FOR for_output_variables T_IN k_shortest_paths_graph_info {
       // K Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS only has one return variable", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_SHORTEST_PATHS must have one return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -917,7 +928,7 @@ for_statement:
   | T_FOR for_output_variables T_IN k_paths_graph_info {
       // K Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS only has one return variable", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "K_PATHS must have one return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -929,7 +940,7 @@ for_statement:
   | T_FOR for_output_variables T_IN all_shortest_paths_graph_info {
       // All Shortest Paths
       auto variableNamesNode = static_cast<AstNode*>($2);
-      ::checkOutVariables(parser, variableNamesNode, 1, 1, "ALL_SHORTEST_PATHS only has one return variable", yyloc);
+      ::checkOutVariables(parser, variableNamesNode, 1, 1, "ALL_SHORTEST_PATHS must have one return variable", yyloc);
       parser->ast()->scopes()->start(arangodb::aql::AQL_SCOPE_FOR);
       auto variablesNode = ::transformOutputVariables(parser, variableNamesNode);
       auto graphInfoNode = static_cast<AstNode*>($4);
@@ -1291,14 +1302,26 @@ sort_direction:
     }
   ;
 
-limit_statement:
-    T_LIMIT expression {
-      auto offset = parser->ast()->createNodeValueInt(0);
-      auto node = parser->ast()->createNodeLimit(offset, $2);
-      parser->ast()->addOperation(node);
+optional_limit_part:
+    /* empty */ {
+      $$ = nullptr;
     }
-  | T_LIMIT expression T_COMMA expression {
-      auto node = parser->ast()->createNodeLimit($2, $4);
+  | T_COMMA expression {
+      $$ = $2;
+    }
+  ;
+
+limit_statement:
+    T_LIMIT expression optional_limit_part {
+      AstNode* node;
+      if ($3 == nullptr) {
+        // LIMIT count -> LIMIT 0, count
+        auto offset = parser->ast()->createNodeValueInt(0);
+        node = parser->ast()->createNodeLimit(offset, $2);
+      } else {
+        // LIMIT offset, count
+        node = parser->ast()->createNodeLimit($2, $3);
+      }
       parser->ast()->addOperation(node);
     }
   ;
@@ -1631,14 +1654,14 @@ function_call:
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      auto args = static_cast<AstNode const*>(parser->popStack());
+      auto args = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeFunctionCall(/*function name*/ {$1.value, $1.length}, args, false);
     }
   | T_LIKE T_OPEN {
       auto args = parser->ast()->createNodeArray();
       parser->pushStack(args);
     } optional_function_call_arguments T_CLOSE %prec FUNCCALL {
-      auto args = static_cast<AstNode const*>(parser->popStack());
+      auto args = static_cast<AstNode*>(parser->popStack());
       $$ = parser->ast()->createNodeFunctionCall("LIKE", args, false);
     }
   ;
@@ -1981,29 +2004,31 @@ for_options:
         if (!::caseInsensitiveEqual(operation, "OPTIONS")) {
           parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' or 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
         }
-        ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
+        AstNode* optionsArgument = ::processOptions(parser, $2, yylloc.first_line, yylloc.first_column);
 
         node->addMember(parser->ast()->createNodeNop());
-        node->addMember($2);
+        node->addMember(optionsArgument);
       }
 
       $$ = node;
     }
   | T_STRING expression T_STRING expression {
-      std::string_view operation($1.value, $1.length);
+      std::string_view operation1($1.value, $1.length);
+      std::string_view operation2($3.value, $3.length);
       TRI_ASSERT($2 != nullptr);
       // two extra qualifiers. we expect them in the order: SEARCH, then OPTIONS
 
-      if (!::caseInsensitiveEqual(operation, "SEARCH") ||
-          !::caseInsensitiveEqual({$3.value, $3.length}, "OPTIONS")) {
-        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH' and 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
+      if (!::caseInsensitiveEqual(operation1, "SEARCH")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'SEARCH'", operation1, yylloc.first_line, yylloc.first_column);
+      } else if (!::caseInsensitiveEqual(operation2, "OPTIONS")) {
+        parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", operation2, yylloc.first_line, yylloc.first_column);
       }
      
-      ::validateOptions(parser, $4, yylloc.first_line, yylloc.first_column);
+      AstNode* optionsArgument = ::processOptions(parser, $4, yylloc.first_line, yylloc.first_column);
 
       auto node = parser->ast()->createNodeArray(2);
       node->addMember($2);
-      node->addMember($4);
+      node->addMember(optionsArgument);
       $$ = node;
     }
   ;
@@ -2020,9 +2045,7 @@ options:
         parser->registerParseError(TRI_ERROR_QUERY_PARSE, "unexpected qualifier '%s', expecting 'OPTIONS'", operation, yylloc.first_line, yylloc.first_column);
       }
      
-      ::validateOptions(parser, $2, yylloc.first_line, yylloc.first_column);
-
-      $$ = $2;
+      $$ = ::processOptions(parser, $2, yylloc.first_line, yylloc.first_column);
     }
   ;
 
@@ -2134,9 +2157,11 @@ optional_array_limit:
       $$ = nullptr;
     }
   | T_LIMIT expression {
+      // LIMIT count
       $$ = parser->ast()->createNodeArrayLimit(nullptr, $2);
     }
   | T_LIMIT expression T_COMMA expression {
+      // LIMIT offset, count
       $$ = parser->ast()->createNodeArrayLimit($2, $4);
     }
   ;
@@ -2194,7 +2219,7 @@ graph_subject:
       $$ = parser->ast()->createNodeCollectionList(node, resolver);
     }
   | T_GRAPH bind_parameter {
-      // graph name
+      // graph name from a bind parameter
       $$ = $2;
     }
   | T_GRAPH T_QUOTED_STRING {
@@ -2223,7 +2248,8 @@ graph_direction:
 
 graph_direction_steps:
     graph_direction {
-      $$ = parser->ast()->createNodeDirection($1, 1);
+      AstNode* steps = parser->ast()->createNodeValueInt(1);
+      $$ = parser->ast()->createNodeDirection($1, steps);
     }
   | expression graph_direction %prec T_OUTBOUND {
       $$ = parser->ast()->createNodeDirection($2, $1);
@@ -2501,7 +2527,7 @@ in_or_into_collection_name:
     }
   ;
 
-bind_parameter:
+bind_parameter_datasource:
     T_DATA_SOURCE_PARAMETER {
       std::string_view name($1.value, $1.length);
       if (name.size() < 2 || name.front() != '@') {
@@ -2510,6 +2536,12 @@ bind_parameter:
 
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }
+  ;
+
+bind_parameter:
+    bind_parameter_datasource {
+      $$ = $1;
+    }
   | T_PARAMETER {
       std::string_view name($1.value, $1.length);
       $$ = parser->ast()->createNodeParameter(name);
@@ -2517,13 +2549,8 @@ bind_parameter:
   ;
 
 bind_parameter_datasource_expected:
-    T_DATA_SOURCE_PARAMETER {
-      std::string_view name($1.value, $1.length);
-      if (name.size() < 2 || name.front() != '@') {
-        parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), $1.value, yylloc.first_line, yylloc.first_column);
-      }
-
-      $$ = parser->ast()->createNodeParameterDatasource(name);
+    bind_parameter_datasource {
+      $$ = $1;
     }
   | T_PARAMETER {
       // convert normal value bind parameter into datasource bind parameter

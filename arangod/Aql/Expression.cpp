@@ -105,6 +105,13 @@ AqlValue Expression::execute(ExpressionContext* ctx, bool& mustDestroy) {
   TRI_ASSERT(ctx != nullptr);
   prepareForExecution();
 
+  if (Ast::contains(node(), [](AstNode const* node) {
+        return node->type == NODE_TYPE_PARAMETER;
+      })) {
+    LOG_DEVEL << "EXPR: " << AstNode::toString(node());
+    TRI_ASSERT(false);
+  }
+
   TRI_ASSERT(_type != UNPROCESSED);
 
   // and execute

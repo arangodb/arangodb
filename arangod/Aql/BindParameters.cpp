@@ -34,6 +34,7 @@
 
 #include <utility>
 
+using namespace arangodb;
 using namespace arangodb::aql;
 
 BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
@@ -44,9 +45,8 @@ BindParameters::BindParameters(ResourceMonitor& resourceMonitor)
       _processed(false) {
 }
 
-BindParameters::BindParameters(
-    ResourceMonitor& resourceMonitor,
-    std::shared_ptr<arangodb::velocypack::Builder> builder)
+BindParameters::BindParameters(ResourceMonitor& resourceMonitor,
+                               std::shared_ptr<velocypack::Builder> builder)
     : _resourceMonitor(resourceMonitor),
       _builder(std::move(builder)),
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -59,7 +59,7 @@ BindParameters::BindParameters(
 BindParameters::~BindParameters() {
   std::size_t totalUsed = 0;
   for (auto const& it : _parameters) {
-    totalUsed += memoryUsage(it.first, it.second.first);
+    totalUsed += memoryUsage(it.first, it.second.value);
   }
   _resourceMonitor.decreaseMemoryUsage(totalUsed);
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -83,8 +83,9 @@ uint64_t BindParameters::hash() const {
 void BindParameters::validateAllUsed() const {
   // visit all bind parameters to ensure that they have all been accessed via
   // registerNode
-  visit([](std::string const& key, velocypack::Slice /*value*/, AstNode* node) {
-    if (node == nullptr) {
+  visit([](std::string const& key, velocypack::Slice /*value*/, AstNode* node,
+           bool seen) {
+    if (node == nullptr && !seen) {
       THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED,
                                     key.c_str());
     }
@@ -105,34 +106,47 @@ std::pair<VPackSlice, AstNode*> BindParameters::get(
   }
 
   // return parameter value and AstNode
-  TRI_ASSERT(!(*it).second.first.isNone());
-  return (*it).second;
+  TRI_ASSERT(!(*it).second.value.isNone());
+  return std::make_pair((*it).second.value, (*it).second.node);
 }
 
 /// @brief register an AstNode for the bind parameter.
 /// note: the AstNode is not owned by the bind parameters class.
+/// node can be a nullptr. in this case we only track that we
+/// have seen the bind parameter
 void BindParameters::registerNode(std::string_view name, AstNode* node) {
   TRI_ASSERT(_processed);
 
   auto it = _parameters.find(name);
   if (it == _parameters.end()) {
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                   "invalid bind parameter access");
+    // trying to mark a bind parameter as seen for which we don't have a
+    // value specified. this is a user error.
+
+    // copy the string_view into a string to ensure that the name is
+    // null-terminated, which is not guaranteed for a regular string_view
+    std::string temp(name);
+    THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                                  temp.c_str());
   }
 
-  TRI_ASSERT(!(*it).second.first.isNone());
-  // no node must have been registered before
-  TRI_ASSERT((*it).second.second == nullptr);
-  (*it).second.second = node;
+  TRI_ASSERT(!(*it).second.value.isNone());
+  if (node == nullptr) {
+    // note: seen may be true here already if the bind parameter value
+    // was already registered. this can happen if a bind parameter is
+    // used multiple times in the query.
+    (*it).second.seen = true;
+  } else {
+    TRI_ASSERT((*it).second.node == nullptr);
+    (*it).second.node = node;
+  }
 }
 
 /// @brief run a visitor function on all bind parameters
 void BindParameters::visit(
-    std::function<void(std::string const& key,
-                       arangodb::velocypack::Slice value, AstNode* node)> const&
-        visitor) const {
+    std::function<void(std::string const& key, velocypack::Slice value,
+                       AstNode* node, bool seen)> const& visitor) const {
   for (auto const& it : _parameters) {
-    visitor(it.first, it.second.first, it.second.second);
+    visitor(it.first, it.second.value, it.second.node, it.second.seen);
   }
 }
 
@@ -164,7 +178,7 @@ void BindParameters::stripCollectionNames(VPackSlice keys,
   result.close();
 }
 
-std::shared_ptr<arangodb::velocypack::Builder> BindParameters::builder() const {
+std::shared_ptr<velocypack::Builder> BindParameters::builder() const {
   return _builder;
 }
 
@@ -206,7 +220,8 @@ void BindParameters::process() {
     ResourceUsageScope guard(_resourceMonitor, memoryUsage(key, value));
 
     bool inserted =
-        _parameters.try_emplace(std::move(key), value, nullptr).second;
+        _parameters.try_emplace(std::move(key), value, nullptr, /*seen*/ false)
+            .second;
     TRI_ASSERT(inserted);
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

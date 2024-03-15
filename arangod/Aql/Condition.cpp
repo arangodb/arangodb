@@ -422,7 +422,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
 
   if (!isExpanded && !other.isExpanded &&
       other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant() && isReversed) {
+      other.valueNode->isConstant() &&
+      !other.valueNode->containsBindParameter() && isReversed) {
     if (compareAstNodes(other.valueNode, valueNode, false) == 0) {
       return true;
     }
@@ -455,6 +456,12 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
           auto v = valueNode->getMemberUnchecked(i);
           for (size_t j = 0; j < n2; ++j) {
             auto w = other.valueNode->getMemberUnchecked(j);
+
+            if (v->containsBindParameter() || w->containsBindParameter()) {
+              // TODO: if both bind parameters are the same, we can replace
+              // them with a dummy value and continue with the comparison
+              return false;
+            }
 
             ::CompareResult res =
                 ResultsTable[compareAstNodes(v, w, true) + 1][0][0];
@@ -492,7 +499,8 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
   if (isExpanded && other.isExpanded &&
       operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
       other.operatorType == NODE_TYPE_OPERATOR_BINARY_IN &&
-      other.valueNode->isConstant()) {
+      other.valueNode->isConstant() &&
+      !other.valueNode->containsBindParameter()) {
     return compareAstNodes(other.valueNode, valueNode, false) == 0;
   }
 
@@ -517,9 +525,16 @@ bool ConditionPart::isCoveredBy(ConditionPart const& other,
     if (isExpanded && other.isExpanded &&
         operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
         other.operatorType == NODE_TYPE_OPERATOR_BINARY_ARRAY_IN &&
-        other.valueNode->isConstant()) {
+        other.valueNode->isConstant() &&
+        !other.valueNode->containsBindParameter()) {
       return compareAstNodes(other.valueNode, valueNode, false) == 0;
     }
+  }
+
+  if (other.valueNode->containsBindParameter() ||
+      valueNode->containsBindParameter()) {
+    // TODO: improve here
+    return false;
   }
 
   // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
@@ -1277,6 +1292,8 @@ void Condition::deduplicateJunctionNode(AstNode* unlockedNode) {
             }
             if (current.whichCompareOperation() ==
                     other.whichCompareOperation() &&
+                !current.valueNode->containsBindParameter() &&
+                !other.valueNode->containsBindParameter() &&
                 compareAstNodes(current.valueNode, other.valueNode, true) ==
                     0) {  // duplicate comparison detected - remove it
               TRI_ASSERT(!positions.empty());
@@ -1520,15 +1537,21 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
                 // enumerate over IN list
                 for (size_t k = 0; k < values->numMembers(); ++k) {
                   auto value = values->getMemberUnchecked(k);
-                  ::CompareResult res =
-                      ResultsTable[compareAstNodes(value, other.valueNode,
-                                                   true) +
-                                   1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
-                                  [other.whichCompareOperation()];
 
-                  bool const keep =
-                      (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
-                       res == ::CompareResult::CONVERT_EQUAL);
+                  bool keep;
+                  if (value->containsBindParameter() ||
+                      other.valueNode->containsBindParameter()) {
+                    keep = true;
+                  } else {
+                    ::CompareResult res =
+                        ResultsTable[compareAstNodes(value, other.valueNode,
+                                                     true) +
+                                     1][0 /*NODE_TYPE_OPERATOR_BINARY_EQ*/]
+                                    [other.whichCompareOperation()];
+
+                    keep = (res == ::CompareResult::OTHER_CONTAINED_IN_SELF ||
+                            res == ::CompareResult::CONVERT_EQUAL);
+                  }
 
                   if (keep) {
                     inNode->addMember(value);
@@ -1553,11 +1576,15 @@ void Condition::optimize(ExecutionPlan* plan, bool multivalued) {
             // end of IN-merging
 
             // Results are -1, 0, 1, move to 0, 1, 2 for the lookup:
-            ::CompareResult res =
-                resultsTable[compareAstNodes(current.valueNode, other.valueNode,
-                                             true) +
-                             1][current.whichCompareOperation()]
-                            [other.whichCompareOperation()];
+            ::CompareResult res = ::CompareResult::UNKNOWN;
+
+            if (!current.valueNode->containsBindParameter() &&
+                !other.valueNode->containsBindParameter()) {
+              res = resultsTable[compareAstNodes(current.valueNode,
+                                                 other.valueNode, true) +
+                                 1][current.whichCompareOperation()]
+                                [other.whichCompareOperation()];
+            }
 
             switch (res) {
               case ::CompareResult::IMPOSSIBLE: {

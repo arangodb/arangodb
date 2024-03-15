@@ -770,11 +770,15 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   }
 
   bool containsCollection = false;
+  bool containsBindParameter = false;
+  // traverse the expression nodes recursively and look for collection names
+  // and for bind parameters.
   // replace occurrences of collection names used as function call arguments
   // (that are of type NODE_TYPE_COLLECTION) with their string equivalents
   // for example, this will turn `WITHIN(collection, ...)` into
   // `WITHIN("collection", ...)`
-  auto visitor = [this, &containsCollection](AstNode* node) {
+  auto visitor = [this, &containsCollection,
+                  &containsBindParameter](AstNode* node) {
     if (node->type == NODE_TYPE_FCALL) {
       auto func = static_cast<Function*>(node->getData());
 
@@ -802,6 +806,8 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
       }
     } else if (node->type == NODE_TYPE_COLLECTION) {
       containsCollection = true;
+    } else if (node->type == NODE_TYPE_PARAMETER) {
+      containsBindParameter = true;
     }
 
     return node;
@@ -884,7 +890,7 @@ ExecutionNode* ExecutionPlan::createCalculation(Variable* out,
   // generate a temporary calculation node
   auto expr = std::make_unique<Expression>(_ast, node);
 
-  if (node->isConstant()) {
+  if (node->isConstant() && !containsBindParameter) {
     AqlFunctionsInternalCache cache;
     FixedVarExpressionContext exprContext(_ast->query().trxForOptimization(),
                                           _ast->query(), cache);

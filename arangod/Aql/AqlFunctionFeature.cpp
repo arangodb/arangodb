@@ -117,7 +117,9 @@ Function const* AqlFunctionFeature::byName(std::string const& name) const {
 // ------------------------------------------------------
 //
 // . = argument of any type (except collection)
-// c = collection name, will be converted into list with documents
+// b = argument of any type. if it is a bind parameter it
+//     will be marked as a required bind parameter that will
+//     be expanded early in the query processing pipeline
 // h = collection name, will be converted into string
 // , = next argument
 // | = separates mandatory from optional arguments
@@ -573,7 +575,7 @@ void AqlFunctionFeature::addMiscFunctions() {
        &functions::NotImplemented});
   add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
-  add({"FULLTEXT", ".h,.,.|.", Function::makeFlags(FF::Cacheable),
+  add({"FULLTEXT", ".h,b,.|.", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
 
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",

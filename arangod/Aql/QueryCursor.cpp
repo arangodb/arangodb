@@ -159,7 +159,7 @@ QueryStreamCursor::QueryStreamCursor(
       _queryResultPos(0),
       _finalization(false),
       _allowDirtyReads(false) {
-  _query->prepareQuery();
+  _query->prepareQueryForExecution();
   _allowDirtyReads = _query->allowDirtyReads();  // is set by prepareQuery!
   TRI_IF_FAILURE("QueryStreamCursor::directKillAfterPrepare") {
     QueryStreamCursor::debugKillQuery();

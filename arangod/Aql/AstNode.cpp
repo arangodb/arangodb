@@ -44,6 +44,7 @@
 #include <iostream>
 #endif
 
+#include <absl/strings/str_cat.h>
 #include <frozen/unordered_map.h>
 
 #include <velocypack/Builder.h>
@@ -1011,7 +1012,6 @@ bool AstNode::valueHasVelocyPackRepresentation() const {
 /// @brief build a VelocyPack representation of the node value
 ///        Can throw Out of Memory Error
 void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
-  TRI_ASSERT(valueHasVelocyPackRepresentation());
   if (type == NODE_TYPE_VALUE) {
     // dump value of "value" node
     switch (value.type) {
@@ -1092,8 +1092,19 @@ void AstNode::toVelocyPackValue(VPackBuilder& builder) const {
       }
     }
     builder.add(VPackValue(VPackValueType::Null));
+    return;
   }
 
+  TRI_ASSERT(valueHasVelocyPackRepresentation());
+  if (type == NODE_TYPE_PARAMETER) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        "cannot convert value bind parameter to velocypack");
+  }
+  if (!valueHasVelocyPackRepresentation()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "cannot convert value to velocypack");
+  }
   // Do not add anything.
 }
 
@@ -1211,22 +1222,17 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
 
 /// @brief iterates whether a node of type "searchType" can be found
 bool AstNode::containsNodeType(AstNodeType searchType) const {
-  if (type == searchType) {
-    return true;
-  }
+  return Ast::contains(this, [searchType](AstNode const* node) -> bool {
+    return node->type == searchType;
+  });
+}
 
-  // iterate sub-nodes
-  size_t const n = members.size();
-
-  for (size_t i = 0; i < n; ++i) {
-    AstNode* member = getMemberUnchecked(i);
-
-    if (member != nullptr && member->containsNodeType(searchType)) {
-      return true;
-    }
-  }
-
-  return false;
+/// @brief whether or not the node or any of its sub nodes is a bind parameter
+bool AstNode::containsBindParameter() const {
+  return Ast::contains(this, [](AstNode const* node) -> bool {
+    return node->type == NODE_TYPE_PARAMETER ||
+           node->type == NODE_TYPE_PARAMETER_DATASOURCE;
+  });
 }
 
 /// @brief convert the node's value to a boolean value
@@ -1234,11 +1240,21 @@ bool AstNode::containsNodeType(AstNodeType searchType) const {
 /// boolean value node
 AstNode const* AstNode::castToBool(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return ast->resolveConstAttributeAccess(this)->castToBool(ast);
+    AstNode const* resolved = ast->resolveConstAttributeAccess(this);
+    if (resolved->type == NODE_TYPE_PARAMETER ||
+        resolved->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // cannot resolved a bind parameter value right now
+      return this;
+    }
+    return resolved->castToBool(ast);
+  }
+  if (type == NODE_TYPE_PARAMETER) {
+    return this;
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
-             type == NODE_TYPE_OBJECT);
+             type == NODE_TYPE_OBJECT)
+      << getTypeString();
 
   if (type == NODE_TYPE_VALUE) {
     switch (value.type) {
@@ -1272,7 +1288,16 @@ AstNode const* AstNode::castToBool(Ast* ast) const {
 /// numeric value node
 AstNode const* AstNode::castToNumber(Ast* ast) const {
   if (type == NODE_TYPE_ATTRIBUTE_ACCESS) {
-    return ast->resolveConstAttributeAccess(this)->castToNumber(ast);
+    AstNode const* resolved = ast->resolveConstAttributeAccess(this);
+    if (resolved->type == NODE_TYPE_PARAMETER ||
+        resolved->type == NODE_TYPE_ATTRIBUTE_ACCESS) {
+      // cannot resolved a bind parameter value right now
+      return this;
+    }
+    return resolved->castToNumber(ast);
+  }
+  if (type == NODE_TYPE_PARAMETER) {
+    return this;
   }
 
   TRI_ASSERT(type == NODE_TYPE_VALUE || type == NODE_TYPE_ARRAY ||
@@ -2055,6 +2080,120 @@ bool AstNode::callsFunction() const {
   return (type == NODE_TYPE_FCALL || type == NODE_TYPE_FCALL_USER);
 }
 
+/// @brief take over the data from other, and "empty" other
+void AstNode::absorb(AstNode* other) {
+  TRI_ASSERT(this != other);
+  TRI_ASSERT(!hasFlag(FLAG_INTERNAL_CONST))
+      << toString(this) << ", flags: " << [this]() {
+           std::string result;
+           stringifyFlags(result);
+           return result;
+         }();
+
+  TEMPORARILY_UNLOCK_NODE(this);
+  // reset ourselves
+  freeComputedValue();
+  type = NODE_TYPE_NOP;
+  clearFlags();
+  setStringValue("", 0);
+  clearMembers();
+
+  // take over data from other
+  TRI_ASSERT(!other->hasFlag(FLAG_INTERNAL_CONST) || other->numMembers() == 0);
+  type = other->type;
+  flags = other->flags;
+  removeFlag(FLAG_INTERNAL_CONST);
+  value = other->value;
+  members = std::move(other->members);
+
+  // reset other
+  if (!other->hasFlag(FLAG_INTERNAL_CONST)) {
+    other->type = NODE_TYPE_NOP;
+    other->clearFlags();
+    other->setStringValue("", 0);
+    other->clearMembers();
+  }
+}
+
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+/// @brief stringifies the nodes flags into the result string
+void AstNode::stringifyFlags(std::string& result) const {
+  bool first = true;
+  auto append = [&first, &result](std::string_view value) {
+    if (first) {
+      first = false;
+    } else {
+      result.append(", ");
+    }
+    result.append(value);
+  };
+
+  if (hasFlag(DETERMINED_SORTED)) {
+    append("DETERMINED_SORTED");
+  }
+  if (hasFlag(DETERMINED_SIMPLE)) {
+    append("DETERMINED_SIMPLE");
+  }
+  if (hasFlag(DETERMINED_NONDETERMINISTIC)) {
+    append("DETERMINED_NONDETERMINISTIC");
+  }
+  if (hasFlag(DETERMINED_RUNONDBSERVER)) {
+    append("DETERMINED_RUNONDBSERVER");
+  }
+  if (hasFlag(DETERMINED_CHECKUNIQUENESS)) {
+    append("DETERMINED_CHECKUNIQUENESS");
+  }
+  if (hasFlag(DETERMINED_V8)) {
+    append("DETERMINED_V8");
+  }
+  if (hasFlag(VALUE_SORTED)) {
+    append("VALUE_SORTED");
+  }
+  if (hasFlag(VALUE_CONSTANT)) {
+    append("VALUE_CONSTANT");
+  }
+  if (hasFlag(VALUE_SIMPLE)) {
+    append("VALUE_SIMPLE");
+  }
+  if (hasFlag(VALUE_NONDETERMINISTIC)) {
+    append("VALUE_NONDETERMINISTIC");
+  }
+  if (hasFlag(VALUE_RUNONDBSERVER)) {
+    append("VALUE_RUNONDBSERVER");
+  }
+  if (hasFlag(VALUE_CHECKUNIQUENESS)) {
+    append("VALUE_CHECKUNIQUENESS");
+  }
+  if (hasFlag(VALUE_V8)) {
+    append("VALUE_V8");
+  }
+  if (hasFlag(FLAG_KEEP_VARIABLENAME)) {
+    append("FLAG_KEEP_VARIABLENAME");
+  }
+  if (hasFlag(FLAG_BIND_PARAMETER)) {
+    append("FLAG_BIND_PARAMETER");
+  }
+  if (hasFlag(FLAG_FINALIZED)) {
+    append("FLAG_FINALIZED");
+  }
+  if (hasFlag(FLAG_SUBQUERY_REFERENCE)) {
+    append("FLAG_SUBQUERY_REFERENCE");
+  }
+  if (hasFlag(FLAG_INTERNAL_CONST)) {
+    append("FLAG_INTERNAL_CONST");
+  }
+  if (hasFlag(FLAG_BOOLEAN_EXPANSION)) {
+    append("FLAG_BOOLEAN_EXPANSION");
+  }
+  if (hasFlag(FLAG_READ_OWN_WRITES)) {
+    append("FLAG_READ_OWN_WRITES");
+  }
+  if (hasFlag(FLAG_REQUIRED_BIND_PARAMETER)) {
+    append("FLAG_REQUIRED_BIND_PARAMETER");
+  }
+}
+#endif
+
 /// @brief clone a node, recursively
 AstNode* AstNode::clone(Ast* ast) const { return ast->clone(this); }
 
@@ -2094,7 +2233,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
         buffer.push_back(',');
       }
 
-      AstNode* member = getMember(i);
+      AstNode* member = getMemberUnchecked(i);
+      TRI_ASSERT(member != nullptr);
       if (member != nullptr) {
         member->stringify(buffer, failIfLong);
       }
@@ -2119,7 +2259,8 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
         buffer.push_back(',');
       }
 
-      AstNode* member = getMember(i);
+      AstNode* member = getMemberUnchecked(i);
+      TRI_ASSERT(member != nullptr);
 
       if (member->type == NODE_TYPE_OBJECT_ELEMENT) {
         TRI_ASSERT(member->numMembers() == 1);
@@ -2359,7 +2500,7 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
           buffer.append(" OR ");
         }
       }
-      getMember(i)->stringify(buffer, failIfLong);
+      getMemberUnchecked(i)->stringify(buffer, failIfLong);
     }
     return;
   }
@@ -2373,10 +2514,10 @@ void AstNode::stringify(std::string& buffer, bool failIfLong) const {
     return;
   }
 
-  std::string message("stringification not supported for node type ");
-  message.append(getTypeString());
-
-  THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, std::move(message));
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("stringification not supported for node type ",
+                   getTypeString()));
 }
 
 /// note that this may throw and that the caller is responsible for

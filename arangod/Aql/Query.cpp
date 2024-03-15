@@ -332,7 +332,7 @@ void Query::ensureExecutionTime() noexcept {
   }
 }
 
-void Query::prepareQuery() {
+void Query::prepareQueryForExecution() {
   try {
     init(/*createProfile*/ true);
 
@@ -422,12 +422,10 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in collection and attribute name bind parameters (e.g. @@collection or
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
-
-  // put in value bind parameters. TODO: move this further down in the process,
-  // so that the optimizer can run with value bind parameters still unreplaced
-  // in the AST.
-  _ast->injectBindParametersSecondStage(_bindParameters);
-
+#if 0
+  // put in value bind parameters
+  // _ast->injectBindParametersSecondStage(_bindParameters);
+#endif
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
@@ -496,8 +494,18 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // return the V8 executor if we are in one
   exitV8Executor();
 
+  // put in value bind parameters
+  _ast->injectBindParametersSecondStage(_bindParameters);
+
   // validate that all bind parameters are in use
   _bindParameters.validateAllUsed();
+
+  TRI_ASSERT(!_ast->root()->containsBindParameter());
+#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
+#if 0
+  plan->show();
+#endif
+#endif
 
   return plan;
 }
@@ -542,7 +550,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
         // will throw if it fails
         if (!_ast) {  // simon: hack for AQL_EXECUTEJSON
-          prepareQuery();
+          prepareQueryForExecution();
         }
 
         logAtStart();
@@ -768,7 +776,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     }
 
     // will throw if it fails
-    prepareQuery();
+    prepareQueryForExecution();
 
     logAtStart();
 
@@ -1029,11 +1037,14 @@ QueryResult Query::explain() {
     Parser parser(*this, *_ast, _queryString);
     parser.parse();
 
-    // put in bind parameters
-    parser.ast()->injectBindParametersFirstStage(_bindParameters,
-                                                 this->resolver());
-    parser.ast()->injectBindParametersSecondStage(_bindParameters);
-    _bindParameters.validateAllUsed();
+    // put in collection and attribute name bind parameters (e.g. @@collection
+    // or doc.@attr).
+    _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
+
+    if (_queryOptions.expandBindParameters) {
+      _ast->injectBindParametersSecondStage(_bindParameters);
+      _bindParameters.validateAllUsed();
+    }
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);

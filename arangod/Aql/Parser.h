@@ -138,7 +138,7 @@ class Parser {
 
  private:
   /// @brief a pointer to the start of the query string
-  QueryString const& queryString() const { return _queryString; }
+  QueryString const& queryString() const noexcept { return _queryString; }
 
   /// @brief the query
   QueryContext& _query;
@@ -172,6 +172,7 @@ class Parser {
   /// @brief stack for handling of lazy conditions
   LazyConditions _lazyConditions;
 };
+
 }  // namespace arangodb::aql
 
 /// @brief forward for the parse function provided by the parser (.y)
