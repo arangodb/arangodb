@@ -96,7 +96,9 @@ void resolveFCallConstAttributes(Ast* ast, AstNode* fcall) {
   for (size_t x = 0; x < array->numMembers(); x++) {
     AstNode* child = array->getMemberUnchecked(x);
     if (child->type == NODE_TYPE_ATTRIBUTE_ACCESS && child->isConstant()) {
+      TEMPORARILY_UNLOCK_NODE(array);
       child = const_cast<AstNode*>(ast->resolveConstAttributeAccess(child));
+      //  LOG_DEVEL << "(1) OUR ARRAY IS: " << AstNode::toString(array);
       array->changeMember(x, child);
     }
   }
@@ -224,11 +226,15 @@ IndexExecutorInfos::IndexExecutorInfos(
         AstNode* lhs = leaf->getMemberUnchecked(0);
         AstNode* rhs = leaf->getMemberUnchecked(1);
         if (lhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && lhs->isConstant()) {
+          TEMPORARILY_UNLOCK_NODE(leaf);
           lhs = const_cast<AstNode*>(_ast->resolveConstAttributeAccess(lhs));
+          //  LOG_DEVEL << "(2) OUR ARRAY IS: " << AstNode::toString(lhs);
           leaf->changeMember(0, lhs);
         }
         if (rhs->type == NODE_TYPE_ATTRIBUTE_ACCESS && rhs->isConstant()) {
+          TEMPORARILY_UNLOCK_NODE(leaf);
           rhs = const_cast<AstNode*>(_ast->resolveConstAttributeAccess(rhs));
+          //  LOG_DEVEL << "(3) OUR ARRAY IS: " << AstNode::toString(rhs);
           leaf->changeMember(1, rhs);
         }
         // geo index condition i.e. `GEO_DISTANCE(x, y) <= d`

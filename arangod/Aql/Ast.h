@@ -262,7 +262,7 @@ class Ast {
   AstNode* createNodeLimit(AstNode* offset, AstNode* count);
 
   /// @brief create an AST window node
-  AstNode* createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
+  AstNode* createNodeWindow(AstNode* spec, AstNode const* rangeVar,
                             AstNode const* assignments);
 
   /// @brief create an AST assign node

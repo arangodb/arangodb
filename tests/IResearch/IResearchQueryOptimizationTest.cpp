@@ -244,7 +244,7 @@ bool findEmptyNodes(
       arangodb::aql::QueryString(queryString), bindVars,
       arangodb::aql::QueryOptions(options->slice()));
 
-  query->prepareQuery();
+  query->prepareQueryForExecution();
 
   arangodb::containers::SmallVector<arangodb::aql::ExecutionNode*, 8> nodes;
 

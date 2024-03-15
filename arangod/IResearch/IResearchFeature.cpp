@@ -597,7 +597,7 @@ void registerFilters(aql::AqlFunctionFeature& functions) {
 
   // (filter expression, analyzer)
   // cannot be used in analyzers!
-  addFunction(functions, {"ANALYZER", ".,.", flagsNoAnalyzer, &contextFunc});
+  addFunction(functions, {"ANALYZER", ".,b", flagsNoAnalyzer, &contextFunc});
 }
 
 template<typename T>

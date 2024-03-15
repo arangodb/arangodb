@@ -2745,13 +2745,14 @@ void AstNode::changeMember(size_t i, AstNode* node) {
 }
 
 void AstNode::removeMemberUnchecked(size_t i) {
-  TRI_ASSERT(members.size() > 0);
+  TRI_ASSERT(members.size() > i);
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
   members.erase(members.begin() + i);
 }
 
 void AstNode::removeMemberUncheckedUnordered(size_t i) {
   TRI_ASSERT(!hasFlag(AstNodeFlagType::FLAG_FINALIZED));
+  TRI_ASSERT(!members.empty());
   std::swap(members[i], members.back());
   members.pop_back();
 }

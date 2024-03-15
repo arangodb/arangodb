@@ -220,7 +220,7 @@ class IResearchInvertedIndexConditionTest
     auto query = Query::create(ctx, QueryString(queryString), bindVars);
 
     ASSERT_NE(query.get(), nullptr);
-    query->prepareQuery();
+    query->prepareQueryForExecution();
     auto* ast = query->ast();
     ASSERT_TRUE(ast);
     auto* root = ast->root();

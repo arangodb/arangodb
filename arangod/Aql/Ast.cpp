@@ -847,9 +847,9 @@ AstNode* Ast::createNodeLimit(AstNode* offset, AstNode* count) {
 }
 
 /// @brief create an AST window node
-AstNode* Ast::createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
+AstNode* Ast::createNodeWindow(AstNode* spec, AstNode const* rangeVar,
                                AstNode const* aggregates) {
-  if (aggregates == 0 || aggregates->numMembers() == 0) {
+  if (aggregates == nullptr || aggregates->numMembers() == 0) {
     THROW_ARANGO_EXCEPTION(
         TRI_ERROR_OUT_OF_MEMORY);  // parser should prevent this
   }
@@ -860,7 +860,19 @@ AstNode* Ast::createNodeWindow(AstNode const* spec, AstNode const* rangeVar,
 
   AstNode* node = createNode(NODE_TYPE_WINDOW);
   node->reserve(3);
+
+  // spec
+  // if the spec uses bind parameters, we need to mark these bind
+  // parameters as important ones, because they could change the semantics of
+  // the operation.
+  Ast::traverseAndModify(spec, [](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+    }
+    return node;
+  });
   node->addMember(spec);
+
   node->addMember(rangeVar != nullptr ? rangeVar : &_specialNodes.NopNode);
 
   // wrap aggregates again
@@ -1970,8 +1982,7 @@ AstNode* Ast::createNodeFunctionCall(std::string_view functionName,
     }
 
     for (size_t i = 0; i < n; ++i) {
-      if (func->getArgumentConversion(i) !=
-          Function::Conversion::RequiredBindParameter) {
+      if (func->getArgumentConversion(i) == Function::Conversion::None) {
         continue;
       }
 
@@ -3512,7 +3523,6 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
     return node;
   }
 
-  TRI_ASSERT(node->type == NODE_TYPE_OPERATOR_UNARY_NOT);
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* operand = node->getMember(0);
@@ -3538,7 +3548,7 @@ AstNode* Ast::optimizeUnaryOperatorLogical(AstNode* node) {
   TRI_ASSERT(node->numMembers() == 1);
 
   AstNode* operand = node->getMember(0);
-  if (!operand->isConstant() || operand->type == NODE_TYPE_PARAMETER) {
+  if (!operand->isConstant() || operand->containsBindParameter()) {
     // operand is dynamic, cannot statically optimize it
     return optimizeNotExpression(node);
   }

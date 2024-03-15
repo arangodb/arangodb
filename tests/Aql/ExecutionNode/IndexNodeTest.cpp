@@ -523,7 +523,7 @@ TEST_F(IndexNodeTest, constructIndexNode) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery();
+  query->prepareQueryForExecution();
 
   {
     // short path for a test
@@ -613,7 +613,7 @@ TEST_F(IndexNodeTest, invalidLateMaterializedJSON) {
           std::string_view("FOR d IN testCollection FILTER d.obj.a == 'a_val' "
                            "SORT d.obj.c LIMIT 10 RETURN d")),
       nullptr);
-  query->prepareQuery();
+  query->prepareQueryForExecution();
 
   auto vars = query->plan()->getAst()->variables();
   auto const& v =

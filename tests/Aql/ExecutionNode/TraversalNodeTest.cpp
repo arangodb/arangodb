@@ -56,7 +56,7 @@ class TraversalNodeTest : public ::testing::Test {
     auto ast = _query->ast();
     _start =
         ast->createNodeValueString(_startNode.c_str(), _startNode.length());
-    _direction = ast->createNodeDirection(0, 1);
+    _direction = ast->createNodeDirection(0, ast->createNodeValueInt(1));
     AstNode* edges = ast->createNodeArray(0);
     _graph = ast->createNodeCollectionList(edges, _query->resolver());
   }

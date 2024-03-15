@@ -212,7 +212,7 @@ void AqlFunctionFeature::addStringFunctions() {
 
   // (attribute, target, max distance,
   // [include transpositions, max terms, prefix])
-  add({"LEVENSHTEIN_MATCH", ".,.,.|.,.,.", flags,
+  add({"LEVENSHTEIN_MATCH", ".,b,b|b,b,.", flags,
        &functions::LevenshteinMatch});
 
   constexpr auto flagsNoAnalyzer = Function::makeFlags(
@@ -221,7 +221,7 @@ void AqlFunctionFeature::addStringFunctions() {
 
   // (attribute, target, [threshold, analyzer])
   // OR (attribute, target, [analyzer])
-  add({"NGRAM_MATCH", ".,.|.,.", flagsNoAnalyzer, &functions::NgramMatch});
+  add({"NGRAM_MATCH", ".,b|b,b", flagsNoAnalyzer, &functions::NgramMatch});
   // (attribute, target, ngram size)
   add({"NGRAM_SIMILARITY", ".,.,.", flags, &functions::NgramSimilarity});
 
@@ -569,13 +569,13 @@ void AqlFunctionFeature::addMiscFunctions() {
   // optimizer with collection-/index-based subqueries. they are all
   // marked as deterministic and cacheable here as they are just
   // placeholders for collection/index accesses nowaways.
-  add({"NEAR", ".h,.,.|.,.", Function::makeFlags(FF::Cacheable),
+  add({"NEAR", ".h,b,b|b,b", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
-  add({"WITHIN", ".h,.,.,.|.", Function::makeFlags(FF::Cacheable),
+  add({"WITHIN", ".h,b,b,b|b", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
-  add({"WITHIN_RECTANGLE", "h.,.,.,.,.", Function::makeFlags(FF::Cacheable),
+  add({"WITHIN_RECTANGLE", "h.,b,b,b,b", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
-  add({"FULLTEXT", ".h,b,.|.", Function::makeFlags(FF::Cacheable),
+  add({"FULLTEXT", ".h,b,b|b", Function::makeFlags(FF::Cacheable),
        &functions::NotImplemented});
 
   add({"MAKE_DISTRIBUTE_INPUT", ".,.",
