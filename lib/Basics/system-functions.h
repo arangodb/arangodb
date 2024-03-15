@@ -25,9 +25,7 @@
 
 #include <string>
 
-#ifdef ARANGODB_MISSING_MEMRCHR
-void* memrchr(void const* block, int c, size_t size);
-#endif
+#include "Basics/Common.h"
 
 // safe localtime
 void TRI_localtime(time_t, struct tm*);

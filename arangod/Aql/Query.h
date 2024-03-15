@@ -36,7 +36,6 @@
 #endif
 #include "Aql/QueryString.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8Executor.h"

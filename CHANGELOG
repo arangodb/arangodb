@@ -1,6 +1,10 @@
 devel
 -----
 
+* Accept language settings found in the LANGUAGE file which previous versions
+  have detected for the "C" locale. This is to allow upgrades from 3.11
+  if the database directory was created with the "C" locale.
+
 * Remove "read lock" acquisition calls from shard synchronization because they
   are now unnecessary. This slightly simplifies the shard synchronization
   protocol.

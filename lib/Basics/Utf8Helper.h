@@ -35,12 +35,9 @@
 #include <unicode/umachine.h>
 #include <unicode/regex.h>
 
-namespace icu_58 {
-class RegexMatcher;
-}
+#include "Basics/Common.h"
 
-namespace arangodb {
-namespace basics {
+namespace arangodb::basics {
 
 enum class LanguageType { INVALID, DEFAULT, ICU };
 
@@ -199,8 +196,8 @@ class Utf8Helper {
  private:
   icu::Collator* _coll;
 };
-}  // namespace basics
-}  // namespace arangodb
+
+}  // namespace arangodb::basics
 
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert a utf-8 string to a uchar (utf-16)
