@@ -24,6 +24,7 @@
 #include "TraversalConditionFinder.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/NoResultsNode.h"
@@ -554,6 +555,8 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
     : _plan(plan),
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
+
+TraversalConditionFinder::~TraversalConditionFinder() = default;
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
   if (!_condition->isEmpty() && !en->isDeterministic()) {

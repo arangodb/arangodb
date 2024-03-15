@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "Transaction/Methods.h"
 #include "VocBase/AccessMode.h"

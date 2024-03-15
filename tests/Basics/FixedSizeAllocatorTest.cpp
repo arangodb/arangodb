@@ -21,8 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"

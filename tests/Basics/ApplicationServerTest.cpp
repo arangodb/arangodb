@@ -22,8 +22,6 @@
 /// @author Copyright 2017, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"

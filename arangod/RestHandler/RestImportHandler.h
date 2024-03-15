@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 

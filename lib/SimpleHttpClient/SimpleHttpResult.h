@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/StringBuffer.h"
 #include "Rest/CommonDefines.h"
 

@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include "Rest/CommonDefines.h"
 #include "Statistics/Descriptions.h"
 #include "Statistics/StatisticsFeature.h"

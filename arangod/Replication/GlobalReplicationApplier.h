@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Replication/ReplicationApplier.h"
 
 namespace arangodb {
