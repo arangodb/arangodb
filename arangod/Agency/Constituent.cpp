@@ -23,17 +23,14 @@
 
 #include "Constituent.h"
 
-#include <chrono>
-#include <iomanip>
-#include <thread>
-
-#include <velocypack/Iterator.h>
-
 #include "Agency/Agent.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
 #include "Basics/application-exit.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
+#include "Metrics/GaugeBuilder.h"
+#include "Metrics/MetricsFeature.h"
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Random/RandomGenerator.h"
@@ -45,8 +42,11 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
-#include "Metrics/GaugeBuilder.h"
-#include "Metrics/MetricsFeature.h"
+#include <velocypack/Iterator.h>
+
+#include <chrono>
+#include <iomanip>
+#include <thread>
 
 using namespace arangodb::consensus;
 using namespace arangodb::rest;
