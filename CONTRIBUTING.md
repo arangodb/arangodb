@@ -799,15 +799,9 @@ There are several major places where unittests live:
 | `tests/` (remaining)                                         | Google Test unittests                                                                                                              |
 | implementation specific files                                |
 | `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
-| `js/client/modules/@arangodb/testutils/testing.js`           | invoked via `unittest.js` handles module structure for `testsuites`.                                                               |
-| `js/client/modules/@arangodb/testutils/test-utils.js`        | infrastructure for tests like filtering, bucketing, iterating                                                                      |
-| `js/client/modules/@arangodb/testutils/process-utils.js`     | manage arango instances, start/stop/monitor SUT-processes                                                                          |
-| `js/client/modules/@arangodb/testutils/result-processing.js` | work with the result structures to produce reports, hit lists etc.                                                                 |
-| `js/client/modules/@arangodb/testutils/crash-utils.js`       | if something goes wrong, this contains the crash analysis tools                                                                   |
-| `js/client/modules/@arangodb/testutils/clusterstats.js`      | can be launched separately to monitor the cluster instances and their resource usage                                               |
-| `js/client/modules/@arangodb/testsuites/`                    | modules with testframework that control one set of tests each                                                                      |
-| `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                                               |
-| `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                                        |
+
+                                          |
+see [js/client/modules/@arangodb/README.md] about implementaiton deatails of the framework.
 
 ### Filename conventions
 
