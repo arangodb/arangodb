@@ -1,6 +1,14 @@
 devel
 -----
 
+* EE-Only bug-fix MDS-1190: When we use arangodump and arangorestore while
+  using a SmartGraph the restore process may generate new internal CollectionIds.
+  This generated Ids are not always updated in the also restored GraphSchema.
+  In the situation the restored graph still works as expected, all data is there
+  and can be queried and modified. Only the GraphSchema on the restored version
+  could not be changed anymore. We erased the dependency on the CollectionId
+  in the GraphSchema, now the Schema can again be modified.
+
 * Accept language settings found in the LANGUAGE file which previous versions
   have detected for the "C" locale. This is to allow upgrades from 3.11
   if the database directory was created with the "C" locale.
