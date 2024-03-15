@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
 #include "Indexes/Index.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
 #include "RocksDBEngine/RocksDBKeyBounds.h"

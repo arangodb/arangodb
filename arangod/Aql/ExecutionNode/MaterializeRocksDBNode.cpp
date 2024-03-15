@@ -23,6 +23,7 @@
 
 #include "MaterializeRocksDBNode.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"

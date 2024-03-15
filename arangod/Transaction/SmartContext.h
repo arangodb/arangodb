@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Transaction/Context.h"
 #include "Transaction/OperationOrigin.h"
 #include "VocBase/vocbase.h"

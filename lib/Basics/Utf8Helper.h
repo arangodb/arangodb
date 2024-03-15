@@ -35,8 +35,6 @@
 #include <unicode/umachine.h>
 #include <unicode/regex.h>
 
-#include "Basics/Common.h"
-
 namespace arangodb::basics {
 
 enum class LanguageType { INVALID, DEFAULT, ICU };

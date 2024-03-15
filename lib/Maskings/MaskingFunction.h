@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include "Basics/Utf8Helper.h"
 
 #include <velocypack/Builder.h>

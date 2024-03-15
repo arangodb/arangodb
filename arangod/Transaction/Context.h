@@ -25,7 +25,6 @@
 
 #include <memory>
 
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Containers/SmallVector.h"
 #include "Transaction/OperationOrigin.h"

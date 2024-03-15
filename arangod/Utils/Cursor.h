@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/ExecutionState.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "VocBase/voc-types.h"
 

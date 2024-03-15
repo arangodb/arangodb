@@ -22,7 +22,6 @@
 /// @author Copyright 2007-2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/exitcodes.h"
 
 #include "gtest/gtest.h"
