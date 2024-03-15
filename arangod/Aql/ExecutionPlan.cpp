@@ -2955,39 +2955,48 @@ struct Shower final
   }
 
   static std::string detailedNodeType(ExecutionNode const& node) {
+    std::string result = node.getTypeString();
+
     switch (node.getType()) {
       case ExecutionNode::CALCULATION: {
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " $",
-                                 calcNode.outVariable()->id, " = ");
-        calcNode.expression()->stringify(type);
-        return type;
+        absl::StrAppend(&result, " $", calcNode.outVariable()->id, " = ");
+        calcNode.expression()->stringify(result);
+        break;
       }
       case ExecutionNode::FILTER: {
         auto const& filterNode =
             *ExecutionNode::castTo<FilterNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " $",
-                                 filterNode.inVariable()->id);
-        return type;
+        absl::StrAppend(&result, " $", filterNode.inVariable()->id);
+        break;
+      }
+      case ExecutionNode::SORT: {
+        auto const& sortNode = *ExecutionNode::castTo<SortNode const*>(&node);
+        for (auto const& it : sortNode.elements()) {
+          absl::StrAppend(&result, " ", it.toString());
+        }
+        break;
       }
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
       case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " ",
-                                 indexNode->collection()->name(), " -> ",
-                                 indexNode->outVariable()->name, " ",
-                                 indexNode->condition()->root()->toString());
-        return type;
+        absl::StrAppend(&result, " ", indexNode->collection()->name(), " -> ",
+                        indexNode->outVariable()->name);
+        if (indexNode->condition() != nullptr &&
+            indexNode->condition()->root() != nullptr) {
+          absl::StrAppend(&result, " ",
+                          indexNode->condition()->root()->toString());
+        }
+        break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
       case ExecutionNode::UPDATE:
@@ -2997,16 +3006,32 @@ struct Shower final
       case ExecutionNode::UPSERT: {
         auto const& colAccess =
             *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " (",
-                                 colAccess.collection()->name(), ")");
+        absl::StrAppend(&result, " (", colAccess.collection()->name(), ")");
         if (colAccess.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
       default:
-        return {node.getTypeString()};
+        break;
     }
+
+    switch (node.getType()) {
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX: {
+        auto* docNode = dynamic_cast<DocumentProducingNode const*>(&node);
+        TRI_ASSERT(docNode != nullptr);
+        Expression* filter = docNode->filter();
+        if (filter != nullptr) {
+          absl::StrAppend(&result, " filter: ", filter->node()->toString());
+        }
+        break;
+      }
+      default: {
+      }
+    }
+
+    return result;
   }
 };
 
