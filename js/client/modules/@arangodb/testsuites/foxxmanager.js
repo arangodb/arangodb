@@ -33,6 +33,7 @@ const optionsDocumentation = [
 ];
 
 const pu = require('@arangodb/testutils/process-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const fs = require('fs');
 
@@ -61,12 +62,12 @@ function foxxManager (options) {
 
   let results = {};
 
-  results.update = pu.run.arangoshCmd(options, instanceManager, {
+  results.update = ct.run.arangoshCmd(options, instanceManager, {
     'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
   }, ['update'], options.coreCheck);
 
   if (results.update.status === true || options.force) {
-    results.search = pu.run.arangoshCmd(options, instanceManager, {
+    results.search = ct.run.arangoshCmd(options, instanceManager, {
       'configuration': fs.join(pu.CONFIG_DIR, 'foxx-manager.conf')
     }, ['search', 'itzpapalotl'], options.coreCheck);
   }
