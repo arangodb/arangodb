@@ -20,8 +20,13 @@ export const useReinitializeForm = () => {
       TYPE_TO_INITIAL_VALUES_MAP[
         typeField.value as keyof typeof TYPE_TO_INITIAL_VALUES_MAP
       ];
+    const initialProperties = (initialValues as any)?.properties || {};
     const newValues = {
       ...initialValues,
+      properties: {
+        ...initialProperties,
+        ...((values as any)?.properties || {})
+      },
       type: typeField.value,
       name: values?.name,
       // adding features which are already set
