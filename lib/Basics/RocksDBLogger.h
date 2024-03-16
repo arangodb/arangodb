@@ -26,8 +26,6 @@
 #include <stdarg.h>
 #include <atomic>
 
-#include "Basics/Common.h"
-
 #include <rocksdb/env.h>
 
 namespace arangodb {

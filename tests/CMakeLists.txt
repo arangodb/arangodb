@@ -1,5 +1,11 @@
 add_compile_warnings_flags()
 
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 # ----------------------------------------
 # Fuerte tests
 # ----------------------------------------

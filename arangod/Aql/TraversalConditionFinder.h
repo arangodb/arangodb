@@ -23,11 +23,16 @@
 
 #pragma once
 
-#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
+#include "Aql/types.h"
+#include "Containers/HashSet.h"
+
+#include <memory>
 
 namespace arangodb::aql {
+class Condition;
+class ExecutionPlan;
 
 /// @brief Traversal condition finder
 class TraversalConditionFinder final
@@ -35,7 +40,7 @@ class TraversalConditionFinder final
  public:
   TraversalConditionFinder(ExecutionPlan* plan, bool* planAltered);
 
-  ~TraversalConditionFinder() = default;
+  ~TraversalConditionFinder();
 
   bool before(ExecutionNode*) override final;
 

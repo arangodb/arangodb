@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include "Maskings/AttributeMasking.h"
 #include "Maskings/CollectionFilter.h"
 #include "Maskings/CollectionSelection.h"

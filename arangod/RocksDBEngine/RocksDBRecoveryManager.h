@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "RestServer/arangod.h"
 #include "StorageEngine/StorageEngine.h"

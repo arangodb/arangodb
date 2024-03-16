@@ -1,4 +1,5 @@
 add_library(arango_utils STATIC
+  Cursor.cpp
   ExecContext.cpp
   OperationOptions.cpp
   SupportInfoBuilder.cpp
