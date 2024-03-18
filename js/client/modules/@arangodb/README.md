@@ -3,7 +3,7 @@
 All the code structure and the test infrastructure works in a way to
 - have results in all cases
 - must not lock up, and terminate in a reasonable timeframe under all circumstances
-- waste as less host resources as possible -> 
+- waste as little host resources as possible -> 
   - detect lockups and abort tests (C++ / JS infrastructure)
   - have a well established timeout and deadline mechanism 
   - have a subprocess monitoring to abort as fast as possible if 
