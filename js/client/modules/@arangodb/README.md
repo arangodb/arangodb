@@ -1,12 +1,13 @@
 === Arango DB test infrasturcture ===
 == Philosopy ==
 All the code structure and the test infrastructure works in a way to
-- have results in all cases
+- have results in all (worst-) cases
 - must not lock up, and terminate in a reasonable timeframe under all circumstances
 - waste as little host resources as possible -> 
   - detect lockups and abort tests (C++ / JS infrastructure)
   - have a well established timeout and deadline mechanism 
-  - have a subprocess monitoring to abort as fast as possible if 
+  - have a subprocess monitoring to abort as fast as possible if spawned processes go away
+    (i.e. clusters may get hell slow once instances are missing)
 - collect as much data from the system as possible
 - compress the data to present the user with a most compact result
 - Timeout is for individual integration testsuites. Its 15 minutes by default.
@@ -20,7 +21,6 @@ All the code structure and the test infrastructure works in a way to
 | `testutils/result-processing.js`                             | contains code to run various analyses on results and/or generate result representations for the user/ci     |
 | `testutils/test-utils.js`                                    | infrastructure for tests like filtering, bucketing, iterating                                               |
 | `testutils/process-utils.js`                                 | manage arango instances, start/stop/monitor SUT-processes                                                   |
-| `testutils/result-processing.js`                             | work with the result structures to produce reports, hit lists etc.                                          |
 | `testutils/crash-utils.js`                                   | if something goes wrong, this contains the crash analysis tools                                             |
 | `testutils/client-tools.js`                                  | code to manage the arangodb client-tools for their respective tests                                         |
 | `testutils/instance-manager.js`                              | manache a full installation be it cluster or single server consisting of one or several `instance.js`es.    |
