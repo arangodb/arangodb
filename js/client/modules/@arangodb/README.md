@@ -1,8 +1,8 @@
-=== Arango DB test infrasturcture ===
-== Philosophy ==
+# Arango DB test infrasturcture
+## Philosophy
 All the code structure and the test infrastructure works in a way to
 - have results in all (worst-) cases
-- must not lock up, and terminate in a reasonable timeframe under all circumstances
+- that it must not lock up, and terminate in a reasonable timeframe under all circumstances
 - waste as little host resources as possible -> 
   - detect lockups and abort tests (C++ / JS infrastructure)
   - have a well established timeout and deadline mechanism 
@@ -13,7 +13,7 @@ All the code structure and the test infrastructure works in a way to
 - Timeout is for individual integration testsuites. Its 15 minutes by default.
 - Deadline is for the total load of tests. 
 
-== files concerned ==
+## files concerned
 
 | Path / File                                                  | Description                                                                                                 |
 | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
@@ -171,19 +171,19 @@ The individual testsuites (3) generate a set of parameters that create phases of
 | `client-tools/Shell/ProcessMonitoringFeature.[h|cpp]`        | establishes a thread that will watch after all registered subprocesses. Pull the plug to abort asap.        |
 | `client-tools/Shell/v8-deadline.cpp`                         | infrastructure to implement a deadline which if engaged aborts all I/O + subprocesses immediately.          |
 
-== Deadline / Process monitoring ==
+## Deadline / Process monitoring
 The deadline handling is here so all http subrequests and `waitpid()`s are adjusted to end at this point in time. A busy polling is implemented to abort if the process monitor signals SUT-unstability.
 The js infrastructure code will manage the deadline so test code must not exceed certain timeouts and ultimately abort the test execution on the deadline. 
 The js code will then terminate the SUT and aggregate its process states. This even moreso happenes if a crash of a subprocess leaves behind a cordeump.
 
-=== code structure === 
+### code structure
 The `testing.js` API conists of 3 main vectors, on top of it `testing.js` chooses which tests to run according to commandline options and how to present the test results.
 The initial behaviour is different for users in their local development environment and the CI. 
 `--extremeVerbosity true` can be specified to closer follow & debug which way the infrastructure is working.
 
 The suite API:
 
-== module integration ==
+## module integration
 - testsuite name, paired with documentation
 - optional commandline parameters to be handled via `config`.
 - a list of files associated with the testsuites; This is used for the `auto` mechanism to associate a testfile with a suite.
@@ -192,23 +192,24 @@ The suite API:
   - register the functions of the testsuites in `testFns`
   - register the testsuite documentations with `fnDocs`
 
-== testsuite run integration ==
+### testsuite run integration
 The suite function. It should launch the SUT, identify & select the integration testsuites to run, shutdown the SUT and return the results.
 To achieve this it should lean on the various infrastructure presented below.
 
-== result integration ==
+### result integration
 The result should be in a structure that can later be analyzed using `result-processing.js`.
 
 
-=== test infrastructure ===
+### test infrastructure
 The test infrastructure should be used by testsuites to do most of the heavy lifting; in best case it can contain just a few lines.
-== integration testsuites management ==
+
+### integration testsuites management
 A testsuite receives a list of testfiles where each one is a single `integration testsuite`. Its files located by `testing.js` from the `allTestPaths` directory list.
 Testing.js already filtered it, and split it to buckets (test-utils.js:`filterTestcaseByOptions()`) according to commandline options.
 
 The testsuite then can use the default lifecycle management to launch these tests, or implement own logic, again best based on existing logic.
 
-== test lifecycle management ==
+## test lifecycle management
 The test lifecycle management should be utilized to maintain the SUT, iterate over the tests. 
 It is implemented in `testrunner.js`, and its modularity is intended to reuse it partially or completely.
 By default it comes without a way to launch an integration testsuite, this is implemented in the deriving classes. 
@@ -249,7 +250,7 @@ Tests that work more outside of the default `testRunner` code by replacing more 
 - `[go|php|java|js|driver].js` will replace the `run` hook by launching the SUT on their own, and running  respective test-suites of these drivers, providing them with their instance, and convert their respective test-results back to `testing.js` own format.
 - `[server_permissions|recovery[_cluster]].js` will also replace the `run` function. It will launch one SUT per iteration and run its respective tests with it.
 
-== instance management ==
+## instance management
 An arangodb deployment may consist of several instances that are to be orchestrated in order to form the SUT. 
 Depending on the `options` the deployment mode is chosen by the `instanceManager`.
 It forms the `instance` objects of the respective `arangod`s to be launched and stopped.
