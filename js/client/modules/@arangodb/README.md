@@ -119,7 +119,7 @@ Tests that work more outside of the default `testRunner` code by replacing more 
 An arangodb deployment may consist of several instances that are to be orchestrated in order to form the SUT. 
 Depending on the `options` the deployment mode is chosen by the `instanceManager`.
 It forms the `instance` objects of the respective `arangod`s to be launched and stopped.
-It knows the concetps of the agency and how to work with it.
+It knows the concepts of the agency and how to work with it.
 It knows all tcp ports and can launch sniffing utilitise to track the tests.
 It knows all PIDs and should be utilized to manipulate them. 
 It knows how to establish when the SUT is launched, and to maintain whether its healthy or not.
