@@ -128,7 +128,8 @@ It knows via its `instance`s which processes to start, stop, halt or maybe resta
 ## dump integration tests
 `dump.js` doesn't use the test lifecycle management in `testrunner.js`. It leans on `instanceManager` for SUT handling, and `client-tools.js` to launch client-tools -binaries.
 
-each phase of the dump suite will result in an aequivilant that can individually fail, all subsequent test execution will be skipped, since they lean on proper preparation by the previous tests.
+Each phase of the dump suite will result in an aequivilant test status, that can individually fail.
+Once a failure occurs all subsequent test execution will be skipped, since they lean on proper preparation by the previous tests.
 ### files concerned
 
 | Path / File                                                  | Description                                                                                                 |
