@@ -1548,7 +1548,6 @@
         if (!isEnterprise) {
           return;
         }
-        assertTrue(false, "Failed on purpose");
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = getCollection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1564,7 +1563,6 @@
         if (!isEnterprise) {
           return;
         }
-        assertTrue(false, "Failed on purpose");
         const smartGraphName = "UnitTestDumpSmartGraphCompat";
         const graphsColl = getCollection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1590,7 +1588,6 @@
         // New collections are smart
         assertTrue(db[newRelationName].properties().isSmart);
         assertTrue(db[newVertexName].properties().isSmart);
-        assertTrue(false, "Failed on purpose");
       },
 
       testEmptyEnterpriseGraph: function () {
