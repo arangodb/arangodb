@@ -65,7 +65,6 @@ To achieve this it should lean on the various infrastructure presented below.
 ### result integration
 The result should be in a structure that can later be analyzed using `result-processing.js`.
 
-
 ### test infrastructure
 The test infrastructure should be used by testsuites to do most of the heavy lifting; in best case it can contain just a few lines.
 
@@ -125,4 +124,34 @@ It knows all tcp ports and can launch sniffing utilitise to track the tests.
 It knows all PIDs and should be utilized to manipulate them. 
 It knows how to establish when the SUT is launched, and to maintain whether its healthy or not.
 It knows via its `instance`s which processes to start, stop, halt or maybe restart.
+
+## dump integration tests
+### files concerned
+
+| Path / File                                                  | Description                                                                                                 |
+| :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
+| `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
+| tests/js/client/dump/                                        | test logic for all variations of deployments distributed over several files                                 |
+| [dump-singleserver|dump-multiple|dump-cluster]               | previously created dumps to be restored within the tests                                                    |
+| dump-setup-common.inc                                        | contains all functions to create test data to create before creating the dump                               |
+| dump-test.inc                                                | contains all functions to test data after restore                                                           |
+| dump-setup-*js                                               | consists of calls to the respective set from `dump-setup-common.inc` of test data to be created             |
+| dump-check*js                                                | consists of calls to the respective set from `dump-setup-common.inc` of the test data to be checked         |
+| check*                                                       | more checks that could be referenced from individual dump suites                                            |
+
+### structure in test files
+To create the individual initial provisioning dataset, setup .js files invoke the respective list of setup functions from `dump-setup-common.inc`.
+To create the individual set of tests, the `dump-test.inc` files testsuide `deriveTestSuite()` is used by the file to create its respective subset.
+Individual `check` files can be registered by tests in `dump.js`.
+
+In general its probably beneficial to rather consider creating a `rta-makedata` testsuite than work on the above structure. 
+
+### structure in `testsuites/dump.js`
+Dump.js consists of 4 layers:
+- `DumpRestoreHelper` to abstract the invocation of individual client-tools and test phases. 
+- `dump_backend_two_instances` function orchestrating the phases using the `DumpRestoreHelper` depending on provided input structures
+- i.e. `dumpMixedClusterSingle` to create a list of checks to run, and orchestrate its sequence
+- regular testing.js testsuite interface registering of these functions
+
+The individual testsuites (3) generate a set of parameters that create phases of instances to be launched, stuffed, dumped, stopped, launch subsequent fresh instance, restore into it, cleanup the data.
 
