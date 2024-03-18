@@ -261,6 +261,7 @@ It knows how to establish when the SUT is launched, and to maintain whether its 
 It knows via its `instance`s which processes to start, stop, halt or maybe restart.
 
 ## dump integration tests
+each phase of the dump suite will result in an aequivilant that can individually fail, all subsequent test execution will be skipped, since they lean on proper preparation by the previous tests.
 ### files concerned
 
 | Path / File                                                  | Description                                                                                                 |
@@ -284,11 +285,11 @@ Individual `check` files can be registered by tests in `dump.js`.
 In general its probably beneficial to rather consider creating a `rta-makedata` testsuite than work on the above structure. 
 
 ### structure in `testsuites/dump.js`
-Dump.js consists of 4 layers:
-- `DumpRestoreHelper` to abstract the invocation of individual client-tools and test phases. 
+`dump.js` consists of 4 layers:
+- `DumpRestoreHelper` to abstract the invocation of individual client-tools, commandline argument handling, result handling and test phases. 
 - `dump_backend_two_instances` function orchestrating the phases using the `DumpRestoreHelper` depending on provided input structures
-- i.e. `dumpMixedClusterSingle` to create a list of checks to run, and orchestrate its sequence
-- regular testing.js testsuite interface registering of these functions
+- i.e. `dumpMixedClusterSingle` are individual `testing.js`-testsuites to create a list of checks to run, and orchestrate its sequence
+- regular testing.js testsuite interface registering of these testsuite-functions
 
 The individual testsuites (3) generate a set of parameters that create phases of instances to be launched, stuffed, dumped, stopped, launch subsequent fresh instance, restore into it, cleanup the data.
 
