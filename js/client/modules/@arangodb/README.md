@@ -139,7 +139,7 @@ It knows via its `instance`s which processes to start, stop, halt or maybe resta
 | `dump-check*js`                                              | consists of calls to the respective set from `dump-setup-common.inc` of the test data to be checked         |
 | `check*`                                                     | more checks that could be referenced from individual dump suites                                            |
 
-### structure in test files
+### structure in `tests/js/client/dump/` files
 To create the individual initial provisioning dataset, setup .js files invoke the respective list of setup functions from `dump-setup-common.inc`.
 To create the individual set of tests, the `dump-test.inc` files testsuide `deriveTestSuite()` is used by the file to create its respective subset.
 Individual `check` files can be registered by tests in `dump.js`.
