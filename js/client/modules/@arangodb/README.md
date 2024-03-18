@@ -168,7 +168,7 @@ The individual testsuites (3) generate a set of parameters that create phases of
 | `testsuites/chaos.js`                                        | launches several sub-arangoshs to cause randomness, enables failurepoints and so on.                        |
 | `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                        |
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                 |
-| `client-tools/Shell/ProcessMonitoringFeature.[h|cpp]`        | establishes a thread that will watch after all registered subprocesses. Pull the plug to abort asap.        |
+| `client-tools/Shell/ProcessMonitoringFeature.[h||cpp]`       | establishes a thread that will watch after all registered subprocesses. Pull the plug to abort asap.        |
 | `client-tools/Shell/v8-deadline.cpp`                         | infrastructure to implement a deadline which if engaged aborts all I/O + subprocesses immediately.          |
 
 ## Deadline / Process monitoring
