@@ -1548,6 +1548,7 @@
         if (!isEnterprise) {
           return;
         }
+        assertTrue(false, "Failed on purpose");
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = getCollection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1557,6 +1558,39 @@
         assertCommonSmartGraphProperties(graph);
         assertEqual(graph.edgeDefinitions.length, 0);
         assertEqual(graph.orphanCollections.length, 0);
+      },
+
+      testSmartGraph3_11_compat: function () {
+        if (!isEnterprise) {
+          return;
+        }
+        assertTrue(false, "Failed on purpose");
+        const smartGraphName = "UnitTestDumpSmartGraphCompat";
+        const graphsColl = getCollection('_graphs');
+        assertTrue(!!graphsColl.exists(smartGraphName));
+
+        const graphDoc = graphsColl.document(smartGraphName);
+        // This is the requirement to test if the compat cid has effect
+        assertTrue(graphDoc.hasOwnProperty('initialCid'));
+        // Now let us try to modify the GraphRelations
+        const newRelationName = `${smartGraphName}NewEdge`;
+        const newVertexName = `${smartGraphName}NewVertex`;
+        const newRelation = gm._relation(newRelationName,
+          "UnitTestDumpSmartVerticesCompat",
+          newVertexName
+        );
+        // New collections do not yet exist, that would be forbidden.
+        assertTrue(db._collections().indexOf(newRelationName) === -1);
+        assertTrue(db._collections().indexOf(newVertexName) === -1);
+        const graph = gm._graph(smartGraphName);
+        graph._extendEdgeDefinitions(newRelation);
+        // New collections are added
+        assertTrue(db._collections().indexOf(newRelationName) !== -1);
+        assertTrue(db._collections().indexOf(newVertexName) !== -1);
+        // New collections are smart
+        assertTrue(db[newRelationName].properties().isSmart);
+        assertTrue(db[newVertexName].properties().isSmart);
+        assertTrue(false, "Failed on purpose");
       },
 
       testEmptyEnterpriseGraph: function () {
