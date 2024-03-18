@@ -132,7 +132,7 @@ It knows via its `instance`s which processes to start, stop, halt or maybe resta
 | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
 | `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
 | tests/js/client/dump/                                        | test logic for all variations of deployments distributed over several files                                 |
-| [dump-singleserver|dump-multiple|dump-cluster]               | previously created dumps to be restored within the tests                                                    |
+| [dump-singleserver\|dump-multiple\|dump-cluster]             | previously created dumps to be restored within the tests                                                    |
 | dump-setup-common.inc                                        | contains all functions to create test data to create before creating the dump                               |
 | dump-test.inc                                                | contains all functions to test data after restore                                                           |
 | dump-setup-*js                                               | consists of calls to the respective set from `dump-setup-common.inc` of test data to be created             |
