@@ -719,7 +719,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results.RtaCheckdata = {
         status: true
       };
-      return false;
+      return true;
     }
   }
 };
