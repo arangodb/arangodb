@@ -194,7 +194,7 @@ The suite API:
 
 == testsuite run integration ==
 The suite function. It should launch the SUT, identify & select the integration testsuites to run, shutdown the SUT and return the results.
-To achieve this it should lean on the various infrarstructure presented below.
+To achieve this it should lean on the various infrastructure presented below.
 
 == result integration ==
 The result should be in a structure that can later be analyzed using `result-processing.js`.
