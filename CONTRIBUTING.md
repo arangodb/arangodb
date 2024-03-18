@@ -801,7 +801,7 @@ There are several major places where unittests live:
 | `scripts/unittest`                                           | Entry wrapper script for `UnitTests/unittest.js`                                                                                   |
 
                                           |
-see [js/client/modules/@arangodb/README.md] about implementaiton deatails of the framework.
+see [js/client/modules/@arangodb/README.md] about implementation details of the framework.
 
 ### Filename conventions
 
