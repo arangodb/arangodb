@@ -1,12 +1,13 @@
 === Arango DB test infrasturcture ===
 == Philosopy ==
 All the code structure and the test infrastructure works in a way to
-- have results in all cases
+- have results in all (worst-) cases
 - must not lock up, and terminate in a reasonable timeframe under all circumstances
 - waste as little host resources as possible -> 
   - detect lockups and abort tests (C++ / JS infrastructure)
   - have a well established timeout and deadline mechanism 
-  - have a subprocess monitoring to abort as fast as possible if 
+  - have a subprocess monitoring to abort as fast as possible if spawned processes go away
+    (i.e. clusters may get hell slow once instances are missing)
 - collect as much data from the system as possible
 - compress the data to present the user with a most compact result
 - Timeout is for individual integration testsuites. Its 15 minutes by default.
