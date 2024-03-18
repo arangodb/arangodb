@@ -29,12 +29,12 @@ All the code structure and the test infrastructure works in a way to
 | `testutils/clusterstats.js`                                  | can be launched separately to monitor the cluster instances and their resource usage                        |
 | `testsuites/`                                                | modules with testframework that control one set of tests each utilizing the `testrunner.js`.                |
 | `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
-| `testsuites/[go|php|java|js|driver|rta_makedata].js`         | subsidize the lifecycle method of `testRunner` for other instance and testrunner controls.                  |
-| `testsuites/[server_permissions|recovery[_cluster]].js`      | run several instances and run individual tests on them; vary parameters etc. of SUT                         |
+| `testsuites/[go||php||java||js||driver||rta_makedata].js`    | subsidize the lifecycle method of `testRunner` for other instance and testrunner controls.                  |
+| `testsuites/[server_permissions||recovery[_cluster]].js`     | run several instances and run individual tests on them; vary parameters etc. of SUT                         |
 | `testsuites/chaos.js`                                        | launches several sub-arangoshs to cause randomness, enables failurepoints and so on.                        |
 | `js/common/modules[/jsunity]/jsunity.js`                     | jsunity testing framework; invoked via jsunity.js next to the module                                        |
 | `js/common/modules/@arangodb/mocha-runner.js`                | wrapper for running mocha tests in arangodb                                                                 |
-| `client-tools/Shell/ProcessMonitoringFeature.[h|cpp]`        | establishes a thread that will watch after all registered subprocesses. Pull the plug to abort asap.        |
+| `client-tools/Shell/ProcessMonitoringFeature.[h||cpp]`       | establishes a thread that will watch after all registered subprocesses. Pull the plug to abort asap.        |
 | `client-tools/Shell/v8-deadline.cpp`                         | infrastructure to implement a deadline which if engaged aborts all I/O + subprocesses immediately.          |
 
 ## Deadline / Process monitoring
