@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Cluster/ClusterInfo.h"
 
 namespace arangodb {

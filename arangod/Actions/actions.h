@@ -28,8 +28,6 @@
 #include <mutex>
 #include <string>
 
-#include "Basics/Common.h"
-
 struct TRI_vocbase_t;
 
 namespace arangodb {

@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 #include "Metrics/Fwd.h"
 

@@ -23,6 +23,7 @@
 
 #include "RemoveNode.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionPlan.h"

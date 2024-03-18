@@ -24,7 +24,6 @@
 #pragma once
 
 #include <string_view>
-#include "Basics/Common.h"
 #include "Transaction/CountCache.h"
 #include "Utils/OperationResult.h"
 #include "VocBase/Identifiers/DataSourceId.h"

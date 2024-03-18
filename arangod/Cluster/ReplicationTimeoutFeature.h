@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 
 #include <string_view>

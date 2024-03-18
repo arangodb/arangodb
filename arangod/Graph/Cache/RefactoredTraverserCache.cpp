@@ -27,6 +27,7 @@
 #include "Aql/AqlValue.h"
 #include "Aql/Query.h"
 #include "Aql/TraversalStats.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringHeap.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"

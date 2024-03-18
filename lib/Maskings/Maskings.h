@@ -34,7 +34,6 @@
 #include <velocypack/Builder.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Maskings/Collection.h"
 #include "Maskings/ParseResult.h"
 

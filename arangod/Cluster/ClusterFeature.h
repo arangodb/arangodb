@@ -26,8 +26,6 @@
 #include <mutex>
 #include <unordered_set>
 
-#include "Basics/Common.h"
-
 #include "ApplicationFeatures/ApplicationFeature.h"
 #include "Cluster/ServerState.h"
 #include "Containers/FlatHashMap.h"

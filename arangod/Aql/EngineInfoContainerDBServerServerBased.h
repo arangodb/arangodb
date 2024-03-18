@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include "Aql/QuerySnippet.h"
 #include "Aql/ShardLocking.h"
 #include "Aql/types.h"

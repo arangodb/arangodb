@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Replication/ReplicationApplierConfiguration.h"
 #include "Replication/SyncerId.h"

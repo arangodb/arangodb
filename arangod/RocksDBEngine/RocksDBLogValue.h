@@ -28,7 +28,6 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/Identifiers/IndexId.h"

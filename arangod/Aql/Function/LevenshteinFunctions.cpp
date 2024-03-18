@@ -27,7 +27,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Basics/Common.h"
 #include "IResearch/IResearchPDP.h"
 #include "IResearch/VelocyPackHelper.h"
 #include "Transaction/Helpers.h"

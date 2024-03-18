@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
 #include "VocBase/Validators.h"
 
 #include <unicode/regex.h>

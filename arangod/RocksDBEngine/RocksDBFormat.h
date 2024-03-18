@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Endian.h"
 #include "RocksDBEngine/RocksDBTypes.h"
 

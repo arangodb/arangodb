@@ -21,15 +21,11 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include <rocksdb/db.h>
-#include <rocksdb/utilities/transaction.h>
-
-#include <velocypack/Iterator.h>
-
 #include "RocksDBMetadata.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/ReadLocker.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/WriteLocker.h"
 #include "Basics/system-compiler.h"
 #include "Logger/LogMacros.h"
@@ -46,6 +42,10 @@
 #include "Transaction/Context.h"
 #include "VocBase/KeyGenerator.h"
 #include "VocBase/LogicalCollection.h"
+
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+#include <velocypack/Iterator.h>
 
 #include <chrono>
 #include <thread>

@@ -22,7 +22,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/error.h"
 #include "Basics/files.h"

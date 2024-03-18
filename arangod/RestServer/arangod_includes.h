@@ -50,7 +50,6 @@
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Basics/ArangoGlobalContext.h"
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/directories.h"
 #include "Basics/operating-system.h"

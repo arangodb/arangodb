@@ -23,9 +23,8 @@
 
 #pragma once
 
+#include <ctime>
 #include <string>
-
-#include "Basics/Common.h"
 
 // safe localtime
 void TRI_localtime(time_t, struct tm*);

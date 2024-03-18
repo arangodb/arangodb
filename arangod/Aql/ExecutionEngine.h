@@ -28,7 +28,6 @@
 #include "Aql/SharedAqlItemBlockPtr.h"
 #include "Aql/types.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Cluster/CallbackGuard.h"
 #include "Containers/SmallVector.h"

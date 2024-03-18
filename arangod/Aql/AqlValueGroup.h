@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/AqlValue.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 namespace velocypack {

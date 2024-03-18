@@ -24,6 +24,7 @@
 
 #include "OptimizerRules.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"

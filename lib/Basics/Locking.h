@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 namespace arangodb::basics {
 
 enum class LockerType {

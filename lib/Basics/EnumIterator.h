@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <type_traits>
 
 #define ENUM_ITERATOR(type, start, end) \

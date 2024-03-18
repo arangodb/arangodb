@@ -25,7 +25,6 @@
 
 #include <functional>
 
-#include "Basics/Common.h"
 #include "Utilities/ShellBase.h"
 
 namespace arangodb {

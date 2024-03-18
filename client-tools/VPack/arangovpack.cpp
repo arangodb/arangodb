@@ -23,7 +23,6 @@
 
 #include "arangovpack.h"
 
-#include "Basics/Common.h"
 #include "Basics/signals.h"
 #include "Basics/directories.h"
 

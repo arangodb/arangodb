@@ -30,6 +30,8 @@
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/WriteLocker.h"
+#include "Basics/debugging.h"
+#include "Basics/system-functions.h"
 #include "Basics/tri-strings.h"
 #include "Cluster/ServerState.h"
 #include "GeneralServer/AuthenticationFeature.h"
@@ -52,6 +54,10 @@ namespace {
 constexpr std::string_view hs256String("HS256");
 constexpr std::string_view jwtString("JWT");
 }  // namespace
+
+bool auth::TokenCache::Entry::expired() const noexcept {
+  return _expiry != 0 && _expiry < TRI_microtime();
+}
 
 auth::TokenCache::TokenCache(auth::UserManager* um, double timeout)
     : _userManager(um), _jwtCache(16384), _authTimeout(timeout) {}
@@ -81,6 +87,11 @@ void auth::TokenCache::setJwtSecret(std::string jwtSecret) {
 }
 
 #endif
+
+std::string const& auth::TokenCache::jwtToken() const noexcept {
+  TRI_ASSERT(!_jwtSuperToken.empty());
+  return _jwtSuperToken;
+}
 
 std::string auth::TokenCache::jwtSecret() const {
   READ_LOCKER(writeLocker, _jwtSecretLock);

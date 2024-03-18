@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Replication/ReplicationApplier.h"
 #include "VocBase/voc-types.h"
 

@@ -26,17 +26,19 @@
 
 #include "Aql/QueryResult.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Basics/Common.h"
 #include "Transaction/Context.h"
 #include "Transaction/Methods.h"
 #include "Utils/Cursor.h"
+#include "Utils/DatabaseGuard.h"
 #include "VocBase/vocbase.h"
+
+#include <velocypack/Iterator.h>
 
 #include <cstdint>
 #include <deque>
+#include <memory>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 class AqlItemBlock;
 enum class ExecutionState;
@@ -160,5 +162,4 @@ class QueryStreamCursor final : public arangodb::Cursor {
                           // gone.
 };
 
-}  // namespace aql
-}  // namespace arangodb
+}  // namespace arangodb::aql

@@ -23,9 +23,9 @@
 
 #pragma once
 
-#include <fuerte/types.h>
-#include "Basics/Common.h"
 #include "Metrics/Fwd.h"
+
+#include <fuerte/types.h>
 
 namespace arangodb {
 namespace fuerte {

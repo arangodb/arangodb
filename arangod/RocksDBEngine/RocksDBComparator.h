@@ -24,8 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <rocksdb/comparator.h>
 #include <rocksdb/slice.h>
 

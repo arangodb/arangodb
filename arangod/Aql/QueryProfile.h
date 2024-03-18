@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/QueryExecutionState.h"
-#include "Basics/Common.h"
 
 #include <array>
 

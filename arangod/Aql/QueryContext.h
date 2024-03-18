@@ -28,7 +28,6 @@
 #include "Aql/QueryOptions.h"
 #include "Aql/QueryWarnings.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ResultT.h"
 #include "Transaction/OperationOrigin.h"

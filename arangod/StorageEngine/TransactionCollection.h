@@ -25,7 +25,6 @@
 
 #include <memory>
 
-#include "Basics/Common.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/DataSourceId.h"
 #include "VocBase/voc-types.h"

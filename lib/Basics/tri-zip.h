@@ -27,7 +27,6 @@
 #include <string>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "ErrorCode.h"
 
 ErrorCode TRI_Adler32(char const* filename, uint32_t& checksum);

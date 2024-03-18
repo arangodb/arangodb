@@ -26,7 +26,6 @@
 #include <mutex>
 #include <unordered_map>
 
-#include "Basics/Common.h"
 #include "Metrics/Fwd.h"
 #include "Utils/Cursor.h"
 #include "VocBase/voc-types.h"

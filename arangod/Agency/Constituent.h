@@ -26,7 +26,6 @@
 #include "AgencyCommon.h"
 
 #include "AgentConfiguration.h"
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 #include "Basics/Thread.h"
 #include "Metrics/Fwd.h"

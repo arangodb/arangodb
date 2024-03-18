@@ -31,7 +31,6 @@
 #include <string>
 #include <thread>
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 #ifdef TRI_HAVE_UNISTD_H

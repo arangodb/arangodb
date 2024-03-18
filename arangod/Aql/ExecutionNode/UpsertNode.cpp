@@ -23,6 +23,7 @@
 
 #include "UpsertNode.h"
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionBlockImpl.tpp"

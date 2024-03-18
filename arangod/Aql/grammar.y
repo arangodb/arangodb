@@ -21,6 +21,7 @@
 #define YYSTACK_USE_ALLOCA 1
 
 #include "Aql/Aggregator.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Function.h"
 #include "Aql/Parser.h"

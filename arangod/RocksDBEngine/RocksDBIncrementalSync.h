@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Replication/DatabaseInitialSyncer.h"
 #include "Replication/ReplicationMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"

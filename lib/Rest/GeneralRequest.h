@@ -38,7 +38,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"

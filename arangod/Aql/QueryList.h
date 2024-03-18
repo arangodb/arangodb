@@ -30,7 +30,6 @@
 #include <unordered_map>
 
 #include "Aql/QueryExecutionState.h"
-#include "Basics/Common.h"
 #include "Basics/ErrorCode.h"
 #include "Basics/ReadWriteLock.h"
 #include "VocBase/voc-types.h"

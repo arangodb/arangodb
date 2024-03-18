@@ -25,8 +25,6 @@
 
 #include <memory>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 namespace aql {
 class ExecutionPlan;

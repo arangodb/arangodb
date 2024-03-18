@@ -24,7 +24,6 @@
 #pragma once
 
 #include "RestServer/arangod.h"
-#include "Basics/Common.h"
 
 namespace arangodb {
 

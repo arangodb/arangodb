@@ -25,7 +25,6 @@
 
 #include <cstdint>
 
-#include "Basics/Common.h"
 #include "Cluster/RebootTracker.h"
 
 namespace arangodb {

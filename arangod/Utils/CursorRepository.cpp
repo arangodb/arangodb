@@ -28,6 +28,7 @@
 #include "Aql/QueryCursor.h"
 #include "Aql/QueryResult.h"
 #include "Basics/ScopeGuard.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ServerState.h"
 #include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"

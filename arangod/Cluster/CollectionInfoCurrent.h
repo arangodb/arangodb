@@ -30,7 +30,6 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Containers/FlatHashMap.h"

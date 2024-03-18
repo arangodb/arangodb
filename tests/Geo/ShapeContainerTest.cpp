@@ -30,7 +30,6 @@
 
 #include "Aql/VelocyPackHelper.h"
 
-#include "Basics/Common.h"
 #include "Basics/error.h"
 #include "Basics/Exceptions.h"
 

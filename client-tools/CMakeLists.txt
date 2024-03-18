@@ -8,6 +8,12 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/bin/")
 
 add_compile_warnings_flags()
 
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 add_subdirectory(Benchmark)
 add_subdirectory(Backup)
 add_subdirectory(Dump)

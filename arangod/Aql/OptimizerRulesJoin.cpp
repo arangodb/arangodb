@@ -22,6 +22,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Ast.h"
 #include "Aql/AstHelper.h"
 #include "Aql/AttributeNamePath.h"
 #include "Aql/Collection.h"

@@ -27,7 +27,6 @@
 #include <s2/s2region_coverer.h>
 #include <s2/s2region_intersection.h>
 
-#include "Basics/Common.h"
 #include "Geo/GeoParams.h"
 #include "Geo/Utils.h"
 #include "Logger/Logger.h"

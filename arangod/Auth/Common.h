@@ -24,8 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <velocypack/Slice.h>
 
 #include <string_view>

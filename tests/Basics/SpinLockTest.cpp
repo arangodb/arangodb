@@ -22,7 +22,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteSpinLock.h"
 #include "Basics/SpinLocker.h"
 #include "Basics/SpinUnlocker.h"

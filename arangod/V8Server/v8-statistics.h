@@ -27,8 +27,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
-
 #include "V8/v8-globals.h"
 
 void TRI_InitV8Statistics(v8::Isolate* isolate, v8::Handle<v8::Context>);

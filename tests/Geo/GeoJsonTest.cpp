@@ -31,7 +31,6 @@
 #include <velocypack/Builder.h>
 
 #include "Aql/VelocyPackHelper.h"
-#include "Basics/Common.h"
 #include "Basics/voc-errors.h"
 #include "Geo/GeoJson.h"
 #include "Geo/ShapeContainer.h"

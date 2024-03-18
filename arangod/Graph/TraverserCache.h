@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/StringHeap.h"
 
 #include <velocypack/Builder.h>

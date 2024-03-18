@@ -23,8 +23,7 @@
 
 #include "TraversalExecutor.h"
 
-#include <utility>
-
+#include "Aql/Ast.h"
 #include "Aql/ExecutorExpressionContext.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/Query.h"
@@ -44,6 +43,8 @@
 #endif
 
 #include "Graph/algorithm-aliases.h"
+
+#include <utility>
 
 using namespace arangodb;
 using namespace arangodb::aql;

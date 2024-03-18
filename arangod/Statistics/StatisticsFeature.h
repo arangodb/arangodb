@@ -33,6 +33,7 @@
 
 #include <array>
 #include <initializer_list>
+#include <memory>
 #include <string>
 #include <string_view>
 
@@ -87,12 +88,11 @@ extern RequestFigures UserRequestFigures;
 
 class StatisticsFeature final : public ArangodFeature {
  public:
-  static double time() { return TRI_microtime(); }
-
- public:
   static constexpr std::string_view name() noexcept { return "Statistics"; }
 
   explicit StatisticsFeature(Server& server);
+
+  static double time();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;

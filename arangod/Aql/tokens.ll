@@ -21,7 +21,6 @@
 }
 
 %{
-#include "Basics/Common.h"
 #include "Basics/NumberUtils.h"
 #include "Basics/conversions.h"
 #include "Basics/operating-system.h"
@@ -36,6 +35,7 @@ class Parser;
 }
 }
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/grammar.hpp"
 #include "Aql/Functions.h"

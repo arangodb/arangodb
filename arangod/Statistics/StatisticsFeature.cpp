@@ -32,6 +32,7 @@
 #include "Basics/StringUtils.h"
 #include "Basics/application-exit.h"
 #include "Basics/process-utils.h"
+#include "Basics/system-functions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
@@ -667,6 +668,8 @@ StatisticsFeature::StatisticsFeature(Server& server)
   }
 #endif
 }
+
+/*static*/ double StatisticsFeature::time() { return TRI_microtime(); }
 
 void StatisticsFeature::collectOptions(
     std::shared_ptr<ProgramOptions> options) {

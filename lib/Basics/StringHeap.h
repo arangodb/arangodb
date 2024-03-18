@@ -26,8 +26,6 @@
 #include <cstddef>
 #include <vector>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 struct ResourceMonitor;
 

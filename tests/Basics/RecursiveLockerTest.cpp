@@ -23,7 +23,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Basics/RecursiveLocker.h"
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
 #include "Basics/ThreadGuard.h"

@@ -25,6 +25,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlItemBlockManager.h"
+#include "Aql/Ast.h"
 #include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/BlocksWithClients.h"
 #include "Aql/Collection.h"

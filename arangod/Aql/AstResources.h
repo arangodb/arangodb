@@ -29,7 +29,6 @@
 
 #include "Aql/AstNode.h"
 #include "Aql/ShortStringStorage.h"
-#include "Basics/Common.h"
 #include "Basics/FixedSizeAllocator.h"
 
 namespace arangodb {
@@ -41,7 +40,6 @@ class Slice;
 
 namespace aql {
 class Ast;
-struct AstNode;
 
 class AstResources {
  public:

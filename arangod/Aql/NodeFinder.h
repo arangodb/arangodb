@@ -25,7 +25,6 @@
 
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 
 namespace arangodb::aql {

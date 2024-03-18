@@ -30,7 +30,6 @@
 #include <string_view>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {

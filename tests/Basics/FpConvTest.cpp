@@ -24,8 +24,6 @@
 
 #include <cmath>
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "Basics/fpconv.h"

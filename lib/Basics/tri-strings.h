@@ -26,8 +26,6 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "Basics/Common.h"
-
 ////////////////////////////////////////////////////////////////////////////////
 /// @brief convert an ASCII string to lower case
 ///

@@ -27,7 +27,6 @@
 #include <string_view>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "BaseOptions.h"
 #include "Graph/EdgeCursor.h"
 #include "Indexes/IndexIterator.h"

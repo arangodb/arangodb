@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/QueryResult.h"
-#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 #include "Scheduler/Scheduler.h"
 #include "Transaction/Hints.h"

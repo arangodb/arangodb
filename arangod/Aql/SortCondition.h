@@ -25,7 +25,6 @@
 
 #include "Aql/Variable.h"
 #include "Basics/AttributeNameParser.h"
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 #include "Containers/HashSet.h"
 

@@ -25,7 +25,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
 #include "RocksDBEngine/RocksDBComparator.h"

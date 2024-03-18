@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <utils/attribute_provider.hpp>
 #include <utils/attributes.hpp>
 #include <utils/bit_utils.hpp>
 

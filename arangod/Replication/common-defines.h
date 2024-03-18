@@ -26,8 +26,6 @@
 #include <cstdlib>
 #include <string>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 
 /// @brief replication operations

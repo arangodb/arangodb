@@ -29,11 +29,15 @@
 #include "Aql/ExecutionNode/EnumeratePathsNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Basics/overload.h"
 #include "Logger/LogMacros.h"
 
+#include <fmt/format.h>
+
 #include <optional>
+#include <string>
 
 using namespace arangodb::aql;
 using EN = arangodb::aql::ExecutionNode;

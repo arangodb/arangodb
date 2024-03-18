@@ -27,6 +27,7 @@
 #include "Aql/Expression.h"
 #include "Aql/PruneExpressionEvaluator.h"
 #include "Aql/QueryContext.h"
+#include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/tryEmplaceHelper.h"

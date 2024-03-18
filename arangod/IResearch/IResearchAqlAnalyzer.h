@@ -23,24 +23,32 @@
 
 #pragma once
 
-#include "analysis/analyzers.hpp"
-#include "analysis/token_attributes.hpp"
-#include "analysis/token_streams.hpp"
-#include "utils/attribute_helper.hpp"
-#include "Aql/Ast.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/AqlValue.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionPlan.h"
-#include "Aql/QueryContext.h"
 #include "Aql/SharedAqlItemBlockPtr.h"
-#include "Containers/SmallVector.h"
-#include "StorageEngine/TransactionState.h"
 #include "IResearchAnalyzerValueTypeAttribute.h"
 #include "IResearchVPackTermAttribute.h"
+#include "StorageEngine/TransactionState.h"
 
+#include "analysis/analyzers.hpp"
+#include "analysis/token_attributes.hpp"
+#include "analysis/token_streams.hpp"
+#include "utils/attribute_helper.hpp"
+
+#include <cstdint>
+#include <memory>
 #include <string>
+#include <string_view>
+#include <vector>
+
+namespace arangodb::aql {
+struct AstNode;
+class CalculationNode;
+class ExecutionPlan;
+class QueryContext;
+}  // namespace arangodb::aql
 
 namespace arangodb::iresearch {
 

@@ -27,7 +27,6 @@
 #include "Aql/ExpressionContext.h"
 #include "Aql/Function.h"
 #include "Aql/Functions.h"
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Basics/fpconv.h"
 #include "Basics/tri-strings.h"

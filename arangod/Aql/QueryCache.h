@@ -30,7 +30,6 @@
 #include <vector>
 
 #include "Aql/QueryString.h"
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 
 struct TRI_vocbase_t;

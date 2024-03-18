@@ -30,7 +30,6 @@
 #include "Aql/Executor/ModificationExecutorHelpers.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/SharedQueryState.h"
-#include "Basics/Common.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"

@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/application-exit.h"
 #include "Basics/debugging.h"
 #include "Logger/LogMacros.h"

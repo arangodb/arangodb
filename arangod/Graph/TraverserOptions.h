@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/FixedVarExpressionContext.h"
-#include "Basics/Common.h"
 #include "Graph/BaseOptions.h"
 #include "StorageEngine/TransactionState.h"
 

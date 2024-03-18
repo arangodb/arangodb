@@ -23,12 +23,12 @@
 
 #include "Parser.h"
 
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
-#include "Basics/Common.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/debugging.h"
 

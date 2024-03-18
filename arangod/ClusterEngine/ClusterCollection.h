@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "ClusterEngine/ClusterSelectivityEstimates.h"
 #include "ClusterEngine/Common.h"

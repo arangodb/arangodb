@@ -21,7 +21,6 @@
 /// @author Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/files.h"
 #include "Basics/system-functions.h"
 #include "Random/RandomGenerator.h"

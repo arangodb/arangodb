@@ -25,7 +25,6 @@
 
 #include <velocypack/Builder.h>
 
-#include "Basics/Common.h"
 #include "ClusterEngine/ClusterTransactionState.h"
 #include "ClusterEngine/Common.h"
 #include "Indexes/Index.h"

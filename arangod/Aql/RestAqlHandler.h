@@ -24,7 +24,6 @@
 #pragma once
 
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
 struct TRI_vocbase_t;

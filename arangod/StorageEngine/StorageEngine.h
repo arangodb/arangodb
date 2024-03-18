@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/Result.h"
 #include "Indexes/IndexFactory.h"
 #include "RestServer/arangod.h"

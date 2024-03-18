@@ -23,11 +23,14 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
 #include "Aql/LazyConditions.h"
-#include "Basics/Common.h"
+#include "Basics/ErrorCode.h"
+
+#include <cstddef>
+#include <string_view>
 
 namespace arangodb::aql {
+class Ast;
 struct AstNode;
 class QueryContext;
 struct QueryResult;
