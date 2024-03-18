@@ -131,13 +131,13 @@ It knows via its `instance`s which processes to start, stop, halt or maybe resta
 | Path / File                                                  | Description                                                                                                 |
 | :----------------------------------------------------------- | :---------------------------------------------------------------------------------------------------------- |
 | `testsuites/dump.js`                                         | complex infrastructure managing several instance lifecycles during serveral dump/restore/hotbackup attempts |
-| tests/js/client/dump/                                        | test logic for all variations of deployments distributed over several files                                 |
-| [dump-singleserver\|dump-multiple\|dump-cluster]             | previously created dumps to be restored within the tests                                                    |
-| dump-setup-common.inc                                        | contains all functions to create test data to create before creating the dump                               |
-| dump-test.inc                                                | contains all functions to test data after restore                                                           |
-| dump-setup-*js                                               | consists of calls to the respective set from `dump-setup-common.inc` of test data to be created             |
-| dump-check*js                                                | consists of calls to the respective set from `dump-setup-common.inc` of the test data to be checked         |
-| check*                                                       | more checks that could be referenced from individual dump suites                                            |
+| `tests/js/client/dump/`                                      | test logic for all variations of deployments distributed over several files                                 |
+| `[dump-singleserver\|dump-multiple\|dump-cluster]`           | previously created dumps to be restored within the tests                                                    |
+| `dump-setup-common.inc`                                      | contains all functions to create test data to create before creating the dump                               |
+| `dump-test.inc`                                              | contains all functions to test data after restore                                                           |
+| `dump-setup-*js`                                             | consists of calls to the respective set from `dump-setup-common.inc` of test data to be created             |
+| `dump-check*js`                                              | consists of calls to the respective set from `dump-setup-common.inc` of the test data to be checked         |
+| `check*`                                                     | more checks that could be referenced from individual dump suites                                            |
 
 ### structure in test files
 To create the individual initial provisioning dataset, setup .js files invoke the respective list of setup functions from `dump-setup-common.inc`.
