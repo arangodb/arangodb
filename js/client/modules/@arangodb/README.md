@@ -1,5 +1,5 @@
 === Arango DB test infrasturcture ===
-== Philosopy ==
+== Philosophy ==
 All the code structure and the test infrastructure works in a way to
 - have results in all (worst-) cases
 - must not lock up, and terminate in a reasonable timeframe under all circumstances
