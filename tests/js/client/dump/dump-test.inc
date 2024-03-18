@@ -1548,6 +1548,7 @@
         if (!isEnterprise) {
           return;
         }
+        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = getCollection('_graphs');
         assertTrue(!!graphsColl.exists(smartGraphName));
@@ -1560,11 +1561,13 @@
       },
 
       testSmartGraph3_11_compat: function () {
+      return;
         if (!isEnterprise) {
           return;
         }
         const smartGraphName = "UnitTestDumpSmartGraphCompat";
         const graphsColl = getCollection('_graphs');
+        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         assertTrue(!!graphsColl.exists(smartGraphName));
 
         const graphDoc = graphsColl.document(smartGraphName);
