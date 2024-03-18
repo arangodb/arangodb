@@ -278,33 +278,39 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     transaction::Methods& trx,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) const {
   switch (_indexType) {
     case TRI_IDX_TYPE_PRIMARY_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
-            allIndexes, this, node, reference, itemsInIndex);
+            allIndexes, this, node, reference, itemsInIndex, hint,
+            readOwnWrites);
       }
       // other...
       std::vector<std::vector<basics::AttributeName>> fields{
           {basics::AttributeName(StaticStrings::KeyString, false)},
           {basics::AttributeName(StaticStrings::IdString, false)}};
       SimpleAttributeEqualityMatcher matcher(fields);
-      return matcher.matchOne(this, node, reference, itemsInIndex);
+      return matcher.matchOne(this, node, reference, itemsInIndex, hint,
+                              readOwnWrites);
     }
     case TRI_IDX_TYPE_EDGE_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         SimpleAttributeEqualityMatcher matcher(this->_fields);
-        return matcher.matchOne(this, node, reference, itemsInIndex);
+        return matcher.matchOne(this, node, reference, itemsInIndex, hint,
+                                readOwnWrites);
       }
       // other...
       SimpleAttributeEqualityMatcher matcher(this->_fields);
-      return matcher.matchOne(this, node, reference, itemsInIndex);
+      return matcher.matchOne(this, node, reference, itemsInIndex, hint,
+                              readOwnWrites);
     }
     case TRI_IDX_TYPE_HASH_INDEX: {
       if (_engineType == ClusterEngineType::RocksDBEngine) {
         return SortedIndexAttributeMatcher::supportsFilterCondition(
-            allIndexes, this, node, reference, itemsInIndex);
+            allIndexes, this, node, reference, itemsInIndex, hint,
+            readOwnWrites);
       }
       break;
     }
@@ -314,7 +320,7 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_PERSISTENT_INDEX: {
       // same for both engines
       return SortedIndexAttributeMatcher::supportsFilterCondition(
-          allIndexes, this, node, reference, itemsInIndex);
+          allIndexes, this, node, reference, itemsInIndex, hint, readOwnWrites);
     }
     case TRI_IDX_TYPE_GEO_INDEX:
     case TRI_IDX_TYPE_GEO1_INDEX:
@@ -325,14 +331,14 @@ Index::FilterCosts ClusterIndex::supportsFilterCondition(
     case TRI_IDX_TYPE_NO_ACCESS_INDEX: {
       // should not be called for these indexes
       return Index::supportsFilterCondition(trx, allIndexes, node, reference,
-                                            itemsInIndex);
+                                            itemsInIndex, hint, readOwnWrites);
     }
 
     case TRI_IDX_TYPE_ZKD_INDEX:
     case TRI_IDX_TYPE_MDI_INDEX:
     case TRI_IDX_TYPE_MDI_PREFIXED_INDEX:
       return mdi::supportsFilterCondition(this, allIndexes, node, reference,
-                                          itemsInIndex);
+                                          itemsInIndex, hint, readOwnWrites);
 
     case TRI_IDX_TYPE_UNKNOWN:
       break;

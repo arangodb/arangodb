@@ -27,12 +27,14 @@
 #include "Containers/FlatHashSet.h"
 #include "Containers/HashSet.h"
 #include "Indexes/Index.h"
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
 namespace aql {
 class Ast;
 enum AstNodeType : uint32_t;
 struct AstNode;
+class IndexHint;
 class SortCondition;
 struct Variable;
 }  // namespace aql
@@ -44,7 +46,8 @@ namespace SortedIndexAttributeMatcher {
 Index::FilterCosts supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex);
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::IndexHint const& hint, ReadOwnWrites readOwnWrites);
 
 Index::SortCosts supportsSortCondition(
     arangodb::Index const* index,

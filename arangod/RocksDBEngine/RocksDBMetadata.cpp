@@ -47,6 +47,10 @@
 #include <rocksdb/utilities/transaction.h>
 #include <velocypack/Iterator.h>
 
+#include <rocksdb/db.h>
+#include <rocksdb/utilities/transaction.h>
+#include <velocypack/Iterator.h>
+
 #include <chrono>
 #include <thread>
 

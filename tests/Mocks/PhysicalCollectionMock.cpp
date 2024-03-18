@@ -319,10 +319,12 @@ class EdgeIndexMock final : public arangodb::Index {
       arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
       arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+      arangodb::aql::Variable const* reference, size_t itemsInIndex,
+      arangodb::aql::IndexHint const& hint,
+      arangodb::ReadOwnWrites readOwnWrites) const override {
     arangodb::SimpleAttributeEqualityMatcher matcher(IndexAttributes);
-    return matcher.matchOne(this, node, reference, itemsInIndex);
+    return matcher.matchOne(this, node, reference, itemsInIndex, hint,
+                            readOwnWrites);
   }
 
   std::unique_ptr<arangodb::IndexIterator> iteratorForCondition(
@@ -796,10 +798,11 @@ class HashIndexMock final : public arangodb::Index {
       arangodb::transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       arangodb::aql::AstNode const* node,
-      arangodb::aql::Variable const* reference,
-      size_t itemsInIndex) const override {
+      arangodb::aql::Variable const* reference, size_t itemsInIndex,
+      arangodb::aql::IndexHint const& hint,
+      arangodb::ReadOwnWrites readOwnWrites) const override {
     return arangodb::SortedIndexAttributeMatcher::supportsFilterCondition(
-        allIndexes, this, node, reference, itemsInIndex);
+        allIndexes, this, node, reference, itemsInIndex, hint, readOwnWrites);
   }
 
   Index::SortCosts supportsSortCondition(

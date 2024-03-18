@@ -42,7 +42,8 @@ SimpleAttributeEqualityMatcher::SimpleAttributeEqualityMatcher(
 /// this is used for the primary index and the edge index
 Index::FilterCosts SimpleAttributeEqualityMatcher::matchOne(
     arangodb::Index const* index, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::IndexHint const& /*hint*/, ReadOwnWrites /*readOwnWrites*/) {
   size_t postFilterConditions = 0;
   arangodb::containers::FlatHashSet<std::string> nonNullAttributes;
   _found.clear();

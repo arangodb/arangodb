@@ -101,7 +101,8 @@ class IResearchInvertedIndexMock final : public Index,
       transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const final;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const final;
 
   aql::AstNode* specializeCondition(transaction::Methods& trx,
                                     aql::AstNode* node,

@@ -1748,15 +1748,15 @@ TEST_F(IResearchFeatureTest, test_start) {
           {"STARTS_WITH", {".,.|.,.", FunctionType::FILTER}},
           {"MIN_MATCH", {".,.|.+", FunctionType::FILTER}},
           {"LIKE", {".,.|.", FunctionType::FILTER}},
-          {"NGRAM_MATCH", {".,.|.,.", FunctionType::FILTER}},
-          {"LEVENSHTEIN_MATCH", {".,.,.|.,.,.", FunctionType::FILTER}},
+          {"NGRAM_MATCH", {".,b|b,b", FunctionType::FILTER}},
+          {"LEVENSHTEIN_MATCH", {".,b,b|b,b,.", FunctionType::FILTER}},
           {"IN_RANGE", {".,.,.,.,.", FunctionType::FILTER}},
           {"GEO_IN_RANGE", {".,.,.,.|.,.,.", FunctionType::FILTER}},
           {"GEO_CONTAINS", {".,.", FunctionType::FILTER}},
           {"GEO_INTERSECTS", {".,.", FunctionType::FILTER}},
 
           // context functions
-          {"ANALYZER", {".,.", FunctionType::FILTER}},
+          {"ANALYZER", {".,b", FunctionType::FILTER}},
           {"BOOST", {".,.", FunctionType::FILTER}},
 
           // scorer functions

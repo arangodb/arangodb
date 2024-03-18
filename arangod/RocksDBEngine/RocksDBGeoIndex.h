@@ -79,7 +79,8 @@ class RocksDBGeoIndex final : public RocksDBIndex, public geo_index::Index {
       transaction::Methods& trx,
       std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const override;
 
   void toVelocyPack(
       velocypack::Builder&,

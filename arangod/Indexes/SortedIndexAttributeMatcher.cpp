@@ -119,12 +119,6 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     return false;
   }
 
-  std::pair<arangodb::aql::Variable const*,
-            std::vector<arangodb::basics::AttributeName>>
-      attributeData;
-  bool const isPrimaryIndex =
-      idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
-
   if (idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_TTL_INDEX &&
       (!other->isConstant() ||
        !(other->isIntValue() || other->isDoubleValue()))) {
@@ -133,6 +127,12 @@ bool SortedIndexAttributeMatcher::accessFitsIndex(
     // TODO: move this into the specific index class
     return false;
   }
+
+  std::pair<arangodb::aql::Variable const*,
+            std::vector<arangodb::basics::AttributeName>>
+      attributeData;
+  bool const isPrimaryIndex =
+      idx->type() == arangodb::Index::IndexType::TRI_IDX_TYPE_PRIMARY_INDEX;
 
   if (op->type != arangodb::aql::NODE_TYPE_OPERATOR_BINARY_IN) {
     if (!access->isAttributeAccessForVariable(attributeData) ||
@@ -277,7 +277,8 @@ void SortedIndexAttributeMatcher::matchAttributes(
 Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
-    arangodb::aql::Variable const* reference, size_t itemsInIndex) {
+    arangodb::aql::Variable const* reference, size_t itemsInIndex,
+    arangodb::aql::IndexHint const& hint, ReadOwnWrites readOwnWrites) {
   // mmfiles failure point compat
   if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
     TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {

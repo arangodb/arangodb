@@ -68,6 +68,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -3020,7 +3021,7 @@ struct SortToIndexNode final
             outVariable, usedIndexes,
             false,  // here we could always assume false as there is no lookup
                     // condition here
-            std::move(condition), opts);
+            std::move(condition), opts, enumerateCollectionNode->hint());
 
         enumerateCollectionNode->CollectionAccessingNode::cloneInto(*n);
         enumerateCollectionNode->DocumentProducingNode::cloneInto(_plan, *n);
@@ -7250,7 +7251,7 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
           transaction::Methods::IndexHandle{info.index}},
       false,  // here we are not using inverted index so
               // for sure no "whole" coverage
-      std::move(condition), opts);
+      std::move(condition), opts, IndexHint{});
   plan->replaceNode(info.collectionNodeToReplace, inode);
 
   // remove expressions covered by our index

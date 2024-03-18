@@ -119,9 +119,11 @@ Index::FilterCosts IResearchInvertedIndexMock::supportsFilterCondition(
     transaction::Methods& trx,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) const {
   return IResearchInvertedIndex::supportsFilterCondition(
-      trx, id(), _fields, allIndexes, node, reference, itemsInIndex);
+      trx, id(), _fields, allIndexes, node, reference, itemsInIndex, hint,
+      readOwnWrites, name());
 }
 
 aql::AstNode* IResearchInvertedIndexMock::specializeCondition(

@@ -57,7 +57,8 @@ class RocksDBMdiIndexBase : public RocksDBIndex {
       transaction::Methods& /*trx*/,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const override;
 
   aql::AstNode* specializeCondition(
       transaction::Methods& trx, aql::AstNode* condition,
@@ -149,7 +150,8 @@ void extractBoundsFromCondition(
 auto supportsFilterCondition(
     Index const* index, std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) -> Index::FilterCosts;
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) -> Index::FilterCosts;
 
 auto specializeCondition(Index const* index, aql::AstNode* condition,
                          aql::Variable const* reference) -> aql::AstNode*;

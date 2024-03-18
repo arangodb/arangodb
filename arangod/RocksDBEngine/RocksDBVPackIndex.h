@@ -25,9 +25,6 @@
 
 #pragma once
 
-#include <velocypack/Buffer.h>
-#include <velocypack/Slice.h>
-
 #include "Containers/SmallVector.h"
 #include "Indexes/IndexIterator.h"
 #include "RocksDBEngine/RocksDBCuckooIndexEstimator.h"
@@ -41,6 +38,9 @@
 #include "VocBase/vocbase.h"
 
 #include <span>
+
+#include <velocypack/Buffer.h>
+#include <velocypack/Slice.h>
 
 namespace rocksdb {
 class Slice;
@@ -114,7 +114,8 @@ class RocksDBVPackIndex : public RocksDBIndex {
       transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const override;
 
   Index::SortCosts supportsSortCondition(
       aql::SortCondition const* sortCondition, aql::Variable const* reference,

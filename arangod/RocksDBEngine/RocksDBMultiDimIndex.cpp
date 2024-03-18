@@ -563,7 +563,8 @@ void mdi::extractBoundsFromCondition(
 auto mdi::supportsFilterCondition(
     Index const* index, std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) -> Index::FilterCosts {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) -> Index::FilterCosts {
   TRI_ASSERT(node->type == aql::NODE_TYPE_OPERATOR_NARY_AND);
   std::unordered_map<size_t, aql::AstNode const*> extractedPrefix;
   std::unordered_map<size_t, ExpressionBounds> extractedBounds;
@@ -1013,9 +1014,10 @@ Index::FilterCosts RocksDBMdiIndexBase::supportsFilterCondition(
     transaction::Methods& /*trx*/,
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) const {
   return mdi::supportsFilterCondition(this, allIndexes, node, reference,
-                                      itemsInIndex);
+                                      itemsInIndex, hint, readOwnWrites);
 }
 
 aql::AstNode* RocksDBMdiIndexBase::specializeCondition(

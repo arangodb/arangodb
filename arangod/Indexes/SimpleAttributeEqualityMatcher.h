@@ -27,11 +27,13 @@
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Indexes/Index.h"
+#include "Utils/OperationOptions.h"
 
 namespace arangodb {
 namespace aql {
 class Ast;
 struct AstNode;
+class IndexHint;
 struct Variable;
 }  // namespace aql
 
@@ -48,7 +50,9 @@ class SimpleAttributeEqualityMatcher {
   Index::FilterCosts matchOne(arangodb::Index const* index,
                               arangodb::aql::AstNode const* node,
                               arangodb::aql::Variable const* reference,
-                              size_t itemsInIndex);
+                              size_t itemsInIndex,
+                              arangodb::aql::IndexHint const& hint,
+                              ReadOwnWrites readOwnWrites);
 
   /// @brief get the condition parts that the index is responsible for
   /// this is used for the primary index and the edge index

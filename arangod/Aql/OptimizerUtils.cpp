@@ -341,7 +341,7 @@ std::pair<bool, bool> findIndexHandleForAndNode(
 
   auto considerIndex =
       [&trx, &bestIndex, &bestCost, &bestSupportsFilter, &bestSupportsSort,
-       &indexes, node, reference, itemsInCollection, readOwnWrites,
+       &hint, &indexes, node, reference, itemsInCollection, readOwnWrites,
        &sortCondition](std::shared_ptr<Index> const& idx) -> void {
     TRI_ASSERT(!idx->inProgress());
 
@@ -353,15 +353,9 @@ std::pair<bool, bool> findIndexHandleForAndNode(
     bool supportsFilter = false;
     bool supportsSort = false;
 
-    if (readOwnWrites == ReadOwnWrites::yes &&
-        idx->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-      // inverted index does not support ReadOwnWrites
-      return;
-    }
-
     // check if the index supports the filter condition
     Index::FilterCosts costs = idx->supportsFilterCondition(
-        trx, indexes, node, reference, itemsInIndex);
+        trx, indexes, node, reference, itemsInIndex, hint, readOwnWrites);
 
     if (costs.supportsCondition) {
       // index supports the filter condition
@@ -1231,18 +1225,10 @@ std::pair<bool, bool> getBestIndexHandlesForFilterCondition(
       if (index->inProgress()) {
         continue;
       }
-      if (readOwnWrites == ReadOwnWrites::yes &&
-          index->type() == arangodb::Index::TRI_IDX_TYPE_INVERTED_INDEX) {
-        // inverted index does not support ReadOwnWrites
-        continue;
-      }
-      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX &&
-          // apply this index only if hinted
-          hint.type() == IndexHint::Simple &&
-          std::find(hint.hint().begin(), hint.hint().end(), index->name()) !=
-              hint.hint().end()) {
+      if (index->type() == Index::TRI_IDX_TYPE_INVERTED_INDEX) {
         auto costs = index->supportsFilterCondition(
-            trx, indexes, root, reference, itemsInCollection);
+            trx, indexes, root, reference, itemsInCollection, hint,
+            readOwnWrites);
         if (costs.supportsCondition) {
           // we need to find 'root' in 'ast' and replace it with specialized
           // version but for now we know that index will not alter the node, so

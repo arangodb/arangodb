@@ -48,6 +48,9 @@
 #include "VocBase/LogicalCollection.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <velocypack/Builder.h>
+#include <velocypack/Parser.h>
+
 using namespace arangodb::aql;
 
 namespace {
@@ -178,12 +181,18 @@ class IResearchInvertedIndexConditionTest
 
     // optimization time
     {
+      // set up index hint for using the inverted index
+      auto builder = arangodb::velocypack::Parser::fromJson(
+          "{\"indexHint\":{\"type\":\"simple\",\"forced\":true,\"hint\":["
+          "\"unique_name3\"]}}");
       // We use this noop transaction because query transaction is empty
       // TODO(MBkkt) Needs ability to create empty transaction
       //  with failed begin but correct in other
       arangodb::transaction::Methods trx{ctx};
-      auto costs = index->supportsFilterCondition(trx, id, indexFields, {},
-                                                  filterNode, ref, 0);
+      auto costs = index->supportsFilterCondition(
+          trx, id, indexFields, {}, filterNode, ref, 0,
+          arangodb::aql::IndexHint{builder->slice()},
+          arangodb::ReadOwnWrites::no, "unique_name3");
       ASSERT_EQ(expectedCosts.supportsCondition, costs.supportsCondition);
     }
     // runtime is not intended - we must decide during optimize time!

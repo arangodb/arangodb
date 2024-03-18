@@ -248,8 +248,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
     if (filterCreated.fail()) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           filterCreated.errorNumber(),
-          StringUtils::concatT("unsupported SEARCH condition: ",
-                               filterCreated.errorMessage()));
+          absl::StrCat("unsupported SEARCH condition: ",
+                       filterCreated.errorMessage()));
     }
   }
 

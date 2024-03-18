@@ -109,9 +109,11 @@ class IResearchInvertedClusterIndex final : public Index,
       transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const final {
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const final {
     return IResearchInvertedIndex::supportsFilterCondition(
-        trx, id(), Index::fields(), allIndexes, node, reference, itemsInIndex);
+        trx, id(), Index::fields(), allIndexes, node, reference, itemsInIndex,
+        hint, readOwnWrites, name());
   }
 
   aql::AstNode* specializeCondition(

@@ -571,7 +571,7 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
           transaction::Methods::IndexHandle{index}},
       false,  // here we are not using inverted index so for sure
               // no "whole" coverage
-      std::move(condition), IndexIteratorOptions());
+      std::move(condition), IndexIteratorOptions(), IndexHint{});
 
   //// wrap plan part into subquery
   return createSubqueryWithLimit(plan, calcNode, eIndex, eIndex,

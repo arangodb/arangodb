@@ -780,7 +780,8 @@ Result Index::drop() {
 Index::FilterCosts Index::supportsFilterCondition(
     transaction::Methods& /*trx*/, std::vector<std::shared_ptr<Index>> const&,
     aql::AstNode const* /* node */, aql::Variable const* /* reference */,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& /*hint*/,
+    ReadOwnWrites /*readOwnWrites*/) const {
   // by default no filter conditions are supported
   return Index::FilterCosts::defaultCosts(itemsInIndex);
 }

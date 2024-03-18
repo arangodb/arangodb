@@ -660,8 +660,11 @@ Index::FilterCosts JoinNode::costsForIndexInfo(
       root = root->getMember(0);
       TRI_ASSERT(root->type == NODE_TYPE_OPERATOR_NARY_AND);
     }
+    // node: IndexHint and ReadOwnWrites are hard-coded here, but are not
+    // relevant for the cost calculation anymore
     costs = info.index->supportsFilterCondition(trx, {}, root, info.outVariable,
-                                                itemsInCollection);
+                                                itemsInCollection, IndexHint{},
+                                                ReadOwnWrites::no);
   }
   return costs;
 }

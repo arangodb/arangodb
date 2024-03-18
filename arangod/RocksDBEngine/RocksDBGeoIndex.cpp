@@ -895,9 +895,10 @@ Result RocksDBGeoIndex::remove(transaction::Methods& trx, RocksDBMethods* mthd,
 
 arangodb::Index::FilterCosts RocksDBGeoIndex::supportsFilterCondition(
     transaction::Methods& /*trx*/,
-    std::vector<std::shared_ptr<arangodb::Index>> const& allIndexes,
-    aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    std::vector<std::shared_ptr<arangodb::Index>> const& /*allIndexes*/,
+    aql::AstNode const* /*node*/, aql::Variable const* /*reference*/,
+    size_t itemsInIndex, aql::IndexHint const& /*hint*/,
+    ReadOwnWrites /*readOwnWrites*/) const {
   arangodb::Index::FilterCosts costs =
       arangodb::Index::FilterCosts::defaultCosts(itemsInIndex, 1);
   costs.estimatedItems /= 100;

@@ -48,6 +48,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <initializer_list>
 
 using namespace arangodb;
@@ -195,8 +197,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             if (forced && !picked) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
                   TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                  "could not use index hint to serve query; " +
-                      hint.toString());
+                  absl::StrCat("could not use index hint to serve query; ",
+                               hint.toString()));
             }
           }
 
@@ -225,7 +227,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
                 std::vector<transaction::Methods::IndexHandle>{picked},
                 false,  // here we are not using inverted index so for sure no
                         // "whole" coverage
-                std::move(condition), opts);
+                std::move(condition), opts, hint);
             en->CollectionAccessingNode::cloneInto(*inode);
             en->DocumentProducingNode::cloneInto(plan.get(), *inode);
             plan->replaceNode(n, inode);
@@ -332,7 +334,7 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
               std::vector<transaction::Methods::IndexHandle>{picked},
               false,  // here we are not using inverted index so for sure no
                       // "whole" coverage
-              std::move(condition), opts);
+              std::move(condition), opts, hint);
           plan->replaceNode(n, inode);
           en->CollectionAccessingNode::cloneInto(*inode);
           en->DocumentProducingNode::cloneInto(plan.get(), *inode);

@@ -30,6 +30,8 @@
 #include "IResearch/IResearchDataStore.h"
 #include "IResearch/IResearchInvertedIndexMeta.h"
 
+#include <string_view>
+
 #include "search/boolean_filter.hpp"
 #include "search/bitset_doc_iterator.hpp"
 #include "search/score.hpp"
@@ -85,7 +87,8 @@ class IResearchInvertedIndex : public IResearchDataStore {
       std::vector<std::vector<basics::AttributeName>> const& fields,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites, std::string_view name) const;
 
   aql::AstNode* specializeCondition(transaction::Methods& trx,
                                     aql::AstNode* node,

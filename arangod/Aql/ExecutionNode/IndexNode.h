@@ -27,6 +27,7 @@
 #include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
+#include "Aql/IndexHint.h"
 #include "Aql/Projections.h"
 #include "Aql/RegisterPlan.h"
 #include "Aql/types.h"
@@ -98,7 +99,7 @@ class IndexNode : public ExecutionNode,
             aql::Collection const* collection, Variable const* outVariable,
             std::vector<transaction::Methods::IndexHandle> const& indexes,
             bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
-            IndexIteratorOptions const&);
+            IndexIteratorOptions const& opts, IndexHint const& hint);
 
   IndexNode(ExecutionPlan*, arangodb::velocypack::Slice const& base);
 
@@ -128,6 +129,9 @@ class IndexNode : public ExecutionNode,
   /// (e.g. if the index is used only for filtering)
   bool needsGatherNodeSort() const;
   void needsGatherNodeSort(bool value);
+
+  /// @brief user hint regarding which index to use
+  IndexHint const& hint() const;
 
   /// @brief creates corresponding ExecutionBlock
   std::unique_ptr<ExecutionBlock> createBlock(
@@ -250,6 +254,9 @@ class IndexNode : public ExecutionNode,
 
   /// @brief output variable to write only non-materialized document ids
   aql::Variable const* _outNonMaterializedDocId;
+
+  /// @brief which index hint to use
+  IndexHint _hint;
 };
 
 }  // namespace arangodb::aql

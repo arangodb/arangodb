@@ -91,7 +91,8 @@ class RocksDBPrimaryIndex final : public RocksDBIndex {
       transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const override;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const override;
 
   Index::SortCosts supportsSortCondition(aql::SortCondition const* node,
                                          aql::Variable const* reference,

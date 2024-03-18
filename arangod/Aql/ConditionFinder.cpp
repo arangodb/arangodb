@@ -116,7 +116,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
 
     case EN::ENUMERATE_COLLECTION: {
       auto node = ExecutionNode::castTo<EnumerateCollectionNode const*>(en);
-      if (_changes.find(node->id()) != _changes.end()) {
+      if (_changes.contains(node->id())) {
         // already optimized this node
         break;
       }
@@ -173,7 +173,7 @@ bool ConditionFinder::before(ExecutionNode* en) {
               IndexNode* idx = new IndexNode(
                   _plan, _plan->nextId(), node->collection(),
                   node->outVariable(), usedIndexes, isAllCoveredByIndex,
-                  std::move(condition), opts);
+                  std::move(condition), opts, node->hint());
               // if the enumerate collection node had the counting flag
               // set, we can copy it over to the index node as well
               idx->copyCountFlag(node);

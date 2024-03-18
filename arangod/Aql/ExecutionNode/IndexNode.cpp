@@ -59,7 +59,7 @@ IndexNode::IndexNode(
     Variable const* outVariable,
     std::vector<transaction::Methods::IndexHandle> const& indexes,
     bool allCoveredByOneIndex, std::unique_ptr<Condition> condition,
-    IndexIteratorOptions const& opts)
+    IndexIteratorOptions const& opts, IndexHint const& hint)
     : ExecutionNode(plan, id),
       DocumentProducingNode(outVariable),
       CollectionAccessingNode(collection),
@@ -68,7 +68,8 @@ IndexNode::IndexNode(
       _needsGatherNodeSort(false),
       _allCoveredByOneIndex(allCoveredByOneIndex),
       _options(opts),
-      _outNonMaterializedDocId(nullptr) {
+      _outNonMaterializedDocId(nullptr),
+      _hint(hint) {
   TRI_ASSERT(_condition != nullptr);
 
   prepareProjections();
@@ -84,8 +85,9 @@ IndexNode::IndexNode(ExecutionPlan* plan,
       _needsGatherNodeSort(basics::VelocyPackHelper::getBooleanValue(
           base, "needsGatherNodeSort", false)),
       _options(),
-      _outNonMaterializedDocId(aql::Variable::varFromVPack(
-          plan->getAst(), base, "outNmDocId", true)) {
+      _outNonMaterializedDocId(aql::Variable::varFromVPack(plan->getAst(), base,
+                                                           "outNmDocId", true)),
+      _hint(base) {
   _options.sorted =
       basics::VelocyPackHelper::getBooleanValue(base, "sorted", true);
   _options.ascending =
@@ -200,6 +202,9 @@ IndexNode::IndexNode(ExecutionPlan* plan,
   updateProjectionsIndexInfo();
 }
 
+/// @brief destroy the IndexNode
+IndexNode::~IndexNode() = default;
+
 void IndexNode::setProjections(arangodb::aql::Projections projections) {
   DocumentProducingNode::setProjections(std::move(projections));
   prepareProjections();
@@ -211,6 +216,8 @@ void IndexNode::setFilter(std::unique_ptr<Expression> filter) {
   prepareProjections();
 }
 
+IndexHint const& IndexNode::hint() const { return _hint; }
+
 /// @brief doToVelocyPack, for IndexNode
 void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
   // add outvariable and projections
@@ -218,6 +225,9 @@ void IndexNode::doToVelocyPack(VPackBuilder& builder, unsigned flags) const {
 
   // add collection information
   CollectionAccessingNode::toVelocyPack(builder, flags);
+
+  // index hint
+  _hint.toVelocyPack(builder);
 
   // "strategy" is not read back by the C++ code, but it is exposed for
   // convenience and testing
@@ -480,7 +490,7 @@ ExecutionNode* IndexNode::clone(ExecutionPlan* plan,
                                 bool withDependencies) const {
   auto c = std::make_unique<IndexNode>(plan, _id, collection(), _outVariable,
                                        _indexes, _allCoveredByOneIndex,
-                                       _condition->clone(), _options);
+                                       _condition->clone(), _options, _hint);
 
   c->needsGatherNodeSort(_needsGatherNodeSort);
   c->_outNonMaterializedDocId = _outNonMaterializedDocId;
@@ -515,9 +525,6 @@ void IndexNode::replaceAttributeAccess(ExecutionNode const* self,
   }
 }
 
-/// @brief destroy the IndexNode
-IndexNode::~IndexNode() = default;
-
 /// @brief the cost of an index node is a multiple of the cost of
 /// its unique dependency
 CostEstimate IndexNode::estimateCost() const {
@@ -541,7 +548,8 @@ CostEstimate IndexNode::estimateCost() const {
     if (root != nullptr && root->numMembers() > i) {
       auto const* condition = _allCoveredByOneIndex ? root : root->getMember(i);
       costs = _indexes[i]->supportsFilterCondition(
-          trx, {}, condition, _outVariable, itemsInCollection);
+          trx, {}, condition, _outVariable, itemsInCollection, _hint,
+          canReadOwnWrites());
     }
 
     totalItems += costs.estimatedItems;

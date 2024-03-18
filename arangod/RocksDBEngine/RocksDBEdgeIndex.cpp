@@ -926,9 +926,11 @@ Index::FilterCosts RocksDBEdgeIndex::supportsFilterCondition(
     transaction::Methods& /*trx*/,
     std::vector<std::shared_ptr<Index>> const& /*allIndexes*/,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites) const {
   SimpleAttributeEqualityMatcher matcher(this->_fields);
-  return matcher.matchOne(this, node, reference, itemsInIndex);
+  return matcher.matchOne(this, node, reference, itemsInIndex, hint,
+                          readOwnWrites);
 }
 
 /// @brief creates an IndexIterator for the given Condition

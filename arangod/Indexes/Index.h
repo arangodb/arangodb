@@ -52,6 +52,7 @@ class Slice;
 
 namespace aql {
 struct AstNode;
+class IndexHint;
 class Projections;
 class SortCondition;
 struct Variable;
@@ -364,7 +365,8 @@ class Index {
       transaction::Methods& trx,
       std::vector<std::shared_ptr<Index>> const& allIndexes,
       aql::AstNode const* node, aql::Variable const* reference,
-      size_t itemsInIndex) const;
+      size_t itemsInIndex, aql::IndexHint const& hint,
+      ReadOwnWrites readOwnWrites) const;
 
   /// @brief whether or not the sort condition is supported by the index
   /// returns detailed information about the costs associated with using this

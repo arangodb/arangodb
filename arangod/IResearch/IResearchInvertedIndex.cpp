@@ -1100,10 +1100,23 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     std::vector<std::vector<basics::AttributeName>> const& fields,
     std::vector<std::shared_ptr<Index>> const& /*allIndexes*/,
     aql::AstNode const* node, aql::Variable const* reference,
-    size_t itemsInIndex) const {
+    size_t itemsInIndex, aql::IndexHint const& hint,
+    ReadOwnWrites readOwnWrites, std::string_view name) const {
   TRI_ASSERT(node);
   TRI_ASSERT(reference);
   auto filterCosts = Index::FilterCosts::defaultCosts(itemsInIndex);
+
+  if (readOwnWrites == ReadOwnWrites::yes) {
+    // inverted index does not support ReadOwnWrites
+    return filterCosts;
+  }
+
+  if (hint.type() != aql::IndexHint::Simple ||
+      std::find(hint.hint().begin(), hint.hint().end(), name) ==
+          hint.hint().end()) {
+    // no index hint used, or a wrong one.
+    return filterCosts;
+  }
 
   // non-deterministic condition will mean full-scan. So we should
   // not use index here.
