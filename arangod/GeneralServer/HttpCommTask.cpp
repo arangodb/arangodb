@@ -259,7 +259,7 @@ int HttpCommTask<T>::on_message_complete(llhttp_t* p) try {
 
 template<SocketType T>
 HttpCommTask<T>::HttpCommTask(GeneralServer& server, ConnectionInfo info,
-                              std::unique_ptr<AsioSocket<T>> so)
+                              std::shared_ptr<AsioSocket<T>> so)
     : GeneralCommTask<T>(server, std::move(info), std::move(so)),
       _lastHeaderWasValue(false),
       _shouldKeepAlive(false),
