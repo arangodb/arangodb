@@ -35,7 +35,6 @@
 #include "Aql/QueryResultV8.h"
 #endif
 #include "Aql/QueryString.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8

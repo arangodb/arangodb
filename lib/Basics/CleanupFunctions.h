@@ -28,8 +28,6 @@
 #include <mutex>
 #include <vector>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 namespace basics {
 

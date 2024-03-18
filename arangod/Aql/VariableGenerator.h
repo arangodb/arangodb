@@ -25,7 +25,6 @@
 
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 #include <functional>
 #include <memory>

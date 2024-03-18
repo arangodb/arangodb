@@ -1014,6 +1014,8 @@ bool HeartbeatThread::handlePlanChangeCoordinator(uint64_t currentPlanVersion) {
 
   _hasRunOnce.store(true, std::memory_order_release);
 
+  // invalidate our local cache
+  _clusterFeature.clusterInfo().flush();
   return true;
 }
 

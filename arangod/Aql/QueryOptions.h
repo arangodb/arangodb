@@ -30,7 +30,6 @@
 
 #include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Transaction/Options.h"
 
