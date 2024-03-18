@@ -67,7 +67,7 @@ The result should be in a structure that can later be analyzed using `result-pro
 
 
 === test infrastructure ===
-The test infrastructure should be used by testsuites to do most of the heavy lifting; in best case it can contain just out of few lines.
+The test infrastructure should be used by testsuites to do most of the heavy lifting; in best case it can contain just a few lines.
 == integration testsuites management ==
 A testsuite receives a list of testfiles where each one is a single `integration testsuite`. Its files located by `testing.js` from the `allTestPaths` directory list.
 Testing.js already filtered it, and split it to buckets (test-utils.js:`filterTestcaseByOptions()`) according to commandline options.
