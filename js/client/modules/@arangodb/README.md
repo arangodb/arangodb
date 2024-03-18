@@ -222,7 +222,7 @@ It consists of:
 Both `setUp` and `runCheck` can indicate the SUT is not fit for further tests, and abort the execution.
 
 The object manages its subprocesses in the `instanceManager` and uses it to manipulate processes.
-The API consists of several  default callback hooks that can be implemented dubbed `pre*()`/`post*()`.
+The API consists of several default callback hooks that can be implemented dubbed `pre*()`/`post*()`.
 - `healthCheck` is to be ran to ping the system and check whether its fit to be inspected for cleanness, or running 
 - `runOneTest` must be implemented to handle the invocation of one integration testsuite.
   Several descendant implementations are available:
