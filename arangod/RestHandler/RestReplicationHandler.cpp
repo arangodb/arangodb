@@ -3503,9 +3503,9 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   std::string vn = _vocbase.name();
   try {
     if (!serverId.empty()) {
-      std::string comment = std::string("SynchronizeShard from ") + serverId +
-                            " for " + col.name() + " access mode " +
-                            AccessMode::typeString(access);
+      std::string comment =
+          absl::StrCat("SynchronizeShard from ", serverId, " for ", col.name(),
+                       " access mode ", AccessMode::typeString(access));
 
       std::function<void(void)> f = [=]() {
         try {
@@ -3569,7 +3569,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Status stats = mgr->getManagedTrxStatus(id);
   if (stats == transaction::Status::UNDEFINED) {
     return {TRI_ERROR_HTTP_NOT_FOUND,
-            "no hold read lock job found for id " + std::to_string(id.id())};
+            absl::StrCat("no hold read lock job found for id ", id.id())};
   }
 
   return {};

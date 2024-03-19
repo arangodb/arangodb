@@ -2375,6 +2375,14 @@ Index::FilterCosts RocksDBVPackIndex::supportsFilterCondition(
     std::vector<std::shared_ptr<Index>> const& allIndexes,
     aql::AstNode const* node, aql::Variable const* reference,
     size_t itemsInIndex) const {
+  TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
+    // mmfiles failure point compat
+    // the hash index is a derived type of the vpack index...
+    if (this->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
+    }
+  }
+
   return SortedIndexAttributeMatcher::supportsFilterCondition(
       allIndexes, this, node, reference, itemsInIndex);
 }

@@ -55,7 +55,7 @@ using namespace arangodb::futures;
 
 namespace {
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
-const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+constexpr double kFastPathLockTimeout = 2.0;
 
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
@@ -401,7 +401,7 @@ Future<Result> beginTransactionOnLeaders(
       // We first try to do a fast lock, if we cannot get this
       // There is a potential dead lock situation
       // and we revert to a slow locking to be on the safe side.
-      state.options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
+      state.options().lockTimeout = kFastPathLockTimeout;
     }
     // Run fastPath
     std::vector<Future<network::Response>> requests;
