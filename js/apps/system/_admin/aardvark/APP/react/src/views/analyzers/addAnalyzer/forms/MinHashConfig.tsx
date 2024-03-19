@@ -23,6 +23,9 @@ export const MinHashConfig = ({
           isDisabled={isDisabled}
           name={`${basePropertiesPath}.numHashes`}
           label="numHashes"
+          inputProps={{
+            type: "number"
+          }}
         />
         <Spacer />
       </Grid>

@@ -12,7 +12,6 @@ import {
 } from "../../../components/modal";
 import { getCurrentDB } from "../../../utils/arangoClient";
 import { notifySuccess } from "../../../utils/notifications";
-import { useReinitializeForm } from "../useReinitializeForm";
 import { AddAnalyzerForm } from "./AddAnalyzerForm";
 import { AnalyzerJSONForm } from "./AnalyzerJSONForm";
 import { CopyAnalyzerDropdown } from "./CopyAnalyzerDropdown";
@@ -82,7 +81,6 @@ const AddAnalyzerModalInner = ({
   isSubmitting: boolean;
 }) => {
   const [showJSONForm, setShowJSONForm] = React.useState(false);
-  const { onReinitialize } = useReinitializeForm();
   return (
     <Form>
       <ModalHeader fontSize="sm" fontWeight="normal">
@@ -97,7 +95,6 @@ const AddAnalyzerModalInner = ({
             marginLeft="auto"
             onClick={() => {
               setShowJSONForm(!showJSONForm);
-              onReinitialize();
             }}
           >
             {showJSONForm ? "Show form" : " Show JSON"}

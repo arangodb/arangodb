@@ -35,25 +35,34 @@ function runSetup () {
   db._drop('UnitTestsRecovery');
   db._create('UnitTestsRecovery');
 
-  db._executeTransaction({
-    collections: {
-      write: 'UnitTestsRecovery'
-    },
-    action: function () {
-      var db = require('@arangodb').db;
+  const oldTimeout = db._connection.timeout();
+  // We increase the timeout of arangosh, as we expect this transaction to be long-running
+  // So we are getting on the safe side here, especially for tests running on slow machines
+  // or with instrumented builds
+  db._connection.timeout(oldTimeout * 4);
 
-      var i, c = db._collection('UnitTestsRecovery');
-      for (i = 0; i < 100000; ++i) {
-        c.save({ _key: 'test' + i, value1: 'test' + i, value2: i });
-      }
-      for (i = 0; i < 100000; i += 2) {
-        c.remove('test' + i, {
-          waitForSync: (i === 100000 - 2)
-        });
-      }
-    }
-  });
+  try {
+    db._executeTransaction({
+      collections: {
+        write: 'UnitTestsRecovery'
+      },
+      action: function () {
+        var db = require('@arangodb').db;
 
+        var i, c = db._collection('UnitTestsRecovery');
+        for (i = 0; i < 100000; ++i) {
+          c.save({_key: 'test' + i, value1: 'test' + i, value2: i});
+        }
+        for (i = 0; i < 100000; i += 2) {
+          c.remove('test' + i, {
+            waitForSync: (i === 100000 - 2)
+          });
+        }
+      }
+    });
+  } finally {
+    db._connection.timeout(oldTimeout);
+  }
 }
 
 // //////////////////////////////////////////////////////////////////////////////
