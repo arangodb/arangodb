@@ -217,6 +217,13 @@
             );
             var templates = ['modalTable.ejs'];
             var tabBar = ['General', 'Indexes'];
+            var isCurrentView =
+              window.location.hash.indexOf(
+                "cSettings/" + encodeURIComponent(this.collectionName)
+              ) > -1;
+            if (!isCurrentView) {
+              return;
+            }
             window.modalView.show(
               templates,
               'Modify Collection',

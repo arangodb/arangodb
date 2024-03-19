@@ -43,7 +43,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/Exceptions.tpp"
 #include "Basics/Locking.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/DownCast.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/RecursiveLocker.h"

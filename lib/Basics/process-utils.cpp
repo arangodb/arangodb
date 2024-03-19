@@ -73,7 +73,6 @@
 
 #include "Basics/NumberUtils.h"
 #include "Basics/PageSize.h"
-#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Thread.h"
 #include "Basics/debugging.h"

@@ -32,9 +32,6 @@ namespace arangodb {
 namespace application_features {
 class ApplicationServer;
 }
-namespace basics {
-class StringBuffer;
-}
 namespace httpclient {
 class SimpleHttpClient;
 class SimpleHttpResult;

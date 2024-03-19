@@ -26,12 +26,10 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Basics/Exceptions.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Replication2/ReplicatedLog/LogEntry.h"
 #include "RocksDBEngine/RocksDBFormat.h"
-
 #include "Transaction/Helpers.h"
 
 using namespace arangodb;
