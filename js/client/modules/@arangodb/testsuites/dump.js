@@ -498,7 +498,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.print('Foxx Apps with full restore to ' + database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
-    this.restoreConfig.setInputDirectory('dump', true);
+    this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
