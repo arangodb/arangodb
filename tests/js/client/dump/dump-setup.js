@@ -56,6 +56,8 @@ const setup = require(base);
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
 
+  setup.createSmartGraph3_11_compat();
+
   setup.createEmptySmartGraph();
   setup.createEmptyEnterpriseGraph();
   setup.createEmptySatelliteGraph();

@@ -1548,9 +1548,9 @@
         if (!isEnterprise) {
           return;
         }
-        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = getCollection('_graphs');
+        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         assertTrue(!!graphsColl.exists(smartGraphName));
 
         const graph = graphsColl.document(smartGraphName);

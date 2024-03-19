@@ -57,6 +57,8 @@ const setup = require(base);
   setup.createSmartGraph();
   setup.createSmartArangoSearch();
 
+  setup.createSmartGraph3_11_compat();
+
   // Enterprise-Only backbone graph creation tests
   setup.createEmptySmartGraph();
   setup.createEmptyEnterpriseGraph();
