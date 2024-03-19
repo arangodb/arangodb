@@ -23,7 +23,6 @@
 
 #include "ShellColorsFeature.h"
 
-#include "Basics/Common.h"
 #include "Basics/operating-system.h"
 
 using namespace arangodb::basics;

@@ -1,11 +1,104 @@
 devel
 -----
 
-* 
+* FE-437: reinitialize analyzer form when type changes.
+
+* Accept language settings found in the LANGUAGE file which previous versions
+  have detected for the "C" locale. This is to allow upgrades from 3.11
+  if the database directory was created with the "C" locale.
+
+* Remove "read lock" acquisition calls from shard synchronization because they
+  are now unnecessary. This slightly simplifies the shard synchronization
+  protocol.
+
+* Repair shard rebalancer if some server has no leaders of a collection
+  but followers. Previously, this server was then not always considered
+  for leader movements.
+
+* Change the default log format. The option log.thread is now by default true.
+  The option log.time-format is now by default `utc-datestring-micros`.
+
+* Guarantee conditional-only evaluation of the operands of the AQL ternary
+  operator and the logical AND and OR operators, if any of the operands
+  is a subquery.
+
+  Given an AQL ternary condition such as
+
+      condition ? truePart : falsePart
+
+  the `truePart` expression is now executed only if `condition` is truthy, 
+  and the `falsePart` is evaluated only if `condition` is falsy.
+  In previous versions of ArangoDB the `truePart` and `falsePart` operands 
+  of the ternary operator were evaluated eagerly and out-of-line if the 
+  operands were subqueries.
+
+  The ternary operator's condition is now pulled out and made available under
+  a separate temporary variable. For example, the query
+
+      RETURN condition ? truePart : falsePart
+
+  will internally be rewritten as
+
+      LET tmp1 = condition
+      RETURN tmp1 ? truePart : falsePart
+
+  In case the operands are subqueries and must be executed conditionally,
+  the query is evaluated as
+
+      LET tmp1 = condition
+      LET tmp2 = (
+        FILTER tmp1
+        truePart
+      )
+      LET tmp3 = (
+        FILTER ! tmp1
+        falsePart
+      )
+      RETURN tmp1 ? tmp2 : tmp3
+
+  This guarantees that the condition is only evaluated once, and that the
+  `truePart` and `falsePart` operands are only executed if `condition` was
+  truthy or false, respectively.
+
+  Also only evaluate the right-hand operands of logical AND and logical OR if
+  the left-hand operand evalutes to a truthy value (logical AND) or a falsy
+  value (logical OR).
+
+* Allow limiting the amount of async prefetching operations for AQL queries.
+  Since version 3.12, AQL queries can make use of async prefetching. While this
+  is normally beneficial for query performance, the async prefetch operations
+  may cause congestion in the ArangoDB scheduler and interfere with other
+  operations.
+  In order to control the maximum amount of prefetch operations, the following
+  startup options have been added:
+  
+  - `--query.max-total-async-prefetch-slots`: the maximum total number of slots
+    available for asynchronous prefetching, across all AQL queries.
+  - `--query.max-query-async-prefetch-slots`: the maximum per-query number of 
+    slots available for asynchronous prefetching inside any AQL query.
+
+  That means the total number of concurrent prefetch operations across all AQL
+  queries can be limited using the first option, and the maximum number of 
+  prefetch operations in every single AQL query can be capped with the second
+  option. These options prevent that running a lot of AQL queries with async
+  prefetching fully congests the scheduler queue, and also they prevent large
+  AQL queries to use up all async prefetching capacity on their own.
+
+* Fix BTS-1807: transactions are bound to the user who started it, and the
+  database they were started for. However, there was a code path that was missing
+  the database check, which allowed the transaction id to be used in a request
+  to a different database. The request would not return an error, but it would
+  actually be executed in the context of the original database, and not the one
+  specified in the request.
+  With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
 
 
-3.12.0-alpha.1 (XXXX-XX-XX)
+3.12.0-alpha.1 (2024-03-06)
 ---------------------------
+
+* Updated ArangoDB Starter to v0.18.3.
+
+* FE-436: rename `multi_delimiter` analyzer property to `delimiters` on web UI.
 
 * FE-424: Adjusted Foxx service install button placement.
 
@@ -14,8 +107,6 @@ devel
 * Upgrade OpenSSL to 3.2.1.
 
 * Remove arangosync binary.
-
-* Updated ArangoDB Starter to v0.18.2.
 
 * Updated rclone to v1.65.2 (built with go1.21.6).
 

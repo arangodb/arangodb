@@ -21,7 +21,6 @@
 /// @author Jan Steemann
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/EncodingUtils.h"
 #include "Basics/StringBuffer.h"
 #include "Basics/fasthash.h"

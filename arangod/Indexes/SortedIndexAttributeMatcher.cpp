@@ -539,9 +539,9 @@ arangodb::aql::AstNode* SortedIndexAttributeMatcher::specializeCondition(
       }
 
       arangodb::aql::AstNodeType type = it->type;
-      if (arangodb::aql::Ast::IsReversibleOperator(type) &&
+      if (arangodb::aql::Ast::isReversibleOperator(type) &&
           it->getMember(1)->isAttributeAccessForVariable(reference, false)) {
-        type = arangodb::aql::Ast::ReverseOperator(type);
+        type = arangodb::aql::Ast::reverseOperator(type);
       }
 
       // do not let duplicate or related operators pass

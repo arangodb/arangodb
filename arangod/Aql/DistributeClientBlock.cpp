@@ -25,11 +25,11 @@
 
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ConstFetcher.h"
+#include "Aql/ExecutionBlockImpl.tpp"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/IdExecutor.h"
+#include "Aql/Executor/IdExecutor.h"
 #include "Aql/OutputAqlItemRow.h"
 #include "Aql/ShadowAqlItemRow.h"
-#include "Aql/ExecutionBlockImpl.tpp"
 
 using namespace arangodb;
 using namespace arangodb::aql;

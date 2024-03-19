@@ -193,8 +193,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   {  // lease again
     auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
@@ -209,8 +208,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
   // perform same operation
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
@@ -218,8 +216,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name())
                   .is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
@@ -256,8 +253,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
   // perform same operation
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
@@ -265,8 +261,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name())
                   .is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::COMMITTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
@@ -310,8 +305,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
   // perform same operation
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
@@ -319,8 +313,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name())
                   .is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::COMMITTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
@@ -357,8 +350,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
               mgr->commitManagedTrx(tid, vocbase.name()).errorNumber());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   ASSERT_TRUE(mgr->commitManagedTrx(tid, vocbase.name()).ok());
   // perform same operation
@@ -366,8 +358,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   // cannot abort committed transaction
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name())
                   .is(TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION));
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::COMMITTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::COMMITTED);
 }
 
 TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
@@ -410,8 +401,7 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
     ASSERT_TRUE(!responsible);
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, lock_conflict) {
@@ -442,8 +432,7 @@ TEST_F(TransactionManagerTest, lock_conflict) {
     ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, lock_conflict_side_user) {
@@ -480,8 +469,7 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
     ASSERT_TRUE(!responsible);
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
@@ -510,11 +498,9 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
   ASSERT_TRUE(mgr->garbageCollect(/*abortAll*/ true));
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, aql_standalone_transaction) {
@@ -589,8 +575,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
     ASSERT_TRUE(opRes.ok());
     ASSERT_TRUE(trx.finish(opRes.result).ok());
   }
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::RUNNING);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   mgr->abortManagedTrx(
       [](TransactionState const& state, std::string const& /*user*/) -> bool {
@@ -599,8 +584,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
         return tcoll != nullptr;
       });
 
-  ASSERT_EQ(mgr->getManagedTrxStatus(tid, vocbase.name()),
-            transaction::Status::ABORTED);
+  ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
 }
 
 TEST_F(TransactionManagerTest, permission_denied_readonly) {
@@ -614,11 +598,13 @@ TEST_F(TransactionManagerTest, permission_denied_readonly) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::RO,
                                 arangodb::auth::Level::RO, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");
@@ -649,11 +635,13 @@ TEST_F(TransactionManagerTest, permission_denied_forbidden) {
 
   struct ExecContext : public arangodb::ExecContext {
     ExecContext()
-        : arangodb::ExecContext(arangodb::ExecContext::Type::Internal, "dummy",
+        : arangodb::ExecContext(arangodb::ExecContext::ConstructorToken{},
+                                arangodb::ExecContext::Type::Internal, "dummy",
                                 "testVocbase", arangodb::auth::Level::NONE,
                                 arangodb::auth::Level::NONE, false) {}
-  } execContext;
-  arangodb::ExecContextScope execContextScope(&execContext);
+  };
+  auto execContext = std::make_shared<ExecContext>();
+  arangodb::ExecContextScope execContextScope(execContext);
 
   auto json = arangodb::velocypack::Parser::fromJson(
       "{ \"collections\":{\"read\": [\"42\"]}}");

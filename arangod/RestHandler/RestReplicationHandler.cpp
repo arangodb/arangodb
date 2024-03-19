@@ -26,7 +26,6 @@
 #include "Agency/AgencyComm.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/Query.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/Result.h"
 #include "Basics/RocksDBUtils.h"
@@ -2776,6 +2775,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   // potentially faster soft-lock synchronization with a smaller hard-lock
   // phase.
 
+  // TODO: the follower will always send "doSoftLockOnly=false" from 3.12.1
+  // onwards. we can remove the entire parameter in the future.
   bool doSoftLock = VelocyPackHelper::getBooleanValue(
       body, StaticStrings::ReplicationSoftLockOnly, false);
   AccessMode::Type lockType = AccessMode::Type::READ;
@@ -2798,6 +2799,10 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
   Result res = co_await createBlockingTransaction(id, *col, ttl, lockType,
                                                   rebootId, serverId);
   if (!res.ok()) {
+    LOG_TOPIC("5f00f", DEBUG, Logger::REPLICATION)
+        << "Lock " << id << " for shard " << _vocbase.name() << "/"
+        << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
+        << " could not be created because of: " << res.errorMessage();
     generateError(res);
     co_return;
   }
@@ -2811,7 +2816,8 @@ RestReplicationHandler::handleCommandHoldReadLockCollection() {
     if (!res.ok()) {
       // this is potentially bad!
       LOG_TOPIC("957fa", WARN, Logger::REPLICATION)
-          << "Lock " << id
+          << "Lock " << id << " for shard " << _vocbase.name() << "/"
+          << col->name() << " of type: " << (doSoftLock ? "soft" : "hard")
           << " could not be canceled because of: " << res.errorMessage();
     }
     // indicate that we are not the leader
@@ -3459,7 +3465,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // if we are not using superuser scope here and the leader is
   // read-only, trying to grab the lock in exclusive mode will
   // return a "read-only" error.
-  ExecContextScope scope(&ExecContext::superuser());
+  ExecContextScope scope(ExecContext::superuserAsShared());
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
@@ -3560,7 +3566,7 @@ Result RestReplicationHandler::isLockHeld(TransactionId id) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  transaction::Status stats = mgr->getManagedTrxStatus(id, _vocbase.name());
+  transaction::Status stats = mgr->getManagedTrxStatus(id);
   if (stats == transaction::Status::UNDEFINED) {
     return {TRI_ERROR_HTTP_NOT_FOUND,
             "no hold read lock job found for id " + std::to_string(id.id())};

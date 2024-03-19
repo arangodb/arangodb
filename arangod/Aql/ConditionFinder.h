@@ -23,15 +23,15 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/WalkerWorker.h"
 
 #include <cstdint>
 #include <unordered_map>
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
+
 class Condition;
 class ExecutionPlan;
 class SortCondition;
@@ -69,5 +69,5 @@ class ConditionFinder final
   std::unordered_map<aql::ExecutionNodeId, ExecutionNode*>& _changes;
   bool _producesEmptyResult;
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

@@ -22,7 +22,9 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearch/IResearchInvertedClusterIndex.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/StaticStrings.h"
 #include "Metrics/ClusterMetricsFeature.h"
 #include "VocBase/LogicalCollection.h"
 

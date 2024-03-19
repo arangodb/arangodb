@@ -26,8 +26,6 @@
 #include <memory>
 #include <type_traits>
 
-#include "Basics/Common.h"
-
 namespace arangodb::aql {
 class ExecutionPlan;
 class Optimizer;

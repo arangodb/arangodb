@@ -29,32 +29,43 @@
 #include "GeneralServer/AuthenticationFeature.h"
 #include "VocBase/vocbase.h"
 
+#include "Logger/LogMacros.h"
+
 using namespace arangodb;
 
-thread_local ExecContext const* ExecContext::CURRENT = nullptr;
+thread_local std::shared_ptr<ExecContext const> ExecContext::CURRENT = nullptr;
 
-ExecContext const ExecContext::Superuser(ExecContext::Type::Internal,
-                                         /*name*/ "", /*db*/ "",
-                                         auth::Level::RW, auth::Level::RW,
-                                         true);
+std::shared_ptr<ExecContext const> const ExecContext::Superuser =
+    std::make_shared<ExecContext const>(
+        ExecContext::ConstructorToken{}, ExecContext::Type::Internal,
+        /*name*/ "", /*db*/ "", auth::Level::RW, auth::Level::RW, true);
 
 /// Should always contain a reference to current user context
 /*static*/ ExecContext const& ExecContext::current() {
   if (ExecContext::CURRENT != nullptr) {
     return *ExecContext::CURRENT;
   }
-  return ExecContext::Superuser;
+  return *ExecContext::Superuser;
+}
+/// Note that this intentionally returns CURRENT, even if it is a nullptr: This
+/// makes it suitable to set CURRENT in another thread.
+/*static*/ std::shared_ptr<ExecContext const> ExecContext::currentAsShared() {
+  return ExecContext::CURRENT;
 }
 
 /// @brief an internal superuser context, is
 ///        a singleton instance, deleting is an error
 /*static*/ ExecContext const& ExecContext::superuser() {
+  return *ExecContext::Superuser;
+}
+/*static*/ std::shared_ptr<ExecContext const> ExecContext::superuserAsShared() {
   return ExecContext::Superuser;
 }
 
-ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
-                         std::string const& database, auth::Level systemLevel,
-                         auth::Level dbLevel, bool isAdminUser)
+ExecContext::ExecContext(ConstructorToken, ExecContext::Type type,
+                         std::string const& user, std::string const& database,
+                         auth::Level systemLevel, auth::Level dbLevel,
+                         bool isAdminUser)
     : _user(user),
       _database(database),
       _type(type),
@@ -65,28 +76,13 @@ ExecContext::ExecContext(ExecContext::Type type, std::string const& user,
   TRI_ASSERT(_databaseAuthLevel != auth::Level::UNDEFINED);
 }
 
-std::unique_ptr<ExecContext> ExecContext::clone() const {
-  // ExecContext does not have a public ctor, so we can't use plain
-  // std::make_unique. this workaround makes it work though.
-  struct Cloner final : public ExecContext {
-    Cloner(ExecContext::Type type, std::string const& user,
-           std::string const& database, auth::Level systemLevel,
-           auth::Level dbLevel, bool isAdminUser)
-        : ExecContext(type, user, database, systemLevel, dbLevel, isAdminUser) {
-    }
-  };
-
-  return std::make_unique<Cloner>(_type, _user, _database, _systemDbAuthLevel,
-                                  _databaseAuthLevel, _isAdminUser);
-}
-
 /*static*/ bool ExecContext::isAuthEnabled() {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
   return af->isActive();
 }
 
-std::unique_ptr<ExecContext> ExecContext::create(std::string const& user,
+std::shared_ptr<ExecContext> ExecContext::create(std::string const& user,
                                                  std::string const& dbname) {
   AuthenticationFeature* af = AuthenticationFeature::instance();
   TRI_ASSERT(af != nullptr);
@@ -111,11 +107,10 @@ std::unique_ptr<ExecContext> ExecContext::create(std::string const& user,
                                           true) == auth::Level::RW;
     }
   }
-  // we cannot use std::make_unique here, as ExecContext has a protected
-  // constructor
-  auto* ptr = new ExecContext(ExecContext::Type::Default, user, dbname, sysLvl,
-                              dbLvl, isAdminUser);
-  return std::unique_ptr<ExecContext>(ptr);
+
+  return std::make_shared<ExecContext>(ExecContext::ConstructorToken{},
+                                       ExecContext::Type::Default, user, dbname,
+                                       sysLvl, dbLvl, isAdminUser);
 }
 
 bool ExecContext::canUseDatabase(std::string const& db,
@@ -179,3 +174,10 @@ auth::Level ExecContext::collectionAuthLevel(std::string const& dbname,
   }
   return um->collectionAuthLevel(_user, dbname, coll);
 }
+
+ExecContextScope::ExecContextScope(std::shared_ptr<ExecContext const> exe)
+    : _old(std::move(exe)) {
+  std::swap(ExecContext::CURRENT, _old);
+}
+
+ExecContextScope::~ExecContextScope() { std::swap(ExecContext::CURRENT, _old); }

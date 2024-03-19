@@ -23,13 +23,11 @@
 
 #pragma once
 
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/WalkerWorker.h"
-#include "Basics/Common.h"
 #include "Containers/SmallVector.h"
 
-namespace arangodb {
-namespace aql {
+namespace arangodb::aql {
 
 template<typename T, WalkerUniqueness U>
 class NodeFinder final : public WalkerWorker<ExecutionNode, U> {
@@ -74,5 +72,5 @@ class EndNodeFinder final
     _found.pop_back();
   }
 };
-}  // namespace aql
-}  // namespace arangodb
+
+}  // namespace arangodb::aql

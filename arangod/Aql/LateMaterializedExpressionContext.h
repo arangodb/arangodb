@@ -23,8 +23,8 @@
 
 #pragma once
 
-#include "Aql/IndexNode.h"
 #include "Aql/DocumentProducingExpressionContext.h"
+#include "Aql/ExecutionNode/IndexNode.h"
 #include "Indexes/IndexIterator.h"
 
 namespace arangodb {

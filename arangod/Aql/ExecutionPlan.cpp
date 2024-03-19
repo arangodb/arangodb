@@ -27,35 +27,48 @@
 #include "Aql/Aggregator.h"
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/NoResultsNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SingletonNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
 #include "Aql/IndexHint.h"
-#include "Aql/IndexNode.h"
-#include "Aql/EnumeratePathsNode.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/NodeFinder.h"
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/RegisterPlan.h"
-#include "Aql/ShortestPathNode.h"
-#include "Aql/SortNode.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/VarUsageFinder.h"
 #include "Aql/Variable.h"
 #include "Aql/WalkerWorker.h"
-#include "Aql/WindowNode.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Containers/SmallVector.h"
-#include "Graph/ShortestPathOptions.h"
 #include "Graph/PathType.h"
+#include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
@@ -467,8 +480,8 @@ ExecutionPlan::ExecutionPlan(Ast* ast, bool trackMemoryUsage)
       _nextId(0),
       _ast(ast),
       _lastLimitNode(nullptr),
-      _subqueries(),
-      _typeCounts{} {}
+      _typeCounts{},
+      _asyncPrefetchNodes(0) {}
 
 /// @brief destroy the plan, frees all assigned nodes
 ExecutionPlan::~ExecutionPlan() {
@@ -538,6 +551,21 @@ ExecutionPlan::~ExecutionPlan() {
   plan->findVarUsage();
 
   return plan;
+}
+
+/// @brief increase number of async prefetch nodes
+void ExecutionPlan::increaseAsyncPrefetchNodes() noexcept {
+  ++_asyncPrefetchNodes;
+}
+
+/// @brief decrease number of async prefetch nodes
+void ExecutionPlan::decreaseAsyncPrefetchNodes() noexcept {
+  TRI_ASSERT(_asyncPrefetchNodes > 0);
+  --_asyncPrefetchNodes;
+}
+
+size_t ExecutionPlan::asyncPrefetchNodes() const noexcept {
+  return _asyncPrefetchNodes;
 }
 
 void ExecutionPlan::invalidOptionAttribute(QueryContext& query,
@@ -620,6 +648,7 @@ std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
   plan->_appliedRules = _appliedRules;
   plan->_disabledRules = _disabledRules;
   plan->_nestingLevel = _nestingLevel;
+  plan->_asyncPrefetchNodes = _asyncPrefetchNodes;
 
   return plan;
 }
@@ -2926,39 +2955,48 @@ struct Shower final
   }
 
   static std::string detailedNodeType(ExecutionNode const& node) {
+    std::string result = node.getTypeString();
+
     switch (node.getType()) {
       case ExecutionNode::CALCULATION: {
         auto const& calcNode =
             *ExecutionNode::castTo<CalculationNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " $",
-                                 calcNode.outVariable()->id, " = ");
-        calcNode.expression()->stringify(type);
-        return type;
+        absl::StrAppend(&result, " $", calcNode.outVariable()->id, " = ");
+        calcNode.expression()->stringify(result);
+        break;
       }
       case ExecutionNode::FILTER: {
         auto const& filterNode =
             *ExecutionNode::castTo<FilterNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " $",
-                                 filterNode.inVariable()->id);
-        return type;
+        absl::StrAppend(&result, " $", filterNode.inVariable()->id);
+        break;
+      }
+      case ExecutionNode::SORT: {
+        auto const& sortNode = *ExecutionNode::castTo<SortNode const*>(&node);
+        for (auto const& it : sortNode.elements()) {
+          absl::StrAppend(&result, " ", it.toString());
+        }
+        break;
       }
       case ExecutionNode::TRAVERSAL:
       case ExecutionNode::SHORTEST_PATH:
       case ExecutionNode::ENUMERATE_PATHS: {
         auto const& graphNode = *ExecutionNode::castTo<GraphNode const*>(&node);
-        auto type = std::string{node.getTypeString()};
         if (graphNode.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
       case ExecutionNode::INDEX: {
         auto* indexNode = ExecutionNode::castTo<IndexNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " ",
-                                 indexNode->collection()->name(), " -> ",
-                                 indexNode->outVariable()->name, " ",
-                                 indexNode->condition()->root()->toString());
-        return type;
+        absl::StrAppend(&result, " ", indexNode->collection()->name(), " -> ",
+                        indexNode->outVariable()->name);
+        if (indexNode->condition() != nullptr &&
+            indexNode->condition()->root() != nullptr) {
+          absl::StrAppend(&result, " ",
+                          indexNode->condition()->root()->toString());
+        }
+        break;
       }
       case ExecutionNode::ENUMERATE_COLLECTION:
       case ExecutionNode::UPDATE:
@@ -2968,16 +3006,32 @@ struct Shower final
       case ExecutionNode::UPSERT: {
         auto const& colAccess =
             *ExecutionNode::castTo<CollectionAccessingNode const*>(&node);
-        auto type = absl::StrCat(node.getTypeString(), " (",
-                                 colAccess.collection()->name(), ")");
+        absl::StrAppend(&result, " (", colAccess.collection()->name(), ")");
         if (colAccess.isUsedAsSatellite()) {
-          type += " used as satellite";
+          absl::StrAppend(&result, " used as satellite");
         }
-        return type;
+        break;
       }
       default:
-        return {node.getTypeString()};
+        break;
     }
+
+    switch (node.getType()) {
+      case ExecutionNode::ENUMERATE_COLLECTION:
+      case ExecutionNode::INDEX: {
+        auto* docNode = dynamic_cast<DocumentProducingNode const*>(&node);
+        TRI_ASSERT(docNode != nullptr);
+        Expression* filter = docNode->filter();
+        if (filter != nullptr) {
+          absl::StrAppend(&result, " filter: ", filter->node()->toString());
+        }
+        break;
+      }
+      default: {
+      }
+    }
+
+    return result;
   }
 };
 

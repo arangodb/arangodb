@@ -27,6 +27,9 @@
 #include "RocksDBEngine/RocksDBCommon.h"
 #include <rocksdb/db.h>
 
+#include <array>
+#include <cstdint>
+
 namespace arangodb {
 
 /// Globally defined column families. If you do change the number of

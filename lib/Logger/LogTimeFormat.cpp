@@ -89,7 +89,7 @@ bool isStringFormat(TimeFormat format) {
 }
 
 /// @brief return the name of the default log time format
-std::string defaultFormatName() { return "utc-datestring"; }
+std::string defaultFormatName() { return "utc-datestring-micros"; }
 
 /// @brief return the names of all log time formats
 std::unordered_set<std::string> getAvailableFormatNames() {

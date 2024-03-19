@@ -27,7 +27,6 @@
 #include <unordered_map>
 
 #include "Aql/Collections.h"
-#include "Basics/Common.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 
 struct TRI_vocbase_t;

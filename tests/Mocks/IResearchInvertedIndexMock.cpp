@@ -22,6 +22,8 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "IResearchInvertedIndexMock.h"
+
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchDataStore.h"
 #include "VocBase/LogicalCollection.h"
 

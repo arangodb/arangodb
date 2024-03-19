@@ -67,6 +67,38 @@ using namespace arangodb::aql;
 
 namespace {
 
+/// @brief reverse comparison operators
+std::unordered_map<int, AstNodeType> const reversedOperators{
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
+     NODE_TYPE_OPERATOR_BINARY_EQ},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
+     NODE_TYPE_OPERATOR_BINARY_LT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
+     NODE_TYPE_OPERATOR_BINARY_LE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
+     NODE_TYPE_OPERATOR_BINARY_GT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
+     NODE_TYPE_OPERATOR_BINARY_GE}};
+
+/// @brief inverse comparison operators
+std::unordered_map<int, AstNodeType> const negatedOperators{
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
+     NODE_TYPE_OPERATOR_BINARY_NE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),
+     NODE_TYPE_OPERATOR_BINARY_EQ},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
+     NODE_TYPE_OPERATOR_BINARY_LE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
+     NODE_TYPE_OPERATOR_BINARY_LT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
+     NODE_TYPE_OPERATOR_BINARY_GE},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
+     NODE_TYPE_OPERATOR_BINARY_GT},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),
+     NODE_TYPE_OPERATOR_BINARY_NIN},
+    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),
+     NODE_TYPE_OPERATOR_BINARY_IN}};
+
 struct RecursiveAttributeFinderContext {
   Variable const* variable;
   bool couldExtractAttributePath;
@@ -288,38 +320,6 @@ LogicalDataSource::Category injectDataSourceInQuery(
 }
 
 }  // namespace
-
-/// @brief inverse comparison operators
-std::unordered_map<int, AstNodeType> const Ast::NegatedOperators{
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
-     NODE_TYPE_OPERATOR_BINARY_NE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NE),
-     NODE_TYPE_OPERATOR_BINARY_EQ},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
-     NODE_TYPE_OPERATOR_BINARY_LE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
-     NODE_TYPE_OPERATOR_BINARY_LT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
-     NODE_TYPE_OPERATOR_BINARY_GE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
-     NODE_TYPE_OPERATOR_BINARY_GT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_IN),
-     NODE_TYPE_OPERATOR_BINARY_NIN},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_NIN),
-     NODE_TYPE_OPERATOR_BINARY_IN}};
-
-/// @brief reverse comparison operators
-std::unordered_map<int, AstNodeType> const Ast::ReversedOperators{
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_EQ),
-     NODE_TYPE_OPERATOR_BINARY_EQ},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GT),
-     NODE_TYPE_OPERATOR_BINARY_LT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_GE),
-     NODE_TYPE_OPERATOR_BINARY_LE},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LT),
-     NODE_TYPE_OPERATOR_BINARY_GT},
-    {static_cast<int>(NODE_TYPE_OPERATOR_BINARY_LE),
-     NODE_TYPE_OPERATOR_BINARY_GE}};
 
 Ast::SpecialNodes::SpecialNodes()
     : NopNode{NODE_TYPE_NOP, AstNode::InternalNode{}},
@@ -1956,22 +1956,17 @@ AstNode* Ast::createNodeNaryOperator(AstNodeType type, AstNode const* child) {
   return node;
 }
 
-/// @brief injects bind parameters into the AST
-void Ast::injectBindParameters(BindParameters& parameters,
-                               CollectionNameResolver const& resolver) {
+/// @brief injects first-stage bind parameter values into the AST
+/// (i.e. collection bind parameters and bound attribute names,
+/// e.g. @@foo and `doc.@attr`).
+void Ast::injectBindParametersFirstStage(
+    BindParameters& parameters, CollectionNameResolver const& resolver) {
   if (_containsBindParameters || _containsTraversal) {
-    // inject bind parameters into query AST
     auto func = [&](AstNode* node) -> AstNode* {
-      if (node->type == NODE_TYPE_PARAMETER ||
-          node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
+      if (node->type == NODE_TYPE_PARAMETER_DATASOURCE) {
         // found a bind parameter in the query string
-        std::string const param = node->getString();
-
-        if (param.empty()) {
-          // parameter name must not be empty
-          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
-                                param);
-        }
+        std::string param = node->getString();
+        TRI_ASSERT(!param.empty());
 
         auto [value, cachedNode] = parameters.get(param);
         if (value.isNone()) {
@@ -1980,144 +1975,95 @@ void Ast::injectBindParameters(BindParameters& parameters,
                                 param);
         }
 
-        if (node->type == NODE_TYPE_PARAMETER) {
-          auto const constantParameter = node->isConstant();
+        if (!value.isString()) {
+          // we can get here in case `WITH @col ...` when the value of @col
+          // is not a string
+          ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
+                                param);
+          // query will have been aborted here
+        }
 
-          if (cachedNode != nullptr) {
-            // we have already processed this bind parameter and turned it into
-            // an AstNode before.
-            // now only create a shallow copy of the bind parameter.
-            node = shallowCopyForModify(cachedNode);
+        TRI_ASSERT(value.isString());
+        std::string_view name = value.stringView();
 
-            if (constantParameter) {
-              TRI_ASSERT(node->hasFlag(DETERMINED_CONSTANT));
-              TRI_ASSERT(node->hasFlag(VALUE_CONSTANT));
-            }
-            TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
-            TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
-            TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
-            TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
-            TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
-            TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
-            TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
-          } else {
-            // bind parameter containing a value literal. not processed before.
-            node = nodeFromVPack(value, true);
+        // check if the collection was used in a data-modification query
+        bool isWriteCollection = false;
 
-            if (node != nullptr) {
-              if (constantParameter) {
-                // already mark node as constant here if parameters are constant
-                node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
-              }
-              // mark node as simple
-              node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
-              // mark node as executable on db-server
-              node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
-              // mark node as deterministic
-              node->setFlag(DETERMINED_NONDETERMINISTIC);
+        std::string_view paramRef(param);
 
-              // finally note that the node was created from a bind parameter
-              node->setFlag(FLAG_BIND_PARAMETER);
+        AstNode* newNode = nullptr;
+        for (auto const& it : _writeCollections) {
+          auto const& c = it.first;
 
-              // register the AstNode for this bind parameter, so when the query
-              // string refers to the same bind parameter multiple times, we
-              // don't have to regenerate an AstNode for it. in case a bind
-              // parameter is used multiple times in the query string, upon any
-              // following occurrences the AstNode registered here will be
-              // found, and only a shallow copy of the existing AstNode will be
-              // created. This helps to save memory and processing time for
-              // large bind parameter values.
-              parameters.registerNode(param, node);
-            }
+          if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+              paramRef == c->getStringView()) {
+            // bind parameter still present in _writeCollections
+            TRI_ASSERT(newNode == nullptr);
+            isWriteCollection = true;
+            break;
+          } else if (c->type == NODE_TYPE_COLLECTION &&
+                     name == c->getStringView()) {
+            // bind parameter was already replaced with a proper collection
+            // node in _writeCollections
+            TRI_ASSERT(newNode == nullptr);
+            isWriteCollection = true;
+            newNode = const_cast<AstNode*>(c);
+            break;
           }
-        } else {
-          TRI_ASSERT(node->type == NODE_TYPE_PARAMETER_DATASOURCE);
+        }
 
-          if (!value.isString()) {
-            // we can get here in case `WITH @col ...` when the value of @col
-            // is not a string
-            ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
-                                  param);
-            // query will have been aborted here
-          }
+        TRI_ASSERT(newNode == nullptr || isWriteCollection);
 
-          // bound data source parameter
-          TRI_ASSERT(value.isString());
-          std::string_view name = value.stringView();
-
-          // check if the collection was used in a data-modification query
-          bool isWriteCollection = false;
-
-          std::string_view paramRef(param);
-
-          AstNode* newNode = nullptr;
-          for (auto const& it : _writeCollections) {
-            auto const& c = it.first;
-
-            if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                paramRef == c->getStringView()) {
-              // bind parameter still present in _writeCollections
-              TRI_ASSERT(newNode == nullptr);
-              isWriteCollection = true;
-              break;
-            } else if (c->type == NODE_TYPE_COLLECTION &&
-                       name == c->getStringView()) {
-              // bind parameter was already replaced with a proper collection
-              // node in _writeCollections
-              TRI_ASSERT(newNode == nullptr);
-              isWriteCollection = true;
-              newNode = const_cast<AstNode*>(c);
-              break;
-            }
-          }
-
-          TRI_ASSERT(newNode == nullptr || isWriteCollection);
-
-          if (newNode == nullptr) {
-            newNode =
-                createNodeDataSource(resolver, name,
-                                     isWriteCollection ? AccessMode::Type::WRITE
-                                                       : AccessMode::Type::READ,
-                                     false, true);
-            TRI_ASSERT(newNode != nullptr);
-
-            if (isWriteCollection) {
-              // must update AST info now for all nodes that contained this
-              // parameter
-              for (auto& it : _writeCollections) {
-                auto& c = it.first;
-
-                if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
-                    paramRef == c->getStringView()) {
-                  c = newNode;
-                  // no break here. replace all occurrences
-                }
-              }
-            }
-          }
-
+        if (newNode == nullptr) {
+          newNode =
+              createNodeDataSource(resolver, name,
+                                   isWriteCollection ? AccessMode::Type::WRITE
+                                                     : AccessMode::Type::READ,
+                                   false, true);
           TRI_ASSERT(newNode != nullptr);
-          node = newNode;
 
-          if (cachedNode == nullptr) {
-            // store the just created AstNode for this bind parameter, to mark
-            // the bind parameter as being "used". It does not matter which
-            // AstNode we store for the bind parameter, but we have to store one
-            // if none was yet registered. Otherwise we'll run into an error
-            // "unused bind parameter
-            // '@...' later.
-            parameters.registerNode(param, node);
-          } else {
-            // double check that the already registered node has the correct
-            // type
-            TRI_ASSERT(cachedNode->type == NODE_TYPE_VIEW ||
-                       cachedNode->type == NODE_TYPE_COLLECTION);
-            TRI_ASSERT(cachedNode->getStringView() == name);
+          if (isWriteCollection) {
+            // must update AST info now for all nodes that contained this
+            // parameter
+            for (auto& it : _writeCollections) {
+              auto& c = it.first;
+
+              if (c->type == NODE_TYPE_PARAMETER_DATASOURCE &&
+                  paramRef == c->getStringView()) {
+                c = newNode;
+                // no break here. replace all occurrences
+              }
+            }
           }
+        }
+
+        TRI_ASSERT(newNode != nullptr);
+        node = newNode;
+
+        if (cachedNode == nullptr) {
+          // store the just created AstNode for this bind parameter, to mark
+          // the bind parameter as being "used". It does not matter which
+          // AstNode we store for the bind parameter, but we have to store one
+          // if none was yet registered. Otherwise we'll run into an error
+          // "unused bind parameter '@...'" later.
+          parameters.registerNode(param, node);
+        } else {
+          // double check that the already registered node has the correct
+          // type
+          TRI_ASSERT(cachedNode->type == NODE_TYPE_VIEW ||
+                     cachedNode->type == NODE_TYPE_COLLECTION);
+          TRI_ASSERT(cachedNode->getStringView() == name);
         }
       } else if (node->type == NODE_TYPE_BOUND_ATTRIBUTE_ACCESS) {
         // look at second sub-node. this is the (replaced) bind parameter
         auto name = node->getMember(1);
+
+        if (name->type == NODE_TYPE_PARAMETER) {
+          // on-the-fly replacement of bind parameter with its value equivalent
+          name = replaceValueBindParameter(name, parameters);
+        }
+
+        TRI_ASSERT(name->type != NODE_TYPE_PARAMETER);
 
         if (name->type == NODE_TYPE_VALUE) {
           if (name->value.type == VALUE_TYPE_STRING &&
@@ -2160,11 +2106,11 @@ void Ast::injectBindParameters(BindParameters& parameters,
         THROW_ARANGO_EXCEPTION_PARAMS(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE,
                                       node->getString().c_str());
       } else if (node->type == NODE_TYPE_TRAVERSAL) {
-        extractCollectionsFromGraph(node->getMember(2));
+        extractCollectionsFromGraph(parameters, node->getMember(2));
       } else if (node->type == NODE_TYPE_SHORTEST_PATH) {
-        extractCollectionsFromGraph(node->getMember(3));
+        extractCollectionsFromGraph(parameters, node->getMember(3));
       } else if (node->type == NODE_TYPE_ENUMERATE_PATHS) {
-        extractCollectionsFromGraph(node->getMember(4));
+        extractCollectionsFromGraph(parameters, node->getMember(4));
       }
 
       return node;
@@ -2205,16 +2151,89 @@ void Ast::injectBindParameters(BindParameters& parameters,
       }
     }
   }
+}
 
-  // visit all bind parameters to ensure that they have all been accessed via
-  // registerNode
-  parameters.visit(
-      [](std::string const& key, VPackSlice /*value*/, AstNode* node) {
-        if (node == nullptr) {
-          THROW_ARANGO_EXCEPTION_PARAMS(
-              TRI_ERROR_QUERY_BIND_PARAMETER_UNDECLARED, key.c_str());
-        }
-      });
+/// @brief injects second-stage bind parameter values into the AST
+/// (i.e. all value bind parameters)
+void Ast::injectBindParametersSecondStage(BindParameters& parameters) {
+  if (_containsBindParameters) {
+    auto func = [&](AstNode* node) -> AstNode* {
+      if (node->type == NODE_TYPE_PARAMETER) {
+        // found a bind parameter in the query string.
+        // replace it with its replaced value equivalent
+        node = replaceValueBindParameter(node, parameters);
+      }
+      return node;
+    };
+
+    _root = traverseAndModify(_root, func);
+  }
+}
+
+/// @brief replace a bind parameter with its value equivalent.
+AstNode* Ast::replaceValueBindParameter(AstNode* node,
+                                        BindParameters& parameters) {
+  TRI_ASSERT(node->type == NODE_TYPE_PARAMETER);
+
+  std::string_view param = node->getStringView();
+  TRI_ASSERT(!param.empty());
+
+  auto [value, cachedNode] = parameters.get(param);
+  if (value.isNone()) {
+    // query uses a bind parameter that was not defined by the user
+    ::throwFormattedError(_query, TRI_ERROR_QUERY_BIND_PARAMETER_MISSING,
+                          param);
+  }
+
+  auto const constantParameter = node->isConstant();
+
+  if (cachedNode != nullptr) {
+    // we have already processed this bind parameter and turned it into
+    // an AstNode before.
+    // now only create a shallow copy of the bind parameter.
+    node = shallowCopyForModify(cachedNode);
+
+    TRI_ASSERT(!constantParameter || node->hasFlag(DETERMINED_CONSTANT));
+    TRI_ASSERT(!constantParameter || node->hasFlag(VALUE_CONSTANT));
+    TRI_ASSERT(node->hasFlag(DETERMINED_SIMPLE));
+    TRI_ASSERT(node->hasFlag(VALUE_SIMPLE));
+    TRI_ASSERT(node->hasFlag(DETERMINED_RUNONDBSERVER));
+    TRI_ASSERT(node->hasFlag(VALUE_RUNONDBSERVER));
+    TRI_ASSERT(node->hasFlag(DETERMINED_NONDETERMINISTIC));
+    TRI_ASSERT(!node->hasFlag(VALUE_NONDETERMINISTIC));
+    TRI_ASSERT(node->hasFlag(FLAG_BIND_PARAMETER));
+  } else {
+    // bind parameter containing a value literal. not processed before.
+    node = nodeFromVPack(value, true);
+
+    if (node != nullptr) {
+      if (constantParameter) {
+        // already mark node as constant here if parameters are constant
+        node->setFlag(DETERMINED_CONSTANT, VALUE_CONSTANT);
+      }
+      // mark node as simple
+      node->setFlag(DETERMINED_SIMPLE, VALUE_SIMPLE);
+      // mark node as executable on db-server
+      node->setFlag(DETERMINED_RUNONDBSERVER, VALUE_RUNONDBSERVER);
+      // mark node as deterministic
+      node->setFlag(DETERMINED_NONDETERMINISTIC);
+
+      // finally note that the node was created from a bind parameter
+      node->setFlag(FLAG_BIND_PARAMETER);
+
+      // register the AstNode for this bind parameter, so when the query
+      // string refers to the same bind parameter multiple times, we
+      // don't have to regenerate an AstNode for it. in case a bind
+      // parameter is used multiple times in the query string, upon any
+      // following occurrences the AstNode registered here will be
+      // found, and only a shallow copy of the existing AstNode will be
+      // created. This helps to save memory and processing time for
+      // large bind parameter values.
+      parameters.registerNode(param, node);
+    }
+  }
+
+  return node;
 }
 
 /// @brief replace an attribute access with just the variable
@@ -3122,16 +3141,15 @@ AstNode const* Ast::deduplicateArray(AstNode const* node) {
 }
 
 /// @brief check if an operator is reversible
-bool Ast::IsReversibleOperator(AstNodeType type) {
-  return (ReversedOperators.find(static_cast<int>(type)) !=
-          ReversedOperators.end());
+bool Ast::isReversibleOperator(AstNodeType type) noexcept {
+  return ::reversedOperators.contains(static_cast<int>(type));
 }
 
 /// @brief get the reversed operator for a comparison operator
-AstNodeType Ast::ReverseOperator(AstNodeType type) {
-  auto it = ReversedOperators.find(static_cast<int>(type));
+AstNodeType Ast::reverseOperator(AstNodeType type) {
+  auto it = ::reversedOperators.find(static_cast<int>(type));
 
-  if (it == ReversedOperators.end()) {
+  if (it == ::reversedOperators.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid node type for inversed operator");
   }
@@ -3139,8 +3157,17 @@ AstNodeType Ast::ReverseOperator(AstNodeType type) {
   return (*it).second;
 }
 
+AstNodeType Ast::negateOperator(AstNodeType type) {
+  auto it = ::negatedOperators.find(static_cast<int>(type));
+  if (it == ::negatedOperators.end()) {
+    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
+                                   "unsupported operator type");
+  }
+  return (*it).second;
+}
+
 /// @brief get the n-ary operator type equivalent for a binary operator type
-AstNodeType Ast::NaryOperatorType(AstNodeType old) {
+AstNodeType Ast::naryOperatorType(AstNodeType old) {
   TRI_ASSERT(old == NODE_TYPE_OPERATOR_BINARY_AND ||
              old == NODE_TYPE_OPERATOR_BINARY_OR);
 
@@ -3155,13 +3182,14 @@ AstNodeType Ast::NaryOperatorType(AstNodeType old) {
                                  "invalid node type for n-ary operator");
 }
 
-bool Ast::IsAndOperatorType(AstNodeType tt) {
-  return tt == NODE_TYPE_OPERATOR_BINARY_AND ||
-         tt == NODE_TYPE_OPERATOR_NARY_AND;
+bool Ast::isAndOperatorType(AstNodeType type) noexcept {
+  return type == NODE_TYPE_OPERATOR_BINARY_AND ||
+         type == NODE_TYPE_OPERATOR_NARY_AND;
 }
 
-bool Ast::IsOrOperatorType(AstNodeType tt) {
-  return tt == NODE_TYPE_OPERATOR_BINARY_OR || tt == NODE_TYPE_OPERATOR_NARY_OR;
+bool Ast::isOrOperatorType(AstNodeType type) noexcept {
+  return type == NODE_TYPE_OPERATOR_BINARY_OR ||
+         type == NODE_TYPE_OPERATOR_NARY_OR;
 }
 
 /// @brief make condition from example
@@ -3335,10 +3363,8 @@ AstNode* Ast::optimizeNotExpression(AstNode* node) {
     auto lhs = operand->getMember(0);
     auto rhs = operand->getMember(1);
 
-    auto it = NegatedOperators.find(static_cast<int>(operand->type));
-    TRI_ASSERT(it != NegatedOperators.end());
-
-    return createNodeBinaryOperator((*it).second, lhs, rhs);
+    AstNodeType negated = negateOperator(operand->type);
+    return createNodeBinaryOperator(negated, lhs, rhs);
   }
 
   return node;
@@ -4261,8 +4287,15 @@ AstNode* Ast::createNodeCollectionNoValidation(std::string_view name,
   return node;
 }
 
-void Ast::extractCollectionsFromGraph(AstNode const* graphNode) {
+void Ast::extractCollectionsFromGraph(BindParameters& parameters,
+                                      AstNode* graphNode) {
   TRI_ASSERT(graphNode != nullptr);
+  if (graphNode->type == NODE_TYPE_PARAMETER) {
+    graphNode = replaceValueBindParameter(graphNode, parameters);
+  }
+
+  TRI_ASSERT(graphNode->type != NODE_TYPE_PARAMETER);
+
   if (graphNode->type == NODE_TYPE_VALUE) {
     TRI_ASSERT(graphNode->isStringValue());
     std::string graphName = graphNode->getString();

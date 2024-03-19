@@ -309,12 +309,12 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // get the permissions to be used by this task
     bool allowContinue = true;
-    std::shared_ptr<ExecContext> execContext;
+    std::shared_ptr<ExecContext const> execContext;
 
     if (!_user.empty()) {  // not superuser
       auto& dbname = _dbGuard->database().name();
 
-      execContext.reset(ExecContext::create(_user, dbname).release());
+      execContext = ExecContext::create(_user, dbname);
       allowContinue = execContext->canUseDatabase(dbname, auth::Level::RW);
     }
 
@@ -327,9 +327,9 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
         RequestLane::INTERNAL_LOW, [self, this, execContext] {
-          ExecContextScope scope(_user.empty() ? &ExecContext::superuser()
-                                               : execContext.get());
-          work(execContext.get());
+          ExecContextScope scope(
+              _user.empty() ? ExecContext::superuserAsShared() : execContext);
+          work();
 
           if (_periodic.load() && !_dbGuard->database().server().isStopping()) {
             // requeue the task
@@ -426,7 +426,7 @@ void Task::toVelocyPack(VPackBuilder& builder) const {
   builder.add("database", VPackValue(_dbGuard->database().name()));
 }
 
-void Task::work(ExecContext const* exec) {
+void Task::work() {
   JavaScriptSecurityContext securityContext =
       _allowUseDatabase
           ? JavaScriptSecurityContext::

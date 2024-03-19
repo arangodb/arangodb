@@ -26,7 +26,6 @@
 
 #pragma once
 
-#include "Aql/types.h"
 #include "ExecutionBlockImpl.h"
 
 #include "Aql/AqlCallStack.h"
@@ -34,21 +33,22 @@
 #include "Aql/AqlItemBlockManager.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/ExecutionState.h"
+#include "Aql/Executor/IResearchViewExecutor.h"
 #include "Aql/InputAqlItemRow.h"
-#include "Aql/IResearchViewExecutor.h"
 #include "Aql/RegisterInfos.h"
 #include "Aql/ShadowAqlItemRow.h"
-#include "Aql/SkipResult.h"
 #include "Aql/SimpleModifier.h"
+#include "Aql/SkipResult.h"
 #include "Aql/Timing.h"
 #include "Aql/UpsertModifier.h"
+#include "Aql/types.h"
 #include "Basics/ScopeGuard.h"
-#include "Scheduler/SchedulerFeature.h"
 #include "Graph/Providers/ClusterProvider.h"
 #include "Graph/Providers/SingleServerProvider.h"
 #include "Graph/Steps/ClusterProviderStep.h"
 #include "Graph/Steps/SingleServerProviderStep.h"
 #include "Graph/algorithm-aliases.h"
+#include "Scheduler/SchedulerFeature.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -2566,7 +2566,7 @@ template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::CallstackSplit(
     ExecutionBlockImpl& block)
     : _block(block),
-      _thread(&CallstackSplit::run, this, ExecContext::current().clone()) {}
+      _thread(&CallstackSplit::run, this, ExecContext::currentAsShared()) {}
 
 template<class Executor>
 ExecutionBlockImpl<Executor>::CallstackSplit::~CallstackSplit() {
@@ -2608,8 +2608,8 @@ auto ExecutionBlockImpl<Executor>::CallstackSplit::execute(
 
 template<class Executor>
 void ExecutionBlockImpl<Executor>::CallstackSplit::run(
-    std::unique_ptr<ExecContext> execContext) {
-  ExecContextScope scope(execContext.get());
+    std::shared_ptr<ExecContext const> execContext) {
+  ExecContextScope scope(execContext);
   std::unique_lock<std::mutex> guard(_lock);
   while (true) {
     _bell.wait(guard, [this]() {

@@ -21,15 +21,16 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 
+#include "Aql/Ast.h"
 #include "Aql/Collection.h"
 #include "Aql/Condition.h"
-#include "Aql/CollectNode.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/Expression.h"
-#include "Aql/IndexNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerRules.h"
 #include "Logger/LogMacros.h"

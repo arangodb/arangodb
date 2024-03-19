@@ -12,6 +12,9 @@ parameters:
     # contains a branch with the same name as the arangodb repo. If this is the case
     # we use it, otherwise we fall back to "devel".
     default: ""
+  create-docker-images:
+    type: boolean
+    default: false
   rebuild-test-docker-images:
     type: boolean
     default: false
@@ -154,6 +157,7 @@ jobs:
               pip install pyyaml
               python3 ".circleci/generate_config.py" --sanitizer "<< pipeline.parameters.sanitizer >>" \
                 <<# pipeline.parameters.nightly >> --nightly <</ pipeline.parameters.nightly >> \
+                <<# pipeline.parameters.create-docker-images >> --create-docker-images <</ pipeline.parameters.create-docker-images >> \
                 <<# pipeline.parameters.replication-two >> -rt <</ pipeline.parameters.replication-two >> \
                 -o continuation_config.yml ./.circleci/base_config.yml << parameters.definitions >>
             fi

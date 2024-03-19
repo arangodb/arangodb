@@ -26,6 +26,8 @@
 #include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/Collection.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/OptimizerUtils.h"
@@ -392,8 +394,8 @@ ConditionPart::ConditionPart(Variable const* variable,
     valueNode = operatorNode->getMember(1);
   } else {
     valueNode = operatorNode->getMember(0);
-    if (Ast::IsReversibleOperator(operatorType)) {
-      operatorType = Ast::ReverseOperator(operatorType);
+    if (Ast::isReversibleOperator(operatorType)) {
+      operatorType = Ast::reverseOperator(operatorType);
     }
   }
 
@@ -1762,8 +1764,8 @@ bool Condition::canRemove(ExecutionPlan const* plan, ConditionPart const& me,
               // non-constant condition
               else {
                 auto opType = operand->type;
-                if (aql::Ast::IsReversibleOperator(opType)) {
-                  opType = aql::Ast::ReverseOperator(opType);
+                if (aql::Ast::isReversibleOperator(opType)) {
+                  opType = aql::Ast::reverseOperator(opType);
                 }
                 if (me.operatorType == opType &&
                     normalize(me.valueNode) == normalize(lhs)) {
@@ -1889,7 +1891,7 @@ AstNode* Condition::transformNodePreorder(
     auto old = node;
 
     // create a new n-ary node
-    node = _ast->createNode(Ast::NaryOperatorType(old->type));
+    node = _ast->createNode(Ast::naryOperatorType(old->type));
     _ast->resources().reserveChildNodes(node, 2);
     node->addMember(
         transformNodePreorder(old->getMember(0), conditionOptimization));
