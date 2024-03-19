@@ -1,4 +1,4 @@
-# Arango DB test infrasturcture
+# Arango DB test infrastructure
 ## Philosophy
 All the code structure and the test infrastructure works in a way
 - to have results in all (worst-) cases
