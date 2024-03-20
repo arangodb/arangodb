@@ -480,6 +480,7 @@ jobs:
   run-rta-tests:
     machine:
       image: ubuntu-2204:current
+    resource_class: large
     parameters:
       suiteName:
         type: string
