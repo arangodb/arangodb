@@ -507,7 +507,7 @@ jobs:
             ls -la work
             echo TODO
             export SOURCE=nightlypublic
-            cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
+            cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh  --starter-mode SG --no-run-upgrade
       - run:
           name: Copy test results
           when: always
