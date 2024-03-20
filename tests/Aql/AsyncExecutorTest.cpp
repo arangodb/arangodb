@@ -28,6 +28,7 @@
 #include "Aql/AsyncExecutor.h"
 
 #include <random>
+#include <thread>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -190,6 +191,59 @@ TEST_F(AsyncExecutorTest, sleepingBeautyRandom) {
   asyncBlock1->setPostAsyncExecuteCallback([&] { doSomething(false); });
 
   doSomething(true);
+
+  EXPECT_EQ(0, wakeupsQueued);
+  EXPECT_TRUE(scheduler.queueEmpty());
+
+  testHelper.expectedState(ExecutionState::DONE)
+      .expectOutput({0}, {{0}})
+      .expectSkipped(0)
+      .checkExpectations();
+
+  ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
+}
+
+TEST_F(AsyncExecutorTest, WAITING_result_should_not_trigger_wakeup) {
+  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+
+  auto testHelper = makeExecutorTestHelper();
+  testHelper
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .setInputFromRowNum(1)
+      .setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour::ONCE)
+      .setCall(AqlCall{0u, AqlCall::Infinity{}, AqlCall::Infinity{}, false});
+
+  auto* asyncBlock0 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
+      testHelper.pipeline().get().at(0).get());
+  // Having the nodes in a certain order (i.e. pipeline[0].id() == 0, and
+  // pipeline[1].id() == 1), makes reading profiles less confusing.
+  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
+
+  // one initial "wakeup" to start execution
+  auto wakeupsQueued = 1;
+  auto totalWakeups = 0;
+  auto wakeupHandler = [&wakeupsQueued, &totalWakeups]() noexcept {
+    ++wakeupsQueued;
+    ++totalWakeups;
+    // we are woken up once from the WaitingExecutionBlockMock and once from the
+    // scheduler
+    EXPECT_LE(totalWakeups, 2);
+    return true;
+  };
+  testHelper.setWakeupHandler(wakeupHandler);
+  testHelper.setWakeupCallback(wakeupHandler);
+  testHelper.prepareInput();
+
+  while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+    while (wakeupsQueued > 0) {
+      --wakeupsQueued;
+      testHelper.executeOnce();
+    }
+    if (!scheduler.queueEmpty()) {
+      scheduler.runOnce();
+    }
+  };
 
   EXPECT_EQ(0, wakeupsQueued);
   EXPECT_TRUE(scheduler.queueEmpty());
