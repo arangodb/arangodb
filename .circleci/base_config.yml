@@ -488,9 +488,9 @@ jobs:
           name: get aux binaries
           command: |
             STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" work/ArangoDB/VERSIONS)
-            binary=work/Arangodb/build/bin/arangodb
-            curl -s -L -o "${work/Arangodb/build/bin/arangodb}" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-amd64"
-            chmod a+x "${work/Arangodb/build/bin/arangodb}"
+            BINARY=work/Arangodb/build/bin/arangodb
+            curl -s -L -o "$BINARY" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-amd64"
+            chmod a+x "$BINARY"
       - run:
           name: Clone RTA
           command: |
