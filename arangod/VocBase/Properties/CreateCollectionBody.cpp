@@ -27,12 +27,7 @@
 #include "Inspection/VPack.h"
 #include "Logger/LogMacros.h"
 #include "Basics/VelocyPackHelper.h"
-#include "Sharding/ShardingStrategyDefault.h"
 #include "VocBase/Properties/DatabaseConfiguration.h"
-
-#ifdef USE_ENTERPRISE
-#include "Enterprise/Sharding/ShardingStrategyEE.h"
-#endif
 
 #include <velocypack/Collection.h>
 #include <velocypack/Slice.h>
@@ -812,22 +807,20 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
                 false;
 #endif
             if (!isSmart) {
-              col.shardingStrategy = ShardingStrategyHash::NAME;
+              col.shardingStrategy = "hash";
             } else {
               if (col.getType() == TRI_COL_TYPE_DOCUMENT) {
                 if (col.smartGraphAttribute.has_value()) {
                   // SmartGraphs need  to have shardingStrategy "hash"
-                  col.shardingStrategy = ShardingStrategyHash::NAME;
+                  col.shardingStrategy = "hash";
                 } else {
                   // EnterpriseGraphs need  to have shardingStrategy
                   // "enterprise-hex-smart-vertex"
-                  col.shardingStrategy =
-                      ShardingStrategyEnterpriseHexSmartVertex::NAME;
+                  col.shardingStrategy = "enterprise-hex-smart-vertex";
                 }
               } else {
                 // Smart Edge Collections always have hash-smart-edge sharding
-                col.shardingStrategy =
-                    ShardingStrategyEnterpriseHashSmartEdge::NAME;
+                col.shardingStrategy = "enterprise-hash-smart-edge";
               }
             }
           }
