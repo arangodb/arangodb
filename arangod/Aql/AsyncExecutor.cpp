@@ -33,6 +33,7 @@
 #include "Aql/SingleRowFetcher.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/Stats.h"
+#include "Assertions/ProdAssert.h"
 #include "Basics/ScopeGuard.h"
 
 #include "Logger/LogMacros.h"
@@ -92,23 +93,27 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   if (_internalState == AsyncState::InProgress) {
     ++_numWakeupsQueued;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
-  } else if (_internalState == AsyncState::GotResult) {
+  } else if (_internalState == AsyncState::GotResult &&
+             _returnState != ExecutionState::WAITING) {
     if (_returnState != ExecutionState::DONE) {
       // we may not return WAITING if upstream returned DONE
       _internalState = AsyncState::Empty;
     }
     return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   } else if (_internalState == AsyncState::GotException) {
-    TRI_ASSERT(_returnException != nullptr);
+    TRI_ASSERT(_returnState != ExecutionState::WAITING);
+    ADB_PROD_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
     TRI_ASSERT(false);
     return {ExecutionState::DONE, SkipResult(), SharedAqlItemBlockPtr()};
   }
-  TRI_ASSERT(_internalState == AsyncState::Empty);
+  TRI_ASSERT(_internalState == AsyncState::Empty ||
+             (_internalState == AsyncState::GotResult &&
+              _returnState == ExecutionState::WAITING));
 
   _internalState = AsyncState::InProgress;
-  bool queued =
-      _sharedState->asyncExecuteAndWakeup([this, stack](bool const isAsync) {
+  bool queued = _sharedState->asyncExecuteAndWakeup(
+      [this, stack](bool const isAsync) -> bool {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
         try {
@@ -198,6 +203,7 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
           }
 #endif
         }
+        return _returnState != ExecutionState::WAITING;
       });
 
   if (!queued) {
