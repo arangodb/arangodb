@@ -23,11 +23,12 @@
 
 #pragma once
 
-#include "Cluster/ClusterInfo.h"
+#include "Cluster/Utils/ShardID.h"
 
 #include <functional>
 #include <string>
 #include <string_view>
+#include <memory>
 
 namespace arangodb {
 class ShardingInfo;

@@ -42,6 +42,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
