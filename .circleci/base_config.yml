@@ -469,6 +469,46 @@ jobs:
           destination: hotbackup-test
           path: /tmp/test-workdir
 
+  run-rta-tests:
+    machine:
+      image: ubuntu-2204:current
+    parameters:
+      suiteName:
+        type: string
+      cluster:
+        type: boolean
+      enterprise:
+        type: boolean
+      # TODO add more parameters
+    steps:
+      - attach_workspace:
+          at: work/ArangoDB
+      - run:
+          name: Clone RTA
+          command: |
+            mkdir work/release-test-automation
+            cd work/release-test-automation
+            git clone git@github.com:arangodb/release-test-automation.git .
+            git checkout circleci
+      - run:
+          name: Run << parameters.suiteName >> tests
+          no_output_timeout: 20m
+          command: |
+            pwd
+            ls -la
+            echo TODO
+            release-test-automation/jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
+      - run:
+          name: Copy test results
+          when: always
+          command: |
+            echo TODO
+      - store_artifacts:
+          destination: << parameters.suiteName >>
+          path: ./work/
+      - store_test_results:
+          path: ./test-results/
+
   run-cppcheck:
     docker:
       - image: << pipeline.parameters.build-docker-image >>
