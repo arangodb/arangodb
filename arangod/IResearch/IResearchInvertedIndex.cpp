@@ -1118,6 +1118,12 @@ Index::FilterCosts IResearchInvertedIndex::supportsFilterCondition(
     return filterCosts;
   }
 
+  if (!hint.isForced() && node->containsBindParameter()) {
+    // filter condition uses a bind parameter, and the index hint does
+    // not use "forceIndexHint: true"
+    return filterCosts;
+  }
+
   // non-deterministic condition will mean full-scan. So we should
   // not use index here.
   // FIXME: maybe in the future we will be able to optimize just deterministic

@@ -48,6 +48,15 @@ struct QueryOptions {
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
+  enum ExpandBindParameters : uint8_t {
+    // replace all bind parameters early in the process, before any attempts to
+    // optimize the query
+    kExpandAll,
+    // replace only required bind parameters early in the process, and leave the
+    // rest for execution
+    kExpandOnlyRequired
+  };
+
   enum JoinStrategyType { DEFAULT, GENERIC };
 
   void fromVelocyPack(velocypack::Slice slice);
@@ -131,7 +140,7 @@ struct QueryOptions {
   // whether or not to expand bind parameters in the query execution
   // plan for explaining. always automatically true when executing
   // queries or profiling.
-  bool expandBindParameters;
+  ExpandBindParameters expandBindParameters;
 
   ExplainRegisterPlan explainRegisters;
 

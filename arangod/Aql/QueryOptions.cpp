@@ -26,6 +26,7 @@
 #include "Aql/QueryCache.h"
 #include "Aql/QueryRegistry.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/debugging.h"
 #include "Cluster/ServerState.h"
 
 #include <velocypack/Builder.h>
@@ -73,7 +74,7 @@ QueryOptions::QueryOptions()
       fullCount(false),
       count(false),
       skipAudit(false),
-      expandBindParameters(true),
+      expandBindParameters(ExpandBindParameters::kExpandOnlyRequired),
       explainRegisters(ExplainRegisterPlan::No) {
   // now set some default values from server configuration options
   {
@@ -214,8 +215,16 @@ void QueryOptions::fromVelocyPack(VPackSlice slice) {
   if (VPackSlice value = slice.get("count"); value.isBool()) {
     count = value.isTrue();
   }
-  if (VPackSlice value = slice.get("expandBindParameters"); value.isBool()) {
-    expandBindParameters = value.isTrue();
+  if (VPackSlice value = slice.get("expandBindParameters"); !value.isNone()) {
+    if (value.isBool()) {
+      expandBindParameters = value.isFalse()
+                                 ? ExpandBindParameters::kExpandOnlyRequired
+                                 : ExpandBindParameters::kExpandAll;
+    } else if (value.isString()) {
+      expandBindParameters = value.stringView() == "onlyRequired"
+                                 ? ExpandBindParameters::kExpandOnlyRequired
+                                 : ExpandBindParameters::kExpandAll;
+    }
   }
   if (VPackSlice value = slice.get("explainRegisters"); value.isBool()) {
     explainRegisters =
@@ -301,7 +310,14 @@ void QueryOptions::toVelocyPack(VPackBuilder& builder,
   builder.add("cache", VPackValue(cache));
   builder.add("fullCount", VPackValue(fullCount));
   builder.add("count", VPackValue(count));
-  builder.add("expandBindParameters", VPackValue(expandBindParameters));
+
+  if (expandBindParameters == ExpandBindParameters::kExpandOnlyRequired) {
+    builder.add("expandBindParameters", VPackValue("onlyRequired"));
+  } else {
+    TRI_ASSERT(expandBindParameters == ExpandBindParameters::kExpandAll);
+    builder.add("expandBindParameters", VPackValue("all"));
+  }
+
   if (!forceOneShardAttributeValue.empty()) {
     builder.add(StaticStrings::ForceOneShardAttributeValue,
                 VPackValue(forceOneShardAttributeValue));

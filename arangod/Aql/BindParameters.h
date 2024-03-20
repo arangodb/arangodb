@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include "Aql/QueryOptions.h"
 #include "Containers/FlatHashMap.h"
 
 #include <velocypack/Slice.h>
@@ -81,9 +82,14 @@ class BindParameters {
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;
 
+  /// @brief export bind parameter values to velocypack
+  void toVelocyPack(
+      velocypack::Builder& builder,
+      QueryOptions::ExpandBindParameters expandBindParameters) const;
+
   /// @brief strip collection name prefixes from the parameters.
   /// the values must be a VelocyPack array
-  static void stripCollectionNames(arangodb::velocypack::Slice keys,
+  static void stripCollectionNames(velocypack::Slice keys,
                                    std::string const& collectionName,
                                    velocypack::Builder& result);
 

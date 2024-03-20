@@ -840,10 +840,31 @@ for_statement:
         search = $6->getMemberUnchecked(0);
         if (search->type == NODE_TYPE_NOP) {
           search = nullptr;
+        } else {
+          // mark all value bind parameters inside SEARCH as required,
+          // because they can influence the query semantics.
+
+          // TODO: remove this and allow arbitrary value bind parameters 
+          // in SEARCH clause.
+          Ast::traverseAndModify(search, [](AstNode* node) {
+            if (node->type == NODE_TYPE_PARAMETER) {
+              node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+            }
+            return node;
+          });
         }
         options = $6->getMemberUnchecked(1);
         if (options->type == NODE_TYPE_NOP) {
           options = nullptr;
+        } else {
+          // mark all value bind parameters inside OPTIONS as required,
+          // because they can influence the query semantics
+          Ast::traverseAndModify(options, [](AstNode* node) {
+            if (node->type == NODE_TYPE_PARAMETER) {
+              node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
+            }
+            return node;
+          });
         }
       }
 

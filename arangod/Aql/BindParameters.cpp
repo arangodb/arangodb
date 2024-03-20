@@ -77,6 +77,27 @@ uint64_t BindParameters::hash() const {
   return _builder->slice().hash();
 }
 
+void BindParameters::toVelocyPack(
+    velocypack::Builder& builder,
+    QueryOptions::ExpandBindParameters expandBindParameters) const {
+  builder.openObject();
+
+  // TODO: only export bind parameters here that we actually need
+  if (expandBindParameters ==
+      QueryOptions::ExpandBindParameters::kExpandOnlyRequired) {
+    visit([&builder](std::string const& key, velocypack::Slice value,
+                     AstNode* node, bool seen) { builder.add(key, value); });
+  } else {
+    TRI_ASSERT(expandBindParameters ==
+               QueryOptions::ExpandBindParameters::kExpandAll);
+
+    visit([&builder](std::string const& key, velocypack::Slice value,
+                     AstNode* node, bool seen) { builder.add(key, value); });
+  }
+
+  builder.close();
+}
+
 /// @brief validates that all bind parameters that were declared have
 /// actually been used in the query.
 /// will throw if there is at least one declared, but unused bind parameter.

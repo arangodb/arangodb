@@ -398,6 +398,12 @@ class TtlThread final : public ServerThread<ArangodServer> {
             // don't let query runtime restrictions affect the lookup query
             aql::QueryOptions options;
             options.maxRuntime = 0.0;
+            // expand all bind parameters early, otherwise the TTL index
+            // will not be used
+            options.expandBindParameters =
+                aql::QueryOptions::ExpandBindParameters::kExpandAll;
+            // lower lockTimeout for collection to some more reasonable value
+            options.transactionOptions.lockTimeout = 60;
 
             auto query = aql::Query::create(
                 transaction::StandaloneContext::create(*vocbase, origin),
