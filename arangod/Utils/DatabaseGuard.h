@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 
 struct TRI_vocbase_t;

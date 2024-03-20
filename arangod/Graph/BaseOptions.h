@@ -24,12 +24,11 @@
 #pragma once
 
 #include "Aql/AqlFunctionsInternalCache.h"
-#include "Aql/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
 #include "Aql/FixedVarExpressionContext.h"
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Aql/VarInfoMap.h"
-#include "Basics/Common.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 

@@ -23,7 +23,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"  // required for RocksDBColumnFamilyManager.h
+#include "Basics/StaticStrings.h"
 #include "IResearch/IResearchLinkHelper.h"
 #include "IResearch/IResearchView.h"
 #include "IResearch/IResearchRocksDBLink.h"

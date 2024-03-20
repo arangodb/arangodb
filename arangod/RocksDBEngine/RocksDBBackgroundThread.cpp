@@ -24,6 +24,7 @@
 #include "RocksDBBackgroundThread.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Basics/system-functions.h"
 #include "Logger/LogMacros.h"
 #include "Metrics/GaugeBuilder.h"
 #include "Metrics/MetricsFeature.h"

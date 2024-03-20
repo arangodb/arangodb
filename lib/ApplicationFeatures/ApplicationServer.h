@@ -37,7 +37,6 @@
 #include <vector>
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Common.h"
 #include "Basics/ConditionVariable.h"
 
 #include <velocypack/Builder.h>

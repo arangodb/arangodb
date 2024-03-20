@@ -24,7 +24,6 @@
 #include "Version.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/files.h"

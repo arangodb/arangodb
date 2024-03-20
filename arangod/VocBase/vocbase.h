@@ -34,7 +34,6 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/Result.h"
 #include "Basics/ResultT.h"
@@ -107,6 +106,7 @@ class ReplicationClientsProgressTracker;
 class StorageEngine;
 class VersionTracker;
 struct VocBaseLogManager;
+struct VocbaseMetrics;
 }  // namespace arangodb
 
 /// @brief document handle separator as character
@@ -180,6 +180,8 @@ struct TRI_vocbase_t {
   std::unique_ptr<arangodb::aql::QueryList> _queries;
   std::unique_ptr<arangodb::CursorRepository> _cursorRepository;
 
+  std::unique_ptr<arangodb::VocbaseMetrics> _metrics;
+
   std::unique_ptr<arangodb::DatabaseReplicationApplier> _replicationApplier;
   std::unique_ptr<arangodb::ReplicationClientsProgressTracker>
       _replicationClients;
@@ -192,6 +194,8 @@ struct TRI_vocbase_t {
   auto versionTracker() noexcept -> arangodb::VersionTracker& {
     return _versionTracker;
   }
+
+  arangodb::VocbaseMetrics const& metrics() const noexcept { return *_metrics; }
 
   template<typename As>
   As& engine() const noexcept

@@ -393,15 +393,19 @@ std::map<std::string_view, Analyzer> const& staticAnalyzers() {
 
 // AqlValue entries must be explicitly deallocated
 struct VPackFunctionParametersWrapper {
-  arangodb::aql::VPackFunctionParameters instance;
+  arangodb::aql::functions::VPackFunctionParameters instance;
   VPackFunctionParametersWrapper() = default;
   ~VPackFunctionParametersWrapper() {
     for (auto& entry : instance) {
       entry.destroy();
     }
   }
-  arangodb::aql::VPackFunctionParameters* operator->() { return &instance; }
-  arangodb::aql::VPackFunctionParameters& operator*() { return instance; }
+  arangodb::aql::functions::VPackFunctionParameters* operator->() {
+    return &instance;
+  }
+  arangodb::aql::functions::VPackFunctionParameters& operator*() {
+    return instance;
+  }
 };
 
 // AqlValue entrys must be explicitly deallocated
@@ -477,7 +481,7 @@ class IResearchAnalyzerFeatureTest
                               // configuration from system database
   }
 
-  std::unique_ptr<arangodb::ExecContext> getLoggedInContext() const {
+  std::shared_ptr<arangodb::ExecContext> getLoggedInContext() const {
     return arangodb::ExecContext::create("testUser", "testVocbase");
   }
 
@@ -504,7 +508,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_no_vocbase_read) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
 }
@@ -515,7 +519,7 @@ TEST_F(IResearchAnalyzerFeatureTest,
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::NONE, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
 }
@@ -525,7 +529,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_none) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::NONE);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   // implicit RO access to collection _analyzers collection granted due to RO
   // access to db
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
@@ -539,7 +543,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_ro) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
@@ -550,7 +554,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_ro_collection_rw) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RO, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
   EXPECT_FALSE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
@@ -561,7 +565,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_ro) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RO);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
   // implicit access for system analyzers collection granted due to RW access to
@@ -574,7 +578,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_auth_vocbase_rw_collection_rw) {
   TRI_vocbase_t vocbase(testDBInfo(server.server()));
   userSetAccessLevel(arangodb::auth::Level::RW, arangodb::auth::Level::RW);
   auto ctxt = getLoggedInContext();
-  arangodb::ExecContextScope execContextScope(ctxt.get());
+  arangodb::ExecContextScope execContextScope(ctxt);
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
       vocbase, arangodb::auth::Level::RO));
   EXPECT_TRUE(arangodb::iresearch::IResearchAnalyzerFeature::canUse(
@@ -3447,7 +3451,7 @@ TEST_F(IResearchAnalyzerFeatureTest, test_tokens) {
   // test invalid arg count
   // Zero count (less than expected)
   {
-    arangodb::aql::VPackFunctionParameters args;
+    arangodb::aql::functions::VPackFunctionParameters args;
     EXPECT_THROW(AqlValueWrapper(impl(&exprCtx, node, args)),
                  arangodb::basics::Exception);
   }

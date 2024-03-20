@@ -30,7 +30,7 @@
 #include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ProfileLevel.h"
 #include "Aql/QueryRegistry.h"
 #include "Aql/SharedQueryState.h"
@@ -334,10 +334,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     generateError(revisionRes);
     co_return;
   }
-  q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
-                         snippetsSlice, traverserSlice,
-                         _request->value(StaticStrings::UserString),
-                         answerBuilder, analyzersRevision, fastPath);
+  q->prepareFromVelocyPack(querySlice, collectionBuilder.slice(),
+                           variablesSlice, snippetsSlice, traverserSlice,
+                           _request->value(StaticStrings::UserString),
+                           answerBuilder, analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();

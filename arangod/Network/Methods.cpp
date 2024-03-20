@@ -25,7 +25,6 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Agency/AgencyFeature.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Basics/HybridLogicalClock.h"
 #include "Basics/Utf8Helper.h"
@@ -322,8 +321,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     if (!pool || !pool->config().clusterInfo) {
       LOG_TOPIC("59b95", ERR, Logger::COMMUNICATION)
           << "connection pool unavailable";
-      return futures::makeFuture(Response{
-          std::move(dest), Error::ConnectionCanceled, std::move(req), nullptr});
+      co_return Response{std::move(dest), Error::ConnectionCanceled,
+                         std::move(req), nullptr};
     }
 
     // resolve destination.
@@ -338,19 +337,21 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     ErrorCode res = TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE;
     if (options.overrideDestination.empty()) {
       if (!dest.empty()) {
-        res = resolveDestination(*pool->config().clusterInfo, dest, spec);
+        res = co_await resolveDestination(*pool->config().clusterInfo, dest,
+                                          spec);
       }
     } else {
-      res = resolveDestination(*pool->config().clusterInfo,
-                               "server:" + options.overrideDestination, spec);
+      res = co_await resolveDestination(*pool->config().clusterInfo,
+                                        "server:" + options.overrideDestination,
+                                        spec);
     }
 
     if (res != TRI_ERROR_NO_ERROR) {
       // We fake a successful request with statusCode 503 and a backend not
       // available error here:
       auto resp = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      return futures::makeFuture(Response{std::move(dest), Error::NoError,
-                                          std::move(req), std::move(resp)});
+      co_return Response{std::move(dest), Error::NoError, std::move(req),
+                         std::move(resp)};
     }
     TRI_ASSERT(!spec.endpoint.empty());
 
@@ -363,7 +364,7 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     FutureRes f = p->promise.getFuture();
     actuallySendRequest(std::move(p), pool, options, spec.endpoint,
                         std::move(req));
-    return f;
+    co_return co_await std::move(f);
 
   } catch (std::exception const& e) {
     LOG_TOPIC("236d7", DEBUG, Logger::COMMUNICATION)
@@ -372,8 +373,8 @@ FutureRes sendRequest(ConnectionPool* pool, DestinationId dest, RestVerb type,
     LOG_TOPIC("36d72", DEBUG, Logger::COMMUNICATION)
         << "failed to send request.";
   }
-  return futures::makeFuture(
-      Response{std::string(), Error::ConnectionCanceled, nullptr, nullptr});
+  co_return Response{std::string(), Error::ConnectionCanceled, nullptr,
+                     nullptr};
 }
 
 /// Stateful handler class with enough information to keep retrying
@@ -429,42 +430,50 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
       return;  // we are done
     }
 
-    arangodb::network::EndpointSpec spec;
-    auto res = _options.overrideDestination.empty()
-                   ? resolveDestination(*_pool->config().clusterInfo,
-                                        _destination, spec)
-                   : resolveDestination(
-                         *_pool->config().clusterInfo,
-                         "server:" + _options.overrideDestination, spec);
-    if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
-      // We fake a successful request with statusCode 503 and a backend not
-      // available error here:
-      _tmp_err = Error::NoError;
-      _tmp_res = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
-      resolvePromise();
-      return;
-    }
+    auto futureRes = _options.overrideDestination.empty()
+                         ? resolveDestination(*_pool->config().clusterInfo,
+                                              _destination, _spec)
+                         : resolveDestination(
+                               *_pool->config().clusterInfo,
+                               "server:" + _options.overrideDestination, _spec);
 
-    // simon: shorten actual request timeouts to allow time for retry
-    //        otherwise resilience_failover tests likely fail
-    auto t = _endTime - now;
-    if (t >= std::chrono::duration<double>(100)) {
-      t -= std::chrono::seconds(30);
-    }
-    TRI_ASSERT(t.count() > 0);
-    _tmp_req->timeout(std::chrono::duration_cast<std::chrono::milliseconds>(t));
+    std::move(futureRes).thenFinal([this, self = shared_from_this(),
+                                    now](futures::Try<ErrorCode> tryRes) {
+      auto res =
+          basics::catchToResult([&] { return tryRes.get(); }).errorNumber();
 
-    auto& server = _pool->config().clusterInfo->server();
-    NetworkFeature& nf = server.getFeature<NetworkFeature>();
-    nf.sendRequest(*_pool, _options, spec.endpoint, std::move(_tmp_req),
-                   [self = shared_from_this()](
-                       fuerte::Error err, std::unique_ptr<fuerte::Request> req,
-                       std::unique_ptr<fuerte::Response> res, bool isFromPool) {
-                     self->_tmp_err = err;
-                     self->_tmp_req = std::move(req);
-                     self->_tmp_res = std::move(res);
-                     self->handleResponse(isFromPool);
-                   });
+      if (res != TRI_ERROR_NO_ERROR) {  // ClusterInfo did not work
+        // We fake a successful request with statusCode 503 and a backend not
+        // available error here:
+        _tmp_err = Error::NoError;
+        _tmp_res = buildResponse(fuerte::StatusServiceUnavailable, Result{res});
+        resolvePromise();
+        return;
+      }
+
+      // simon: shorten actual request timeouts to allow time for retry
+      //        otherwise resilience_failover tests likely fail
+      auto t = _endTime - now;
+      if (t >= std::chrono::duration<double>(100)) {
+        t -= std::chrono::seconds(30);
+      }
+      TRI_ASSERT(t.count() > 0);
+      _tmp_req->timeout(
+          std::chrono::duration_cast<std::chrono::milliseconds>(t));
+
+      auto& server = _pool->config().clusterInfo->server();
+      NetworkFeature& nf = server.getFeature<NetworkFeature>();
+      nf.sendRequest(
+          *_pool, _options, _spec.endpoint, std::move(_tmp_req),
+          [self = shared_from_this()](
+              fuerte::Error err, std::unique_ptr<fuerte::Request> req,
+              std::unique_ptr<fuerte::Response> res, bool isFromPool) {
+            self->_tmp_err = err;
+            self->_tmp_req = std::move(req);
+            self->_tmp_res = std::move(res);
+            self->handleResponse(isFromPool);
+          });
+    });
   }
 
  private:
@@ -650,7 +659,7 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
 
   std::chrono::steady_clock::time_point const _startTime;
   std::chrono::steady_clock::time_point const _endTime;
-
+  network::EndpointSpec _spec;
   fuerte::Error _tmp_err;
 };
 

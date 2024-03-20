@@ -22,13 +22,14 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "Aql/Scopes.h"
+#include "Aql/Variable.h"
 #include "Basics/Exceptions.h"
-#include "Basics/StringUtils.h"
+#include "Basics/debugging.h"
 
 using namespace arangodb::aql;
 
 /// @brief create the scope
-Scope::Scope(ScopeType type) : _type(type), _variables() {}
+Scope::Scope(ScopeType type) : _type(type) {}
 
 /// @brief destroy the scope
 Scope::~Scope() = default;
@@ -103,11 +104,21 @@ Scopes::Scopes() { _activeScopes.reserve(4); }
 /// @brief destroy the scopes
 Scopes::~Scopes() = default;
 
+/// @brief return the type of the currently active scope
+ScopeType Scopes::type() const {
+  TRI_ASSERT(numActive() > 0);
+  return _activeScopes.back()->type();
+}
+
+/// @brief whether or not the $CURRENT variable can be used at the caller's
+/// current position
+bool Scopes::canUseCurrentVariable() const noexcept {
+  return !_currentVariables.empty();
+}
+
 /// @brief start a new scope
 void Scopes::start(ScopeType type) {
-  auto scope = std::make_unique<Scope>(type);
-
-  _activeScopes.emplace_back(std::move(scope));
+  _activeScopes.emplace_back(std::make_unique<Scope>(type));
 }
 
 /// @brief end the current scope

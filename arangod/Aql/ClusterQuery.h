@@ -27,6 +27,12 @@
 #include "Cluster/ClusterTypes.h"
 #include "Futures/Future.h"
 
+#include <memory>
+
+namespace arangodb::traverser {
+class BaseEngine;
+}
+
 namespace arangodb::aql {
 
 // additionally contains TraversalEngines
@@ -47,28 +53,30 @@ class ClusterQuery : public Query {
       QueryId id, std::shared_ptr<transaction::Context> ctx,
       QueryOptions options);
 
-  auto const& traversers() const { return _traversers; }
+  /// @brief prepare a query out of some velocypack data.
+  /// only to be used on a DB server.
+  /// never call this on a single server or coordinator!
+  void prepareFromVelocyPack(
+      velocypack::Slice querySlice, velocypack::Slice collections,
+      velocypack::Slice variables, velocypack::Slice snippets,
+      velocypack::Slice traverserSlice, std::string const& user,
+      velocypack::Builder& answerBuilder,
+      QueryAnalyzerRevisions const& analyzersRevision, bool fastPathLocking);
 
-  void prepareClusterQuery(velocypack::Slice querySlice,
-                           velocypack::Slice collections,
-                           velocypack::Slice variables,
-                           velocypack::Slice snippets,
-                           velocypack::Slice traversals,
-                           std::string const& user, velocypack::Builder& answer,
-                           QueryAnalyzerRevisions const& analyzersRevision,
-                           bool fastPathLocking);
+  auto const& traversers() const { return _traversers; }
 
   futures::Future<Result> finalizeClusterQuery(ErrorCode errorCode);
 
  private:
+  void buildTraverserEngines(velocypack::Slice traverserSlice,
+                             velocypack::Builder& answerBuilder);
+
 #ifdef USE_ENTERPRISE
   void waitForSatellites();
 #endif
 
   /// @brief first one should be the local one
   traverser::GraphEngineList _traversers;
-
-  size_t _planMemoryUsage;
 };
 
 }  // namespace arangodb::aql

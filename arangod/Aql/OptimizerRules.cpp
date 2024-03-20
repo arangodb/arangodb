@@ -23,41 +23,61 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "OptimizerRules.h"
+
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Ast.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
 #include "Aql/AttributeNamePath.h"
-#include "Aql/ClusterNodes.h"
-#include "Aql/CollectNode.h"
 #include "Aql/CollectOptions.h"
 #include "Aql/Collection.h"
 #include "Aql/ConditionFinder.h"
-#include "Aql/DocumentProducingNode.h"
-#include "Aql/EnumeratePathsNode.h"
 #include "Aql/ExecutionEngine.h"
-#include "Aql/ExecutionNode.h"
+#include "Aql/ExecutionNode/CalculationNode.h"
+#include "Aql/ExecutionNode/CollectNode.h"
+#include "Aql/ExecutionNode/DistributeNode.h"
+#include "Aql/ExecutionNode/DocumentProducingNode.h"
+#include "Aql/ExecutionNode/EnumerateCollectionNode.h"
+#include "Aql/ExecutionNode/EnumerateListNode.h"
+#include "Aql/ExecutionNode/EnumeratePathsNode.h"
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/ExecutionNode/FilterNode.h"
+#include "Aql/ExecutionNode/GatherNode.h"
+#include "Aql/ExecutionNode/IResearchViewNode.h"
+#include "Aql/ExecutionNode/IndexNode.h"
+#include "Aql/ExecutionNode/InsertNode.h"
+#include "Aql/ExecutionNode/JoinNode.h"
+#include "Aql/ExecutionNode/LimitNode.h"
+#include "Aql/ExecutionNode/MaterializeRocksDBNode.h"
+#include "Aql/ExecutionNode/ModificationNode.h"
+#include "Aql/ExecutionNode/RemoteNode.h"
+#include "Aql/ExecutionNode/RemoveNode.h"
+#include "Aql/ExecutionNode/ReplaceNode.h"
+#include "Aql/ExecutionNode/ReturnNode.h"
+#include "Aql/ExecutionNode/ScatterNode.h"
+#include "Aql/ExecutionNode/ShortestPathNode.h"
+#include "Aql/ExecutionNode/SortNode.h"
+#include "Aql/ExecutionNode/SubqueryEndExecutionNode.h"
+#include "Aql/ExecutionNode/SubqueryNode.h"
+#include "Aql/ExecutionNode/SubqueryStartExecutionNode.h"
+#include "Aql/ExecutionNode/TraversalNode.h"
+#include "Aql/ExecutionNode/UpdateNode.h"
+#include "Aql/ExecutionNode/UpsertNode.h"
+#include "Aql/ExecutionNode/WindowNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
-#include "Aql/IResearchViewNode.h"
-#include "Aql/IndexNode.h"
-#include "Aql/JoinNode.h"
 #include "Aql/IndexStreamIterator.h"
-#include "Aql/ModificationNodes.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
 #include "Aql/Projections.h"
 #include "Aql/Query.h"
-#include "Aql/ShortestPathNode.h"
 #include "Aql/SortCondition.h"
-#include "Aql/SortNode.h"
-#include "Aql/SubqueryEndExecutionNode.h"
-#include "Aql/SubqueryStartExecutionNode.h"
+#include "Aql/SortElement.h"
+#include "Aql/SortInformation.h"
 #include "Aql/TraversalConditionFinder.h"
-#include "Aql/TraversalNode.h"
 #include "Aql/Variable.h"
-#include "Aql/WindowNode.h"
 #include "Aql/types.h"
 #include "Basics/AttributeNameParser.h"
 #include "Basics/NumberUtils.h"
@@ -71,13 +91,9 @@
 #include "Graph/ShortestPathOptions.h"
 #include "Graph/TraverserOptions.h"
 #include "Indexes/Index.h"
-#include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
-#include "Transaction/CountCache.h"
 #include "Transaction/Methods.h"
-#include "Utils/CollectionNameResolver.h"
 #include "VocBase/Methods/Collections.h"
-#include "Logger/LogMacros.h"
 
 #include <span>
 #include <tuple>
@@ -1780,7 +1796,10 @@ void arangodb::aql::moveCalculationsDownRule(
   VarSet usedHere;
   bool modified = false;
 
+  size_t i = 0;
   for (auto const& n : nodes) {
+    bool const isLastVariable = ++i == nodes.size();
+
     // this is the variable that the calculation will set
     Variable const* variable = nullptr;
 
@@ -1811,28 +1830,34 @@ void arangodb::aql::moveCalculationsDownRule(
       auto current = stack.back();
       stack.pop_back();
 
-      bool done = false;
+      auto const currentType = current->getType();
+      bool tryToPushIntoSubquery = false;
 
-      usedHere.clear();
-      current->getVariablesUsedHere(usedHere);
-      for (auto const& v : usedHere) {
-        if (v == variable) {
+      if (currentType == EN::SUBQUERY && !current->isVarUsedLater(variable)) {
+        current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
+        while (current->hasDependency()) {
+          current = current->getFirstDependency();
+        }
+        tryToPushIntoSubquery = true;
+      } else {
+        usedHere.clear();
+        current->getVariablesUsedHere(usedHere);
+
+        bool const done = std::find(usedHere.begin(), usedHere.end(),
+                                    variable) != usedHere.end();
+
+        if (done) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
-          done = true;
           break;
         }
       }
 
-      if (done) {
-        // done with optimizing this calculation node
-        break;
-      }
-
-      auto const currentType = current->getType();
-
-      if (currentType == EN::FILTER || currentType == EN::SORT ||
-          currentType == EN::LIMIT || currentType == EN::SUBQUERY) {
+      if (tryToPushIntoSubquery) {
+        lastNode = current;
+      } else if (currentType == EN::FILTER || currentType == EN::SORT ||
+                 currentType == EN::LIMIT || currentType == EN::SUBQUERY ||
+                 currentType == EN::SINGLETON) {
         // we found something interesting that justifies moving our node down
         if (currentType == EN::LIMIT &&
             arangodb::ServerState::instance()->isCoordinator()) {
@@ -1851,7 +1876,6 @@ void arangodb::aql::moveCalculationsDownRule(
         }
 
         lastNode = current;
-
       } else if (currentType == EN::INDEX ||
                  currentType == EN::ENUMERATE_COLLECTION ||
                  currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
@@ -1878,6 +1902,14 @@ void arangodb::aql::moveCalculationsDownRule(
       // and re-insert into after the last "good" node
       plan->insertDependency(lastNode->getFirstParent(), n);
       modified = true;
+
+      // any changes done here may affect the following iterations
+      // of this optimizer rule, so we need to recalculate the
+      // variable usage here.
+      if (!isLastVariable) {
+        plan->clearVarUsageComputed();
+        plan->findVarUsage();
+      }
     }
   }
 
@@ -5869,19 +5901,19 @@ struct RemoveRedundantOr {
       if (hasRedundantConditionWalker(rhs) &&
           !hasRedundantConditionWalker(lhs) && lhs->isConstant()) {
         if (!isComparisonSet) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
           isComparisonSet = true;
           return true;
         }
 
-        int lowhigh = isCompatibleBound(Ast::ReverseOperator(type), lhs);
+        int lowhigh = isCompatibleBound(Ast::reverseOperator(type), lhs);
         if (lowhigh == 0) {
           return false;
         }
 
         if (compareBounds(type, lhs, lowhigh)) {
-          comparison = Ast::ReverseOperator(type);
+          comparison = Ast::reverseOperator(type);
           bestValue = lhs;
         }
         return true;
@@ -7226,10 +7258,10 @@ static bool applyGeoOptimization(ExecutionPlan* plan, LimitNode* ln,
   for (std::pair<ExecutionNode*, Expression*> pair : info.exesToModify) {
     AstNode* root = pair.second->nodeForModification();
     auto pre = [&](AstNode const* node) -> bool {
-      return node == root || Ast::IsAndOperatorType(node->type);
+      return node == root || Ast::isAndOperatorType(node->type);
     };
     auto visitor = [&](AstNode* node) -> AstNode* {
-      if (Ast::IsAndOperatorType(node->type)) {
+      if (Ast::isAndOperatorType(node->type)) {
         std::vector<AstNode*> keep;  // always shallow copy node
         for (std::size_t i = 0; i < node->numMembers(); i++) {
           AstNode* child = node->getMemberUnchecked(i);

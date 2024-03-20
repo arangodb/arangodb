@@ -28,7 +28,6 @@
 #include <cstddef>
 #include <limits>
 
-#include "Basics/Common.h"
 #include "Cache/Transaction.h"
 #include "Containers/SmallVector.h"
 #include "RocksDBEngine/RocksDBKey.h"

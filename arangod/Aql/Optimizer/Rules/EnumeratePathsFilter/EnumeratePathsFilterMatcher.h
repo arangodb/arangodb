@@ -20,17 +20,17 @@
 ///
 /// @author Markus Pfeiffer
 ////////////////////////////////////////////////////////////////////////////////
+
 #pragma once
 
-#include "Aql/Condition.h"
-#include "Aql/ExecutionPlan.h"
-
-#include "Containers/FlatHashSet.h"
-#include "Logger/LogMacros.h"
-
+#include "Aql/ExecutionNode/ExecutionNode.h"
+#include "Aql/WalkerWorker.h"
+#include "Aql/types.h"
 #include "Containers/FlatHashMap.h"
 
 namespace arangodb::aql {
+struct AstNode;
+class ExecutionPlan;
 
 ///
 /// This code is inspired by TraversalConditionFinder, but tries to be more

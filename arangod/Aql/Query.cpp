@@ -30,10 +30,11 @@
 #include "Aql/AqlTransaction.h"
 #include "Aql/Ast.h"
 #include "Aql/Collection.h"
+#include "Aql/ClusterQuery.h"
 #include "Aql/ExecutionBlock.h"
 #include "Aql/ExecutionEngine.h"
+#include "Aql/ExecutionNode/GraphNode.h"
 #include "Aql/ExecutionPlan.h"
-#include "Aql/GraphNode.h"
 #include "Aql/Optimizer.h"
 #include "Aql/Parser.h"
 #include "Aql/ProfileLevel.h"
@@ -56,6 +57,7 @@
 #include "Network/Methods.h"
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
+#include "Random/RandomGenerator.h"
 #include "RestServer/AqlFeature.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -117,6 +119,7 @@ Query::Query(QueryId id, std::shared_ptr<transaction::Context> ctx,
       _startTime(currentSteadyClockValue()),
       _endTime(0.0),
       _resultMemoryUsage(0),
+      _planMemoryUsage(0),
       _queryHash(DontCache),
       _shutdownState(ShutdownState::None),
       _executionPhase(ExecutionPhase::INITIALIZE),
@@ -218,6 +221,9 @@ void Query::destroy() {
 
   _resourceMonitor.decreaseMemoryUsage(_resultMemoryUsage);
   _resultMemoryUsage = 0;
+
+  _resourceMonitor.decreaseMemoryUsage(_planMemoryUsage);
+  _planMemoryUsage = 0;
 
   if (_queryOptions.profile >= ProfileLevel::TraceOne) {
     LOG_TOPIC("36a75", INFO, Logger::QUERIES)
@@ -351,12 +357,27 @@ void Query::prepareQuery() {
         _queryOptions.profile >= ProfileLevel::Blocks &&
         ServerState::isSingleServerOrCoordinator(_trx->state()->serverRole());
     if (keepPlan) {
+      auto serializeQueryData = [this](velocypack::Builder& builder) {
+        // set up collections
+        TRI_ASSERT(builder.isOpenObject());
+        builder.add(VPackValue("collections"));
+        collections().toVelocyPack(builder);
+
+        // set up variables
+        TRI_ASSERT(builder.isOpenObject());
+        builder.add(VPackValue("variables"));
+        _ast->variables()->toVelocyPack(builder);
+
+        builder.add("isModificationQuery",
+                    VPackValue(_ast->containsModificationNode()));
+      };
+
       unsigned flags = ExecutionPlan::buildSerializationFlags(
           /*verbose*/ false, /*includeInternals*/ false,
           /*explainRegisters*/ false);
       _planSliceCopy = std::make_unique<VPackBufferUInt8>();
       VPackBuilder b(*_planSliceCopy);
-      plan->toVelocyPack(b, _ast.get(), flags);
+      plan->toVelocyPack(b, flags, serializeQueryData);
 
       try {
         _resourceMonitor.increaseMemoryUsage(_planSliceCopy->size());
@@ -419,8 +440,14 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   Parser parser(*this, *_ast, _queryString);
   parser.parse();
 
-  // put in bind parameters
-  parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+  // put in collection and attribute name bind parameters (e.g. @@collection or
+  // doc.@attr).
+  _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
+
+  // put in value bind parameters. TODO: move this further down in the process,
+  // so that the optimizer can run with value bind parameters still unreplaced
+  // in the AST.
+  _ast->injectBindParametersSecondStage(_bindParameters);
 
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
@@ -489,6 +516,9 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
 
   // return the V8 executor if we are in one
   exitV8Executor();
+
+  // validate that all bind parameters are in use
+  _bindParameters.validateAllUsed();
 
   return plan;
 }
@@ -1021,7 +1051,10 @@ QueryResult Query::explain() {
     parser.parse();
 
     // put in bind parameters
-    parser.ast()->injectBindParameters(_bindParameters, this->resolver());
+    parser.ast()->injectBindParametersFirstStage(_bindParameters,
+                                                 this->resolver());
+    parser.ast()->injectBindParametersSecondStage(_bindParameters);
+    _bindParameters.validateAllUsed();
 
     // optimize and validate the ast
     enterState(QueryExecutionState::ValueType::AST_OPTIMIZATION);
@@ -1067,6 +1100,21 @@ QueryResult Query::explain() {
         _queryOptions.verbosePlans, _queryOptions.explainInternals,
         _queryOptions.explainRegisters == ExplainRegisterPlan::Yes);
 
+    auto serializeQueryData = [this](velocypack::Builder& builder) {
+      // set up collections
+      TRI_ASSERT(builder.isOpenObject());
+      builder.add(VPackValue("collections"));
+      collections().toVelocyPack(builder);
+
+      // set up variables
+      TRI_ASSERT(builder.isOpenObject());
+      builder.add(VPackValue("variables"));
+      _ast->variables()->toVelocyPack(builder);
+
+      builder.add("isModificationQuery",
+                  VPackValue(_ast->containsModificationNode()));
+    };
+
     VPackOptions options;
     options.checkAttributeUniqueness = false;
     options.buildUnindexedArrays = true;
@@ -1081,9 +1129,9 @@ QueryResult Query::explain() {
         TRI_ASSERT(pln != nullptr);
 
         preparePlanForSerialization(pln);
-        pln->toVelocyPack(*result.data, parser.ast(), flags);
+        pln->toVelocyPack(*result.data, flags, serializeQueryData);
       }
-      // cacheability not available here
+      // cachability not available here
       result.cached = false;
     } else {
       std::unique_ptr<ExecutionPlan> bestPlan =
@@ -1091,9 +1139,9 @@ QueryResult Query::explain() {
       TRI_ASSERT(bestPlan != nullptr);
 
       preparePlanForSerialization(bestPlan);
-      bestPlan->toVelocyPack(*result.data, parser.ast(), flags);
+      bestPlan->toVelocyPack(*result.data, flags, serializeQueryData);
 
-      // cacheability
+      // cachability
       result.cached = (!_queryString.empty() && !isModificationQuery() &&
                        _warnings.empty() && _ast->root()->isCacheable());
     }
@@ -1263,6 +1311,10 @@ void Query::runInV8ExecutorContext(
   }
 }
 #endif
+
+/// @brief build traverser engines. only used on DB servers
+void buildTraverserEngines(velocypack::Slice /*traverserSlice*/,
+                           velocypack::Builder& /*answerBuilder*/) {}
 
 /// @brief initializes the query
 void Query::init(bool createProfile) {
@@ -1968,4 +2020,104 @@ void Query::debugKillQuery() {
       << queryList->enabled();
   kill();
 #endif
+}
+
+/// @brief prepare a query out of some velocypack data.
+/// only to be used on single server or coordinator.
+/// never call this on a DB server!
+void Query::prepareFromVelocyPack(
+    velocypack::Slice querySlice, velocypack::Slice collections,
+    velocypack::Slice variables, velocypack::Slice snippets,
+    QueryAnalyzerRevisions const& analyzersRevision) {
+  TRI_ASSERT(!ServerState::instance()->isDBServer());
+
+  LOG_TOPIC("9636f", DEBUG, Logger::QUERIES)
+      << elapsedSince(_startTime) << " Query::prepareFromVelocyPack"
+      << " this: " << (uintptr_t)this;
+
+  // track memory usage
+  ResourceUsageScope scope(_resourceMonitor);
+  scope.increase(querySlice.byteSize() + collections.byteSize() +
+                 variables.byteSize() + snippets.byteSize());
+
+  _planMemoryUsage += scope.trackedAndSteal();
+
+  init(/*createProfile*/ true);
+
+  if (auto val = querySlice.get("isModificationQuery"); val.isTrue()) {
+    _ast->setContainsModificationNode();
+  }
+  if (auto val = querySlice.get("isAsyncQuery"); val.isTrue()) {
+    _ast->setContainsParallelNode();
+  }
+
+  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+
+  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
+  _ast->variables()->fromVelocyPack(variables);
+  // creating the plan may have produced some collections
+  // we need to add them to the transaction now (otherwise the query will fail)
+
+  TRI_ASSERT(_trx == nullptr);
+  // needs to be created after the AST collected all collections
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
+  }
+#endif
+
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions,
+                                std::move(inaccessibleCollections));
+
+  // create the transaction object, but do not start the transaction yet
+  _trx->addHint(
+      transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
+
+  Result res = _trx->begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  TRI_IF_FAILURE("Query::setupLockTimeout") {
+    if (!_trx->state()->isReadOnlyTransaction() &&
+        RandomGenerator::interval(uint32_t(100)) >= 95) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+    }
+  }
+
+  enterState(QueryExecutionState::ValueType::PARSING);
+
+  bool const planRegisters = !_queryString.empty();
+  auto instantiateSnippet = [&](velocypack::Slice snippet) {
+    auto plan = ExecutionPlan::instantiateFromVelocyPack(_ast.get(), snippet);
+    TRI_ASSERT(plan != nullptr);
+
+    ExecutionEngine::instantiateFromPlan(*this, *plan, planRegisters);
+    _plans.push_back(std::move(plan));
+  };
+
+  for (auto pair : VPackObjectIterator(snippets, /*sequential*/ true)) {
+    instantiateSnippet(pair.value);
+
+    TRI_ASSERT(!_snippets.empty());
+    TRI_ASSERT(!_trx->state()->isDBServer() ||
+               _snippets.back()->engineId() != 0);
+  }
+
+  if (!_snippets.empty()) {
+    TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0]->engineId() == 0);
+    // simon: just a hack for AQL_EXECUTEJSON
+    if (_trx->state()->isCoordinator()) {  // register coordinator snippets
+      TRI_ASSERT(_trx->state()->isCoordinator());
+      QueryRegistryFeature::registry()->registerSnippets(_snippets);
+    }
+
+    registerQueryInTransactionState();
+  }
+
+  _queryProfile->registerInQueryList();
+
+  enterState(QueryExecutionState::ValueType::EXECUTION);
 }

@@ -169,6 +169,20 @@ std::tuple<std::string, LanguageType> getOrSetPreviousLanguage(
 
   return {std::string{collatorLang}, currLangType};
 }
+
+bool compareLangWithPrev(std::string const& lang, std::string const& prevLang) {
+  if (lang == prevLang) {
+    return true;
+  }
+  // Earlier ICU versions (for example in ArangoDB <= 3.11) derived different
+  // values for the "C" locale. For upgrades to work, we have to accept these
+  // old settings, too:
+  if (lang == "en_US_POSIX" && (prevLang == "en_US" || prevLang == "")) {
+    return true;
+  }
+  return false;
+}
+
 }  // namespace
 
 namespace arangodb {
@@ -204,7 +218,8 @@ void LanguageCheckFeature::start() {
     return;
   }
 
-  if (collatorLang != prevLang || prevLangType != currLangType) {
+  if (!::compareLangWithPrev(collatorLang, prevLang) ||
+      prevLangType != currLangType) {
     if (feature.forceLanguageCheck()) {
       // current not empty and not the same as previous, get out!
       LOG_TOPIC("7ef60", FATAL, arangodb::Logger::CONFIG)

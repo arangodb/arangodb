@@ -41,8 +41,8 @@
 #include "Agency/State.h"
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "ApplicationFeatures/HttpEndpointProvider.h"
-#include "Aql/ClusterQuery.h"
 #include "Aql/ExpressionContext.h"
+#include "Aql/Query.h"
 #include "Aql/QueryCache.h"
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
@@ -762,18 +762,10 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
-  arangodb::aql::QueryId queryId;
-  if (ServerState::instance()->isCoordinator()) {
-    queryId =
-        vocbase.server().getFeature<ClusterFeature>().clusterInfo().uniqid();
-  } else {
-    queryId = TRI_NewServerSpecificTick();
-  }
-
   auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
-  auto query = arangodb::aql::ClusterQuery::create(
-      queryId, transaction::V8Context::create(vocbase, origin, true),
-      aql::QueryOptions(options.slice()));
+  auto query = aql::Query::create(
+      transaction::V8Context::create(vocbase, origin, true), aql::QueryString{},
+      /*bindParameters*/ nullptr, aql::QueryOptions(options.slice()));
 
   VPackSlice collections = queryBuilder.slice().get("collections");
   VPackSlice variables = queryBuilder.slice().get("variables");
@@ -794,11 +786,9 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
-  query->prepareClusterQuery(VPackSlice::emptyObjectSlice(), collections,
-                             variables, snippetBuilder.slice(),
-                             VPackSlice::noneSlice(),
-                             ExecContext::current().user(), ignoreResponse,
-                             analyzersRevision, false /* fastPath */);
+  query->prepareFromVelocyPack(
+      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+      /*snippets*/ snippetBuilder.slice(), analyzersRevision);
 
   aql::QueryResult queryResult = query->executeSync();
 

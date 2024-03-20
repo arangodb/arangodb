@@ -447,7 +447,7 @@ class ExecutionBlockImpl final : public ExecutionBlock {
       LogContext logContext;
     };
 
-    void run(std::unique_ptr<ExecContext> execContext);
+    void run(std::shared_ptr<ExecContext const> execContext);
     std::atomic<State> _state{State::Waiting};
     Params* _params;
     ExecutionBlockImpl& _block;

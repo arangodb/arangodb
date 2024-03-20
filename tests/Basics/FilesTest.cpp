@@ -22,7 +22,6 @@
 /// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/FileUtils.h"
 #include "Basics/files.h"
 #include "Basics/operating-system.h"
@@ -34,8 +33,6 @@
 #include <absl/strings/str_cat.h>
 
 #include <fcntl.h>
-//#include <string.h>
-//#include <sys/types.h>
 #include <string>
 #include <string_view>
 #include <vector>

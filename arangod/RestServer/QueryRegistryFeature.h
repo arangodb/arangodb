@@ -24,8 +24,11 @@
 #pragma once
 
 #include "RestServer/arangod.h"
+#include "Aql/AsyncPrefetchSlotsManager.h"
 #include "Aql/QueryRegistry.h"
 #include "Metrics/Fwd.h"
+
+#include <atomic>
 
 namespace arangodb {
 
@@ -38,11 +41,11 @@ class QueryRegistryFeature final : public ArangodFeature {
   }
 
   QueryRegistryFeature(Server& server, metrics::MetricsFeature& metrics);
+  ~QueryRegistryFeature();
 
   void collectOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void validateOptions(std::shared_ptr<options::ProgramOptions>) override final;
   void prepare() override final;
-  void start() override final;
   void beginShutdown() override final;
   void stop() override final;
   void unprepare() override final;
@@ -82,6 +85,8 @@ class QueryRegistryFeature final : public ArangodFeature {
     return _allowCollectionsInExpressions;
   }
   bool logFailedQueries() const noexcept { return _logFailedQueries; }
+  size_t leaseAsyncPrefetchSlots(size_t value) noexcept;
+  void returnAsyncPrefetchSlots(size_t value) noexcept;
   uint64_t queryGlobalMemoryLimit() const noexcept {
     return _queryGlobalMemoryLimit;
   }
@@ -97,6 +102,8 @@ class QueryRegistryFeature final : public ArangodFeature {
   metrics::Gauge<uint64_t>* cursorsMemoryUsageMetric() const {
     return &_cursorsMemoryUsage;
   }
+
+  aql::AsyncPrefetchSlotsManager& asyncPrefetchSlotsManager() noexcept;
 
  private:
   bool _trackingEnabled;
@@ -114,6 +121,8 @@ class QueryRegistryFeature final : public ArangodFeature {
 #endif
   bool _allowCollectionsInExpressions;
   bool _logFailedQueries;
+  size_t _maxAsyncPrefetchSlotsTotal;
+  size_t _maxAsyncPrefetchSlotsPerQuery;
   size_t _maxQueryStringLength;
   size_t _maxCollectionsPerQuery;
   uint64_t _peakMemoryUsageThreshold;
@@ -136,6 +145,7 @@ class QueryRegistryFeature final : public ArangodFeature {
   static std::atomic<aql::QueryRegistry*> QUERY_REGISTRY;
 
   std::unique_ptr<aql::QueryRegistry> _queryRegistry;
+  aql::AsyncPrefetchSlotsManager _asyncPrefetchSlotsManager;
 
   metrics::Histogram<metrics::LogScale<double>>& _queryTimes;
   metrics::Histogram<metrics::LogScale<double>>& _slowQueryTimes;

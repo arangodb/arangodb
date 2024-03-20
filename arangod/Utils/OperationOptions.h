@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Utils/ExecContext.h"
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE

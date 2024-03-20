@@ -24,7 +24,6 @@
 #include "ClusterTrxMethods.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Basics/NumberUtils.h"
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Cluster/ClusterFeature.h"
@@ -56,7 +55,7 @@ using namespace arangodb::futures;
 
 namespace {
 // Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
-const double FAST_PATH_LOCK_TIMEOUT = 2.0;
+constexpr double kFastPathLockTimeout = 2.0;
 
 void buildTransactionBody(TransactionState& state, ServerID const& server,
                           VPackBuilder& builder) {
@@ -70,6 +69,7 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
         return true;
       }
       if (!state.isCoordinator()) {
+        // leader sends transaction to its followers
         TRI_IF_FAILURE("buildTransactionBodyEmpty") {
           return true;  // continue
         }
@@ -81,49 +81,19 @@ void buildTransactionBody(TransactionState& state, ServerID const& server,
           builder.add(VPackValue(col.collectionName()));
           numCollections++;
         }
-        return true;  // continue
-      }
-
-      // coordinator starts transaction on shard leaders
-#ifdef USE_ENTERPRISE
-      if (col.collection()->isSmart() &&
-          col.collection()->type() == TRI_COL_TYPE_EDGE) {
-        auto names = col.collection()->realNames();
-        auto& ci = col.collection()
-                       ->vocbase()
-                       .server()
-                       .getFeature<ClusterFeature>()
-                       .clusterInfo();
-        for (std::string const& name : names) {
-          auto cc = ci.getCollectionNT(state.vocbase().name(), name);
-          if (!cc) {
-            continue;
-          }
-          auto shards = ci.getShardList(std::to_string(cc->id().id()));
-          for (ShardID const& shard : *shards) {
-            auto sss = ci.getResponsibleServer(shard);
-            if (std::string_view{server} == sss->at(0)) {
-              if (numCollections == 0) {
-                builder.add(key, VPackValue(VPackValueType::Array));
-              }
-              builder.add(VPackValue(shard));
-              numCollections++;
+      } else {
+        // coordinator starts transaction on shard leaders
+        std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
+        for (auto const& pair : *shardIds) {
+          TRI_ASSERT(!pair.second.empty());
+          // only add shard where server is leader
+          if (!pair.second.empty() && pair.second[0] == server) {
+            if (numCollections == 0) {
+              builder.add(key, VPackValue(VPackValueType::Array));
             }
+            builder.add(VPackValue(pair.first));
+            numCollections++;
           }
-        }
-        return true;  // continue
-      }
-#endif
-      std::shared_ptr<ShardMap> shardIds = col.collection()->shardIds();
-      for (auto const& pair : *shardIds) {
-        TRI_ASSERT(!pair.second.empty());
-        // only add shard where server is leader
-        if (!pair.second.empty() && pair.second[0] == server) {
-          if (numCollections == 0) {
-            builder.add(key, VPackValue(VPackValueType::Array));
-          }
-          builder.add(VPackValue(pair.first));
-          numCollections++;
         }
       }
       return true;
@@ -431,7 +401,7 @@ Future<Result> beginTransactionOnLeaders(
       // We first try to do a fast lock, if we cannot get this
       // There is a potential dead lock situation
       // and we revert to a slow locking to be on the safe side.
-      state.options().lockTimeout = FAST_PATH_LOCK_TIMEOUT;
+      state.options().lockTimeout = kFastPathLockTimeout;
     }
     // Run fastPath
     std::vector<Future<network::Response>> requests;

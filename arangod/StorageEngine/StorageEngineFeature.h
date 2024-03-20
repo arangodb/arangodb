@@ -25,7 +25,6 @@
 #pragma once
 
 #include "ApplicationFeatures/ApplicationFeature.h"
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 
 namespace arangodb {
