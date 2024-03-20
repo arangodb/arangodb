@@ -340,7 +340,7 @@ def create_rta_test_job(cluster, build_config, build_job, deployment_mode):
         "suiteName": "RTA",
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
-        "enterprise": "--enterprise" if build_config.enterprise else "--no-enterprise",
+        "enterprise": "EP" if build_config.enterprise else "C",
         "requires": [build_job],
     }
     return {"run-rta-tests": job}
