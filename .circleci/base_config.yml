@@ -496,6 +496,7 @@ jobs:
           command: |
             pwd
             ls -la
+            ls -la work
             echo TODO
             work/release-test-automation/jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
       - run:
