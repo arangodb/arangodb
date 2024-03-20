@@ -339,6 +339,7 @@ def create_rta_test_job(cluster, build_config, build_job):
         "name": f"test-{edition}-single-RTA",
         "suiteName": "RTA",
         "cluster": False,
+        "enterprise": build_config.enterprise,
         "requires": [build_job],
     }
     return {"run-rta-tests": job}
