@@ -481,6 +481,8 @@ jobs:
       enterprise:
         type: boolean
       # TODO add more parameters
+      arch:
+          type: string
     steps:
       - attach_workspace:
           at: work/ArangoDB
