@@ -777,7 +777,7 @@ ResultT<CreateCollectionBody> CreateCollectionBody::fromRestoreAPIBody(
         if (!col.shardingStrategy.has_value() &&
             !col.distributeShardsLike.has_value() &&
             config.defaultDistributeShardsLike.empty()) {
-          col.shardingStrategy = ShardingStrategyHash::NAME;
+          col.shardingStrategy = "hash";
         }
       });
   if (res.fail()) {
