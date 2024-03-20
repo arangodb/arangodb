@@ -2468,14 +2468,20 @@ ExecutionNode* ExecutionPlan::fromNode(AstNode const* node) {
     TRI_ASSERT(en != nullptr);
 
     if (en == nullptr) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, "type not handled");
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_INTERNAL,
+          absl::StrCat("type not handled: ", member->getTypeString()));
     }
 
     if (_ids.size() > maxPlanNodes) {
       // maximum number of execution nodes reached
       // we have to limit this to prevent super-long runtimes for query
       // optimization and execution
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_QUERY_TOO_MUCH_NESTING);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_QUERY_TOO_MUCH_NESTING,
+          absl::StrCat("total number of generated execution nodes for query "
+                       "execution plans reached the maximum possible value (",
+                       maxPlanNodes, ")"));
     }
   }
 
