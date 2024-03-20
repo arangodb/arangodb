@@ -310,6 +310,13 @@ jobs:
           command: sccache -s
       - store_artifacts:
           path: /tmp/sccache.log
+      - run:
+          root: .
+          name: get aux binaries
+          command: |
+            ls -la
+            curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
+            chmod a+x build/bin/arangodb
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
@@ -491,12 +498,6 @@ jobs:
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
             git checkout circleci
-      - run:
-          name: get aux binaries
-          command: |
-            ls -la
-            curl -s -L -o work/Arangodb/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
-            chmod a+x work/Arangodb/build/bin/arangodb
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
