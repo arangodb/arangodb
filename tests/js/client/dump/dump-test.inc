@@ -1188,10 +1188,6 @@
         const dumpDir = getDumpDir();
         const encryption = fs.read(fs.join(dumpDir, 'ENCRYPTION'));
         if (encryption === '' || encryption === 'none') {
-          if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
-            // when dumping multiple database the database name is one layer added:
-            dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
-          }
           const collStructure = JSON.parse(
             fs.read(fs.join(dumpDir, `${edges}.structure.json`))
           );
