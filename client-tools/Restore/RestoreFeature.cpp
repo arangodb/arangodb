@@ -116,7 +116,7 @@ std::string escapedCollectionName(std::string const& name,
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
-                              arangodb::velocypack::Slice slice,
+                              arangodb::velocypack::Slice const& slice,
                               bool& isSatellite) {
   uint64_t result = options.defaultReplicationFactor;
   isSatellite = false;
@@ -125,9 +125,10 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
       slice.get(arangodb::StaticStrings::ReplicationFactor);
   if (s.isInteger()) {
     result = s.getNumericValue<uint64_t>();
-  } else if (s.isString() &&
-             s.stringView() == arangodb::StaticStrings::Satellite) {
-    isSatellite = true;
+  } else if (s.isString()) {
+    if (s.copyString() == arangodb::StaticStrings::Satellite) {
+      isSatellite = true;
+    }
   }
 
   s = slice.get("name");
@@ -136,29 +137,33 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  for (auto const& it : options.replicationFactor) {
-    auto parts = arangodb::basics::StringUtils::split(it, '=');
-    if (parts.size() == 1) {
-      // this is the default value, e.g. `--replicationFactor 2`
-      if (parts[0] == arangodb::StaticStrings::Satellite) {
+  if (!options.replicationFactor.empty()) {
+    std::string const name = s.copyString();
+
+    for (auto const& it : options.replicationFactor) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--replicationFactor 2`
+        if (parts[0] == arangodb::StaticStrings::Satellite) {
+          isSatellite = true;
+        } else {
+          result = arangodb::basics::StringUtils::uint64(parts[0]);
+        }
+      }
+
+      // look if we have a more specific value, e.g. `--replicationFactor
+      // myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      if (parts[1] == arangodb::StaticStrings::Satellite) {
         isSatellite = true;
       } else {
-        result = arangodb::basics::StringUtils::uint64(parts[0]);
+        result = arangodb::basics::StringUtils::uint64(parts[1]);
       }
+      break;
     }
-
-    // look if we have a more specific value, e.g. `--replicationFactor
-    // myCollection=3`
-    if (parts.size() != 2 || parts[0] != s.stringView()) {
-      // somehow invalid or different collection
-      continue;
-    }
-    if (parts[1] == arangodb::StaticStrings::Satellite) {
-      isSatellite = true;
-    } else {
-      result = arangodb::basics::StringUtils::uint64(parts[1]);
-    }
-    break;
   }
 
   return result;
@@ -203,7 +208,7 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
 
 /// @brief return the target number of shards for the specified collection
 uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
-                           arangodb::velocypack::Slice slice) {
+                           arangodb::velocypack::Slice const& slice) {
   uint64_t result = options.defaultNumberOfShards;
 
   arangodb::velocypack::Slice s = slice.get("numberOfShards");
@@ -217,21 +222,25 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  for (auto const& it : options.numberOfShards) {
-    auto parts = arangodb::basics::StringUtils::split(it, '=');
-    if (parts.size() == 1) {
-      // this is the default value, e.g. `--numberOfShards 2`
-      result = arangodb::basics::StringUtils::uint64(parts[0]);
-    }
+  if (!options.numberOfShards.empty()) {
+    std::string const name = s.copyString();
 
-    // look if we have a more specific value, e.g. `--numberOfShards
-    // myCollection=3`
-    if (parts.size() != 2 || parts[0] != s.stringView()) {
-      // somehow invalid or different collection
-      continue;
+    for (auto const& it : options.numberOfShards) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = arangodb::basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards
+      // myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = arangodb::basics::StringUtils::uint64(parts[1]);
+      break;
     }
-    result = arangodb::basics::StringUtils::uint64(parts[1]);
-    break;
   }
 
   return result;
@@ -312,13 +321,13 @@ arangodb::Result tryCreateDatabase(
     ObjectBuilder object(&builder);
     object->add(arangodb::StaticStrings::DatabaseName, VPackValue(name));
 
-    // add replication factor, write concern, sharding, if set
+    // add replication factor write concern etc
     if (properties.isObject()) {
       ObjectBuilder guard(&builder, "options");
-      for (auto const& key : std::array<std::string_view, 3>{
-               arangodb::StaticStrings::ReplicationFactor,
-               arangodb::StaticStrings::Sharding,
-               arangodb::StaticStrings::WriteConcern}) {
+      for (auto const& key :
+           std::vector<std::string>{arangodb::StaticStrings::ReplicationFactor,
+                                    arangodb::StaticStrings::Sharding,
+                                    arangodb::StaticStrings::WriteConcern}) {
         VPackSlice slice = properties.get(key);
         if (key == arangodb::StaticStrings::ReplicationFactor) {
           // overwrite replicationFactor if set
@@ -384,10 +393,6 @@ void getDBProperties(arangodb::ManagedDirectory& directory,
   VPackSlice slice = VPackSlice::emptyObjectSlice();
   try {
     fileContentBuilder = directory.vpackFromJsonFile("dump.json");
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("5ad64", WARN, arangodb::Logger::RESTORE)
-        << "could not read dump.json file: " << ex.what();
-    builder.add(slice);
   } catch (...) {
     LOG_TOPIC("3a5a4", WARN, arangodb::Logger::RESTORE)
         << "could not read dump.json file: "

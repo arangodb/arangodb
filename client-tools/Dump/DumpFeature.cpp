@@ -657,22 +657,6 @@ Result DumpFeature::DumpCollectionJob::run(
         VPackObjectBuilder subObject(&excludes, "parameters");
         subObject->add(StaticStrings::ShadowCollections,
                        VPackSlice::nullSlice());
-
-        if (!options.clusterMode) {
-          // single server.
-          // remove replicationFactor, writeConcern and others that are
-          // only relevant in cluster
-          subObject->add(StaticStrings::MinReplicationFactor,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::NumberOfShards,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::ReplicationFactor,
-                         VPackSlice::nullSlice());
-          subObject->add(StaticStrings::WriteConcern, VPackSlice::nullSlice());
-          // note: we cannot exclude shardKeys and sharding, because they
-          // can be used even in single-server SmartGraphs.
-          subObject->add("shards", VPackSlice::nullSlice());
-        }
       }
     }
 
