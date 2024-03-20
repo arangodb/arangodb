@@ -956,6 +956,7 @@ function dumpWithCrashes (options) {
 function dumpWithCrashesNonParallel (options) {
   let dumpOptions = {
     dbServers: 3,
+    allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,

@@ -61,7 +61,7 @@ jsunity.run(function dump_single_testsuite() {
       indexesCount: 9,
       // testKeygenAutoInc
       keygenAutoInc: 42049,
-      autoIncDocCount: 1000, // this one is special
+      autoIncDocCount: 1001,
       // testKeygenPadded
       paddedDocCount: 1001,
       // testKeygenUuid
