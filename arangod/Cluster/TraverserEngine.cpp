@@ -53,7 +53,7 @@ static const std::string SHARDS = "shards";
 static const std::string TYPE = "type";
 
 #ifndef USE_ENTERPRISE
-/*static*/ std::unique_ptr<BaseEngine> BaseEngine::BuildEngine(
+/*static*/ std::unique_ptr<BaseEngine> BaseEngine::buildEngine(
     TRI_vocbase_t& vocbase, aql::QueryContext& query, VPackSlice info) {
   VPackSlice type = info.get(std::initializer_list<std::string_view>(
       {StaticStrings::GraphOptions, TYPE}));

@@ -184,8 +184,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   if (!addView(*view, query)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "failed to process all collections linked with the view '" +
-            view->name() + "'");
+        absl::StrCat("failed to process all collections linked with the view '",
+                     view->name(), "'"));
   }
 
   // build search condition

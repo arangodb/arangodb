@@ -29,6 +29,8 @@
 #include "StorageEngine/TransactionState.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 
 TransactionCollection::~TransactionCollection() {
@@ -64,11 +66,11 @@ Result TransactionCollection::updateUsage(AccessMode::Type accessType) {
       !AccessMode::isWriteOrExclusive(_accessType)) {
     if (_transaction->status() != transaction::Status::CREATED) {
       // trying to write access a collection that is marked read-access
-      return Result(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                    std::string(TRI_errno_string(
-                        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                        ": " + collectionName() + " [" +
-                        AccessMode::typeString(accessType) + "]");
+      return {TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+              absl::StrCat(TRI_errno_string(
+                               TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+                           ": ", collectionName(), " [",
+                           AccessMode::typeString(accessType), "]")};
     }
 
     // upgrade collection type to write-access
