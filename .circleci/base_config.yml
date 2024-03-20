@@ -484,6 +484,11 @@ jobs:
       - attach_workspace:
           at: work/ArangoDB
       - run:
+          name: get aux binaries
+          command: |
+            STARTER_REV=$(grep -Po "STARTER_REV \"\Kv\d+\.\d+\.\d+" work/ArangoDB/VERSIONS)
+            curl -s -L -o work/Arangodb/build/bin/arangodb" "https://github.com/arangodb-helper/arangodb/releases/download/$STARTER_REV/arangodb-linux-<< parameters.arch >>"
+      - run:
           name: Clone RTA
           command: |
             mkdir work/release-test-automation
