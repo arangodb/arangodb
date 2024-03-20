@@ -24,6 +24,8 @@
 #include "Aql/types.h"
 #include "Basics/Exceptions.h"
 
+#include <absl/strings/str_cat.h>
+
 namespace arangodb::aql {
 RegisterId RegisterId::fromUInt32(uint32_t value) {
   auto v = static_cast<value_t>(value);
@@ -33,7 +35,7 @@ RegisterId RegisterId::fromUInt32(uint32_t value) {
   if (!result.isValid()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL,
-        "Cannot parse RegisterId from value " + std::to_string(value));
+        absl::StrCat("Cannot parse RegisterId from value ", value));
   }
   return result;
 }
