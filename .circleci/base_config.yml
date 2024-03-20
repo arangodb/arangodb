@@ -487,7 +487,11 @@ jobs:
       cluster:
         type: boolean
       enterprise:
-        type: boolean
+        type: string
+      deployment:
+        type: string
+      browser:
+        type: string
       # TODO add more parameters
     steps:
       - attach_workspace:
@@ -508,7 +512,11 @@ jobs:
             ls -la work
             echo TODO
             export SOURCE=nightlypublic
-            cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
+            cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh \
+              --no-run-upgrade  \
+              --selenium << parameters.browser >> \
+              --starter-mode << parameters.deployment >> \
+              << parameters.enterprise >>
       - run:
           name: Copy test results
           when: always

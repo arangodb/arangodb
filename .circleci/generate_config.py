@@ -333,13 +333,14 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     return {"run-linux-tests": job}
 
 
-def create_rta_test_job(cluster, build_config, build_job):
+def create_rta_test_job(cluster, build_config, build_job, deployment_mode):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
-        "name": f"test-{edition}-single-RTA",
+        "name": f"test-{edition}-{deployment_mode}-RTA",
         "suiteName": "RTA",
-        "cluster": False,
-        "enterprise": build_config.enterprise,
+        "deployment": deployment_mode,
+        "browser": "Remote_CHROME",
+        "enterprise": "--enterprise" if build_config.enterprise else "--no-enterprise",
         "requires": [build_job],
     }
     return {"run-rta-tests": job}
@@ -365,7 +366,8 @@ def add_test_definition_jobs_to_workflow(
 
 def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
     jobs = workflow["jobs"]
-    jobs.append(create_rta_test_job(False, build_config, build_job))
+    jobs.append(create_rta_test_job(False, build_config, build_job, 'SG'))
+    jobs.append(create_rta_test_job(False, build_config, build_job, 'CL'))
 
 
 def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
