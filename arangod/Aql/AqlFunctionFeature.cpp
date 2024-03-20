@@ -66,7 +66,7 @@ void AqlFunctionFeature::prepare() {
 
 void AqlFunctionFeature::add(Function const& func) {
   TRI_ASSERT(func.name == basics::StringUtils::toupper(func.name));
-  TRI_ASSERT(_functionNames.find(func.name) == _functionNames.end());
+  TRI_ASSERT(!_functionNames.contains(func.name));
   // add function to the map
   _functionNames.try_emplace(func.name, func);
 }
@@ -96,9 +96,7 @@ void AqlFunctionFeature::toVelocyPack(VPackBuilder& builder) const {
 }
 
 bool AqlFunctionFeature::exists(std::string const& name) const {
-  auto it = _functionNames.find(name);
-
-  return it != _functionNames.end();
+  return _functionNames.contains(name);
 }
 
 Function const* AqlFunctionFeature::byName(std::string const& name) const {

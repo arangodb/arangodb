@@ -50,7 +50,7 @@ struct QueryOptions {
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  enum ExpandBindParameters : uint8_t {
+  enum class ExpandBindParameters : uint8_t {
     // replace all bind parameters early in the process, before any attempts to
     // optimize the query
     kExpandAll,
@@ -59,7 +59,7 @@ struct QueryOptions {
     kExpandOnlyRequired
   };
 
-  enum JoinStrategyType : uint8_t { kDefault, kGeneric };
+  enum class JoinStrategyType : uint8_t { kDefault, kGeneric };
 
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,

@@ -38,6 +38,7 @@
 #include "Aql/QueryContext.h"
 #include "Aql/AqlFunctionsInternalCache.h"
 #include "Basics/Arithmetic.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/Exceptions.h"
 #include "Basics/tri-strings.h"
 #include "Basics/tryEmplaceHelper.h"
@@ -1076,8 +1077,6 @@ AstNode* Ast::createNodeParameter(std::string_view name) {
     node->setFlag(DETERMINED_CONSTANT);
   }
 
-  // insert bind parameter name into list of found parameters
-  _bindParameters.emplace(name.data(), name.size());
   _containsBindParameters = true;
 
   return node;
@@ -1087,9 +1086,6 @@ AstNode* Ast::createNodeParameterDatasource(std::string_view name) {
   AstNode* node = createNode(NODE_TYPE_PARAMETER_DATASOURCE);
   node->setStringValue(name.data(), name.size());
   node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
-
-  // insert bind parameter name into list of found parameters
-  _bindParameters.emplace(name.data(), name.size());
   _containsBindParameters = true;
 
   return node;
@@ -4570,10 +4566,6 @@ AstNode* Ast::endSubQuery() {
 
 bool Ast::isInSubQuery() const noexcept { return (_queries.size() > 1); }
 
-std::unordered_set<std::string> Ast::bindParameters() const {
-  return std::unordered_set<std::string>(_bindParameters);
-}
-
 Scopes* Ast::scopes() { return &_scopes; }
 
 void Ast::addWriteCollection(AstNode const* node, bool isExclusiveAccess) {
@@ -4613,9 +4605,23 @@ bool Ast::containsAsyncPrefetch() const noexcept {
 
 void Ast::setContainsAsyncPrefetch() noexcept { _containsAsyncPrefetch = true; }
 
+void Ast::setContainsBindParameters() noexcept {
+  _containsBindParameters = true;
+}
+
 AstNode const* Ast::getSubqueryForVariable(Variable const* variable) const {
   if (auto it = _subqueries.find(variable->id); it != _subqueries.end()) {
     return it->second;
   }
   return nullptr;
+}
+
+void Ast::setNodeTransformer(std::function<void(AstNode*)> const& cb) {
+  _nodeTransformer = cb;
+}
+
+void Ast::transformNode(AstNode* node) {
+  if (_nodeTransformer) {
+    _nodeTransformer(node);
+  }
 }

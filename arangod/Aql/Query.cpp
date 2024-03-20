@@ -48,7 +48,6 @@
 #include "Basics/Exceptions.h"
 #include "Basics/ResourceUsage.h"
 #include "Basics/ScopeGuard.h"
-#include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Basics/fasthash.h"
 #include "Cluster/ServerState.h"
@@ -80,6 +79,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Iterator.h>
 #include <velocypack/Sink.h>
@@ -92,6 +92,9 @@ using namespace arangodb::basics;
 
 namespace {
 AqlCallStack const defaultStack{AqlCallList{AqlCall{}}};
+
+// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
+constexpr double kFastPathLockTimeout = 2.0;
 
 constexpr std::string_view fullcountTrue("fullcount:true");
 constexpr std::string_view fullcountFalse("fullcount:false");
@@ -443,10 +446,12 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   // put in collection and attribute name bind parameters (e.g. @@collection or
   // doc.@attr).
   _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
-#if 0
-  // put in value bind parameters
-  // _ast->injectBindParametersSecondStage(_bindParameters);
-#endif
+
+  if (_queryOptions.expandBindParameters ==
+      QueryOptions::ExpandBindParameters::kExpandAll) {
+    _ast->injectBindParametersSecondStage(_bindParameters);
+  }
+
   if (parser.ast()->containsUpsertNode()) {
     // UPSERTs and intermediate commits do not play nice together, because the
     // intermediate commit invalidates the read-own-write iterator required by
@@ -516,17 +521,15 @@ std::unique_ptr<ExecutionPlan> Query::preparePlan() {
   exitV8Executor();
 
   // put in value bind parameters
-  _ast->injectBindParametersSecondStage(_bindParameters);
+  if (_queryOptions.expandBindParameters ==
+      QueryOptions::ExpandBindParameters::kExpandOnlyRequired) {
+    _ast->injectBindParametersSecondStage(_bindParameters);
+  }
 
   // validate that all bind parameters are in use
   _bindParameters.validateAllUsed();
 
   TRI_ASSERT(!_ast->root()->containsBindParameter());
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-#if 0
-  plan->show();
-#endif
-#endif
 
   return plan;
 }
@@ -548,7 +551,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
         if (useQueryCache) {
           // check the query cache for an existing result
           auto cacheEntry = QueryCache::instance()->lookup(
-              &_vocbase, hash(), _queryString, bindParameters());
+              &_vocbase, hash(), _queryString, bindParametersData());
 
           if (cacheEntry != nullptr) {
             if (cacheEntry->currentUserHasPermissions()) {
@@ -671,7 +674,7 @@ ExecutionState Query::execute(QueryResult& queryResult) {
 
           // create a query cache entry for later storage
           _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-              hash(), _queryString, queryResult.data, bindParameters(),
+              hash(), _queryString, queryResult.data, bindParametersData(),
               std::move(dataSources)  // query DataSources
           );
         }
@@ -703,27 +706,21 @@ ExecutionState Query::execute(QueryResult& queryResult) {
     TRI_ASSERT(false);
   } catch (Exception const& ex) {
     queryResult.reset(Result(
-        ex.code(), "AQL: " + ex.message() +
-                       QueryExecutionState::toStringWithPrefix(_execState)));
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    queryResult.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
-  } catch (...) {
-    queryResult.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
@@ -775,7 +772,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     if (useQueryCache) {
       // check the query cache for an existing result
       auto cacheEntry = QueryCache::instance()->lookup(
-          &_vocbase, hash(), _queryString, bindParameters());
+          &_vocbase, hash(), _queryString, bindParametersData());
 
       if (cacheEntry != nullptr) {
         if (cacheEntry->currentUserHasPermissions()) {
@@ -918,7 +915,7 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
 
       // create a cache entry for later usage
       _cacheEntry = std::make_unique<QueryCacheResultEntry>(
-          hash(), _queryString, builder, bindParameters(),
+          hash(), _queryString, builder, bindParametersData(),
           std::move(dataSources)  // query DataSources
       );
     }
@@ -941,27 +938,21 @@ QueryResultV8 Query::executeV8(v8::Isolate* isolate) {
     // fallthrough to returning queryResult below...
   } catch (Exception const& ex) {
     queryResult.reset(Result(
-        ex.code(), "AQL: " + ex.message() +
-                       QueryExecutionState::toStringWithPrefix(_execState)));
+        ex.code(),
+        absl::StrCat("AQL: ", ex.message(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(ex.code(), /*sync*/ true);
   } catch (std::bad_alloc const&) {
-    queryResult.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    queryResult.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_OUT_OF_MEMORY, /*sync*/ true);
   } catch (std::exception const& ex) {
     queryResult.reset(Result(
         TRI_ERROR_INTERNAL,
-        ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-    cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
-  } catch (...) {
-    queryResult.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+        absl::StrCat(ex.what(),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
     cleanupPlanAndEngine(TRI_ERROR_INTERNAL, /*sync*/ true);
   }
 
@@ -1030,17 +1021,23 @@ QueryResult Query::parse() {
   try {
     init(/*createProfile*/ false);
     Parser parser(*this, *_ast, _queryString);
-    return parser.parseWithDetails();
+    parser.parse();
 
+    // put used collection names into result
+    result.collectionNames = collections().collectionNames();
+    // put used bind parameters into result
+    result.bindParameters = parser.bindParameterNames();
+    // put a velocypack version of the Ast into the result
+    result.data = std::make_shared<VPackBuilder>();
+    _ast->toVelocyPack(*result.data, false);
+
+    return result;
   } catch (Exception const& ex) {
     result.reset(Result(ex.code(), ex.message()));
   } catch (std::bad_alloc const&) {
     result.reset(Result(TRI_ERROR_OUT_OF_MEMORY));
   } catch (std::exception const& ex) {
     result.reset(Result(TRI_ERROR_INTERNAL, ex.what()));
-  } catch (...) {
-    result.reset(Result(TRI_ERROR_INTERNAL,
-                        "an unknown error occurred while parsing the query"));
   }
 
   TRI_ASSERT(result.fail());
@@ -1062,9 +1059,9 @@ QueryResult Query::explain() {
     // or doc.@attr).
     _ast->injectBindParametersFirstStage(_bindParameters, this->resolver());
 
-    if (_queryOptions.expandBindParameters) {
+    if (_queryOptions.expandBindParameters ==
+        QueryOptions::ExpandBindParameters::kExpandAll) {
       _ast->injectBindParametersSecondStage(_bindParameters);
-      _bindParameters.validateAllUsed();
     }
 
     // optimize and validate the ast
@@ -1124,6 +1121,13 @@ QueryResult Query::explain() {
 
       builder.add("isModificationQuery",
                   VPackValue(_ast->containsModificationNode()));
+
+      if (_queryOptions.expandBindParameters ==
+          QueryOptions::ExpandBindParameters::kExpandOnlyRequired) {
+        builder.add(VPackValue("bindVars"));
+        _bindParameters.toVelocyPack(builder,
+                                     _queryOptions.expandBindParameters);
+      }
     };
 
     VPackOptions options;
@@ -1157,6 +1161,8 @@ QueryResult Query::explain() {
                        _warnings.empty() && _ast->root()->isCacheable());
     }
 
+    _bindParameters.validateAllUsed();
+
     // technically no need to commit, as we are only explaining here
     auto commitResult = _trx->commit();
     if (commitResult.fail()) {
@@ -1185,21 +1191,14 @@ QueryResult Query::explain() {
         ex.code(),
         ex.message() + QueryExecutionState::toStringWithPrefix(_execState)));
   } catch (std::bad_alloc const&) {
-    result.reset(
-        Result(TRI_ERROR_OUT_OF_MEMORY,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
+    result.reset(Result(
+        TRI_ERROR_OUT_OF_MEMORY,
+        absl::StrCat(TRI_errno_string(TRI_ERROR_OUT_OF_MEMORY),
+                     QueryExecutionState::toStringWithPrefix(_execState))));
   } catch (std::exception const& ex) {
     result.reset(Result(
         TRI_ERROR_INTERNAL,
         ex.what() + QueryExecutionState::toStringWithPrefix(_execState)));
-  } catch (...) {
-    result.reset(
-        Result(TRI_ERROR_INTERNAL,
-               StringUtils::concatT(
-                   TRI_errno_string(TRI_ERROR_INTERNAL),
-                   QueryExecutionState::toStringWithPrefix(_execState))));
   }
 
   // will be returned in success or failure case
@@ -1453,7 +1452,7 @@ std::string Query::extractQueryString(size_t maxLength, bool show) const {
 
 void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
                                     size_t maxLength) const {
-  auto bp = bindParameters();
+  auto bp = bindParametersData();
   if (bp != nullptr && !bp->slice().isNone() && maxLength >= 3) {
     // append prefix, e.g. "bind parameters: "
     out.append(prefix);
@@ -1468,10 +1467,10 @@ void Query::stringifyBindParameters(std::string& out, std::string_view prefix,
       // truncate value with "..."
       TRI_ASSERT(initialLength + maxLength >= 3);
       out.resize(initialLength + maxLength - 3);
-      out.append("... (", 5);
-      basics::StringUtils::itoa(
-          sink.unconstrainedLength() - initialLength - maxLength, out);
-      out.append(")", 1);
+
+      absl::StrAppend(&out, "... (",
+                      sink.unconstrainedLength() - initialLength - maxLength,
+                      ")");
     }
   }
 }
@@ -2033,6 +2032,75 @@ void Query::debugKillQuery() {
 #endif
 }
 
+void Query::initFromVelocyPack(bool createProfile, uint64_t memoryUsage,
+                               velocypack::Slice querySlice,
+                               velocypack::Slice collections,
+                               velocypack::Slice variables) {
+  enterState(QueryExecutionState::ValueType::PARSING);
+
+  ResourceUsageScope scope(_resourceMonitor);
+  // may throw
+  scope.increase(memoryUsage);
+
+  _planMemoryUsage += scope.trackedAndSteal();
+
+  init(createProfile);
+
+  if (auto val = querySlice.get("isModificationQuery"); val.isTrue()) {
+    _ast->setContainsModificationNode();
+  }
+  if (auto val = querySlice.get("isAsyncQuery"); val.isTrue()) {
+    _ast->setContainsParallelNode();
+  }
+
+  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
+
+  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
+  _ast->variables()->fromVelocyPack(variables);
+
+  // needs to be created after the AST collected all collections
+  std::unordered_set<std::string> inaccessibleCollections;
+#ifdef USE_ENTERPRISE
+  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
+    inaccessibleCollections = _queryOptions.inaccessibleCollections;
+  }
+#endif
+
+  TRI_ASSERT(_trx == nullptr);
+
+  _trx = AqlTransaction::create(_transactionContext, _collections,
+                                _queryOptions.transactionOptions,
+                                std::move(inaccessibleCollections));
+
+  TRI_ASSERT(_trx != nullptr);
+
+  _trx->addHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL);
+}
+
+void Query::beginTransaction(bool fastPathLocking) {
+  TRI_ASSERT(_trx != nullptr);
+
+  double origLockTimeout = _trx->state()->options().lockTimeout;
+  if (fastPathLocking) {
+    _trx->state()->options().lockTimeout = ::kFastPathLockTimeout;
+  }
+
+  Result res = _trx->begin();
+  if (!res.ok()) {
+    THROW_ARANGO_EXCEPTION(res);
+  }
+
+  // restore original lock timeout
+  _trx->state()->options().lockTimeout = origLockTimeout;
+
+  TRI_IF_FAILURE("Query::setupLockTimeout") {
+    if (!_trx->state()->isReadOnlyTransaction() &&
+        RandomGenerator::interval(uint32_t(100)) >= 95) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+    }
+  }
+}
+
 /// @brief prepare a query out of some velocypack data.
 /// only to be used on single server or coordinator.
 /// never call this on a DB server!
@@ -2047,58 +2115,29 @@ void Query::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
-  scope.increase(querySlice.byteSize() + collections.byteSize() +
-                 variables.byteSize() + snippets.byteSize());
-
-  _planMemoryUsage += scope.trackedAndSteal();
-
-  init(/*createProfile*/ true);
-
-  if (auto val = querySlice.get("isModificationQuery"); val.isTrue()) {
-    _ast->setContainsModificationNode();
-  }
-  if (auto val = querySlice.get("isAsyncQuery"); val.isTrue()) {
-    _ast->setContainsParallelNode();
-  }
-
-  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-
-  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
-  _ast->variables()->fromVelocyPack(variables);
-  // creating the plan may have produced some collections
-  // we need to add them to the transaction now (otherwise the query will fail)
+  uint64_t memoryUsage = querySlice.byteSize() + collections.byteSize() +
+                         variables.byteSize() + snippets.byteSize();
 
   TRI_ASSERT(_trx == nullptr);
-  // needs to be created after the AST collected all collections
-  std::unordered_set<std::string> inaccessibleCollections;
-#ifdef USE_ENTERPRISE
-  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
-    inaccessibleCollections = _queryOptions.inaccessibleCollections;
-  }
-#endif
 
-  _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions,
-                                std::move(inaccessibleCollections));
+  initFromVelocyPack(/*createProfile*/ true, memoryUsage, querySlice,
+                     collections, variables);
 
-  // create the transaction object, but do not start the transaction yet
-  _trx->addHint(
-      transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
+  TRI_ASSERT(_trx != nullptr);
 
-  Result res = _trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
+  // throws if it fails
+  beginTransaction(/*fastPathLocking*/ false);
 
-  TRI_IF_FAILURE("Query::setupLockTimeout") {
-    if (!_trx->state()->isReadOnlyTransaction() &&
-        RandomGenerator::interval(uint32_t(100)) >= 95) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
+  enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
+
+  // the following callback is called whenever an AstNode is created from
+  // velocypack input. we use it to replace bind parameters with their
+  // actual values
+  _ast->setNodeTransformer([this](AstNode* node) {
+    if (node->type == NODE_TYPE_PARAMETER) {
+      _ast->replaceValueBindParameter(node, _bindParameters);
     }
-  }
-
-  enterState(QueryExecutionState::ValueType::PARSING);
+  });
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) {
@@ -2118,15 +2157,17 @@ void Query::prepareFromVelocyPack(
   }
 
   if (!_snippets.empty()) {
-    TRI_ASSERT(_trx->state()->isDBServer() || _snippets[0]->engineId() == 0);
-    // simon: just a hack for AQL_EXECUTEJSON
-    if (_trx->state()->isCoordinator()) {  // register coordinator snippets
-      TRI_ASSERT(_trx->state()->isCoordinator());
+    TRI_ASSERT(_snippets[0]->engineId() == 0);
+    // register coordinator snippets
+    if (_trx->state()->isCoordinator()) {
       QueryRegistryFeature::registry()->registerSnippets(_snippets);
     }
 
     registerQueryInTransactionState();
   }
+
+  // clear node transformer
+  _ast->setNodeTransformer({});
 
   _queryProfile->registerInQueryList();
 

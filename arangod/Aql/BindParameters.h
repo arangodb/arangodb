@@ -82,6 +82,14 @@ class BindParameters {
   /// @brief create a hash value for the bind parameters
   uint64_t hash() const;
 
+  /// @brief whether or not we have bind parameters at all
+  bool empty() const noexcept;
+
+  /// @brief run a visitor function on all bind parameters
+  void visit(
+      std::function<void(std::string const& key, velocypack::Slice value,
+                         AstNode* node, bool seen)> const& visitor) const;
+
   /// @brief export bind parameter values to velocypack
   void toVelocyPack(
       velocypack::Builder& builder,
@@ -96,11 +104,6 @@ class BindParameters {
  private:
   /// @brief process the parameters
   void process();
-
-  /// @brief run a visitor function on all bind parameters
-  void visit(
-      std::function<void(std::string const& key, velocypack::Slice value,
-                         AstNode* node, bool seen)> const& visitor) const;
 
   /// @brief calculates memory usage for a bind parameter
   std::size_t memoryUsage(std::string const& key,

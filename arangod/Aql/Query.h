@@ -191,7 +191,7 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
   ErrorCode resultCode() const noexcept;
 
   /// @brief return the bind parameters as passed by the user
-  std::shared_ptr<velocypack::Builder> bindParameters() const {
+  std::shared_ptr<velocypack::Builder> bindParametersData() const {
     return _bindParameters.builder();
   }
 
@@ -261,6 +261,13 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief initializes the query
   void init(bool createProfile);
+
+  void initFromVelocyPack(bool createProfile, uint64_t memoryUsage,
+                          velocypack::Slice querySlice,
+                          velocypack::Slice collections,
+                          velocypack::Slice variables);
+
+  void beginTransaction(bool fastPathLocking);
 
   void registerQueryInTransactionState();
   void unregisterQueryInTransactionState() noexcept;

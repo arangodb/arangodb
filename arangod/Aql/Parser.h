@@ -28,6 +28,7 @@
 
 #include <cstddef>
 #include <string_view>
+#include <unordered_set>
 
 namespace arangodb::aql {
 class Ast;
@@ -96,8 +97,11 @@ class Parser {
   /// @brief parse the query
   void parse();
 
-  /// @brief parse the query and return parse details
-  QueryResult parseWithDetails();
+  /// @brief return a copy of bind parameter names found during parsing
+  std::unordered_set<std::string> bindParameterNames() const;
+
+  /// @brief track that we have seen a bind parameter during parsing
+  void trackBindParameterName(std::string_view name);
 
   /// @brief register a parse error, position is specified as line / column
   [[noreturn]] void registerParseError(ErrorCode errorCode, char const* format,
@@ -174,6 +178,9 @@ class Parser {
 
   /// @brief stack for handling of lazy conditions
   LazyConditions _lazyConditions;
+
+  /// @brief names of bind parameters found during parsing
+  std::unordered_set<std::string> _bindParameterNames;
 };
 
 }  // namespace arangodb::aql

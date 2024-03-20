@@ -77,6 +77,9 @@ uint64_t BindParameters::hash() const {
   return _builder->slice().hash();
 }
 
+/// @brief whether or not we have bind parameters at all
+bool BindParameters::empty() const noexcept { return _parameters.empty(); }
+
 void BindParameters::toVelocyPack(
     velocypack::Builder& builder,
     QueryOptions::ExpandBindParameters expandBindParameters) const {

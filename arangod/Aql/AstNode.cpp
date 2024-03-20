@@ -31,6 +31,7 @@
 #include "Aql/Query.h"
 #include "Aql/Scopes.h"
 #include "Aql/types.h"
+#include "Basics/AttributeNameParser.h"
 #include "Basics/FloatingPoint.h"
 #include "Basics/StringUtils.h"
 #include "Basics/Utf8Helper.h"
@@ -474,7 +475,7 @@ AstNode::AstNode(AstNodeValue const& value, InternalNode /*internal*/)
       value(value),
       _computedValue(nullptr) {}
 
-/// @brief create the node from VPack
+/// @brief create the node from velocypack
 AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     : AstNode(getNodeTypeFromVPack(slice)) {
   TRI_ASSERT(flags == 0);
@@ -488,14 +489,13 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_ATTRIBUTE_ACCESS:
     case NODE_TYPE_FCALL_USER: {
       value.type = VALUE_TYPE_STRING;
+      VPackValueLength l = 0;
+      char const* p = "";
       VPackSlice v = slice.get("name");
-      if (v.isNone()) {
-        setStringValue(ast->resources().registerString("", 0), 0);
-      } else {
-        VPackValueLength l;
-        char const* p = v.getString(l);
-        setStringValue(ast->resources().registerString(p, l), l);
+      if (!v.isNone()) {
+        p = v.getString(l);
       }
+      setStringValue(ast->resources().registerString(p, l), l);
       break;
     }
     case NODE_TYPE_VALUE: {
@@ -562,7 +562,7 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
     case NODE_TYPE_EXPANSION: {
       setIntValue(slice.get("levels").getNumericValue<int64_t>());
       VPackSlice b = slice.get("booleanize");
-      if (b.isBoolean() && b.getBoolean()) {
+      if (b.isTrue()) {
         setFlag(FLAG_BOOLEAN_EXPANSION);
       }
       break;
@@ -665,11 +665,16 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
         addMember(ast->nodeFromVPack(it.value(), /*copyStringValues*/ true));
         it.next();
       }
-      return;
-    } else if (type == NODE_TYPE_OBJECT) {
+    } else {
       // object
+
+      // if the following assertion fails, then something else that had a "raw"
+      // attribute... 🥹
+      TRI_ASSERT(type == NODE_TYPE_OBJECT);
+
       VPackObjectIterator it(raw, /*useSequentialIteration*/ true);
       members.reserve(it.size());
+
       while (it.valid()) {
         std::string_view key = it.key().stringView();
         char* p = ast->resources().registerString(key);
@@ -678,25 +683,24 @@ AstNode::AstNode(Ast* ast, arangodb::velocypack::Slice slice)
             ast->nodeFromVPack(it.value(), /*copyStringValues*/ true)));
         it.next();
       }
-      return;
     }
-    // something else that had a "raw" attribute... 🥹
-    TRI_ASSERT(false);
-  }
+  } else {
+    if (VPackSlice subNodes = slice.get("subNodes"); subNodes.isArray()) {
+      members.reserve(subNodes.length());
 
-  if (VPackSlice subNodes = slice.get("subNodes"); subNodes.isArray()) {
-    members.reserve(subNodes.length());
-
-    for (VPackSlice it : VPackArrayIterator(subNodes)) {
-      int t = it.get("typeID").getNumericValue<int>();
-      if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
-        // special handling for nop as it is a singleton
-        addMember(ast->createNodeNop());
-      } else {
-        addMember(ast->createNode(it));
+      for (VPackSlice it : VPackArrayIterator(subNodes)) {
+        int t = it.get("typeID").getNumericValue<int>();
+        if (static_cast<AstNodeType>(t) == NODE_TYPE_NOP) {
+          // special handling for nop as it is a singleton
+          addMember(ast->createNodeNop());
+        } else {
+          addMember(ast->createNode(it));
+        }
       }
     }
   }
+
+  ast->transformNode(this);
 }
 
 /// @brief destroy the node
@@ -1124,8 +1128,12 @@ void AstNode::toVelocyPack(VPackBuilder& builder, bool verbose) const {
       type == NODE_TYPE_FCALL_USER) {
     // dump "name" of node
     TRI_ASSERT(getStringValue() != nullptr);
-    builder.add("name", VPackValuePair(getStringValue(), getStringLength(),
-                                       VPackValueType::String));
+    builder.add("name", VPackValue(getStringView()));
+
+    if (type == NODE_TYPE_PARAMETER || type == NODE_TYPE_PARAMETER_DATASOURCE) {
+      builder.add("required",
+                  VPackValue(hasFlag(FLAG_REQUIRED_BIND_PARAMETER)));
+    }
   }
   if (type == NODE_TYPE_FCALL) {
     auto func = static_cast<Function*>(getData());

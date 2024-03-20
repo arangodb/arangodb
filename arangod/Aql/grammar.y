@@ -840,31 +840,10 @@ for_statement:
         search = $6->getMemberUnchecked(0);
         if (search->type == NODE_TYPE_NOP) {
           search = nullptr;
-        } else {
-          // mark all value bind parameters inside SEARCH as required,
-          // because they can influence the query semantics.
-
-          // TODO: remove this and allow arbitrary value bind parameters 
-          // in SEARCH clause.
-          Ast::traverseAndModify(search, [](AstNode* node) {
-            if (node->type == NODE_TYPE_PARAMETER) {
-              node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
-            }
-            return node;
-          });
         }
         options = $6->getMemberUnchecked(1);
         if (options->type == NODE_TYPE_NOP) {
           options = nullptr;
-        } else {
-          // mark all value bind parameters inside OPTIONS as required,
-          // because they can influence the query semantics
-          Ast::traverseAndModify(options, [](AstNode* node) {
-            if (node->type == NODE_TYPE_PARAMETER) {
-              node->setFlag(AstNodeFlagType::FLAG_REQUIRED_BIND_PARAMETER);
-            }
-            return node;
-          });
         }
       }
 
@@ -2124,6 +2103,7 @@ object_element:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), name, yylloc.first_line, yylloc.first_column);
       }
 
+      parser->trackBindParameterName(name);
       auto param = parser->ast()->createNodeParameter(name);
       parser->pushObjectElement(param, $3);
     }
@@ -2545,6 +2525,7 @@ in_or_into_collection_name:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), name, yylloc.first_line, yylloc.first_column);
       }
 
+      parser->trackBindParameterName(name);
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }
   ;
@@ -2556,6 +2537,7 @@ bind_parameter_datasource:
         parser->registerParseError(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE, TRI_errno_string(TRI_ERROR_QUERY_BIND_PARAMETER_TYPE).data(), name, yylloc.first_line, yylloc.first_column);
       }
 
+      parser->trackBindParameterName(name);
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }
   ;
@@ -2566,6 +2548,7 @@ bind_parameter:
     }
   | T_PARAMETER {
       std::string_view name($1.value, $1.length);
+      parser->trackBindParameterName(name);
       $$ = parser->ast()->createNodeParameter(name);
     }
   ;
@@ -2577,6 +2560,7 @@ bind_parameter_datasource_expected:
   | T_PARAMETER {
       // convert normal value bind parameter into datasource bind parameter
       std::string_view name($1.value, $1.length);
+      parser->trackBindParameterName(name);
       $$ = parser->ast()->createNodeParameterDatasource(name);
     }
   ;

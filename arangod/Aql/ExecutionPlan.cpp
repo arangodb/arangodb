@@ -2731,6 +2731,8 @@ ExecutionNode* ExecutionPlan::fromSlice(VPackSlice const& slice) {
     }
 
     ret = ExecutionNode::fromVPackFactory(this, it);
+    TRI_ASSERT(ret != nullptr);
+
     // We need to adjust nextId here, otherwise we cannot add new nodes to
     // this plan anymore
     if (_nextId <= ret->id()) {
@@ -2963,11 +2965,12 @@ struct Shower final
 
   static LoggerStreamBase& logNode(LoggerStreamBase& log,
                                    ExecutionNode const& node) {
-    return log << "[" << node.id() << "]" << detailedNodeType(node);
+    return log << "[" << node.id() << "] " << node.getTypeString()
+               << nodeDetails(node);
   }
 
-  static std::string detailedNodeType(ExecutionNode const& node) {
-    std::string result = node.getTypeString();
+  static std::string nodeDetails(ExecutionNode const& node) {
+    std::string result;
 
     switch (node.getType()) {
       case ExecutionNode::CALCULATION: {

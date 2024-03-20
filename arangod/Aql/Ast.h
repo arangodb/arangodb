@@ -23,18 +23,6 @@
 
 #pragma once
 
-#include <functional>
-#include <iterator>
-#include <memory>
-#include <span>
-#include <string>
-#include <string_view>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
-
-#include <velocypack/Builder.h>
-
 #include "Aql/AstNode.h"
 #include "Aql/AstResources.h"
 #include "Aql/AttributeNamePath.h"
@@ -42,13 +30,24 @@
 #include "Aql/Scopes.h"
 #include "Aql/VariableGenerator.h"
 #include "Aql/types.h"
-#include "Basics/AttributeNameParser.h"
 #include "Basics/ResourceUsage.h"
 #include "Containers/FlatHashMap.h"
 #include "Containers/FlatHashSet.h"
 #include "Containers/SmallVector.h"
 #include "Graph/PathType.h"
 #include "VocBase/AccessMode.h"
+
+#include <cstdint>
+#include <functional>
+#include <iterator>
+#include <memory>
+#include <span>
+#include <string>
+#include <string_view>
+#include <unordered_map>
+#include <vector>
+
+#include <velocypack/Builder.h>
 
 namespace arangodb {
 class CollectionNameResolver;
@@ -62,9 +61,9 @@ class Slice;
 }
 
 namespace aql {
+class AqlFunctionsInternalCache;
 class BindParameters;
 class QueryContext;
-class AqlFunctionsInternalCache;
 struct Variable;
 
 /// @brief type for Ast flags
@@ -133,9 +132,6 @@ class Ast {
   /// @brief whether or not we currently are in a subquery
   bool isInSubQuery() const noexcept;
 
-  /// @brief return a copy of our own bind parameters
-  std::unordered_set<std::string> bindParameters() const;
-
   /// @brief get the query scopes
   Scopes* scopes();
 
@@ -156,10 +152,22 @@ class Ast {
   void setContainsParallelNode() noexcept;
   bool containsAsyncPrefetch() const noexcept;
   void setContainsAsyncPrefetch() noexcept;
+  void setContainsBindParameters() noexcept;
 
   bool canApplyParallelism() const noexcept {
     return _containsParallelNode && !_willUseV8 && !_containsModificationNode;
   }
+
+  /// @brief optional transform callback for AstNodes. currently only used
+  /// when AstNodes are recreated from velocypack input
+  void setNodeTransformer(std::function<void(AstNode*)> const& cb);
+
+  /// @brief execute transform callback for AstNodes that were created from
+  /// velocypack. executes the callback only if it was set before
+  void transformNode(AstNode* node);
+
+  /// @brief replace a bind parameter with its value equivalent
+  AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);
 
   /// @brief convert the AST into VelocyPack
   void toVelocyPack(velocypack::Builder& builder, bool verbose) const;
@@ -606,9 +614,6 @@ class Ast {
       std::string_view name);
 
  private:
-  /// @brief replace a bind parameter with its value equivalent.
-  AstNode* replaceValueBindParameter(AstNode* node, BindParameters& parameters);
-
   /// @brief make condition from example
   AstNode* makeConditionFromExample(AstNode const*);
 
@@ -687,7 +692,6 @@ class Ast {
     return ((_astFlags & static_cast<decltype(_astFlags)>(flag)) != 0);
   }
 
- private:
   /// @brief the query
   QueryContext& _query;
 
@@ -698,9 +702,6 @@ class Ast {
 
   /// @brief generator for variables
   VariableGenerator _variables;
-
-  /// @brief the bind parameters we found in the query
-  std::unordered_set<std::string> _bindParameters;
 
   /// @brief root node of the AST
   AstNode* _root;
@@ -717,6 +718,10 @@ class Ast {
   /// maps from NODE_TYPE_COLLECTION/NODE_TYPE_PARAMETER_DATASOURCE to
   /// whether the collection is used in exclusive mode
   std::vector<std::pair<AstNode const*, bool>> _writeCollections;
+
+  /// @brief optional transform callback for AstNodes. currently only used
+  /// when AstNodes are recreated from velocypack input
+  std::function<void(AstNode*)> _nodeTransformer;
 
   /// @brief whether or not function calls may access collection data
   bool _functionsMayAccessDocuments;

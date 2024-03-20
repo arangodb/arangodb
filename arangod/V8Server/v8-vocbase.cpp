@@ -762,13 +762,17 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
     TRI_V8ToVPack(isolate, options, args[1], false);
   }
 
+  auto querySlice = queryBuilder.slice();
+
   auto origin = transaction::OperationOriginAQL{"executing query from JSON"};
   auto query = aql::Query::create(
       transaction::V8Context::create(vocbase, origin, true), aql::QueryString{},
-      /*bindParameters*/ nullptr, aql::QueryOptions(options.slice()));
+      /*bindParameters*/
+      std::make_shared<VPackBuilder>(querySlice.get("bindVars")),
+      aql::QueryOptions(options.slice()));
 
-  VPackSlice collections = queryBuilder.slice().get("collections");
-  VPackSlice variables = queryBuilder.slice().get("variables");
+  VPackSlice collections = querySlice.get("collections");
+  VPackSlice variables = querySlice.get("variables");
 
   QueryAnalyzerRevisions analyzersRevision;
   auto revisionRes = analyzersRevision.fromVelocyPack(queryBuilder.slice());
@@ -778,16 +782,16 @@ static void JS_ExecuteAqlJson(v8::FunctionCallbackInfo<v8::Value> const& args) {
 
   // simon: hack to get the behaviour of old second aql::Query constructor
   VPackBuilder snippetBuilder;  // simon: hack to make format conform
-  snippetBuilder.openObject();
+  snippetBuilder.openObject(false);
   snippetBuilder.add("0", VPackValue(VPackValueType::Object));
-  snippetBuilder.add("nodes", queryBuilder.slice().get("nodes"));
+  snippetBuilder.add("nodes", querySlice.get("nodes"));
   snippetBuilder.close();
   snippetBuilder.close();
 
   TRI_ASSERT(!ServerState::instance()->isDBServer());
   VPackBuilder ignoreResponse;
   query->prepareFromVelocyPack(
-      /*querySlice*/ VPackSlice::emptyObjectSlice(), collections, variables,
+      /*querySlice*/ querySlice, collections, variables,
       /*snippets*/ snippetBuilder.slice(), analyzersRevision);
 
   aql::QueryResult queryResult = query->executeSync();

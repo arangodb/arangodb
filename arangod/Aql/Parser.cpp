@@ -130,18 +130,14 @@ void Parser::parse() {
   TRI_ASSERT(scopes->numActive() == 0);
 }
 
-/// @brief parse the query and retun parse details
-QueryResult Parser::parseWithDetails() {
-  parse();
+/// @brief return a copy of bind parameter names found during parsing
+std::unordered_set<std::string> Parser::bindParameterNames() const {
+  return _bindParameterNames;
+}
 
-  QueryResult result;
-  result.collectionNames = _query.collections().collectionNames();
-  result.bindParameters = _ast.bindParameters();
-  auto builder = std::make_shared<VPackBuilder>();
-  _ast.toVelocyPack(*builder, false);
-  result.data = std::move(builder);
-
-  return result;
+/// @brief track that we have seen a bind parameter during parsing
+void Parser::trackBindParameterName(std::string_view name) {
+  _bindParameterNames.emplace(name.data(), name.size());
 }
 
 /// @brief register a parse error, position is specified as line / column

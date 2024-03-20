@@ -35,7 +35,6 @@
 #include "Cluster/ServerState.h"
 #include "Cluster/TraverserEngine.h"
 #include "Logger/LogMacros.h"
-#include "Random/RandomGenerator.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -46,9 +45,6 @@
 
 using namespace arangodb;
 using namespace arangodb::aql;
-
-// Wait 2s to get the Lock in FastPath, otherwise assume dead-lock.
-constexpr double kFastPathLockTimeout = 2.0;
 
 ClusterQuery::ClusterQuery(QueryId id,
                            std::shared_ptr<transaction::Context> ctx,
@@ -125,69 +121,27 @@ void ClusterQuery::prepareFromVelocyPack(
       << " this: " << (uintptr_t)this;
 
   // track memory usage
-  ResourceUsageScope scope(_resourceMonitor);
-  scope.increase(querySlice.byteSize() + collections.byteSize() +
-                 variables.byteSize() + snippets.byteSize() +
-                 traverserSlice.byteSize());
-
-  _planMemoryUsage += scope.trackedAndSteal();
-
-  init(/*createProfile*/ false);
-
-  if (auto val = querySlice.get("isModificationQuery"); val.isTrue()) {
-    _ast->setContainsModificationNode();
-  }
-  if (auto val = querySlice.get("isAsyncQuery"); val.isTrue()) {
-    _ast->setContainsParallelNode();
-  }
-
-  enterState(QueryExecutionState::ValueType::LOADING_COLLECTIONS);
-
-  ExecutionPlan::getCollectionsFromVelocyPack(_collections, collections);
-  _ast->variables()->fromVelocyPack(variables);
-  // creating the plan may have produced some collections
-  // we need to add them to the transaction now (otherwise the query will fail)
+  uint64_t memoryUsage = querySlice.byteSize() + collections.byteSize() +
+                         variables.byteSize() + snippets.byteSize() +
+                         traverserSlice.byteSize();
 
   TRI_ASSERT(_trx == nullptr);
-  // needs to be created after the AST collected all collections
-  std::unordered_set<std::string> inaccessibleCollections;
-#ifdef USE_ENTERPRISE
-  if (_queryOptions.transactionOptions.skipInaccessibleCollections) {
-    inaccessibleCollections = _queryOptions.inaccessibleCollections;
-  }
 
+  initFromVelocyPack(/*createProfile*/ false, memoryUsage, querySlice,
+                     collections, variables);
+
+  TRI_ASSERT(_trx != nullptr);
+
+#ifdef USE_ENTERPRISE
   waitForSatellites();
 #endif
 
-  _trx = AqlTransaction::create(_transactionContext, _collections,
-                                _queryOptions.transactionOptions,
-                                std::move(inaccessibleCollections));
-
   // create the transaction object, but do not start the transaction yet
-  _trx->addHint(
-      transaction::Hints::Hint::FROM_TOPLEVEL_AQL);  // only used on toplevel
   _trx->state()->acceptAnalyzersRevision(analyzersRevision);
   _trx->setUsername(user);
 
-  double origLockTimeout = _trx->state()->options().lockTimeout;
-  if (fastPathLocking) {
-    _trx->state()->options().lockTimeout = kFastPathLockTimeout;
-  }
-
-  Result res = _trx->begin();
-  if (!res.ok()) {
-    THROW_ARANGO_EXCEPTION(res);
-  }
-
-  // restore original lock timeout
-  _trx->state()->options().lockTimeout = origLockTimeout;
-
-  TRI_IF_FAILURE("Query::setupLockTimeout") {
-    if (!_trx->state()->isReadOnlyTransaction() &&
-        RandomGenerator::interval(uint32_t(100)) >= 95) {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_LOCK_TIMEOUT);
-    }
-  }
+  // throws if it fails
+  beginTransaction(fastPathLocking);
 
   _collections.visit([&](std::string const&, aql::Collection const& c) -> bool {
     // this code will only execute on leaders
@@ -196,7 +150,7 @@ void ClusterQuery::prepareFromVelocyPack(
     return true;
   });
 
-  enterState(QueryExecutionState::ValueType::PARSING);
+  enterState(QueryExecutionState::ValueType::PLAN_INSTANTIATION);
 
   bool const planRegisters = !_queryString.empty();
   auto instantiateSnippet = [&](velocypack::Slice snippet) {
@@ -225,6 +179,8 @@ void ClusterQuery::prepareFromVelocyPack(
   }
 
   buildTraverserEngines(traverserSlice, answerBuilder);
+
+  TRI_ASSERT(!_ast->root()->containsBindParameter());
 
   enterState(QueryExecutionState::ValueType::EXECUTION);
 }
