@@ -484,8 +484,6 @@ jobs:
     parameters:
       suiteName:
         type: string
-      cluster:
-        type: boolean
       enterprise:
         type: string
       deployment:
