@@ -94,7 +94,6 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
     }
     return {_returnState, std::move(_returnSkip), std::move(_returnBlock)};
   } else if (_internalState == AsyncState::GotException) {
-    TRI_ASSERT(_returnState != ExecutionState::WAITING);
     ADB_PROD_ASSERT(_returnException != nullptr);
     std::rethrow_exception(_returnException);
     TRI_ASSERT(false);
