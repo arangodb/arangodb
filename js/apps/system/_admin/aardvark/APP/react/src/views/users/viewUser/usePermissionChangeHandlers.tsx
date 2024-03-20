@@ -1,6 +1,7 @@
 import { CellContext } from "@tanstack/react-table";
 import { useState } from "react";
 import { getCurrentDB } from "../../../utils/arangoClient";
+import { encodeHelper } from "../../../utils/encodeHelper";
 import { notifyError } from "../../../utils/notifications";
 import {
   CollectionType,
@@ -30,8 +31,9 @@ export const usePermissionChangeHandlers = ({
     databaseName: string;
   }) => {
     try {
+      const { encoded: encodedDatabaseName } = encodeHelper(databaseName);
       const currentDbRoute = getCurrentDB().route(
-        `_api/user/${username}/database/${databaseName}`
+        `_api/user/${username}/database/${encodedDatabaseName}`
       );
       if (permission === "undefined") {
         await currentDbRoute.delete();
@@ -58,7 +60,7 @@ export const usePermissionChangeHandlers = ({
       databaseName === "_system" &&
       systemDatabaseActionState?.status !== "confirmed"
     ) {
-      // show the modal
+      // show the modal if trying to change the _system database
       setSystemDatabaseActionState({
         status: "open",
         databaseName,
@@ -83,8 +85,9 @@ export const usePermissionChangeHandlers = ({
   }) => {
     const { collectionName } = info.row.original;
     try {
+      const { encoded: encodedDatabaseName } = encodeHelper(databaseName);
       const currentDbRoute = getCurrentDB().route(
-        `_api/user/${username}/database/${databaseName}/${collectionName}`
+        `_api/user/${username}/database/${encodedDatabaseName}/${collectionName}`
       );
       if (permission === "undefined") {
         await currentDbRoute.delete();
