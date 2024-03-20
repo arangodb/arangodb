@@ -1811,7 +1811,8 @@ void arangodb::aql::moveCalculationsDownRule(
         continue;
       }
       variable = nn->outVariable();
-    } else if (n->getType() == EN::SUBQUERY) {
+    } else {
+      TRI_ASSERT(n->getType() == EN::SUBQUERY);
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
       if (!nn->isDeterministic() || nn->isModificationNode()) {
         // we will only move subqueries down that are deterministic and are not
@@ -1819,8 +1820,6 @@ void arangodb::aql::moveCalculationsDownRule(
         continue;
       }
       variable = nn->outVariable();
-    } else {
-      TRI_ASSERT(false);
     }
 
     stack.clear();
