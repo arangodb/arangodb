@@ -52,7 +52,7 @@
   function getCollection(name) {
     var c = db._collection(name);
     if (c === null) {
-      let allCols = db._collections();
+      let allCols = db._collections().map(c => c.name());
       assertNotEqual(c, null, `${name} not found, ${JSON.stringify(allCols)} are here`);
     }
     return c;
