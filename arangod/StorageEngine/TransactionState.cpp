@@ -527,20 +527,20 @@ futures::Future<Result> TransactionState::addCollectionInternal(
       !_options.allowImplicitCollectionsForWrite) {
     // trying to write access a collection that was not declared at start.
     // this is only supported internally for replication transactions.
-    co_return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                        std::string(TRI_errno_string(
-                            TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                            ": " + std::string{cname} + " [" +
-                            AccessMode::typeString(accessType) + "]");
+    co_return res.reset(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", cname, " [", AccessMode::typeString(accessType), "]"));
   }
 
   if (!AccessMode::isWriteOrExclusive(accessType) &&
       (isRunning() && !_options.allowImplicitCollectionsForRead)) {
-    co_return res.reset(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-                        std::string(TRI_errno_string(
-                            TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-                            ": " + std::string{cname} + " [" +
-                            AccessMode::typeString(accessType) + "]");
+    co_return res.reset(
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", cname, " [", AccessMode::typeString(accessType), "]"));
   }
 
   // now check the permissions
@@ -650,7 +650,7 @@ void TransactionState::acceptAnalyzersRevision(
   LOG_TOPIC_IF("9127a", ERR, Logger::AQL,
                (_analyzersRevision != analyzersRevision &&
                 !_analyzersRevision.isDefault()))
-      << " Changing analyzers revision for transaction from "
+      << "Changing analyzers revision for transaction from "
       << _analyzersRevision << " to " << analyzersRevision;
   TRI_ASSERT(_analyzersRevision == analyzersRevision ||
              _analyzersRevision.isDefault());
