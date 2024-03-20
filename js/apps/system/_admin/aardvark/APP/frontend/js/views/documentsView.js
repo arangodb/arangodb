@@ -73,6 +73,7 @@
           self.renderNotFound(this.collection.collectionID);
         } else {
           this.type = type;
+          $(`.upload-info.${this.type}`).show();
           if (responseData) {
             this.collectionName = responseData.name;
           } else {
