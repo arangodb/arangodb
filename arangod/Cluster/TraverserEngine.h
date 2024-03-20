@@ -64,7 +64,7 @@ class BaseEngine {
  public:
   enum EngineType { TRAVERSER, SHORTESTPATH };
 
-  static std::unique_ptr<BaseEngine> BuildEngine(
+  static std::unique_ptr<BaseEngine> buildEngine(
       TRI_vocbase_t& vocbase, aql::QueryContext& query,
       arangodb::velocypack::Slice info);
 

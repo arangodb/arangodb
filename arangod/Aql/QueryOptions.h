@@ -23,15 +23,17 @@
 
 #pragma once
 
-#include <chrono>
-#include <string>
-#include <unordered_set>
-#include <vector>
-
 #include "Aql/ProfileLevel.h"
 #include "Aql/types.h"
 #include "Cluster/Utils/ShardID.h"
 #include "Transaction/Options.h"
+
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <string>
+#include <unordered_set>
+#include <vector>
 
 namespace arangodb {
 namespace velocypack {
@@ -57,11 +59,12 @@ struct QueryOptions {
     kExpandOnlyRequired
   };
 
-  enum JoinStrategyType { DEFAULT, GENERIC };
+  enum JoinStrategyType : uint8_t { kDefault, kGeneric };
 
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,
                     bool disableOptimizerRules) const;
+
   TEST_VIRTUAL ProfileLevel getProfileLevel() const { return profile; }
   TEST_VIRTUAL TraversalProfileLevel getTraversalProfileLevel() const {
     return traversalProfile;
@@ -93,11 +96,13 @@ struct QueryOptions {
   // query has to execute within the given time or will be killed
   double maxRuntime;
 
-  std::chrono::duration<double> satelliteSyncWait;
-
   // time until query cursor expires - avoids coursors to stick around for ever
   // if client does not collect the data
   double ttl;
+
+#ifdef USE_ENTERPRISE
+  std::chrono::duration<double> satelliteSyncWait;
+#endif
 
   /// Level 0 nothing, Level 1 profile, Level 2,3 log tracing info
   ProfileLevel profile;
@@ -144,12 +149,12 @@ struct QueryOptions {
 
   ExplainRegisterPlan explainRegisters;
 
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy;
+
   /// @brief shard key attribute value used to push a query down
   /// to a single server
   std::string forceOneShardAttributeValue;
-
-  /// @brief desired join strategy used by the JoinNode (if available)
-  JoinStrategyType desiredJoinStrategy = JoinStrategyType::DEFAULT;
 
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;

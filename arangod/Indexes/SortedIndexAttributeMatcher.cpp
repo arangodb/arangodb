@@ -279,13 +279,6 @@ Index::FilterCosts SortedIndexAttributeMatcher::supportsFilterCondition(
     arangodb::Index const* idx, arangodb::aql::AstNode const* node,
     arangodb::aql::Variable const* reference, size_t itemsInIndex,
     arangodb::aql::IndexHint const& hint, ReadOwnWrites readOwnWrites) {
-  // mmfiles failure point compat
-  if (idx->type() == Index::TRI_IDX_TYPE_HASH_INDEX) {
-    TRI_IF_FAILURE("SimpleAttributeMatcher::accessFitsIndex") {
-      THROW_ARANGO_EXCEPTION(TRI_ERROR_DEBUG);
-    }
-  }
-
   arangodb::containers::FlatHashMap<size_t,
                                     std::vector<arangodb::aql::AstNode const*>>
       found;

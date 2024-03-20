@@ -605,7 +605,7 @@ void ExecutionPlan::increaseCounter(ExecutionNode const& node) noexcept {
 
 /// @brief process the list of collections in a VelocyPack
 void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
-                                                 VPackSlice const slice) {
+                                                 velocypack::Slice slice) {
   VPackSlice collectionsSlice = slice;
   if (slice.isObject()) {
     collectionsSlice = slice.get("collections");
@@ -617,31 +617,43 @@ void ExecutionPlan::getCollectionsFromVelocyPack(aql::Collections& colls,
         "json node \"collections\" not found or not an array");
   }
 
-  for (VPackSlice const collection : VPackArrayIterator(collectionsSlice)) {
+  for (auto collection : VPackArrayIterator(collectionsSlice)) {
     colls.add(
         basics::VelocyPackHelper::checkAndGetStringValue(collection, "name"),
         AccessMode::fromString(
             arangodb::basics::VelocyPackHelper::checkAndGetStringValue(
-                collection, "type")
-                .c_str()),
+                collection, "type")),
         aql::Collection::Hint::Shard);
   }
 }
 
 /// @brief create an execution plan from VelocyPack
 std::unique_ptr<ExecutionPlan> ExecutionPlan::instantiateFromVelocyPack(
-    Ast* ast, VPackSlice const slice) {
+    Ast* ast, velocypack::Slice slice) {
   TRI_ASSERT(ast != nullptr);
 
-  auto plan = std::make_unique<ExecutionPlan>(ast, true);
+  auto plan = std::make_unique<ExecutionPlan>(ast, /*trackMemoryUsage*/ true);
   plan->_root = plan->fromSlice(slice);
   plan->setVarUsageComputed();
+
+  if (auto rules = slice.get("rules"); rules.isArray()) {
+    for (auto rule : VPackArrayIterator(rules)) {
+      int ruleId = OptimizerRulesFeature::translateRule(rule.stringView());
+      plan->_appliedRules.push_back(ruleId);
+    }
+  }
+
+  if (auto apfn = slice.get("asyncPrefetchNodes"); apfn.isNumber<size_t>()) {
+    plan->_asyncPrefetchNodes = apfn.getNumericValue<size_t>();
+  }
 
   return plan;
 }
 
 /// @brief clone an existing execution plan
 std::unique_ptr<ExecutionPlan> ExecutionPlan::clone(Ast* ast) {
+  TRI_ASSERT(ast != nullptr);
+
   auto plan = std::make_unique<ExecutionPlan>(ast, _trackMemoryUsage);
   plan->_nextId = _nextId;
   plan->_root = _root->clone(plan.get(), true);
@@ -677,9 +689,11 @@ unsigned ExecutionPlan::buildSerializationFlags(
 }
 
 /// @brief export to VelocyPack
-void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
-                                 unsigned flags) const {
+void ExecutionPlan::toVelocyPack(
+    velocypack::Builder& builder, unsigned flags,
+    std::function<void(velocypack::Builder&)> const& serializeQueryData) const {
   builder.openObject();
+
   builder.add(VPackValue("nodes"));
   _root->allToVelocyPack(builder, flags);
 
@@ -687,28 +701,20 @@ void ExecutionPlan::toVelocyPack(VPackBuilder& builder, Ast* ast,
   TRI_ASSERT(builder.isOpenObject());
   builder.add(VPackValue("rules"));
   builder.openArray();
-  for (auto const& ruleName :
-       OptimizerRulesFeature::translateRules(_appliedRules)) {
-    builder.add(VPackValue(ruleName));
+  for (int rule : _appliedRules) {
+    std::string_view ruleName = OptimizerRulesFeature::translateRule(rule);
+    if (!ruleName.empty()) {
+      builder.add(VPackValue(ruleName));
+    }
   }
   builder.close();
 
-  // set up collections
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("collections"));
-  ast->query().collections().toVelocyPack(builder);
-
-  // set up variables
-  TRI_ASSERT(builder.isOpenObject());
-  builder.add(VPackValue("variables"));
-  ast->variables()->toVelocyPack(builder);
-
+  // the following attributes are read by the explainer
   CostEstimate estimate = _root->getCost();
-  // simon: who is reading this ?
   builder.add("estimatedCost", VPackValue(estimate.estimatedCost));
   builder.add("estimatedNrItems", VPackValue(estimate.estimatedNrItems));
-  builder.add("isModificationQuery",
-              VPackValue(ast->containsModificationNode()));
+
+  serializeQueryData(builder);
 
   builder.close();
 }
@@ -719,7 +725,7 @@ void ExecutionPlan::addAppliedRule(int level) {
   }
 }
 
-bool ExecutionPlan::hasAppliedRule(int level) const {
+bool ExecutionPlan::hasAppliedRule(int level) const noexcept {
   return std::any_of(_appliedRules.begin(), _appliedRules.end(),
                      [level](int l) { return l == level; });
 }
@@ -728,8 +734,8 @@ void ExecutionPlan::enableRule(int rule) { _disabledRules.erase(rule); }
 
 void ExecutionPlan::disableRule(int rule) { _disabledRules.emplace(rule); }
 
-bool ExecutionPlan::isDisabledRule(int rule) const {
-  return (_disabledRules.find(rule) != _disabledRules.end());
+bool ExecutionPlan::isDisabledRule(int rule) const noexcept {
+  return _disabledRules.contains(rule);
 }
 
 ExecutionNodeId ExecutionPlan::nextId() {
@@ -1156,7 +1162,7 @@ ExecutionNode* ExecutionPlan::registerNode(
   TRI_ASSERT(node != nullptr);
   TRI_ASSERT(node->plan() == this);
   TRI_ASSERT(node->id() > ExecutionNodeId{0});
-  TRI_ASSERT(_ids.find(node->id()) == _ids.end());
+  TRI_ASSERT(!_ids.contains(node->id()));
 
   {
     ResourceUsageScope scope(

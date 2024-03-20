@@ -26,12 +26,8 @@
 // / @author Copyright 2013, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-// //////////////////////////////////////////////////////////////////////////////
-// / @brief normalize a single row result
-// //////////////////////////////////////////////////////////////////////////////
-
-let isEqual = require("@arangodb/test-helper-common").isEqual;
-var db = require("@arangodb").db;
+const isEqual = require("@arangodb/test-helper-common").isEqual;
+const db = require("@arangodb").db;
 
 exports.isEqual = isEqual;
 
@@ -78,16 +74,12 @@ function normalizeRow (row, recursive) {
 }
 
 function executeQuery(query, bindVars = null, options = {}) {
-  let stmt = db._createStatement({query, bindVars: bindVars, count: true});
+  let stmt = db._createStatement({query, bindVars, count: true});
   return stmt.execute();
 };
 
 function executeJson (plan, options = {}) {
-  let command = `
-        let data = ${JSON.stringify(plan)};
-        let opts = ${JSON.stringify(options)};
-        return AQL_EXECUTEJSON(data, opts);
-      `;
+  let command = `return AQL_EXECUTEJSON(${JSON.stringify(plan)}, ${JSON.stringify(options)});`;
   return arango.POST("/_admin/execute", command);
 };
 
