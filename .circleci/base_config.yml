@@ -316,7 +316,8 @@ jobs:
           command: |
             ls -la
             curl -s -L -o build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
-            chmod a+x build/bin/arangodb
+            curl -s -L -o build/bin/rclone-arangodb https://github.com/arangodb/oskar/blob/master/rclone/v1.65.2/rclone-arangodb-linux-amd64"
+            chmod a+x build/bin/arangodb build/bin/rclone-arangodb
       - when:
           condition: << parameters.publish-artifacts >>
           steps:
