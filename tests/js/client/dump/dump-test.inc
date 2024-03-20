@@ -45,6 +45,9 @@
     if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
       // when dumping multiple database the database name is one layer added:
       dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+    } else {
+      // single database always ends up in "dump"
+      dumpDir = fs.join(dumpDir, "dump");
     }
     return dumpDir;
   };
