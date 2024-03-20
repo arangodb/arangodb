@@ -497,7 +497,7 @@ jobs:
             pwd
             ls -la
             echo TODO
-            release-test-automation/jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
+            work/release-test-automation/jenkins/circleci_tar.sh --selenium Remote_CHROME --starter-mode SG --no-run-upgrade
       - run:
           name: Copy test results
           when: always
