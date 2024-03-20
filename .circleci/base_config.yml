@@ -42,7 +42,7 @@ parameters:
   # these are basically global constants
   build-targets:
     type: string
-    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend"
+    default: "arangod arangoimport arangoexport arangodump arangorestore arangobench frontend arangovpack"
   test-build-targets:
     type: string
     default: "arangodbtests fuertetest"
