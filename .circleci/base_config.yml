@@ -485,17 +485,18 @@ jobs:
       - attach_workspace:
           at: work/ArangoDB
       - run:
-          name: get aux binaries
-          command: |
-            curl -s -L -o work/Arangodb/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
-            chmod a+x work/Arangodb/build/bin/arangodb
-      - run:
           name: Clone RTA
           command: |
             mkdir work/release-test-automation
             cd work/release-test-automation
             git clone git@github.com:arangodb/release-test-automation.git .
             git checkout circleci
+      - run:
+          name: get aux binaries
+          command: |
+            ls -la
+            curl -s -L -o work/Arangodb/build/bin/arangodb "https://github.com/arangodb-helper/arangodb/releases/download/v0.18.3/arangodb-linux-amd64"
+            chmod a+x work/Arangodb/build/bin/arangodb
       - run:
           name: Run << parameters.suiteName >> tests
           no_output_timeout: 20m
