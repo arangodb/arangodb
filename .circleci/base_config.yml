@@ -513,14 +513,15 @@ jobs:
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
             mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
-            cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh \
+            cd work/release-test-automation
+            bash -x ./jenkins/circleci_tar.sh \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >>
             docker run \
-             -v $(pwd)/work/release-test-automation/allure-report:/allure-report \
-             -v $(pwd)/work/release-test-automation/allure-results:/allure-results \
-             -v $(pwd)/work/release-test-automation/allure-config:/allure-config \
+             -v $(pwd)/allure-report:/allure-report \
+             -v $(pwd)/allure-results:/allure-results \
+             -v $(pwd)/allure-config:/allure-config \
              smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
       - run:
           name: Copy test results
