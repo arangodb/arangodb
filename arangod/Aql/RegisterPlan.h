@@ -28,9 +28,9 @@
 #include "Aql/VarInfoMap.h"
 #include "Aql/WalkerWorker.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 
 #include <iosfwd>
+#include <map>
 #include <memory>
 #include <stack>
 #include <vector>

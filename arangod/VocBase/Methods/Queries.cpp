@@ -28,7 +28,6 @@
 #include "Aql/QueryExecutionState.h"
 #include "Aql/QueryList.h"
 #include "Auth/TokenCache.h"
-#include "Basics/Common.h"
 #include "Basics/Exceptions.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"

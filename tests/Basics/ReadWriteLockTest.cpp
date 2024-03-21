@@ -22,7 +22,6 @@
 /// @author Copyright 2015, ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Basics/ScopeGuard.h"
 #include "Basics/system-compiler.h"

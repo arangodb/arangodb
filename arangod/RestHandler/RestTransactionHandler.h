@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/ServerState.h"
 #include "RestHandler/RestVocbaseBaseHandler.h"

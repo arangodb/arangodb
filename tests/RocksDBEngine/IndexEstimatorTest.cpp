@@ -21,7 +21,6 @@
 /// @author Michael Hackstein, Simon Grätzer
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "Basics/Common.h"
 #include "gtest/gtest.h"
 #include "Mocks/Servers.h"
 

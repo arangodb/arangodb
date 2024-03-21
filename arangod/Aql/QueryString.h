@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include <cstdint>
 #include <iosfwd>
 #include <string>

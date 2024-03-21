@@ -44,7 +44,6 @@ class Ast;
 class EnumerateCollectionNode;
 class ExecutionPlan;
 class SortCondition;
-struct AstNode;
 struct Variable;
 
 // note to maintainers:

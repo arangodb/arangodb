@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Sharding/ShardingStrategy.h"
 #include "RestServer/arangod.h"
 

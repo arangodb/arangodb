@@ -25,6 +25,7 @@
 #include "OptimizerRules.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
+#include "Aql/Ast.h"
 #include "Aql/Aggregator.h"
 #include "Aql/AqlFunctionFeature.h"
 #include "Aql/AstHelper.h"
@@ -1810,7 +1811,8 @@ void arangodb::aql::moveCalculationsDownRule(
         continue;
       }
       variable = nn->outVariable();
-    } else if (n->getType() == EN::SUBQUERY) {
+    } else {
+      TRI_ASSERT(n->getType() == EN::SUBQUERY);
       auto nn = ExecutionNode::castTo<SubqueryNode*>(n);
       if (!nn->isDeterministic() || nn->isModificationNode()) {
         // we will only move subqueries down that are deterministic and are not
@@ -1830,61 +1832,62 @@ void arangodb::aql::moveCalculationsDownRule(
       stack.pop_back();
 
       auto const currentType = current->getType();
-      bool tryToPushIntoSubquery = false;
 
-      if (currentType == EN::SUBQUERY && !current->isVarUsedLater(variable)) {
+      usedHere.clear();
+      current->getVariablesUsedHere(usedHere);
+
+      bool varUsedHere = std::find(usedHere.begin(), usedHere.end(),
+                                   variable) != usedHere.end();
+
+      if (n->getType() == EN::CALCULATION && currentType == EN::SUBQUERY &&
+          varUsedHere && !current->isVarUsedLater(variable)) {
+        // move calculations into subqueries if they are required by the
+        // subquery and not used later
         current = ExecutionNode::castTo<SubqueryNode*>(current)->getSubquery();
         while (current->hasDependency()) {
           current = current->getFirstDependency();
         }
-        tryToPushIntoSubquery = true;
+        lastNode = current;
       } else {
-        usedHere.clear();
-        current->getVariablesUsedHere(usedHere);
-
-        bool const done = std::find(usedHere.begin(), usedHere.end(),
-                                    variable) != usedHere.end();
-
-        if (done) {
+        if (varUsedHere) {
           // the node we're looking at needs the variable we're setting.
           // can't push further!
           break;
         }
-      }
 
-      if (tryToPushIntoSubquery) {
-        lastNode = current;
-      } else if (currentType == EN::FILTER || currentType == EN::SORT ||
-                 currentType == EN::LIMIT || currentType == EN::SUBQUERY ||
-                 currentType == EN::SINGLETON) {
-        // we found something interesting that justifies moving our node down
-        if (currentType == EN::LIMIT &&
-            arangodb::ServerState::instance()->isCoordinator()) {
-          // in a cluster, we do not want to move the calculations as far down
-          // as possible, because this will mean we may need to transfer a lot
-          // more data between DB servers and the coordinator
+        if (currentType == EN::FILTER || currentType == EN::SORT ||
+            currentType == EN::LIMIT || currentType == EN::SINGLETON ||
+            // do not move a subquery past another unrelated subquery
+            (currentType == EN::SUBQUERY && n->getType() != EN::SUBQUERY)) {
+          // we found something interesting that justifies moving our node down
+          if (currentType == EN::LIMIT &&
+              arangodb::ServerState::instance()->isCoordinator()) {
+            // in a cluster, we do not want to move the calculations as far down
+            // as possible, because this will mean we may need to transfer a lot
+            // more data between DB servers and the coordinator
 
-          // assume first that we want to move the node past the LIMIT
+            // assume first that we want to move the node past the LIMIT
 
-          // however, if our calculation uses any data from a
-          // collection/index/view, it probably makes sense to not move it,
-          // because the result set may be huge
-          if (::accessesCollectionVariable(plan.get(), n, vars)) {
-            break;
+            // however, if our calculation uses any data from a
+            // collection/index/view, it probably makes sense to not move it,
+            // because the result set may be huge
+            if (::accessesCollectionVariable(plan.get(), n, vars)) {
+              break;
+            }
           }
-        }
 
-        lastNode = current;
-      } else if (currentType == EN::INDEX ||
-                 currentType == EN::ENUMERATE_COLLECTION ||
-                 currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
-                 currentType == EN::ENUMERATE_LIST ||
-                 currentType == EN::TRAVERSAL ||
-                 currentType == EN::SHORTEST_PATH ||
-                 currentType == EN::ENUMERATE_PATHS ||
-                 currentType == EN::COLLECT || currentType == EN::NORESULTS) {
-        // we will not push further down than such nodes
-        break;
+          lastNode = current;
+        } else if (currentType == EN::INDEX ||
+                   currentType == EN::ENUMERATE_COLLECTION ||
+                   currentType == EN::ENUMERATE_IRESEARCH_VIEW ||
+                   currentType == EN::ENUMERATE_LIST ||
+                   currentType == EN::TRAVERSAL ||
+                   currentType == EN::SHORTEST_PATH ||
+                   currentType == EN::ENUMERATE_PATHS ||
+                   currentType == EN::COLLECT || currentType == EN::NORESULTS) {
+          // we will not push further down than such nodes
+          break;
+        }
       }
 
       if (!current->hasParent()) {

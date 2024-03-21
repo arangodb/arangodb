@@ -36,6 +36,7 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/SortRegister.h"
 #include "Aql/types.h"
+#include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
 #include "Transaction/Methods.h"
 

@@ -22,7 +22,6 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "SingleCollectionTransaction.h"
-#include "Basics/StringUtils.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Context.h"
@@ -108,11 +107,11 @@ SingleCollectionTransaction::addCollectionAtRuntime(std::string_view name,
   TRI_ASSERT(!name.empty());
   if ((name[0] < '0' || name[0] > '9') &&
       name != resolveTrxCollection()->collectionName()) {
-    auto message = absl::StrCat(
-        TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION), ": ",
-        name);
     THROW_ARANGO_EXCEPTION_MESSAGE(
-        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION, message);
+        TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", name));
   }
 
   if (AccessMode::isWriteOrExclusive(type) &&
@@ -120,10 +119,9 @@ SingleCollectionTransaction::addCollectionAtRuntime(std::string_view name,
     // trying to write access a collection that is marked read-access
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        std::string(
-            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION)) +
-            ": " + std::string{name} + " [" + AccessMode::typeString(type) +
-            "]");
+        absl::StrCat(
+            TRI_errno_string(TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION),
+            ": ", name, " [", AccessMode::typeString(type), "]"));
   }
 
   return _cid;

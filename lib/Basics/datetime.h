@@ -28,8 +28,6 @@
 #include <string>
 #include <string_view>
 
-#include "Basics/Common.h"
-
 #include <date/date.h>
 
 namespace arangodb {

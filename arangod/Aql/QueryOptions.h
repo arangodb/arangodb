@@ -23,16 +23,17 @@
 
 #pragma once
 
+#include "Aql/ProfileLevel.h"
+#include "Aql/types.h"
+#include "Cluster/Utils/ShardID.h"
+#include "Transaction/Options.h"
+
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <string>
 #include <unordered_set>
 #include <vector>
-
-#include "Aql/ProfileLevel.h"
-#include "Aql/types.h"
-#include "Basics/Common.h"
-#include "Cluster/Utils/ShardID.h"
-#include "Transaction/Options.h"
 
 namespace arangodb {
 namespace velocypack {
@@ -49,7 +50,7 @@ struct QueryOptions {
   QueryOptions(QueryOptions const&) = default;
   TEST_VIRTUAL ~QueryOptions() = default;
 
-  enum JoinStrategyType { DEFAULT, GENERIC };
+  enum JoinStrategyType : uint8_t { kDefault, kGeneric };
 
   void fromVelocyPack(velocypack::Slice slice);
   void toVelocyPack(velocypack::Builder& builder,
@@ -66,9 +67,12 @@ struct QueryOptions {
   size_t spillOverThresholdNumRows;
   size_t spillOverThresholdMemoryUsage;
   size_t maxDNFConditionMembers;
-  double maxRuntime;  // query has to execute within the given time or will be
-                      // killed
+  // query has to execute within the given time or will be killed
+  double maxRuntime;
+
+#ifdef USE_ENTERPRISE
   std::chrono::duration<double> satelliteSyncWait;
+#endif
 
   double ttl;  // time until query cursor expires - avoids coursors to
                // stick around for ever if client does not collect the data
@@ -95,14 +99,15 @@ struct QueryOptions {
   bool count;
   // skips audit logging - used only internally
   bool skipAudit;
+
   ExplainRegisterPlan explainRegisters;
+
+  /// @brief desired join strategy used by the JoinNode (if available)
+  JoinStrategyType desiredJoinStrategy;
 
   /// @brief shard key attribute value used to push a query down
   /// to a single server
   std::string forceOneShardAttributeValue;
-
-  /// @brief desired join strategy used by the JoinNode (if available)
-  JoinStrategyType desiredJoinStrategy = JoinStrategyType::DEFAULT;
 
   /// @brief optimizer rules to turn off/on manually
   std::vector<std::string> optimizerRules;
