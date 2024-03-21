@@ -24,7 +24,7 @@
 #include "ShardingFeature.h"
 
 #include "ApplicationFeatures/ApplicationServer.h"
-#include "Cluster/ServerState.h"
+#include "Basics/StaticStrings.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"

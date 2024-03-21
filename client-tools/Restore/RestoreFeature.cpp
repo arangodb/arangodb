@@ -166,7 +166,7 @@ uint64_t getReplicationFactor(arangodb::RestoreFeature::Options const& options,
 
 /// @brief return the target replication factor for the specified collection
 uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
-                         arangodb::velocypack::Slice const& slice) {
+                         arangodb::velocypack::Slice slice) {
   uint64_t result = 1;
 
   arangodb::velocypack::Slice s =
@@ -181,21 +181,17 @@ uint64_t getWriteConcern(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  if (!options.writeConcern.empty()) {
-    std::string const name = s.copyString();
-
-    for (auto const& it : options.writeConcern) {
-      auto parts = arangodb::basics::StringUtils::split(it, '=');
-      if (parts.size() == 1) {
-        result = arangodb::basics::StringUtils::uint64(parts[0]);
-      }
-      if (parts.size() != 2 || parts[0] != name) {
-        // somehow invalid or different collection
-        continue;
-      }
-      result = arangodb::basics::StringUtils::uint64(parts[1]);
-      break;
+  for (auto const& it : options.writeConcern) {
+    auto parts = arangodb::basics::StringUtils::split(it, '=');
+    if (parts.size() == 1) {
+      result = arangodb::basics::StringUtils::uint64(parts[0]);
     }
+    if (parts.size() != 2 || parts[0] != s.stringView()) {
+      // somehow invalid or different collection
+      continue;
+    }
+    result = arangodb::basics::StringUtils::uint64(parts[1]);
+    break;
   }
 
   return result;
@@ -217,21 +213,25 @@ uint64_t getNumberOfShards(arangodb::RestoreFeature::Options const& options,
     return result;
   }
 
-  for (auto const& it : options.numberOfShards) {
-    auto parts = arangodb::basics::StringUtils::split(it, '=');
-    if (parts.size() == 1) {
-      // this is the default value, e.g. `--numberOfShards 2`
-      result = arangodb::basics::StringUtils::uint64(parts[0]);
-    }
+  if (!options.numberOfShards.empty()) {
+    std::string const name = s.copyString();
 
-    // look if we have a more specific value, e.g. `--numberOfShards
-    // myCollection=3`
-    if (parts.size() != 2 || parts[0] != s.stringView()) {
-      // somehow invalid or different collection
-      continue;
+    for (auto const& it : options.numberOfShards) {
+      auto parts = arangodb::basics::StringUtils::split(it, '=');
+      if (parts.size() == 1) {
+        // this is the default value, e.g. `--numberOfShards 2`
+        result = arangodb::basics::StringUtils::uint64(parts[0]);
+      }
+
+      // look if we have a more specific value, e.g. `--numberOfShards
+      // myCollection=3`
+      if (parts.size() != 2 || parts[0] != name) {
+        // somehow invalid or different collection
+        continue;
+      }
+      result = arangodb::basics::StringUtils::uint64(parts[1]);
+      break;
     }
-    result = arangodb::basics::StringUtils::uint64(parts[1]);
-    break;
   }
 
   return result;
@@ -454,7 +454,7 @@ arangodb::Result checkDumpDatabase(arangodb::ArangoRestoreServer& server,
 /// @brief Send the command to recreate a collection
 arangodb::Result sendRestoreCollection(
     arangodb::httpclient::SimpleHttpClient& httpClient,
-    arangodb::RestoreFeature::Options const& options, VPackSlice const& slice,
+    arangodb::RestoreFeature::Options const& options, VPackSlice slice,
     std::string const& name) {
   using arangodb::Logger;
   using arangodb::httpclient::SimpleHttpResult;
@@ -561,7 +561,7 @@ arangodb::Result recreateCollection(
 /// @brief Restore the data for a given view
 arangodb::Result restoreView(arangodb::httpclient::SimpleHttpClient& httpClient,
                              arangodb::RestoreFeature::Options const& options,
-                             VPackSlice const& viewDefinition) {
+                             VPackSlice viewDefinition) {
   using arangodb::httpclient::SimpleHttpResult;
 
   std::string url = absl::StrCat("/_api/replication/restore-view?overwrite=",
