@@ -533,7 +533,7 @@ jobs:
           path: ./work/release-test-automation/test_dir
       - store_artifacts:
           destination: << parameters.suiteName >>
-          path: ./work/release-test-automation/allure-results
+          path: ./work/release-test-automation/allure-report
       - store_test_results:
           path: ./test-results/
 
