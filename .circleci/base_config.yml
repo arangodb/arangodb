@@ -522,12 +522,15 @@ jobs:
               --starter-mode << parameters.deployment >> \
               << parameters.filterStatement >>
             exit_code=$?
+            exit $exit_code
+      - run:
+          name: generate allure report
+          command: |
             docker run \
-             -v $(pwd)/allure-report:/allure-report \
-             -v $(pwd)/allure-results:/allure-results \
-             -v $(pwd)/allure-config:/allure-config \
-             smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
-             exit $exit_code
+            -v $(pwd)/allure-report:/allure-report \
+            -v $(pwd)/allure-results:/allure-results \
+            -v $(pwd)/allure-config:/allure-config \
+            smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
       - run:
           name: Copy test results
           when: always
@@ -537,7 +540,6 @@ jobs:
           destination: << parameters.suiteName >>
           path: ./work/release-test-automation/test_dir
       - store_artifacts:
-          destination: << parameters.suiteName >>
           path: ./work/release-test-automation/allure-report
       - store_test_results:
           path: ./test-results/
