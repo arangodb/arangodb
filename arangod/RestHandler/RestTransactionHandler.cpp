@@ -65,8 +65,8 @@ RequestLane RestTransactionHandler::lane() const {
     // operations on coordinators and single servers, because these
     // operations can unblock other operations.
     // strictly speaking, the request lane should not be "continuation"
-    // here, as it is no continuation. but we don't have a better 
-    // other request lane with medium priority. the only important 
+    // here, as it is no continuation. but we don't have a better
+    // other request lane with medium priority. the only important
     // thing here is that the request lane priority is set to medium.
     return RequestLane::CONTINUATION;
   }
