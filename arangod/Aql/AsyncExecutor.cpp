@@ -93,6 +93,8 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
   if (_internalState == AsyncState::InProgress) {
     ++_numWakeupsQueued;
     return {ExecutionState::WAITING, SkipResult{}, SharedAqlItemBlockPtr()};
+    // if the result we got was "WAITING", we do not want to return it, but just
+    // make the next call to the upstream
   } else if (_internalState == AsyncState::GotResult &&
              _returnState != ExecutionState::WAITING) {
     if (_returnState != ExecutionState::DONE) {
@@ -202,7 +204,10 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
           }
 #endif
         }
-        return _returnState != ExecutionState::WAITING;
+        // we only want to trigger a wakeup if we got an actual result, or an
+        // exception
+        return (_returnState != ExecutionState::WAITING) ||
+               (_internalState == AsyncState::GotException);
       });
 
   if (!queued) {
