@@ -1554,7 +1554,6 @@
         }
         const smartGraphName = "UnitTestsDumpEmptySmartGraph";
         const graphsColl = getCollection('_graphs');
-        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         assertTrue(!!graphsColl.exists(smartGraphName));
 
         const graph = graphsColl.document(smartGraphName);
@@ -1571,7 +1570,6 @@
         }
         const smartGraphName = "UnitTestDumpSmartGraphCompat";
         const graphsColl = getCollection('_graphs');
-        assertEqual(graphsColl.toArray(), ["hustensaft"]);
         assertTrue(!!graphsColl.exists(smartGraphName));
 
         const graphDoc = graphsColl.document(smartGraphName);
