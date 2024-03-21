@@ -333,14 +333,15 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     return {"run-linux-tests": job}
 
 
-def create_rta_test_job(cluster, build_config, build_job, deployment_mode):
+def create_rta_test_job(build_config, build_job, deployment_mode, filter_statement):
     edition = "ee" if build_config.enterprise else "ce"
     job = {
-        "name": f"test-{edition}-{deployment_mode}-RTA",
-        "suiteName": "RTA",
+        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-RTA",
+        "suiteName": name,
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
+        "filterStatement": f"--ui-include-test-suite {filter_statement}",
         "requires": [build_job],
     }
     return {"run-rta-tests": job}
@@ -366,8 +367,25 @@ def add_test_definition_jobs_to_workflow(
 
 def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
     jobs = workflow["jobs"]
-    jobs.append(create_rta_test_job(False, build_config, build_job, 'SG'))
-    jobs.append(create_rta_test_job(False, build_config, build_job, 'CL'))
+    ui_testsuites = [
+        "UserPageTestSuite",
+        "CollectionsTestSuite",
+        "ViewsTestSuite",
+        "GraphTestSuite",
+        "QueryTestSuite",
+        "AnalyzersTestSuite",
+        "DatabaseTestSuite",
+        "LogInTestSuite",
+        "DashboardTestSuite",
+        "SupportTestSuite",
+        "ServiceTestSuite",
+    ]
+    deployments = ['SG',
+                   #"CL",
+                   ]
+    for deployment in deployments:
+        for test_suite in ui_testsuites:
+            jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
 
 
 def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):

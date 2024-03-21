@@ -489,6 +489,8 @@ jobs:
         type: string
       deployment:
         type: string
+      filterStatement:
+        type: string
       browser:
         type: string
       # TODO add more parameters
@@ -517,12 +519,15 @@ jobs:
             bash -x ./jenkins/circleci_tar.sh \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
-              --starter-mode << parameters.deployment >>
+              --starter-mode << parameters.deployment >> \
+              << parameters.filterStatement >>
+            exit_code=$?
             docker run \
              -v $(pwd)/allure-report:/allure-report \
              -v $(pwd)/allure-results:/allure-results \
              -v $(pwd)/allure-config:/allure-config \
              smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
+             exit $exit_code
       - run:
           name: Copy test results
           when: always
