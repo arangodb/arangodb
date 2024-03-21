@@ -19,17 +19,13 @@
 // / limitations under the License.
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-/// @author Jan Steemann
-/// @author Copyright 2012, triAGENS GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
 (function () {
   'use strict';
   var db = require("@arangodb").db;
 
-  db._dropDatabase("UnitTestsDumpProperties1");
-  db._dropDatabase("UnitTestsDumpProperties2");
+  db._dropDatabase("UnitTestsDumpSrc");
   db._dropDatabase("UnitTestsDumpDst");
 })();
 
