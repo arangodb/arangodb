@@ -40,12 +40,25 @@
   const arangosh = require('@arangodb/arangosh');
   const isCluster = internal.isCluster();
   const isEnterprise = internal.isEnterprise();
+  const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   var db = internal.db;
+
+  const getDumpDir = () => {
+    let dumpDir = instanceInfo.rootDir;
+    if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+      // when dumping multiple database the database name is one layer added:
+      dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+    } else {
+      // single database always ends up in "dump"
+      dumpDir = fs.join(dumpDir, "dump");
+    }
+    return dumpDir;
+  };
 
   function getCollection(name) {
     var c = db._collection(name);
     if (c === null) {
-      let allCols = db._collections();
+      let allCols = db._collections().map(c => c.name());
       assertNotEqual(c, null, `${name} not found, ${JSON.stringify(allCols)} are here`);
     }
     return c;
@@ -128,7 +141,6 @@
     const satelliteEdgeCollection2Name = "UnitTestDumpSatelliteEdgeCollection2";
     const gm = (isEnterprise) ? require("@arangodb/smart-graph") : {};
     const satgm = (isEnterprise) ? require("@arangodb/satellite-graph") : {};
-    const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
     const {map, zipObject} = require('lodash');
     const isServer = require("@arangodb").isServer;
     const request = require("@arangodb/request");
@@ -1164,11 +1176,7 @@
       },
 
       testHiddenCollectionsOmitted: function () {
-        let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
-        if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
-          // when dumping multiple database the database name is one layer added:
-          dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
-        }
+        const dumpDir = getDumpDir();
         const smartEdgeCollectionPath = fs.join(dumpDir, `${edges}.structure.json`);
         const localEdgeCollectionPath = fs.join(dumpDir, `_local_${edges}.structure.json`);
         const fromEdgeCollectionPath = fs.join(dumpDir, `_from_${edges}.structure.json`);
@@ -1181,13 +1189,9 @@
       },
 
       testShadowCollectionsOmitted: function () {
-        const encryption = fs.read(fs.join(instanceInfo.rootDir, 'dump', 'ENCRYPTION'));
+        const dumpDir = getDumpDir();
+        const encryption = fs.read(fs.join(dumpDir, 'ENCRYPTION'));
         if (encryption === '' || encryption === 'none') {
-          let dumpDir = fs.join(instanceInfo.rootDir, 'dump');
-          if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
-            // when dumping multiple database the database name is one layer added:
-            dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
-          }
           const collStructure = JSON.parse(
             fs.read(fs.join(dumpDir, `${edges}.structure.json`))
           );
