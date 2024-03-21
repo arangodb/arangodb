@@ -337,7 +337,7 @@ def create_rta_test_job(build_config, build_job, deployment_mode, filter_stateme
     edition = "ee" if build_config.enterprise else "ce"
     job = {
         "name": f"test-{filter_statement}-{edition}-{deployment_mode}-RTA",
-        "suiteName": fister_statement,
+        "suiteName": filter_statement,
         "deployment": deployment_mode,
         "browser": "Remote_CHROME",
         "enterprise": "EP" if build_config.enterprise else "C",
