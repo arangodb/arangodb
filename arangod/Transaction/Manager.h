@@ -74,6 +74,8 @@ class Manager final : public IManager {
     Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
   };
 
+  static std::string_view typeName(MetaType type);
+
   struct ManagedTrx {
     ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
                std::shared_ptr<TransactionState> state,
@@ -108,6 +110,7 @@ class Manager final : public IManager {
     arangodb::cluster::CallbackGuard rGuard;
     std::string const user;  /// user owning the transaction
     std::string db;          /// database in which the transaction operates
+    std::string context;
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -201,7 +204,7 @@ class Manager final : public IManager {
   /// coordinators in a cluster
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::string const& database, std::string const& username,
-                    bool fanout) const;
+                    bool fanout, bool details) const;
 
   // ---------------------------------------------------------------------------
   // Hotbackup Stuff
@@ -277,7 +280,8 @@ class Manager final : public IManager {
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(
-      std::function<void(TransactionId, ManagedTrx const&)> const&) const;
+      std::function<void(TransactionId, ManagedTrx const&)> const& callback,
+      bool details) const;
 
   static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
 
@@ -286,6 +290,8 @@ class Manager final : public IManager {
   bool storeManagedState(TransactionId const& tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
+
+  static std::string buildContextFromState(TransactionState& state, MetaType t);
 
  private:
   ManagerFeature& _feature;
