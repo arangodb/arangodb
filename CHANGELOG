@@ -1,6 +1,9 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* Prioritize requests for commiting or aborting streaming transactions
+  on leaders and followers, because they can unblock other operations.
+
 * Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
 
 * Rebuilt included rclone v1.62.2 with go1.21.8.
