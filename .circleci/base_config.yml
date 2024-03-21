@@ -512,11 +512,11 @@ jobs:
             echo TODO
             export SOURCE=nightlypublic
             export RTA_EDITION=<< parameters.enterprise >>
+            mkdir -p  work/release-test-automation/allure-results work/release-test-automation/allure-config
             cd work/release-test-automation; bash -x ./jenkins/circleci_tar.sh \
               --no-run-upgrade  \
               --selenium << parameters.browser >> \
               --starter-mode << parameters.deployment >>
-            mkdir work/release-test-automation/allure-result work/release-test-automation/allure-config
             docker run \
              -v $(pwd)/work/release-test-automation/allure-report:/allure-report \
              -v $(pwd)/work/release-test-automation/allure-results:/allure-results \
@@ -532,7 +532,7 @@ jobs:
           path: ./work/release-test-automation/test_dir
       - store_artifacts:
           destination: << parameters.suiteName >>
-          path: ./work/release-test-automation/allure-report
+          path: ./work/release-test-automation/allure-results
       - store_test_results:
           path: ./test-results/
 
