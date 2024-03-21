@@ -290,7 +290,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'hash');
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
         }
       }
 
@@ -302,7 +302,7 @@
       assertEqual(properties.numberOfShards, 1);
       assertEqual(properties.replicationFactor, 'satellite');
       if (isCluster) {
-        assertEqual(properties.shardingStrategy, 'hash');
+        assertEqual(properties.shardingStrategy, 'enterprise-compat');
       }
     }
 
@@ -1839,7 +1839,7 @@
           assertEqual(properties.numberOfShards, 1);
           assertEqual(properties.replicationFactor, 'satellite');
           if (isCluster) {
-            assertEqual(properties.shardingStrategy, 'hash');
+            assertEqual(properties.shardingStrategy, 'enterprise-compat');
           }
         }
 
@@ -1851,7 +1851,7 @@
         assertEqual(properties.numberOfShards, 1);
         assertEqual(properties.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(properties.shardingStrategy, 'hash');
+          assertEqual(properties.shardingStrategy, 'enterprise-compat');
         }
 
         // test data
@@ -1944,7 +1944,7 @@
         assertEqual(verticesSatProps.smartGraphAttribute, undefined);
         assertEqual(verticesSatProps.replicationFactor, 'satellite');
         if (isCluster) {
-          assertEqual(verticesSatCol.properties().shardingStrategy, 'hash', `Failed for collection: "${verticesSatCol.name()}".`);
+          assertEqual(verticesSatCol.properties().shardingStrategy, 'enterprise-compat', `Failed for collection: "${verticesSatCol.name()}".`);
         }
 
         // check properties of edge collections
