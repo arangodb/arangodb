@@ -1585,13 +1585,13 @@
           newVertexName
         );
         // New collections do not yet exist, that would be forbidden.
-        assertTrue(db._collections().indexOf(newRelationName) === -1);
-        assertTrue(db._collections().indexOf(newVertexName) === -1);
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 0);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 0);
         const graph = gm._graph(smartGraphName);
         graph._extendEdgeDefinitions(newRelation);
         // New collections are added
-        assertTrue(db._collections().indexOf(newRelationName) !== -1);
-        assertTrue(db._collections().indexOf(newVertexName) !== -1);
+        assertEqual(db._collections().filter(c => c.name() === newRelationName).length, 1);
+        assertEqual(db._collections().filter(c => c.name() === newVertexName).length, 1);
         // New collections are smart
         assertTrue(db[newRelationName].properties().isSmart);
         assertTrue(db[newVertexName].properties().isSmart);
