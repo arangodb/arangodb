@@ -28,6 +28,7 @@
 #include "Aql/AsyncExecutor.h"
 
 #include <random>
+#include <stdexcept>
 #include <thread>
 
 using namespace arangodb;
@@ -252,6 +253,65 @@ TEST_F(AsyncExecutorTest, WAITING_result_should_not_trigger_wakeup) {
       .expectOutput({0}, {{0}})
       .expectSkipped(0)
       .checkExpectations();
+
+  ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
+}
+
+TEST_F(AsyncExecutorTest,
+       WAITING_result_should_trigger_wakeup_in_case_of_exception) {
+  auto registerInfos = RegisterInfos(RegIdSet{}, RegIdSet{}, 1, 1,
+                                     RegIdFlatSet{}, RegIdFlatSetStack{{0}});
+
+  auto testHelper = makeExecutorTestHelper();
+  testHelper
+      .addDependency<AsyncExecutor>(registerInfos, {}, ExecutionNode::ASYNC)
+      .setInputFromRowNum(1)
+      .setWaitingBehaviour(WaitingExecutionBlockMock::WaitingBehaviour::ALWAYS)
+      .setCall(AqlCall{0u, AqlCall::Infinity{}, AqlCall::Infinity{}, false});
+
+  auto* asyncBlock0 = dynamic_cast<ExecutionBlockImpl<AsyncExecutor>*>(
+      testHelper.pipeline().get().at(0).get());
+  // Having the nodes in a certain order (i.e. pipeline[0].id() == 0, and
+  // pipeline[1].id() == 1), makes reading profiles less confusing.
+  ASSERT_EQ(asyncBlock0->getPlanNode()->id().id(), 0);
+
+  // one initial "wakeup" to start execution
+  auto wakeupsQueued = 1;
+  auto wakeupHandler = [&wakeupsQueued]() noexcept {
+    ++wakeupsQueued;
+    return true;
+  };
+  testHelper.setWakeupHandler(wakeupHandler);
+  testHelper.setWakeupCallback(wakeupHandler);
+
+  auto executeCalls = 0;
+  testHelper.setExecuteCallback([&executeCalls]() {
+    ASSERT_LE(executeCalls, 1);
+    ++executeCalls;
+    if (executeCalls > 1) {
+      throw std::runtime_error("test exception");
+    }
+  });
+  testHelper.prepareInput();
+
+  try {
+    while (wakeupsQueued > 0 || !scheduler.queueEmpty()) {
+      while (wakeupsQueued > 0) {
+        --wakeupsQueued;
+        testHelper.executeOnce();
+      }
+      if (!scheduler.queueEmpty()) {
+        scheduler.runOnce();
+      }
+    };
+    FAIL() << "expected test exception to be thrown";
+  } catch (std::runtime_error const& e) {
+    EXPECT_EQ(e.what(), std::string("test exception"));
+  }
+
+  EXPECT_EQ(0, wakeupsQueued);
+  EXPECT_TRUE(scheduler.queueEmpty());
+  EXPECT_EQ(2, executeCalls);
 
   ASSERT_TRUE(testHelper.sharedState()->noTasksRunning());
 }
