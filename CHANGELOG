@@ -1,13 +1,16 @@
 devel
 -----
 
-* EE-Only bug-fix MDS-1190: When we use arangodump and arangorestore while
-  using a SmartGraph the restore process may generate new internal CollectionIds.
-  This generated Ids are not always updated in the also restored GraphSchema.
-  In the situation the restored graph still works as expected, all data is there
-  and can be queried and modified. Only the GraphSchema on the restored version
-  could not be changed anymore. We erased the dependency on the CollectionId
-  in the GraphSchema, now the Schema can again be modified.
+* EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
+  the restore process may generate new internal collection ids.
+  These generated ids were not always updated in the restored SmartGraph schema.
+  If the ids diverge, the restored SmartGraph still works as expected, all data is there
+  and can be queried and modified. Only the schema of the restored SmartGraph
+  could not be changed anymore, e.g. no collections could be added to or removed
+  from the graph.
+  The SmartGraph schema handling now does not consider collection ids anymore,
+  so that schemas can again be modified, even those of existing SmartGraphs that
+  were originally affected by the issue.
 
 * FE-316: Edge collection import example now correctly reflects the required
   `from` and `to` attributes.

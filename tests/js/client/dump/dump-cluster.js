@@ -80,9 +80,9 @@ jsunity.run(function dump_cluster_testsuite() {
     baseTests(),
     suite,
     "_cluster",
-    [ // <-- Blacklisted Tests
-      // Magic Hint: Those tests are tests which you need to additional blacklist in case they are not supported
-      // in that specific environment. Those blacklist is separately and manually maintained per test-suite.
+    [ // <-- Deactivated Tests
+      // Magic Hint: Those tests are not supported in the specific environment.
+      // The exclusion list is separately and manually maintained per test-suite.
       "testUsers",
       "testTransactionCommit",
       "testTransactionUpdate",
