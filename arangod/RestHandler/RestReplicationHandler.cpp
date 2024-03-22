@@ -3691,9 +3691,17 @@ Result RestReplicationHandler::createBlockingTransaction(
     return res;
   }
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
   std::string vn = _vocbase.name();
+
+  // we successfully created the transaction.
+  // make sure if it is aborted if something goes wrong.
+  auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
+    try {
+      mgr->abortManagedTrx(id, vn);
+    } catch (...) {
+    }
+  });
+
   try {
     if (!serverId.empty()) {
       std::string comment = std::string("SynchronizeShard from ") + serverId +
@@ -3713,6 +3721,7 @@ Result RestReplicationHandler::createBlockingTransaction(
         }
       };
 
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
@@ -3737,14 +3746,13 @@ Result RestReplicationHandler::createBlockingTransaction(
   }
 
   if (isTombstoned(id)) {
-    try {
-      return mgr->abortManagedTrx(id, vn);
-    } catch (...) {
-      // Maybe thrown in shutdown.
-    }
     // DO NOT LOCK in this case, pointless
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
+    
+  // when we get here, we let the transaction remain active until it
+  // times out or a cancel request is sent.
+  transactionAborter.cancel();
 
   return isLockHeld(id);
 }

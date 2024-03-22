@@ -820,6 +820,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end()) {
+      // transaction actually not found
       return nullptr;
     }
 
@@ -831,11 +832,23 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
             absl::StrCat("transaction ", tid.id(),
                          " has already been aborted"));
       }
-      return nullptr;
+
+      TRI_ASSERT(mtrx.finalStatus == transaction::Status::COMMITTED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+          absl::StrCat("transaction ", tid.id(),
+                       " has already been committed"));
     }
 
-    if (mtrx.expired() || !::authorized(mtrx.user)) {
-      return nullptr;  // no need to return anything
+    if (mtrx.expired()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_NOT_FOUND,
+          absl::StrCat("transaction ", tid.id(), " has already expired"));
+    }
+    if (!::authorized(mtrx.user)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_FORBIDDEN,
+          absl::StrCat("not authorized to access transaction ", tid.id()));
     }
 
     if (AccessMode::isWriteOrExclusive(mode)) {
@@ -957,10 +970,15 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
-    if (it == _transactions[bucket]._managed.end() ||
-        !::authorized(it->second.user)) {
+    if (it == _transactions[bucket]._managed.end()) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
           << "managed transaction " << tid << " not found";
+      TRI_ASSERT(false);
+      return;
+    }
+    if (!::authorized(it->second.user)) {
+      LOG_TOPIC("93894", WARN, Logger::TRANSACTIONS)
+          << "not authorized to access managed transaction " << tid;
       TRI_ASSERT(false);
       return;
     }
