@@ -162,6 +162,22 @@ void Function::initializeArguments() {
         foundArg = true;
         break;
 
+      case 'b':
+        // we found an arbitrary other parameter, but if it is a bind
+        // parameter, it must be expanded early
+
+        // set the conversion info for the position
+        if (conversions.size() <= position) {
+          // we don't yet have another parameter at this position
+          conversions.emplace_back(Conversion::RequiredBindParameter);
+        } else {
+          // we already had a parameter at this position - should not happen
+          TRI_ASSERT(false);
+          conversions[position] = Conversion::RequiredBindParameter;
+        }
+        foundArg = true;
+        break;
+
       case '.':
         // we found any other parameter
 

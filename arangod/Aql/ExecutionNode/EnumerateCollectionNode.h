@@ -109,7 +109,7 @@ class EnumerateCollectionNode : public ExecutionNode,
   /// @brief enable random iteration of documents in collection
   void setRandom();
 
-  /// @brief user hint regarding which index ot use
+  /// @brief user hint regarding which index to use
   IndexHint const& hint() const;
 
   void setProjections(Projections projections) override;

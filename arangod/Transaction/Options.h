@@ -47,10 +47,10 @@ struct Options {
                         uint64_t intermediateCommitCount);
 
   /// @brief read the options from a vpack slice
-  void fromVelocyPack(arangodb::velocypack::Slice const&);
+  void fromVelocyPack(arangodb::velocypack::Slice slice);
 
   /// @brief add the options to an opened vpack builder
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
 
 #ifdef ARANGODB_ENABLE_FAILURE_TESTS
   /// @brief patch intermediateCommitCount for testing
@@ -72,6 +72,17 @@ struct Options {
   std::uint64_t maxTransactionSize = defaultMaxTransactionSize;
   std::uint64_t intermediateCommitSize = defaultIntermediateCommitSize;
   std::uint64_t intermediateCommitCount = defaultIntermediateCommitCount;
+
+  /// @brief originating server of this transaction. will be populated
+  /// only in the cluster, and with a coordinator id/coordinator reboot id
+  /// then. coordinators fill this in when they start a transaction, and
+  /// the info is send with the transaction begin requests to DB servers,
+  /// which will also store the coordinator's id. this is so they can
+  /// abort the transaction should the coordinator die or be rebooted.
+  /// the server id and reboot id are intentionally empty in single server
+  /// case.
+  arangodb::PeerState origin;
+
   bool allowImplicitCollectionsForRead = true;
   bool allowImplicitCollectionsForWrite = false;  // replication only!
 #ifdef USE_ENTERPRISE
@@ -85,16 +96,6 @@ struct Options {
   /// `TransactionState`. The decision is taken when the transaction is
   /// created.
   bool allowDirtyReads = false;
-
-  /// @brief originating server of this transaction. will be populated
-  /// only in the cluster, and with a coordinator id/coordinator reboot id
-  /// then. coordinators fill this in when they start a transaction, and
-  /// the info is send with the transaction begin requests to DB servers,
-  /// which will also store the coordinator's id. this is so they can
-  /// abort the transaction should the coordinator die or be rebooted.
-  /// the server id and reboot id are intentionally empty in single server
-  /// case.
-  arangodb::PeerState origin;
 
   /// @brief determines whether this transaction requires the changes to be
   /// replicated. E.g., transactions that _must not_ be replicated are those

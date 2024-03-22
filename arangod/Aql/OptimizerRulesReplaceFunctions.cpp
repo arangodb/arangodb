@@ -523,14 +523,15 @@ AstNode* replaceFullText(AstNode* funAstNode, ExecutionNode* calcNode,
   auto* ast = plan->getAst();
   QueryContext& query = ast->query();
 
-  FulltextParams params(funAstNode);  // must be NODE_TYPE_FCALL
+  TRI_ASSERT(funAstNode->type == NODE_TYPE_FCALL);
+  FulltextParams params(funAstNode);
 
   /// index
   //  we create this first as creation of this node is more
   //  likely to fail than the creation of other nodes
 
   //  index - part 1 - figure out index to use
-  std::shared_ptr<arangodb::Index> index = nullptr;
+  std::shared_ptr<arangodb::Index> index;
   std::vector<basics::AttributeName> field;
   TRI_ParseAttributeString(params.attribute, field, false);
 

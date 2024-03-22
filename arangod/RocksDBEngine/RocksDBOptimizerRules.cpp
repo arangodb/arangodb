@@ -48,6 +48,8 @@
 #include "StorageEngine/PhysicalCollection.h"
 #include "VocBase/LogicalCollection.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <initializer_list>
 
 using namespace arangodb;
@@ -195,8 +197,8 @@ void RocksDBOptimizerRules::reduceExtractionToProjectionRule(
             if (forced && !picked) {
               THROW_ARANGO_EXCEPTION_MESSAGE(
                   TRI_ERROR_QUERY_FORCED_INDEX_HINT_UNUSABLE,
-                  "could not use index hint to serve query; " +
-                      hint.toString());
+                  absl::StrCat("could not use index hint to serve query; ",
+                               hint.toString()));
             }
           }
 

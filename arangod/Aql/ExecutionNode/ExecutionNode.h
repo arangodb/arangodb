@@ -230,11 +230,11 @@ class ExecutionNode {
   /// @brief return the amount of bytes used
   virtual size_t getMemoryUsedBytes() const = 0;
 
-  /// @brief resolve nodeType to a string.
-  static std::string const& getTypeString(NodeType type);
+  /// @brief resolve nodeType to a string_view.
+  static std::string_view getTypeString(NodeType type);
 
   /// @brief return the type name of the node
-  std::string const& getTypeString() const;
+  std::string_view getTypeString() const;
 
   /// @brief checks whether we know a type of this kind; throws exception if
   /// not.

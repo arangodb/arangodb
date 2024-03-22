@@ -59,6 +59,8 @@
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/Methods/Queries.h"
 
+#include <absl/strings/str_cat.h>
+
 using namespace arangodb;
 using namespace arangodb::aql;
 
@@ -597,9 +599,6 @@ struct DistributedQueryInstanciator final
 
       for (auto const& [server, queryId, rebootId] : srvrQryId) {
         TRI_ASSERT(!server.starts_with("server:"));
-        std::string comment = std::string("AQL query from coordinator ") +
-                              ServerState::instance()->getId();
-
         std::function<void(void)> f = [srvr = server, id = _query.id(),
                                        vn = _query.vocbase().name(), &df]() {
           LOG_TOPIC("d2554", INFO, Logger::QUERIES)
@@ -615,7 +614,9 @@ struct DistributedQueryInstanciator final
         };
 
         engine->rebootTrackers().emplace_back(ci.rebootTracker().callMeOnChange(
-            {server, rebootId}, std::move(f), std::move(comment)));
+            {server, rebootId}, std::move(f),
+            absl::StrCat("AQL query from coordinator ",
+                         ServerState::instance()->getId())));
       }
     }
 
@@ -624,7 +625,7 @@ struct DistributedQueryInstanciator final
     for (auto const& [server, queryId, rebootId] : srvrQryId) {
       if (queryId == 0) {
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL, std::string("no query ID known for ") + server);
+            TRI_ERROR_INTERNAL, absl::StrCat("no query ID known for ", server));
       }
     }
 
@@ -687,10 +688,10 @@ auto ExecutionEngine::executeForClient(AqlCallStack const& stack,
 
   auto rootBlock = dynamic_cast<BlocksWithClients*>(root());
   if (rootBlock == nullptr) {
-    using namespace std::string_literals;
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_INTERNAL_AQL,
-        "unexpected node type "s + root()->getPlanNode()->getTypeString());
+        absl::StrCat("unexpected node type ",
+                     root()->getPlanNode()->getTypeString()));
   }
 
   auto const res = rootBlock->executeForClient(stack, clientId);

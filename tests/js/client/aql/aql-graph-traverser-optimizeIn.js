@@ -28,43 +28,56 @@
 
 const jsunity = require('jsunity');
 const {assertEqual, assertTrue, assertFalse, fail} = jsunity.jsUnity.assertions;
-
-
 const internal = require('internal');
 const db = require('internal').db;
 const isCluster = require("internal").isCluster();
 const errors = require('@arangodb').errors;
+const removeCost = require('@arangodb/aql-helper').removeCost;
+const gh = require('@arangodb/graph/helpers');
+const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
 
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
 
-const removeCost = require('@arangodb/aql-helper').removeCost;
-
-const gh = require('@arangodb/graph/helpers');
-const waitForEstimatorSync = require('@arangodb/test-helper').waitForEstimatorSync;
-
 function optimizeInSuite() {
-  var ruleName = 'optimize-traversals';
-  var startId = vn + '/optIn';
-  var vc;
-  var ec;
+  const ruleName = 'optimize-traversals';
+  const startId = vn + '/optIn';
+  let vc;
+  let ec;
 
   return {
-
     setUpAll: function () {
       gh.cleanup();
       vc = db._create(vn, {numberOfShards: 4});
       ec = db._createEdgeCollection(en, {numberOfShards: 4});
-      vc.save({_key: startId.split('/')[1]});
 
-      for (var i = 0; i < 100; ++i) {
-        var tmp = vc.save({_key: 'tmp' + i, value: i});
-        ec.save(startId, tmp._id, {_key: 'tmp' + i, value: i});
-        for (var j = 0; j < 100; ++j) {
-          var innerTmp = vc.save({_key: 'innertmp' + i + '_' + j});
-          ec.save(tmp._id, innerTmp._id, {});
-        }
+      vc.insert({_key: startId.split('/')[1]});
+
+      let docs = [];
+      for (let i = 0; i < 100; ++i) {
+        docs.push({_key: 'tmp' + i, value: i});
       }
+      let ids = vc.insert(docs).map((doc) => doc._id);
+
+      docs = [];
+      ids.forEach((id, i) => { 
+        docs.push({ _from: startId, _to: id, _key: 'tmp' + i, value: i });
+      });
+      ec.insert(docs);
+
+      ids.forEach((id, i) => {
+        let docs = [];
+        for (let j = 0; j < 100; ++j) {
+          docs.push({_key: 'innertmp' + i + '_' + j});
+        }
+        let innerIds = vc.insert(docs).map((doc) => doc._id);
+
+        docs = [];
+        for (let j = 0; j < 100; ++j) {
+          docs.push({ _from: id, _to: innerIds[j] });
+        }
+        ec.insert(docs);
+      });
     },
 
     tearDownAll: gh.cleanup,

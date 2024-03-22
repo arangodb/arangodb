@@ -68,6 +68,7 @@
 #include "Aql/ExecutionPlan.h"
 #include "Aql/Expression.h"
 #include "Aql/Function.h"
+#include "Aql/IndexHint.h"
 #include "Aql/IndexStreamIterator.h"
 #include "Aql/Optimizer.h"
 #include "Aql/OptimizerUtils.h"
@@ -95,10 +96,10 @@
 #include "Transaction/Methods.h"
 #include "VocBase/Methods/Collections.h"
 
+#include <absl/strings/str_cat.h>
+
 #include <span>
 #include <tuple>
-
-#include <absl/strings/str_cat.h>
 
 namespace {
 
@@ -4038,7 +4039,7 @@ auto arangodb::aql::createDistributeNodeFor(ExecutionPlan& plan,
       TRI_ASSERT(false);
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_INTERNAL,
-          "Cannot distribute " + node->getTypeString() + ".");
+          absl::StrCat("Cannot distribute ", node->getTypeString(), "."));
     }
   }
 
@@ -7441,12 +7442,13 @@ static bool isAllowedIntermediateSortLimitNode(ExecutionNode* node) {
     case ExecutionNode::MAX_NODE_TYPE_VALUE:
       break;
   }
-  THROW_ARANGO_EXCEPTION_FORMAT(
+  THROW_ARANGO_EXCEPTION_MESSAGE(
       TRI_ERROR_INTERNAL_AQL,
-      "Unhandled node type '%s' in sort-limit optimizer rule. Please report "
-      "this error. Try turning off the sort-limit rule to get your query "
-      "working.",
-      node->getTypeString().c_str());
+      absl::StrCat(
+          "Unhandled node type '", node->getTypeString(),
+          "' in sort-limit optimizer rule. Please report "
+          "this error. Try turning off the sort-limit rule to get your query "
+          "working."));
 }
 
 void arangodb::aql::sortLimitRule(Optimizer* opt,
@@ -8797,8 +8799,8 @@ void arangodb::aql::insertDistributeInputCalculation(ExecutionPlan& plan) {
       default: {
         TRI_ASSERT(false);
         THROW_ARANGO_EXCEPTION_MESSAGE(
-            TRI_ERROR_INTERNAL,
-            "Cannot distribute " + targetNode->getTypeString() + ".");
+            TRI_ERROR_INTERNAL, absl::StrCat("Cannot distribute ",
+                                             targetNode->getTypeString(), "."));
       }
     }
     TRI_ASSERT(inputVariable != nullptr);

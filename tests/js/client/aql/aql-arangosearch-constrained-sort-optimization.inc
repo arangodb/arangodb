@@ -147,12 +147,12 @@
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc() {
-        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 LET a = NOOPT(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
       testNotAppliedDueToNonDetermCalc2() {
-        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0  SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.a.a1 == 0 SORT BM25(d) LET a = NOOPT(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertEqual(-1, plan.rules.indexOf(ruleName));
       },
@@ -204,7 +204,7 @@
       },
       testApplyWithFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
-                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
+                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:true});
@@ -216,7 +216,7 @@
       },
       testApplyWithNoFullCount() {
           let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) " +
-                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c  RETURN c ";
+                      " DESC LIMIT 1000, 300 COLLECT WITH COUNT INTO c RETURN c ";
           let plan = db._createStatement(query).explain().plan;
           assertNotEqual(-1, plan.rules.indexOf(ruleName));
           let result = db._query(query, {}, {fullCount:false});
@@ -264,7 +264,7 @@
           assertEqual(6216, result.getExtra().stats.scannedIndex);
       },
       testAppliedWithNonDetermAfter() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3'  SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 >= 'A3' SORT BM25(d) LIMIT 10 LET a = NOOPT(d.b.b1) RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName));
         let result = db._query(query, {}, {fullCount:true});
@@ -273,7 +273,7 @@
         assertEqual(6216, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBetweenSort() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3'  SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' SORT BM25(d) LET a = UPPER(d.b.b1) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});
@@ -282,7 +282,7 @@
         assertEqual(3784, result.getExtra().stats.fullCount);
       },
       testAppliedDeterministicUsedBeforeSort() {
-        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d)  LIMIT 10 RETURN {dD:d, aA:a}";
+        let query = "FOR d IN " + vn + " SEARCH d.field2 < 'A3' LET a = UPPER(d.b.b1) SORT BM25(d) LIMIT 10 RETURN {dD:d, aA:a}";
         let plan = db._createStatement(query).explain().plan;
         assertNotEqual(-1, plan.rules.indexOf(ruleName), {}, {optimizer:{rules:['-move-calculations-down']}});
         let result = db._query(query, {}, {fullCount:true, optimizer:{rules:['-move-calculations-down']}});

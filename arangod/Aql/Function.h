@@ -38,7 +38,12 @@ class Builder;
 namespace aql {
 
 struct Function {
-  enum class Conversion : uint8_t { None = 0, Optional = 1, Required = 2 };
+  enum class Conversion : uint8_t {
+    None = 0,
+    Optional = 1,
+    Required = 2,
+    RequiredBindParameter = 3
+  };
 
   /// @brief arbitrary function flags. note that these must be mutually
   /// exclusive when bit-ORed

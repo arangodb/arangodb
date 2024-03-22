@@ -73,7 +73,7 @@ class RocksDBTtlIndex final : public RocksDBSkiplistIndex {
   /// @brief extract a timestamp value from the index attribute value
   /// returns a negative timestamp if the index attribute value is not
   /// convertible properly into a timestamp
-  double getTimestamp(arangodb::velocypack::Slice const& doc) const;
+  double getTimestamp(velocypack::Slice doc) const;
 
  private:
   double const _expireAfter;

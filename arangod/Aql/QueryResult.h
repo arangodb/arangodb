@@ -104,7 +104,6 @@ struct QueryResult {
     return value;
   }
 
- public:
   Result result;
   bool cached;
   bool allowDirtyReads;  // indicate that query was done with dirty reads,
