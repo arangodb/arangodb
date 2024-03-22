@@ -37,14 +37,12 @@
 #include <unordered_map>
 #include <vector>
 
-namespace boost {
-namespace container {
+namespace boost::container {
 template<class T>
 class new_allocator;
 template<class Key, class Compare, class AllocatorOrContainer>
 class flat_set;
-}  // namespace container
-}  // namespace boost
+}  // namespace boost::container
 
 namespace arangodb {
 
@@ -61,8 +59,8 @@ struct Collection;
 using VariableId = uint32_t;
 
 /// @brief type of a query id
-typedef uint64_t QueryId;
-typedef uint64_t EngineId;
+using QueryId = uint64_t;
+using EngineId = uint64_t;
 
 // Map RemoteID->ServerID->[SnippetId]
 using MapRemoteToSnippet = std::unordered_map<
@@ -107,6 +105,6 @@ class BaseEngine;
 using GraphEngineList = std::vector<std::unique_ptr<BaseEngine>>;
 }  // namespace traverser
 
-enum class ExplainRegisterPlan { No = 0, Yes };
+enum class ExplainRegisterPlan : uint8_t { No = 0, Yes };
 
 }  // namespace arangodb

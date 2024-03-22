@@ -35,9 +35,7 @@
 #include "Aql/QueryResultV8.h"
 #endif
 #include "Aql/QueryString.h"
-#include "Basics/Common.h"
 #include "Basics/ResourceUsage.h"
-#include "Basics/system-functions.h"
 #include "Scheduler/SchedulerFeature.h"
 #ifdef USE_V8
 #include "V8Server/V8Executor.h"
@@ -159,6 +157,15 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief explain an AQL query
   QueryResult explain();
+
+  /// @brief prepare a query out of some velocypack data.
+  /// only to be used on single server or coordinator.
+  /// never call this on a DB server!
+  void prepareFromVelocyPack(velocypack::Slice querySlice,
+                             velocypack::Slice collections,
+                             velocypack::Slice variables,
+                             velocypack::Slice snippets,
+                             QueryAnalyzerRevisions const& analyzersRevision);
 
   /// @brief whether or not a query is a modification query
   bool isModificationQuery() const noexcept final;
@@ -358,6 +365,9 @@ class Query : public QueryContext, public std::enable_shared_from_this<Query> {
 
   /// @brief total memory used for building the (partial) result
   size_t _resultMemoryUsage;
+
+  /// @brief total memory used for the velocypack data of an execution plan
+  size_t _planMemoryUsage;
 
   /// @brief hash for this query. will be calculated only once when needed
   mutable uint64_t _queryHash = DontCache;

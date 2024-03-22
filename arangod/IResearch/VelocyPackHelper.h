@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Basics/debugging.h"
 
 #include <velocypack/Slice.h>

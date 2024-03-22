@@ -26,6 +26,7 @@
 
 #include "ApplicationFeatures/ApplicationServer.h"
 #include "Aql/AqlFunctionFeature.h"
+#include "Aql/Ast.h"
 #include "Aql/CalculationNodeVarFinder.h"
 #include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
@@ -183,8 +184,8 @@ bool optimizeSearchCondition(IResearchViewNode& viewNode,
   if (!addView(*view, query)) {
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_QUERY_PARSE,
-        "failed to process all collections linked with the view '" +
-            view->name() + "'");
+        absl::StrCat("failed to process all collections linked with the view '",
+                     view->name(), "'"));
   }
 
   // build search condition
@@ -1160,7 +1161,7 @@ void immutableSearchCondition(Optimizer* opt,
     uint32_t count = 0;
     while (true) {
       auto const type = condition->type;
-      if (!Ast::IsOrOperatorType(type) && !Ast::IsAndOperatorType(type)) {
+      if (!Ast::isOrOperatorType(type) && !Ast::isAndOperatorType(type)) {
         break;
       }
       auto const numMembers = condition->numMembers();

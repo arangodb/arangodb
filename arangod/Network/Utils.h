@@ -28,6 +28,7 @@
 #include "Network/types.h"
 #include "Rest/CommonDefines.h"
 #include "Utils/OperationResult.h"
+#include "Futures/Future.h"
 
 #include <fuerte/types.h>
 #include <velocypack/Buffer.h>
@@ -53,10 +54,12 @@ Headers addAuthorizationHeader(
     std::unordered_map<std::string, std::string> const& originalHeaders);
 
 /// @brief resolve 'shard:' or 'server:' url to actual endpoint
-ErrorCode resolveDestination(NetworkFeature const&, DestinationId const& dest,
-                             network::EndpointSpec&);
-ErrorCode resolveDestination(ClusterInfo&, DestinationId const& dest,
-                             network::EndpointSpec&);
+futures::Future<ErrorCode> resolveDestination(NetworkFeature const&,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec&);
+futures::Future<ErrorCode> resolveDestination(ClusterInfo&,
+                                              DestinationId const& dest,
+                                              network::EndpointSpec&);
 
 Result resultFromBody(
     std::shared_ptr<arangodb::velocypack::Buffer<uint8_t>> const& b,

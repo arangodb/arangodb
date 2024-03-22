@@ -29,7 +29,6 @@
 #include "Aql/SortInformation.h"
 #include "Aql/Variable.h"
 #include "Aql/types.h"
-#include "Basics/Common.h"
 #include "VocBase/voc-types.h"
 #include "VocBase/vocbase.h"
 

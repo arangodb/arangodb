@@ -27,7 +27,6 @@
 #error this file is not supposed to be used in builds with -DUSE_V8=Off
 #endif
 
-#include "Basics/Common.h"
 #include "v8-vocbase.h"
 
 void TRI_InitV8Replication(v8::Isolate* isolate,

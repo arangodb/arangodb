@@ -23,13 +23,14 @@
 
 #include "Parser.h"
 
-#include "Basics/Common.h"
-#include "Basics/ScopeGuard.h"
+#include "Aql/Ast.h"
 #include "Aql/AstNode.h"
 #include "Aql/ExecutionPlan.h"
 #include "Aql/QueryContext.h"
 #include "Aql/QueryResult.h"
 #include "Aql/QueryString.h"
+#include "Basics/ScopeGuard.h"
+#include "Basics/debugging.h"
 
 #include <absl/strings/str_cat.h>
 
@@ -48,7 +49,7 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
       _remainingLength(0),
       _offset(0),
       _marker(nullptr),
-      _forceInlineTernary(false) {
+      _lazyConditions(ast) {
   _stack.reserve(4);
 
   _queryStringStart = _queryString.data();
@@ -58,6 +59,16 @@ Parser::Parser(QueryContext& query, Ast& ast, QueryString& qs)
 
 /// @brief destroy the parser
 Parser::~Parser() = default;
+
+LazyConditions const& Parser::lazyConditions() const { return _lazyConditions; }
+LazyConditions& Parser::lazyConditions() { return _lazyConditions; }
+
+/// @brief fill the output buffer with a fragment of the query
+void Parser::fillBuffer(char* result, size_t length) {
+  memcpy(result, _buffer, length);
+  _buffer += length;
+  _remainingLength -= length;
+}
 
 /// @brief set data for write queries
 bool Parser::configureWriteQuery(AstNode const* collectionNode,
@@ -233,30 +244,7 @@ void* Parser::popStack() {
 }
 
 /// @brief peek at a temporary value from the parser's stack
-void* Parser::peekStack() {
+void* Parser::peekStack() const {
   TRI_ASSERT(!_stack.empty());
-
   return _stack.back();
 }
-
-void Parser::pushTernaryCondition(AstNode* node) {
-  _ternaryConditions.push_back(node);
-}
-
-AstNode* Parser::popTernaryCondition() {
-  TRI_ASSERT(!_ternaryConditions.empty());
-
-  AstNode* result = _ternaryConditions.back();
-  _ternaryConditions.pop_back();
-  return result;
-}
-
-std::vector<AstNode*> const& Parser::peekTernaryConditions() {
-  return _ternaryConditions;
-}
-
-void Parser::setForceInlineTernary() noexcept { _forceInlineTernary = true; }
-
-/// @brief whether or not the ternary operator's condition must
-/// always be inlined.
-bool Parser::forceInlineTernary() const noexcept { return _forceInlineTernary; }

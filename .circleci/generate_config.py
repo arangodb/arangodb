@@ -1,8 +1,10 @@
 #!/bin/env python3
 """ read test definition, and generate the output for the specified target """
 from collections import namedtuple
+from datetime import date
 import argparse
 import os
+import re
 import sys
 import traceback
 import yaml
@@ -101,6 +103,12 @@ def parse_arguments():
         default=False,
         action="store_true",
         help="flag whether this is a nightly build",
+    )
+    parser.add_argument(
+        "--create-docker-images",
+        default=False,
+        action="store_true",
+        help="flag whether we want to create docker images based on the build results",
     )
     return parser.parse_args()
 
@@ -370,6 +378,40 @@ def add_cppcheck_job(workflow, build_job):
     )
 
 
+def add_create_docker_image_job(workflow, build_config, build_job, args):
+    if not args.create_docker_images:
+        return
+    edition = "ee" if build_config.enterprise else "ce"
+    arch = "amd64" if build_config.arch == "x64" else "arm64"
+    image = (
+        "public.ecr.aws/b0b8h2r4/enterprise-preview"
+        if build_config.enterprise
+        else "public.ecr.aws/b0b8h2r4/arangodb-preview"
+    )
+    branch = os.environ.get("CIRCLE_BRANCH", "unknown-brach")
+    match = re.fullmatch("(.+\/)?(.+)", branch)
+    if match:
+        branch = match.group(2)
+
+    sha1 = os.environ.get("CIRCLE_SHA1")
+    if sha1 is None:
+        sha1 = "unknown-sha1"
+    else:
+        sha1 = sha1[:7]
+    tag = f"{date.today()}-{branch}-{sha1}-{arch}"
+    workflow["jobs"].append(
+        {
+            "create-docker-image": {
+                "name": f"create-{edition}-{build_config.arch}-docker-image",
+                "resource-class": get_size("large", build_config.arch),
+                "arch": arch,
+                "tag": f"{image}:{tag}",
+                "requires": [build_job],
+            }
+        }
+    )
+
+
 def add_build_job(workflow, build_config, overrides=None):
     edition = "ee" if build_config.enterprise else "ce"
     preset = "enterprise-pr" if build_config.enterprise else "community-pr"
@@ -394,7 +436,6 @@ def add_build_job(workflow, build_config, overrides=None):
 
 
 def add_workflow(workflows, tests, build_config, args):
-    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
     repl2 = args.replication_two
     suffix = "nightly" if build_config.isNightly else "pr"
     if build_config.sanitizer != "":
@@ -408,6 +449,9 @@ def add_workflow(workflows, tests, build_config, args):
     build_job = add_build_job(workflow, build_config)
     if build_config.arch == "x64":
         add_cppcheck_job(workflow, build_job)
+    add_create_docker_image_job(workflow, build_config, build_job, args)
+
+    tests = filter_tests(args, tests, build_config.enterprise, build_config.isNightly)
     add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2)
     return workflow
 

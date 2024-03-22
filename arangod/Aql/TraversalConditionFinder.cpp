@@ -24,6 +24,7 @@
 #include "TraversalConditionFinder.h"
 
 #include "Aql/Ast.h"
+#include "Aql/Condition.h"
 #include "Aql/ExecutionNode/CalculationNode.h"
 #include "Aql/ExecutionNode/FilterNode.h"
 #include "Aql/ExecutionNode/NoResultsNode.h"
@@ -108,12 +109,7 @@ AstNodeType buildSingleComparatorType(AstNode const* condition) {
   TRI_ASSERT(quantifier->type == NODE_TYPE_QUANTIFIER);
   TRI_ASSERT(!Quantifier::isAny(quantifier));
   if (Quantifier::isNone(quantifier)) {
-    auto it = Ast::NegatedOperators.find(type);
-    if (it == Ast::NegatedOperators.end()) {
-      THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
-                                     "unsupported operator type");
-    }
-    type = it->second;
+    type = Ast::negateOperator(type);
   }
   return type;
 }
@@ -559,6 +555,8 @@ TraversalConditionFinder::TraversalConditionFinder(ExecutionPlan* plan,
     : _plan(plan),
       _condition(std::make_unique<Condition>(plan->getAst())),
       _planAltered(planAltered) {}
+
+TraversalConditionFinder::~TraversalConditionFinder() = default;
 
 bool TraversalConditionFinder::before(ExecutionNode* en) {
   if (!_condition->isEmpty() && !en->isDeterministic()) {

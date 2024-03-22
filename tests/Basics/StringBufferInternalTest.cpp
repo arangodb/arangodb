@@ -25,8 +25,6 @@
 
 #include <cmath>
 
-#include "Basics/Common.h"
-
 #include "gtest/gtest.h"
 
 #include "Basics/StringBuffer.h"

@@ -24,6 +24,12 @@ add_definitions("-DHAS_REMOTE_API=0")
 
 add_definitions("-DARCHITECTURE_OPTIMIZATIONS=\"${ARCHITECTURE_OPTIMIZATIONS}\"")
 
+if (USE_GOOGLE_TESTS)
+  add_definitions("-DTEST_VIRTUAL=virtual")
+else()
+  add_definitions("-DTEST_VIRTUAL=")
+endif()
+
 add_library(arango_static_strings STATIC
   Basics/StaticStrings.cpp
 )

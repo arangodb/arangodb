@@ -26,7 +26,7 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const jsunity = require("jsunity");
-var db = require("@arangodb").db;
+const db = require("@arangodb").db;
 const executeJson =  require("@arangodb/aql-helper").executeJson;
 
 function arrayAccessTestSuite () {

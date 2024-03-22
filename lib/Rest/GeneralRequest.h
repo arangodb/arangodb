@@ -38,7 +38,6 @@
 #include <velocypack/Options.h>
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "Endpoint/ConnectionInfo.h"
 #include "Endpoint/Endpoint.h"
 #include "Rest/CommonDefines.h"
@@ -59,7 +58,7 @@ class GeneralRequest {
 
   explicit GeneralRequest(ConnectionInfo const& connectionInfo, uint64_t mid);
 
-  virtual ~GeneralRequest();
+  virtual ~GeneralRequest() = default;
 
   // translate an RequestType enum value into an "HTTP method string"
   static std::string_view translateMethod(RequestType);
@@ -90,11 +89,12 @@ class GeneralRequest {
   void setUser(std::string user);
 
   /// @brief the request context depends on the application
-  RequestContext* requestContext() const { return _requestContext; }
+  std::shared_ptr<RequestContext> requestContext() const {
+    return _requestContext;
+  }
 
-  /// @brief set request context and whether this requests is allowed
-  ///        to delete it
-  void setRequestContext(RequestContext*, bool);
+  /// @brief set request context
+  void setRequestContext(std::shared_ptr<RequestContext>);
 
   RequestType requestType() const { return _type; }
 
@@ -239,7 +239,7 @@ class GeneralRequest {
   uint64_t const _messageId;
 
   // request context (might contain vocbase)
-  RequestContext* _requestContext;
+  std::shared_ptr<RequestContext> _requestContext;
 
   double _tokenExpiry;
 
@@ -252,7 +252,6 @@ class GeneralRequest {
   ContentType _contentType;  // UNSET, VPACK, JSON
   ContentType _contentTypeResponse;
   EncodingType _acceptEncoding;
-  bool _isRequestContextOwner;
   bool _authenticated;
 };
 }  // namespace arangodb
