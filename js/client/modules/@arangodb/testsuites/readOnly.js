@@ -34,6 +34,7 @@ const optionsDocumentation = [
 
 const pu = require('@arangodb/testutils/process-utils');
 const tu = require('@arangodb/testutils/test-utils');
+const ct = require('@arangodb/testutils/client-tools');
 const im = require('@arangodb/testutils/instance-manager');
 const request = require('@arangodb/request');
 
@@ -175,7 +176,7 @@ function readOnly (options) {
     return bodies;
   };
 
-  let res = pu.run.arangoshCmd(options, instanceManager, {}, [
+  let res = ct.run.arangoshCmd(options, instanceManager, {}, [
     '--javascript.execute-string',
     `const users = require('@arangodb/users');
     users.save('test', '', true);
