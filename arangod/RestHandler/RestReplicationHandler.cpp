@@ -3749,7 +3749,7 @@ Result RestReplicationHandler::createBlockingTransaction(
     // DO NOT LOCK in this case, pointless
     return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
-    
+
   // when we get here, we let the transaction remain active until it
   // times out or a cancel request is sent.
   transactionAborter.cancel();
