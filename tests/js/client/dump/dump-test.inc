@@ -1564,7 +1564,6 @@
       },
 
       testSmartGraph3_11_compat: function () {
-      return;
         if (!isEnterprise) {
           return;
         }
@@ -1574,6 +1573,9 @@
 
         const graphDoc = graphsColl.document(smartGraphName);
         // This is the requirement to test if the compat cid has effect
+        // We test this here as the setup for this graph should fake an
+        // old version graph, so we can test that the values existence
+        // does not have negative impact on the restore.
         assertTrue(graphDoc.hasOwnProperty('initialCid'));
         // Now let us try to modify the GraphRelations
         const newRelationName = `${smartGraphName}NewEdge`;
