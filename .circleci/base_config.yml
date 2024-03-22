@@ -530,7 +530,7 @@ jobs:
              -v $(pwd)/allure-results:/allure-results \
              -v $(pwd)/allure-config:/allure-config \
              smartcosmos/allure-commandline generate /allure-results -o /allure-report --clean
-             exit $exit_code
+             exit $(($exit_code + $(cat ./test_dir/status.json) ))
       - run:
           name: Copy test results
           when: always
