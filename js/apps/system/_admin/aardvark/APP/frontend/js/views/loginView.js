@@ -121,7 +121,7 @@
       const password = $('#loginPassword').val();
 
       if (!username) {
-        // do not send unneccessary requests if no user is given
+        // do not send unnecessary requests if no user is given
         return;
       }
 
