@@ -722,7 +722,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
 
   // firstLang in this case will be initialized after langFeature.prepare()
   // because collator will be ready after prepare()
-  std::string_view firstLang = {};
+  std::string firstLang = {};
   std::string_view secondLang = getNonSysLang();
 
   // Disable force check for languages
