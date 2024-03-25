@@ -394,7 +394,11 @@ void ShardingInfo::toVelocyPack(VPackBuilder& result,
 
   result.close();  // shardKeys
 
-  _shardingStrategy->toVelocyPack(result);
+  if (ServerState::instance()->isRunningInCluster() || translateCids) {
+    // only need to print sharding strategy if we are in a cluster, or
+    // persisting to disk.
+    _shardingStrategy->toVelocyPack(result);
+  }
 }
 
 std::string const& ShardingInfo::distributeShardsLike() const noexcept {
