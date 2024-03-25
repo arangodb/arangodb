@@ -124,6 +124,8 @@ void checkLanguageFile(const arangodb::ArangodServer& server,
     ASSERT_TRUE(actualSlice.isString());
 
     auto actualLang = actualSlice.copyString();
+    std::cout << "actual lang: " << actualLang << std::endl;
+    std::cout << "expected lang: " << expectedLang << std::endl;
 
     ASSERT_EQ(actualLang == expectedLang, shouldBeEqual);
 
@@ -139,6 +141,7 @@ std::string_view getNonSysLang() {
   setlocale(LC_ALL, "");
   const std::string_view currSysLang =
       std::string_view(setlocale(LC_ALL, NULL)).substr(0,2);
+  std::cout << "Current locale: " << currSysLang << std::endl;
   if (currSysLang == "de") {
     return kRussian;
   } else {
@@ -622,6 +625,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    std::cout << "check 1" << std::endl;
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
@@ -643,6 +647,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    std::cout << "check 2" << std::endl;
     // Now we try to launch server with same parameter but with another lang
     server.server()
         .options()
@@ -662,6 +667,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    std::cout << "check 3" << std::endl;
     // Now we try to launch server with different parameter
     server.server()
         .options()
@@ -682,6 +688,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
   // Assume that server is stoped
   // We launch it again with parameters
   {
+    std::cout << "check 4" << std::endl;
     server.server()
         .options()
         ->get<StringParameter>(defaultParameter.data())
