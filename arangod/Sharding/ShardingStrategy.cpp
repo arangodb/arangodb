@@ -36,7 +36,5 @@ bool ShardingStrategy::isCompatible(ShardingStrategy const* other) const {
 
 void ShardingStrategy::toVelocyPack(velocypack::Builder& result) const {
   // only need to print sharding strategy if we are in a cluster
-  if (ServerState::instance()->isRunningInCluster()) {
-    result.add(StaticStrings::ShardingStrategy, velocypack::Value(name()));
-  }
+  result.add(StaticStrings::ShardingStrategy, velocypack::Value(name()));
 }
