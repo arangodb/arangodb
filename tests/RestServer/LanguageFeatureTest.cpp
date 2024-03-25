@@ -94,9 +94,9 @@ void checkCollatorSettings(std::string_view language,
 
 void checkLanguageFile(const arangodb::ArangodServer& server,
                        std::string_view expectedLang,
-                       const std::string& expectedParameter,
+                       std::string_view expectedParameter,
                        bool shouldBeEqual) {
-  std::string key = expectedParameter;
+  std::string key = expectedParameter.data();
   if (key == "default-language") {
     // Because value for 'default-language' parameter store
     // under 'default' key in LANGUAGE json file.
@@ -357,10 +357,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -378,10 +378,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -398,8 +398,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
 
@@ -442,10 +442,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -483,10 +483,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -504,10 +504,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -524,8 +524,8 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     langCheckFeature.start();
   }
 
@@ -568,10 +568,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -585,7 +585,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
 
   // firstLang in this case will be initialized after langFeature.prepare()
   // because collator will be ready after prepare()
-  std::string_view firstLang = {};
+  std::string firstLang = {};
   std::string_view secondLang = getNonSysLang();
 
   // Enable force check for languages
@@ -616,8 +616,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
   }
@@ -638,7 +638,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang, defaultParameter.data(),
+    checkLanguageFile(server.server(), firstLang, defaultParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
@@ -659,8 +659,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
 
@@ -705,7 +705,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang, defaultParameter.data(),
+    checkLanguageFile(server.server(), firstLang, defaultParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
@@ -753,8 +753,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), firstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
   }
@@ -774,7 +774,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang, defaultParameter.data(),
+    checkLanguageFile(server.server(), firstLang, defaultParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
@@ -794,8 +794,8 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     langCheckFeature.start();
   }
 
@@ -838,7 +838,7 @@ TEST_F(ArangoLanguageFeatureTest, testEmptyLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang, defaultParameter.data(),
+    checkLanguageFile(server.server(), firstLang, defaultParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
     checkCollatorSettings(firstLang, isDefaultLanguage);
@@ -879,10 +879,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -900,10 +900,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -920,7 +920,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -964,10 +964,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -1005,10 +1005,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1026,10 +1026,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1046,7 +1046,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     langCheckFeature.start();
   }
@@ -1090,10 +1090,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuLangCheckFalse) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -1127,10 +1127,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
   // Assume that server is stoped
   // We launch it again with parameters
@@ -1144,10 +1144,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
   // Assume that server is stoped
   // We launch it again with parameters
@@ -1161,7 +1161,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -1198,10 +1198,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithVariantLangCheckTrue) {
     langFeature.prepare();
     langCheckFeature.start();
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -1239,10 +1239,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1260,10 +1260,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1280,7 +1280,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -1324,10 +1324,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -1366,10 +1366,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1387,10 +1387,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1407,7 +1407,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -1451,10 +1451,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry1WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -1493,10 +1493,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1514,10 +1514,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1534,7 +1534,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -1578,10 +1578,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry2WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -1619,10 +1619,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1640,10 +1640,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1660,7 +1660,7 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
     // Simulate server launch
     langFeature.prepare();
     constexpr bool shouldBeLangEqual = false;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     EXPECT_DEATH(langCheckFeature.start(), "");
   }
@@ -1704,10 +1704,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuCountry3WithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), firstLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), firstLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(firstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(firstLang, isDefaultLanguage);
   }
 }
 
@@ -1750,10 +1750,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1775,10 +1775,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1801,10 +1801,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(secondLang.data(), isDefaultLanguage);
+    checkCollatorSettings(secondLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1846,10 +1846,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -1893,10 +1893,10 @@ TEST_F(ArangoLanguageFeatureTest,
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1918,10 +1918,10 @@ TEST_F(ArangoLanguageFeatureTest,
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1944,10 +1944,10 @@ TEST_F(ArangoLanguageFeatureTest,
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(secondLang.data(), isDefaultLanguage);
+    checkCollatorSettings(secondLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -1989,10 +1989,10 @@ TEST_F(ArangoLanguageFeatureTest,
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -2035,10 +2035,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2060,10 +2060,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2086,10 +2086,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), secondLang.data(), icuParameter.data(),
+    checkLanguageFile(server.server(), secondLang, icuParameter,
                       shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(secondLang.data(), isDefaultLanguage);
+    checkCollatorSettings(secondLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2131,10 +2131,10 @@ TEST_F(ArangoLanguageFeatureTest, testIcuWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      icuParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      icuParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = false;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
 
@@ -2177,10 +2177,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2202,10 +2202,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2228,10 +2228,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(secondLang.data(), isDefaultLanguage);
+    checkCollatorSettings(secondLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2254,10 +2254,10 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), secondLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), secondLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(secondLang.data(), isDefaultLanguage);
+    checkCollatorSettings(secondLang, isDefaultLanguage);
   }
 
   // Assume that server is stoped
@@ -2279,9 +2279,9 @@ TEST_F(ArangoLanguageFeatureTest, testDefaultWithWrongCollationLangCheckTrue) {
     langCheckFeature.start();
 
     constexpr bool shouldBeLangEqual = true;
-    checkLanguageFile(server.server(), actualFirstLang.data(),
-                      defaultParameter.data(), shouldBeLangEqual);
+    checkLanguageFile(server.server(), actualFirstLang,
+                      defaultParameter, shouldBeLangEqual);
     constexpr bool isDefaultLanguage = true;
-    checkCollatorSettings(actualFirstLang.data(), isDefaultLanguage);
+    checkCollatorSettings(actualFirstLang, isDefaultLanguage);
   }
 }
