@@ -577,7 +577,7 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.rtaNegFilter !== '') {
     argv = argv.concat(['--skip', options.rtaNegFilter]);
   }
-  if (options.singleShardCluster) {
+  if (options.forceOneShard) {
     argv = argv.concat(['--singleShard', 'true']);
   }
   if (options.hasOwnProperty('makedata_args')) {
