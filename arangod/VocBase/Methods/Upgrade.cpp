@@ -257,6 +257,13 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
           /*cluster*/ Flags::CLUSTER_NONE | Flags::CLUSTER_DB_SERVER_LOCAL,
           /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
           &UpgradeTasks::renameReplicationApplierStateFiles);
+  addTask(upgradeFeature, "dropPregelQueriesCollection",
+          "drop _pregel_queries collection",
+          /*system*/ Upgrade::Flags::DATABASE_ALL,
+          /*cluster*/ Upgrade::Flags::CLUSTER_COORDINATOR_GLOBAL |
+              Upgrade::Flags::CLUSTER_NONE,
+          /*database*/ DATABASE_UPGRADE | DATABASE_EXISTING,
+          &UpgradeTasks::dropPregelQueriesCollection);
 
   // IResearch related upgrade tasks:
   // NOTE: db-servers do not have a dedicated collection for storing analyzers,
@@ -270,6 +277,7 @@ void methods::Upgrade::registerTasks(arangodb::UpgradeFeature& upgradeFeature) {
               | Upgrade::Flags::DATABASE_UPGRADE,
           &UpgradeTasks::dropLegacyAnalyzersCollection  // action
   );
+
 #ifdef USE_ENTERPRISE
   registerTasksEE(upgradeFeature);
 #endif

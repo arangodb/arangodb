@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add upgrade task to drop `_pregel_queries` system collections.
+
 * EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
   the restore process may generate new internal collection ids.
   These generated ids were not always updated in the restored SmartGraph schema.
