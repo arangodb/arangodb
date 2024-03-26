@@ -101,8 +101,8 @@ shell_client priority=500 cluster buckets=5 -- --dumpAgencyOnError true
 shell_client_transaction priority=500 cluster parallelity=5 size=small buckets=5 -- --dumpAgencyOnError true
 shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError true
 
-rta_makedata cluster
-
+rta_makedata cluster 
+rta_makedata cluster --  --extraArgs:cluster.force-one-shard true
 # Common Tests
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true
