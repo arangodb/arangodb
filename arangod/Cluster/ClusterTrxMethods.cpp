@@ -255,7 +255,11 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                   ServerState::instance()->getId());
   }
 
-  char const* stateString = nullptr;
+  network::Headers headers;
+  headers.try_emplace(arangodb::StaticStrings::TransactionId,
+                      std::to_string(tidPlus.id()));
+
+  std::string_view stateString;
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
     stateString = "commit";
@@ -267,14 +271,16 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL,
                                    "invalid state for commit/abort operation");
   }
+  TRI_ASSERT(!stateString.empty());
 
   auto* pool = state->vocbase().server().getFeature<NetworkFeature>().pool();
   std::vector<Future<network::Response>> requests;
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(!server.starts_with("server:"));
-    requests.emplace_back(network::sendRequestRetry(
-        pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
+    requests.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, verb, path,
+                                  VPackBuffer<uint8_t>(), reqOpts, headers));
   }
 
   return futures::collectAll(requests).thenValue(

@@ -1,6 +1,9 @@
 devel
 -----
 
+* Prioritize requests for commiting or aborting streaming transactions
+  on leaders and followers, because they can unblock other operations.
+
 * FE-316: Edge collection import example now correctly reflects the required
   `from` and `to` attributes.
 
