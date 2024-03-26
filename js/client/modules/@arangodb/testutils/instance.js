@@ -362,7 +362,7 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
-    if (options.forceOneShard) {
+    if (this.options.forceOneShard) {
       this.args['cluster.force-one-shard'] = true;
     }
     if (require("@arangodb/test-helper").isEnterprise()) {
