@@ -152,7 +152,7 @@ constexpr inline RequestPriority PriorityRequestLane(RequestLane lane) {
     case RequestLane::CLUSTER_INTERNAL:
       return RequestPriority::HIGH;
     case RequestLane::CLUSTER_AQL:
-      return RequestPriority::LOW;
+      return RequestPriority::MED;
     case RequestLane::CLUSTER_AQL_INTERNAL_COORDINATOR:
       return RequestPriority::MED;
     case RequestLane::CLUSTER_AQL_SHUTDOWN:

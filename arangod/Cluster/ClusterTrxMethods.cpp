@@ -281,6 +281,10 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
                   ServerState::instance()->getId());
   }
 
+  network::Headers headers;
+  headers.try_emplace(arangodb::StaticStrings::TransactionId,
+                      std::to_string(tidPlus.id()));
+
   char const* stateString = nullptr;
   fuerte::RestVerb verb;
   if (status == transaction::Status::COMMITTED) {
@@ -299,8 +303,9 @@ Future<Result> commitAbortTransaction(arangodb::TransactionState* state,
   requests.reserve(state->knownServers().size());
   for (std::string const& server : state->knownServers()) {
     TRI_ASSERT(!server.starts_with("server:"));
-    requests.emplace_back(network::sendRequestRetry(
-        pool, "server:" + server, verb, path, VPackBuffer<uint8_t>(), reqOpts));
+    requests.emplace_back(
+        network::sendRequestRetry(pool, "server:" + server, verb, path,
+                                  VPackBuffer<uint8_t>(), reqOpts, headers));
   }
 
   return futures::collectAll(requests).thenValue(
