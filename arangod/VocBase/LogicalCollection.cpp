@@ -1301,8 +1301,8 @@ auto LogicalCollection::getDocumentStateFollower() -> std::shared_ptr<
   return follower;
 }
 
-void LogicalCollection::addShardingStrategy(
-    VPackBuilder& builder, VPackSlice collectionProperties) {
+void LogicalCollection::addShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties) {
   TRI_ASSERT(builder.isOpenObject());
   TRI_ASSERT(collectionProperties.isObject());
 
@@ -1312,10 +1312,10 @@ void LogicalCollection::addShardingStrategy(
 
   const bool isSmart =
 #if USE_ENTERPRISE
-    basics::VelocyPackHelper::getBooleanValue(
-    collectionProperties, StaticStrings::IsSmart, false);
+      basics::VelocyPackHelper::getBooleanValue(collectionProperties,
+                                                StaticStrings::IsSmart, false);
 #else
-        false;
+      false;
 #endif
 
   if (!isSmart) {
@@ -1347,7 +1347,6 @@ void LogicalCollection::addShardingStrategy(
     }
   }
 }
-
 
 #ifndef USE_ENTERPRISE
 void LogicalCollection::decorateWithInternalEEValidators() {
