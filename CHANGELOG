@@ -1,6 +1,16 @@
 v3.10.14 (XXXX-XX-XX)
 ---------------------
 
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected and
+  rolled back quickly. However, there was a code path that triggered the "fast
+  lock round" with long request timeouts, which could lead to long wait times
+  until deadlocks were detected and rolled back.
+
 * Rebuilt included rclone v1.59.0 with go1.21.8.
 
 * BTS-1808: fix arangodump format for ZKD indexes. Previously the structural

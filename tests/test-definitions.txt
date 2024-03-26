@@ -71,6 +71,7 @@ rta_makedata single suffix=afo -- --activeFailover true
 
 arangobench priority=1000 cluster -- --dumpAgencyOnError true
 chaos cluster !mac !coverage !full -- --dumpAgencyOnError true parallelity=6
+deadlock cluster !mac !windows !coverage -- --dumpAgencyOnError true
 restart !mac priority=1000 cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 cluster -- --dumpAgencyOnError true
