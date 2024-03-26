@@ -42,6 +42,7 @@
 #include "Replication2/StateMachines/Document/DocumentStateMachine.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "Sharding/ShardingStrategyDefault.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1310,14 +1311,12 @@ void LogicalCollection::addShardingStrategy(VPackBuilder& builder,
     return;
   }
 
-  const bool isSmart =
-#if USE_ENTERPRISE
-      basics::VelocyPackHelper::getBooleanValue(collectionProperties,
-                                                StaticStrings::IsSmart, false);
+#ifndef USE_ENTERPRISE
+  builder.add(StaticStrings::ShardingStrategy,
+              VPackValue(ShardingStrategyHash::NAME));
 #else
-      false;
-#endif
-
+  const bool isSmart = basics::VelocyPackHelper::getBooleanValue(
+      collectionProperties, StaticStrings::IsSmart, false);
   if (!isSmart) {
     builder.add(StaticStrings::ShardingStrategy,
                 VPackValue(ShardingStrategyHash::NAME));
@@ -1346,6 +1345,7 @@ void LogicalCollection::addShardingStrategy(VPackBuilder& builder,
                   VPackValue(ShardingStrategyEnterpriseHashSmartEdge::NAME));
     }
   }
+#endif
 }
 
 #ifndef USE_ENTERPRISE
