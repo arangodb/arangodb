@@ -1632,6 +1632,8 @@ function CreateCollectionsInOneShardSuite() {
 
 jsunity.run(CreateCollectionsSuite);
 jsunity.run(IgnoreIllegalTypesSuite);
-jsunity.run(CreateCollectionsInOneShardSuite);
+if (isCluster) {
+  jsunity.run(CreateCollectionsInOneShardSuite);
+}
 
 return jsunity.done();
