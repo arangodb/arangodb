@@ -84,8 +84,8 @@ let optionsDocumentation = [
   '   - `server`: server_url (e.g. tcp://127.0.0.1:8529) for external server',
   '   - `serverRoot`: directory where data/ points into the db server. Use in',
   '                   conjunction with `server`.',
-  '   - `cluster`: if set to true the tests are run with the coordinator',
-  '     of a small local cluster',
+  '   - `cluster`: if set to true the tests are run with a cluster',
+  '   - `singleShardCluster`: if set to true the tests are run with a singleshard cluster',
   '   - `replicationVersion`: if set, define the default replication version. (Currently we have "1" and "2")',
   '   - `arangosearch`: if set to true enable the ArangoSearch-related tests',
   '   - `minPort`: minimum port number to use',
@@ -184,6 +184,7 @@ const optionsDefaults = {
   'buildType': '',
   'cleanup': true,
   'cluster': false,
+  'singleShardCluster': false,
   'concurrency': 3,
   'configDir': 'etc/testing',
   'coordinators': 1,
@@ -605,6 +606,9 @@ function unitTest (cases, options) {
 
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+  if (options.singleShardCluster) {
+    options.cluster = true;
+  }
   if (options.memprof) {
     process.env['MALLOC_CONF'] = 'prof:true';
   }
