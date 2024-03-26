@@ -2128,7 +2128,15 @@ futures::Future<Result> transaction::Methods::documentFastPath(
             vocbase().server().getFeature<ClusterFeature>().clusterInfo();
         auto shards = ci.getShardList(std::to_string(collection->id().id()));
         if (shards != nullptr && shards->size() == 1) {
-          TRI_ASSERT(vocbase().isOneShard());
+          // this function should be called on DB servers only in case of
+          // OneShard databases. the only exception is that system database,
+          // which is created early during bootstrapping and may be missing
+          // the OneShard flag.
+          // this is not a problem here however, as only the coordinator
+          // will generate AQL query execution plans that take us here.
+          // and the coordinator has the full agency plan information about
+          // databases being OneShard or not.
+          TRI_ASSERT(vocbase().isOneShard() || vocbase().isSystem());
           return std::string{(*shards)[0]};
         }
       }
