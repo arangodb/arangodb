@@ -3,7 +3,7 @@ v3.10.14 (XXXX-XX-XX)
 
 * Fix potential deadlocks in "fast lock round" when starting transactions in
   cluster. The "fast lock round" is used to send out transaction begin requests
-  to multiple leaders concurrently, without caring about the order in whic
+  to multiple leaders concurrently, without caring about the order in which
   requests are send out. This can potentially lead to deadlock with other
   out-of-order requests. Thus the intention of the "fast lock round" is to use
   a very low timeout for these requests, so that deadlocks would be detected
