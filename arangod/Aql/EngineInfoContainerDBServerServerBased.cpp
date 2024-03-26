@@ -158,6 +158,13 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
                   VPackValue(_query.isModificationQuery()));
   infoBuilder.add("isAsyncQuery", VPackValue(_query.isAsyncQuery()));
 
+  // query string: only informational
+  QueryContext* qc = &_query;
+  Query* q = dynamic_cast<Query*>(qc);
+  if (q != nullptr) {
+    infoBuilder.add("qs", VPackValue(q->queryString().string()));
+  }
+
   infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,
                   VPackValue(ServerState::instance()->getRebootId().value()));
   infoBuilder.add(StaticStrings::AttrCoordinatorId,

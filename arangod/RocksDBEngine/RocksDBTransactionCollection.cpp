@@ -369,11 +369,11 @@ Result RocksDBTransactionCollection::doLock(AccessMode::Type type) {
   } else if (res.is(TRI_ERROR_LOCK_TIMEOUT) && timeout >= 0.1) {
     char const* actor = _transaction->actorName();
     TRI_ASSERT(actor != nullptr);
-    std::string message = "timed out after " + std::to_string(timeout) +
-                          " s waiting for " + AccessMode::typeString(type) +
-                          "-lock on collection " +
-                          _transaction->vocbase().name() + "/" +
-                          _collection->name() + " on " + actor;
+    std::string message =
+        "timed out after " + std::to_string(timeout) + " s waiting for " +
+        AccessMode::typeString(type) + "-lock on collection " +
+        _transaction->vocbase().name() + "/" + _collection->name() + " on " +
+        actor + ", lock state: " + physical->stringifyLockState();
     LOG_TOPIC("4512c", WARN, Logger::QUERIES) << message;
     res.reset(TRI_ERROR_LOCK_TIMEOUT, std::move(message));
 

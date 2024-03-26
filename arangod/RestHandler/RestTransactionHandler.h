@@ -43,6 +43,13 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
  public:
   char const* name() const override final { return "RestTransactionHandler"; }
   RequestLane lane() const override final {
+    if (_request->requestType() == RequestType::GET) {
+      // a GET request only returns the list of ongoing transactions.
+      // this is used only for debugging and should not be blocked
+      // by if most scheduler threads are busy.
+      return RequestLane::CLUSTER_ADMIN;
+    }
+
     if (ServerState::instance()->isDBServer()) {
       bool isSyncReplication = false;
       // We do not care for the real value, enough if it is there.

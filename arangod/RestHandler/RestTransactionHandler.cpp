@@ -99,9 +99,10 @@ void RestTransactionHandler::executeGetState() {
 
     bool const fanout = ServerState::instance()->isCoordinator() &&
                         !_request->parsedValue("local", false);
+    bool const details = _request->parsedValue("details", false);
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
-    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout, details);
 
     builder.close();  // array
     builder.close();  // object

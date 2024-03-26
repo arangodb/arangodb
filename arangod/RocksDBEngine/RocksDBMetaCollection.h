@@ -142,6 +142,8 @@ class RocksDBMetaCollection : public PhysicalCollection {
   void corruptRevisionTree(std::uint64_t count, std::uint64_t hash);
 #endif
 
+  std::string stringifyLockState() const;
+
  private:
   /// @brief sends the collection's revision tree to hibernation
   void hibernateRevisionTree(std::unique_lock<std::mutex> const& lock);
