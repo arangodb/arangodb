@@ -44,7 +44,7 @@
   var db = internal.db;
 
   const getDumpDir = () => {
-    let dumpDir = instanceInfo.rootDir;
+    let dumpDir = fs.join(instanceInfo.rootDir, "dump");
     if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
       // when dumping multiple database the database name is one layer added:
       dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
