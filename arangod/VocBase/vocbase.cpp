@@ -1678,7 +1678,15 @@ void TRI_SanitizeObject(VPackSlice slice, VPackBuilder& builder) {
 
   config.defaultWriteConcern = writeConcern();
 
-  config.isOneShardDB = cl.forceOneShard() || isOneShard();
+  if (ServerState::instance()->isSingleServer() ||
+      ServerState::instance()->isAgent()) {
+    // on single servers and agents, the value of `--cluster.force-one-shard`
+    // is intentionally ignored. all databases and collections are local.
+    config.isOneShardDB = false;
+  } else {
+    config.isOneShardDB = cl.forceOneShard() || isOneShard();
+  }
+
   if (config.isOneShardDB) {
     config.defaultDistributeShardsLike = shardingPrototypeName();
   } else {
