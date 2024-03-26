@@ -1335,13 +1335,10 @@ Result RestReplicationHandler::processRestoreCollection(
       toMerge.add(StaticStrings::UsesRevisionsAsDocumentIds, VPackValue(true));
     }
 
+    LogicalCollection::addShardingStrategy(toMerge, parameters);
+
     // Always ignore `shadowCollections` they were accidentially dumped in
     // arangodb versions earlier than 3.3.6
-#ifdef USE_ENTERPRISE
-    LogicalCollection::addEnterpriseShardingStrategy(toMerge, parameters);
-#endif
-
-    // Remove ShadowCollections entry
     toMerge.add(StaticStrings::ShadowCollections,
                 arangodb::velocypack::Slice::nullSlice());
     toMerge.close();  // TopLevel

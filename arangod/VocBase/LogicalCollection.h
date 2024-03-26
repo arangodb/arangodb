@@ -381,10 +381,8 @@ class LogicalCollection : public LogicalDataSource {
 
   uint64_t getInternalValidatorTypes() const noexcept;
 
-#ifdef USE_ENTERPRISE
-  static void addEnterpriseShardingStrategy(VPackBuilder& builder,
-                                            VPackSlice collectionProperties);
-#endif
+  static void addShardingStrategy(VPackBuilder& builder,
+                                  VPackSlice collectionProperties);
 
  private:
   void initializeSmartAttributesBefore(velocypack::Slice info);
