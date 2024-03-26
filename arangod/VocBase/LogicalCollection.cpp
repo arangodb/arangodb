@@ -1230,7 +1230,6 @@ void LogicalCollection::decorateWithInternalValidators() {
   decorateWithInternalEEValidators();
 }
 
-
 void LogicalCollection::addShardingStrategy(VPackBuilder& builder,
                                             VPackSlice collectionProperties) {
   TRI_ASSERT(builder.isOpenObject());
