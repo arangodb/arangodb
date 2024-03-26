@@ -40,6 +40,25 @@ jsunity.run(function dump_single_testsuite() {
 
   let suite = {};
 
+  let enterpriseTests = [];
+  if (!internal.isEnterprise()) {
+      enterpriseTests = [
+          // enterprise sharded graphs on single server tests
+          "testEmptySmartGraph",
+          "testEmptyEnterpriseGraph",
+          "testEmptySatelliteGraph",
+          "testEmptyDisjointGraph",
+          "testSmartGraphWithoutData",
+          "testEnterpriseGraphWithoutData",
+          "testSmartGraphSingleServer",
+          "testEnterpriseGraphSingleServer",
+          "testSatelliteSmartGraphSingleServer",
+          "testDisjointGraphSingleServer",
+          "testHybridSmartGraphSingleServer",
+          "testHybridDisjointSmartGraphSingleServer",
+      ];
+  }
+
   deriveTestSuite(
     baseTests(),
     suite,
@@ -74,23 +93,9 @@ jsunity.run(function dump_single_testsuite() {
       "testViewOnSmartEdgeCollection",
       "testSmartGraphAttribute",
 
-      // enterprise sharded graphs on single server tests
-      "testEmptySmartGraph",
-      "testEmptyEnterpriseGraph",
-      "testEmptySatelliteGraph",
-      "testEmptyDisjointGraph",
-      "testSmartGraphWithoutData",
-      "testEnterpriseGraphWithoutData",
-      "testSmartGraphSingleServer",
-      "testEnterpriseGraphSingleServer",
-      "testSatelliteSmartGraphSingleServer",
-      "testDisjointGraphSingleServer",
-      "testHybridSmartGraphSingleServer",
-      "testHybridDisjointSmartGraphSingleServer",
-
       // Hotbackup tests:
       "testLatestId"
-    ]
+    ].concat(enterpriseTests)
   );
 
   return suite;
