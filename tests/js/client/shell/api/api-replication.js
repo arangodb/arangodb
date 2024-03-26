@@ -1593,7 +1593,9 @@ function RestoreOverwriteErrorSuite() {
 
 jsunity.run(RestoreCollectionsSuite);
 jsunity.run(IgnoreIllegalTypesSuite);
-jsunity.run(RestoreInOneShardSuite);
+if (isCluster) {
+  jsunity.run(RestoreInOneShardSuite);
+}
 jsunity.run(RestoreOverwriteErrorSuite);
 
 return jsunity.done();
