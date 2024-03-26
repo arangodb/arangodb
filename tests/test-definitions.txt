@@ -103,7 +103,8 @@ shell_server priority=500 size=medium+ cluster buckets=6 -- --dumpAgencyOnError 
 
 rta_makedata cluster
 
-rta_makedata sniff cluster --  --extraArgs:cluster.force-one-shard true
+rta_makedata cluster 
+rta_makedata sniff cluster --  --singleShardCluster true
 # Common Tests
 
 importing,export name=import_export parallelity=5 size=small cluster -- --dumpAgencyOnError true

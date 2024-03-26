@@ -364,7 +364,9 @@ class instance {
       'temp.intermediate-results-path': fs.join(this.rootDir, 'temp-rocksdb-dir'),
       'log.file': this.logFile
     });
-
+    if (options.singleShardCluster) {
+      this.args['cluster.force-one-shard'] = true;
+    }
     if (require("@arangodb/test-helper").isEnterprise()) {
       this.args['arangosearch.columns-cache-limit'] = '100000';
     }
