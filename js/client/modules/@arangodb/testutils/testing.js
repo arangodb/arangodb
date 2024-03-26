@@ -607,6 +607,11 @@ function unitTest (cases, options) {
 
   // testsuites may register more defaults...
   _.defaults(options, optionsDefaults);
+  if (options.forceOneShard) {
+    if (!options.cluster) {
+      throw new Error("need cluster enabled");
+    }
+  }
   if (options.memprof) {
     process.env['MALLOC_CONF'] = 'prof:true';
   }
