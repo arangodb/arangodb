@@ -3881,6 +3881,7 @@ void RestReplicationHandler::registerTombstone(TransactionId id) const {
   }
   timeoutTombstones();
 }
+
 RequestLane RestReplicationHandler::lane() const {
   auto const& suffixes = _request->suffixes();
 
@@ -3894,6 +3895,7 @@ RequestLane RestReplicationHandler::lane() const {
       // as long as it is not added. So get this sorted out quickly.
       return RequestLane::CLUSTER_INTERNAL;
     }
+
     if (command == HoldReadLockCollection) {
       if (_request->requestType() == RequestType::DELETE_REQ) {
         // A deleting request here, will allow as to unlock
@@ -3901,14 +3903,15 @@ RequestLane RestReplicationHandler::lane() const {
         // In case of a hard-lock this shard is actually blocking
         // other operations. So let's hurry up with this.
         return RequestLane::CLUSTER_INTERNAL;
-      } else {
-        // This process will determine the start of a replication.
-        // It can be delayed a bit and can be queued after other write
-        // operations The follower is not in sync and requires to catch up
-        // anyways.
-        return RequestLane::SERVER_REPLICATION_CATCHUP;
       }
+
+      // This process will determine the start of a replication.
+      // It can be delayed a bit and can be queued after other write
+      // operations The follower is not in sync and requires to catch up
+      // anyways.
+      return RequestLane::SERVER_REPLICATION;
     }
+
     if (command == RemoveFollower || command == LoggerFollow ||
         command == Batch || command == Inventory || command == Revisions ||
         command == Dump) {
