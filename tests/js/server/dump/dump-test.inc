@@ -44,15 +44,16 @@
   var db = internal.db;
 
   const getDumpDir = () => {
-    let dumpDir = fs.join(instanceInfo.rootDir, "dump");
-    if (fs.exists(fs.join(dumpDir, "UnitTestsDumpSrc"))) {
+    let rootDir = fs.join(instanceInfo.rootDir);
+    if (fs.exists(fs.join(rootDir, "UnitTestsDumpSrc"))) {
       // when dumping multiple database the database name is one layer added:
-      dumpDir = fs.join(dumpDir, "UnitTestsDumpSrc");
+      return fs.join(rootDir, "UnitTestsDumpSrc");
+    } else if (fs.exists(fs.join(rootDir, "dump", "UnitTestsDumpSrc"))) {
+      return fs.join(rootDir, "dump", "UnitTestsDumpSrc");
     } else {
       // single database always ends up in "dump"
-      dumpDir = fs.join(dumpDir, "dump");
+      return fs.join(rootDir, "dump");
     }
-    return dumpDir;
   };
 
   function getCollection(name) {
