@@ -1,8 +1,17 @@
 devel
 -----
 
-* Prioritize requests for commiting or aborting streaming transactions
-  on leaders and followers, because they can unblock other operations.
+* Prioritize requests for commiting or aborting streaming transactions on
+  leaders and followers, because they can unblock other operations. Also
+  prioritize requests in already started streaming transactions and AQL queries
+  over new requests because it is assumed that already started streaming
+  transactions and AQL queries can block other operations from starting, so
+  these should be completed first.
+
+* Fixed an upgrade issue on Agents. When agents are started with
+  `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
+  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
+  is not required on the Agent instances.
 
 * Fix potential deadlocks in "fast lock round" when starting transactions in
   cluster. The "fast lock round" is used to send out transaction begin requests
