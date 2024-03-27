@@ -1,4 +1,4 @@
-3.12.0.1 (XXXX-XX-XX)
+3.12.0.1 (2024-03-28)
 ---------------------
 
 * Fixed an upgrade issue on Agents. When agents are started with
