@@ -1,6 +1,8 @@
 devel
 -----
 
+* Add upgrade task to drop `_pregel_queries` system collections.
+
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
   upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
