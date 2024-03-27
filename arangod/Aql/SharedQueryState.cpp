@@ -96,10 +96,7 @@ void SharedQueryState::setWakeupHandler(std::function<bool()> const& cb) {
   _callbackVersion++;
 }
 
-void SharedQueryState::resetWakeupHandler() {
-  std::lock_guard<std::mutex> guard(_mutex);
-  setWakeupHandler(nullptr);
-}
+void SharedQueryState::resetWakeupHandler() { setWakeupHandler(nullptr); }
 
 /// execute the _continueCallback. must hold _mutex,
 void SharedQueryState::notifyWaiter(std::unique_lock<std::mutex>& guard) {
