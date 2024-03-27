@@ -764,8 +764,10 @@ void ExecutionEngine::instantiateFromPlan(Query& query, ExecutionPlan& plan,
     // instantiate the engine on a local server
     EngineId eId =
         arangodb::ServerState::isDBServer(role) ? TRI_NewTickServer() : 0;
-    auto retEngine =
-        std::make_unique<ExecutionEngine>(eId, query, mgr, query.sharedState());
+    // we have to ensure that each ExecutionEngine has its own SharedQueryState,
+    // because different snippets (engines) can operate concurrently and each
+    // needs to have its own wakeupCallback
+    auto retEngine = std::make_unique<ExecutionEngine>(eId, query, mgr);
 
 #ifdef USE_ENTERPRISE
     for (auto const& pair : aliases) {

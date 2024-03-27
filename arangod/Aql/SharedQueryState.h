@@ -96,8 +96,6 @@ class SharedQueryState final
 
   void resetWakeupHandler();
 
-  void resetNumWakeups();
-
   /// execute a task in parallel if capacity is there
   template<typename F>
   bool asyncExecuteAndWakeup(F&& cb) {
@@ -153,10 +151,14 @@ class SharedQueryState final
   /// @brief a callback function which is used to implement continueAfterPause.
   /// Typically, the RestHandler using the Query object will put a closure
   /// in here, which continueAfterPause simply calls.
-  std::function<bool()> _wakeupCb;
+  std::function<bool()> _wakeupCallback;
 
   unsigned _numWakeups;  // number of times
-  unsigned _cbVersion;   // increased once callstack is done
+  // The callbackVersion is used to identify callbacks that are associated with
+  // a specific RestHandler. Every time a new callback is set, the version is
+  // updated. That allows us to identify wakeups that are associated with a
+  // callback who's RestHandler has already finished.
+  unsigned _callbackVersion;
 
   unsigned const _maxTasks;
   std::atomic<unsigned> _numTasks;

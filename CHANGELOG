@@ -1,6 +1,10 @@
 devel
 -----
 
+* Remove restriction that disabled async prefetching for all query nodes that
+  (indirectly) depended on a RemoteNode. This allows more query parts to run
+  concurrently.
+
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
   upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
