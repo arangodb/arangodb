@@ -6,6 +6,16 @@ devel
   upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
   is not required on the Agent instances.
 
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected
+  and rolled back quickly. However, there was a code path that triggered the
+  "fast lock round" with long request timeouts, which could lead to long
+  wait times until deadlocks were detected and rolled back.
+
 * EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
   the restore process may generate new internal collection ids.
   These generated ids were not always updated in the restored SmartGraph schema.
