@@ -4695,7 +4695,6 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       co_return std::get<Result>(resolveResult);
     } else {
       auto shardId = std::get<ShardID>(resolveResult);
-      using namespace cluster::paths;
       auto database = getDatabaseNameForShard(shardId);
       auto collection = getCollectionNameForShard(shardId);
       if (!database.has_value() || collection.empty()) {
@@ -4705,22 +4704,26 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
           << "getLeaderForShard: found resigned leader for shard " << shardId
           << " (part of " << *database << "/" << collection << ")"
           << ", waiting for the new leader to take over.";
-      auto path = aliases::current()
+      auto path = paths::aliases::current()
                       ->collections()
                       ->database(*database)
                       ->collection(collection)
-                      ->shard(shardId);
+                      ->shard(shardId)
+                      ->servers();
       // wait for the leader takeover to appear in our agency cache
       auto const raftIndex =
           co_await _clusterFeature.agencyCallbackRegistry()->waitFor(
-              *path,
-              [&](velocypack::Slice slice,
-                  consensus::index_t idx) -> std::optional<consensus::index_t> {
-                if (slice.isString() && slice.stringView().starts_with('_')) {
-                  return std::nullopt;
-                } else {
-                  return idx;
-                }
+              *path, [&](velocypack::Slice servers) -> bool {
+                bool const leaderResigned = [&]() {
+                  if (servers.isArray() && servers.length() > 0) {
+                    auto const leader = servers[0];
+                    return leader.isString() &&
+                           leader.stringView().starts_with('_');
+                  } else {
+                    return false;
+                  }
+                }();
+                return !leaderResigned;
               });
       // wait for cluster info to catch up with the agency cache
       auto res = co_await waitForCurrent(raftIndex);
