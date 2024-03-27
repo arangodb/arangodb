@@ -64,7 +64,7 @@ function TransactionCommitAbortOverwhelmSuite () {
         require('internal').wait(0.5);
       }
 
-      // create many small write to e f and f
+      // create many small writes to e f and g
       const header = {"X-Arango-Async": "store"};
       for (let i = 0; i < 1000; i++) {
         arango.POST(`/_api/document/e`, {}, header);
@@ -72,8 +72,6 @@ function TransactionCommitAbortOverwhelmSuite () {
         arango.POST(`/_api/document/g`, {}, header);
       }
 
-      // commit transaction
-      // should have priority over the inserts
       result = cb(trx); 
       trx = null;
     } finally {
@@ -116,26 +114,10 @@ function TransactionCommitAbortOverwhelmSuite () {
       });
     },
     
-    testInsertInRunningTrxNotAffectedByOverwhelm : function () {
+    testAqlNotAffectedByOverwhelm : function () {
       testFunc((trx) => {
-        let col = trx.collection("d");
-        let result = col.insert({_key: "testi"});
-        assertEqual("testi", result._key);
-        
-        result = trx.commit();
-        assertEqual("committed", result.status);
-        return result;
-      });
-    },
-    
-    testRemoveInRunningTrxNotAffectedByOverwhelm : function () {
-      testFunc((trx) => {
-        let col = trx.collection("d");
-        let result = col.insert({_key: "testi"});
-        assertEqual("testi", result._key);
-        result = col.remove("testi");
-        assertEqual("testi", result._key);
-
+        let result = trx.query("FOR i IN 1..1000 INSERT {} INTO d RETURN 1").toArray();
+        assertEqual(1000, result.length);
         result = trx.commit();
         assertEqual("committed", result.status);
         return result;
