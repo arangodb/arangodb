@@ -4673,9 +4673,6 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       TRI_ASSERT(!servers->empty());
 
       if (servers->front().starts_with('_')) {
-        LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
-            << "getLeaderForShard: found resigned leader for shard " << shardId
-            << ", waiting for half a second...";
         return shardId;
       }
       result[i] = ServerID{servers->front()};
@@ -4704,6 +4701,10 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       if (!database.has_value() || collection.empty()) {
         co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
       }
+      LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
+          << "getLeaderForShard: found resigned leader for shard " << shardId
+          << " (part of " << *database << "/" << collection << ")"
+          << ", waiting for the new leader to take over.";
       auto path = aliases::current()
                       ->collections()
                       ->database(*database)
