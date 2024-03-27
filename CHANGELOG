@@ -8,6 +8,25 @@ devel
   transactions and AQL queries can block other operations from starting, so
   these should be completed first.
 
+  The following request priorities have changed:
+  - cluster-internal requests for continuing already started AQL queries have
+    changed their priority from low to medium. This excludes requests that
+    setup AQL queries on DB servers, which still run with low priority.
+  - requests that include the transaction id header are now elevated to run
+    with medium priority if they originally ran with low priority. This
+    excludes requests that begin new transactions or AQL queries.
+  - requests to commit or abort an already running streaming transaction will
+    be elevated from low to medium priority.
+  - requests to HTTP GET `/_api/collection/<collection>/shards` and GET
+    `/_api/collection/<collection>/reponsibleShard` are now running with high
+    priority instead of low. Such requests are only used for inspection and
+    have no dependencies.
+  - requests to push further an existing query cursor via the `/_api/cursor`
+    are now running with medium priority instead of low priority. Requests
+    to start new queries still run with low priority.
+  - follower requests that acquire the lock on the leader while the follower
+    tries to get in sync are now running with low instead of medium priority.
+
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
   upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
