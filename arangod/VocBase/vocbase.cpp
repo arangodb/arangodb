@@ -1475,7 +1475,7 @@ std::string const& TRI_vocbase_t::shardingPrototypeName() const {
         // All others should follow _graphs
         return StaticStrings::GraphCollection;
       }
-    }
+  }
 }
 
 std::vector<std::shared_ptr<LogicalView>> TRI_vocbase_t::views() const {
