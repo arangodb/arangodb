@@ -1,3 +1,11 @@
+3.12.0.1 (XXXX-XX-XX)
+-----
+
+* Fixed an upgrade issue on Agents. When agents are started with
+  `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
+  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
+  is not required on the Agent instances.
+
 3.12.0 (2024-03-21)
 -------------------
 
