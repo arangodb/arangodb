@@ -34,6 +34,7 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AgencyCommon.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
@@ -333,7 +334,8 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(
+      consensus::index_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -360,7 +362,7 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+  futures::Future<Result> waitForCurrent(consensus::index_t raftIndex);
 
   /**
    * @brief Wait for Current cache to be at the given Raft index
@@ -926,10 +928,12 @@ class ClusterInfo final {
    * @param shardId  The id of said shard
    * @return         List of DB servers serving the shard
    */
-  Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+  Result getShardServers(ShardID shardId, std::vector<ServerID>&);
 
   /// @brief map shardId to collection name (not ID)
-  CollectionID getCollectionNameForShard(ShardID const& shardId);
+  CollectionID getCollectionNameForShard(ShardID shardId);
+  /// @brief map shardId to database name (not ID)
+  auto getDatabaseNameForShard(ShardID shardId) -> std::optional<DatabaseID>;
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
@@ -1166,6 +1170,8 @@ class ClusterInfo final {
       _shardsToPlanServers;
   // planned shard ID => collection name
   FlatMap<ShardID, pmr::CollectionID> _shardToName;
+  // name of the database a certain shard is part of
+  FlatMap<ShardID, pmr::DatabaseID> _shardToDb;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
@@ -1282,11 +1288,12 @@ class ClusterInfo final {
   mutable std::mutex _waitPlanLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlan;
   mutable std::mutex _waitPlanVersionLock;
-  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlanVersion;
+  AssocMultiMap<consensus::index_t, futures::Promise<Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrent;
   mutable std::mutex _waitCurrentVersionLock;
-  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrentVersion;
+  AssocMultiMap<consensus::index_t, futures::Promise<Result>>
+      _waitCurrentVersion;
 };
 
 namespace cluster {
