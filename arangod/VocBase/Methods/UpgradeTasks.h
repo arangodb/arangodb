@@ -27,23 +27,23 @@
 
 struct TRI_vocbase_t;
 
-namespace arangodb {
-namespace methods {
+namespace arangodb::methods {
 
 /// Code to create and initialize databases
 /// Replaces upgrade-database.js for good
 struct UpgradeTasks {
   static bool createSystemCollectionsAndIndices(TRI_vocbase_t& vocbase,
-                                                velocypack::Slice const& slice);
-  static bool createStatisticsCollectionsAndIndices(
-      TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+                                                velocypack::Slice slice);
+  static bool createStatisticsCollectionsAndIndices(TRI_vocbase_t& vocbase,
+                                                    velocypack::Slice slice);
   static bool addDefaultUserOther(TRI_vocbase_t& vocbase,
-                                  velocypack::Slice const& slice);
-  static bool renameReplicationApplierStateFiles(
-      TRI_vocbase_t& vocbase, velocypack::Slice const& slice);
+                                  velocypack::Slice slice);
+  static bool renameReplicationApplierStateFiles(TRI_vocbase_t& vocbase,
+                                                 velocypack::Slice slice);
   static bool dropLegacyAnalyzersCollection(TRI_vocbase_t& vocbase,
-                                            velocypack::Slice const& slice);
+                                            velocypack::Slice slice);
+  static bool dropPregelQueriesCollection(TRI_vocbase_t& vocbase,
+                                          velocypack::Slice slice);
 };
 
-}  // namespace methods
-}  // namespace arangodb
+}  // namespace arangodb::methods

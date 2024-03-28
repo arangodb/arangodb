@@ -30,6 +30,7 @@
 #include "Aql/types.h"
 
 #include <iosfwd>
+#include <map>
 #include <memory>
 #include <stack>
 #include <vector>
