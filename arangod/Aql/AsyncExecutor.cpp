@@ -206,8 +206,9 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
         }
         // we only want to trigger a wakeup if we got an actual result, or an
         // exception
-        return (_returnState != ExecutionState::WAITING) ||
+        bool const triggerWakeup = (_returnState != ExecutionState::WAITING) ||
                (_internalState == AsyncState::GotException);
+        return triggerWakeup;
       });
 
   if (!queued) {
