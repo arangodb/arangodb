@@ -54,6 +54,7 @@
 #include "Utils/CollectionGuard.h"
 #include "Utils/OperationOptions.h"
 #include "Utils/SingleCollectionTransaction.h"
+#include "VocBase/VocbaseMetrics.h"
 
 #include <velocypack/Iterator.h>
 
@@ -76,7 +77,22 @@ rocksdb::SequenceNumber forceWrite(RocksDBEngine& engine) {
 RocksDBMetaCollection::RocksDBMetaCollection(LogicalCollection& collection,
                                              velocypack::Slice info)
     : PhysicalCollection(collection),
-      _exclusiveLock(_schedulerWrapper),
+      _exclusiveLock(
+          FutureLock ::Metrics{
+              .pendingExclusive = collection.vocbase()
+                                      .metrics()
+                                      .meta_collection_lock_pending_exclusive,
+              .pendingShared = collection.vocbase()
+                                   .metrics()
+                                   .meta_collection_lock_pending_shared,
+              .lockExclusive = collection.vocbase()
+                                   .metrics()
+                                   .meta_collection_lock_locked_exclusive,
+              .lockShared = collection.vocbase()
+                                .metrics()
+                                .meta_collection_lock_locked_shared,
+          },
+          _schedulerWrapper),
       _engine(collection.vocbase().engine<RocksDBEngine>()),
       _objectId(basics::VelocyPackHelper::stringUInt64(
           info, StaticStrings::ObjectId)),
@@ -195,10 +211,10 @@ futures::Future<uint64_t> RocksDBMetaCollection::recalculateCounts() {
   {
     // fetch number docs and snapshot under exclusive lock
     // this should enable us to correct the count later
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
-    auto res = co_await lockWrite(transaction::Options::defaultLockTimeout);
+    auto [lockGuard, res] =
+        co_await lockExclusive(transaction::Options::defaultLockTimeout);
     if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
+      TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -901,12 +917,11 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
   }
 
   auto const lambda = [this]() -> futures::Future<Result> {
-    auto lockGuard = scopeGuard([this]() noexcept { unlockWrite(); });
     // get the exclusive lock on the collection, so that no new write
     // transactions can start for this collection
-    auto res = co_await lockWrite(/*timeout*/ 180.0);
+    auto [lockGuard, res] = co_await lockExclusive(/*timeout*/ 180.0);
     if (res != TRI_ERROR_NO_ERROR) {
-      lockGuard.cancel();
+      TRI_ASSERT(!lockGuard.owns_lock());
       THROW_ARANGO_EXCEPTION(res);
     }
 
@@ -972,7 +987,7 @@ futures::Future<Result> RocksDBMetaCollection::rebuildRevisionTree() {
     }
 
     // unlock the collection again
-    lockGuard.fire();
+    lockGuard.unlock();
 
     TRI_IF_FAILURE("rebuildRevisionTree::sleep") {
       std::this_thread::sleep_for(
@@ -1688,15 +1703,19 @@ Result RocksDBMetaCollection::applyUpdatesForTransaction(
 }
 
 /// @brief write locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockWrite(double timeout) {
-  return doLock(timeout, AccessMode::Type::WRITE);
+auto RocksDBMetaCollection::lockExclusive(double timeout)
+    -> futures::Future<std::pair<ExclusiveLock, ErrorCode>> {
+  return this->doLock<AccessMode::Type::WRITE>(timeout);
 }
 
 /// @brief write unlocks a collection
-void RocksDBMetaCollection::unlockWrite() noexcept { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockExclusive(ExclusiveLock guard) noexcept {
+  guard.unlock();
+}
 
 /// @brief read locks a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
+auto RocksDBMetaCollection::lockShared(double timeout)
+    -> futures::Future<std::pair<SharedLock, ErrorCode>> {
   TRI_IF_FAILURE("assertLockTimeoutLow") {
     if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
       // In the test we expect that fast path locking is done with 2s timeout.
@@ -1705,20 +1724,23 @@ futures::Future<ErrorCode> RocksDBMetaCollection::lockRead(double timeout) {
   }
   TRI_IF_FAILURE("assertLockTimeoutHigh") {
     if (_logicalCollection.vocbase().name() == "UnitTestsLockTimeout") {
-      // In the test we expect that an lazy locking happens on the follower
+      // In the test we expect that a lazy locking happens on the follower
       // with the default timeout of more than 2 seconds:
       TRI_ASSERT(timeout > 10);
     }
   }
-  return doLock(timeout, AccessMode::Type::READ);
+  return doLock<AccessMode::Type::READ>(timeout);
 }
 
 /// @brief read unlocks a collection
-void RocksDBMetaCollection::unlockRead() { _exclusiveLock.unlock(); }
+void RocksDBMetaCollection::unlockShared(SharedLock guard) noexcept {
+  guard.unlock();
+}
 
 /// @brief lock a collection, with a timeout
-futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
-    double timeout, AccessMode::Type mode) {
+template<AccessMode::Type mode, typename R>
+futures::Future<std::pair<R, ErrorCode>> RocksDBMetaCollection::doLock(
+    double timeout) {
   // user read operations don't require any lock in RocksDB, so we won't get
   // here. user write operations will acquire the R/W lock in read mode, and
   // user exclusive operations will acquire the R/W lock in write mode.
@@ -1730,26 +1752,16 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
   auto timeout_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
       std::chrono::duration<double>(timeout));
 
-  bool gotLock = false;
-  if (mode == AccessMode::Type::WRITE) {
-    auto result =
-        co_await asTry(_exclusiveLock.asyncTryLockExclusiveFor(timeout_ms));
-    gotLock = result.hasValue();
-    if (gotLock) {
-      result.get().release();
+  auto result = co_await asTry([&] {
+    if constexpr (mode == AccessMode::Type::WRITE) {
+      return _exclusiveLock.try_lock_exclusive_for(timeout_ms);
+    } else {
+      return _exclusiveLock.try_lock_shared_for(timeout_ms);
     }
-  } else {
-    auto result =
-        co_await asTry(_exclusiveLock.asyncTryLockSharedFor(timeout_ms));
-    gotLock = result.hasValue();
-    if (gotLock) {
-      result.get().release();
-    }
-  }
-
-  if (gotLock) {
-    // keep the lock and exit
-    co_return TRI_ERROR_NO_ERROR;
+  }());
+  bool gotLock = result.hasValue();
+  if (gotLock && result.get().owns_lock()) {
+    co_return std::make_pair(std::move(result.get()), TRI_ERROR_NO_ERROR);
   }
 
   LOG_TOPIC("d1e52", TRACE, arangodb::Logger::ENGINES)
@@ -1757,7 +1769,7 @@ futures::Future<ErrorCode> RocksDBMetaCollection::doLock(
       << AccessMode::typeString(mode) << " lock on collection '"
       << _logicalCollection.name() << "'";
 
-  co_return TRI_ERROR_LOCK_TIMEOUT;
+  co_return std::make_pair(R{}, TRI_ERROR_LOCK_TIMEOUT);
 }
 
 bool RocksDBMetaCollection::haveBufferedOperations(
@@ -2083,3 +2095,6 @@ void RocksDBMetaCollection::RevisionTreeAccessor::ensureTree() const {
   TRI_ASSERT(_tree != nullptr);
   TRI_ASSERT(_compressed.empty());
 }
+
+template struct arangodb::futures::FutureSharedLock<
+    RocksDBMetaCollection::SchedulerWrapper>;

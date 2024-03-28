@@ -29,6 +29,7 @@
 #include "Basics/Exceptions.h"
 #include "Metrics/Counter.h"
 #include "Metrics/Gauge.h"
+#include "Metrics/LogScale.h"
 #include "Replication2/Exceptions/ParticipantResignedException.h"
 #include "Replication2/MetricsHelper.h"
 #include "Replication2/ReplicatedState/LazyDeserializingIterator.h"

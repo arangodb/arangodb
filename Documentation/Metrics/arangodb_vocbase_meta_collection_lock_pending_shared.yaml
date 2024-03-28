@@ -1,0 +1,14 @@
+name: arangodb_vocbase_meta_collection_lock_pending_shared
+introducedIn: "3.12.1"
+help: |
+  Number of pending shared collection lock requests.
+unit: number
+type: gauge
+category: Transactions
+complexity: advanced
+exposedBy:
+  - dbserver
+  - agent
+  - single
+description: |
+  Counts the pending shared collection lock requests across all shards in a database.

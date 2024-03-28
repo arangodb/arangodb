@@ -24,6 +24,7 @@
 #pragma once
 
 #include "Containers/FlatHashMap.h"
+#include "RocksDBEngine/RocksDBMetaCollection.h"
 #include "StorageEngine/TransactionCollection.h"
 #include "VocBase/AccessMode.h"
 #include "VocBase/Identifiers/IndexId.h"
@@ -177,5 +178,8 @@ class RocksDBTransactionCollection : public TransactionCollection {
 
   bool _usageLocked;
   bool _exclusiveWrites;
+  std::variant<std::monostate, RocksDBMetaCollection::ExclusiveLock,
+               RocksDBMetaCollection::SharedLock>
+      _writeLockGuard;
 };
 }  // namespace arangodb

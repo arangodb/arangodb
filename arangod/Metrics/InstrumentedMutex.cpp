@@ -18,21 +18,13 @@
 ///
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
-#pragma once
-#include <memory>
-#include "Metrics/Fwd.h"
+#include "InstrumentedMutex.h"
 
 namespace arangodb {
 
-struct VocbaseMetrics {
-  metrics::Gauge<uint64_t>* shards_read_only_by_write_concern{nullptr};
-  metrics::Gauge<uint64_t>* meta_collection_lock_pending_exclusive{nullptr};
-  metrics::Gauge<uint64_t>* meta_collection_lock_pending_shared{nullptr};
-  metrics::Gauge<uint64_t>* meta_collection_lock_locked_exclusive{nullptr};
-  metrics::Gauge<uint64_t>* meta_collection_lock_locked_shared{nullptr};
-
-  static std::unique_ptr<VocbaseMetrics> create(metrics::MetricsFeature& mf,
-                                                std::string_view databaseName);
-};
+template struct arangodb::InstrumentedMutex<std::mutex>;
+template struct arangodb::InstrumentedMutex<std::shared_mutex>;
+template struct arangodb::InstrumentedMutex<std::timed_mutex>;
+template struct arangodb::InstrumentedMutex<std::shared_timed_mutex>;
 
 }  // namespace arangodb

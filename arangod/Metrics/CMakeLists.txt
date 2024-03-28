@@ -14,7 +14,8 @@ add_library(arango_metrics STATIC
   MetricsFeature.cpp
   ClusterMetricsFeature.cpp
   ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestMetricsHandler.cpp
-  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestUsageMetricsHandler.cpp)
+  ${PROJECT_SOURCE_DIR}/arangod/RestHandler/RestUsageMetricsHandler.cpp
+        InstrumentedMutex.cpp)
 
 target_link_libraries(arango_metrics
   arango_metrics_base
