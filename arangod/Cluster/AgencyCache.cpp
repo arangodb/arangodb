@@ -509,22 +509,33 @@ void AgencyCache::run() {
 
 void AgencyCache::triggerWaiting(index_t commitIndex) {
   auto* scheduler = SchedulerFeature::SCHEDULER;
-  std::lock_guard w(_waitLock);
 
-  auto pit = _waiting.begin();
-  while (pit != _waiting.end()) {
-    if (pit->first > commitIndex) {
-      break;
+  auto promisesToResolve =
+      std::vector<std::shared_ptr<futures::Promise<Result>>>{};
+  {
+    std::lock_guard w(_waitLock);
+
+    auto pit = _waiting.begin();
+    while (pit != _waiting.end()) {
+      if (pit->first > commitIndex) {
+        break;
+      }
+      auto pp =
+          std::make_shared<futures::Promise<Result>>(std::move(pit->second));
+      if (scheduler && !this->isStopping()) {
+        scheduler->queue(RequestLane::CLUSTER_INTERNAL,
+                         [pp] { pp->setValue(Result()); });
+      } else {
+        promisesToResolve.emplace_back(std::move(pp));
+      }
+      pit = _waiting.erase(pit);
     }
-    auto pp =
-        std::make_shared<futures::Promise<Result>>(std::move(pit->second));
-    if (scheduler && !this->isStopping()) {
-      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp] { pp->setValue(Result()); });
-    } else {
-      pp->setValue(Result(_shutdownCode));
-    }
-    pit = _waiting.erase(pit);
+  }
+  // Resolving promises without posting them on the scheduler can lead to
+  // deadlocks. At least release the mutex before, otherwise deadlocks are at
+  // least in our tests guaranteed.
+  for (auto const& pp : promisesToResolve) {
+    pp->setValue(Result(_shutdownCode));
   }
 }
 
