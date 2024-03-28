@@ -581,7 +581,8 @@ function rtaMakedata(options, instanceManager, writeReadClean, msg, logFile, mor
   if (options.extremeVerbosity !== 'silence') {
     print(argv);
   }
-  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, 60 * 15);
+  let timeout = (options.isInstrumented) ? 60 * 22 : 60 * 15;
+  return executeAndWait(ARANGOSH_BIN, argv, options, 'arangosh', instanceManager.rootDir, options.coreCheck, timeout);
 }
 function rtaWaitShardsInSync(options, instanceManager) {
   let args = Object.assign(makeArgsArangosh(options), {
