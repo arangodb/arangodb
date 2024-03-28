@@ -333,6 +333,20 @@ def create_test_job(test, cluster, build_config, build_job, replication_version=
     return {"run-linux-tests": job}
 
 
+def create_rta_test_job(build_config, build_job, deployment_mode, filter_statement):
+    edition = "ee" if build_config.enterprise else "ce"
+    job = {
+        "name": f"test-{filter_statement}-{edition}-{deployment_mode}-RTA",
+        "suiteName": filter_statement,
+        "deployment": deployment_mode,
+        "browser": "Remote_CHROME",
+        "enterprise": "EP" if build_config.enterprise else "C",
+        "filterStatement": f"--ui-include-test-suite {filter_statement}",
+        "requires": [build_job],
+    }
+    return {"run-rta-tests": job}
+
+
 def add_test_definition_jobs_to_workflow(
     workflow, tests, build_config, build_job, repl2
 ):
@@ -351,20 +365,45 @@ def add_test_definition_jobs_to_workflow(
             jobs.append(create_test_job(test, False, build_config, build_job))
 
 
+def add_rta_test_jobs_to_workflow(workflow, build_config, build_job):
+    jobs = workflow["jobs"]
+    ui_testsuites = [
+        "UserPageTestSuite",
+        "CollectionsTestSuite",
+        "ViewsTestSuite",
+        "GraphTestSuite",
+        "QueryTestSuite",
+        "AnalyzersTestSuite",
+        "DatabaseTestSuite",
+        "LogInTestSuite",
+        "DashboardTestSuite",
+        "SupportTestSuite",
+        "ServiceTestSuite",
+    ]
+    deployments = ['SG',
+                   #"CL",
+                   ]
+    for deployment in deployments:
+        for test_suite in ui_testsuites:
+            jobs.append(create_rta_test_job(build_config, build_job, deployment, test_suite))
+
+
 def add_test_jobs_to_workflow(workflow, tests, build_config, build_job, repl2):
-    if build_config.enterprise:
-        workflow["jobs"].append(
-            {
-                "run-hotbackup-tests": {
-                    "name": f"run-hotbackup-tests-{build_config.arch}",
-                    "size": get_test_size("medium", build_config, True),
-                    "requires": [build_job],
-                }
-            }
-        )
-    add_test_definition_jobs_to_workflow(
-        workflow, tests, build_config, build_job, repl2
-    )
+    # if build_config.enterprise:
+    #     workflow["jobs"].append(
+    #         {
+    #             "run-hotbackup-tests": {
+    #                 "name": f"run-hotbackup-tests-{build_config.arch}",
+    #                 "size": get_test_size("medium", build_config, True),
+    #                 "requires": [build_job],
+    #             }
+    #         }
+    #     )
+    # add_test_definition_jobs_to_workflow(
+    #     workflow, tests, build_config, build_job, repl2
+    # )
+    if build_config.arch == "x64":
+        add_rta_test_jobs_to_workflow(workflow, build_config, build_job)
 
 
 def add_cppcheck_job(workflow, build_job):
