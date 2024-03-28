@@ -4722,7 +4722,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                       ->shard(shardId)
                       ->servers();
       // wait for the leader takeover to appear in our agency cache
-      auto const raftIndex = co_await _agencyCallbackRegistry->waitFor(
+      auto const raftIndex = co_await _agencyCallbackRegistry.waitFor(
           *path, [&](velocypack::Slice servers) -> bool {
             bool const leaderResigned = [&]() {
               if (servers.isArray() && servers.length() > 0) {
