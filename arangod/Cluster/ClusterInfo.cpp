@@ -378,21 +378,21 @@ class ClusterInfo::SyncerThread final
     : public arangodb::ServerThread<ArangodServer> {
  public:
   explicit SyncerThread(Server&, std::string const& section,
-                        std::function<void()> const&, AgencyCallbackRegistry&);
+                        std::function<consensus::index_t()> const&,
+                        AgencyCache&);
   ~SyncerThread() override;
   void beginShutdown() override;
   void run() override;
   bool start();
-  bool notify();
 
  private:
-  std::mutex _m;
-  std::condition_variable _cv;
-  bool _news;
+  auto call() noexcept -> std::optional<consensus::index_t>;
+  futures::Future<futures::Unit> runInternal();
+
+ private:
   std::string _section;
-  std::function<void()> _f;
-  AgencyCallbackRegistry& _cr;
-  std::shared_ptr<AgencyCallback> _acb;
+  std::function<consensus::index_t()> _f;
+  AgencyCache& _agencyCache;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -413,13 +413,14 @@ DECLARE_HISTOGRAM(arangodb_load_plan_runtime, ClusterInfoScale,
 DECLARE_GAUGE(arangodb_internal_cluster_info_memory_usage, std::uint64_t,
               "Total memory used by internal cluster info data structures");
 
-ClusterInfo::ClusterInfo(ArangodServer& server,
+ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                          AgencyCallbackRegistry& agencyCallbackRegistry,
                          ErrorCode syncerShutdownCode,
                          metrics::MetricsFeature& metrics)
     : _server(server),
       _clusterFeature(server.getFeature<ClusterFeature>()),
       _agency(server),
+      _agencyCache(agencyCache),
       _agencyCallbackRegistry(agencyCallbackRegistry),
       _rebootTracker(SchedulerFeature::SCHEDULER),
       _syncerShutdownCode(syncerShutdownCode),
@@ -860,7 +861,7 @@ struct ClusterInfo::NewStuffByDatabase {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadPlan() {
+auto ClusterInfo::loadPlan() -> consensus::index_t {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
@@ -932,7 +933,7 @@ void ClusterInfo::loadPlan() {
   }
 
   bool changed = false;
-  auto changeSet = agencyCache.changedSince(
+  auto const changeSet = agencyCache.changedSince(
       "Plan", planIndex);  // also delivers plan/version
   decltype(_plan) newPlan{_resourceMonitor};
   {
@@ -949,7 +950,7 @@ void ClusterInfo::loadPlan() {
   }
 
   if (!changed && planVersion == changeSet.version) {
-    auto newPlanIndex = changeSet.ind;
+    auto const newPlanIndex = changeSet.ind;
     {
       WRITE_LOCKER(writeLocker, _planProt.lock);
       _planIndex = newPlanIndex;
@@ -964,7 +965,7 @@ void ClusterInfo::loadPlan() {
         heartbeatThread->notify();
       }
     }
-    return;
+    return newPlanIndex;
   }
 
   containers::FlatHashSet<std::string> buildingDatabases;
@@ -1900,6 +1901,9 @@ void ClusterInfo::loadPlan() {
 
   auto diff = duration<float, std::milli>(clock::now() - start).count();
   _lpTimer.count(diff);
+
+  TRI_ASSERT(_planIndex == changeSet.ind);
+  return changeSet.ind;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -1907,7 +1911,7 @@ void ClusterInfo::loadPlan() {
 /// Usually one does not have to call this directly.
 ////////////////////////////////////////////////////////////////////////////////
 
-void ClusterInfo::loadCurrent() {
+auto ClusterInfo::loadCurrent() -> consensus::index_t {
   using namespace std::chrono;
   using clock = std::chrono::high_resolution_clock;
 
@@ -1950,7 +1954,7 @@ void ClusterInfo::loadCurrent() {
   }
 
   if (!changed && currentVersion == changeSet.version) {
-    auto newCurrentIndex = changeSet.ind;
+    auto const newCurrentIndex = changeSet.ind;
     {
       WRITE_LOCKER(writeLocker, _currentProt.lock);
       _currentIndex = changeSet.ind;
@@ -1965,7 +1969,7 @@ void ClusterInfo::loadCurrent() {
         heartbeatThread->notify();
       }
     }
-    return;
+    return newCurrentIndex;
   }
 
   decltype(_currentDatabases) newDatabases{_resourceMonitor};
@@ -2197,6 +2201,9 @@ void ClusterInfo::loadCurrent() {
     observeGlobalEvent("ClusterInfo::loadCurrentDone",
                        ServerState::instance()->getShortName());
   }
+
+  TRI_ASSERT(_currentIndex == changeSet.ind);
+  return changeSet.ind;
 }
 
 /// @brief ask about a collection
@@ -5611,9 +5618,9 @@ AgencyCallbackRegistry& ClusterInfo::agencyCallbackRegistry() const {
 
 void ClusterInfo::startSyncers() {
   _planSyncer = std::make_unique<SyncerThread>(
-      _server, "Plan", [this] { loadPlan(); }, _agencyCallbackRegistry);
+      _server, "Plan", [this] { return loadPlan(); }, _agencyCache);
   _curSyncer = std::make_unique<SyncerThread>(
-      _server, "Current", [this] { loadCurrent(); }, _agencyCallbackRegistry);
+      _server, "Current", [this] { return loadCurrent(); }, _agencyCache);
 
   if (!_planSyncer->start() || !_curSyncer->start()) {
     LOG_TOPIC("b4fa6", FATAL, Logger::CLUSTER)
@@ -5668,37 +5675,17 @@ void ClusterInfo::waitForSyncersToStop() {
   _curSyncer.reset();
 }
 
-ClusterInfo::SyncerThread::SyncerThread(Server& server,
-                                        std::string const& section,
-                                        std::function<void()> const& f,
-                                        AgencyCallbackRegistry& cregistry)
+ClusterInfo::SyncerThread::SyncerThread(
+    Server& server, std::string const& section,
+    std::function<consensus::index_t()> const& f, AgencyCache& agencyCache)
     : ServerThread<Server>(server, section + "Syncer"),
-      _news(false),
       _section(section),
       _f(f),
-      _cr(cregistry) {}
+      _agencyCache(agencyCache) {}
 
 ClusterInfo::SyncerThread::~SyncerThread() { shutdown(); }
 
-bool ClusterInfo::SyncerThread::notify() {
-  std::lock_guard<std::mutex> lck(_m);
-  _news = true;
-  // TODO: can we move the notify_one() call outside of the mutex?
-  _cv.notify_one();
-  return true;
-}
-
-void ClusterInfo::SyncerThread::beginShutdown() {
-  using namespace std::chrono_literals;
-
-  // set the shutdown state in parent class
-  Thread::beginShutdown();
-  {
-    std::lock_guard<std::mutex> lck(_m);
-    _news = false;
-  }
-  _cv.notify_one();
-}
+void ClusterInfo::SyncerThread::beginShutdown() { Thread::beginShutdown(); }
 
 bool ClusterInfo::SyncerThread::start() {
   ThreadNameFetcher nameFetcher;
@@ -5711,81 +5698,47 @@ bool ClusterInfo::SyncerThread::start() {
   return Thread::start();
 }
 
-void ClusterInfo::SyncerThread::run() {
-  // Syncer thread is not destroyed. So we assume it is fine to capture this
-  std::function<bool(VPackSlice result)> update =  // for format
-      [this](VPackSlice result) {
-        if (!result.isNumber()) {
-          LOG_TOPIC("d068f", ERR, Logger::CLUSTER)
-              << "Plan Version is not a number! " << result.toJson();
-          return false;
-        }
-        return notify();
-      };
-
-  auto acb = std::make_shared<AgencyCallback>(server(), _section + "/Version",
-                                              update, true, false);
-  Result res = _cr.registerCallback(std::move(acb));
-  if (res.fail()) {
-    LOG_TOPIC("70e05", FATAL, Logger::CLUSTER)
-        << "Failed to register callback with local registry: "
-        << res.errorMessage();
-    FATAL_ERROR_EXIT();
+auto ClusterInfo::SyncerThread::call() noexcept
+    -> std::optional<consensus::index_t> try {
+  return _f();
+} catch (basics::Exception const& ex) {
+  if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
+    LOG_TOPIC("9d1f5", WARN, Logger::CLUSTER)
+        << "caught an error while loading " << _section << ": [" << ex.code()
+        << "] " << ex.message();
   }
-
-  auto call = [&]() noexcept {
-    try {
-      _f();
-    } catch (basics::Exception const& ex) {
-      if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-        LOG_TOPIC("9d1f5", WARN, Logger::CLUSTER)
-            << "caught an error while loading " << _section << ": "
-            << ex.what();
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("752c4", WARN, Logger::CLUSTER)
-          << "caught an error while loading " << _section << ": " << ex.what();
-    } catch (...) {
-      LOG_TOPIC("30968", WARN, Logger::CLUSTER)
-          << "caught an error while loading " << _section;
-    }
-  };
-  // This first call needs to be done or else we might miss all potential until
-  // such time, that we are ready to receive. Under no circumstances can we
-  // assume that this first call can be neglected.
-  call();
-  for (std::unique_lock lk{_m}; !isStopping();) {
-    if (!_news) {
-      // The timeout is strictly speaking not needed.
-      // However, we really do not want to be caught in here in production.
-#ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-      _cv.wait(lk);
-#else
-      _cv.wait_for(lk, std::chrono::milliseconds{100});
-#endif
-    }
-    if (std::exchange(_news, false)) {
-      lk.unlock();
-      call();
-      lk.lock();
-    }
-  }
-
-  try {
-    _cr.unregisterCallback(acb);
-  } catch (basics::Exception const& ex) {
-    if (ex.code() != TRI_ERROR_SHUTTING_DOWN) {
-      LOG_TOPIC("39336", WARN, Logger::CLUSTER)
-          << "caught exception while unregistering callback: " << ex.what();
-    }
-  } catch (std::exception const& ex) {
-    LOG_TOPIC("66f2f", WARN, Logger::CLUSTER)
-        << "caught exception while unregistering callback: " << ex.what();
-  } catch (...) {
-    LOG_TOPIC("995cd", WARN, Logger::CLUSTER)
-        << "caught unknown exception while unregistering callback";
-  }
+  return std::nullopt;
+} catch (std::exception const& ex) {
+  LOG_TOPIC("752c4", WARN, Logger::CLUSTER)
+      << "caught an error while loading " << _section << ": " << ex.what();
+  return std::nullopt;
+} catch (...) {
+  LOG_TOPIC("30968", WARN, Logger::CLUSTER)
+      << "caught an error while loading " << _section;
+  return std::nullopt;
 }
+
+futures::Future<futures::Unit> ClusterInfo::SyncerThread::runInternal() {
+  auto nextIndex = consensus::index_t{1};
+
+  while (!isStopping()) {
+    // We update on every change; our _f (loadPlan/loadCurrent) decide for
+    // themselves whether they need to do a real update. This way they can at
+    // least bump _planIndex/_currentIndex and trigger corresponding callbacks.
+    auto res = co_await _agencyCache.waitFor(nextIndex);
+    // Note that I don't think just retrying failed calls is necessarily safe;
+    // see the comment above loadPlan/loadCurrent about exception safety from
+    // the same commit as this one. This is just keeping the existing behavior.
+    if (auto maybeIdx = call(); maybeIdx.has_value()) {
+      nextIndex = *maybeIdx;
+    }
+    ++nextIndex;
+  }
+
+  co_return;
+}
+
+void ClusterInfo::SyncerThread::run() { runInternal().get(); }
 
 futures::Future<Result> ClusterInfo::waitForCurrent(
     consensus::index_t raftIndex) {

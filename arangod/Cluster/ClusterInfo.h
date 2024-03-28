@@ -80,6 +80,7 @@ struct Target;
 }  // namespace replication2
 
 class AgencyCallbackRegistry;
+class AgencyCache;
 struct ClusterCollectionCreationInfo;
 class ClusterInfo;
 class CollectionInfoCurrent;
@@ -259,7 +260,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(ArangodServer& server,
+  explicit ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode,
                        metrics::MetricsFeature& metrics);
@@ -998,19 +999,28 @@ class ClusterInfo final {
       std::string_view collectionId, velocypack::Slice data,
       TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
 
+  // TODO loadPlan or loadCurrent exhibit no exception safety. That can mean
+  //      that they will leave ClusterInfo in an inconsistent state, which must
+  //      not happen. Wven if subsequent calls succeed, the state may
+  //      stay broken.
+  //      In essence, loadPlan and loadCurrent must exhibit some form of
+  //      exception safety, preferably strong, but they don't.
+  //      One option would be to mark them noexcept; but we should check there
+  //      usually really aren't any exceptions but OOM thrown, first.
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadPlan();
+  auto loadPlan() -> consensus::index_t;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current state
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadCurrent();
+  auto loadCurrent() -> consensus::index_t;
 
   static void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                    VPackBuilder& builder);
@@ -1045,6 +1055,7 @@ class ClusterInfo final {
 
   AgencyComm _agency;
 
+  AgencyCache& _agencyCache;
   AgencyCallbackRegistry& _agencyCallbackRegistry;
 
   // Cached data from the agency, we reload whenever necessary:
@@ -1127,7 +1138,6 @@ class ClusterInfo final {
 
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _plan;
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _current;
-
   FlatMap<pmr::DatabaseID, VPackSlice>
       _plannedDatabases;  // from Plan/Databases
 
