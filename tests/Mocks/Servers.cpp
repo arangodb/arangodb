@@ -491,7 +491,6 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
   }
-  triggerWaiting(_commitIndex);
   {
     std::lock_guard g(_callbacksLock);
     for (auto const& trx : VPackArrayIterator(trxs)) {
@@ -507,6 +506,7 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
       }
     }
   }
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }
