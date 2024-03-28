@@ -261,6 +261,7 @@ set(ARANGODB_TESTS_SOURCES
 
 if (USE_V8)
   set(ARANGODB_TESTS_SOURCES ${ARANGODB_TESTS_SOURCES}
+    Scheduler/ThreadPool.cpp
     V8Server/V8AnalyzersTest.cpp
     V8Server/V8UsersTest.cpp
     V8Server/V8ViewsTest.cpp)

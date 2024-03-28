@@ -149,6 +149,8 @@ add_library(arangoserver STATIC
   RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SimpleThreadPool.cpp
+  Scheduler/SimpleThreadPool.h
   Scheduler/SupervisedScheduler.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
@@ -169,8 +171,8 @@ add_library(arangoserver STATIC
   Transaction/Hints.cpp
   Transaction/History.cpp
   Transaction/IndexesSnapshot.cpp
-  Transaction/Manager.cpp
   Transaction/ManagedContext.cpp
+  Transaction/Manager.cpp
   Transaction/ManagerFeature.cpp
   Transaction/Methods.cpp
   Transaction/Options.cpp
