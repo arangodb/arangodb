@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-432: allow row clicks on all UI tables.
+
 * FE-316: Edge collection import example now correctly reflects the required
   `from` and `to` attributes.
 
