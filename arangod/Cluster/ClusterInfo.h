@@ -34,6 +34,7 @@
 #include <unordered_map>
 
 #include "Agency/AgencyComm.h"
+#include "Agency/AgencyCommon.h"
 #include "Basics/ReadLocker.h"
 #include "Basics/ReadWriteLock.h"
 #include "Cluster/CallbackGuard.h"
@@ -79,6 +80,7 @@ struct Target;
 }  // namespace replication2
 
 class AgencyCallbackRegistry;
+class AgencyCache;
 struct ClusterCollectionCreationInfo;
 class ClusterInfo;
 class CollectionInfoCurrent;
@@ -258,7 +260,7 @@ class ClusterInfo final {
   /// @brief creates library
   //////////////////////////////////////////////////////////////////////////////
 
-  explicit ClusterInfo(ArangodServer& server,
+  explicit ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
                        AgencyCallbackRegistry& agencyCallbackRegistry,
                        ErrorCode syncerShutdownCode,
                        metrics::MetricsFeature& metrics);
@@ -333,7 +335,8 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  [[nodiscard]] futures::Future<Result> waitForPlan(uint64_t raftIndex);
+  [[nodiscard]] futures::Future<Result> waitForPlan(
+      consensus::index_t raftIndex);
 
   /**
    * @brief Wait for Plan cache to be at the given Plan version
@@ -360,7 +363,7 @@ class ClusterInfo final {
    * @param raftIndex Raft index to wait for
    * @return Operation's result
    */
-  futures::Future<Result> waitForCurrent(uint64_t raftIndex);
+  futures::Future<Result> waitForCurrent(consensus::index_t raftIndex);
 
   /**
    * @brief Wait for Current cache to be at the given Raft index
@@ -926,10 +929,12 @@ class ClusterInfo final {
    * @param shardId  The id of said shard
    * @return         List of DB servers serving the shard
    */
-  Result getShardServers(ShardID const& shardId, std::vector<ServerID>&);
+  Result getShardServers(ShardID shardId, std::vector<ServerID>&);
 
   /// @brief map shardId to collection name (not ID)
-  CollectionID getCollectionNameForShard(ShardID const& shardId);
+  CollectionID getCollectionNameForShard(ShardID shardId);
+  /// @brief map shardId to database name (not ID)
+  auto getDatabaseNameForShard(ShardID shardId) -> std::optional<DatabaseID>;
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
@@ -994,19 +999,28 @@ class ClusterInfo final {
       std::string_view collectionId, velocypack::Slice data,
       TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
 
+  // TODO loadPlan or loadCurrent exhibit no exception safety. That can mean
+  //      that they will leave ClusterInfo in an inconsistent state, which must
+  //      not happen. Wven if subsequent calls succeed, the state may
+  //      stay broken.
+  //      In essence, loadPlan and loadCurrent must exhibit some form of
+  //      exception safety, preferably strong, but they don't.
+  //      One option would be to mark them noexcept; but we should check there
+  //      usually really aren't any exceptions but OOM thrown, first.
+
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadPlan();
+  auto loadPlan() -> consensus::index_t;
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about current state
   /// Usually one does not have to call this directly.
   //////////////////////////////////////////////////////////////////////////////
 
-  void loadCurrent();
+  auto loadCurrent() -> consensus::index_t;
 
   static void buildIsBuildingSlice(CreateDatabaseInfo const& database,
                                    VPackBuilder& builder);
@@ -1041,6 +1055,7 @@ class ClusterInfo final {
 
   AgencyComm _agency;
 
+  AgencyCache& _agencyCache;
   AgencyCallbackRegistry& _agencyCallbackRegistry;
 
   // Cached data from the agency, we reload whenever necessary:
@@ -1123,7 +1138,6 @@ class ClusterInfo final {
 
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _plan;
   FlatMapShared<pmr::DatabaseID, VPackBuilder> _current;
-
   FlatMap<pmr::DatabaseID, VPackSlice>
       _plannedDatabases;  // from Plan/Databases
 
@@ -1166,6 +1180,8 @@ class ClusterInfo final {
       _shardsToPlanServers;
   // planned shard ID => collection name
   FlatMap<ShardID, pmr::CollectionID> _shardToName;
+  // name of the database a certain shard is part of
+  FlatMap<ShardID, pmr::DatabaseID> _shardToDb;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
@@ -1282,11 +1298,12 @@ class ClusterInfo final {
   mutable std::mutex _waitPlanLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlan;
   mutable std::mutex _waitPlanVersionLock;
-  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitPlanVersion;
+  AssocMultiMap<consensus::index_t, futures::Promise<Result>> _waitPlanVersion;
   mutable std::mutex _waitCurrentLock;
   AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrent;
   mutable std::mutex _waitCurrentVersionLock;
-  AssocMultiMap<uint64_t, futures::Promise<Result>> _waitCurrentVersion;
+  AssocMultiMap<consensus::index_t, futures::Promise<Result>>
+      _waitCurrentVersion;
 };
 
 namespace cluster {

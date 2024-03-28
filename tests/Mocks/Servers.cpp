@@ -506,6 +506,7 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
       }
     }
   }
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }
