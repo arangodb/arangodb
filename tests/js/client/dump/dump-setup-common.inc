@@ -721,6 +721,39 @@ function createSmartGraph() {
 
 /**
  * @brief Only if enterprise mode:
+ *        Creates a SmartGraph sharded by `value`
+ *        without any data in it.
+ *        In 3.11 and earlier the SmartGraph definition
+ *        does contain a CollectionID of leading collection
+ *        this prohibits that the GraphSchema could be altered
+ *        after restore.
+ *        We do not write the CollectionID anymore, but we
+ *        can still restore it from old versions.
+ */
+function createSmartGraph3_11_compat() {
+  if (!isEnterprise) {
+    return;
+  }
+
+  const smartGraphName = "UnitTestDumpSmartGraphCompat";
+  const edges = "UnitTestDumpSmartEdgesCompat";
+  const vertices = "UnitTestDumpSmartVerticesCompat";
+  const orphans = "UnitTestDumpSmartOrphansCompat";
+  if (sgm._exists(smartGraphName)) {
+    assertTrue(false, "Graph already exists. Please check setup configuration.");
+  }
+  assertCollectionsAreNew([edges, vertices, orphans]);
+
+  sgm._create(smartGraphName, [sgm._relation(edges, vertices, vertices)],
+    [orphans], {numberOfShards: 5, smartGraphAttribute: "value"});
+    /* This code fakes previous behaviour */
+  const leader = db._collection(vertices).properties().distributeShardsLike || vertices;
+  const cid = db._collection(leader)._id;
+  db._graphs.update(smartGraphName, {initialCid: cid});
+}
+
+/**
+ * @brief Only if enterprise mode:
  *        Creates an EnterpriseGraph
  *        That has 100 vertices (value 0 -> 99)
  *        That has 100 orphans (value 0 -> 99)
@@ -1375,6 +1408,7 @@ exports.createSatelliteGraphWithoutData = createSatelliteGraphWithoutData;
 exports.createDisjointGraphWithoutData = createDisjointGraphWithoutData;
 
 exports.createSmartGraph = createSmartGraph;
+exports.createSmartGraph3_11_compat = createSmartGraph3_11_compat;
 
 exports.createSmartGraphSingleServer = createSmartGraphSingleServer;
 exports.createEnterpriseGraphSingleServer = createEnterpriseGraphSingleServer;
