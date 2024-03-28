@@ -498,7 +498,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
     this.print('Foxx Apps with full restore to ' + database);
     this.restoreConfig.setDatabase(database);
     this.restoreConfig.setIncludeSystem(true);
-    this.restoreConfig.setInputDirectory('dump', true);
+    this.restoreConfig.setInputDirectory('UnitTestsDumpSrc', true);
     this.results.restoreFoxxComplete = this.arangorestore();
     return this.validate(this.results.restoreFoxxComplete);
   }
@@ -728,7 +728,7 @@ class DumpRestoreHelper extends tu.runInArangoshRunner {
       this.results.RtaCheckdata = {
         status: true
       };
-      return false;
+      return true;
     }
   }
 };
@@ -981,6 +981,7 @@ function dumpWithCrashes (options) {
 function dumpWithCrashesParallel (options) {
   let dumpOptions = {
     dbServers: 3,
+    allDatabases: true,
     deactivateCompression: true,
     activateFailurePoint: true,
     threads: 1,

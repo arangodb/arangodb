@@ -39,6 +39,7 @@
 #include "Replication/ReplicationFeature.h"
 #include "RestServer/DatabaseFeature.h"
 #include "Sharding/ShardingInfo.h"
+#include "Sharding/ShardingStrategyDefault.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/PhysicalCollection.h"
 #include "StorageEngine/StorageEngine.h"
@@ -1227,6 +1228,52 @@ void LogicalCollection::addInternalValidator(
 void LogicalCollection::decorateWithInternalValidators() {
   // Community validators go in here.
   decorateWithInternalEEValidators();
+}
+
+void LogicalCollection::addShardingStrategy(VPackBuilder& builder,
+                                            VPackSlice collectionProperties) {
+  TRI_ASSERT(builder.isOpenObject());
+  TRI_ASSERT(collectionProperties.isObject());
+
+  if (collectionProperties.hasKey(StaticStrings::ShardingStrategy)) {
+    return;
+  }
+
+#ifndef USE_ENTERPRISE
+  builder.add(StaticStrings::ShardingStrategy,
+              VPackValue(ShardingStrategyHash::NAME));
+#else
+  const bool isSmart = basics::VelocyPackHelper::getBooleanValue(
+      collectionProperties, StaticStrings::IsSmart, false);
+  if (!isSmart) {
+    builder.add(StaticStrings::ShardingStrategy,
+                VPackValue(ShardingStrategyHash::NAME));
+  } else {
+    std::string_view smartGraphAttribute =
+        basics::VelocyPackHelper::getStringView(
+            collectionProperties, StaticStrings::GraphSmartGraphAttribute,
+            StaticStrings::Empty);
+    TRI_col_type_e colType =
+        basics::VelocyPackHelper::getNumericValue<TRI_col_type_e>(
+            collectionProperties, StaticStrings::DataSourceType,
+            TRI_COL_TYPE_DOCUMENT);
+
+    if (colType == TRI_COL_TYPE_DOCUMENT) {
+      // only smart document collections need this additional check
+      if (smartGraphAttribute.empty()) {
+        // means we do have an EnterpriseGraph Vertex collection
+        builder.add(StaticStrings::ShardingStrategy,
+                    VPackValue(ShardingStrategyEnterpriseHexSmartVertex::NAME));
+      } else {
+        builder.add(StaticStrings::ShardingStrategy,
+                    VPackValue(ShardingStrategyHash::NAME));
+      }
+    } else if (colType == TRI_COL_TYPE_EDGE) {
+      builder.add(StaticStrings::ShardingStrategy,
+                  VPackValue(ShardingStrategyEnterpriseHashSmartEdge::NAME));
+    }
+  }
+#endif
 }
 
 #ifndef USE_ENTERPRISE
