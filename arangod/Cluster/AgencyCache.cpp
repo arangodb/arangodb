@@ -746,21 +746,20 @@ AgencyCache::change_set_t AgencyCache::changedSince(
   } else {
     TRI_ASSERT(last != 0);
     auto it = changes.lower_bound(last + 1);
-    if (it != changes.end()) {
-      for (; it != changes.end(); ++it) {
-        if (it->second.empty()) {  // Need to get rest
-          get_rest = true;
-        }
-        databases.emplace(it->second);
-      }
-      LOG_TOPIC("d5743", TRACE, Logger::CLUSTER)
-          << "collecting " << databases << " from agency cache";
-    } else {
+    if (it == changes.end()) {
       LOG_TOPIC("d5734", DEBUG, Logger::CLUSTER)
           << "no changed databases since " << last;
       return change_set_t(_commitIndex, version, std::move(db_res),
                           std::move(rest_res));
     }
+    for (; it != changes.end(); ++it) {
+      if (it->second.empty()) {  // Need to get rest
+        get_rest = true;
+      }
+      databases.emplace(it->second);
+    }
+    LOG_TOPIC("d5743", TRACE, Logger::CLUSTER)
+        << "collecting " << databases << " from agency cache";
   }
 
   if (databases.empty()) {
