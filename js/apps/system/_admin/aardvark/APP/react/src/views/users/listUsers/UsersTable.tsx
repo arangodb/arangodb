@@ -73,6 +73,11 @@ export const UsersTable = () => {
         <ReactTable<DatabaseUserValues>
           table={tableInstance}
           emptyStateMessage="No users found"
+          onRowSelect={row => {
+            window.location.hash = `#user/${encodeURIComponent(
+              row.original.user
+            )}`;
+          }}
         />
       </Stack>
     </>

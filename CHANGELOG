@@ -1,6 +1,8 @@
 devel
 -----
 
+* FE-432: allow row clicks on all UI tables.
+
 * Add upgrade task to drop `_pregel_queries` system collections.
 
 * Fixed an upgrade issue on Agents. When agents are started with
