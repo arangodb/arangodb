@@ -137,7 +137,6 @@ void ExecutionBlock::traceExecuteBegin(AqlCallStack const& stack,
   // add timing for block in case profiling is turned on.
   if (_profileLevel >= ProfileLevel::Blocks) {
     // only if profiling is turned on, get current time
-    TRI_ASSERT(_startOfExecution < 0.0);
     _startOfExecution = currentSteadyClockValue();
     TRI_ASSERT(_startOfExecution > 0.0);
   }
