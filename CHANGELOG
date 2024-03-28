@@ -1,6 +1,8 @@
 3.12.0.1 (2024-03-28)
 ---------------------
 
+* FE-432: allow row clicks on all UI tables.
+
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
   upgrade procedure got into an incorrect state. Please note
