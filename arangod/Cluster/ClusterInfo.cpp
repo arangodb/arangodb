@@ -571,7 +571,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] = agencyCache.read(std::vector<std::string>{"/"});
   auto res = acb->slice();
 
@@ -870,7 +870,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   [[maybe_unused]] auto start = clock::now();
 
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
 
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
@@ -884,6 +884,52 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   }
 
   std::lock_guard mutexLocker{_planProt.mutex};  // only one may work at a time
+
+  uint64_t planIndex;
+  uint64_t planVersion;
+  {
+    READ_LOCKER(guard, _planProt.lock);
+    planIndex = _planIndex;
+    planVersion = _planVersion;
+  }
+
+  auto const changeSet = agencyCache.changedSince(
+      "Plan", planIndex);  // also delivers plan/version
+  bool const changed = !changeSet.dbs.empty() || changeSet.rest != nullptr;
+
+  // early exit if nothing changed
+  // Note: I don't think checking for Plan/Version in addition to `changed` is
+  //       of any use, and that it could be removed.
+  if (!changed && planVersion == changeSet.version) {
+    auto const newPlanIndex = changeSet.ind;
+    {
+      WRITE_LOCKER(writeLocker, _planProt.lock);
+      _planIndex = newPlanIndex;
+    }
+    if (planIndex < newPlanIndex) {
+      std::lock_guard w(_waitPlanLock);
+      triggerWaiting(_waitPlan, newPlanIndex);
+      auto heartbeatThread = _clusterFeature.heartbeatThread();
+      if (heartbeatThread) {
+        // In the unittests, there is no heartbeat thread, and we do not need to
+        // notify
+        heartbeatThread->notify();
+      }
+    }
+    return newPlanIndex;
+  }
+
+  decltype(_plan) newPlan{_resourceMonitor};
+  {
+    READ_LOCKER(readLocker, _planProt.lock);
+    newPlan = _plan;
+    for (auto const& db : changeSet.dbs) {  // Databases
+      newPlan[db.first] = db.second;
+    }
+    if (changeSet.rest != nullptr) {  // Rest
+      newPlan[std::string_view{}] = changeSet.rest;
+    }
+  }
 
   // For ArangoSearch views we need to get access to immediately created views
   // in order to allow links to be created correctly.
@@ -921,53 +967,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
 #endif
   });
 
-  bool planValid = true;  // has the loadPlan completed without skipping valid
-                          // objects we will set in the end
-
-  uint64_t planIndex;
-  uint64_t planVersion;
-  {
-    READ_LOCKER(guard, _planProt.lock);
-    planIndex = _planIndex;
-    planVersion = _planVersion;
-  }
-
-  bool changed = false;
-  auto const changeSet = agencyCache.changedSince(
-      "Plan", planIndex);  // also delivers plan/version
-  decltype(_plan) newPlan{_resourceMonitor};
-  {
-    READ_LOCKER(readLocker, _planProt.lock);
-    newPlan = _plan;
-    for (auto const& db : changeSet.dbs) {  // Databases
-      newPlan[db.first] = db.second;
-      changed = true;
-    }
-    if (changeSet.rest != nullptr) {  // Rest
-      newPlan[std::string_view{}] = changeSet.rest;
-      changed = true;
-    }
-  }
-
-  if (!changed && planVersion == changeSet.version) {
-    auto const newPlanIndex = changeSet.ind;
-    {
-      WRITE_LOCKER(writeLocker, _planProt.lock);
-      _planIndex = newPlanIndex;
-    }
-    if (planIndex < newPlanIndex) {
-      std::lock_guard w(_waitPlanLock);
-      triggerWaiting(_waitPlan, newPlanIndex);
-      auto heartbeatThread = _clusterFeature.heartbeatThread();
-      if (heartbeatThread) {
-        // In the unittests, there is no heartbeat thread, and we do not need to
-        // notify
-        heartbeatThread->notify();
-      }
-    }
-    return newPlanIndex;
-  }
-
   containers::FlatHashSet<std::string> buildingDatabases;
   decltype(_plannedDatabases) newDatabases{_resourceMonitor};
   decltype(_shards) newShards{_resourceMonitor};
@@ -984,6 +983,9 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   bool swapCollections = false;
   bool swapViews = false;
   bool swapAnalyzers = false;
+
+  bool planValid = true;  // has the loadPlan completed without skipping valid
+                          // objects we will set in the end
 
   {
     READ_LOCKER(guard, _planProt.lock);
@@ -1917,13 +1919,7 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
 
   auto start = clock::now();
 
-  // We need to update ServersKnown to notice rebootId changes for all servers.
-  // To keep things simple and separate, we call loadServers here instead of
-  // trying to integrate the servers upgrade code into loadCurrent, even if that
-  // means small bits of the plan are read twice.
-  loadServers();
-
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
 
   // reread from the agency!
   std::lock_guard mutexLocker{
@@ -1936,23 +1932,13 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     currentIndex = _currentIndex;
     currentVersion = _currentVersion;
   }
-  decltype(_current) newCurrent{_resourceMonitor};
 
-  bool changed = false;
-  auto changeSet = agencyCache.changedSince("Current", currentIndex);
-  {
-    READ_LOCKER(readLocker, _currentProt.lock);
-    newCurrent = _current;
-    for (auto const& db : changeSet.dbs) {  // Databases
-      newCurrent[db.first] = db.second;
-      changed = true;
-    }
-    if (changeSet.rest != nullptr) {  // Rest
-      newCurrent[std::string_view{}] = changeSet.rest;
-      changed = true;
-    }
-  }
+  auto const changeSet = agencyCache.changedSince("Current", currentIndex);
+  bool const changed = !changeSet.dbs.empty() || changeSet.rest != nullptr;
 
+  // early exit if nothing changed
+  // Note: I don't think checking for Current/Version in addition to `changed`
+  //       is of any use, and that it could be removed.
   if (!changed && currentVersion == changeSet.version) {
     auto const newCurrentIndex = changeSet.ind;
     {
@@ -1970,6 +1956,24 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
       }
     }
     return newCurrentIndex;
+  }
+
+  // We need to update ServersKnown to notice rebootId changes for all servers.
+  // To keep things simple and separate, we call loadServers here instead of
+  // trying to integrate the servers upgrade code into loadCurrent, even if that
+  // means small bits of the plan are read twice.
+  loadServers();
+
+  decltype(_current) newCurrent{_resourceMonitor};
+  {
+    READ_LOCKER(readLocker, _currentProt.lock);
+    newCurrent = _current;
+    for (auto const& db : changeSet.dbs) {  // Databases
+      newCurrent[db.first] = db.second;
+    }
+    if (changeSet.rest != nullptr) {  // Rest
+      newCurrent[std::string_view{}] = changeSet.rest;
+    }
   }
 
   decltype(_currentDatabases) newDatabases{_resourceMonitor};
@@ -2341,7 +2345,7 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
                                  std::shared_ptr<LogicalCollection>>
 ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::unordered_map<std::string, std::shared_ptr<LogicalCollection>> result;
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
 
   // TODO: Make this an AgencyPath object
   std::string collectionsPath = "Plan/Collections/" + database.name();
@@ -2568,7 +2572,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
 Result ClusterInfo::getShardStatisticsForDatabase(
     std::string const& dbName, std::string_view restrictServer,
     VPackBuilder& builder) const {
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Collections/" + dbName)});
 
@@ -2599,7 +2603,7 @@ Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2633,7 +2637,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2665,7 +2669,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
 /// @brief get shard statistics for all databases, split by servers.
 Result ClusterInfo::getShardStatisticsGlobalByServer(
     VPackBuilder& builder) const {
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
@@ -2992,7 +2996,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(
     }
 
     if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      auto& agencyCache = _clusterFeature.agencyCache();
+      auto& agencyCache = _agencyCache;
       auto [acb, index] = agencyCache.read(std::vector<std::string>{
           AgencyCommHelper::path("Plan/Databases/" + database.getName())});
 
@@ -3153,7 +3157,7 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     std::vector<replication2::LogId> replicatedStates;
     std::set<CollectionID> collectionIds;
 
-    auto& agencyCache = _clusterFeature.agencyCache();
+    auto& agencyCache = _agencyCache;
     VPackBuilder groupsBuilder;
     std::ignore =
         agencyCache.get(groupsBuilder, "Plan/CollectionGroups/" + name);
@@ -3321,7 +3325,7 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   size_t numberOfShards = 0;
 
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, idx] =
       agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
           "Plan/Collections/" + dbName + "/" + collectionID)});
@@ -3650,7 +3654,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     std::string const& databaseName, std::string const& viewID,
     VPackSlice json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
@@ -4080,7 +4084,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
                                 AgencyCommHelper::path(mapUniqueToShortId),
@@ -4208,7 +4212,7 @@ void ClusterInfo::loadServers() {
 ////////////////////////////////////////////////////////////////////////////////
 
 ServersKnown ClusterInfo::rebootIds() const {
-  std::lock_guard mutexLocker{_serversProt.mutex};
+  READ_LOCKER(readLocker, _serversProt.lock);
   return _serversKnown;
 }
 
@@ -4359,7 +4363,7 @@ void ClusterInfo::loadCurrentCoordinators() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path(prefixCurrentCoordinators)});
   auto result = acb->slice();
@@ -4408,7 +4412,7 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixMappings)});
   auto result = acb->slice();
@@ -4472,7 +4476,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixCurrentDBServers),
                                AgencyCommHelper::path(prefixTarget)});
@@ -4718,20 +4722,19 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                       ->shard(shardId)
                       ->servers();
       // wait for the leader takeover to appear in our agency cache
-      auto const raftIndex =
-          co_await _clusterFeature.agencyCallbackRegistry()->waitFor(
-              *path, [&](velocypack::Slice servers) -> bool {
-                bool const leaderResigned = [&]() {
-                  if (servers.isArray() && servers.length() > 0) {
-                    auto const leader = servers[0];
-                    return leader.isString() &&
-                           leader.stringView().starts_with('_');
-                  } else {
-                    return false;
-                  }
-                }();
-                return !leaderResigned;
-              });
+      auto const raftIndex = co_await _agencyCallbackRegistry->waitFor(
+          *path, [&](velocypack::Slice servers) -> bool {
+            bool const leaderResigned = [&]() {
+              if (servers.isArray() && servers.length() > 0) {
+                auto const leader = servers[0];
+                return leader.isString() &&
+                       leader.stringView().starts_with('_');
+              } else {
+                return false;
+              }
+            }();
+            return !leaderResigned;
+          });
       // wait for cluster info to catch up with the agency cache
       auto res = co_await waitForCurrent(raftIndex);
       if (!res.ok()) {
@@ -5224,7 +5227,7 @@ Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
-  auto& agencyCache = _clusterFeature.agencyCache();
+  auto& agencyCache = _agencyCache;
   auto [acb, index] = agencyCache.read(
       {AgencyCommHelper::path("Plan"), AgencyCommHelper::path("Target"),
        AgencyCommHelper::path("Sync/LatestID")});
@@ -5476,7 +5479,7 @@ Result ClusterInfo::agencyHotBackupLock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _clusterFeature.agencyCache();
+    auto& agencyCache = _agencyCache;
     auto [result, index] = agencyCache.get("Supervision/State/Mode");
 
     if (result->slice().isString()) {
@@ -5573,7 +5576,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _clusterFeature.agencyCache();
+    auto& agencyCache = _agencyCache;
     auto [res, index] = agencyCache.get("Supervision/State/Mode");
 
     if (!res->slice().isString()) {
