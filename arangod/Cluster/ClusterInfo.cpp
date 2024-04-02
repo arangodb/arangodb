@@ -5707,10 +5707,6 @@ futures::Future<futures::Unit> ClusterInfo::SyncerThread::runInternal() {
     // themselves whether they need to do a real update. This way they can at
     // least bump _planIndex/_currentIndex and trigger corresponding callbacks.
     [[maybe_unused]] auto res = co_await _agencyCache.waitFor(nextIndex);
-    // TODO What to do with res?
-    // Note that I don't think just retrying failed calls is necessarily safe;
-    // see the comment above loadPlan/loadCurrent about exception safety from
-    // the same commit as this one. This is just keeping the existing behavior.
     if (auto maybeIdx = call(); maybeIdx.has_value()) {
       nextIndex = *maybeIdx;
     }
