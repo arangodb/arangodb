@@ -27,6 +27,11 @@ devel
   - follower requests that acquire the lock on the leader while the follower
     tries to get in sync are now running with low instead of medium priority.
 
+* Log an info message if a request was queued in the scheduler queue for 30 s
+  or longer.
+
+* Add upgrade task to drop `_pregel_queries` system collections.
+
 * Fixed an upgrade issue on Agents. When agents are started with
   `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
   upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
