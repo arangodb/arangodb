@@ -1996,6 +1996,7 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     if (databaseName.empty()) {
       continue;
     }
+    swapDatabases = true;
 
     std::initializer_list<std::string_view> const dbPath{
         AgencyCommHelper::path(), "Current", "Databases", databaseName};
@@ -2028,7 +2029,6 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
           }
         }
       }
-      swapDatabases = true;
       continue;
     }
     databaseSlice = databaseSlice.get(dbPath);
@@ -2043,7 +2043,6 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     }
 
     newDatabases.insert_or_assign(databaseName, std::move(serverList));
-    swapDatabases = true;
   }
 
   // Current/Collections
@@ -4948,7 +4947,7 @@ void ClusterInfo::invalidateCurrentCoordinators() {
 /// @brief get current "Plan" structure
 //////////////////////////////////////////////////////////////////////////////
 
-containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
 ClusterInfo::getPlan(uint64_t& index,
                      containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
@@ -4958,7 +4957,7 @@ ClusterInfo::getPlan(uint64_t& index,
     THROW_ARANGO_EXCEPTION(r);
   }
 
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>> ret;
   READ_LOCKER(readLocker, _planProt.lock);
   index = _planIndex;
   for (auto const& i : dirty) {
@@ -4973,7 +4972,7 @@ ClusterInfo::getPlan(uint64_t& index,
 /// @brief get current "Current" structure
 //////////////////////////////////////////////////////////////////////////////
 
-containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
 ClusterInfo::getCurrent(uint64_t& index,
                         containers::FlatHashSet<std::string> const& dirty) {
   // We should never proceed here, until we have seen an
@@ -4983,7 +4982,7 @@ ClusterInfo::getCurrent(uint64_t& index,
     THROW_ARANGO_EXCEPTION(r);
   }
 
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>> ret;
   READ_LOCKER(readLocker, _currentProt.lock);
   index = _currentIndex;
   for (auto const& i : dirty) {

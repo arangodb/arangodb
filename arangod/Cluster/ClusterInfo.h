@@ -864,13 +864,13 @@ class ClusterInfo final {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Plan" structure
   //////////////////////////////////////////////////////////////////////////////
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> getPlan(
-      uint64_t& planIndex, containers::FlatHashSet<std::string> const&);
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
+  getPlan(uint64_t& planIndex, containers::FlatHashSet<std::string> const&);
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief get current "Current" structure
   //////////////////////////////////////////////////////////////////////////////
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
   getCurrent(uint64_t& currentIndex,
              containers::FlatHashSet<std::string> const&);
 
@@ -998,15 +998,6 @@ class ClusterInfo final {
       bool isBuilding, AllCollections::const_iterator existingCollections,
       std::string_view collectionId, velocypack::Slice data,
       TRI_vocbase_t& vocbase, uint64_t planVersion, bool cleanupLinks) const;
-
-  // TODO loadPlan or loadCurrent exhibit no exception safety. That can mean
-  //      that they will leave ClusterInfo in an inconsistent state, which must
-  //      not happen. Wven if subsequent calls succeed, the state may
-  //      stay broken.
-  //      In essence, loadPlan and loadCurrent must exhibit some form of
-  //      exception safety, preferably strong, but they don't.
-  //      One option would be to mark them noexcept; but we should check there
-  //      usually really aren't any exceptions but OOM thrown, first.
 
   //////////////////////////////////////////////////////////////////////////////
   /// @brief (re-)load the information about our plan
@@ -1136,8 +1127,8 @@ class ClusterInfo final {
   FlatMap<ServerShortID, pmr::ServerID> _coordinatorIdMap;
   ProtectionData _mappingsProt;
 
-  FlatMapShared<pmr::DatabaseID, VPackBuilder> _plan;
-  FlatMapShared<pmr::DatabaseID, VPackBuilder> _current;
+  FlatMapShared<pmr::DatabaseID, VPackBuilder const> _plan;
+  FlatMapShared<pmr::DatabaseID, VPackBuilder const> _current;
   FlatMap<pmr::DatabaseID, VPackSlice>
       _plannedDatabases;  // from Plan/Databases
 
