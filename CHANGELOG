@@ -1,6 +1,10 @@
 devel
 -----
 
+* Added internal APIs to dump the contents of the AQL query registry from
+  DB-Servers plus the contents of the transaction manager on coordinators and
+  DB-Servers.
+
 * Log an info message if a request was queued in the scheduler queue for 30 s
   or longer.
 

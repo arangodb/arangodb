@@ -3498,9 +3498,17 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
     co_return res;
   }
 
-  ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
-
   std::string vn = _vocbase.name();
+
+  // we successfully created the transaction.
+  // make sure if it is aborted if something goes wrong.
+  auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
+    try {
+      mgr->abortManagedTrx(id, vn);
+    } catch (...) {
+    }
+  });
+
   try {
     if (!serverId.empty()) {
       std::string comment =
@@ -3520,6 +3528,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
         }
       };
 
+      ClusterInfo& ci = server().getFeature<ClusterFeature>().clusterInfo();
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
@@ -3543,14 +3552,14 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   }
 
   if (isTombstoned(id)) {
-    try {
-      co_return mgr->abortManagedTrx(id, vn);
-    } catch (...) {
-      // Maybe thrown in shutdown.
-    }
-    // DO NOT LOCK in this case, pointless
+    // DO NOT LOCK in this case, pointless.
+    // transactionAborter will abort the transaction for us.
     co_return {TRI_ERROR_TRANSACTION_INTERNAL, "transaction already cancelled"};
   }
+
+  // when we get here, we let the transaction remain active until it
+  // times out or a cancel request is sent.
+  transactionAborter.cancel();
 
   co_return isLockHeld(id);
 }

@@ -140,8 +140,8 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
   // this is an optional attribute that 3.8 coordinators will send, but
   // older versions won't send.
   // if set, it is the query id that will be used for this particular query
-  VPackSlice queryIdSlice = querySlice.get("clusterQueryId");
-  if (queryIdSlice.isNumber()) {
+  if (auto queryIdSlice = querySlice.get("clusterQueryId");
+      queryIdSlice.isNumber()) {
     clusterQueryId = queryIdSlice.getNumber<QueryId>();
     TRI_ASSERT(clusterQueryId > 0);
   }
@@ -365,7 +365,13 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
         "Query aborted since coordinator rebooted or failed.");
   }
 
-  _queryRegistry->insertQuery(std::move(q), ttl, std::move(rGuard));
+  // query string
+  std::string_view qs;
+  if (auto qss = querySlice.get("qs"); qss.isString()) {
+    qs = qss.stringView();
+  }
+
+  _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));
 
   generateResult(rest::ResponseCode::OK, std::move(buffer));
 }

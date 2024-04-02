@@ -740,8 +740,7 @@ TEST_F(TransactionManagerTest, expired_transaction) {
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
   // we cannot use the transaction anymore
-  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
-  ASSERT_EQ(ctx.get(), nullptr);
+  ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false));
 
   // aborting it is fine though
   res = mgr->abortManagedTrx(tid, vocbase.name());
