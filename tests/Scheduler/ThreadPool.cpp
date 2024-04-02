@@ -56,3 +56,52 @@ TEST(ThreadPoolTest, stop_when_sleeping) {
     std::this_thread::sleep_for(std::chrono::seconds{3});
   }
 }
+
+TEST(ThreadPoolTest, work_when_sleeping) {
+  std::atomic<std::size_t> counter{0};
+  {
+    ThreadPool pool{3};
+    std::this_thread::sleep_for(std::chrono::seconds{3});
+    pool.push([&]() noexcept { counter++; });
+    pool.push([&]() noexcept { counter++; });
+    pool.push([&]() noexcept { counter++; });
+  }
+  ASSERT_EQ(counter, 3);
+}
+
+namespace {
+struct callable;
+callable createLambda(std::atomic<std::size_t>& cnt, ThreadPool& pool, int x,
+                      int max);
+
+struct callable {
+  void operator()() const noexcept {
+    cnt += 1;
+    if (x < max) {
+      pool.push(createLambda(cnt, pool, x + 1, max));
+      pool.push(createLambda(cnt, pool, x + 1, max));
+    }
+  }
+
+  std::atomic<std::size_t>& cnt;
+  ThreadPool& pool;
+  const int x;
+  const int max;
+};
+
+callable createLambda(std::atomic<std::size_t>& cnt, ThreadPool& pool, int x,
+                      int max) {
+  return callable{cnt, pool, x, max};
+}
+}  // namespace
+
+TEST(ThreadPoolTest, spawn_work) {
+  std::atomic<std::size_t> counter{0};
+  const auto max = 16;
+
+  {
+    ThreadPool pool{3};
+    pool.push(createLambda(counter, pool, 0, max));
+  }
+  ASSERT_EQ(counter, (2 << max) - 1);
+}
