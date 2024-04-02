@@ -309,10 +309,8 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
         << logical->guid();
   }
 
-  // we should have a valid iterator if there are documents in here
-  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore())
-      << "numDocs: " << numberDocuments << ", hasMore: " << cIter->hasMore()
-      << ", shard: " << logical->name();
+  // Please Note: numberDocuments can be different to the amount
+  // of entries actually returned by cIter.
   return std::make_tuple(Result{}, cid, numberDocuments);
 }
 
