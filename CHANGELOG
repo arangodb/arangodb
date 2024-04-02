@@ -1,6 +1,9 @@
 devel
 -----
 
+* Log an info message if a request was queued in the scheduler queue for 30 s
+  or longer.
+
 * Add upgrade task to drop `_pregel_queries` system collections.
 
 * Fixed an upgrade issue on Agents. When agents are started with
