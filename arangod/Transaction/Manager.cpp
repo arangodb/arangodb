@@ -849,7 +849,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     }
     if (!isAuthorized(mtrx)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_FORBIDDEN,
+          TRI_ERROR_TRANSACTION_NOT_FOUND,
           absl::StrCat("not authorized to access transaction ", tid.id()));
     }
 
