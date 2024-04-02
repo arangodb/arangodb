@@ -571,8 +571,7 @@ void ClusterInfo::triggerBackgroundGetIds() {
 /// @brief produces an agency dump and logs it
 void ClusterInfo::logAgencyDump() const {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
-  auto& agencyCache = _agencyCache;
-  auto [acb, idx] = agencyCache.read(std::vector<std::string>{"/"});
+  auto [acb, idx] = _agencyCache.read(std::vector<std::string>{"/"});
   auto res = acb->slice();
 
   if (!res.isNone()) {
@@ -870,7 +869,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   [[maybe_unused]] auto start = clock::now();
 
   auto& databaseFeature = _server.getFeature<DatabaseFeature>();
-  auto& agencyCache = _agencyCache;
 
   // We need to wait for any cluster operation, which needs access to the
   // agency cache for it to become ready. The essentials in the cluster, namely
@@ -878,7 +876,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
   // This is of great importance to not accidentally delete data facing an
   // empty agency. There are also other measures that guard against such an
   // outcome. But there is also no point continuing with a first agency poll.
-  Result r = agencyCache.waitFor(1).get();
+  Result r = _agencyCache.waitFor(1).get();
   if (r.fail()) {
     THROW_ARANGO_EXCEPTION(r);
   }
@@ -893,7 +891,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     planVersion = _planVersion;
   }
 
-  auto const changeSet = agencyCache.changedSince(
+  auto const changeSet = _agencyCache.changedSince(
       "Plan", planIndex);  // also delivers plan/version
   bool const changed = !changeSet.dbs.empty() || changeSet.rest != nullptr;
 
@@ -1919,8 +1917,6 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
 
   auto start = clock::now();
 
-  auto& agencyCache = _agencyCache;
-
   // reread from the agency!
   std::lock_guard mutexLocker{
       _currentProt.mutex};  // only one may work at a time
@@ -1933,7 +1929,7 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     currentVersion = _currentVersion;
   }
 
-  auto const changeSet = agencyCache.changedSince("Current", currentIndex);
+  auto const changeSet = _agencyCache.changedSince("Current", currentIndex);
   bool const changed = !changeSet.dbs.empty() || changeSet.rest != nullptr;
 
   // early exit if nothing changed
@@ -2344,14 +2340,13 @@ std::vector<std::shared_ptr<LogicalCollection>> ClusterInfo::getCollections(
                                  std::shared_ptr<LogicalCollection>>
 ClusterInfo::generateCollectionStubs(TRI_vocbase_t& database) {
   std::unordered_map<std::string, std::shared_ptr<LogicalCollection>> result;
-  auto& agencyCache = _agencyCache;
 
   // TODO: Make this an AgencyPath object
   std::string collectionsPath = "Plan/Collections/" + database.name();
   VPackBuilder collectionsBuilder;
 
   // We really do not care for the Index.
-  std::ignore = agencyCache.get(collectionsBuilder, collectionsPath);
+  std::ignore = _agencyCache.get(collectionsBuilder, collectionsPath);
   auto collectionsSlice = collectionsBuilder.slice();
   for (auto const& [cid, colData] : VPackObjectIterator(collectionsSlice)) {
     auto collection =
@@ -2571,8 +2566,7 @@ QueryAnalyzerRevisions ClusterInfo::getQueryAnalyzersRevision(
 Result ClusterInfo::getShardStatisticsForDatabase(
     std::string const& dbName, std::string_view restrictServer,
     VPackBuilder& builder) const {
-  auto& agencyCache = _agencyCache;
-  auto [acb, idx] = agencyCache.read(std::vector<std::string>{
+  auto [acb, idx] = _agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Collections/" + dbName)});
 
   velocypack::Slice databaseSlice =
@@ -2602,8 +2596,7 @@ Result ClusterInfo::getShardStatisticsGlobal(std::string const& restrictServer,
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _agencyCache;
-  auto [acb, idx] = agencyCache.read(
+  auto [acb, idx] = _agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
   velocypack::Slice databasesSlice =
@@ -2636,8 +2629,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
     return Result(TRI_ERROR_BAD_PARAMETER, "invalid DBserver id");
   }
 
-  auto& agencyCache = _agencyCache;
-  auto [acb, idx] = agencyCache.read(
+  auto [acb, idx] = _agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
   velocypack::Slice databasesSlice =
@@ -2668,8 +2660,7 @@ Result ClusterInfo::getShardStatisticsGlobalDetailed(
 /// @brief get shard statistics for all databases, split by servers.
 Result ClusterInfo::getShardStatisticsGlobalByServer(
     VPackBuilder& builder) const {
-  auto& agencyCache = _agencyCache;
-  auto [acb, idx] = agencyCache.read(
+  auto [acb, idx] = _agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path("Plan/Collections")});
 
   velocypack::Slice databasesSlice =
@@ -2995,8 +2986,7 @@ Result ClusterInfo::cancelCreateDatabaseCoordinator(
     }
 
     if (res.httpCode() == rest::ResponseCode::PRECONDITION_FAILED) {
-      auto& agencyCache = _agencyCache;
-      auto [acb, index] = agencyCache.read(std::vector<std::string>{
+      auto [acb, index] = _agencyCache.read(std::vector<std::string>{
           AgencyCommHelper::path("Plan/Databases/" + database.getName())});
 
       velocypack::Slice databaseSlice =
@@ -3156,10 +3146,9 @@ Result ClusterInfo::dropDatabaseCoordinator(  // drop database
     std::vector<replication2::LogId> replicatedStates;
     std::set<CollectionID> collectionIds;
 
-    auto& agencyCache = _agencyCache;
     VPackBuilder groupsBuilder;
     std::ignore =
-        agencyCache.get(groupsBuilder, "Plan/CollectionGroups/" + name);
+        _agencyCache.get(groupsBuilder, "Plan/CollectionGroups/" + name);
     auto groupsSlice = groupsBuilder.slice();
     for (auto const& group : VPackObjectIterator(groupsSlice)) {
       auto collectionGroup = velocypack::deserialize<
@@ -3324,9 +3313,8 @@ Result ClusterInfo::dropCollectionCoordinator(  // drop collection
 
   size_t numberOfShards = 0;
 
-  auto& agencyCache = _agencyCache;
   auto [acb, idx] =
-      agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
+      _agencyCache.read(std::vector<std::string>{AgencyCommHelper::path(
           "Plan/Collections/" + dbName + "/" + collectionID)});
 
   velocypack::Slice databaseSlice =
@@ -3530,13 +3518,12 @@ Result ClusterInfo::createViewCoordinator(  // create view
     }
   }
 
-  auto& cache = _clusterFeature.agencyCache();
-  if (!cache.has("Plan/Databases/" + databaseName)) {
+  if (!_agencyCache.has("Plan/Databases/" + databaseName)) {
     events::CreateView(databaseName, name, TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
     return Result(TRI_ERROR_ARANGO_DATABASE_NOT_FOUND);
   }
 
-  if (cache.has("Plan/Views/" + databaseName + "/" + viewID)) {
+  if (_agencyCache.has("Plan/Views/" + databaseName + "/" + viewID)) {
     events::CreateView(databaseName, name, TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
     return Result(TRI_ERROR_CLUSTER_VIEW_ID_EXISTS);
   }
@@ -3653,8 +3640,7 @@ Result ClusterInfo::setViewPropertiesCoordinator(
     std::string const& databaseName, std::string const& viewID,
     VPackSlice json) {
   // TRI_ASSERT(ServerState::instance()->isCoordinator());
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(std::vector<std::string>{
+  auto [acb, index] = _agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path("Plan/Views/" + databaseName + "/" + viewID)});
 
   if (!acb->slice()[0].hasKey(std::initializer_list<std::string_view>{
@@ -3973,9 +3959,9 @@ void ClusterInfo::initMetricsState() {
 }
 
 ClusterInfo::MetricsState ClusterInfo::getMetricsState(bool wantLeader) {
-  auto& ac = _clusterFeature.agencyCache();
-  auto [result, index] = ac.read({AgencyCommHelper::path(kMetricsServerId),
-                                  AgencyCommHelper::path(kMetricsRebootId)});
+  auto [result, index] =
+      _agencyCache.read({AgencyCommHelper::path(kMetricsServerId),
+                         AgencyCommHelper::path(kMetricsRebootId)});
   auto data = result->slice().at(0).get(std::initializer_list<std::string_view>{
       AgencyCommHelper::path(), "Plan", "Metrics"});
   auto leaderRebootId = data.get("RebootId").getNumber<uint64_t>();
@@ -4083,8 +4069,7 @@ void ClusterInfo::loadServers() {
     return;
   }
 
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(
+  auto [acb, index] = _agencyCache.read(
       std::vector<std::string>({AgencyCommHelper::path(prefixServersRegistered),
                                 AgencyCommHelper::path(mapUniqueToShortId),
                                 AgencyCommHelper::path(prefixServersKnown),
@@ -4362,8 +4347,7 @@ void ClusterInfo::loadCurrentCoordinators() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(std::vector<std::string>{
+  auto [acb, index] = _agencyCache.read(std::vector<std::string>{
       AgencyCommHelper::path(prefixCurrentCoordinators)});
   auto result = acb->slice();
 
@@ -4411,8 +4395,7 @@ void ClusterInfo::loadCurrentMappings() {
   }
 
   // Now contact the agency:
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(
+  auto [acb, index] = _agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixMappings)});
   auto result = acb->slice();
 
@@ -4475,8 +4458,7 @@ void ClusterInfo::loadCurrentDBServers() {
     return;
   }
 
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(
+  auto [acb, index] = _agencyCache.read(
       std::vector<std::string>{AgencyCommHelper::path(prefixCurrentDBServers),
                                AgencyCommHelper::path(prefixTarget)});
   auto result = acb->slice();
@@ -5226,8 +5208,7 @@ Result ClusterInfo::agencyDump(std::shared_ptr<VPackBuilder> const& body) {
 }
 
 Result ClusterInfo::agencyPlan(std::shared_ptr<VPackBuilder> const& body) {
-  auto& agencyCache = _agencyCache;
-  auto [acb, index] = agencyCache.read(
+  auto [acb, index] = _agencyCache.read(
       {AgencyCommHelper::path("Plan"), AgencyCommHelper::path("Target"),
        AgencyCommHelper::path("Sync/LatestID")});
   VPackSlice result = acb->slice();
@@ -5478,8 +5459,7 @@ Result ClusterInfo::agencyHotBackupLock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _agencyCache;
-    auto [result, index] = agencyCache.get("Supervision/State/Mode");
+    auto [result, index] = _agencyCache.get("Supervision/State/Mode");
 
     if (result->slice().isString()) {
       if (result->slice().isEqualString("Maintenance")) {
@@ -5575,8 +5555,7 @@ Result ClusterInfo::agencyHotBackupUnlock(std::string_view backupId,
 
   double wait = 0.1;
   while (!_server.isStopping() && std::chrono::steady_clock::now() < endTime) {
-    auto& agencyCache = _agencyCache;
-    auto [res, index] = agencyCache.get("Supervision/State/Mode");
+    auto [res, index] = _agencyCache.get("Supervision/State/Mode");
 
     if (!res->slice().isString()) {
       LOG_TOPIC("6ae46", WARN, Logger::BACKUP)
