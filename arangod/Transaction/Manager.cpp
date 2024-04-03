@@ -785,15 +785,15 @@ futures::Future<Result> Manager::ensureManagedTrx(
 }
 
 /// @brief lease the transaction, increases nesting
-std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
+futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
     TransactionId tid, AccessMode::Type mode, bool isSideUser) {
   TRI_ASSERT(mode != AccessMode::Type::NONE);
 
   if (_disallowInserts.load(std::memory_order_acquire)) {
-    return nullptr;
+    co_return nullptr;
   }
 
-  TRI_IF_FAILURE("leaseManagedTrxFail") { return nullptr; }
+  TRI_IF_FAILURE("leaseManagedTrxFail") { co_return nullptr; }
 
   auto role = ServerState::instance()->getRole();
   std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
@@ -802,11 +802,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     endTime =
         now + std::chrono::milliseconds(int64_t(1000 * _streamingLockTimeout));
   }
-  std::chrono::steady_clock::time_point detachTime;
-  if (_streamingLockTimeout >= 1.0) {
-    detachTime = now + std::chrono::milliseconds(1000);
-  }
-  bool alreadyDetached = false;
   // always serialize access on coordinator,
   // TransactionState::_knownServers is modified even for READ
   if (ServerState::isCoordinator(role)) {
@@ -823,7 +818,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end()) {
       // transaction actually not found
-      return nullptr;
+      co_return nullptr;
     }
 
     ManagedTrx& mtrx = it->second;
@@ -864,7 +859,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
         if (mtrx.state->isReadOnlyTransaction()) {
           managedContext->setReadOnly();
         }
-        return managedContext;
+        co_return managedContext;
       }
       // continue the loop after a small pause
     } else {
@@ -875,7 +870,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
         if (mtrx.state->isReadOnlyTransaction()) {
           managedContext->setReadOnly();
         }
-        return managedContext;
+        co_return managedContext;
       }
       if (isSideUser) {
         // number of side users is atomically increased under the bucket's read
@@ -894,7 +889,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
           if (mtrx.state->isReadOnlyTransaction()) {
             managedContext->setReadOnly();
           }
-          return managedContext;
+          co_return managedContext;
         } catch (...) {
           // roll back our increase of the number of side users
           auto previous =
@@ -928,25 +923,6 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
                !ServerState::instance()->isDBServer());
 
     auto now = std::chrono::steady_clock::now();
-    if (!alreadyDetached && detachTime.time_since_epoch().count() != 0 &&
-        now > detachTime) {
-      alreadyDetached = true;
-      LOG_TOPIC("dd234", INFO, Logger::THREADS)
-          << "Did not get lock within 1 seconds, detaching scheduler thread.";
-      uint64_t currentNumberDetached = 0;
-      uint64_t maximumNumberDetached = 0;
-      auto res = SchedulerFeature::SCHEDULER->detachThread(
-          &currentNumberDetached, &maximumNumberDetached);
-      if (res.is(TRI_ERROR_TOO_MANY_DETACHED_THREADS)) {
-        LOG_TOPIC("dd233", WARN, Logger::THREADS)
-            << "Could not detach scheduler thread (currently detached threads: "
-            << currentNumberDetached
-            << ", maximal number of detached threads: " << maximumNumberDetached
-            << "), will continue to acquire "
-               "lock in scheduler thread, this can potentially lead to "
-               "blockages!";
-      }
-    }
     if (!ServerState::isDBServer(role) && now > endTime) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
           TRI_ERROR_LOCKED, absl::StrCat("cannot write-lock, transaction ",
@@ -956,11 +932,23 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
           << "waiting on trx write-lock " << tid;
       i = 0;
       if (_feature.server().isStopping()) {
-        return nullptr;  // shutting down
+        co_return nullptr;  // shutting down
       }
     }
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+    constexpr bool alwaysHasScheduler = false;
+#else
+    constexpr bool alwaysHasScheduler = true;
+#endif
+
+    if (alwaysHasScheduler || SchedulerFeature::SCHEDULER) {
+      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+      co_await SchedulerFeature::SCHEDULER->delay(
+          "managed-trx-lock-wait", std::chrono::milliseconds(10));
+    } else {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
   } while (true);
 }
 

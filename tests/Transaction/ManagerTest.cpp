@@ -177,7 +177,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
 
   auto doc = arangodb::velocypack::Parser::fromJson("{ \"_key\": \"1\"}");
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
     auto origin = ctx->operationOrigin();
     ASSERT_EQ(transaction::OperationOrigin::Type::kInternal, origin.type);
@@ -196,7 +196,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_abort) {
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::RUNNING);
 
   {  // lease again
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(ctx, "testCollection",
@@ -237,7 +237,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(std::move(ctx), "testCollection",
@@ -289,7 +289,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_is_follower) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(std::move(ctx), "testCollection",
@@ -334,7 +334,7 @@ TEST_F(TransactionManagerTest, simple_transaction_and_commit_while_in_use) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(std::move(ctx), "testCollection",
@@ -382,19 +382,19 @@ TEST_F(TransactionManagerTest, leading_multiple_readonly_transactions) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false).get();
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
 
-    auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
+    auto ctx2 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false).get();
     ASSERT_NE(ctx2.get(), nullptr);
     auto state2 = ctx2->acquireState(opts, responsible);
     EXPECT_EQ(state1.get(), state2.get());
     ASSERT_TRUE(!responsible);
 
-    auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false);
+    auto ctx3 = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false).get();
     ASSERT_NE(ctx3.get(), nullptr);
     auto state3 = ctx3->acquireState(opts, responsible);
     EXPECT_EQ(state3.get(), state2.get());
@@ -424,12 +424,13 @@ TEST_F(TransactionManagerTest, lock_conflict) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
-    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
+    ASSERT_ANY_THROW(
+        mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false).get());
   }
   ASSERT_TRUE(mgr->abortManagedTrx(tid, vocbase.name()).ok());
   ASSERT_EQ(mgr->getManagedTrxStatus(tid), transaction::Status::ABORTED);
@@ -455,14 +456,16 @@ TEST_F(TransactionManagerTest, lock_conflict_side_user) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
     ASSERT_TRUE(!responsible);
-    ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false));
+    ASSERT_ANY_THROW(
+        mgr->leaseManagedTrx(tid, AccessMode::Type::READ, false).get());
 
-    auto ctxSide = mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true);
+    auto ctxSide =
+        mgr->leaseManagedTrx(tid, AccessMode::Type::READ, true).get();
     ASSERT_NE(ctxSide.get(), nullptr);
     auto state2 = ctxSide->acquireState(opts, responsible);
     ASSERT_NE(state2.get(), nullptr);
@@ -492,7 +495,7 @@ TEST_F(TransactionManagerTest, garbage_collection_shutdown) {
     transaction::Options opts;
     bool responsible;
 
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
     auto state1 = ctx->acquireState(opts, responsible);
     ASSERT_NE(state1.get(), nullptr);
@@ -562,7 +565,7 @@ TEST_F(TransactionManagerTest, abort_transactions_with_matcher) {
   ASSERT_TRUE(res.ok());
 
   {
-    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+    auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
     ASSERT_NE(ctx.get(), nullptr);
 
     SingleCollectionTransaction trx(std::move(ctx), "testCollection",
@@ -668,7 +671,7 @@ TEST_F(TransactionManagerTest, transaction_invalid_mode) {
                    .get();
   ASSERT_TRUE(res.ok());
 
-  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
   ASSERT_NE(ctx.get(), nullptr);
 
   ASSERT_THROW(SingleCollectionTransaction(std::move(ctx), "testCollection",
@@ -696,7 +699,7 @@ TEST_F(TransactionManagerTest, transaction_origin) {
                    .get();
   ASSERT_TRUE(res.ok());
 
-  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false);
+  auto ctx = mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get();
   ASSERT_NE(ctx.get(), nullptr);
 
   {
@@ -740,7 +743,8 @@ TEST_F(TransactionManagerTest, expired_transaction) {
   std::this_thread::sleep_for(std::chrono::milliseconds(150));
 
   // we cannot use the transaction anymore
-  ASSERT_ANY_THROW(mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false));
+  ASSERT_ANY_THROW(
+      mgr->leaseManagedTrx(tid, AccessMode::Type::WRITE, false).get());
 
   // aborting it is fine though
   res = mgr->abortManagedTrx(tid, vocbase.name());

@@ -2465,7 +2465,7 @@ RestReplicationHandler::handleCommandAddFollower() {
 
   // referenceChecksum is the stringified number of documents in the collection
   ResultT<std::string> referenceChecksum =
-      computeCollectionChecksum(readLockId, col.get());
+      co_await computeCollectionChecksum(readLockId, col.get());
   if (!referenceChecksum.ok()) {
     generateError(std::move(referenceChecksum).result());
     co_return;
@@ -2476,7 +2476,7 @@ RestReplicationHandler::handleCommandAddFollower() {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     auto trxCtxtLease =
-        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true);
+        mgr->leaseManagedTrx(readLockId, AccessMode::Type::READ, true).get();
     if (trxCtxtLease) {
       transaction::Methods trx{trxCtxtLease};
       if (!trx.isLocked(col.get(), AccessMode::Type::EXCLUSIVE)) {
@@ -3532,8 +3532,8 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
       auto rGuard =
           std::make_unique<RebootCookie>(ci.rebootTracker().callMeOnChange(
               {serverId, rebootId}, std::move(f), std::move(comment)));
-      auto ctx = mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
-                                      /*isSideUser*/ false);
+      auto ctx = co_await mgr->leaseManagedTrx(id, AccessMode::Type::WRITE,
+                                               /*isSideUser*/ false);
 
       if (!ctx) {
         // Trx does not exist. So we assume it got cancelled.
@@ -3604,32 +3604,33 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   return res;
 }
 
-ResultT<std::string> RestReplicationHandler::computeCollectionChecksum(
+futures::Future<ResultT<std::string>>
+RestReplicationHandler::computeCollectionChecksum(
     TransactionId id, LogicalCollection* col) const {
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   if (!mgr) {
-    return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
+    co_return ResultT<std::string>::error(TRI_ERROR_SHUTTING_DOWN);
   }
 
   try {
-    auto ctx =
-        mgr->leaseManagedTrx(id, AccessMode::Type::READ, /*isSideUser*/ false);
+    auto ctx = co_await mgr->leaseManagedTrx(id, AccessMode::Type::READ,
+                                             /*isSideUser*/ false);
     if (!ctx) {
       // Trx does not exist. So we assume it got cancelled.
-      return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
-                                         "read transaction was cancelled");
+      co_return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
+                                            "read transaction was cancelled");
     }
 
     transaction::Methods trx(ctx);
     TRI_ASSERT(trx.status() == transaction::Status::RUNNING);
 
     uint64_t num = col->getPhysical()->numberDocuments(&trx);
-    return ResultT<std::string>::success(std::to_string(num));
+    co_return ResultT<std::string>::success(std::to_string(num));
   } catch (...) {
     // Query exists, but is in use.
     // So in Locking phase
-    return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
-                                       "Read lock not yet acquired!");
+    co_return ResultT<std::string>::error(TRI_ERROR_TRANSACTION_INTERNAL,
+                                          "Read lock not yet acquired!");
   }
 }
 
