@@ -384,12 +384,18 @@ class ClusterInfo::SyncerThread final
   void beginShutdown() override;
   void run() override;
   bool start();
+  void sendNews() noexcept;
+  void waitForNews() noexcept;
 
  private:
   auto call() noexcept -> std::optional<consensus::index_t>;
-  futures::Future<futures::Unit> runInternal();
+  futures::Future<futures::Unit> fetchUpdates();
 
  private:
+  std::mutex _m;
+  std::condition_variable _cv;
+  bool _news;
+
   std::string _section;
   std::function<consensus::index_t()> _f;
   AgencyCache& _agencyCache;
@@ -5668,24 +5674,39 @@ auto ClusterInfo::SyncerThread::call() noexcept
   return std::nullopt;
 }
 
-futures::Future<futures::Unit> ClusterInfo::SyncerThread::runInternal() {
-  auto nextIndex = consensus::index_t{1};
+void ClusterInfo::SyncerThread::sendNews() noexcept {
+  {
+    std::lock_guard lk(_m);
+    _news = true;
+  }
+  _cv.notify_one();
+}
 
-  while (!isStopping()) {
+void ClusterInfo::SyncerThread::waitForNews() noexcept {
+  {
+    std::unique_lock lk(_m);
+    _cv.wait(lk, [&] { return _news; });
+    _news = false;
+  }
+}
+
+void ClusterInfo::SyncerThread::run() {
+  auto const sendNewsCb = [this](auto&&) noexcept { sendNews(); };
+
+  for (auto nextIndex = consensus::index_t{1}; !isStopping(); ++nextIndex) {
+    _agencyCache.waitFor(nextIndex, AgencyCache::Executor::Direct)
+        .thenFinal(sendNewsCb);
+
+    waitForNews();
+
     // We update on every change; our _f (loadPlan/loadCurrent) decide for
     // themselves whether they need to do a real update. This way they can at
     // least bump _planIndex/_currentIndex and trigger corresponding callbacks.
-    [[maybe_unused]] auto res = co_await _agencyCache.waitFor(nextIndex);
     if (auto maybeIdx = call(); maybeIdx.has_value()) {
       nextIndex = *maybeIdx;
     }
-    ++nextIndex;
   }
-
-  co_return;
 }
-
-void ClusterInfo::SyncerThread::run() { runInternal().get(); }
 
 futures::Future<Result> ClusterInfo::waitForCurrent(
     consensus::index_t raftIndex) {
