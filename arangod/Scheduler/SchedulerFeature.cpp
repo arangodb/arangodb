@@ -47,6 +47,7 @@
 #include "Scheduler/SupervisedScheduler.h"
 #ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
+#include "ThreadPoolScheduler.h"
 #endif
 
 using namespace arangodb::application_features;
@@ -321,16 +322,20 @@ void SchedulerFeature::prepare() {
   // on a DB server we intentionally disable throttling of incoming requests.
   // this is because coordinators are the gatekeepers, and they should
   // perform all the throttling.
-  uint64_t ongoingLowPriorityLimit =
-      ServerState::instance()->isDBServer()
-          ? 0
-          : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
-                                  _nrMaximalThreads);
+  // uint64_t ongoingLowPriorityLimit =
+  //    ServerState::instance()->isDBServer()
+  //        ? 0
+  //        : static_cast<uint64_t>(_ongoingLowPriorityMultiplier *
+  //                                _nrMaximalThreads);
 
-  auto sched = std::make_unique<SupervisedScheduler>(
-      server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
-      _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
-      _unavailabilityQueueFillGrade, _metricsFeature);
+  // auto sched = std::make_unique<SupervisedScheduler>(
+  //    server(), _nrMinimalThreads, _nrMaximalThreads, _queueSize, _fifo1Size,
+  //    _fifo2Size, _fifo3Size, ongoingLowPriorityLimit,
+  //    _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
+  //    _metricsFeature);
+
+  auto sched =
+      std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads);
 
   SCHEDULER = sched.get();
 

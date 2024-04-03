@@ -37,13 +37,14 @@ ThreadPool::~ThreadPool() {
   _cv.notify_all();
 }
 
-void ThreadPool::push(std::unique_ptr<Task>&& task) noexcept {
+void ThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
   std::unique_lock guard(_mutex);
   _tasks.emplace_back(std::move(task));
   _cv.notify_one();
 }
 
-auto ThreadPool::pop(std::stop_token stoken) noexcept -> std::unique_ptr<Task> {
+auto ThreadPool::pop(std::stop_token stoken) noexcept
+    -> std::unique_ptr<WorkItem> {
   std::unique_lock guard(_mutex);
   bool more = _cv.wait(guard, stoken, [&] { return !_tasks.empty(); });
   if (more) {
@@ -62,7 +63,7 @@ std::jthread ThreadPool::makeThread() noexcept {
     myThreadPool = this;
     auto stoken = _stop.get_token();
     while (auto item = pop(stoken)) {
-      item->execute();
+      item->invoke();
 
       // exit point for detached threads
       if (myThreadPool == nullptr) {
@@ -70,19 +71,4 @@ std::jthread ThreadPool::makeThread() noexcept {
       }
     }
   });
-}
-
-void ThreadPool::detachSelf() noexcept {
-  std::unique_lock guard(_mutex);
-  auto self =
-      std::find_if(_threads.begin(), _threads.end(), [](auto const& other) {
-        return std::this_thread::get_id() == other.get_id();
-      });
-
-  if (self != _threads.end()) {
-    auto replacement = makeThread();
-    std::swap(replacement, *self);
-    myThreadPool = nullptr;  // detach this thread from the thread pool
-    replacement.detach();
-  }
 }

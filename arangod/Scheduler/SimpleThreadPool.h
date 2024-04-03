@@ -25,28 +25,25 @@
 #include <vector>
 #include <deque>
 
+#include "Scheduler.h"
+
 namespace arangodb {
 
 struct ThreadPool {
+  using WorkItem = Scheduler::WorkItemBase;
+
   explicit ThreadPool(std::size_t threadCount);
   ~ThreadPool();
-
-  void detachSelf() noexcept;
-
-  struct Task {
-    virtual ~Task() = default;
-    virtual void execute() noexcept = 0;
-  };
-  void push(std::unique_ptr<Task>&& task) noexcept;
+  void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
   template<std::invocable F>
   void push(F&& fn) noexcept {
-    struct LambdaTask : Task {
+    struct LambdaTask : WorkItem {
       F _func;
       explicit LambdaTask(F&& func) : _func(std::forward<F>(func)) {}
 
       static_assert(std::is_nothrow_invocable_r_v<void, F>);
-      void execute() noexcept override { std::forward<F>(_func)(); }
+      void invoke() noexcept override { std::forward<F>(_func)(); }
     };
 
     push(std::make_unique<LambdaTask>(std::forward<F>(fn)));
@@ -55,12 +52,12 @@ struct ThreadPool {
  private:
   static thread_local ThreadPool* myThreadPool;
 
-  std::unique_ptr<Task> pop(std::stop_token) noexcept;
+  std::unique_ptr<WorkItem> pop(std::stop_token) noexcept;
   std::jthread makeThread() noexcept;
 
   std::mutex _mutex;
   std::condition_variable_any _cv;
-  std::deque<std::unique_ptr<Task>> _tasks;
+  std::deque<std::unique_ptr<WorkItem>> _tasks;
   std::stop_source _stop;
   std::vector<std::jthread> _threads;
 };

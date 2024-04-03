@@ -109,6 +109,11 @@ class Scheduler {
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
 
+  struct WorkItemBase {
+    virtual ~WorkItemBase() = default;
+    virtual void invoke() = 0;
+  };
+
   class DelayedWorkItem {
    public:
     ~DelayedWorkItem() {
@@ -171,11 +176,6 @@ class Scheduler {
 
  protected:
   ArangodServer& _server;
-
-  struct WorkItemBase {
-    virtual ~WorkItemBase() = default;
-    virtual void invoke() = 0;
-  };
 
   template<typename F>
   struct WorkItem final : WorkItemBase, F {
