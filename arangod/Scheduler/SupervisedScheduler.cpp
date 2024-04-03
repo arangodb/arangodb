@@ -205,8 +205,7 @@ SupervisedScheduler::SupervisedScheduler(
     ArangodServer& server, uint64_t minThreads, uint64_t maxThreads,
     uint64_t maxQueueSize, uint64_t fifo1Size, uint64_t fifo2Size,
     uint64_t fifo3Size, uint64_t ongoingLowPriorityLimit,
-    double unavailabilityQueueFillGrade, uint64_t maxNumberDetachedThreads,
-    metrics::MetricsFeature& metrics)
+    double unavailabilityQueueFillGrade, metrics::MetricsFeature& metrics)
     : Scheduler(server),
       _nf(server.getFeature<NetworkFeature>()),
       _sharedPRNG(server.getFeature<SharedPRNGFeature>()),
@@ -220,7 +219,6 @@ SupervisedScheduler::SupervisedScheduler(
       _maxNumWorkers(maxThreads),
       _maxFifoSizes{maxQueueSize, fifo1Size, fifo2Size, fifo3Size},
       _ongoingLowPriorityLimit(ongoingLowPriorityLimit),
-      _maxNumberDetachedThreads(maxNumberDetachedThreads),
       _unavailabilityQueueFillGrade(unavailabilityQueueFillGrade),
       _numWorking(0),
       _numAwake(0),
@@ -491,52 +489,6 @@ void SupervisedScheduler::shutdown() {
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
-}
-
-Result SupervisedScheduler::detachThread(uint64_t* detachedThreads,
-                                         uint64_t* maximumDetachedThreads) {
-  std::lock_guard<std::mutex> guard(_mutex);
-  if (detachedThreads != nullptr) {
-    *detachedThreads = _numDetached;
-  }
-  if (maximumDetachedThreads != nullptr) {
-    *maximumDetachedThreads = _maxNumberDetachedThreads;
-  }
-  // First see if we have already reached the limit:
-  if (_numDetached >= _maxNumberDetachedThreads) {
-    return Result(TRI_ERROR_TOO_MANY_DETACHED_THREADS);
-  }
-
-  // Now we have access to the _workerStates and _detachedWorkerStates
-  // Let's first find ourselves in the _workerStates:
-  uint64_t myNumber = Thread::currentThreadNumber();
-  auto it = std::find_if(
-      _workerStates.begin(), _workerStates.end(),
-      [&](auto const& v) { return v->_thread->threadNumber() == myNumber; });
-  if (it == _workerStates.end()) {
-    return Result(TRI_ERROR_INTERNAL,
-                  "scheduler thread for detaching not found");
-  }
-  std::shared_ptr<WorkerState> state = std::move(*it);
-  _workerStates.erase(it);
-  // Since the thread is effectively taken out of the pool, decrease the
-  // number of workers.
-  --_numWorkers;
-  state->_stop = true;  // We will be stopped after the current task is done
-                        // We know that we are working, so we do not
-                        // have to wake the thread.
-  ++_metricsThreadsStopped;
-  try {
-    _detachedWorkerStates.push_back(std::move(state));
-    ++_numDetached;
-  } catch (std::exception const&) {
-    // Ignore error here, the thread itself still holds a copy of the
-    // shared_ptr, so cleanup is guaranteed.
-    // But we do not want to throw here.
-    // Note that we do not count the detached thread in `_numDetached` in
-    // this case! This is intentional!
-  }
-  return {};
 }
 
 constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB
