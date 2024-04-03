@@ -921,7 +921,7 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
 #ifdef ARANGODB_USE_GOOGLE_TESTS
     constexpr bool alwaysHasScheduler = false;
 #else
-    constexpr bool alwaysHashScheduler = true;
+    constexpr bool alwaysHasScheduler = true;
 #endif
 
     if (alwaysHasScheduler || SchedulerFeature::SCHEDULER) {
