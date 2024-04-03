@@ -221,3 +221,25 @@ bool ReadWriteLock::isLockedRead() const noexcept {
 bool ReadWriteLock::isLockedWrite() const noexcept {
   return _state.load(std::memory_order_relaxed) & WRITE_LOCK;
 }
+
+std::string ReadWriteLock::stringifyLockState() const {
+  std::string result;
+
+  auto append = [&result](std::string msg) {
+    if (!result.empty()) {
+      result.append(", ");
+    }
+    result.append(msg);
+  };
+
+  auto state = _state.load(std::memory_order_relaxed);
+  auto readers = (state & READER_MASK) >> 32;
+  auto writers = (state & QUEUED_WRITER_MASK) >> 1;
+  append(std::to_string(readers).append(" active reader(s)"));
+  append(std::to_string(writers).append(" queued writer(s)"));
+  if (state & WRITE_LOCK) {
+    append("write-locked");
+  }
+
+  return result;
+}
