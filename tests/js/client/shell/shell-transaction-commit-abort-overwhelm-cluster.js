@@ -27,18 +27,19 @@
 'use strict';
 
 const jsunity = require("jsunity");
-const db = require("internal").db;
+const internal = require("internal");
+const db = internal.db;
 const url = require('url');
 const _ = require("lodash");
 const { getDBServers } = require('@arangodb/test-helper');
 
 const cn = "UnitTestsQueries";
-
+      
 function TransactionCommitAbortOverwhelmSuite () {
   'use strict';
     
   let testFunc = (cb) => {
-    // create exclusive transaction
+    // create write transaction
     let trx = db._createTransaction({
       collections: { write: "d" }
     });
@@ -96,6 +97,82 @@ function TransactionCommitAbortOverwhelmSuite () {
     tearDown: function () {
       db._useDatabase('_system');
       db._dropDatabase(cn);
+    },
+    
+    testQueryNotBlockedForAlreadyStartedTransaction : function () {
+      const header = {"X-Arango-Async": "store"};
+      
+      // start an exclusive trx
+      let trx = db._createTransaction({
+        collections: { exclusive: "d" }
+      });
+      
+      try {
+        for (let i = 0; i < 3000; i++) {
+          // flood scheduler queue with requests that will block because of the exclusive trx
+          arango.POST_RAW(`/_api/document/d`, {}, header);
+        }
+
+        // run an AQL query in the transaction - this must make progress
+        trx.query("FOR i IN 1..1000 INSERT {} INTO d");
+        
+        trx.commit();
+        trx = null;
+
+        let count;
+        let tries = 0;
+        while (++tries < 600) {
+          count = db._collection("d").count();
+          if (count === 4000) {
+            break;
+          }
+          internal.sleep(0.1);
+        }
+        assertEqual(4000, count);
+      } finally {
+        if (trx !== null) {
+          trx.commit();
+        }
+      }
+    },
+
+    testInsertNotBlockedForAlreadyStartedTransaction : function () {
+      const header = {"X-Arango-Async": "store"};
+      
+      // start an exclusive trx
+      let trx = db._createTransaction({
+        collections: { exclusive: "d" }
+      });
+      
+      try {
+        for (let i = 0; i < 3000; i++) {
+          // flood scheduler queue with requests that will block because of the exclusive trx
+          arango.POST_RAW(`/_api/document/d`, {}, header);
+        }
+
+        for (let i = 0; i < 1000; i++) {
+          // insert multiple documents in the transaction - this must make progress
+          trx.collection("d").insert({});
+        }
+
+        trx.commit();
+        trx = null;
+
+        let count;
+        let tries = 0;
+        while (++tries < 600) {
+          count = db._collection("d").count();
+          if (count === 4000) {
+            break;
+          }
+          internal.sleep(0.1);
+        }
+        assertEqual(4000, count);
+      } finally {
+        if (trx !== null) {
+          trx.commit();
+        }
+      }
     },
 
     testCommitNotAffectedByOverwhelm : function () {
