@@ -36,6 +36,7 @@
 #include "Aql/RestAqlHandler.h"
 #include "Aql/SharedQueryState.h"
 #include "Aql/SkipResult.h"
+#include "Basics/ScopeGuard.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ServerState.h"
 #include "Logger/LogMacros.h"
@@ -359,7 +360,7 @@ Result ExecutionBlockImpl<RemoteExecutor>::sendAsyncRequest(
   }
 
   arangodb::network::EndpointSpec spec;
-  auto res = network::resolveDestination(nf, _server, spec);
+  auto res = network::resolveDestination(nf, _server, spec).get();
   if (res != TRI_ERROR_NO_ERROR) {
     return Result(res);
   }

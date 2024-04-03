@@ -26,8 +26,6 @@
 #include <cstdint>
 #include <cstdlib>
 
-#include "Basics/Common.h"
-
 namespace arangodb {
 namespace aql {
 

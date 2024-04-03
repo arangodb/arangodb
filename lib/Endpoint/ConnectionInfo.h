@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Endpoint/Endpoint.h"
 
 namespace arangodb {

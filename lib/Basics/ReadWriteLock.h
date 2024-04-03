@@ -29,6 +29,7 @@
 #include <condition_variable>
 #include <cstdint>
 #include <mutex>
+#include <string>
 
 namespace arangodb::basics {
 
@@ -84,6 +85,8 @@ class ReadWriteLock {
   [[nodiscard]] bool isLocked() const noexcept;
   [[nodiscard]] bool isLockedRead() const noexcept;
   [[nodiscard]] bool isLockedWrite() const noexcept;
+
+  std::string stringifyLockState() const;
 
  private:
   /// @brief mutex for _readers_bell cv

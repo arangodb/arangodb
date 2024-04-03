@@ -24,7 +24,6 @@
 #include "Basics/application-exit.h"
 
 #include "Basics/CleanupFunctions.h"
-#include "Basics/Common.h"
 #include "Logger/Logger.h"
 
 #ifdef TRI_HAVE_UNISTD_H

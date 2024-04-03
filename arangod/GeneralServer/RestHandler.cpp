@@ -145,6 +145,9 @@ void RestHandler::trackTaskStart() noexcept {
 }
 
 void RestHandler::trackTaskEnd() noexcept {
+  // the queueing time in seconds
+  double queueTime = _statistics.ELAPSED_WHILE_QUEUED();
+
   if (_trackedAsOngoingLowPrio) {
     TRI_ASSERT(PriorityRequestLane(determineRequestLane()) ==
                RequestPriority::LOW);
@@ -154,10 +157,18 @@ void RestHandler::trackTaskEnd() noexcept {
 
     // update the time the last low priority item spent waiting in the queue.
 
-    // the queueing time is in ms
-    uint64_t queueTimeMs =
-        static_cast<uint64_t>(_statistics.ELAPSED_WHILE_QUEUED() * 1000.0);
+    // the queueing time in ms
+    uint64_t queueTimeMs = static_cast<uint64_t>(queueTime * 1000.0);
     SchedulerFeature::SCHEDULER->setLastLowPriorityDequeueTime(queueTimeMs);
+  }
+
+  if (queueTime >= 30.0) {
+    // this is an informational message about an exceptionally long queuing
+    // time. it is not per se a bug, but could be a sign of overload of the
+    // instance.
+    LOG_TOPIC("e7b15", INFO, Logger::REQUESTS)
+        << "request to " << _request->fullUrl() << " was queued for "
+        << Logger::FIXED(queueTime) << "s";
   }
 }
 
@@ -178,8 +189,8 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
   // we must use the request's permissions here and set them in the
   // thread-local variable when calling forwardingTarget().
   // this is because forwardingTarget() may run permission checks.
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+  ExecContextScope scope(
+      basics::downCast<ExecContext>(_request->requestContext()));
 
   ResultT forwardResult = forwardingTarget();
   if (forwardResult.fail()) {
@@ -482,8 +493,8 @@ bool RestHandler::wakeupHandler() {
 
 void RestHandler::executeEngine(bool isContinue) {
   DTRACE_PROBE1(arangod, RestHandlerExecuteEngine, this);
-  ExecContext* exec = static_cast<ExecContext*>(_request->requestContext());
-  ExecContextScope scope(exec);
+  ExecContextScope scope(
+      basics::downCast<ExecContext>(_request->requestContext()));
 
   try {
     RestStatus result = RestStatus::DONE;

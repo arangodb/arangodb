@@ -40,7 +40,7 @@ const setup = require(base);
   setup.createUsers();
   setup.createMany();
   setup.createOrder();
-  
+  setup.createSmartGraph3_11_compat();
   setup.createFoxx();
 })();
 

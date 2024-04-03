@@ -23,8 +23,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
-
 #include "Basics/StaticStrings.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"

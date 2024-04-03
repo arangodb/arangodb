@@ -29,7 +29,6 @@
 #include "Aql/NonConstExpressionContainer.h"
 #include "Aql/Projections.h"
 #include "Aql/VarInfoMap.h"
-#include "Basics/Common.h"
 #include "Basics/MemoryTypes/MemoryTypes.h"
 #include "Transaction/Methods.h"
 

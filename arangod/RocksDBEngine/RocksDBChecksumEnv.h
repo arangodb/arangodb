@@ -27,8 +27,6 @@
 #include <rocksdb/env.h>
 #include <rocksdb/status.h>
 
-#include "Basics/Common.h"
-
 #include <mutex>
 #include <string>
 #include <string_view>

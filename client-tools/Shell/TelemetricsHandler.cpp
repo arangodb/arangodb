@@ -28,6 +28,7 @@
 #include "Basics/EncodingUtils.h"
 #include "Basics/Exceptions.h"
 #include "Basics/StaticStrings.h"
+#include "Basics/StringBuffer.h"
 #include "Basics/StringUtils.h"
 #include "Basics/voc-errors.h"
 #include "Endpoint/Endpoint.h"

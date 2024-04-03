@@ -334,10 +334,10 @@ futures::Future<futures::Unit> RestAqlHandler::setupClusterQuery() {
     generateError(revisionRes);
     co_return;
   }
-  q->prepareClusterQuery(querySlice, collectionBuilder.slice(), variablesSlice,
-                         snippetsSlice, traverserSlice,
-                         _request->value(StaticStrings::UserString),
-                         answerBuilder, analyzersRevision, fastPath);
+  q->prepareFromVelocyPack(querySlice, collectionBuilder.slice(),
+                           variablesSlice, snippetsSlice, traverserSlice,
+                           _request->value(StaticStrings::UserString),
+                           answerBuilder, analyzersRevision, fastPath);
 
   answerBuilder.close();  // result
   answerBuilder.close();

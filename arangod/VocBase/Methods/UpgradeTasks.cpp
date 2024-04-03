@@ -437,7 +437,7 @@ Result createSystemCollectionsIndices(
 }  // namespace
 
 bool UpgradeTasks::createSystemCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
   // after the call to ::createSystemCollections this vector should contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -476,7 +476,7 @@ bool UpgradeTasks::createSystemCollectionsAndIndices(
 }
 
 bool UpgradeTasks::createStatisticsCollectionsAndIndices(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
   // This vector should after the call to ::createSystemCollections contain
   // a LogicalCollection for *every* (required) system collection.
   std::vector<std::shared_ptr<LogicalCollection>> presentSystemCollections;
@@ -506,8 +506,7 @@ bool UpgradeTasks::createStatisticsCollectionsAndIndices(
 /// @brief drops '_iresearch_analyzers' collection
 ////////////////////////////////////////////////////////////////////////////////
 bool UpgradeTasks::dropLegacyAnalyzersCollection(
-    TRI_vocbase_t& vocbase,
-    arangodb::velocypack::Slice const& /*upgradeParams*/) {
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice /*upgradeParams*/) {
   // drop legacy collection if upgrading the system vocbase and collection found
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   if (!vocbase.server().hasFeature<arangodb::SystemDatabaseFeature>()) {
@@ -532,15 +531,15 @@ bool UpgradeTasks::dropLegacyAnalyzersCollection(
       vocbase, StaticStrings::LegacyAnalyzersCollection, col);
   if (col) {
     CollectionDropOptions dropOptions{.allowDropSystem = true,
-                                      .allowDropGraphCollection = false};
+                                      .allowDropGraphCollection = true};
     res = arangodb::methods::Collections::drop(*col, dropOptions);
     return res.ok();
   }
   return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }
 
-bool UpgradeTasks::addDefaultUserOther(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& params) {
+bool UpgradeTasks::addDefaultUserOther(TRI_vocbase_t& vocbase,
+                                       arangodb::velocypack::Slice params) {
   TRI_ASSERT(!vocbase.isSystem());
   TRI_ASSERT(params.isObject());
 
@@ -595,7 +594,7 @@ bool UpgradeTasks::addDefaultUserOther(
 }
 
 bool UpgradeTasks::renameReplicationApplierStateFiles(
-    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice const& slice) {
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice slice) {
   std::string const path = vocbase.engine().databasePath();
 
   std::string const source = arangodb::basics::FileUtils::buildFilename(
@@ -631,4 +630,22 @@ bool UpgradeTasks::renameReplicationApplierStateFiles(
     return false;
   }
   return result;
+}
+
+////////////////////////////////////////////////////////////////////////////////
+/// @brief drops '_pregel_queries' collection
+////////////////////////////////////////////////////////////////////////////////
+
+bool UpgradeTasks::dropPregelQueriesCollection(
+    TRI_vocbase_t& vocbase, arangodb::velocypack::Slice /*upgradeParams*/) {
+  std::shared_ptr<arangodb::LogicalCollection> col;
+  auto res =
+      arangodb::methods::Collections::lookup(vocbase, "_pregel_queries", col);
+  if (col) {
+    CollectionDropOptions dropOptions{.allowDropSystem = true,
+                                      .allowDropGraphCollection = true};
+    res = arangodb::methods::Collections::drop(*col, dropOptions);
+    return res.ok();
+  }
+  return res.is(TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND);
 }

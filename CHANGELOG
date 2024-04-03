@@ -19,19 +19,66 @@ devel
   The startup option `--rocksdb.throttle-slow-down-writes-trigger` has been
   obsoleted.
 
+* Log an info message if a request was queued in the scheduler queue for 30 s
+  or longer.
+
+* Add upgrade task to drop `_pregel_queries` system collections.
+
+* Fixed an upgrade issue on Agents. When agents are started with
+  `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
+  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
+  is not required on the Agent instances.
+
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected
+  and rolled back quickly. However, there was a code path that triggered the
+  "fast lock round" with long request timeouts, which could lead to long
+  wait times until deadlocks were detected and rolled back.
+
+* EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
+  the restore process may generate new internal collection ids.
+  These generated ids were not always updated in the restored SmartGraph schema.
+  If the ids diverge, the restored SmartGraph still works as expected, all data is there
+  and can be queried and modified. Only the schema of the restored SmartGraph
+  could not be changed anymore, e.g. no collections could be added to or removed
+  from the graph.
+  The SmartGraph schema handling now does not consider collection ids anymore,
+  so that schemas can again be modified, even those of existing SmartGraphs that
+  were originally affected by the issue.
+
+* FE-316: Edge collection import example now correctly reflects the required
+  `from` and `to` attributes.
+
+* FE-437: reinitialize analyzer form when type changes.
+
+* Remove "read lock" acquisition calls from shard synchronization because they
+  are now unnecessary. This slightly simplifies the shard synchronization
+  protocol.
+
+* Repair shard rebalancer if some server has no leaders of a collection
+  but followers. Previously, this server was then not always considered
+  for leader movements.
+
+* Change the default log format. The option log.thread is now by default true.
+  The option log.time-format is now by default `utc-datestring-micros`.
+
 * Guarantee conditional-only evaluation of the operands of the AQL ternary
-  operator.
+  operator and the logical AND and OR operators, if any of the operands
+  is a subquery.
 
   Given an AQL ternary condition such as
 
       condition ? truePart : falsePart
 
-  the `truePart` expression is now guaranteed to be executed only if the
-  `condition` is truish, and the `falsePart` is guaranteed to be evaluated
-  only if the `condition` is falsy.
+  the `truePart` expression is now executed only if `condition` is truthy, 
+  and the `falsePart` is evaluated only if `condition` is falsy.
   In previous versions of ArangoDB the `truePart` and `falsePart` operands 
-  of the ternary operator were sometimes evaluated eagerly and out-of-line
-  if the operands were subqueries.
+  of the ternary operator were evaluated eagerly and out-of-line if the 
+  operands were subqueries.
 
   The ternary operator's condition is now pulled out and made available under
   a separate temporary variable. For example, the query
@@ -59,7 +106,11 @@ devel
 
   This guarantees that the condition is only evaluated once, and that the
   `truePart` and `falsePart` operands are only executed if `condition` was
-  `true` or `false`, respectively.
+  truthy or false, respectively.
+
+  Also only evaluate the right-hand operands of logical AND and logical OR if
+  the left-hand operand evalutes to a truthy value (logical AND) or a falsy
+  value (logical OR).
 
 * Allow limiting the amount of async prefetching operations for AQL queries.
   Since version 3.12, AQL queries can make use of async prefetching. While this
@@ -88,6 +139,43 @@ devel
   actually be executed in the context of the original database, and not the one
   specified in the request.
   With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
+
+
+3.12.0 (2024-03-21)
+-------------------
+
+* Revert arangodump exclusion the following cluster collection properties when
+  writing collection parameters files in a single server dump:
+  - replicationFactor
+  - writeConcern
+  - numberOfShards
+  - minReplicationFactor
+  - shardKeys
+  - shards
+
+* Accept language settings found in the LANGUAGE file which previous versions
+  have detected for the "C" locale. This is to allow upgrades from 3.11 if the
+  database directory was created with the "C" locale.
+
+* FE-437: reinitialize analyzer form when type changes.
+
+
+3.12.0-rc.1 (2024-03-12)
+------------------------
+
+* Rebuilt included rclone v1.65.2 with go1.21.8.
+
+* Repair shard rebalancer if some server has no leaders of a collection but
+  followers. Previously, this server was then not always considered for leader
+  movements.
+
+* Updated ArangoDB Starter to v0.19.0.
+
+
+3.12.0-beta.1 (2024-03-07)
+--------------------------
+
+* Updated ArangoDB Starter to v0.19.0-preview-1.
 
 
 3.12.0-alpha.1 (2024-03-06)
@@ -565,17 +653,6 @@ devel
   environment.
 
 * Fix propagation of collection `writeConcern` changes to DB servers.
-
-* Make arangodump exclude the following cluster collection properties when
-  writing collection parameters files in a single server dump:
-  - replicationFactor
-  - writeConcern
-  - numberOfShards
-  - minReplicationFactor
-  - shardKeys
-  - shards
-  It is not really useful to write these attributes out when taking single
-  server dumps, because they don't have useful values.
 
 * Change default value of arangodump startup option `--use-parallel-dump` from
   `false` to `true`.

@@ -58,12 +58,13 @@ namespace std_coro = std;
 namespace arangodb::futures {
 template<typename T>
 class Future;
+
 template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
-    _execContext = &ExecContext::current();
+    _execContext = ExecContext::currentAsShared();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) mutable noexcept {
           _result = std::move(result);
@@ -81,7 +82,7 @@ struct FutureAwaitable {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<futures::Try<T>> _result;
-  ExecContext const* _execContext;
+  std::shared_ptr<ExecContext const> _execContext;
 };
 
 /// See below at (*) for an explanation why we need this operator co_await
@@ -97,7 +98,7 @@ struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
   bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
-    _execContext = &ExecContext::current();
+    _execContext = ExecContext::currentAsShared();
     std::move(_future).thenFinal(
         [coro, this](futures::Try<T>&& result) noexcept {
           _result = F::operator()(std::move(result));
@@ -120,7 +121,7 @@ struct FutureTransformAwaitable : F {
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
-  ExecContext const* _execContext;
+  std::shared_ptr<ExecContext const> _execContext;
 };
 
 template<typename T>

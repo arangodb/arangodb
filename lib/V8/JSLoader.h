@@ -31,7 +31,6 @@
 
 #include <v8.h>
 
-#include "Basics/Common.h"
 #include "Utilities/ScriptLoader.h"
 
 namespace arangodb {

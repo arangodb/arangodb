@@ -139,6 +139,8 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) COLLECT r = result RETURN r",
         "FOR i IN 1..10 LET result = (RETURN MAX(i)) FILTER result < 3 RETURN result",
         "FOR i IN 1..10 LET result = (RETURN RAND()) FILTER i < 10 RETURN result",
+        // 2 uncorrelated subqueries:
+        "FOR i IN 1..10 LET result = (RETURN i + 1) LET test = (FOR j IN 1..2 RETURN j) RETURN result IN test",
       ];
 
       queries.forEach(function (query) {
@@ -167,7 +169,6 @@ function optimizerRuleTestSuite () {
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) LIMIT 1 RETURN result",
         "FOR i IN 1..10 LET result = IS_STRING(i) LET test = (RETURN result + 1) LIMIT 1 RETURN test",
         "FOR i IN 1..10 LET result = (RETURN IS_STRING(i)) SORT i RETURN result",
-        "FOR i IN 1..10 LET result = (RETURN i + 1) LET test = (FOR j IN 1..2 RETURN j) RETURN result IN test",
         "FOR i IN 1..10 LET v = (RETURN i * 2) LIMIT 2 LET result = (RETURN v < 5) RETURN v",
       ];
 
@@ -388,6 +389,38 @@ function optimizerRuleTestSuite () {
     /// @brief test results
     ////////////////////////////////////////////////////////////////////////////////
 
+    testResultsNoEffect: function () {
+      const queries = [
+        [
+          "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] - 1 IN x ? 1 : 0",
+          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+        ],
+        [
+          "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] IN x ? 1 : 0",
+          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+        ],
+      ];
+
+      queries.forEach(function (query) {
+        const planDisabled = db._createStatement({query: query[0], bindVars: {}, options: paramDisabled}).explain();
+        const planEnabled = db._createStatement({query: query[0], bindVars: {}, options: paramEnabled}).explain();
+
+        // the rule should not trigger in these queries, so everything should be identical
+        const resultDisabled = db._query(query[0], {}, paramDisabled);
+        const resultEnabled = db._query(query[0], {}, paramEnabled);
+        
+        assertEqual(-1, planDisabled.plan.rules.indexOf(ruleName), query[0]);
+        assertEqual(-1, planEnabled.plan.rules.indexOf(ruleName), query[0]);
+
+        assertEqual(resultDisabled.toArray(), query[1], query[0]);
+        assertEqual(resultEnabled.toArray(), query[1], query[0]);
+      });
+    },
+
+    ////////////////////////////////////////////////////////////////////////////////
+    /// @brief test results
+    ////////////////////////////////////////////////////////////////////////////////
+
     testResults: function () {
       const queries = [
         ["FOR i IN 1..10 LET a = i + 1 FILTER i < 4 RETURN a", [2, 3, 4]],
@@ -459,14 +492,6 @@ function optimizerRuleTestSuite () {
           [3, 4, 5, 6],
         ],
         [
-          "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] - 1 IN x ? 1 : 0",
-          [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-        ],
-        [
-          "FOR i IN 1..10 LET a = (RETURN i + 1) LET x = (FOR j IN 1..i RETURN j) RETURN a[0] IN x ? 1 : 0",
-          [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-        ],
-        [
           "FOR i IN 1..10 LET a = (RETURN MAX(1..i)) FILTER i > 4 RETURN a[0]",
           [5, 6, 7, 8, 9, 10],
         ],
@@ -505,6 +530,74 @@ function optimizerRuleTestSuite () {
         assertEqual(resultDisabled.toArray(), query[1], query[0]);
         assertEqual(resultEnabled.toArray(), query[1], query[0]);
       });
+    },
+
+    testComplexQuery : function () {
+      // the following subqueries are all uncorrelated, so they should
+      // not be moved around
+      const query = `
+FOR n IN UNION(
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc,
+  FOR doc IN [1,2,3] FILTER doc IN [1,2,3] LIMIT 1 RETURN doc
+) LIMIT 1 RETURN 1
+`;
+
+      const plan = db._createStatement({query}).explain();
+
+      // the rule should not trigger in these queries, so everything should be identical
+      assertEqual(-1, plan.plan.rules.indexOf(ruleName), query);
+      
+      const result = db._query(query).toArray();
+
+      assertEqual([1], result, query);
     },
 
     ////////////////////////////////////////////////////////////////////////////////

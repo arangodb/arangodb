@@ -45,7 +45,6 @@ namespace transaction {
 class Methods;
 }
 namespace aql {
-
 class Query;
 class QueryWarnings;
 class OutputAqlItemRow;

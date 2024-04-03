@@ -25,7 +25,6 @@
 
 #include <velocypack/Slice.h>
 
-#include "Basics/Common.h"
 #include "VocBase/vocbase.h"
 
 namespace arangodb {

@@ -23,7 +23,6 @@
 
 #pragma once
 
-#include "Aql/Ast.h"
 #include "Aql/ExecutionNode/ExecutionNode.h"
 #include "Aql/ExecutionNodeId.h"
 #include "Aql/Variable.h"

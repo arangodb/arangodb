@@ -24,7 +24,6 @@
 
 #pragma once
 
-#include "Basics/Common.h"
 #include "Shell/arangosh.h"
 #include <fuerte/connection.h>
 #include <fuerte/loop.h>

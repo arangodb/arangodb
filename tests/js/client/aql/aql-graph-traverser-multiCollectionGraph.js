@@ -33,13 +33,12 @@ const internal = require('internal');
 const db = require('internal').db;
 const errors = require('@arangodb').errors;
 const gm = require('@arangodb/general-graph');
+const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
+const gh = require('@arangodb/graph/helpers');
+const _ = require('lodash');
+
 const vn = 'UnitTestVertexCollection';
 const en = 'UnitTestEdgeCollection';
-
-const executeAllJson = require("@arangodb/aql-helper").executeAllJson;
-
-const gh = require('@arangodb/graph/helpers');
-var _ = require('lodash');
 
 function multiCollectionGraphSuite() {
   /* *********************************************************************

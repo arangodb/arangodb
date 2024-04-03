@@ -30,7 +30,6 @@
 #include <rocksdb/options.h>
 #include <rocksdb/table.h>
 
-#include "Basics/Common.h"
 #include "RestServer/arangod.h"
 #include "RocksDBEngine/RocksDBColumnFamilyManager.h"
 #include "RocksDBEngine/RocksDBOptionsProvider.h"
