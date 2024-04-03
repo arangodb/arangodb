@@ -151,7 +151,8 @@ std::tuple<query_t, index_t> AgencyCache::read(
   return std::tuple(std::move(result), _commitIndex);
 }
 
-futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
+futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index,
+                                                       Executor executor) {
   std::shared_lock s(_storeLock);
   if (index <= _commitIndex) {
     return futures::makeFuture(arangodb::Result());
@@ -159,8 +160,9 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index) {
   // intentionally don't release _storeLock here until we have inserted the
   // promise
   std::lock_guard w(_waitLock);
-  return _waiting.emplace(index, futures::Promise<arangodb::Result>())
-      ->second.getFuture();
+  return _waiting
+      .emplace(index, std::pair{futures::Promise<arangodb::Result>(), executor})
+      ->second.first.getFuture();
 }
 
 futures::Future<Result> AgencyCache::waitForLatestCommitIndex() {
@@ -520,9 +522,9 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
       if (pit->first > commitIndex) {
         break;
       }
-      auto pp =
-          std::make_shared<futures::Promise<Result>>(std::move(pit->second));
-      if (scheduler && !this->isStopping()) {
+      auto&& [promise, executor] = pit->second;
+      auto pp = std::make_shared<futures::Promise<Result>>(std::move(promise));
+      if (executor == Executor::Scheduler && scheduler && !this->isStopping()) {
         scheduler->queue(RequestLane::CLUSTER_INTERNAL,
                          [pp] { pp->setValue(Result()); });
       } else {
@@ -603,7 +605,7 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
-      pit->second.setValue(Result(_shutdownCode));
+      pit->second.first.setValue(Result(_shutdownCode));
       ++pit;
     }
     _waiting.clear();
