@@ -26,7 +26,8 @@
 // //////////////////////////////////////////////////////////////////////////////
 
 const functionsDocumentation = {
-  'chaos': 'chaos tests'
+  'chaos': 'chaos tests',
+  'deadlock': 'deadlock tests'
 };
 const optionsDocumentation = [];
 
@@ -35,11 +36,12 @@ const tu = require('@arangodb/testutils/test-utils');
 
 const testPaths = {
   'chaos': [ tu.pathForTesting('client/chaos') ],
+  'deadlock': [ tu.pathForTesting('client/chaos') ], // intentionally same path as chaos
 };
 
 function chaos (options) {
   let testCasesWithConfigs = {};
-  let testCases = tu.scanTestPaths(testPaths.chaos, options);
+  let testCases = tu.scanTestPaths(testPaths.chaos, options).filter((c) => c.includes("test-module-chaos"));
   
   // The chaos test suite is parameterized and each configuration runs 5min.
   // For the nightly tests we want to run a large number of possible parameter
@@ -72,7 +74,7 @@ function chaos (options) {
     }
     return testCase;
   });
-  
+ 
   testCases = tu.splitBuckets(options, testCases);
   
   class chaosRunner extends tu.runLocalInArangoshRunner {
@@ -99,9 +101,15 @@ function chaos (options) {
   return new chaosRunner(options, 'chaos', {}).run(testCases);
 }
 
+function deadlock (options) {
+  let testCases = tu.scanTestPaths(testPaths.deadlock, options).filter((c) => c.includes("test-deadlock"));
+  return new tu.runLocalInArangoshRunner(options, 'deadlock', {}).run(testCases);
+}
+
 exports.setup = function (testFns, opts, fnDocs, optionsDoc, allTestPaths) {
   Object.assign(allTestPaths, testPaths);
   testFns['chaos'] = chaos;
+  testFns['deadlock'] = deadlock;
   for (var attrname in functionsDocumentation) { fnDocs[attrname] = functionsDocumentation[attrname]; }
   for (var i = 0; i < optionsDocumentation.length; i++) { optionsDoc.push(optionsDocumentation[i]); }
 };
