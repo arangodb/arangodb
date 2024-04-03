@@ -27,6 +27,10 @@ devel
   - follower requests that acquire the lock on the leader while the follower
     tries to get in sync are now running with low instead of medium priority.
 
+* Obsolete startup option `--server.max-number-detached-threads`.
+  This option is now obsolete because coroutines are used instead of blocking
+  function calls.
+
 * Log an info message if a request was queued in the scheduler queue for 30 s
   or longer.
 
