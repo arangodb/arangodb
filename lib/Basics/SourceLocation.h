@@ -23,6 +23,7 @@
 
 #pragma once
 
+#include <cstdint>
 #include <iosfwd>
 #include <source_location>
 #include <string_view>
