@@ -786,7 +786,7 @@ futures::Future<Result> Manager::ensureManagedTrx(
 
 namespace {
 futures::Future<futures::Unit> sleepUsingSchedulerIfAvailable(
-    const char* reason, std::chrono::milliseconds duration) {
+    std::string_view reason, std::chrono::milliseconds duration) {
 #ifdef ARANGODB_USE_GOOGLE_TESTS
   constexpr bool alwaysHasScheduler = false;
 #else
