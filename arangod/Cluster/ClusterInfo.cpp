@@ -5125,7 +5125,7 @@ auto ClusterInfo::getDatabaseNameForShard(ShardID shardId)
     -> std::optional<DatabaseID> {
   READ_LOCKER(readLocker, _planProt.lock);
 
-  if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
+  if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
     return DatabaseID{it->second};
   } else {
     return std::nullopt;
