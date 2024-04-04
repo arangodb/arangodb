@@ -29,6 +29,11 @@ namespace arangodb::basics {
 
 auto operator<<(std::ostream& ostream, SourceLocation const& sourceLocation)
     -> std::ostream& {
-  return ostream << sourceLocation.file_name() << ":" << sourceLocation.line();
+  return ostream << sourceLocation.file_name() << ":"
+                 << sourceLocation.line()
+                 // I guess the column usually isn't useful.
+                 // << sourceLocation.column() << ":"
+                 << "[" << sourceLocation.function_name() << "]";
 }
+
 }  // namespace arangodb::basics
