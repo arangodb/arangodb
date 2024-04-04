@@ -29,7 +29,6 @@
 #include <string_view>
 
 namespace arangodb::basics {
-consteval auto stripPrefix(const char* pathStr) -> const char*;
 
 // This is mostly a custom type around std::source_location with the same
 // interface; However, it changes the filename's path, so it's relative to the
@@ -75,13 +74,18 @@ struct SourceLocation {
   [[nodiscard]] constexpr auto column() const noexcept -> decltype(_column) {
     return _column;
   }
+
+  // if pathStr is `/path/to/arangodb/lib/Basics/SourceLocation.h`,
+  // then this will return `lib/Basics/SourceLocation.h`
+  consteval static auto _stripPrefix(const char* pathStr) -> const char*;
 };
 
 auto operator<<(std::ostream&, SourceLocation const&) -> std::ostream&;
 
 // if pathStr is `/path/to/arangodb/lib/Basics/SourceLocation.h`,
 // then this will return `lib/Basics/SourceLocation.h`
-consteval auto stripPrefix(const char* pathStr) -> const char* {
+consteval auto SourceLocation::_stripPrefix(const char* pathStr) -> const
+    char* {
   // `/path/to/arangodb/lib/Basics/SourceLocation.h`
   constexpr auto thisFile = std::string_view(__FILE__);
   // `/path/to/arangodb/lib/Basics`
@@ -99,7 +103,7 @@ consteval auto stripPrefix(const char* pathStr) -> const char* {
 }
 
 static_assert(std::string_view{"lib/Basics/SourceLocation.h"}.compare(
-                  stripPrefix(__FILE__)) == 0);
+                  SourceLocation::_stripPrefix(__FILE__)) == 0);
 
 }  // namespace arangodb::basics
 
