@@ -1036,9 +1036,15 @@ futures::Future<Result> Manager::statusChangeWithTimeout(
     TransactionId tid, std::string const& database,
     transaction::Status status) {
   double startTime = 0.0;
-  constexpr double maxWaitTime = 3.0;
+  constexpr double maxWaitTime = 9.0;
   Result res;
   while (true) {
+    // does not acquire the lock
+    CONDITIONAL_READ_LOCKER(guard, _hotbackupCommitLock, false);
+    if (status == Status::COMMITTED) {
+      // only for commit acquire the lock
+      guard.lock();
+    }
     res = updateTransaction(tid, status, false, database);
     if (res.ok() || !res.is(TRI_ERROR_LOCKED)) {
       break;
@@ -1058,7 +1064,6 @@ futures::Future<Result> Manager::statusChangeWithTimeout(
 
 futures::Future<Result> Manager::commitManagedTrx(TransactionId tid,
                                                   std::string const& database) {
-  READ_LOCKER(guard, _hotbackupCommitLock);
   co_return co_await statusChangeWithTimeout(tid, database,
                                              transaction::Status::COMMITTED);
 }
