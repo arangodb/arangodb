@@ -161,8 +161,8 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index,
   // promise
   std::lock_guard w(_waitLock);
   return _waiting
-      .emplace(index, std::pair{futures::Promise<arangodb::Result>(), executor})
-      ->second.first.getFuture();
+      .emplace(index, Waiter{futures::Promise<arangodb::Result>(), executor})
+      ->second.promise.getFuture();
 }
 
 futures::Future<Result> AgencyCache::waitForLatestCommitIndex() {
@@ -605,7 +605,7 @@ void AgencyCache::beginShutdown() {
     std::lock_guard g(_waitLock);
     auto pit = _waiting.begin();
     while (pit != _waiting.end()) {
-      pit->second.first.setValue(Result(_shutdownCode));
+      pit->second.promise.setValue(Result(_shutdownCode));
       ++pit;
     }
     _waiting.clear();
