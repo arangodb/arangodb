@@ -54,7 +54,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
   Guarded<GuardedData>::mutex_guard_type guard = guarded.getLockedGuard();
   if (guard->resigned) {
     throw ParticipantResignedException(
-        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+        TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
   }
   auto requestGuard = guard->requestInFlight.acquire();
   if (not requestGuard) {
@@ -111,7 +111,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
         throw ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
       }
       if (result.fail()) {
         LOG_CTX("0982a", ERR, lctx) << "failed to persist: " << result;
@@ -135,7 +135,7 @@ auto AppendEntriesManager::appendEntries(AppendEntriesRequest request)
       guard = self->guarded.getLockedGuard();
       if (guard->resigned) {
         throw ParticipantResignedException(
-            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE);
+            TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED);
       }
       if (result.fail()) {
         LOG_CTX("7cb3d", ERR, lctx)
