@@ -488,18 +488,18 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     std::lock_guard g(_storeLock);
     ++_commitIndex;
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
-      _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
-      _commitIndex};  // apply logs
+        _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
+        _commitIndex};  // apply logs
     {
       std::lock_guard g(_callbacksLock);
-      for (auto const &trx: VPackArrayIterator(trxs)) {
+      for (auto const& trx : VPackArrayIterator(trxs)) {
         handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }
     }
-    for (auto const &i: pc) {
+    for (auto const& i : pc) {
       _planChanges.emplace(_commitIndex, i);
     }
-    for (auto const &i: cc) {
+    for (auto const& i : cc) {
       _currentChanges.emplace(_commitIndex, i);
     }
   }
