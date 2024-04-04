@@ -456,6 +456,7 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
+      _shardToDb(_resourceMonitor),
       _shardToShardGroupLeader(_resourceMonitor),
       _shardGroups(_resourceMonitor),
       _plannedViews(_resourceMonitor),
@@ -978,6 +979,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       _resourceMonitor};
   decltype(_shardGroups) newShardGroups{_resourceMonitor};
   decltype(_shardToName) newShardToName{_resourceMonitor};
+  decltype(_shardToDb) newShardToDb{_resourceMonitor};
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision{_resourceMonitor};
   decltype(_newStuffByDatabase) newStuffByDatabase{_resourceMonitor};
 
@@ -998,6 +1000,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     newShardToShardGroupLeader = _shardToShardGroupLeader;
     newShardGroups = _shardGroups;
     newShardToName = _shardToName;
+    newShardToDb = _shardToDb;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
     auto ende = std::chrono::steady_clock::now();
@@ -1461,10 +1464,12 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           newShards.erase(collectionId);
           if (auto maybeShardID = ShardID::shardIdFromString(collectionId);
               maybeShardID.ok()) {
+            auto const& shardId = maybeShardID.get();
             // The list contains collections and shards by name and id.
             // So it is expected that some are not valid shard ids.
             // Make sure we only erase valid shard ids.
-            newShardToName.erase(maybeShardID.get());
+            newShardToName.erase(shardId);
+            newShardToDb.erase(shardId);
           }
         }
         _newPlannedCollections.erase(it);
@@ -1531,6 +1536,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
               newShards.erase(shardId);
               newShardsToPlanServers.erase(sId);
               newShardToName.erase(sId);
+              newShardToDb.erase(sId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
               newShardToShardGroupLeader.erase(sId);
@@ -1618,7 +1624,8 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         auto shardIDs = newCollection->shardIds();
         auto shards = allocateShared<std::vector<ShardID>>();
         shards->reserve(shardIDs->size());
-        newShardToName.reserve(shardIDs->size());
+        newShardToName.reserve(newShardToName.size() + shardIDs->size());
+        newShardToDb.reserve(newShardToDb.size() + shardIDs->size());
 
         for (auto const& p : *shardIDs) {
           shards->push_back(p.first);
@@ -1626,6 +1633,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           v->assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(p.first, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
+          newShardToDb.insert_or_assign(p.first, databaseName);
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
@@ -1860,6 +1868,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
     _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
+    _shardToDb.swap(newShardToDb);
     _pendingCleanups.swap(_currentCleanups);
   }
 
@@ -4648,28 +4657,25 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
     }
   }
 
-  auto const resolveShards = [&]() -> Result {
-    for (auto [i, shardID] : enumerate(shards)) {
+  auto const resolveShards = [&]() -> std::variant<Result, ShardID> {
+    for (auto [i, shardId] : enumerate(shards)) {
       // _shardsToCurrentServers is a map-type <ShardId,
       // std::shared_ptr<std::vector<ServerId>>>
-      auto it = _shardsToCurrentServers.find(shardID);
+      auto it = _shardsToCurrentServers.find(shardId);
       if (it == _shardsToCurrentServers.end()) {
-        return TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND;
+        return Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
       }
       auto& servers = it->second;
       TRI_ASSERT(servers != nullptr);
       TRI_ASSERT(!servers->empty());
 
       if (servers->front().starts_with('_')) {
-        LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
-            << "getLeaderForShard: found resigned leader for shard " << shardID
-            << ", waiting for half a second...";
-        return TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED;
+        return shardId;
       }
       result[i] = ServerID{servers->front()};
     }
 
-    return TRI_ERROR_NO_ERROR;
+    return Result{TRI_ERROR_NO_ERROR};
   };
 
   while (true) {
@@ -4677,16 +4683,50 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
       co_return {TRI_ERROR_SHUTTING_DOWN};
     }
 
-    {
+    auto resolveResult = [&]() {
       READ_LOCKER(readLocker, _currentProt.lock);
-      if (auto resolveResult = resolveShards();
-          resolveResult != TRI_ERROR_CLUSTER_SHARD_LEADER_RESIGNED) {
-        co_return resolveResult;
+      return resolveShards();
+    }();
+
+    if (std::holds_alternative<Result>(resolveResult)) {
+      co_return std::get<Result>(resolveResult);
+    } else {
+      auto shardId = std::get<ShardID>(resolveResult);
+      auto database = getDatabaseNameForShard(shardId);
+      auto collection = getCollectionNameForShard(shardId);
+      if (!database.has_value() || collection.empty()) {
+        co_return {TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND};
+      }
+      LOG_TOPIC("289f7", INFO, Logger::CLUSTER)
+          << "getLeaderForShard: found resigned leader for shard " << shardId
+          << " (part of " << *database << "/" << collection << ")"
+          << ", waiting for the new leader to take over.";
+      auto path = paths::aliases::current()
+                      ->collections()
+                      ->database(*database)
+                      ->collection(collection)
+                      ->shard(shardId)
+                      ->servers();
+      // wait for the leader takeover to appear in our agency cache
+      auto const raftIndex = co_await _agencyCallbackRegistry.waitFor(
+          *path, [&](velocypack::Slice servers) -> bool {
+            bool const leaderResigned = [&]() {
+              if (servers.isArray() && servers.length() > 0) {
+                auto const leader = servers[0];
+                return leader.isString() &&
+                       leader.stringView().starts_with('_');
+              } else {
+                return false;
+              }
+            }();
+            return !leaderResigned;
+          });
+      // wait for cluster info to catch up with the agency cache
+      auto res = co_await waitForCurrent(raftIndex);
+      if (!res.ok()) {
+        co_return res;
       }
     }
-
-    co_await SchedulerFeature::SCHEDULER->delay("getLeaderForShard",
-                                                std::chrono::milliseconds(500));
   }
 
   ADB_UNREACHABLE;
@@ -5079,6 +5119,17 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
     return CollectionID{it->second};
   }
   return StaticStrings::Empty;
+}
+
+auto ClusterInfo::getDatabaseNameForShard(ShardID shardId)
+    -> std::optional<DatabaseID> {
+  READ_LOCKER(readLocker, _planProt.lock);
+
+  if (auto it = _shardToDb.find(shardId); it != _shardToDb.end()) {
+    return DatabaseID{it->second};
+  } else {
+    return std::nullopt;
+  }
 }
 
 auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const
