@@ -234,7 +234,7 @@ std::string ReadWriteLock::stringifyLockState() const {
 
   auto state = _state.load(std::memory_order_relaxed);
   auto readers = (state & READER_MASK) >> 16;
-  auto writers = state & QUEUED_WRITER_MASK;
+  auto writers = (state & QUEUED_WRITER_MASK) >> 1;
   append(std::to_string(readers).append(" active reader(s)"));
   append(std::to_string(writers).append(" queued writer(s)"));
   if (state & WRITE_LOCK) {
