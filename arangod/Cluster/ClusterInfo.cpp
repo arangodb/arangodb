@@ -456,7 +456,6 @@ ClusterInfo::ClusterInfo(ArangodServer& server, AgencyCache& agencyCache,
       _shards(_resourceMonitor),
       _shardsToPlanServers(_resourceMonitor),
       _shardToName(_resourceMonitor),
-      _shardToDb(_resourceMonitor),
       _shardToShardGroupLeader(_resourceMonitor),
       _shardGroups(_resourceMonitor),
       _plannedViews(_resourceMonitor),
@@ -979,7 +978,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
       _resourceMonitor};
   decltype(_shardGroups) newShardGroups{_resourceMonitor};
   decltype(_shardToName) newShardToName{_resourceMonitor};
-  decltype(_shardToDb) newShardToDb{_resourceMonitor};
   decltype(_dbAnalyzersRevision) newDbAnalyzersRevision{_resourceMonitor};
   decltype(_newStuffByDatabase) newStuffByDatabase{_resourceMonitor};
 
@@ -1000,7 +998,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     newShardToShardGroupLeader = _shardToShardGroupLeader;
     newShardGroups = _shardGroups;
     newShardToName = _shardToName;
-    newShardToDb = _shardToDb;
     newDbAnalyzersRevision = _dbAnalyzersRevision;
     newStuffByDatabase = _newStuffByDatabase;
     auto ende = std::chrono::steady_clock::now();
@@ -1464,12 +1461,10 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           newShards.erase(collectionId);
           if (auto maybeShardID = ShardID::shardIdFromString(collectionId);
               maybeShardID.ok()) {
-            auto const& shardId = maybeShardID.get();
             // The list contains collections and shards by name and id.
             // So it is expected that some are not valid shard ids.
             // Make sure we only erase valid shard ids.
-            newShardToName.erase(shardId);
-            newShardToDb.erase(shardId);
+            newShardToName.erase(maybeShardID.get());
           }
         }
         _newPlannedCollections.erase(it);
@@ -1536,7 +1531,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
               newShards.erase(shardId);
               newShardsToPlanServers.erase(sId);
               newShardToName.erase(sId);
-              newShardToDb.erase(sId);
               // We try to erase the shard ID anyway, no problem if it is
               // not in there, should it be a shard group leader!
               newShardToShardGroupLeader.erase(sId);
@@ -1624,8 +1618,7 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
         auto shardIDs = newCollection->shardIds();
         auto shards = allocateShared<std::vector<ShardID>>();
         shards->reserve(shardIDs->size());
-        newShardToName.reserve(newShardToName.size() + shardIDs->size());
-        newShardToDb.reserve(newShardToDb.size() + shardIDs->size());
+        newShardToName.reserve(shardIDs->size());
 
         for (auto const& p : *shardIDs) {
           shards->push_back(p.first);
@@ -1633,7 +1626,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
           v->assign(p.second.begin(), p.second.end());
           newShardsToPlanServers.insert_or_assign(p.first, std::move(v));
           newShardToName.insert_or_assign(p.first, newCollection->name());
-          newShardToDb.insert_or_assign(p.first, databaseName);
         }
 
         // Sort by the number in the shard ID ("s0000001" for example):
@@ -1868,7 +1860,6 @@ auto ClusterInfo::loadPlan() -> consensus::index_t {
     _shardToShardGroupLeader.swap(newShardToShardGroupLeader);
     _shardGroups.swap(newShardGroups);
     _shardToName.swap(newShardToName);
-    _shardToDb.swap(newShardToDb);
     _pendingCleanups.swap(_currentCleanups);
   }
 
@@ -5088,17 +5079,6 @@ CollectionID ClusterInfo::getCollectionNameForShard(ShardID shardId) {
     return CollectionID{it->second};
   }
   return StaticStrings::Empty;
-}
-
-auto ClusterInfo::getDatabaseNameForShard(ShardID shardId)
-    -> std::optional<DatabaseID> {
-  READ_LOCKER(readLocker, _planProt.lock);
-
-  if (auto it = _shardToName.find(shardId); it != _shardToName.end()) {
-    return DatabaseID{it->second};
-  } else {
-    return std::nullopt;
-  }
 }
 
 auto ClusterInfo::getReplicatedLogsParticipants(std::string_view database) const

@@ -933,8 +933,6 @@ class ClusterInfo final {
 
   /// @brief map shardId to collection name (not ID)
   CollectionID getCollectionNameForShard(ShardID shardId);
-  /// @brief map shardId to database name (not ID)
-  auto getDatabaseNameForShard(ShardID shardId) -> std::optional<DatabaseID>;
 
   auto getReplicatedLogLeader(replication2::LogId) const -> ResultT<ServerID>;
 
@@ -1171,8 +1169,6 @@ class ClusterInfo final {
       _shardsToPlanServers;
   // planned shard ID => collection name
   FlatMap<ShardID, pmr::CollectionID> _shardToName;
-  // name of the database a certain shard is part of
-  FlatMap<ShardID, pmr::DatabaseID> _shardToDb;
 
   // planned shard ID => shard ID of shard group leader
   // This deserves an explanation. If collection B has `distributeShardsLike`
