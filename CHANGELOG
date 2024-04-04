@@ -1,6 +1,19 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
+* BTS-1840: active failover: connection/tcp leak in active failover mode in case
+  no leader change happened for a long time.
+
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected and
+  rolled back quickly. However, there was a code path that triggered the "fast
+  lock round" with long request timeouts, which could lead to long wait times
+  until deadlocks were detected and rolled back.
+
 * Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
 
 * Rebuilt included rclone v1.62.2 with go1.21.8.
