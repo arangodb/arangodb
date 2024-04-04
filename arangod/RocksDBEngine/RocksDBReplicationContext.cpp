@@ -328,9 +328,14 @@ RocksDBReplicationContext::bindCollectionIncremental(TRI_vocbase_t& vocbase,
         << logical->guid();
   }
 
-  // we should have a valid iterator if there are documents in here
-  TRI_ASSERT(numberDocuments == 0 || cIter->hasMore())
+  // we should have a valid iterator if there are documents in here.
+  // note that we can only assume this if we took the number of documents and
+  // the snapshot under the exclusive lock. otherwise the number of documents
+  // and the actual number of documents in the snapshot may differ.
+  TRI_ASSERT(documentCountAdjustmentTicket == 0 || numberDocuments == 0 ||
+             cIter->hasMore())
       << "numDocs: " << numberDocuments << ", hasMore: " << cIter->hasMore()
+      << ", ticket: " << documentCountAdjustmentTicket
       << ", shard: " << logical->name();
   co_return std::make_tuple(Result{}, cid, numberDocuments);
 }

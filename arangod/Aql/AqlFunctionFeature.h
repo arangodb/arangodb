@@ -48,7 +48,7 @@ class AqlFunctionFeature final : public ArangodFeature {
   // add a function alias
   void addAlias(std::string const& alias, std::string const& original);
 
-  void toVelocyPack(arangodb::velocypack::Builder&) const;
+  void toVelocyPack(arangodb::velocypack::Builder& builder) const;
   Function const* byName(std::string const& name) const;
 
   bool exists(std::string const& name) const;

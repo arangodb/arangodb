@@ -31,6 +31,7 @@
 #include "Futures/Promise.h"
 
 #include <deque>
+#include <string_view>
 #include <unordered_map>
 
 namespace arangodb {
@@ -62,8 +63,8 @@ class QueryRegistry {
   /// The callback guard needs to be stored with the query to prevent it from
   /// firing. This is used for the RebootTracker to destroy the query when
   /// the coordinator which created it restarts or fails.
-  TEST_VIRTUAL void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
-                                cluster::CallbackGuard guard);
+  void insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
+                   std::string_view qs, cluster::CallbackGuard guard);
 
   /// @brief open, find a engine in the registry, if none is found, a nullptr
   /// is returned, otherwise, ownership of the query is transferred to the
@@ -120,6 +121,9 @@ class QueryRegistry {
   /// @brief return number of registered queries
   size_t numberRegisteredQueries();
 
+  /// @brief export query registry contents to velocypack
+  void toVelocyPack(velocypack::Builder& builder) const;
+
   /// @brief for shutdown, we need to shut down all queries:
   void destroyAll();
 
@@ -142,7 +146,7 @@ class QueryRegistry {
   struct QueryInfo final {
     /// @brief constructor for a regular query entry
     QueryInfo(std::shared_ptr<ClusterQuery> query, double ttl,
-              cluster::CallbackGuard guard);
+              std::string_view qs, cluster::CallbackGuard guard);
 
     /// @brief constructor for a tombstone entry
     explicit QueryInfo(ErrorCode errorCode, double ttl);
@@ -158,6 +162,8 @@ class QueryRegistry {
     double _expires;           // UNIX UTC timestamp of expiration
     size_t _numEngines;        // used for legacy shutdown
     size_t _numOpen;
+
+    std::string _queryString;  // can be empty
 
     ErrorCode _errorCode;
     bool const _isTombstone;
@@ -215,7 +221,7 @@ class QueryRegistry {
   std::unordered_map<EngineId, EngineInfo> _engines;
 
   /// @brief _lock, the read/write lock for access
-  basics::ReadWriteLock _lock;
+  basics::ReadWriteLock mutable _lock;
 
   /// @brief the default TTL value
   double const _defaultTTL;

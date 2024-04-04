@@ -46,7 +46,6 @@ class IndexHint {
   //   Disabled = no index must be used!
   enum HintType : uint8_t { Illegal, None, Simple, Disabled };
 
- public:
   IndexHint() = default;
   explicit IndexHint(QueryContext& query, AstNode const* node);
   explicit IndexHint(velocypack::Slice slice);

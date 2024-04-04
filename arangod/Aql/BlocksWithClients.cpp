@@ -45,6 +45,7 @@
 #include "VocBase/ticks.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Collection.h>
 #include <velocypack/Parser.h>
@@ -128,9 +129,9 @@ size_t BlocksWithClientsImpl<Executor>::getClientId(
   }
   auto it = _shardIdMap.find(shardId);
   if (it == _shardIdMap.end()) {
-    std::string message("AQL: unknown distribution id ");
-    message.append(shardId);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("AQL: unknown distribution id ", shardId));
   }
   return it->second;
 }
@@ -189,9 +190,9 @@ auto BlocksWithClientsImpl<Executor>::executeWithoutTraceForClient(
   TRI_ASSERT(it != _clientBlockData.end());
   if (ADB_UNLIKELY(it == _clientBlockData.end())) {
     // Security bailout to avoid UB
-    std::string message("AQL: unknown distribution id ");
-    message.append(clientId);
-    THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_INTERNAL, message);
+    THROW_ARANGO_EXCEPTION_MESSAGE(
+        TRI_ERROR_INTERNAL,
+        absl::StrCat("AQL: unknown distribution id ", clientId));
   }
 
   // This call is only used internally.
