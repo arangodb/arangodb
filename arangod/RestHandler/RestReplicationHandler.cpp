@@ -3512,7 +3512,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn);
+            mgr->abortManagedTrx(id, vn).get();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3544,7 +3544,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
 
   if (isTombstoned(id)) {
     try {
-      co_return mgr->abortManagedTrx(id, vn);
+      co_return co_await mgr->abortManagedTrx(id, vn);
     } catch (...) {
       // Maybe thrown in shutdown.
     }
@@ -3583,7 +3583,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name());
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).get();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }

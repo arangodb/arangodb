@@ -113,12 +113,10 @@ RestStatus RestTransactionHandler::execute() {
       break;
 
     case rest::RequestType::PUT:
-      executeCommit();
-      break;
+      return waitForFuture(executeCommit());
 
     case rest::RequestType::DELETE_REQ:
-      executeAbort();
-      break;
+      return waitForFuture(executeAbort());
 
     case rest::RequestType::GET:
       executeGetState();
@@ -277,23 +275,23 @@ futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
   }
 }
 
-void RestTransactionHandler::executeCommit() {
+futures::Future<futures::Unit> RestTransactionHandler::executeCommit() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return;
   }
 
   TransactionId tid{basics::StringUtils::uint64(_request->suffixes()[0])};
   if (tid.empty()) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                   "bad transaction ID");
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
   TRI_ASSERT(mgr != nullptr);
 
-  Result res = mgr->commitManagedTrx(tid, _vocbase.name());
+  Result res = co_await mgr->commitManagedTrx(tid, _vocbase.name());
   if (res.fail()) {
     generateError(res);
   } else {
@@ -302,10 +300,10 @@ void RestTransactionHandler::executeCommit() {
   }
 }
 
-void RestTransactionHandler::executeAbort() {
+futures::Future<futures::Unit> RestTransactionHandler::executeAbort() {
   if (_request->suffixes().size() != 1) {
     generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER);
-    return;
+    co_return;
   }
 
   transaction::Manager* mgr = transaction::ManagerFeature::manager();
@@ -340,10 +338,10 @@ void RestTransactionHandler::executeAbort() {
     if (tid.empty()) {
       generateError(rest::ResponseCode::BAD, TRI_ERROR_BAD_PARAMETER,
                     "bad transaction ID");
-      return;
+      co_return;
     }
 
-    Result res = mgr->abortManagedTrx(tid, _vocbase.name());
+    Result res = co_await mgr->abortManagedTrx(tid, _vocbase.name());
 
     if (res.fail()) {
       generateError(res);

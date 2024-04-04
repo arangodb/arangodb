@@ -282,7 +282,7 @@ arangodb::cluster::CallbackGuard Manager::buildCallbackGuard(
           origin,
           [this, tid = state.id()]() {
             // abort the transaction once the coordinator goes away
-            abortManagedTrx(tid, std::string());
+            abortManagedTrx(tid, std::string()).get();
           },
           "Transaction aborted since coordinator rebooted or failed.");
     }
@@ -779,6 +779,25 @@ futures::Future<Result> Manager::ensureManagedTrx(
   co_return res;
 }
 
+namespace {
+futures::Future<futures::Unit> sleepUsingSchedulerIfAvailable(
+    const char* reason, std::chrono::milliseconds duration) {
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  constexpr bool alwaysHasScheduler = false;
+#else
+  constexpr bool alwaysHasScheduler = true;
+#endif
+
+  if (alwaysHasScheduler || SchedulerFeature::SCHEDULER) {
+    TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
+    return SchedulerFeature::SCHEDULER->delay(reason, duration);
+  } else {
+    std::this_thread::sleep_for(duration);
+    return futures::Unit{};
+  }
+}
+}  // namespace
+
 /// @brief lease the transaction, increases nesting
 futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
     TransactionId tid, AccessMode::Type mode, bool isSideUser) {
@@ -911,19 +930,8 @@ futures::Future<std::shared_ptr<transaction::Context>> Manager::leaseManagedTrx(
       }
     }
 
-#ifdef ARANGODB_USE_GOOGLE_TESTS
-    constexpr bool alwaysHasScheduler = false;
-#else
-    constexpr bool alwaysHasScheduler = true;
-#endif
-
-    if (alwaysHasScheduler || SchedulerFeature::SCHEDULER) {
-      TRI_ASSERT(SchedulerFeature::SCHEDULER != nullptr);
-      co_await SchedulerFeature::SCHEDULER->delay(
-          "managed-trx-lock-wait", std::chrono::milliseconds(10));
-    } else {
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
+    co_await sleepUsingSchedulerIfAvailable("managed-trx-lock-wait",
+                                            std::chrono::milliseconds(10));
   } while (true);
 }
 
@@ -975,7 +983,7 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
 
   if (isSoftAborted) {
     TRI_ASSERT(!isSideUser);
-    abortManagedTrx(tid, "" /* any database */);
+    abortManagedTrx(tid, "" /* any database */).get();
   }
 }
 
@@ -1000,9 +1008,9 @@ transaction::Status Manager::getManagedTrxStatus(TransactionId tid) const {
   }
 }
 
-Result Manager::statusChangeWithTimeout(TransactionId tid,
-                                        std::string const& database,
-                                        transaction::Status status) {
+futures::Future<Result> Manager::statusChangeWithTimeout(
+    TransactionId tid, std::string const& database,
+    transaction::Status status) {
   double startTime = 0.0;
   constexpr double maxWaitTime = 3.0;
   Result res;
@@ -1018,19 +1026,21 @@ Result Manager::statusChangeWithTimeout(TransactionId tid,
       // timeout
       break;
     }
-    std::this_thread::yield();
+    co_await sleepUsingSchedulerIfAvailable("trx-status-change-backup",
+                                            std::chrono::milliseconds{10});
   }
-  return res;
+  co_return res;
 }
 
-Result Manager::commitManagedTrx(TransactionId tid,
-                                 std::string const& database) {
+futures::Future<Result> Manager::commitManagedTrx(TransactionId tid,
+                                                  std::string const& database) {
   READ_LOCKER(guard, _hotbackupCommitLock);
-  return statusChangeWithTimeout(tid, database, transaction::Status::COMMITTED);
+  co_return co_await statusChangeWithTimeout(tid, database,
+                                             transaction::Status::COMMITTED);
 }
 
-Result Manager::abortManagedTrx(TransactionId tid,
-                                std::string const& database) {
+futures::Future<Result> Manager::abortManagedTrx(TransactionId tid,
+                                                 std::string const& database) {
   return statusChangeWithTimeout(tid, database, transaction::Status::ABORTED);
 }
 
