@@ -57,10 +57,10 @@ class RestCursorHandler : public RestVocbaseBaseHandler {
   ~RestCursorHandler();
 
  public:
-  virtual RestStatus execute() override;
   char const* name() const override { return "RestCursorHandler"; }
-  RequestLane lane() const override final { return RequestLane::CLIENT_AQL; }
+  RequestLane lane() const override final;
 
+  virtual RestStatus execute() override;
   virtual RestStatus continueExecute() override;
   void shutdownExecute(bool isFinalized) noexcept override;
 

@@ -61,6 +61,52 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
                                                GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
+RequestLane RestTransactionHandler::lane() const {
+  if (_request->requestType() == RequestType::GET) {
+    // a GET request only returns the list of ongoing transactions.
+    // this is used only for debugging and should not be blocked
+    // by if most scheduler threads are busy.
+    return RequestLane::CLUSTER_ADMIN;
+  }
+
+  bool isCommit = _request->requestType() == rest::RequestType::PUT;
+  bool isAbort = _request->requestType() == rest::RequestType::DELETE_REQ;
+
+  if ((isCommit || isAbort) &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    // give commits and aborts a higer priority than normal document
+    // operations on coordinators and single servers, because these
+    // operations can unblock other operations.
+    // strictly speaking, the request lane should not be "continuation"
+    // here, as it is no continuation. but we don't have a better
+    // other request lane with medium priority. the only important
+    // thing here is that the request lane priority is set to medium.
+    return RequestLane::CONTINUATION;
+  }
+
+  if (ServerState::instance()->isDBServer()) {
+    bool isSyncReplication = false;
+    // We do not care for the real value, enough if it is there.
+    std::ignore = _request->value(StaticStrings::IsSynchronousReplicationString,
+                                  isSyncReplication);
+    if (isSyncReplication) {
+      return RequestLane::SERVER_SYNCHRONOUS_REPLICATION;
+      // This leads to the high queue, we want replication requests (for
+      // commit or abort in the El Cheapo case) to be executed with a
+      // higher prio than leader requests, even if they are done from
+      // AQL.
+    }
+
+    if (isCommit || isAbort) {
+      // commit or abort on leader gets a medium priority, because it
+      // can unblock other operations
+      return RequestLane::CONTINUATION;
+    }
+  }
+
+  return RequestLane::CLIENT_V8;
+}
+
 RestStatus RestTransactionHandler::execute() {
   switch (_request->requestType()) {
     case rest::RequestType::POST:
@@ -108,7 +154,11 @@ void RestTransactionHandler::executeGetState() {
 
     bool fanout = ServerState::instance()->isCoordinator() &&
                   !_request->parsedValue("local", false);
-    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
+    // note: "details" parameter is not documented and not part of the public
+    // API, so the output format of toVelocyPack(details=true) may change
+    // without notice
+    bool details = _request->parsedValue("details", false);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout, details);
 
     builder.close();  // array
     builder.close();  // object
@@ -195,7 +245,6 @@ futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
     }
     TRI_ASSERT(tid.isSet());
     TRI_ASSERT(!tid.isLegacyTransactionId());
-    TRI_ASSERT(tid.isSet());
 
     Result res =
         co_await mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
