@@ -1,8 +1,8 @@
 v3.11.9 (XXXX-XX-XX)
 --------------------
 
-* BTS-1840: active failover: connection/tcp leak in active failover mode in
-  case no leader change happened for a long time.
+* BTS-1840: active failover: connection/tcp leak in active failover mode in case
+  no leader change happened for a long time.
 
 * Fix potential deadlocks in "fast lock round" when starting transactions in
   cluster. The "fast lock round" is used to send out transaction begin requests
