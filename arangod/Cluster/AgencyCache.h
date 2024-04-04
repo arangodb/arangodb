@@ -214,11 +214,11 @@ class AgencyCache final : public ServerThread<ArangodServer> {
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
-  struct Waiter {
+  struct WaitRecord {
     futures::Promise<arangodb::Result> promise;
     Executor executor;
   };
-  std::multimap<consensus::index_t, Waiter> _waiting;
+  std::multimap<consensus::index_t, WaitRecord> _waiting;
 
   /// @brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;

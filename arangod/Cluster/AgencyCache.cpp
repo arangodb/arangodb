@@ -161,7 +161,8 @@ futures::Future<arangodb::Result> AgencyCache::waitFor(index_t index,
   // promise
   std::lock_guard w(_waitLock);
   return _waiting
-      .emplace(index, Waiter{futures::Promise<arangodb::Result>(), executor})
+      .emplace(index,
+               WaitRecord{futures::Promise<arangodb::Result>(), executor})
       ->second.promise.getFuture();
 }
 
