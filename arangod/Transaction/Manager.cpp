@@ -437,18 +437,12 @@ Result Manager::prepareOptions(transaction::Options& options) {
   }
   // enforce size limit per DBServer
   if (isFollowerTransactionOnDBServer(options)) {
-    // if we are a follower, we reuse the leader's max transaction size and
-    // slightly increase it. this is to ensure that the follower can process at
-    // least as many data as the leader, even if the data representation is
-    // slightly varied for network transport etc.
-    if (options.maxTransactionSize != UINT64_MAX) {
-      uint64_t adjust = options.maxTransactionSize / 10;
-      if (adjust < UINT64_MAX - options.maxTransactionSize) {
-        // now the transaction on the follower should be able to grow to at
-        // least the size of the transaction on the leader.
-        options.maxTransactionSize += adjust;
-      }
-    }
+    // if we are a follower, we allow transactions of arbitrary size.
+    // this is because the max transaction size should be enforced already
+    // when writing to the leader. the follower should simply accept
+    // everything that the leader was able to apply successfully.
+    options.maxTransactionSize = UINT64_MAX;
+
     // it is also important that we set this option, so that it is ok for two
     // different leaders to add "their" shards to the same follower transaction.
     // for example, if we have 3 database servers and 2 shards, so that
@@ -847,7 +841,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
     }
     if (!::authorized(mtrx.user)) {
       THROW_ARANGO_EXCEPTION_MESSAGE(
-          TRI_ERROR_FORBIDDEN,
+          TRI_ERROR_TRANSACTION_NOT_FOUND,
           absl::StrCat("not authorized to access transaction ", tid.id()));
     }
 
@@ -1204,6 +1198,9 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     // type is changed under the transaction's write lock and the bucket's write
     // lock
     mtrx.type = MetaType::Tombstone;
+    // clear context information of commit/aborted/expired transactions so that
+    // we can save memory. there will be many tombstones on busy instances.
+    mtrx.context = std::string{};
     if (state->numCommits() > 0) {
       // note that we have performed a commit or an intermediate commit.
       // this is necessary for follower transactions
@@ -1288,8 +1285,8 @@ void Manager::iterateManagedTrx(
 
     auto& buck = _transactions[bucket];
     for (auto const& it : buck._managed) {
-      if (it.second.type == MetaType::Managed || details) {
-        // we only care about managed transactions here
+      if (it.second.type == MetaType::Managed ||
+          (details && it.second.type == MetaType::StandaloneAQL)) {
         callback(it.first, it.second);
       }
     }
@@ -1540,7 +1537,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             idType = "legacy id";
           }
           builder.add("idType", VPackValue(idType));
-          if (tid.isChildTransactionId()) {
+          if (!ServerState::instance()->isSingleServer()) {
             builder.add("coordinatorId",
                         VPackValue(tid.asCoordinatorTransactionId().id()));
           }
@@ -1559,8 +1556,12 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
           builder.add("timeToLive", VPackValue(trx.timeToLive));
           builder.add("expiryTime",
                       VPackValue(static_cast<uint64_t>(trx.expiryTime)));
-          builder.add("user", VPackValue(trx.user));
-          builder.add("db", VPackValue(trx.db));
+          if (!ServerState::instance()->isDBServer()) {
+            // proper user information is only present on single servers
+            // and coordinators
+            builder.add("user", VPackValue(trx.user));
+          }
+          builder.add("database", VPackValue(trx.db));
           builder.add("server", VPackValue(ServerState::instance()->getId()));
         }
         builder.close();

@@ -531,7 +531,6 @@ void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
       if (query != nullptr) {
         builder.add("id", VPackValue(query->id()));
         builder.add("database", VPackValue(query->vocbase().name()));
-        builder.add("user", VPackValue(query->user()));
         builder.add("collections", VPackValue(VPackValueType::Array));
         query->collections().visit(
             [&builder](std::string const& name, aql::Collection const& c) {
