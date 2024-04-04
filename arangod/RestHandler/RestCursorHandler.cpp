@@ -60,6 +60,18 @@ RestCursorHandler::RestCursorHandler(
 
 RestCursorHandler::~RestCursorHandler() { releaseCursor(); }
 
+RequestLane RestCursorHandler::lane() const {
+  if (_request->requestType() != rest::RequestType::POST ||
+      !_request->suffixes().empty()) {
+    // continuing an existing query or cleaning up its resources
+    // gets higher priority than starting new queries
+    return RequestLane::CONTINUATION;
+  }
+
+  // low priority for starting new queries
+  return RequestLane::CLIENT_AQL;
+}
+
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();

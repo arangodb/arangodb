@@ -69,6 +69,21 @@ RequestLane RestTransactionHandler::lane() const {
     return RequestLane::CLUSTER_ADMIN;
   }
 
+  bool isCommit = _request->requestType() == rest::RequestType::PUT;
+  bool isAbort = _request->requestType() == rest::RequestType::DELETE_REQ;
+
+  if ((isCommit || isAbort) &&
+      ServerState::instance()->isSingleServerOrCoordinator()) {
+    // give commits and aborts a higer priority than normal document
+    // operations on coordinators and single servers, because these
+    // operations can unblock other operations.
+    // strictly speaking, the request lane should not be "continuation"
+    // here, as it is no continuation. but we don't have a better
+    // other request lane with medium priority. the only important
+    // thing here is that the request lane priority is set to medium.
+    return RequestLane::CONTINUATION;
+  }
+
   if (ServerState::instance()->isDBServer()) {
     bool isSyncReplication = false;
     // We do not care for the real value, enough if it is there.
@@ -81,7 +96,14 @@ RequestLane RestTransactionHandler::lane() const {
       // higher prio than leader requests, even if they are done from
       // AQL.
     }
+
+    if (isCommit || isAbort) {
+      // commit or abort on leader gets a medium priority, because it
+      // can unblock other operations
+      return RequestLane::CONTINUATION;
+    }
   }
+
   return RequestLane::CLIENT_V8;
 }
 

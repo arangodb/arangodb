@@ -481,8 +481,8 @@ exports.runParallelArangoshTests = function (tests, duration, cn) {
 
       const logfile = client.file + '.log';
       if (client.failed) {
-        if (fs.exists(logfile)) {
-          debug("test client with pid " + client.pid + " has failed and wrote logfile: " + fs.readFileSync(logfile).toString());
+        if (fs.exists(logfile) && fs.readFileSync(logfile).toString() !== '') {
+          debug("test client with pid " + client.pid + " has failed and wrote logfile '" + logfile + ": " + fs.readFileSync(logfile).toString());
         } else {
           debug("test client with pid " + client.pid + " has failed and did not write a logfile");
         }
