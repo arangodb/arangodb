@@ -52,7 +52,7 @@ struct SourceLocation {
   SourceLocation() = delete;
 
   consteval explicit SourceLocation(
-      std::source_location const location) noexcept
+      std::source_location location) noexcept
       : _fileName(stripPrefix(location.file_name())),
         _functionName(location.function_name()),
         _line(location.line()) {}
