@@ -51,8 +51,8 @@ class RestTransactionHandler : public arangodb::RestVocbaseBaseHandler {
  private:
   void executeGetState();
   [[nodiscard]] futures::Future<futures::Unit> executeBegin();
-  void executeCommit();
-  void executeAbort();
+  [[nodiscard]] futures::Future<futures::Unit> executeCommit();
+  [[nodiscard]] futures::Future<futures::Unit> executeAbort();
   void generateTransactionResult(rest::ResponseCode code, TransactionId tid,
                                  transaction::Status status);
 
