@@ -643,6 +643,41 @@ void TransactionState::setExclusiveAccessType() {
   _type = AccessMode::Type::EXCLUSIVE;
 }
 
+/// @brief whether or not a transaction is read-only
+bool TransactionState::isReadOnlyTransaction() const noexcept {
+  return _type == AccessMode::Type::READ;
+}
+
+/// @brief whether or not a transaction is a follower transaction
+bool TransactionState::isFollowerTransaction() const noexcept {
+  return hasHint(transaction::Hints::Hint::IS_FOLLOWER_TRX);
+}
+
+/// @brief servers already contacted
+containers::FlatHashSet<ServerID> const& TransactionState::knownServers()
+    const noexcept {
+  return _knownServers;
+}
+
+bool TransactionState::knowsServer(std::string_view uuid) const noexcept {
+  TRI_ASSERT(!uuid.empty());
+  return _knownServers.contains(uuid);
+}
+
+/// @brief add a server to the known set
+void TransactionState::addKnownServer(std::string_view uuid) {
+  TRI_ASSERT(!uuid.empty());
+  _knownServers.emplace(uuid);
+}
+
+/// @brief remove a server from the known set
+void TransactionState::removeKnownServer(std::string_view uuid) {
+  TRI_ASSERT(!uuid.empty());
+  _knownServers.erase(uuid);
+}
+
+void TransactionState::clearKnownServers() { _knownServers.clear(); }
+
 void TransactionState::acceptAnalyzersRevision(
     QueryAnalyzerRevisions const& analyzersRevision) noexcept {
   // only init from default allowed! Or we have problem -> different
