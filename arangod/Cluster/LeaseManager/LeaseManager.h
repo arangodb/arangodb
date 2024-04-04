@@ -40,30 +40,45 @@ class LeaseId;
 class RebootTracker;
 
 struct LeaseManager {
-  using AbortMethod = std::function<void()>;
 
   struct LeaseIdGuard {
-    LeaseIdGuard(LeaseId id) :_id{id} {}
+    LeaseIdGuard(PeerState peer, LeaseId id, LeaseManager& mgr)
+        : _peerState(std::move(peer)), _id{id}, _manager(mgr) {}
 
-    auto id() const noexcept -> LeaseId {
-      return _id;
-    }
+    ~LeaseIdGuard();
+
+    auto id() const noexcept -> LeaseId { return _id; }
+
    private:
+    PeerState _peerState;
     LeaseId _id;
+    LeaseManager& _manager;
   };
+
   struct LeaseListOfPeer {
     CallbackGuard _serverAbortCallback;
-    std::unordered_map<LeaseId, LeaseEntry> _mapping;
+    std::unordered_map<LeaseId, std::unique_ptr<LeaseEntry>> _mapping;
   };
 
   LeaseManager(RebootTracker&);
 
-  auto requireLease(PeerState const& peerState, AbortMethod abortCallback)
-      -> LeaseIdGuard;
+  template<typename F>
+  [[nodiscard]] auto requireLease(PeerState const& peerState,
+                    F&& abortMethod) -> LeaseIdGuard {
+    static_assert(std::is_nothrow_invocable_r_v<void, F>, "The abort method of a leaser must be noexcept");
+    return requireLeaseInternal(peerState, std::make_unique<LeaseEntry_Impl<F>>(
+                                               std::forward<F>(abortMethod)));
+  }
 
   auto leasesToVPack() const -> arangodb::velocypack::Builder;
 
  private:
+
+  [[nodiscard]] auto requireLeaseInternal(PeerState const& peerState,
+                    std::unique_ptr<LeaseEntry> abortMethod) -> LeaseIdGuard;
+
+  auto returnLease(PeerState const& peerState, LeaseId const& leaseId) -> void;
+
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;
   std::unordered_map<PeerState, LeaseListOfPeer> _leases;

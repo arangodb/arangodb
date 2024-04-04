@@ -119,18 +119,17 @@ ServerID const LeaseManagerTest::serverA = "PRMR-srv-A";
 ServerID const LeaseManagerTest::serverB = "PRMR-srv-B";
 ServerID const LeaseManagerTest::serverC = "PRMR-srv-C";
 
-
 TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
   LeaseManager leaseManager{rebootTracker};
   PeerState leaseIsFor{
       .serverId = serverA,
       .rebootId = RebootId{1}
   };
-  auto crashMe = []() -> void {
+  auto ignoreMe = []() noexcept -> void {
     ASSERT_TRUE(false) << "This callback should not be called";
   };
-  auto guardOne = leaseManager.requireLease(leaseIsFor, crashMe);
-  auto guardTwo = leaseManager.requireLease(leaseIsFor, crashMe);
+  auto guardOne = leaseManager.requireLease(leaseIsFor, ignoreMe);
+  auto guardTwo = leaseManager.requireLease(leaseIsFor, ignoreMe);
   EXPECT_NE(guardOne.id(), guardTwo.id());
   auto leasesVPackBuilder = leaseManager.leasesToVPack();
   auto leasesVPack = leasesVPackBuilder.slice();
@@ -147,44 +146,51 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
       << " full list: " << leasesVPack.toJson();
 }
 
-TEST_F(LeaseManagerTest, test_release_is_removed_from_list_on_guard_destruction) {
+TEST_F(LeaseManagerTest,
+       test_release_is_removed_from_list_on_guard_destruction) {
   bool rebootCallbackCalled = false;
   LeaseManager leaseManager{rebootTracker};
   PeerState leaseIsFor{.serverId = serverA, .rebootId{1}};
   LeaseId storedId;
   {
-    auto callback = [&]() { rebootCallbackCalled = true; };
     // We need to hold the lease until the end of the scope.
-    // otherwise the destructore callback might be lost.
-    [[maybe_unused]] auto lease = leaseManager.requireLease(leaseIsFor, callback);
+    // otherwise the destructor callback might be lost.
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+    auto lease = leaseManager.requireLease(
+        leaseIsFor, callback);
     storedId = lease.id();
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor, storedId);
+    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                       storedId);
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
   waitForSchedulerEmpty();
-  ASSERT_TRUE(rebootCallbackCalled);
+  EXPECT_TRUE(rebootCallbackCalled);
 }
 
 TEST_F(LeaseManagerTest, test_lease_is_aborted_on_peer_reboot) {
   {
     bool rebootCallbackCalled = false;
-    auto callback = [&]() { rebootCallbackCalled = true; };
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
     auto state = containers::FlatHashMap<ServerID, ServerHealthState>{
         {serverA, ServerHealthState{.rebootId = RebootId{2},
                                     .status = ServerHealth::kGood}}};
     LeaseManager leaseManager{rebootTracker};
     PeerState leaseIsFor{.serverId = serverA, .rebootId{1}};
     // We need to hold the lease until the end of the scope.
-    // otherwise the destructore callback might be lost.
+    // otherwise the destructor callback might be lost.
     [[maybe_unused]] auto lease = leaseManager.requireLease(leaseIsFor, callback);
     rebootTracker.updateServerState(state);
     // Need to wait for the scheduler to actually work on the RebootTracker.
     waitForSchedulerEmpty();
-    ASSERT_TRUE(rebootCallbackCalled);
+    EXPECT_TRUE(rebootCallbackCalled);
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor, lease.id());
+    // In fact we should not even have a server entry anymore.
+    EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
   }
 }

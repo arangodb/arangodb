@@ -29,27 +29,38 @@
 
 using namespace arangodb::cluster;
 
+LeaseManager::LeaseIdGuard::~LeaseIdGuard() {
+  _manager.returnLease(_peerState, _id);
+}
+
 LeaseManager::LeaseManager(RebootTracker& rebootTracker)
     : _rebootTracker(rebootTracker), _leases{} {}
 
-auto LeaseManager::requireLease(PeerState const& peerState, AbortMethod abortMethod) -> LeaseIdGuard {
+
+
+auto LeaseManager::requireLeaseInternal(PeerState const& peerState, std::unique_ptr<LeaseEntry> leaseEntry) -> LeaseIdGuard {
   // NOTE: In theory _nextLeaseId can overflow here, but that should never be a problem.
   // if we ever reach that point without restarting the server, it is highly unlikely that
   // we still have handed out low number leases.
 
   auto id = LeaseId{_lastUsedLeaseId++};
-  auto leaseEntry = LeaseEntry{};
   // TODO ADD Locking
   if (auto it = _leases.find(peerState); it == _leases.end()) {
-    auto trackerGuard = _rebootTracker.callMeOnChange(peerState, [abortMethod]() {
-          LOG_DEVEL << "ULF ULF ULF";
-          abortMethod();
+    auto trackerGuard = _rebootTracker.callMeOnChange(peerState, [&]() {
+          // The server has rebooted make sure we erase all it's entries
+          // This needs to call abort methods of all leases.
+          _leases.erase(peerState);
         }, "Wir moegen den Cluster nicht so sehr.");
-    _leases.emplace(peerState, LeaseListOfPeer{._serverAbortCallback{std::move(trackerGuard)}, ._mapping{{id, std::move(leaseEntry)}}});
+    auto it2 = _leases.emplace(
+        peerState,
+        LeaseListOfPeer{._serverAbortCallback{std::move(trackerGuard)},
+                        ._mapping{}});
+    TRI_ASSERT(it2.second) << "Failed to register new peer state";
+    it2.first->second._mapping.emplace(id, std::move(leaseEntry));
   } else {
     it->second._mapping.emplace(id, std::move(leaseEntry));
   }
-  return LeaseIdGuard{std::move(id)};
+  return LeaseIdGuard{peerState, std::move(id), *this};
 }
 
 auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {
@@ -66,4 +77,13 @@ auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {
     }
   }
   return builder;
+}
+
+auto LeaseManager::returnLease(PeerState const& peerState, LeaseId const& leaseId) -> void {
+  if (auto it = _leases.find(peerState); it != _leases.end()) {
+    // The lease may already be removed, e.g. by RebootTracker.
+    // So we do not really care if it is removed from this list here or not.
+    it->second._mapping.erase(leaseId);
+  }
+  // else nothing to do, lease already gone.
 }

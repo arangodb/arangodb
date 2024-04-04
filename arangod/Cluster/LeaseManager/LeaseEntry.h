@@ -22,13 +22,24 @@
 
 #pragma once
 
+#include "Basics/ScopeGuard.h"
+
 namespace arangodb::cluster {
+
 struct LeaseEntry {
-  bool a{true};
+  virtual  ~LeaseEntry() = default;
+  virtual auto invoke() noexcept -> void = 0;
+};
+
+template<typename F>
+struct LeaseEntry_Impl : public LeaseEntry, public ScopeGuard<F> {
+  static_assert(std::is_nothrow_invocable_r_v<void, F>);
+  using ScopeGuard<F>::ScopeGuard;
+  auto invoke() noexcept -> void override { ScopeGuard<F>::fire(); }
 };
 
 template<class Inspector>
 auto inspect(Inspector& f, LeaseEntry& x) {
-  return f.object(x).fields(f.field("id", x.a));
+  return f.object(x).fields();
 }
 }
