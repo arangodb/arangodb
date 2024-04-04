@@ -25,6 +25,8 @@
 
 #include "RestHandler/RestVocbaseBaseHandler.h"
 
+#include <string_view>
+
 namespace arangodb {
 struct OperationOptions;
 
@@ -75,9 +77,8 @@ class RestDocumentHandler : public RestVocbaseBaseHandler {
 
   void handleFillIndexCachesValue(OperationOptions& options);
 
-  void addTransactionHints(std::string const& collectionName, bool isMultiple,
+  void addTransactionHints(transaction::Methods& trx,
+                           std::string_view collectionName, bool isMultiple,
                            bool isOverwritingInsert);
-
-  std::unique_ptr<transaction::Methods> _activeTrx;
 };
 }  // namespace arangodb
