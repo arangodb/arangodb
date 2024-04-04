@@ -84,6 +84,8 @@ class Manager final : public IManager {
     Tombstone = 3  /// used to ensure we can acknowledge double commits / aborts
   };
 
+  static std::string_view typeName(MetaType type);
+
   struct ManagedTrx {
     ManagedTrx(ManagerFeature const& feature, MetaType type, double ttl,
                std::shared_ptr<TransactionState> state,
@@ -101,7 +103,6 @@ class Manager final : public IManager {
     bool intermediateCommits;
     /// @brief whether or not the transaction did expire at least once
     bool wasExpired;
-
     /// @brief number of (reading) side users of the transaction. this number
     /// is currently only increased on DB servers when they handle incoming
     /// requests by the AQL document function. while this number is > 0, there
@@ -112,12 +113,24 @@ class Manager final : public IManager {
     /// necessary to avoid getting error on a 'diamond' commit or accidentally
     /// repeated commit / abort messages
     transaction::Status finalStatus;
+    /// time-to-live extension for the transaction. will be added
+    /// every time the transaction is touched
     double const timeToLive;
-    double expiryTime;                        // time this expires
-    std::shared_ptr<TransactionState> state;  /// Transaction, may be nullptr
+    // timestamp when this transaction expires
+    double expiryTime;
+    /// Transaction, may be nullptr
+    std::shared_ptr<TransactionState> state;
+    /// callback guard, to abort the transaction once the
+    /// coordinator dies/restarts
     arangodb::cluster::CallbackGuard rGuard;
-    std::string const user;  /// user owning the transaction
-    std::string db;          /// database in which the transaction operates
+    /// user owning the transaction
+    std::string const user;
+    /// database in which the transaction operates
+    std::string db;
+    /// informational string about the original transaction.
+    /// will be cleared once the transaction gets turned into
+    /// a tombstone
+    std::string context;
     /// cheap usage lock for _state
     mutable basics::ReadWriteSpinLock rwlock;
   };
@@ -136,7 +149,7 @@ class Manager final : public IManager {
                                                     bool isReadOnlyTransaction,
                                                     bool isFollowerTransaction);
 
-  uint64_t getActiveTransactionCount();
+  uint64_t getActiveTransactionCount() const noexcept;
 
   void disallowInserts() noexcept {
     _disallowInserts.store(true, std::memory_order_release);
@@ -203,7 +216,7 @@ class Manager final : public IManager {
   /// coordinators in a cluster
   void toVelocyPack(arangodb::velocypack::Builder& builder,
                     std::string const& database, std::string const& username,
-                    bool fanout) const;
+                    bool fanout, bool details) const;
 
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
   /// @brief a history of currently ongoing and recently finished
@@ -244,7 +257,7 @@ class Manager final : public IManager {
 
   TransactionCommitGuard getTransactionCommitGuard();
 
-  void initiateSoftShutdown() {
+  void initiateSoftShutdown() noexcept {
     _softShutdownOngoing.store(true, std::memory_order_relaxed);
   }
 
@@ -257,13 +270,16 @@ class Manager final : public IManager {
       OperationOrigin operationOrigin);
 
   Result prepareOptions(transaction::Options& options);
+
   bool isFollowerTransactionOnDBServer(
       transaction::Options const& options) const;
-  futures::Future<Result> lockCollections(
+
+  futures::Future<Result> addCollections(
       TRI_vocbase_t& vocbase, std::shared_ptr<TransactionState> state,
       std::vector<std::string> const& exclusiveCollections,
       std::vector<std::string> const& writeCollections,
       std::vector<std::string> const& readCollections);
+
   transaction::Hints ensureHints(transaction::Options& options) const;
 
   /// @brief performs a status change on a transaction using a timeout
@@ -287,18 +303,23 @@ class Manager final : public IManager {
 
   /// @brief calls the callback function for each managed transaction
   void iterateManagedTrx(
-      std::function<void(TransactionId, ManagedTrx const&)> const&) const;
+      std::function<void(TransactionId, ManagedTrx const&)> const& callback,
+      bool details) const;
 
-  static double ttlForType(ManagerFeature const& feature, Manager::MetaType);
+  static double ttlForType(ManagerFeature const& feature,
+                           Manager::MetaType type);
 
-  bool transactionIdExists(TransactionId const& tid) const;
+  bool transactionIdExists(TransactionId tid) const;
 
-  bool storeManagedState(TransactionId const& tid,
+  bool storeManagedState(TransactionId tid,
                          std::shared_ptr<arangodb::TransactionState> state,
                          double ttl);
 
   bool isAuthorized(ManagedTrx const& trx) const;
   bool isAuthorized(ManagedTrx const& trx, std::string_view database) const;
+
+  static std::string buildContextFromState(TransactionState& state,
+                                           MetaType type);
 
  private:
   ManagerFeature& _feature;

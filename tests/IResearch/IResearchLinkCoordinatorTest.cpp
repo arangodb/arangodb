@@ -173,7 +173,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -253,7 +253,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (drop index from current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ ] } }");
+          R"({ "s123": { "indexes" : [ ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());
@@ -334,7 +334,7 @@ TEST_F(IResearchLinkCoordinatorTest, test_create_drop) {
     // simulate heartbeat thread (create index in current)
     {
       auto const value = arangodb::velocypack::Parser::fromJson(
-          "{ \"shard-id\": { \"indexes\" : [ { \"id\": \"42\" } ] } }");
+          R"({ "s123": { "indexes" : [ { "id": "42" } ] } })");
       EXPECT_TRUE(arangodb::AgencyComm(server.server())
                       .setValue(currentCollectionPath, value->slice(), 0.0)
                       .successful());

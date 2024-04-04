@@ -62,6 +62,13 @@ RestTransactionHandler::RestTransactionHandler(ArangodServer& server,
     : RestVocbaseBaseHandler(server, request, response), _v8Context(nullptr) {}
 
 RequestLane RestTransactionHandler::lane() const {
+  if (_request->requestType() == RequestType::GET) {
+    // a GET request only returns the list of ongoing transactions.
+    // this is used only for debugging and should not be blocked
+    // by if most scheduler threads are busy.
+    return RequestLane::CLUSTER_ADMIN;
+  }
+
   bool isCommit = _request->requestType() == rest::RequestType::PUT;
   bool isAbort = _request->requestType() == rest::RequestType::DELETE_REQ;
 
@@ -89,6 +96,7 @@ RequestLane RestTransactionHandler::lane() const {
       // higher prio than leader requests, even if they are done from
       // AQL.
     }
+
     if (isCommit || isAbort) {
       // commit or abort on leader gets a medium priority, because it
       // can unblock other operations
@@ -144,7 +152,11 @@ void RestTransactionHandler::executeGetState() {
 
     bool fanout = ServerState::instance()->isCoordinator() &&
                   !_request->parsedValue("local", false);
-    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout);
+    // note: "details" parameter is not documented and not part of the public
+    // API, so the output format of toVelocyPack(details=true) may change
+    // without notice
+    bool details = _request->parsedValue("details", false);
+    mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout, details);
 
     builder.close();  // array
     builder.close();  // object
@@ -231,7 +243,6 @@ futures::Future<futures::Unit> RestTransactionHandler::executeBegin() {
     }
     TRI_ASSERT(tid.isSet());
     TRI_ASSERT(!tid.isLegacyTransactionId());
-    TRI_ASSERT(tid.isSet());
 
     Result res =
         co_await mgr->ensureManagedTrx(_vocbase, tid, slice, origin, false);
