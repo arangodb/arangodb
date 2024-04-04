@@ -49,6 +49,7 @@ struct ThreadPoolScheduler final : Scheduler {
 
  private:
   std::atomic<bool> _stopping;
+  std::atomic<uint64_t> _lastLowPriorityDequeueTime;
   std::vector<std::unique_ptr<ThreadPool>> _threadPools;
 };
 

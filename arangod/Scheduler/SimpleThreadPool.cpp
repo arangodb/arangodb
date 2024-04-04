@@ -37,6 +37,7 @@ ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
       auto stoken = _stop.get_token();
       while (auto item = pop(stoken)) {
         item->invoke();
+        statistics.done += 1;
       }
     });
 
@@ -58,6 +59,7 @@ void ThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
   std::unique_lock guard(_mutex);
   _tasks.emplace_back(std::move(task));
   _cv.notify_one();
+  statistics.queued += 1;
 }
 
 auto ThreadPool::pop(std::stop_token stoken) noexcept

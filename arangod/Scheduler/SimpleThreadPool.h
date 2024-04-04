@@ -49,8 +49,17 @@ struct ThreadPool {
     push(std::make_unique<LambdaTask>(std::forward<F>(fn)));
   }
 
+  struct Statistics {
+    std::atomic<uint64_t> done;
+    std::atomic<uint64_t> queued;
+  };
+
+  Statistics statistics;
+
  private:
   std::unique_ptr<WorkItem> pop(std::stop_token) noexcept;
+
+  using Clock = std::chrono::steady_clock;
 
   std::mutex _mutex;
   std::condition_variable_any _cv;

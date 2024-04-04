@@ -34,15 +34,19 @@ void ThreadPoolScheduler::trackQueueTimeViolation() {}
 void ThreadPoolScheduler::trackQueueItemSize(std::int64_t int64) noexcept {}
 
 uint64_t ThreadPoolScheduler::getLastLowPriorityDequeueTime() const noexcept {
-  return 0;
+  return _lastLowPriorityDequeueTime.load(std::memory_order::relaxed);
 }
 
 void ThreadPoolScheduler::setLastLowPriorityDequeueTime(
-    uint64_t time) noexcept {}
+    uint64_t time) noexcept {
+  _lastLowPriorityDequeueTime.store(time, std::memory_order::relaxed);
+}
 
 std::pair<uint64_t, uint64_t>
 ThreadPoolScheduler::getNumberLowPrioOngoingAndQueued() const {
-  return std::pair<uint64_t, uint64_t>();
+  auto queued = _threadPools[1]->statistics.queued.load();
+  auto done = _threadPools[1]->statistics.done.load();
+  return std::make_pair(done - queued, queued);
 }
 
 double ThreadPoolScheduler::approximateQueueFillGrade() const { return 0; }
