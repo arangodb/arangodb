@@ -2060,7 +2060,6 @@ auto ClusterInfo::loadCurrent() -> consensus::index_t {
     auto databaseSlice = database.second->slice()[0];
     if (!databaseSlice.hasKey(dbPath)) {
       newCollections.erase(databaseName);
-      swapCollections = true;
       continue;
     }
     databaseSlice = databaseSlice.get(dbPath);
