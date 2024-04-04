@@ -114,8 +114,11 @@ class AgencyCache final : public ServerThread<ArangodServer> {
   /// @brief Unregister local callback
   void unregisterCallback(std::string const& key, uint64_t const& id);
 
+  enum class Executor { Scheduler, Direct };
+
   /// @brief Wait to be notified, when a Raft index has arrived.
-  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index);
+  [[nodiscard]] futures::Future<Result> waitFor(consensus::index_t index,
+                                                Executor = Executor::Scheduler);
 
   /// @brief Queries the agency for the latest commit index and waits for the
   /// local cache to reach this index.
@@ -211,8 +214,11 @@ class AgencyCache final : public ServerThread<ArangodServer> {
 
   /// @brief Waiting room for indexes during office hours
   mutable std::mutex _waitLock;
-  std::multimap<consensus::index_t, futures::Promise<arangodb::Result>>
-      _waiting;
+  struct WaitRecord {
+    futures::Promise<arangodb::Result> promise;
+    Executor executor;
+  };
+  std::multimap<consensus::index_t, WaitRecord> _waiting;
 
   /// @brief changes of index to plan and current
   std::multimap<consensus::index_t, std::string> _planChanges;
