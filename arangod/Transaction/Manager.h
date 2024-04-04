@@ -67,8 +67,8 @@ struct Options;
 
 struct IManager {
   virtual ~IManager() = default;
-  virtual Result abortManagedTrx(TransactionId,
-                                 std::string const& database) = 0;
+  virtual futures::Future<Result> abortManagedTrx(
+      TransactionId, std::string const& database) = 0;
 };
 
 /// @brief Tracks TransactionState instances
@@ -195,8 +195,10 @@ class Manager final : public IManager {
   /// @brief get the meta transaction state
   transaction::Status getManagedTrxStatus(TransactionId) const;
 
-  Result commitManagedTrx(TransactionId, std::string const& database);
-  Result abortManagedTrx(TransactionId, std::string const& database) override;
+  futures::Future<Result> commitManagedTrx(TransactionId,
+                                           std::string const& database);
+  futures::Future<Result> abortManagedTrx(TransactionId,
+                                          std::string const& database) override;
 
   /// @brief collect forgotten transactions
   bool garbageCollect(bool abortAll);
@@ -281,8 +283,9 @@ class Manager final : public IManager {
   transaction::Hints ensureHints(transaction::Options& options) const;
 
   /// @brief performs a status change on a transaction using a timeout
-  Result statusChangeWithTimeout(TransactionId tid, std::string const& database,
-                                 transaction::Status status);
+  futures::Future<Result> statusChangeWithTimeout(TransactionId tid,
+                                                  std::string const& database,
+                                                  transaction::Status status);
 
   /// @brief hashes the transaction id into a bucket
   inline size_t getBucket(TransactionId tid) const noexcept {
