@@ -20,15 +20,32 @@
 ////////////////////////////////////////////////////////////////////////////////
 #include <algorithm>
 
+#ifdef TRI_HAVE_SYS_PRCTL_H
+#include <sys/prctl.h>
+#endif
+
 #include "Logger/LogMacros.h"
 
 #include "SimpleThreadPool.h"
 
 using namespace arangodb;
 
-ThreadPool::ThreadPool(std::size_t threadCount) : _threads(threadCount) {
-  std::generate_n(std::back_inserter(_threads), threadCount,
-                  [&]() { return makeThread(); });
+ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
+    : _threads(threadCount) {
+  std::generate_n(std::back_inserter(_threads), threadCount, [&]() {
+    auto thread = std::jthread([this]() noexcept {
+      auto stoken = _stop.get_token();
+      while (auto item = pop(stoken)) {
+        item->invoke();
+      }
+    });
+
+#ifdef TRI_HAVE_SYS_PRCTL_H
+    pthread_setname_np(thread.native_handle(), name);
+#endif
+
+    return thread;
+  });
 }
 
 ThreadPool::~ThreadPool() {
@@ -54,21 +71,4 @@ auto ThreadPool::pop(std::stop_token stoken) noexcept
   }
   // stop was requested
   return nullptr;
-}
-
-thread_local ThreadPool* ThreadPool::myThreadPool = nullptr;
-
-std::jthread ThreadPool::makeThread() noexcept {
-  return std::jthread([this]() noexcept {
-    myThreadPool = this;
-    auto stoken = _stop.get_token();
-    while (auto item = pop(stoken)) {
-      item->invoke();
-
-      // exit point for detached threads
-      if (myThreadPool == nullptr) {
-        break;
-      }
-    }
-  });
 }

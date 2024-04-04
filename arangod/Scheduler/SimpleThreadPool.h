@@ -32,7 +32,7 @@ namespace arangodb {
 struct ThreadPool {
   using WorkItem = Scheduler::WorkItemBase;
 
-  explicit ThreadPool(std::size_t threadCount);
+  ThreadPool(const char* name, std::size_t threadCount);
   ~ThreadPool();
   void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
@@ -50,10 +50,7 @@ struct ThreadPool {
   }
 
  private:
-  static thread_local ThreadPool* myThreadPool;
-
   std::unique_ptr<WorkItem> pop(std::stop_token) noexcept;
-  std::jthread makeThread() noexcept;
 
   std::mutex _mutex;
   std::condition_variable_any _cv;

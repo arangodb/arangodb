@@ -24,12 +24,12 @@
 
 using namespace arangodb;
 
-TEST(ThreadPoolTest, start_stop_test) { ThreadPool pool{1}; }
+TEST(ThreadPoolTest, start_stop_test) { ThreadPool pool{"test-sched", 1}; }
 
 TEST(ThreadPoolTest, simple_counter) {
   std::atomic<std::size_t> counter{0};
   {
-    ThreadPool pool{1};
+    ThreadPool pool{"test-sched", 1};
     pool.push([&]() noexcept { counter++; });
     pool.push([&]() noexcept { counter++; });
     pool.push([&]() noexcept { counter++; });
@@ -41,7 +41,7 @@ TEST(ThreadPoolTest, simple_counter) {
 TEST(ThreadPoolTest, multi_thread_counter) {
   std::atomic<std::size_t> counter{0};
   {
-    ThreadPool pool{3};
+    ThreadPool pool{"test-sched", 3};
     for (size_t k = 0; k < 100; k++) {
       pool.push([&]() noexcept { counter++; });
     }
@@ -52,7 +52,7 @@ TEST(ThreadPoolTest, multi_thread_counter) {
 
 TEST(ThreadPoolTest, stop_when_sleeping) {
   {
-    ThreadPool pool{3};
+    ThreadPool pool{"test-sched", 3};
     std::this_thread::sleep_for(std::chrono::seconds{3});
   }
 }
@@ -60,7 +60,7 @@ TEST(ThreadPoolTest, stop_when_sleeping) {
 TEST(ThreadPoolTest, work_when_sleeping) {
   std::atomic<std::size_t> counter{0};
   {
-    ThreadPool pool{3};
+    ThreadPool pool{"test-sched", 3};
     std::this_thread::sleep_for(std::chrono::seconds{3});
     pool.push([&]() noexcept { counter++; });
     pool.push([&]() noexcept { counter++; });
@@ -100,7 +100,7 @@ TEST(ThreadPoolTest, spawn_work) {
   const auto max = 16;
 
   {
-    ThreadPool pool{3};
+    ThreadPool pool{"test-sched", 3};
     pool.push(createLambda(counter, pool, 0, max));
   }
   ASSERT_EQ(counter, (2 << max) - 1);

@@ -61,14 +61,14 @@ ThreadPoolScheduler::ThreadPoolScheduler(ArangodServer& server,
                                          uint64_t maxThreads)
     : Scheduler(server) {
   _threadPools.reserve(4);
-  _threadPools.emplace_back(
-      std::make_unique<ThreadPool>(std::min(std::ceil(maxThreads * 0.1), 2.)));
-  _threadPools.emplace_back(
-      std::make_unique<ThreadPool>(std::min(std::ceil(maxThreads * 0.6), 8.)));
-  _threadPools.emplace_back(
-      std::make_unique<ThreadPool>(std::min(std::ceil(maxThreads * 0.4), 4.)));
-  _threadPools.emplace_back(
-      std::make_unique<ThreadPool>(std::min(std::ceil(maxThreads * 0.4), 4.)));
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+      "Sched:Maintenance", std::min(std::ceil(maxThreads * 0.1), 2.)));
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+      "Sched:low", std::min(std::ceil(maxThreads * 0.6), 16.)));
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+      "Sched:medium", std::min(std::ceil(maxThreads * 0.4), 8.)));
+  _threadPools.emplace_back(std::make_unique<ThreadPool>(
+      "Sched:high", std::min(std::ceil(maxThreads * 0.4), 8.)));
 }
 
 void ThreadPoolScheduler::shutdown() {
