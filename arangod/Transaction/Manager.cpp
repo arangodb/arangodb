@@ -1537,7 +1537,7 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
             idType = "legacy id";
           }
           builder.add("idType", VPackValue(idType));
-          if (tid.isChildTransactionId()) {
+          if (!ServerState::instance()->isSingleServer()) {
             builder.add("coordinatorId",
                         VPackValue(tid.asCoordinatorTransactionId().id()));
           }
