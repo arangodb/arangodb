@@ -22,34 +22,51 @@
 
 #pragma once
 
-#include "Basics/Identifier.h"
+#include "Cluster/ClusterTypes.h"
+#include "Cluster/LeaseManager/LeaseEntry.h"
+#include "Cluster/LeaseManager/LeaseId.h"
+#include "Cluster/CallbackGuard.h"
+
+#include <unordered_map>
+#include <vector>
 
 namespace arangodb {
+namespace velocypack {
+class Builder;
+}
 struct PeerState;
 namespace cluster {
-struct LeaseManager {
-  /// @brief server id type
-  class LeaseId : public arangodb::basics::Identifier {
-   public:
-    constexpr LeaseId() noexcept : Identifier() {}
-    constexpr explicit LeaseId(BaseType id) noexcept : Identifier(id) {}
-  };
+class LeaseId;
+class RebootTracker;
 
-  static_assert(sizeof(LeaseId) == sizeof(LeaseId::BaseType),
-                "invalid size of LeaseId");
+struct LeaseManager {
+  using AbortMethod = std::function<void()>;
 
   struct LeaseIdGuard {
-    LeaseIdGuard(LeaseId id) : _id(std::move(id)) {}
-    auto id() const -> LeaseId { return _id; }
+    LeaseIdGuard(LeaseId id) :_id{id} {}
+
+    auto id() const noexcept -> LeaseId {
+      return _id;
+    }
    private:
     LeaseId _id;
   };
+  struct LeaseListOfPeer {
+    CallbackGuard _serverAbortCallback;
+    std::unordered_map<LeaseId, LeaseEntry> _mapping;
+  };
 
-  auto requireLease(PeerState const& peerState) -> LeaseIdGuard;
+  LeaseManager(RebootTracker&);
+
+  auto requireLease(PeerState const& peerState, AbortMethod abortCallback)
+      -> LeaseIdGuard;
+
+  auto leasesToVPack() const -> arangodb::velocypack::Builder;
 
  private:
-  uint64_t _nextLeaseId{0};
+  uint64_t _lastUsedLeaseId{0};
+  RebootTracker& _rebootTracker;
+  std::unordered_map<PeerState, LeaseListOfPeer> _leases;
 };
-}
-}
-DECLARE_HASH_FOR_IDENTIFIER(arangodb::cluster::LeaseManager::LeaseId)
+}  // namespace cluster
+}  // namespace arangodb

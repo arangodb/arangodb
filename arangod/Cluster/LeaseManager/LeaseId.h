@@ -20,13 +20,19 @@
 /// @author Michael Hackstein
 ////////////////////////////////////////////////////////////////////////////////
 
-#include "LeaseManager.h"
+#pragma once
 
-using namespace arangodb::cluster;
+#include "Basics/Identifier.h"
 
-auto LeaseManager::requireLease(PeerState const& peerState) -> LeaseIdGuard {
-  // NOTE: In theory _nextLeaseId can overflow here, but that should never be a problem.
-  // if we ever reach that point without restarting the server, it is highly unlikely that
-  // we still have handed out low number leases.
-  return LeaseIdGuard{LeaseId{_nextLeaseId++}};
+namespace arangodb::cluster {
+class LeaseId : public arangodb::basics::Identifier {
+ public:
+  constexpr LeaseId() noexcept : Identifier() {}
+  constexpr explicit LeaseId(BaseType id) noexcept : Identifier(id) {}
+};
+
+static_assert(sizeof(LeaseId) == sizeof(LeaseId::BaseType),
+              "invalid size of LeaseId");
 }
+
+DECLARE_HASH_FOR_IDENTIFIER(arangodb::cluster::LeaseId)
