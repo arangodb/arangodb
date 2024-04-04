@@ -50,7 +50,8 @@ TEST(SourceLocationTest, filename_prefix) {
     // now compare that with SourceLocation
     auto loc = SourceLocation::current();
     auto fn = loc.file_name();
-    auto expected = fs::path("tests") / fs::path("Basics") / fs::path("SourceLocationTest.cpp");
+    auto expected = fs::path("tests") / fs::path("Basics") /
+                    fs::path("SourceLocationTest.cpp");
     ASSERT_STREQ(fn, expected.c_str());
   }
 }
