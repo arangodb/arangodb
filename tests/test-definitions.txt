@@ -68,6 +68,7 @@ rta_makedata single
 
 arangobench priority=1000 size=small cluster -- --dumpAgencyOnError true
 chaos cluster !coverage !full -- --dumpAgencyOnError true parallelity=8
+deadlock cluster !coverage -- --dumpAgencyOnError true
 restart priority=1000 size=medium cluster -- --dumpAgencyOnError true --forceJson true
 
 load_balancing priority=500 size=medium cluster -- --dumpAgencyOnError true

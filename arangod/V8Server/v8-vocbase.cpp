@@ -193,7 +193,7 @@ static void JS_Transactions(v8::FunctionCallbackInfo<v8::Value> const& args) {
   if (arangodb::ExecContext::isAuthEnabled()) {
     user = ExecContext::current().user();
   }
-  mgr->toVelocyPack(builder, vocbase.name(), user, fanout);
+  mgr->toVelocyPack(builder, vocbase.name(), user, fanout, /*details*/ false);
 
   builder.close();
 

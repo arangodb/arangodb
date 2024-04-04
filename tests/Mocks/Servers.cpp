@@ -42,6 +42,7 @@
 #include "Cluster/ActionDescription.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/ClusterFeature.h"
+#include "Cluster/ClusterInfo.h"
 #include "Cluster/CreateCollection.h"
 #include "Cluster/CreateDatabase.h"
 #include "Cluster/DropDatabase.h"
@@ -489,22 +490,21 @@ AgencyCache::applyTestTransaction(velocypack::Slice trxs) {
     res = std::pair<std::vector<consensus::apply_ret_t>, consensus::index_t>{
         _readDB.applyTransactions(trxs, AgentInterface::WriteMode{true, true}),
         _commitIndex};  // apply logs
-  }
-  {
-    std::lock_guard g(_callbacksLock);
-    for (auto const& trx : VPackArrayIterator(trxs)) {
-      handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
-    }
     {
-      std::lock_guard g(_storeLock);
-      for (auto const& i : pc) {
-        _planChanges.emplace(_commitIndex, i);
-      }
-      for (auto const& i : cc) {
-        _currentChanges.emplace(_commitIndex, i);
+      std::lock_guard g(_callbacksLock);
+      for (auto const& trx : VPackArrayIterator(trxs)) {
+        handleCallbacksNoLock(trx[0], uniq, toCall, pc, cc);
       }
     }
+    for (auto const& i : pc) {
+      _planChanges.emplace(_commitIndex, i);
+    }
+    for (auto const& i : cc) {
+      _currentChanges.emplace(_commitIndex, i);
+    }
   }
+
+  triggerWaiting(_commitIndex);
   invokeCallbacks(toCall);
   return res;
 }

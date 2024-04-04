@@ -1138,11 +1138,11 @@ AgencyCache& ClusterFeature::agencyCache() {
 void ClusterFeature::allocateMembers() {
   _agencyCallbackRegistry =
       std::make_unique<AgencyCallbackRegistry>(server(), agencyCallbacksPath());
-  _clusterInfo = std::make_unique<ClusterInfo>(
-      server(), *_agencyCallbackRegistry, _syncerShutdownCode,
-      server().getFeature<metrics::MetricsFeature>());
   _agencyCache = std::make_unique<AgencyCache>(
       server(), *_agencyCallbackRegistry, _syncerShutdownCode);
+  _clusterInfo = std::make_unique<ClusterInfo>(
+      server(), *_agencyCache, *_agencyCallbackRegistry, _syncerShutdownCode,
+      server().getFeature<metrics::MetricsFeature>());
 }
 
 void ClusterFeature::addDirty(

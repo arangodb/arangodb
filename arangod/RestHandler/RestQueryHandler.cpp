@@ -27,17 +27,26 @@
 #include "Aql/OptimizerRulesFeature.h"
 #include "Aql/Query.h"
 #include "Aql/QueryList.h"
+#include "Aql/QueryRegistry.h"
 #include "Basics/StringUtils.h"
 #include "Basics/VelocyPackHelper.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ClusterMethods.h"
 #include "Cluster/ServerState.h"
+#include "GeneralServer/AuthenticationFeature.h"
+#include "Network/Methods.h"
+#include "Network/NetworkFeature.h"
+#include "Network/Utils.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/OperationOrigin.h"
 #include "Transaction/StandaloneContext.h"
 #include "VocBase/Methods/Queries.h"
 #include "VocBase/vocbase.h"
+
+#include <fuerte/jwt.h>
+#include <velocypack/Iterator.h>
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -62,6 +71,8 @@ RestStatus RestQueryHandler::execute() {
       auto const& suffixes = _request->suffixes();
       if (suffixes.size() == 1 && suffixes[0] == "rules") {
         handleAvailableOptimizerRules();
+      } else if (suffixes.size() == 1 && suffixes[0] == "registry") {
+        dumpQueryRegistry();
       } else {
         readQuery();
       }
@@ -79,6 +90,99 @@ RestStatus RestQueryHandler::execute() {
 
   // this handler is done
   return RestStatus::DONE;
+}
+
+void RestQueryHandler::dumpQueryRegistry() {
+  if (!ExecContext::current().isSuperuser()) {
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
+  bool const fanout = ServerState::instance()->isCoordinator() &&
+                      !_request->parsedValue("local", false);
+
+  VPackBuilder builder;
+  builder.openObject();
+  builder.add("queries", VPackValue(VPackValueType::Array));
+
+  if (fanout) {
+    TRI_ASSERT(ServerState::instance()->isCoordinator());
+    auto& ci = _vocbase.server().getFeature<ClusterFeature>().clusterInfo();
+
+    NetworkFeature const& nf = _vocbase.server().getFeature<NetworkFeature>();
+    network::ConnectionPool* pool = nf.pool();
+    if (pool == nullptr) {
+      THROW_ARANGO_EXCEPTION(TRI_ERROR_SHUTTING_DOWN);
+    }
+
+    std::vector<network::FutureRes> futures;
+    auto auth = AuthenticationFeature::instance();
+
+    network::RequestOptions options;
+    options.database = _vocbase.name();
+    options.timeout = network::Timeout(30.0);
+    options.param("local", "true");
+
+    VPackBuffer<uint8_t> body;
+
+    auto servers = ci.getCurrentDBServers();
+
+    for (auto const& server : servers) {
+      if (server == ServerState::instance()->getId()) {
+        // ourselves!
+        continue;
+      }
+
+      network::Headers headers;
+      if (auth != nullptr && auth->isActive()) {
+        auto const& username = ExecContext::current().user();
+
+        if (!username.empty()) {
+          headers.try_emplace(
+              StaticStrings::Authorization,
+              "bearer " + fuerte::jwt::generateUserToken(
+                              auth->tokenCache().jwtSecret(), username));
+        } else {
+          headers.try_emplace(StaticStrings::Authorization,
+                              "bearer " + auth->tokenCache().jwtToken());
+        }
+      }
+
+      auto f = network::sendRequestRetry(
+          pool, "server:" + server, fuerte::RestVerb::Get,
+          "/_api/query/registry", body, options, std::move(headers));
+      futures.emplace_back(std::move(f));
+    }
+
+    if (!futures.empty()) {
+      auto responses = futures::collectAll(futures).get();
+      for (auto const& it : responses) {
+        if (!it.hasValue()) {
+          THROW_ARANGO_EXCEPTION(TRI_ERROR_CLUSTER_BACKEND_UNAVAILABLE);
+        }
+        auto& res = it.get();
+        if (res.statusCode() == fuerte::StatusOK) {
+          VPackSlice slice = res.slice();
+          if (slice.isObject()) {
+            slice = slice.get("queries");
+            if (slice.isArray()) {
+              builder.add(VPackArrayIterator(slice));
+            }
+          }
+        }
+      }
+    }
+  } else {
+    auto* queryRegistry = QueryRegistryFeature::registry();
+    if (queryRegistry != nullptr) {
+      queryRegistry->toVelocyPack(builder);
+    }
+  }
+
+  builder.close();  // "queries" array
+  builder.close();  // object
+
+  generateResult(rest::ResponseCode::OK, builder.slice());
 }
 
 void RestQueryHandler::handleAvailableOptimizerRules() {

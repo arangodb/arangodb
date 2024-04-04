@@ -1,4 +1,4 @@
-/*jshint globalstrict:false, strict:false, maxlen:4000, unused:false */
+/*jshint globalstrict:false, strict:false */
 
 // //////////////////////////////////////////////////////////////////////////////
 // / DISCLAIMER
@@ -19,31 +19,17 @@
 // / limitations under the License.
 // /
 // / Copyright holder is ArangoDB GmbH, Cologne, Germany
-// /
-/// @author Jan Steemann
-/// @author Wilfried Goesgens
-/// @author Copyright 2021, ArangoDB GmbH, Cologne, Germany
 // //////////////////////////////////////////////////////////////////////////////
 
-
-const base = require("fs").join(
-  require('internal').pathForTesting('client'),
-  'dump',
-  'dump-setup-common.inc');
-const setup = require(base);
-
 (function () {
-  setup.cleanup();
-  setup.createEmpty();
-  setup.createExtendedName();
-  setup.createAutoIncKeyGen();
-  setup.createUsers();
-  setup.createMany();
-  setup.createOrder();
-  setup.createSmartGraph3_11_compat();
-  setup.createFoxx();
+  'use strict';
+  var db = require("@arangodb").db;
+
+  db._dropDatabase("UnitTestsDumpSrc");
+  db._dropDatabase("UnitTestsDumpDst");
 })();
 
 return {
   status: true
 };
+
