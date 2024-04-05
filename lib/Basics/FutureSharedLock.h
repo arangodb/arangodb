@@ -108,6 +108,10 @@ struct FutureSharedLock {
     });
   }
 
+  LockGuard tryLockShared() { return _sharedState->tryLockShared(); }
+
+  LockGuard tryLockExclusive() { return _sharedState->tryLockExclusive(); }
+
   void unlock() { _sharedState->unlock(); }
 
  private:
@@ -121,6 +125,29 @@ struct FutureSharedLock {
 
   struct SharedState : std::enable_shared_from_this<SharedState> {
     explicit SharedState(Scheduler& scheduler) : _scheduler(scheduler) {}
+
+    LockGuard tryLockShared() {
+      std::lock_guard lock(_mutex);
+      if (_lockCount == 0 || (!_exclusive && _queue.empty())) {
+        ++_lockCount;
+        _exclusive = false;
+        return LockGuard(this);
+      }
+
+      return {};
+    }
+
+    LockGuard tryLockExclusive() {
+      std::lock_guard lock(_mutex);
+      if (_lockCount == 0) {
+        TRI_ASSERT(_queue.empty());
+        ++_lockCount;
+        _exclusive = true;
+        return LockGuard(this);
+      }
+
+      return {};
+    }
 
     template<class Func>
     FutureType asyncLockExclusive(Func blockedFunc) {

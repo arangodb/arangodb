@@ -69,6 +69,7 @@
 #include "Basics/VelocyPackHelper.h"
 
 #include <absl/strings/str_cat.h>
+#include <frozen/unordered_map.h>
 #include <velocypack/Iterator.h>
 
 #include <algorithm>
@@ -80,7 +81,7 @@ using namespace arangodb::basics;
 namespace {
 
 /// @brief NodeType to string mapping
-std::unordered_map<int, std::string const> const typeNames{
+frozen::unordered_map<int, std::string_view, 36> const kTypeNames{
     {static_cast<int>(ExecutionNode::SINGLETON), "SingletonNode"},
     {static_cast<int>(ExecutionNode::ENUMERATE_COLLECTION),
      "EnumerateCollectionNode"},
@@ -190,11 +191,11 @@ ExecutionNode* createOffsetMaterializeNode(ExecutionPlan*, velocypack::Slice) {
 #endif
 }  // namespace arangodb::aql
 
-/// @brief resolve nodeType to a string.
-std::string const& ExecutionNode::getTypeString(NodeType type) {
-  auto it = ::typeNames.find(static_cast<int>(type));
+/// @brief resolve nodeType to a string_view.
+std::string_view ExecutionNode::getTypeString(NodeType type) {
+  auto it = ::kTypeNames.find(static_cast<int>(type));
 
-  if (it != ::typeNames.end()) {
+  if (it != ::kTypeNames.end()) {
     return (*it).second;
   }
 
@@ -203,14 +204,12 @@ std::string const& ExecutionNode::getTypeString(NodeType type) {
 }
 
 /// @brief returns the type name of the node
-std::string const& ExecutionNode::getTypeString() const {
+std::string_view ExecutionNode::getTypeString() const {
   return getTypeString(getType());
 }
 
 void ExecutionNode::validateType(int type) {
-  auto it = ::typeNames.find(static_cast<int>(type));
-
-  if (it == ::typeNames.end()) {
+  if (::kTypeNames.find(static_cast<int>(type)) == ::kTypeNames.end()) {
     THROW_ARANGO_EXCEPTION_MESSAGE(TRI_ERROR_NOT_IMPLEMENTED, "unknown TypeID");
   }
 }
@@ -454,9 +453,8 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
           Variable* inVar =
               Variable::varFromVPack(plan->getAst(), it, "inVariable", true);
 
-          std::string const type = it.get("type").copyString();
           aggregateVariables.emplace_back(
-              AggregateVarInfo{outVar, inVar, type});
+              AggregateVarInfo{outVar, inVar, it.get("type").copyString()});
         }
       }
 
@@ -471,7 +469,11 @@ ExecutionNode* ExecutionNode::fromVPackFactory(ExecutionPlan* plan,
       TRI_ASSERT(false);
     }
   }
-  return nullptr;
+
+  THROW_ARANGO_EXCEPTION_MESSAGE(
+      TRI_ERROR_INTERNAL,
+      absl::StrCat("unable to create ExecutionNode from snippet ",
+                   slice.toJson()));
 }
 
 /// @brief create an ExecutionNode from VPackSlice
@@ -563,7 +565,6 @@ ExecutionNode::ExecutionNode(ExecutionPlan* plan, velocypack::Slice slice)
   VPackSlice regsToKeepStackSlice = slice.get("regsToKeepStack");
 
   if (regsToKeepStackSlice.isArray()) {
-    // || regsToKeepStackSlice.length() == 0) {
     _regsToKeepStack.reserve(regsToKeepStackSlice.length());
     for (auto stackEntrySlice : VPackArrayIterator(regsToKeepStackSlice)) {
       if (!stackEntrySlice.isArray()) {
