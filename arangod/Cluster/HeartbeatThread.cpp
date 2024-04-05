@@ -805,6 +805,14 @@ void HeartbeatThread::runSingleServer() {
   // last time we were able to successfully send our heartbeat to the agency
   std::chrono::time_point<std::chrono::steady_clock> lastSuccessfulHeartbeat;
 
+  auto pruneAgencyConnections = [this]() {
+    if (++_updateCounter >= 60) {
+      _updateCounter = 0;
+      auto& clusterFeature = server().getFeature<ClusterFeature>();
+      clusterFeature.pruneAsyncAgencyConnectionPool();
+    }
+  };
+
   while (!isStopping()) {
     {
       std::unique_lock locker{_condition.mutex};
@@ -1051,6 +1059,7 @@ void HeartbeatThread::runSingleServer() {
               << "All your base are belong to us";
         }
 
+        pruneAgencyConnections();
         // server is now responsible for expiring outdated documents
         ttlFeature.allowRunning(true);
         continue;  // nothing more to do
@@ -1185,11 +1194,7 @@ void HeartbeatThread::runSingleServer() {
           << "got an unknown exception in single server heartbeat";
     }
     // Periodically prune the connection pool
-    if (++_updateCounter >= 60) {
-      _updateCounter = 0;
-      auto& clusterFeature = server().getFeature<ClusterFeature>();
-      clusterFeature.pruneAsyncAgencyConnectionPool();
-    }
+    pruneAgencyConnections();
   }
 }
 
