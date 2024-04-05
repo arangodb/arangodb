@@ -56,6 +56,8 @@ struct ThreadPool {
 
   Statistics statistics;
 
+  const std::size_t numThreads;
+
  private:
   std::unique_ptr<WorkItem> pop(std::stop_token) noexcept;
 

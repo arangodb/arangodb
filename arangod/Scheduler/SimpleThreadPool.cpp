@@ -31,7 +31,7 @@
 using namespace arangodb;
 
 ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
-    : _threads(threadCount) {
+    : numThreads(threadCount), _threads(threadCount) {
   std::generate_n(std::back_inserter(_threads), threadCount, [&]() {
     auto thread = std::jthread([this]() noexcept {
       auto stoken = _stop.get_token();

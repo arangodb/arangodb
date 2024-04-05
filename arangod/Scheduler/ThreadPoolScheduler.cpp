@@ -20,6 +20,10 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <velocypack/Builder.h>
+#include <numeric>
+
+#include "Metrics/Gauge.h"
+#include "Metrics/Counter.h"
 
 #include "ThreadPoolScheduler.h"
 
@@ -70,6 +74,8 @@ bool ThreadPoolScheduler::queueItem(RequestLane lane,
   return true;
 }
 
+constexpr uint64_t approxWorkerStackSize = 4'000'000;
+
 ThreadPoolScheduler::ThreadPoolScheduler(
     ArangodServer& server, uint64_t maxThreads,
     std::shared_ptr<SchedulerMetrics> metrics)
@@ -83,6 +89,13 @@ ThreadPoolScheduler::ThreadPoolScheduler(
       "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.)));
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
+
+  _metrics->_metricsStackMemoryWorkerThreads =
+      approxWorkerStackSize *
+      std::accumulate(_threadPools.begin(), _threadPools.end(), 0,
+                      [](std::size_t accum, auto const& pool) {
+                        return accum + pool->numThreads;
+                      });
 }
 
 void ThreadPoolScheduler::shutdown() {
