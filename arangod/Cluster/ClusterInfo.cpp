@@ -4727,7 +4727,7 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                     return false;
                   }
                 }();
-                if (!leaderResigned) {
+                if (leaderResigned) {
                   return std::nullopt;
                 }
 
