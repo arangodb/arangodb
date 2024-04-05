@@ -98,6 +98,12 @@ void RestQueryHandler::dumpQueryRegistry() {
     return;
   }
 
+  if (!_vocbase.server().getFeature<QueryRegistryFeature>().enableDebugApis()) {
+    // debug API turned off
+    generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_FORBIDDEN);
+    return;
+  }
+
   bool const fanout = ServerState::instance()->isCoordinator() &&
                       !_request->parsedValue("local", false);
 

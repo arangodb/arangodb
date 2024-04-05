@@ -35,6 +35,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Manager.h"
 #include "Transaction/Methods.h"
@@ -161,13 +162,18 @@ std::vector<bool> EngineInfoContainerDBServerServerBased::buildEngineInfo(
   // include query string for informational/debugging purposes.
   // this allows us to link DB server query snippets to actual queries
   // as written by the end user.
-  QueryContext* qc = &_query;
-  Query* q = dynamic_cast<Query*>(qc);
-  if (q != nullptr) {
-    // only send up to 1K of query strings to save network traffic and
-    // memory on the DB server later
-    infoBuilder.add("qs",
-                    VPackValue(q->queryString().extract(/*maxLength*/ 1024)));
+  if (_query.vocbase()
+          .server()
+          .getFeature<QueryRegistryFeature>()
+          .enableDebugApis()) {
+    QueryContext* qc = &_query;
+    Query* q = dynamic_cast<Query*>(qc);
+    if (q != nullptr) {
+      // only send up to 1K of query strings to save network traffic and
+      // memory on the DB server later
+      infoBuilder.add("qs",
+                      VPackValue(q->queryString().extract(/*maxLength*/ 1024)));
+    }
   }
 
   infoBuilder.add(StaticStrings::AttrCoordinatorRebootId,

@@ -31,6 +31,7 @@
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterInfo.h"
 #include "Cluster/ServerState.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/Manager.h"
@@ -99,7 +100,13 @@ void RestTransactionHandler::executeGetState() {
 
     bool const fanout = ServerState::instance()->isCoordinator() &&
                         !_request->parsedValue("local", false);
-    bool const details = _request->parsedValue("details", false);
+    bool details = _request->parsedValue("details", false);
+    if (!_vocbase.server()
+             .getFeature<QueryRegistryFeature>()
+             .enableDebugApis()) {
+      // debug API turned off
+      details = false;
+    }
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     TRI_ASSERT(mgr != nullptr);
     mgr->toVelocyPack(builder, _vocbase.name(), exec.user(), fanout, details);

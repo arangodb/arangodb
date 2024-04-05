@@ -47,6 +47,7 @@
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Random/RandomGenerator.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "Transaction/Context.h"
 
 #include <velocypack/Iterator.h>
@@ -361,8 +362,10 @@ void RestAqlHandler::setupClusterQuery() {
 
   // query string
   std::string_view qs;
-  if (auto qss = querySlice.get("qs"); qss.isString()) {
-    qs = qss.stringView();
+  if (_server.getFeature<QueryRegistryFeature>().enableDebugApis()) {
+    if (auto qss = querySlice.get("qs"); qss.isString()) {
+      qs = qss.stringView();
+    }
   }
 
   _queryRegistry->insertQuery(std::move(q), ttl, qs, std::move(rGuard));

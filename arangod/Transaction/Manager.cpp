@@ -42,6 +42,7 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
 #include "StorageEngine/TransactionCollection.h"
@@ -173,7 +174,12 @@ Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t,
       rGuard(std::move(rGuard)),
       user(::currentUser()),
       db(state ? state->vocbase().name() : ""),
-      context(state ? buildContextFromState(*state, t) : ""),
+      context((state != nullptr && state->vocbase()
+                                       .server()
+                                       .getFeature<QueryRegistryFeature>()
+                                       .enableDebugApis())
+                  ? buildContextFromState(*state, t)
+                  : ""),
       rwlock() {}
 
 bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const noexcept {
