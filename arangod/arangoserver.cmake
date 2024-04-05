@@ -149,6 +149,7 @@ add_library(arangoserver STATIC
   RestServer/VocbaseContext.cpp
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
+  Scheduler/SchedulerMetrics.cpp
   Scheduler/SimpleThreadPool.cpp
   Scheduler/SupervisedScheduler.cpp
   Scheduler/ThreadPoolScheduler.cpp

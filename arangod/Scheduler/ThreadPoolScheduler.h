@@ -21,11 +21,13 @@
 
 #include "Scheduler.h"
 #include "SimpleThreadPool.h"
+#include "SchedulerMetrics.h"
 
 namespace arangodb {
 
 struct ThreadPoolScheduler final : Scheduler {
-  explicit ThreadPoolScheduler(ArangodServer& server, uint64_t maxThreads);
+  explicit ThreadPoolScheduler(ArangodServer& server, uint64_t maxThreads,
+                               std::shared_ptr<SchedulerMetrics> metrics);
   void toVelocyPack(velocypack::Builder& builder) const override;
   QueueStatistics queueStatistics() const override;
   void trackCreateHandlerTask() noexcept override;
@@ -48,6 +50,7 @@ struct ThreadPoolScheduler final : Scheduler {
   bool isStopping() override { return _stopping; }
 
  private:
+  std::shared_ptr<SchedulerMetrics> _metrics;
   std::atomic<bool> _stopping;
   std::atomic<uint64_t> _lastLowPriorityDequeueTime;
   std::vector<std::unique_ptr<ThreadPool>> _threadPools;

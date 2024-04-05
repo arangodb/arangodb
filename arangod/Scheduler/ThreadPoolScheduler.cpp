@@ -70,9 +70,10 @@ bool ThreadPoolScheduler::queueItem(RequestLane lane,
   return true;
 }
 
-ThreadPoolScheduler::ThreadPoolScheduler(ArangodServer& server,
-                                         uint64_t maxThreads)
-    : Scheduler(server) {
+ThreadPoolScheduler::ThreadPoolScheduler(
+    ArangodServer& server, uint64_t maxThreads,
+    std::shared_ptr<SchedulerMetrics> metrics)
+    : Scheduler(server), _metrics(std::move(metrics)) {
   _threadPools.reserve(4);
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.)));

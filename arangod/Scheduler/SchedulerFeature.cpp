@@ -45,9 +45,9 @@
 #include "RestServer/ServerFeature.h"
 #include "Scheduler/Scheduler.h"
 #include "Scheduler/SupervisedScheduler.h"
+#include "Scheduler/ThreadPoolScheduler.h"
 #ifdef USE_V8
 #include "VocBase/Methods/Tasks.h"
-#include "ThreadPoolScheduler.h"
 #endif
 
 using namespace arangodb::application_features;
@@ -334,8 +334,10 @@ void SchedulerFeature::prepare() {
   //    _unavailabilityQueueFillGrade, _nrMaximalDetachedThreads,
   //    _metricsFeature);
 
-  auto sched =
-      std::make_unique<ThreadPoolScheduler>(server(), _nrMaximalThreads);
+  auto metrics = std::make_shared<SchedulerMetrics>(_metricsFeature);
+
+  auto sched = std::make_unique<ThreadPoolScheduler>(
+      server(), _nrMaximalThreads, std::move(metrics));
 
   SCHEDULER = sched.get();
 
