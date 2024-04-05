@@ -1,4 +1,4 @@
-v3.11.7.2 (XXXX-XX-XX)
+v3.11.7.2 (2024-04-05)
 ----------------------
 
 * Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
