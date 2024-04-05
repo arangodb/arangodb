@@ -1,3 +1,9 @@
+v3.11.8.1 (XXXX-XX-XX)
+----------------------
+
+* Fixed BTS-1489: Race condition in AsioSocket shutdown when using SSL.
+
+
 v3.11.8 (2024-02-22)
 --------------------
 
