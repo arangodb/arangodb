@@ -19,11 +19,20 @@
 /// Copyright holder is ArangoDB GmbH, Cologne, Germany
 ////////////////////////////////////////////////////////////////////////////////
 
+#include <velocypack/Builder.h>
+
 #include "ThreadPoolScheduler.h"
 
 using namespace arangodb;
 
-void ThreadPoolScheduler::toVelocyPack(velocypack::Builder& builder) const {}
+void ThreadPoolScheduler::toVelocyPack(velocypack::Builder& b) const {
+  b.add("scheduler-threads", VPackValue(0));  // numWorkers
+  b.add("blocked", VPackValue(0));            // obsolete
+  b.add("queued", VPackValue(0));             // scheduler queue length
+  b.add("in-progress",
+        VPackValue(0));                 // number of working (non-idle) threads
+  b.add("direct-exec", VPackValue(0));  // obsolete
+}
 Scheduler::QueueStatistics ThreadPoolScheduler::queueStatistics() const {
   return QueueStatistics();
 }
