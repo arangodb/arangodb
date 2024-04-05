@@ -1,14 +1,75 @@
 devel
 -----
 
+* Added internal APIs to dump the contents of the AQL query registry from
+  DB-Servers plus the contents of the transaction manager on coordinators and
+  DB-Servers.
+
+* Prioritize requests for commiting or aborting streaming transactions on
+  leaders and followers, because they can unblock other operations. Also
+  prioritize requests in already started streaming transactions and AQL queries
+  over new requests because it is assumed that already started streaming
+  transactions and AQL queries can block other operations from starting, so
+  these should be completed first.
+
+  The following request priorities have changed:
+  - cluster-internal requests for continuing already started AQL queries have
+    changed their priority from low to medium. This excludes requests that
+    setup AQL queries on DB servers, which still run with low priority.
+  - requests that include the transaction id header are now elevated to run
+    with medium priority if they originally ran with low priority. This
+    excludes requests that begin new transactions or AQL queries.
+  - requests to commit or abort an already running streaming transaction will
+    be elevated from low to medium priority.
+  - requests to HTTP GET `/_api/collection/<collection>/shards` and GET
+    `/_api/collection/<collection>/reponsibleShard` are now running with high
+    priority instead of low. Such requests are only used for inspection and
+    have no dependencies.
+  - requests to push further an existing query cursor via the `/_api/cursor`
+    are now running with medium priority instead of low priority. Requests
+    to start new queries still run with low priority.
+  - follower requests that acquire the lock on the leader while the follower
+    tries to get in sync are now running with low instead of medium priority.
+
+* Obsolete startup option `--server.max-number-detached-threads`.
+  This option is now obsolete because coroutines are used instead of blocking
+  function calls.
+
+* Log an info message if a request was queued in the scheduler queue for 30 s
+  or longer.
+
+* Add upgrade task to drop `_pregel_queries` system collections.
+
+* Fixed an upgrade issue on Agents. When agents are started with
+  `--database.auto-upgrade true` and `--cluster.force-one-shard true`. The
+  upgrade procedure got into an incorrect state. Please note `--cluster.force-one-shard`
+  is not required on the Agent instances.
+
+* Fix potential deadlocks in "fast lock round" when starting transactions in
+  cluster. The "fast lock round" is used to send out transaction begin requests
+  to multiple leaders concurrently, without caring about the order in which
+  requests are send out. This can potentially lead to deadlock with other
+  out-of-order requests. Thus the intention of the "fast lock round" is to use
+  a very low timeout for these requests, so that deadlocks would be detected
+  and rolled back quickly. However, there was a code path that triggered the
+  "fast lock round" with long request timeouts, which could lead to long
+  wait times until deadlocks were detected and rolled back.
+
+* EE-Only bug-fix MDS-1190: When using arangorestore to restore a SmartGraph,
+  the restore process may generate new internal collection ids.
+  These generated ids were not always updated in the restored SmartGraph schema.
+  If the ids diverge, the restored SmartGraph still works as expected, all data is there
+  and can be queried and modified. Only the schema of the restored SmartGraph
+  could not be changed anymore, e.g. no collections could be added to or removed
+  from the graph.
+  The SmartGraph schema handling now does not consider collection ids anymore,
+  so that schemas can again be modified, even those of existing SmartGraphs that
+  were originally affected by the issue.
+
 * FE-316: Edge collection import example now correctly reflects the required
   `from` and `to` attributes.
 
 * FE-437: reinitialize analyzer form when type changes.
-
-* Accept language settings found in the LANGUAGE file which previous versions
-  have detected for the "C" locale. This is to allow upgrades from 3.11
-  if the database directory was created with the "C" locale.
 
 * Remove "read lock" acquisition calls from shard synchronization because they
   are now unnecessary. This slightly simplifies the shard synchronization
@@ -94,6 +155,43 @@ devel
   actually be executed in the context of the original database, and not the one
   specified in the request.
   With this fix, such a request will now return an ERROR_TRANSACTION_NOT_FOUND.
+
+
+3.12.0 (2024-03-21)
+-------------------
+
+* Revert arangodump exclusion the following cluster collection properties when
+  writing collection parameters files in a single server dump:
+  - replicationFactor
+  - writeConcern
+  - numberOfShards
+  - minReplicationFactor
+  - shardKeys
+  - shards
+
+* Accept language settings found in the LANGUAGE file which previous versions
+  have detected for the "C" locale. This is to allow upgrades from 3.11 if the
+  database directory was created with the "C" locale.
+
+* FE-437: reinitialize analyzer form when type changes.
+
+
+3.12.0-rc.1 (2024-03-12)
+------------------------
+
+* Rebuilt included rclone v1.65.2 with go1.21.8.
+
+* Repair shard rebalancer if some server has no leaders of a collection but
+  followers. Previously, this server was then not always considered for leader
+  movements.
+
+* Updated ArangoDB Starter to v0.19.0.
+
+
+3.12.0-beta.1 (2024-03-07)
+--------------------------
+
+* Updated ArangoDB Starter to v0.19.0-preview-1.
 
 
 3.12.0-alpha.1 (2024-03-06)

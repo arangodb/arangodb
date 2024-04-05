@@ -25,6 +25,8 @@
 
 #include "Aql/AqlItemBlock.h"
 #include "Aql/ClusterQuery.h"
+#include "Aql/Collection.h"
+#include "Aql/Collections.h"
 #include "Aql/ExecutionEngine.h"
 #include "Aql/Query.h"
 #include "Basics/ReadLocker.h"
@@ -53,6 +55,7 @@ QueryRegistry::~QueryRegistry() {
 
 /// @brief insert
 void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
+                                std::string_view qs,
                                 cluster::CallbackGuard guard) {
   TRI_ASSERT(!ServerState::instance()->isSingleServer());
 
@@ -75,7 +78,7 @@ void QueryRegistry::insertQuery(std::shared_ptr<ClusterQuery> query, double ttl,
   }
 
   // create the query info object outside of the lock
-  auto p = std::make_unique<QueryInfo>(query, ttl, std::move(guard));
+  auto p = std::make_unique<QueryInfo>(query, ttl, qs, std::move(guard));
   TRI_ASSERT(p->_expires != 0);
 
   TRI_IF_FAILURE("QueryRegistryInsertException2") {
@@ -501,6 +504,75 @@ size_t QueryRegistry::numberRegisteredQueries() {
                        [](auto& v) { return !v.second->_isTombstone; });
 }
 
+/// @brief export query registry contents to velocypack
+void QueryRegistry::toVelocyPack(velocypack::Builder& builder) const {
+  READ_LOCKER(readLocker, _lock);
+
+  for (auto const& it : _queries) {
+    builder.openObject();
+    builder.add("id", VPackValue(it.first));
+
+    if (it.second != nullptr) {
+      builder.add("timeToLive", VPackValue(it.second->_timeToLive));
+      // note: expires timestamp is a system clock value that indicates
+      // number of seconds since the OS was started.
+      builder.add("expires",
+                  VPackValue(static_cast<uint64_t>(it.second->_expires)));
+      builder.add("numEngines", VPackValue(it.second->_numEngines));
+      builder.add("numOpen", VPackValue(it.second->_numOpen));
+      builder.add("errorCode",
+                  VPackValue(static_cast<int>(it.second->_errorCode)));
+      builder.add("isTombstone", VPackValue(it.second->_isTombstone));
+      builder.add("finished", VPackValue(it.second->_finished));
+      builder.add("queryString", VPackValue(it.second->_queryString));
+
+      auto const* query = it.second->_query.get();
+      if (query != nullptr) {
+        builder.add("id", VPackValue(query->id()));
+        builder.add("database", VPackValue(query->vocbase().name()));
+        builder.add("collections", VPackValue(VPackValueType::Array));
+        query->collections().visit(
+            [&builder](std::string const& name, aql::Collection const& c) {
+              builder.openObject();
+              builder.add("id", VPackValue(c.id().id()));
+              builder.add("name", VPackValue(c.name()));
+              builder.add("access",
+                          VPackValue(AccessMode::typeString(c.accessType())));
+              builder.close();
+              return true;
+            });
+        builder.close();  // collections
+        builder.add("killed", VPackValue(query->killed()));
+        builder.add("startTime",
+                    VPackValue(static_cast<double>(query->startTime())));
+        builder.add("isModificationQuery",
+                    VPackValue(query->isModificationQuery()));
+      }
+
+      if (it.second->_numEngines > 0) {
+        builder.add("engines", VPackValue(VPackValueType::Array));
+        for (auto const& e : _engines) {
+          if (e.second._queryInfo != it.second.get()) {
+            continue;
+          }
+          builder.openObject();
+          builder.add("engineId", VPackValue(e.first));
+          builder.add("isOpen", VPackValue(e.second._isOpen));
+          builder.add("type", VPackValue(e.second._type == EngineType::Graph
+                                             ? "graph"
+                                             : "execution"));
+          builder.add("waitingCallbacks",
+                      VPackValue(e.second._waitingCallbacks.size()));
+          builder.close();
+        }
+        builder.close();
+      }
+    }
+    builder.add("serverId", VPackValue(ServerState::instance()->getId()));
+    builder.close();
+  }
+}
+
 /// @brief for shutdown, we need to shut down all queries:
 void QueryRegistry::destroyAll() try {
   std::vector<QueryId> allQueries;
@@ -599,12 +671,14 @@ bool QueryRegistry::queryIsRegistered(QueryId id) {
 
 /// @brief constructor for a regular query
 QueryRegistry::QueryInfo::QueryInfo(std::shared_ptr<ClusterQuery> query,
-                                    double ttl, cluster::CallbackGuard guard)
+                                    double ttl, std::string_view qs,
+                                    cluster::CallbackGuard guard)
     : _query(std::move(query)),
       _timeToLive(ttl),
       _expires(TRI_microtime() + ttl),
       _numEngines(0),
       _numOpen(0),
+      _queryString(qs),
       _errorCode(TRI_ERROR_NO_ERROR),
       _isTombstone(false),
       _rebootTrackerCallbackGuard(std::move(guard)) {}
