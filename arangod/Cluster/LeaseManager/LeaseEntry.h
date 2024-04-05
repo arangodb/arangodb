@@ -28,7 +28,10 @@ namespace arangodb::cluster {
 
 struct LeaseEntry {
   virtual  ~LeaseEntry() = default;
+  // These are on purpose named differently then ScopeGuard
+  // methods to avoid name confusions.
   virtual auto invoke() noexcept -> void = 0;
+  virtual auto abort() noexcept -> void = 0;
 };
 
 template<typename F>
@@ -36,6 +39,7 @@ struct LeaseEntry_Impl : public LeaseEntry, public ScopeGuard<F> {
   static_assert(std::is_nothrow_invocable_r_v<void, F>);
   using ScopeGuard<F>::ScopeGuard;
   auto invoke() noexcept -> void override { ScopeGuard<F>::fire(); }
+  auto abort() noexcept -> void override { ScopeGuard<F>::cancel(); }
 };
 
 template<class Inspector>

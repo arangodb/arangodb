@@ -33,6 +33,10 @@ LeaseManager::LeaseIdGuard::~LeaseIdGuard() {
   _manager.returnLease(_peerState, _id);
 }
 
+auto LeaseManager::LeaseIdGuard::cancel() const noexcept -> void {
+  _manager.cancelLease(_peerState, _id);
+}
+
 LeaseManager::LeaseManager(RebootTracker& rebootTracker)
     : _rebootTracker(rebootTracker), _leases{} {}
 
@@ -79,11 +83,22 @@ auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {
   return builder;
 }
 
-auto LeaseManager::returnLease(PeerState const& peerState, LeaseId const& leaseId) -> void {
+auto LeaseManager::returnLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
   if (auto it = _leases.find(peerState); it != _leases.end()) {
     // The lease may already be removed, e.g. by RebootTracker.
     // So we do not really care if it is removed from this list here or not.
     it->second._mapping.erase(leaseId);
+  }
+  // else nothing to do, lease already gone.
+}
+
+auto LeaseManager::cancelLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+  if (auto it = _leases.find(peerState); it != _leases.end()) {
+    // The lease may already be removed, e.g. by RebootTracker.
+    // So we do not really care if it is removed from this list here or not.
+    if (auto it2 = it->second._mapping.find(leaseId); it2 != it->second._mapping.end()) {
+      it2->second->abort();
+    }
   }
   // else nothing to do, lease already gone.
 }

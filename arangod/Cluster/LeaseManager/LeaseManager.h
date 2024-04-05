@@ -49,6 +49,8 @@ struct LeaseManager {
 
     auto id() const noexcept -> LeaseId { return _id; }
 
+    auto cancel() const noexcept -> void;
+
    private:
     PeerState _peerState;
     LeaseId _id;
@@ -77,7 +79,9 @@ struct LeaseManager {
   [[nodiscard]] auto requireLeaseInternal(PeerState const& peerState,
                     std::unique_ptr<LeaseEntry> abortMethod) -> LeaseIdGuard;
 
-  auto returnLease(PeerState const& peerState, LeaseId const& leaseId) -> void;
+  auto returnLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
+
+  auto cancelLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
 
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;
