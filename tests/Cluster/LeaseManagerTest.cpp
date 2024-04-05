@@ -70,7 +70,16 @@ class LeaseManagerTest : public ::testing::Test {
                                     .status = ServerHealth::kGood}}};
     rebootTracker.updateServerState(state);
   }
-  void TearDown() override { scheduler->shutdown(); }
+  void TearDown() override {
+    /* NOTE:
+     * If you ever see this test failing with such a message:
+     * There was still a task queued by the LeaseManager and afterwards we did not
+     * call `waitForSchedulerEmpty();` Please check the failing test if this could be the case, e.g.
+     * has the test waited after a reboot of the server? Has the test waited if handing in an Illegal PeerState?
+     * 2024-04-05T08:55:47Z [2352775] WARNING {threads} Scheduler received shutdown, but there are still tasks on the queue: jobsSubmitted=1 jobsDone=0
+     * Signal: SIGSEGV (signal SIGSEGV: invalid address (fault address: 0xf))
+     */
+    scheduler->shutdown(); }
 
   bool schedulerEmpty() const {
     auto stats = scheduler->queueStatistics();
@@ -267,3 +276,106 @@ TEST_F(LeaseManagerTest, test_canceled_lease_is_not_aborted_on_peer_reboot) {
       << "Called callback on canceled lease if guard goes out of scope";
 }
 
+TEST_F(LeaseManagerTest, test_acquire_lease_for_rebooted_server) {
+  bool rebootCallbackCalled = false;
+  {
+    auto callback = [&]() noexcept {
+      rebootCallbackCalled = true;
+    };
+
+    LeaseManager leaseManager{rebootTracker};
+    auto leaseIsFor = getPeerState(serverA);
+
+    rebootServer(serverA);
+    // Now ServerA is rebooted and the peerState is outdated.
+    ASSERT_LT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, server was not rebooted.";
+
+    auto lease = leaseManager.requireLease(leaseIsFor, callback);
+
+    // Requiring a least for an outdated peerState should actually trigger the
+    // RebootTracker to intervene.
+    waitForSchedulerEmpty();
+    {
+      // This situation is handled the same as if reboot would be AFTER
+      // getting the lease. So Server should be dropped here.
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                         lease.id());
+      // In fact we should not even have a server entry anymore.
+      EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+    }
+    EXPECT_TRUE(rebootCallbackCalled) << "We registered a lease for a dead server. We need to get called.";
+  }
+}
+
+TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
+  // NOTE: This can happen in production in the following way:
+  // 1. Server is rebooted, Local State is updated.
+  // 2. RebootTracker schedules the Handling Callbacks.
+  // 3. The caller now LooksUp the Local State and gets the new RebootId.
+  // 4. The caller now tries to acquire a Lease for the new RebootId.
+  // 5. Only now the handling Callbacks scheduled in 2. are executed.
+  bool rebootCallbackCalled = false;
+  {
+    auto callback = [&]() noexcept {
+      LOG_DEVEL << "Callback already called";
+      rebootCallbackCalled = true;
+    };
+
+    LeaseManager leaseManager{rebootTracker};
+    auto leaseIsFor = getPeerState(serverA);
+    leaseIsFor.rebootId = RebootId{leaseIsFor.rebootId.value() + 1};
+
+    // Now ServerA is rebooted, the RebootTracker has not yet handled it.
+    ASSERT_GT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, lease is not ahead of RebootTracker.";
+
+    auto lease = leaseManager.requireLease(leaseIsFor, callback);
+
+    // Give RebootTracker time to intervene.
+    waitForSchedulerEmpty();
+
+    EXPECT_FALSE(rebootCallbackCalled) << "We are ahead of the RebootTracker. So we should not get aborted.";
+    {
+      // Lease should be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      LOG_DEVEL << leaseReport.toJson();
+      assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+    }
+
+    // Now move RebootTracker to new state, it now sees sme id as the leaser.
+    rebootServer(serverA);
+
+    ASSERT_EQ(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, RebootIds should now be aligned.";
+
+    EXPECT_FALSE(rebootCallbackCalled) << "We are ahead of the RebootTracker. So we should not get aborted.";
+    {
+      // Lease should be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      LOG_DEVEL << leaseReport.toJson();
+      assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+    }
+
+    // Reboot once more. Now we should be behind the RebootTracker. Causing the callback to be called.
+    rebootServer(serverA);
+
+    ASSERT_LT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, RebootId of Tracker should now be ahead of Lease.";
+
+    EXPECT_TRUE(rebootCallbackCalled) << "Now the reboot tracker has overtaken us, we need to be aborted.";
+    {
+      // This situation is handled the same as if reboot would be AFTER
+      // getting the lease. So Server should be dropped here.
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                         lease.id());
+      // In fact we should not even have a server entry anymore.
+      EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+    }
+
+  }
+}
+
+// TODO Add tests with Multiple Servers.
