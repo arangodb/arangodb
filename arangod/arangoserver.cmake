@@ -150,8 +150,8 @@ add_library(arangoserver STATIC
   Scheduler/Scheduler.cpp
   Scheduler/SchedulerFeature.cpp
   Scheduler/SimpleThreadPool.cpp
-  Scheduler/SimpleThreadPool.h
   Scheduler/SupervisedScheduler.cpp
+  Scheduler/ThreadPoolScheduler.cpp
   Sharding/ShardDistributionReporter.cpp
   Sharding/ShardingFeature.cpp
   Sharding/ShardingInfo.cpp
@@ -179,9 +179,7 @@ add_library(arangoserver STATIC
   Transaction/ReplicatedContext.cpp
   Transaction/SmartContext.cpp
   Transaction/StandaloneContext.cpp
-  Transaction/Status.cpp
-        Scheduler/ThreadPoolScheduler.cpp
-        Scheduler/ThreadPoolScheduler.h)
+  Transaction/Status.cpp)
 if (MSVC)
   target_sources(arangoserver PRIVATE
     RestServer/WindowsServiceFeature.cpp)
