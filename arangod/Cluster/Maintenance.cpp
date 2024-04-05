@@ -748,11 +748,11 @@ void arangodb::maintenance::diffReplicatedLogs(
 /// @brief calculate difference between plan and local for for databases
 arangodb::Result arangodb::maintenance::diffPlanLocal(
     StorageEngine& engine,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
@@ -1147,11 +1147,11 @@ arangodb::Result arangodb::maintenance::diffPlanLocal(
 /// @brief handle plan for local databases
 
 arangodb::Result arangodb::maintenance::executePlan(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
@@ -1307,11 +1307,11 @@ void addDatabaseToTransactions(std::string const& name,
 
 /// @brief Phase one: Compare plan and local and create descriptions
 arangodb::Result arangodb::maintenance::phaseOne(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     uint64_t planIndex,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashSet<std::string> const& moreDirt,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
@@ -1905,11 +1905,11 @@ static void reportCurrentReplicatedLog(
 // to update current. Will report the errors created locally to the agency
 arangodb::Result arangodb::maintenance::reportInCurrent(
     MaintenanceFeature& feature,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     containers::FlatHashSet<std::string> const& dirty,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     MaintenanceFeature::errors_t const& allErrors, std::string const& serverId,
@@ -2528,11 +2528,11 @@ arangodb::Result arangodb::maintenance::reportInCurrent(
 }
 
 void arangodb::maintenance::syncReplicatedShardsWithLeaders(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
     containers::FlatHashSet<std::string> const& dirty,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        current,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& current,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,
     std::string const& serverId, MaintenanceFeature& feature,
@@ -2708,10 +2708,10 @@ void arangodb::maintenance::syncReplicatedShardsWithLeaders(
 
 /// @brief Phase two: See, what we can report to the agency
 arangodb::Result arangodb::maintenance::phaseTwo(
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        plan,
-    containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
-        cur,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& plan,
+    containers::FlatHashMap<std::string,
+                            std::shared_ptr<VPackBuilder const>> const& cur,
     uint64_t currentIndex, containers::FlatHashSet<std::string> const& dirty,
     containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> const&
         local,

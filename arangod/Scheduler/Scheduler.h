@@ -242,6 +242,22 @@ class Scheduler {
     });
   }
 
+  // Yield the current thread
+  futures::Future<futures::Unit> yield(
+      RequestLane lane = RequestLane::CONTINUATION) {
+    struct awaitable {
+      bool await_ready() { return false; }
+      void await_suspend(std::coroutine_handle<> coro) {
+        sched->queue(lane, [coro] { coro.resume(); });
+      }
+      void await_resume() {}
+      Scheduler* sched;
+      RequestLane lane;
+    };
+
+    co_await awaitable{this, lane};
+  }
+
   // ---------------------------------------------------------------------------
   // CronThread and delayed tasks
   // ---------------------------------------------------------------------------

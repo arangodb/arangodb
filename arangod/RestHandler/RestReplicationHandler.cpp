@@ -3504,7 +3504,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
   // make sure if it is aborted if something goes wrong.
   auto transactionAborter = scopeGuard([mgr, id, vn]() noexcept {
     try {
-      mgr->abortManagedTrx(id, vn);
+      mgr->abortManagedTrx(id, vn).get();
     } catch (...) {
     }
   });
@@ -3520,7 +3520,7 @@ futures::Future<Result> RestReplicationHandler::createBlockingTransaction(
           // Code does not matter, read only access, so we can roll back.
           transaction::Manager* mgr = transaction::ManagerFeature::manager();
           if (mgr) {
-            mgr->abortManagedTrx(id, vn);
+            mgr->abortManagedTrx(id, vn).get();
           }
         } catch (...) {
           // All errors that show up here can only be
@@ -3592,7 +3592,7 @@ ResultT<bool> RestReplicationHandler::cancelBlockingTransaction(
   if (res.ok()) {
     transaction::Manager* mgr = transaction::ManagerFeature::manager();
     if (mgr) {
-      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name());
+      auto isAborted = mgr->abortManagedTrx(id, _vocbase.name()).get();
       if (isAborted.ok()) {  // lock was held
         return ResultT<bool>::success(true);
       }
