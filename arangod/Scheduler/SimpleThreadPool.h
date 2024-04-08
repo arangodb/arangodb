@@ -50,8 +50,9 @@ struct ThreadPool {
   }
 
   struct Statistics {
-    std::atomic<uint64_t> done;
-    std::atomic<uint64_t> queued;
+    std::atomic<uint64_t> done{0};
+    std::atomic<uint64_t> queued{0};
+    std::atomic<uint64_t> dequeued{0};
   };
 
   Statistics statistics;

@@ -41,8 +41,12 @@ Scheduler::QueueStatistics ThreadPoolScheduler::queueStatistics() const {
   return QueueStatistics();
 }
 void ThreadPoolScheduler::trackCreateHandlerTask() noexcept {}
-void ThreadPoolScheduler::trackBeginOngoingLowPriorityTask() noexcept {}
-void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {}
+void ThreadPoolScheduler::trackBeginOngoingLowPriorityTask() noexcept {
+  _metrics->_ongoingLowPriorityGauge += 1;
+}
+void ThreadPoolScheduler::trackEndOngoingLowPriorityTask() noexcept {
+  _metrics->_ongoingLowPriorityGauge -= 1;
+}
 void ThreadPoolScheduler::trackQueueTimeViolation() {}
 void ThreadPoolScheduler::trackQueueItemSize(std::int64_t int64) noexcept {}
 
@@ -57,9 +61,13 @@ void ThreadPoolScheduler::setLastLowPriorityDequeueTime(
 
 std::pair<uint64_t, uint64_t>
 ThreadPoolScheduler::getNumberLowPrioOngoingAndQueued() const {
-  auto queued = _threadPools[1]->statistics.queued.load();
-  auto done = _threadPools[1]->statistics.done.load();
-  return std::make_pair(done - queued, queued);
+  auto dequeued =
+      _threadPools[int(RequestPriority::LOW)]->statistics.dequeued.load();
+  auto queued =
+      _threadPools[int(RequestPriority::LOW)]->statistics.queued.load();
+  return std::make_pair(
+      _metrics->_ongoingLowPriorityGauge.load(std::memory_order_relaxed),
+      queued - dequeued);
 }
 
 double ThreadPoolScheduler::approximateQueueFillGrade() const { return 0; }
@@ -82,12 +90,11 @@ ThreadPoolScheduler::ThreadPoolScheduler(
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.)));
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
-      "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.)));
+      "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.)));
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
-      "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
-
+      "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.)));
   // _metrics->_metricsStackMemoryWorkerThreads =
   //     approxWorkerStackSize *
   //     std::accumulate(_threadPools.begin(), _threadPools.end(), 0,

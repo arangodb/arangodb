@@ -69,6 +69,7 @@ auto ThreadPool::pop(std::stop_token stoken) noexcept
   if (more) {
     auto task = std::move(_tasks.front());
     _tasks.pop_front();
+    statistics.dequeued += 1;
     return task;
   }
   // stop was requested
