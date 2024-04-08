@@ -22,7 +22,9 @@
 
 #include "gtest/gtest.h"
 
+#include "Cluster/AgencyCache.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
+#include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
 #include "Metrics/MetricsFeature.h"
@@ -30,9 +32,11 @@
 #include "Scheduler/SupervisedScheduler.h"
 
 #include "Mocks/Servers.h"
+#include "PreparedResponseConnectionPool.h"
 
 using namespace arangodb;
 using namespace arangodb::cluster;
+using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
 class LeaseManagerTest : public ::testing::Test {
@@ -44,11 +48,21 @@ class LeaseManagerTest : public ::testing::Test {
             128, 0.0, 42,
             mockApplicationServer.server()
                 .template getFeature<arangodb::metrics::MetricsFeature>())),
-        rebootTracker(scheduler.get()) {}
+        rebootTracker(scheduler.get()),
+        connectionPool(std::make_unique<PreparedResponseConnectionPool>(
+            mockApplicationServer.server()
+                .template getFeature<ClusterFeature>()
+                .agencyCache(),
+            arangodb::network::ConnectionPool::Config{
+                mockApplicationServer.server()
+                    .template getFeature<
+                        arangodb::metrics::MetricsFeature>()})) {
+  }
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
   RebootTracker rebootTracker;
+  std::unique_ptr<PreparedResponseConnectionPool> connectionPool;
 
   static ServerID const serverA;
   static ServerID const serverB;
@@ -118,6 +132,10 @@ class LeaseManagerTest : public ::testing::Test {
                        basics::StringUtils::itoa(peerState.rebootId.value()));
   }
 
+  auto buildManager() -> LeaseManager {
+    return LeaseManager{rebootTracker, connectionPool.get()};
+  }
+
   auto assertLeaseListContainsLease(VPackSlice leasesVPack,
                                     PeerState const& leaseIsFor,
                                     LeaseId const& leaseId) {
@@ -152,7 +170,7 @@ ServerID const LeaseManagerTest::serverB = "PRMR-srv-B";
 ServerID const LeaseManagerTest::serverC = "PRMR-srv-C";
 
 TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
-  LeaseManager leaseManager{rebootTracker};
+  auto leaseManager = buildManager();
   auto leaseIsFor = getPeerState(serverA);
   auto ignoreMe = []() noexcept -> void {};
   auto guardOne = leaseManager.requireLease(leaseIsFor, ignoreMe);
@@ -160,7 +178,6 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
   EXPECT_NE(guardOne.id(), guardTwo.id());
   auto leasesVPackBuilder = leaseManager.leasesToVPack();
   auto leasesVPack = leasesVPackBuilder.slice();
-  LOG_DEVEL << leasesVPack.toJson();
   ASSERT_TRUE(leasesVPack.isObject());
   EXPECT_EQ(leasesVPack.length(), 1);
   ASSERT_TRUE(leasesVPack.hasKey(peerStateToJSONKey(leaseIsFor)));
@@ -175,7 +192,7 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
 
 TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
   bool rebootCallbackCalled = false;
-  LeaseManager leaseManager{rebootTracker};
+  auto leaseManager = buildManager();
   auto leaseIsFor = getPeerState(serverA);
   LeaseId storedId;
   {
@@ -194,12 +211,13 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
   waitForSchedulerEmpty();
-  EXPECT_TRUE(rebootCallbackCalled);
+  // We locally lost the lease, we should not call the onLeaseLost callback.
+  EXPECT_FALSE(rebootCallbackCalled);
 }
 
 TEST_F(LeaseManagerTest, test_lease_can_cancel_abort_callback) {
   bool rebootCallbackCalled = false;
-  LeaseManager leaseManager{rebootTracker};
+  auto leaseManager = buildManager();
   auto leaseIsFor = getPeerState(serverA);
   LeaseId storedId;
   {
@@ -220,6 +238,8 @@ TEST_F(LeaseManagerTest, test_lease_can_cancel_abort_callback) {
   // Need to wait for the scheduler to actually work on the RebootTracker.
   // (Should not do anything here)
   waitForSchedulerEmpty();
+  // We locally lost the lease, we should not call the onLeaseLost callback.
+  // So completing the lease does not actually change anything here.
   EXPECT_FALSE(rebootCallbackCalled);
 }
 
@@ -227,13 +247,15 @@ TEST_F(LeaseManagerTest, test_lease_is_aborted_on_peer_reboot) {
   {
     bool rebootCallbackCalled = false;
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
-    LeaseManager leaseManager{rebootTracker};
+    auto leaseManager = buildManager();
     auto leaseIsFor = getPeerState(serverA);
     // We need to hold the lease until the end of the scope.
     // otherwise the destructor callback might be lost.
     [[maybe_unused]] auto lease =
         leaseManager.requireLease(leaseIsFor, callback);
     rebootServer(serverA);
+    // After a reboot of the other server, the onLeaseAbort callback should be
+    // triggered
     EXPECT_TRUE(rebootCallbackCalled);
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
@@ -247,7 +269,7 @@ TEST_F(LeaseManagerTest, test_canceled_lease_is_not_aborted_on_peer_reboot) {
   bool rebootCallbackCalled = false;
   {
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
-    LeaseManager leaseManager{rebootTracker};
+    auto leaseManager = buildManager();
     auto leaseIsFor = getPeerState(serverA);
     // We need to hold the lease until the end of the scope.
     // otherwise the destructor callback might be lost.
@@ -283,7 +305,7 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_rebooted_server) {
       rebootCallbackCalled = true;
     };
 
-    LeaseManager leaseManager{rebootTracker};
+    auto leaseManager = buildManager();
     auto leaseIsFor = getPeerState(serverA);
 
     rebootServer(serverA);
@@ -319,11 +341,10 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
   bool rebootCallbackCalled = false;
   {
     auto callback = [&]() noexcept {
-      LOG_DEVEL << "Callback already called";
       rebootCallbackCalled = true;
     };
 
-    LeaseManager leaseManager{rebootTracker};
+    auto leaseManager = buildManager();
     auto leaseIsFor = getPeerState(serverA);
     leaseIsFor.rebootId = RebootId{leaseIsFor.rebootId.value() + 1};
 
@@ -340,7 +361,6 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
-      LOG_DEVEL << leaseReport.toJson();
       assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
     }
 
@@ -354,7 +374,6 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
-      LOG_DEVEL << leaseReport.toJson();
       assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
     }
 
@@ -374,7 +393,6 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
       // In fact we should not even have a server entry anymore.
       EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
     }
-
   }
 }
 

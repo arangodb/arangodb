@@ -37,10 +37,12 @@ auto LeaseManager::LeaseIdGuard::cancel() const noexcept -> void {
   _manager.cancelLease(_peerState, _id);
 }
 
-LeaseManager::LeaseManager(RebootTracker& rebootTracker)
-    : _rebootTracker(rebootTracker), _leases{} {}
-
-
+LeaseManager::LeaseManager(RebootTracker& rebootTracker,
+                           network::ConnectionPool* pool)
+    : _rebootTracker(rebootTracker), _pool(pool), _leases{} {
+  TRI_ASSERT(_pool != nullptr)
+      << "Broken setup. We do not have a connection pool in LeaseManager.";
+}
 
 auto LeaseManager::requireLeaseInternal(PeerState const& peerState, std::unique_ptr<LeaseEntry> leaseEntry) -> LeaseIdGuard {
   // NOTE: In theory _nextLeaseId can overflow here, but that should never be a problem.
@@ -84,10 +86,18 @@ auto LeaseManager::leasesToVPack() const -> arangodb::velocypack::Builder {
 }
 
 auto LeaseManager::returnLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void {
+  // TODO ADD Locking
   if (auto it = _leases.find(peerState); it != _leases.end()) {
     // The lease may already be removed, e.g. by RebootTracker.
     // So we do not really care if it is removed from this list here or not.
-    it->second._mapping.erase(leaseId);
+    if (auto lease = it->second._mapping.find(leaseId); lease != it->second._mapping.end()) {
+      // We should abort the Guard here.
+      // We returned our lease no need to tell us to abort;
+      lease->second->abort();
+      // TODO Schedule API call!
+      // Now delete the lease from the list.
+      it->second._mapping.erase(lease);
+    }
   }
   // else nothing to do, lease already gone.
 }

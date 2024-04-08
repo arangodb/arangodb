@@ -31,6 +31,9 @@
 #include <vector>
 
 namespace arangodb {
+namespace network {
+class ConnectionPool;
+}
 namespace velocypack {
 class Builder;
 }
@@ -62,14 +65,15 @@ struct LeaseManager {
     std::unordered_map<LeaseId, std::unique_ptr<LeaseEntry>> _mapping;
   };
 
-  LeaseManager(RebootTracker&);
+  LeaseManager(RebootTracker& rebootTracker, network::ConnectionPool* pool);
 
   template<typename F>
-  [[nodiscard]] auto requireLease(PeerState const& peerState,
-                    F&& abortMethod) -> LeaseIdGuard {
-    static_assert(std::is_nothrow_invocable_r_v<void, F>, "The abort method of a leaser must be noexcept");
+  [[nodiscard]] auto requireLease(PeerState const& peerState, F&& onLeaseLost)
+      -> LeaseIdGuard {
+    static_assert(std::is_nothrow_invocable_r_v<void, F>,
+                  "The abort method of a leaser must be noexcept");
     return requireLeaseInternal(peerState, std::make_unique<LeaseEntry_Impl<F>>(
-                                               std::forward<F>(abortMethod)));
+                                               std::forward<F>(onLeaseLost)));
   }
 
   auto leasesToVPack() const -> arangodb::velocypack::Builder;
@@ -85,6 +89,7 @@ struct LeaseManager {
 
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;
+  network::ConnectionPool* _pool;
   std::unordered_map<PeerState, LeaseListOfPeer> _leases;
 };
 }  // namespace cluster
