@@ -117,7 +117,7 @@ void FakeFollower::updateCommitIndex(LogIndex index) {
 void FakeFollower::resign() & {
   auto const exPtr =
       std::make_exception_ptr(replicated_log::ParticipantResignedException(
-          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED, ADB_HERE));
+          TRI_ERROR_REPLICATION_REPLICATED_LOG_FOLLOWER_RESIGNED));
   waitForQueue.resolveAll(futures::Try<replicated_log::WaitForResult>(exPtr));
   waitForLeaderAckedQueue.resolveAll(
       futures::Try<replicated_log::WaitForResult>(exPtr));

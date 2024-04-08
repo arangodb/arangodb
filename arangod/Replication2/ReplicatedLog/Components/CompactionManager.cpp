@@ -141,7 +141,7 @@ void CompactionManager::triggerAsyncCompaction(
 
         guard.unlock();
         auto ex = std::make_exception_ptr(
-            basics::Exception(std::move(storeRes).result(), ADB_HERE));
+            basics::Exception(std::move(storeRes).result()));
         promises.resolveAll(futures::Try<CompactResult>{std::move(ex)});
         break;
       }
