@@ -60,6 +60,18 @@ RestCursorHandler::RestCursorHandler(
 
 RestCursorHandler::~RestCursorHandler() { releaseCursor(); }
 
+RequestLane RestCursorHandler::lane() const {
+  if (_request->requestType() != rest::RequestType::POST ||
+      !_request->suffixes().empty()) {
+    // continuing an existing query or cleaning up its resources
+    // gets higher priority than starting new queries
+    return RequestLane::CONTINUATION;
+  }
+
+  // low priority for starting new queries
+  return RequestLane::CLIENT_AQL;
+}
+
 RestStatus RestCursorHandler::execute() {
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
@@ -90,6 +102,11 @@ RestStatus RestCursorHandler::continueExecute() {
     return RestStatus::DONE;
   }
 
+  if (!_response->isResponseEmpty()) {
+    // an exception occurred in one of the suspension points
+    return RestStatus::DONE;
+  }
+
   // extract the sub-request type
   rest::RequestType const type = _request->requestType();
 
@@ -115,7 +132,8 @@ RestStatus RestCursorHandler::continueExecute() {
   }
 
   // Other parts of the query cannot be paused
-  TRI_ASSERT(false);
+  TRI_ASSERT(false) << requestToString(type) << " " << _request->fullUrl()
+                    << " " << _request->parameters();
   return RestStatus::DONE;
 }
 

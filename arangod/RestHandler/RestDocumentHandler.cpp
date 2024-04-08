@@ -128,8 +128,6 @@ RestStatus RestDocumentHandler::execute() {
 
 void RestDocumentHandler::shutdownExecute(bool isFinalized) noexcept {
   if (isFinalized) {
-    // reset the transaction so it releases all locks as early as possible
-    _activeTrx.reset();
     TRI_ASSERT(_request != nullptr);
     TRI_ASSERT(_response != nullptr);
     try {
@@ -243,15 +241,15 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx = co_await createTransaction(
+  auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"inserting document(s)"},
       std::move(trxOpts));
 
-  addTransactionHints(cname, isMultiple,
+  addTransactionHints(*trx, cname, isMultiple,
                       opOptions.isOverwriteModeUpdateReplace());
 
-  Result res = co_await _activeTrx->beginAsync();
+  Result res = co_await trx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -259,9 +257,8 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   }
 
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
-           nullptr ||
-       _activeTrx->state()->isReadOnlyTransaction())) {
+      (trx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       trx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we
     // want to write into. this is not necessarily the case for follower
     // transactions that are started lazily. in this case, we must reject the
@@ -271,7 +268,7 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+        absl::StrCat("Transaction with id '", trx->tid().id(),
                      "' does not contain collection '", cname,
                      "' with the required access mode."));
   }
@@ -279,19 +276,17 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
   // track request only on leader
   if (opOptions.isSynchronousReplicationFrom.empty() &&
       ServerState::instance()->isDBServer()) {
-    _activeTrx->state()->trackShardRequest(
-        *_activeTrx->resolver(), _vocbase.name(), cname,
-        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
-        "insert");
+    trx->state()->trackShardRequest(*trx->resolver(), _vocbase.name(), cname,
+                                    _request->value(StaticStrings::UserString),
+                                    AccessMode::Type::WRITE, "insert");
   }
 
-  OperationResult opres =
-      co_await _activeTrx->insertAsync(cname, body, opOptions);
+  OperationResult opres = co_await trx->insertAsync(cname, body, opOptions);
 
   // Will commit if no error occured.
   // or abort if an error occured.
   // result stays valid!
-  res = co_await _activeTrx->finishAsync(opres.result);
+  res = co_await trx->finishAsync(opres.result);
   if (opres.fail()) {
     generateTransactionError(cname, opres);
     co_return;
@@ -302,9 +297,9 @@ futures::Future<futures::Unit> RestDocumentHandler::insertDocument() {
     co_return;
   }
 
-  generate20x(opres, cname, _activeTrx->getCollectionType(cname),
-              _activeTrx->transactionContextPtr()->getVPackOptions(),
-              isMultiple, opOptions.silent, rest::ResponseCode::CREATED);
+  generate20x(opres, cname, trx->getCollectionType(cname),
+              trx->transactionContextPtr()->getVPackOptions(), isMultiple,
+              opOptions.silent, rest::ResponseCode::CREATED);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -387,18 +382,18 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
 
   VPackSlice search = builder.slice();
 
-  // find and load collection given by name or identifier
-  _activeTrx = co_await createTransaction(
+  // find collection given by name or identifier
+  auto trx = co_await createTransaction(
       collection, AccessMode::Type::READ, options,
       transaction::OperationOriginREST{"fetching document"});
 
-  _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+  trx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
 
   // ...........................................................................
   // inside read transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->beginAsync();
+  Result res = co_await trx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(collection, OperationResult(res, options), "");
@@ -407,19 +402,19 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
 
   // track request on both leader and follower (in case of dirty-read requests)
   if (ServerState::instance()->isDBServer()) {
-    _activeTrx->state()->trackShardRequest(
-        *_activeTrx->resolver(), _vocbase.name(), collection,
-        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
-        "read");
+    trx->state()->trackShardRequest(*trx->resolver(), _vocbase.name(),
+                                    collection,
+                                    _request->value(StaticStrings::UserString),
+                                    AccessMode::Type::READ, "read");
   }
 
-  if (_activeTrx->state()->options().allowDirtyReads) {
+  if (trx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
   }
 
   OperationResult opRes =
-      co_await _activeTrx->documentAsync(collection, search, options);
-  res = co_await _activeTrx->finishAsync(opRes.result);
+      co_await trx->documentAsync(collection, search, options);
+  res = co_await trx->finishAsync(opRes.result);
   if (!opRes.ok()) {
     generateTransactionError(collection, opRes, key, ifRid);
     co_return;
@@ -441,7 +436,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readSingleDocument(
 
   // use default options
   generateDocument(opRes.slice(), generateBody,
-                   _activeTrx->transactionContextPtr()->getVPackOptions());
+                   trx->transactionContextPtr()->getVPackOptions());
 }
 
 RestStatus RestDocumentHandler::checkDocument() {
@@ -598,19 +593,19 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  // find and load collection given by name or identifier
-  _activeTrx = co_await createTransaction(
+  // find collection given by name or identifier
+  auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"modifying document(s)"},
       std::move(trxOpts));
 
-  addTransactionHints(cname, isArrayCase, false);
+  addTransactionHints(*trx, cname, isArrayCase, false);
 
   // ...........................................................................
   // inside write transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->beginAsync();
+  Result res = co_await trx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -620,16 +615,15 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
   // track request only on leader
   if (opOptions.isSynchronousReplicationFrom.empty() &&
       ServerState::instance()->isDBServer()) {
-    _activeTrx->state()->trackShardRequest(
-        *_activeTrx->resolver(), _vocbase.name(), cname,
-        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
-        isPatch ? "update" : "replace");
+    trx->state()->trackShardRequest(*trx->resolver(), _vocbase.name(), cname,
+                                    _request->value(StaticStrings::UserString),
+                                    AccessMode::Type::WRITE,
+                                    isPatch ? "update" : "replace");
   }
 
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
-           nullptr ||
-       _activeTrx->state()->isReadOnlyTransaction())) {
+      (trx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       trx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we
     // want to write into. this is not necessarily the case for follower
     // transactions that are started lazily. in this case, we must reject the
@@ -639,7 +633,7 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+        absl::StrCat("Transaction with id '", trx->tid().id(),
                      "' does not contain collection '", cname,
                      "' with the required access mode."));
   }
@@ -651,13 +645,13 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
         _request->parsedValue(StaticStrings::KeepNullString, true);
     opOptions.mergeObjects =
         _request->parsedValue(StaticStrings::MergeObjectsString, true);
-    f = _activeTrx->updateAsync(cname, body, opOptions);
+    f = trx->updateAsync(cname, body, opOptions);
   } else {
-    f = _activeTrx->replaceAsync(cname, body, opOptions);
+    f = trx->replaceAsync(cname, body, opOptions);
   }
 
   OperationResult opRes = co_await std::move(f);
-  res = co_await _activeTrx->finishAsync(opRes.result);
+  res = co_await trx->finishAsync(opRes.result);
   if (opRes.fail()) {
     generateTransactionError(cname, opRes, key, headerRev);
     co_return;
@@ -669,9 +663,9 @@ futures::Future<futures::Unit> RestDocumentHandler::modifyDocument(
     co_return;
   }
 
-  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
-              _activeTrx->transactionContextPtr()->getVPackOptions(),
-              isArrayCase, opOptions.silent, rest::ResponseCode::CREATED);
+  generate20x(opRes, cname, trx->getCollectionType(cname),
+              trx->transactionContextPtr()->getVPackOptions(), isArrayCase,
+              opOptions.silent, rest::ResponseCode::CREATED);
 }
 
 futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
@@ -759,14 +753,14 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
   trxOpts.delaySnapshot = !isMultiple;  // for now we only enable this for
                                         // single document operations
 
-  _activeTrx = co_await createTransaction(
+  auto trx = co_await createTransaction(
       cname, AccessMode::Type::WRITE, opOptions,
       transaction::OperationOriginREST{"removing document(s)"},
       std::move(trxOpts));
 
-  addTransactionHints(cname, isMultiple, false);
+  addTransactionHints(*trx, cname, isMultiple, false);
 
-  Result res = co_await _activeTrx->beginAsync();
+  Result res = co_await trx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -776,16 +770,14 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
   // track request only on leader
   if (opOptions.isSynchronousReplicationFrom.empty() &&
       ServerState::instance()->isDBServer()) {
-    _activeTrx->state()->trackShardRequest(
-        *_activeTrx->resolver(), _vocbase.name(), cname,
-        _request->value(StaticStrings::UserString), AccessMode::Type::WRITE,
-        "remove");
+    trx->state()->trackShardRequest(*trx->resolver(), _vocbase.name(), cname,
+                                    _request->value(StaticStrings::UserString),
+                                    AccessMode::Type::WRITE, "remove");
   }
 
   if (ServerState::instance()->isDBServer() &&
-      (_activeTrx->state()->collection(cname, AccessMode::Type::WRITE) ==
-           nullptr ||
-       _activeTrx->state()->isReadOnlyTransaction())) {
+      (trx->state()->collection(cname, AccessMode::Type::WRITE) == nullptr ||
+       trx->state()->isReadOnlyTransaction())) {
     // make sure that the current transaction includes the collection that we
     // want to write into. this is not necessarily the case for follower
     // transactions that are started lazily. in this case, we must reject the
@@ -795,14 +787,13 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
     // from A and then only from B).
     THROW_ARANGO_EXCEPTION_MESSAGE(
         TRI_ERROR_TRANSACTION_UNREGISTERED_COLLECTION,
-        absl::StrCat("Transaction with id '", _activeTrx->tid().id(),
+        absl::StrCat("Transaction with id '", trx->tid().id(),
                      "' does not contain collection '", cname,
                      "' with the required access mode."));
   }
 
-  OperationResult opRes =
-      co_await _activeTrx->removeAsync(cname, search, opOptions);
-  res = co_await _activeTrx->finishAsync(opRes.result);
+  OperationResult opRes = co_await trx->removeAsync(cname, search, opOptions);
+  res = co_await trx->finishAsync(opRes.result);
   if (opRes.fail()) {
     generateTransactionError(cname, opRes, key, revision);
     co_return;
@@ -813,9 +804,9 @@ futures::Future<futures::Unit> RestDocumentHandler::removeDocument() {
     co_return;
   }
 
-  generate20x(opRes, cname, _activeTrx->getCollectionType(cname),
-              _activeTrx->transactionContextPtr()->getVPackOptions(),
-              isMultiple, opOptions.silent, rest::ResponseCode::OK);
+  generate20x(opRes, cname, trx->getCollectionType(cname),
+              trx->transactionContextPtr()->getVPackOptions(), isMultiple,
+              opOptions.silent, rest::ResponseCode::OK);
 }
 
 futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
@@ -852,7 +843,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
     co_return;
   }
 
-  _activeTrx = co_await createTransaction(
+  auto trx = co_await createTransaction(
       cname, AccessMode::Type::READ, opOptions,
       transaction::OperationOriginREST{"fetching documents"});
 
@@ -860,7 +851,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   // inside read transaction
   // ...........................................................................
 
-  Result res = co_await _activeTrx->beginAsync();
+  Result res = co_await trx->beginAsync();
 
   if (!res.ok()) {
     generateTransactionError(cname, OperationResult(res, opOptions), "");
@@ -869,19 +860,17 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
 
   // track request on both leader and follower (in case of dirty-read requests)
   if (ServerState::instance()->isDBServer()) {
-    _activeTrx->state()->trackShardRequest(
-        *_activeTrx->resolver(), _vocbase.name(), cname,
-        _request->value(StaticStrings::UserString), AccessMode::Type::READ,
-        "read-multiple");
+    trx->state()->trackShardRequest(*trx->resolver(), _vocbase.name(), cname,
+                                    _request->value(StaticStrings::UserString),
+                                    AccessMode::Type::READ, "read-multiple");
   }
 
-  if (_activeTrx->state()->options().allowDirtyReads) {
+  if (trx->state()->options().allowDirtyReads) {
     setOutgoingDirtyReadsHeader(true);
   }
 
-  OperationResult opRes =
-      co_await _activeTrx->documentAsync(cname, search, opOptions);
-  res = co_await _activeTrx->finishAsync(opRes.result);
+  OperationResult opRes = co_await trx->documentAsync(cname, search, opOptions);
+  res = co_await trx->finishAsync(opRes.result);
 
   if (opRes.fail()) {
     generateTransactionError(cname, opRes);
@@ -894,7 +883,7 @@ futures::Future<futures::Unit> RestDocumentHandler::readManyDocuments() {
   }
 
   generateDocument(opRes.slice(), true,
-                   _activeTrx->transactionContextPtr()->getVPackOptions());
+                   trx->transactionContextPtr()->getVPackOptions());
 }
 
 void RestDocumentHandler::handleFillIndexCachesValue(
@@ -923,7 +912,8 @@ void RestDocumentHandler::handleFillIndexCachesValue(
   options.refillIndexCaches = ric;
 }
 
-void RestDocumentHandler::addTransactionHints(std::string const& collectionName,
+void RestDocumentHandler::addTransactionHints(transaction::Methods& trx,
+                                              std::string_view collectionName,
                                               bool isMultiple,
                                               bool isOverwritingInsert) {
   if (ServerState::instance()->isCoordinator()) {
@@ -932,12 +922,12 @@ void RestDocumentHandler::addTransactionHints(std::string const& collectionName,
     if (col != nullptr && col->isSmartEdgeCollection()) {
       // Smart Edge Collections hit multiple shards with dependent requests,
       // they have to be globally managed.
-      _activeTrx->addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
+      trx.addHint(transaction::Hints::Hint::GLOBAL_MANAGED);
       return;
     }
   }
   // For non multiple operations we can optimize to use SingleOperations.
   if (!isMultiple && !isOverwritingInsert) {
-    _activeTrx->addHint(transaction::Hints::Hint::SINGLE_OPERATION);
+    trx.addHint(transaction::Hints::Hint::SINGLE_OPERATION);
   }
 }
