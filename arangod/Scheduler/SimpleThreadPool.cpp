@@ -36,7 +36,12 @@ ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
     auto thread = std::jthread([this]() noexcept {
       auto stoken = _stop.get_token();
       while (auto item = pop(stoken)) {
-        item->invoke();
+        try {
+          item->invoke();
+        } catch (...) {
+          LOG_TOPIC("d5fb2", WARN, Logger::FIXME)
+              << "Scheduler just swallowed an exception.";
+        }
         statistics.done += 1;
       }
     });
