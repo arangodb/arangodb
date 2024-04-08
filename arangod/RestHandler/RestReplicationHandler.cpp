@@ -277,12 +277,14 @@ static Result checkPlanLeaderDirect(
     // that is prepended by `arango`! WTF!?
     VPackSlice plan =
         res.slice().at(0).get(AgencyCommHelper::path()).get(agencyPath);
-    TRI_ASSERT(plan.isArray() && plan.length() > 0);
 
-    VPackSlice leaderSlice = plan.at(0);
-    TRI_ASSERT(leaderSlice.isString());
-    if (leaderSlice.isEqualString(claimLeaderId)) {
-      return Result{};
+    // The collection might be deleted in the meantime
+    if (plan.isArray() && plan.length() > 0) {
+      VPackSlice leaderSlice = plan.at(0);
+      TRI_ASSERT(leaderSlice.isString());
+      if (leaderSlice.isEqualString(claimLeaderId)) {
+        return Result{};
+      }
     }
   }
 

@@ -4708,19 +4708,35 @@ futures::Future<Result> ClusterInfo::getLeadersForShards(
                       ->shard(shardId)
                       ->servers();
       // wait for the leader takeover to appear in our agency cache
-      auto const raftIndex = co_await _agencyCallbackRegistry.waitFor(
-          *path, [&](velocypack::Slice servers) -> bool {
-            bool const leaderResigned = [&]() {
-              if (servers.isArray() && servers.length() > 0) {
-                auto const leader = servers[0];
-                return leader.isString() &&
-                       leader.stringView().starts_with('_');
-              } else {
-                return false;
-              }
-            }();
-            return !leaderResigned;
-          });
+      auto const [waitResult, raftIndex] =
+          co_await _agencyCallbackRegistry.waitFor(
+              *path,
+              [&](velocypack::Slice servers, consensus::index_t index)
+                  -> std::optional<std::tuple<Result, consensus::index_t>> {
+                if (servers.isNone()) {
+                  return std::make_tuple(
+                      Result{TRI_ERROR_ARANGO_DATA_SOURCE_NOT_FOUND}, index);
+                }
+
+                bool const leaderResigned = [&]() {
+                  if (servers.isArray() && servers.length() > 0) {
+                    auto const leader = servers[0];
+                    return leader.isString() &&
+                           leader.stringView().starts_with('_');
+                  } else {
+                    return false;
+                  }
+                }();
+                if (leaderResigned) {
+                  return std::nullopt;
+                }
+
+                return std::make_tuple(Result{}, index);
+              });
+      if (!waitResult.ok()) {
+        co_return waitResult;
+      }
+
       // wait for cluster info to catch up with the agency cache
       auto res = co_await waitForCurrent(raftIndex);
       if (!res.ok()) {
