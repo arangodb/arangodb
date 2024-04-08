@@ -820,30 +820,29 @@ class MaintenanceTestActionPhaseOne : public SharedMaintenanceTest {
 std::vector<std::string> PLAN_SECTIONS{ANALYZERS,       COLLECTIONS,
                                        DATABASES,       VIEWS,
                                        REPLICATED_LOGS, REPLICATED_STATES};
-containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>>
+containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>>
 planToChangeset(NodePtr const& plan) {
-  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder>> ret;
+  containers::FlatHashMap<std::string, std::shared_ptr<VPackBuilder const>> ret;
   for (auto const& db : plan->get(DATABASES)->children()) {
-    VPackBuilder& dbbuilder =
-        *ret.try_emplace(db.first, std::make_shared<VPackBuilder>())
-             .first->second;
+    auto dbbuilder = std::make_shared<VPackBuilder>();
+    ret.try_emplace(db.first, dbbuilder);
 
     {
-      VPackArrayBuilder env(&dbbuilder);
+      VPackArrayBuilder env(dbbuilder.get());
       {
-        VPackObjectBuilder o(&dbbuilder);
-        dbbuilder.add(VPackValue(AgencyCommHelper::path()));
+        VPackObjectBuilder o(dbbuilder.get());
+        dbbuilder->add(VPackValue(AgencyCommHelper::path()));
         {
-          VPackObjectBuilder a(&dbbuilder);
-          dbbuilder.add(VPackValue(PLAN));
+          VPackObjectBuilder a(dbbuilder.get());
+          dbbuilder->add(VPackValue(PLAN));
           {
-            VPackObjectBuilder p(&dbbuilder);
+            VPackObjectBuilder p(dbbuilder.get());
             for (auto const& section : PLAN_SECTIONS) {
-              dbbuilder.add(VPackValue(section));
-              VPackObjectBuilder c(&dbbuilder);
+              dbbuilder->add(VPackValue(section));
+              VPackObjectBuilder c(dbbuilder.get());
               auto path = std::vector<std::string>{section, db.first};
               if (plan->has(path)) {
-                dbbuilder.add(db.first, plan->get(path)->toBuilder().slice());
+                dbbuilder->add(db.first, plan->get(path)->toBuilder().slice());
               }
             }
           }
