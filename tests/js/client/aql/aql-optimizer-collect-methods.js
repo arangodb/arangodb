@@ -101,17 +101,20 @@ function optimizerCollectMethodsTestSuite () {
     testNumberOfPlans : function () {
       c.ensureIndex({ type: "persistent", fields: [ "value" ] }); 
       const queries = [
-        "FOR j IN " + c.name() + " COLLECT value = j RETURN value",
-        "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]",
-        "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g"
+        [ "FOR j IN " + c.name() + " COLLECT value = j RETURN value", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j WITH COUNT INTO l RETURN [ value, l ]", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN g", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g = j.haxe RETURN g", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g RETURN [ value, g ]", 2 ],
+        [ "FOR j IN " + c.name() + " COLLECT value = j INTO g KEEP j RETURN g", 2 ],
+        [ "FOR j IN [1,2,3] COLLECT value = j RETURN value", 1 ],
+        [ "FOR i IN [1,2,3] FOR j IN [1,2,3] COLLECT value = j RETURN value", 2 ],
+        [ "LET x1 = (FOR j IN [1,2,3] COLLECT value = j RETURN value) LET x2 = (FOR j IN [1,2,3] COLLECT value = j RETURN value) RETURN [x1, x2]", 1 ],
       ];
       
       queries.forEach(function(query) {
-        let plans = db._createStatement({query: query, bindVars: null, options: { allPlans: true, optimizer: { rules: [ "-all" ] }}}).explain().plans;
-        assertEqual(2, plans.length);
+        let plans = db._createStatement({query: query[0], bindVars: null, options: { allPlans: true, optimizer: { rules: [ "-all" ] }}}).explain().plans;
+        assertEqual(query[1], plans.length, query);
       });
     },
 

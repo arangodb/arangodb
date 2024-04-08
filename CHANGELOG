@@ -1,6 +1,16 @@
 devel
 -----
 
+* Make AQL query optimizer create less query execution plan permutations when
+  a query contains multiple occurrences of COLLECT statements under certain
+  conditions:
+  - COLLECT statements that are contained in a single loop that is driven by a
+    traversal or an enumeration over an array now prefer the hashed collect
+    variant.
+  - if the hashed collect variant is explicitly requested via the `OPTIONS`
+    clause in the COLLECT statement, it is always applied, even if the maximum
+    number of query execution plans is already reached.
+
 * Added internal APIs to dump the contents of the AQL query registry from
   DB-Servers plus the contents of the transaction manager on coordinators and
   DB-Servers.
