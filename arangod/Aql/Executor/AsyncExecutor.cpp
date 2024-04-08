@@ -106,16 +106,22 @@ ExecutionBlockImpl<AsyncExecutor>::executeWithoutTrace(
               _returnState == ExecutionState::WAITING));
 
   _internalState = AsyncState::InProgress;
+
   bool queued =
       _sharedState->asyncExecuteAndWakeup([this, stack](bool isAsync) -> bool {
         std::unique_lock<std::mutex> guard(_mutex, std::defer_lock);
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+        if (_beforeAsyncExecuteCallback) {
+          _beforeAsyncExecuteCallback();
+        }
+#endif
         try {
           auto [state, skip, block] = _dependencies[0]->execute(stack);
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
           if (_postAsyncExecuteCallback) {
-            _postAsyncExecuteCallback();
+            _postAsyncExecuteCallback(state);
           }
 #endif
 
@@ -237,7 +243,11 @@ std::pair<ExecutionState, Result> ExecutionBlockImpl<
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
 void ExecutionBlockImpl<AsyncExecutor>::setPostAsyncExecuteCallback(
-    std::function<void()> cb) {
+    std::function<void(ExecutionState)> cb) {
   _postAsyncExecuteCallback = std::move(cb);
+}
+void ExecutionBlockImpl<AsyncExecutor>::setBeforeAsyncExecuteCallback(
+    std::function<void()> cb) {
+  _beforeAsyncExecuteCallback = std::move(cb);
 }
 #endif
