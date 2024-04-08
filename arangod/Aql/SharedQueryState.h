@@ -57,6 +57,8 @@ class SharedQueryState final
   SharedQueryState() = delete;
   ~SharedQueryState() = default;
 
+  void setMaxTasks(unsigned maxTasks) { _maxTasks = maxTasks; }
+
   void invalidate();
 
   /// @brief executeAndWakeup is to be called on the query object to
@@ -169,7 +171,7 @@ class SharedQueryState final
   unsigned _numWakeups;  // number of times
   unsigned _cbVersion;   // increased once callstack is done
 
-  const unsigned _maxTasks;
+  unsigned _maxTasks;
   std::atomic<unsigned> _numTasks;
   std::atomic<bool> _valid;
 };
