@@ -42,6 +42,12 @@
   const isEnterprise = internal.isEnterprise();
   const instanceInfo = JSON.parse(require('internal').env.INSTANCEINFO);
   var db = internal.db;
+  const getNoShards = function (defaultNo) {
+    if (db._properties().sharding === "single") {
+      return 1;
+    }
+    return defaultNo;
+  };
 
   const getDumpDir = () => {
     let dumpDir = instanceInfo.rootDir;
@@ -581,7 +587,7 @@
 
         assertEqual(2, c.type()); // document
         assertFalse(p.waitForSync);
-        assertEqual(9, p.numberOfShards);
+        assertEqual(getNoShards(9), p.numberOfShards);
 
         assertEqual(1, c.getIndexes().length); // just primary index
         assertEqual("primary", c.getIndexes()[0].type);
@@ -1069,13 +1075,13 @@
         let p = c.properties();
 
         assertEqual(2, p.replicationFactor);
-        assertEqual(7, p.numberOfShards);
+        assertEqual(getNoShards(7), p.numberOfShards);
 
         c = getCollection("UnitTestsDumpReplicationFactor2");
         p = c.properties();
 
         assertEqual(2, p.replicationFactor);
-        assertEqual(6, p.numberOfShards);
+        assertEqual(getNoShards(6), p.numberOfShards);
       },
 
       testSatelliteGraph: function () {
@@ -1207,7 +1213,7 @@
         let c = getCollection(vertices);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
-        assertEqual(5, p.numberOfShards);
+        assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart, p);
         assertEqual(100, c.count());
         assertEqual("value", p.smartGraphAttribute);
@@ -1263,7 +1269,7 @@
         let c = getCollection(orphans);
         let p = c.properties();
         assertEqual(2, c.type()); // Document
-        assertEqual(5, p.numberOfShards);
+        assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart);
         assertEqual(100, c.count());
         assertEqual("value", p.smartGraphAttribute);
@@ -1320,7 +1326,7 @@
         let c = getCollection(edges);
         let p = c.properties();
         assertEqual(3, c.type()); // Edges
-        //assertEqual(5, p.numberOfShards);
+        //assertEqual(getNoShards(5), p.numberOfShards);
         assertTrue(p.isSmart);
         assertEqual(300, c.count());
       },
@@ -1465,8 +1471,8 @@
         if (oProp.hasOwnProperty("distributeShardsLike")) {
           // The Vertex collection is selected as leading.
           assertFalse(Object.hasOwnProperty(vProp, "distributeShardsLike"));
-          assertEqual(vertices, eProp.distributeShardsLike);
-          assertEqual(vertices, oProp.distributeShardsLike);
+          assertEqual(vertices, eProp.distributeShardsLike, `Not equal: ${JSON.stringify(vertices)} !~= ${JSON.stringify(eProp)}`);
+          assertEqual(vertices, oProp.distributeShardsLike, `Not equal: ${JSON.stringify(vertices)} !~= ${JSON.stringify(eProp)}`);
         } else {
           // The orphan collection is selected as leading.
           assertFalse(Object.hasOwnProperty(oProp, "distributeShardsLike"));
