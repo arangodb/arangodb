@@ -89,7 +89,7 @@ class Task : public std::enable_shared_from_this<Task> {
   void toVelocyPack(velocypack::Builder&) const;
   void work();
   bool queue(std::chrono::microseconds offset) ADB_WARN_UNUSED_RESULT;
-  std::function<void(bool cancelled)> callbackFunction();
+  fu2::function<void(bool cancelled) noexcept> callbackFunction();
   std::string const& name() const { return _name; }
 
  private:

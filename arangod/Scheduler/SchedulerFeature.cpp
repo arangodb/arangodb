@@ -458,7 +458,7 @@ extern "C" void c_hangup_handler(int signal, siginfo_t* info, void*) {
 
   // no log rotate request queued before. now issue one.
   SchedulerFeature::SCHEDULER->queue(
-      RequestLane::CLIENT_SLOW, [processIdRequesting]() {
+      RequestLane::CLIENT_SLOW, [processIdRequesting]() noexcept {
         try {
           LOG_TOPIC("33eae", INFO, arangodb::Logger::FIXME)
               << "hangup received, about to reopen logfile (sender pid "

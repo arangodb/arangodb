@@ -122,7 +122,7 @@ RestStatus RestShutdownHandler::execute() {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   // don't block the response for workers waiting on this callback
   // this should allow workers to go into the IDLE state
-  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self] {
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self]() noexcept {
     // Give the server half a second to send the reply:
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
     // Go down:

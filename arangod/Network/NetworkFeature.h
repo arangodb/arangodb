@@ -113,7 +113,7 @@ class NetworkFeature final : public ArangodFeature {
   std::atomic<bool> _prepared;
 
   /// @brief where rhythm is life, and life is rhythm :)
-  std::function<void(bool)> _gcfunc;
+  fu2::function<void(bool) noexcept> _gcfunc;
 
   std::unique_ptr<network::ConnectionPool> _pool;
   std::atomic<network::ConnectionPool*> _poolPtr;

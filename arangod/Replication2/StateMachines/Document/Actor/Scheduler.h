@@ -37,7 +37,7 @@ struct Scheduler : arangodb::actor::IScheduler {
   explicit Scheduler(std::shared_ptr<replication2::IScheduler> scheduler);
   void queue(arangodb::actor::LazyWorker&& worker) override;
   void delay(std::chrono::seconds delay,
-             std::function<void(bool)>&& fn) override;
+             fu2::unique_function<void(bool) noexcept>&& fn) override;
 
  private:
   std::shared_ptr<replication2::IScheduler> _scheduler;

@@ -90,7 +90,7 @@ struct ThreadPoolScheduler : arangodb::actor::IScheduler {
   }
 
   void delay(std::chrono::seconds delay,
-             std::function<void(bool)>&& job) override {
+             fu2::unique_function<void(bool) noexcept>&& job) override {
     // not implemented
   }
 };

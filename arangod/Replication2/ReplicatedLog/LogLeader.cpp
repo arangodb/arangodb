@@ -147,15 +147,16 @@ auto delayedFuture(IScheduler* sched,
   if (sched) {
     auto p = futures::Promise<futures::Unit>();
     auto f = p.getFuture();
-    auto item = sched->queueDelayed("r2 appendentries", duration,
-                                    [p = std::move(p)](bool cancelled) mutable {
-                                      if (cancelled) {
-                                        p.setException(basics::Exception(Result{
-                                            TRI_ERROR_REQUEST_CANCELED}));
-                                      } else {
-                                        p.setValue(futures::Unit{});
-                                      }
-                                    });
+    auto item = sched->queueDelayed(
+        "r2 appendentries", duration,
+        [p = std::move(p)](bool cancelled) mutable noexcept {
+          if (cancelled) {
+            p.setException(
+                basics::Exception(Result{TRI_ERROR_REQUEST_CANCELED}));
+          } else {
+            p.setValue(futures::Unit{});
+          }
+        });
 
     return std::make_pair(std::move(item), std::move(f));
   }
@@ -171,7 +172,7 @@ void replicated_log::LogLeader::handleResolvedPromiseSet(
   for (auto& promise : resolvedPromises._set) {
     TRI_ASSERT(promise.second.valid());
     sched->queue([promise = std::move(promise.second),
-                  result = resolvedPromises.result]() mutable {
+                  result = resolvedPromises.result]() mutable noexcept {
       promise.setValue(result);
     });
   }

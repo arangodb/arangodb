@@ -419,7 +419,8 @@ void Syncer::JobSynchronizer::request(fu2::unique_function<void()> cb) {
   }
 
   SchedulerFeature::SCHEDULER->queue(
-      RequestLane::INTERNAL_LOW, [this, self = shared_from_this(), id]() {
+      RequestLane::INTERNAL_LOW,
+      [this, self = shared_from_this(), id]() noexcept {
         fu2::unique_function<void()> cb;
 
         {

@@ -969,7 +969,7 @@ auto ExecutionBlockImpl<Executor>::executeFetcher(ExecutionContext& ctx,
       if (shouldSchedule) {
         bool queued = SchedulerFeature::SCHEDULER->tryBoundedQueue(
             RequestLane::INTERNAL_LOW,
-            [block = this, task = _prefetchTask]() mutable {
+            [block = this, task = _prefetchTask]() mutable noexcept {
               if (!task->tryClaimOrAbandon()) {
                 return;
               }

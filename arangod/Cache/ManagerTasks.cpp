@@ -69,7 +69,8 @@ bool FreeMemoryTask::dispatch() {
     }
   }
 
-  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+  if (_manager.post(
+          [self = shared_from_this()]() noexcept -> void { self->run(); })) {
     // intentionally don't unprepare task
     unprepareGuard.cancel();
     return true;
@@ -166,7 +167,8 @@ bool MigrateTask::dispatch() {
     }
   }
 
-  if (_manager.post([self = shared_from_this()]() -> void { self->run(); })) {
+  if (_manager.post(
+          [self = shared_from_this()]() noexcept -> void { self->run(); })) {
     // intentionally don't unprepare task
     unprepareGuard.cancel();
     return true;

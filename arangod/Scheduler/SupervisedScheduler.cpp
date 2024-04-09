@@ -493,7 +493,7 @@ void SupervisedScheduler::shutdown() {
 
 constexpr uint64_t approxWorkerStackSize = 4'000'000;  // 4 MB
 
-void SupervisedScheduler::runWorker() {
+void SupervisedScheduler::runWorker() noexcept {
   uint64_t id;
 
   std::shared_ptr<WorkerState> state;
@@ -533,34 +533,20 @@ void SupervisedScheduler::runWorker() {
 
   _numAwake.fetch_add(1, std::memory_order_relaxed);
   while (true) {
-    try {
-      std::unique_ptr<WorkItemBase> work = getWork(state);
-      if (work == nullptr) {
-        break;
-      }
-
-      _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
-
-      state->_lastJobStarted.store(clock::now(), std::memory_order_release);
-      state->_working = true;
-      _numWorking.fetch_add(1, std::memory_order_relaxed);
-      try {
-        work->invoke();
-        state->_working = false;
-        _numWorking.fetch_sub(1, std::memory_order_relaxed);
-      } catch (...) {
-        state->_working = false;
-        _numWorking.fetch_sub(1, std::memory_order_relaxed);
-        throw;
-      }
-    } catch (std::exception const& ex) {
-      LOG_TOPIC("a235e", ERR, Logger::THREADS)
-          << "scheduler loop caught exception: " << ex.what();
-    } catch (...) {
-      LOG_TOPIC("d4121", ERR, Logger::THREADS)
-          << "scheduler loop caught unknown exception";
+    std::unique_ptr<WorkItemBase> work = getWork(state);
+    if (work == nullptr) {
+      break;
     }
 
+    _jobsDequeued.fetch_add(1, std::memory_order_relaxed);
+
+    state->_lastJobStarted.store(clock::now(), std::memory_order_release);
+    state->_working = true;
+    _numWorking.fetch_add(1, std::memory_order_relaxed);
+    static_assert(noexcept(work->invoke()));
+    work->invoke();
+    state->_working = false;
+    _numWorking.fetch_sub(1, std::memory_order_relaxed);
     _jobsDone.fetch_add(1, std::memory_order_release);
   }
   _numAwake.fetch_sub(1, std::memory_order_relaxed);
@@ -796,7 +782,7 @@ bool SupervisedScheduler::canPullFromQueue(uint64_t queueIndex) const noexcept {
 }
 
 std::unique_ptr<SupervisedScheduler::WorkItemBase> SupervisedScheduler::getWork(
-    std::shared_ptr<WorkerState>& state) {
+    std::shared_ptr<WorkerState>& state) noexcept {
   auto checkAllQueues = [this](uint64_t& maxCheckedQueue) -> WorkItemBase* {
     for (uint64_t i = 0; i < NumberOfQueues; ++i) {
       if (!this->canPullFromQueue(i)) {

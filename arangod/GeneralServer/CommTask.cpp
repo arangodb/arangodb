@@ -680,7 +680,7 @@ void CommTask::handleRequestSync(std::shared_ptr<RestHandler> handler) {
 
   // queue the operation for execution in the scheduler
   auto cb = [self = shared_from_this(),
-             handler = std::move(handler)]() mutable {
+             handler = std::move(handler)]() mutable noexcept {
     handler->trackQueueEnd();
     handler->trackTaskStart();
 
@@ -735,7 +735,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
 
     // callback will persist the response with the AsyncJobManager
     return SchedulerFeature::SCHEDULER->tryBoundedQueue(
-        lane, [handler = std::move(handler), manager(&jobManager)] {
+        lane, [handler = std::move(handler), manager(&jobManager)]() noexcept {
           handler->trackQueueEnd();
           handler->trackTaskStart();
 
@@ -747,7 +747,7 @@ bool CommTask::handleRequestAsync(std::shared_ptr<RestHandler> handler,
   } else {
     // here the response will just be ignored
     return SchedulerFeature::SCHEDULER->tryBoundedQueue(
-        lane, [handler = std::move(handler)] {
+        lane, [handler = std::move(handler)]() noexcept {
           handler->trackQueueEnd();
           handler->trackTaskStart();
 

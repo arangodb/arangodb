@@ -515,10 +515,12 @@ void HeartbeatThread::runDBServer() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
-          self->getNewsFromAgencyForDBServer();
-          *getNewsRunning = 0;  // indicate completion to trigger a new schedule
-        });
+        scheduler->queue(
+            RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning]() noexcept {
+              self->getNewsFromAgencyForDBServer();
+              *getNewsRunning =
+                  0;  // indicate completion to trigger a new schedule
+            });
         LOG_TOPIC("aaccf", DEBUG, Logger::HEARTBEAT)
             << "Have scheduled getNewsFromAgency job.";
       }
@@ -804,10 +806,12 @@ void HeartbeatThread::runCoordinator() {
         auto self = shared_from_this();
         Scheduler* scheduler = SchedulerFeature::SCHEDULER;
         *getNewsRunning = 1;
-        scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning] {
-          self->getNewsFromAgencyForCoordinator();
-          *getNewsRunning = 0;  // indicate completion to trigger a new schedule
-        });
+        scheduler->queue(
+            RequestLane::CLUSTER_INTERNAL, [self, getNewsRunning]() noexcept {
+              self->getNewsFromAgencyForCoordinator();
+              *getNewsRunning =
+                  0;  // indicate completion to trigger a new schedule
+            });
         LOG_TOPIC("aacc3", DEBUG, Logger::HEARTBEAT)
             << "Have scheduled getNewsFromAgency job.";
       }

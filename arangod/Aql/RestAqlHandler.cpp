@@ -625,7 +625,7 @@ Result RestAqlHandler::findEngine(std::string const& idString) {
     }
   }
   auto res = _queryRegistry->openExecutionEngine(
-      qId, [self = shared_from_this()]() { self->wakeupHandler(); });
+      qId, [self = shared_from_this()]() noexcept { self->wakeupHandler(); });
   if (res.fail()) {
     return std::move(res).result();
   }

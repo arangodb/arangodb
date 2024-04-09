@@ -50,7 +50,7 @@ class QueryRegistry {
  public:
   enum class EngineType : uint8_t { Execution = 1, Graph = 2 };
 
-  using EngineCallback = std::function<void()>;
+  using EngineCallback = fu2::function<void() noexcept>;
 
   /// @brief insert, this inserts the query <query> for the vocbase <vocbase>
   /// and the id <id> into the registry. It is in error if there is already

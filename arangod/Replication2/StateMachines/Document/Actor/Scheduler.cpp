@@ -38,7 +38,7 @@ void Scheduler::queue(arangodb::actor::LazyWorker&& worker) {
 }
 
 void Scheduler::delay(std::chrono::seconds delay,
-                      std::function<void(bool)>&& fn) {
+                      fu2::unique_function<void(bool) noexcept>&& fn) {
   std::ignore =
       _scheduler->queueDelayed("replication2-actors", delay, std::move(fn));
 }

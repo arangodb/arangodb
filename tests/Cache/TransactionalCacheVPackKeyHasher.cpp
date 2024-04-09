@@ -48,7 +48,9 @@ using namespace arangodb::tests::mocks;
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -100,7 +102,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_similar_values_work_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -245,7 +249,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -431,7 +437,9 @@ TEST(CacheTransactionalCacheVPackKeyHasherTest,
 TEST(CacheTransactionalCacheVPackKeyHasherTest,
      verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;

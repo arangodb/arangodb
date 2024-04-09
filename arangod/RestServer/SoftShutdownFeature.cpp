@@ -40,12 +40,12 @@ namespace {
 
 void queueShutdownChecker(std::mutex& mutex,
                           arangodb::Scheduler::WorkHandle& workItem,
-                          std::function<void(bool)>& checkFunc) {
+                          fu2::unique_function<void(bool) noexcept> checkFunc) {
   arangodb::Scheduler* scheduler = arangodb::SchedulerFeature::SCHEDULER;
   std::lock_guard<std::mutex> guard(mutex);
-  workItem = scheduler->queueDelayed("soft-shutdown",
-                                     arangodb::RequestLane::CLUSTER_INTERNAL,
-                                     std::chrono::seconds(2), checkFunc);
+  workItem = scheduler->queueDelayed(
+      "soft-shutdown", arangodb::RequestLane::CLUSTER_INTERNAL,
+      std::chrono::seconds(2), std::move(checkFunc));
 }
 
 }  // namespace
@@ -85,7 +85,7 @@ void SoftShutdownTracker::cancelChecker() {
 
 SoftShutdownTracker::SoftShutdownTracker(ArangodServer& server)
     : _server(server), _softShutdownOngoing(false) {
-  _checkFunc = [this](bool /*cancelled*/) {
+  _checkFunc = [this](bool /*cancelled*/) noexcept {
     if (_server.isStopping()) {
       return;  // already stopping, do nothing, and in particular
                // let's not schedule ourselves again!
@@ -140,11 +140,12 @@ bool SoftShutdownTracker::checkAndShutdownIfAllClear() const {
 void SoftShutdownTracker::initiateActualShutdown() const {
   Scheduler* scheduler = SchedulerFeature::SCHEDULER;
   auto self = shared_from_this();
-  scheduler->queue(RequestLane::CLUSTER_INTERNAL, [self = shared_from_this()] {
-    // Give the server 2 seconds to finish stuff
-    std::this_thread::sleep_for(std::chrono::seconds(2));
-    self->_server.beginShutdown();
-  });
+  scheduler->queue(RequestLane::CLUSTER_INTERNAL,
+                   [self = shared_from_this()]() noexcept {
+                     // Give the server 2 seconds to finish stuff
+                     std::this_thread::sleep_for(std::chrono::seconds(2));
+                     self->_server.beginShutdown();
+                   });
 }
 
 void SoftShutdownTracker::toVelocyPack(

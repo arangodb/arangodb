@@ -177,7 +177,7 @@ auto FollowerStateManager<S>::GuardedData::maybeScheduleApplyEntries(
     // call it multiple time in parallel.
     scheduler->queue([promise = std::move(promise), stream = _stream, range,
                       followerState = _followerState,
-                      rttGuard = std::move(rttGuard)]() mutable {
+                      rttGuard = std::move(rttGuard)]() mutable noexcept {
       using IterType =
           LazyDeserializingIterator<EntryType const&, Deserializer>;
       auto iter = [&]() -> std::unique_ptr<IterType> {
@@ -317,7 +317,8 @@ void FollowerStateManager<S>::acquireSnapshot(ServerID leader, LogIndex index,
   _scheduler->queue([weak = this->weak_from_this(), fut = std::move(fut),
                      rttGuard = std::move(rttGuard),
                      snapshotCounter = std::move(snapshotCounter),
-                     leader = std::move(leader), index, version]() mutable {
+                     leader = std::move(leader), index,
+                     version]() mutable noexcept {
     std::move(fut).thenFinal([weak = std::move(weak),
                               rttGuard = std::move(rttGuard),
                               snapshotCounter = std::move(snapshotCounter),

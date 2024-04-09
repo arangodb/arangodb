@@ -130,7 +130,7 @@ void ReplicatedStateManager<S>::leadershipEstablished(
                   _metrics, std::move(leaderState), std::move(stream)));
 
   // must be posted on the scheduler to avoid deadlocks with the log
-  _scheduler->queue([weak = manager->weak_from_this()]() mutable {
+  _scheduler->queue([weak = manager->weak_from_this()]() mutable noexcept {
     if (auto manager = weak.lock(); manager != nullptr) {
       manager->recoverEntries();
     }

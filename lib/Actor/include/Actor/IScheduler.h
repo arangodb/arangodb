@@ -24,7 +24,7 @@
 #pragma once
 
 #include <chrono>
-#include <functional>
+#include <function2.hpp>
 #include "Actor/LazyWorker.h"
 
 namespace arangodb::actor {
@@ -33,7 +33,7 @@ struct IScheduler {
   virtual ~IScheduler() = default;
   virtual void queue(LazyWorker&& worker) = 0;
   virtual void delay(std::chrono::seconds delay,
-                     std::function<void(bool)>&& fn) = 0;
+                     fu2::unique_function<void(bool) noexcept>&& fn) = 0;
 };
 
 }  // namespace arangodb::actor

@@ -37,12 +37,13 @@ struct SyncScheduler : IScheduler {
       -> futures::Future<futures::Unit> override {
     std::abort();  // not implemented
   }
-  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
+  auto queueDelayed(
+      std::string_view name, std::chrono::nanoseconds delay,
+      fu2::unique_function<void(bool canceled) noexcept> handler) noexcept
       -> WorkItemHandle override {
     std::abort();  // not implemented
   }
-  void queue(fu2::unique_function<void()> function) noexcept override {
+  void queue(fu2::unique_function<void() noexcept> function) noexcept override {
     function();
   }
 };
@@ -67,9 +68,9 @@ struct FakeScheduler : IScheduler {
     return f;
   }
 
-  auto queueDelayed(std::string_view name,
-                    std::chrono::steady_clock::duration delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
+  auto queueDelayed(
+      std::string_view name, std::chrono::steady_clock::duration delay,
+      fu2::unique_function<void(bool canceled) noexcept> handler) noexcept
       -> WorkItemHandle override {
     auto thread =
         std::thread([delay, handler = std::move(handler)]() mutable noexcept {
@@ -80,7 +81,7 @@ struct FakeScheduler : IScheduler {
     return nullptr;
   }
 
-  void queue(fu2::unique_function<void()> cb) noexcept override {
+  void queue(fu2::unique_function<void() noexcept> cb) noexcept override {
     auto thread = std::thread(
         [cb = std::move(cb)]() mutable noexcept { std::move(cb)(); });
     thread.detach();
@@ -99,16 +100,18 @@ struct DelayedScheduler : IScheduler, IHasScheduler {
     }
     auto p = futures::Promise<futures::Unit>{};
     auto f = p.getFuture();
-    queueDelayed(name, duration, [p = std::move(p)](bool cancelled) mutable {
-      TRI_ASSERT(!cancelled);
-      p.setValue();
-    });
+    queueDelayed(name, duration,
+                 [p = std::move(p)](bool cancelled) mutable noexcept {
+                   TRI_ASSERT(!cancelled);
+                   p.setValue();
+                 });
 
     return f;
   }
 
-  auto queueDelayed(std::string_view name, std::chrono::nanoseconds delay,
-                    fu2::unique_function<void(bool canceled)> handler) noexcept
+  auto queueDelayed(
+      std::string_view name, std::chrono::nanoseconds delay,
+      fu2::unique_function<void(bool canceled) noexcept> handler) noexcept
       -> WorkItemHandle override {
     // just queue immediately, ignore the delay
     queue([handler = std::move(handler)]() mutable noexcept {
@@ -116,7 +119,7 @@ struct DelayedScheduler : IScheduler, IHasScheduler {
     });
     return nullptr;
   }
-  void queue(fu2::unique_function<void()> function) noexcept override {
+  void queue(fu2::unique_function<void() noexcept> function) noexcept override {
     _queue.push_back(std::move(function));
   }
 

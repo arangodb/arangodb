@@ -328,7 +328,7 @@ void doQueueLinkDrop(IndexId id, std::string const& collection,
   LOG_TOPIC("0d7b2", WARN, Logger::CLUSTER)
       << "Scheduling drop for dangling link " << id;
   auto dropTask = [id = id, collection = collection, vocbase = vocbase,
-                   &ci = ci] {
+                   &ci = ci]() noexcept {
     if (!ci.server().isStopping()) {
       auto coll = ci.getCollectionNT(vocbase, collection);
       if (coll) {
@@ -6007,9 +6007,10 @@ void ClusterInfo::triggerWaiting(
       break;
     }
     if (scheduler && !_server.isStopping()) {
-      scheduler->queue(
-          RequestLane::CLUSTER_INTERNAL,
-          [pp = std::move(pit->second)]() mutable { pp.setValue(Result()); });
+      scheduler->queue(RequestLane::CLUSTER_INTERNAL,
+                       [pp = std::move(pit->second)]() mutable noexcept {
+                         pp.setValue(Result());
+                       });
     } else {
       pit->second.setValue(Result(_syncerShutdownCode));
     }

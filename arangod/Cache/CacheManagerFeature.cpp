@@ -71,7 +71,7 @@ void CacheManagerFeature::start() {
   }
 
   auto scheduler = SchedulerFeature::SCHEDULER;
-  auto postFn = [scheduler](std::function<void()> fn) -> bool {
+  auto postFn = [scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
     if (scheduler->server().isStopping()) {
       return false;
     }

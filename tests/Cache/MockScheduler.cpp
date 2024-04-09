@@ -65,6 +65,6 @@ MockScheduler::MockScheduler(std::size_t threads)
 
 MockScheduler::~MockScheduler() = default;
 
-void MockScheduler::post(std::function<void()> fn) {
-  _impl->_ioService->post(fn);
+void MockScheduler::post(fu2::unique_function<void() noexcept> fn) {
+  asio_ns::post(_impl->_ioService->get_executor(), std::move(fn));
 }

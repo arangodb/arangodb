@@ -160,7 +160,7 @@ void Scheduler::runCronThread() {
 
 Scheduler::WorkHandle Scheduler::queueDelayed(
     std::string_view name, RequestLane lane, clock::duration delay,
-    fu2::unique_function<void(bool cancelled)> handler) noexcept try {
+    fu2::unique_function<void(bool cancelled) noexcept> handler) noexcept try {
   std::shared_ptr<DelayedWorkItem> item;
 
   try {

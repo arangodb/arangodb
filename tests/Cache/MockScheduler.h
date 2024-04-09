@@ -25,7 +25,7 @@
 #pragma once
 
 #include <memory>
-#include <functional>
+#include <function2.hpp>
 
 namespace arangodb {
 namespace cache {
@@ -37,7 +37,7 @@ class MockScheduler {
  public:
   MockScheduler(std::size_t threads);
   ~MockScheduler();
-  void post(std::function<void()> fn);
+  void post(fu2::unique_function<void() noexcept> fn);
 };
 
 };  // end namespace cache

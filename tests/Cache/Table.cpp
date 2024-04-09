@@ -50,8 +50,8 @@ TEST(CacheTableTest, test_static_allocation_size_method) {
 
 TEST(CacheTableTest, test_basic_constructor_behavior) {
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -72,8 +72,8 @@ TEST(CacheTableTest, test_basic_constructor_behavior) {
 
 TEST(CacheTableTest, test_basic_bucket_fetching_behavior) {
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -119,8 +119,8 @@ class CacheTableMigrationTest : public ::testing::Test {
         co{.cacheSize = 16ULL * 1024ULL * 1024ULL},
         manager(
             server.getFeature<SharedPRNGFeature>(),
-            [this](std::function<void()> fn) -> bool {
-              scheduler.post(fn);
+            [this](fu2::unique_function<void() noexcept> fn) -> bool {
+              scheduler.post(std::move(fn));
               return true;
             },
             co),

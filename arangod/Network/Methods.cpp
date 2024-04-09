@@ -293,7 +293,7 @@ void actuallySendRequest(std::shared_ptr<Pack>&& p, ConnectionPool* pool,
 
         TRI_ASSERT(pack->tmp_req != nullptr);
 
-        sch->queue(pack->continuationLane, [pack]() mutable {
+        sch->queue(pack->continuationLane, [pack]() mutable noexcept {
           pack->promise.setValue(Response{std::move(pack->dest), pack->tmp_err,
                                           std::move(pack->tmp_req),
                                           std::move(pack->tmp_res)});
@@ -608,12 +608,12 @@ class RequestsState final : public std::enable_shared_from_this<RequestsState>,
       return;
     }
 
-    sch->queue(
-        _options.continuationLane, [self = shared_from_this()]() mutable {
-          self->_promise.setValue(
-              Response{std::move(self->_destination), self->_tmp_err,
-                       std::move(self->_tmp_req), std::move(self->_tmp_res)});
-        });
+    sch->queue(_options.continuationLane,
+               [self = shared_from_this()]() mutable noexcept {
+                 self->_promise.setValue(Response{
+                     std::move(self->_destination), self->_tmp_err,
+                     std::move(self->_tmp_req), std::move(self->_tmp_res)});
+               });
   }
 
   void retryLater(std::chrono::steady_clock::duration tryAgainAfter) {

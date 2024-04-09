@@ -36,7 +36,7 @@ struct MockScheduler : IScheduler {
 
   void queue(LazyWorker&& worker) override { worker(); }
   void delay(std::chrono::seconds delay,
-             std::function<void(bool)>&& fn) override {
+             fu2::unique_function<void(bool) noexcept>&& fn) override {
     fn(true);
   }
 };

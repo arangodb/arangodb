@@ -516,8 +516,9 @@ RestStatus RestIndexHandler::createIndex() {
     }
 
     // notify REST handler
-    SchedulerFeature::SCHEDULER->queue(RequestLane::INTERNAL_LOW,
-                                       [self]() { self->wakeupHandler(); });
+    SchedulerFeature::SCHEDULER->queue(
+        RequestLane::INTERNAL_LOW,
+        [self]() noexcept { self->wakeupHandler(); });
   };
 
   // start background thread

@@ -70,17 +70,18 @@ auto FollowerCommitManager::updateCommitIndex(LogIndex index,
     ctx->queue.insert(guard->waitQueue.extract(it++));
   }
 
-  return std::pair(
-      resolveIndex, DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
-        for (auto& it : ctx->queue) {
-          if (!it.second.isFulfilled()) {
-            ctx->scheduler->queue([p = std::move(it.second),
-                                   res = std::move(ctx->result)]() mutable {
-              p.setValue(std::move(res));
-            });
-          }
-        }
-      }));
+  return std::pair(resolveIndex,
+                   DeferredAction([ctx = std::move(ctx)]() mutable noexcept {
+                     for (auto& it : ctx->queue) {
+                       if (!it.second.isFulfilled()) {
+                         ctx->scheduler->queue(
+                             [p = std::move(it.second),
+                              res = std::move(ctx->result)]() mutable noexcept {
+                               p.setValue(std::move(res));
+                             });
+                       }
+                     }
+                   }));
 }
 
 auto FollowerCommitManager::getCommitIndex() const noexcept -> LogIndex {

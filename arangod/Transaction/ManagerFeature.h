@@ -76,7 +76,7 @@ class ManagerFeature final : public ArangodFeature {
 
   // garbage collection function, scheduled regularly in the
   // scheduler
-  std::function<void(bool)> _gcfunc;
+  fu2::function<void(bool) noexcept> _gcfunc;
 
   // max size (in bytes) of streaming transactions
   size_t _streamingMaxTransactionSize;

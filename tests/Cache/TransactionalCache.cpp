@@ -48,7 +48,9 @@ using namespace arangodb::tests::mocks;
 // long-running
 
 TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
 
@@ -71,7 +73,9 @@ TEST(CacheTransactionalCacheTest, test_basic_cache_construction) {
 
 TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -127,7 +131,9 @@ TEST(CacheTransactionalCacheTest, verify_that_insertion_works_as_expected) {
 
 TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -193,7 +199,9 @@ TEST(CacheTransactionalCacheTest, verify_removal_works_as_expected) {
 
 TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
   std::uint64_t cacheLimit = 128 * 1024;
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   MockMetricsServer server;
   SharedPRNGFeature& sharedPRNG = server.getFeature<SharedPRNGFeature>();
   CacheOptions co;
@@ -266,8 +274,8 @@ TEST(CacheTransactionalCacheTest, verify_banishing_works_as_expected) {
 TEST(CacheTransactionalCacheTest,
      verify_cache_can_grow_correctly_when_it_runs_out_of_space_LongRunning) {
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -297,8 +305,8 @@ TEST(CacheTransactionalCacheTest,
 TEST(CacheTransactionalCacheTest, test_behavior_under_mixed_load_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;

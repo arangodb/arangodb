@@ -410,7 +410,7 @@ double Manager::idealUpperFillRatio() const noexcept {
   return _options.idealUpperFillRatio;
 }
 
-bool Manager::post(std::function<void()> fn) {
+bool Manager::post(fu2::unique_function<void() noexcept> fn) {
   // lock already acquired by caller
   TRI_ASSERT(_lock.isLockedWrite());
   return _schedulerPost(std::move(fn));

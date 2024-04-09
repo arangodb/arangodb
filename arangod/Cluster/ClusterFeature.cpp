@@ -1228,7 +1228,7 @@ void ClusterFeature::scheduleConnectivityCheck(std::uint32_t inSeconds) {
 
   auto workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
       "connectivity-check", RequestLane::INTERNAL_LOW,
-      std::chrono::seconds(inSeconds), [this](bool canceled) {
+      std::chrono::seconds(inSeconds), [this](bool canceled) noexcept {
         if (canceled) {
           return;
         }

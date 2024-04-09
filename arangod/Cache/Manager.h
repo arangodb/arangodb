@@ -34,6 +34,8 @@
 #include "Cache/Transaction.h"
 #include "Cache/TransactionManager.h"
 
+#include <function2.hpp>
+
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -76,7 +78,7 @@ class Rebalancer;
 ////////////////////////////////////////////////////////////////////////////////
 class Manager {
  protected:
-  using PostFn = std::function<bool(std::function<void()>)>;
+  using PostFn = std::function<bool(fu2::unique_function<void() noexcept>)>;
 
  public:
   struct MemoryStats {
@@ -207,7 +209,7 @@ class Manager {
   //////////////////////////////////////////////////////////////////////////////
   /// @brief Post a function to the scheduler
   //////////////////////////////////////////////////////////////////////////////
-  bool post(std::function<void()> fn);
+  bool post(fu2::unique_function<void() noexcept> fn);
 
   SharedPRNGFeature& sharedPRNG() const noexcept { return _sharedPRNG; }
 

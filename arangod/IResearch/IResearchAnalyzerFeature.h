@@ -580,7 +580,7 @@ class IResearchAnalyzerFeature final : public ArangodFeature {
                        transaction::OperationOrigin operationOrigin);
 
   /// @brief dangling analyzer revisions collector
-  std::function<void(bool)> _gcfunc;
+  fu2::function<void(bool) noexcept> _gcfunc;
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;
   DatabaseFeature& _databaseFeature;

@@ -71,7 +71,7 @@ class SoftShutdownTracker
   std::atomic<bool> _softShutdownOngoing;  // flag, if soft shutdown is ongoing
   std::mutex _workItemMutex;
   Scheduler::WorkHandle _workItem;  // used for soft shutdown checker
-  std::function<void(bool)> _checkFunc;
+  fu2::function<void(bool) noexcept> _checkFunc;
 
  public:
   struct Status {

@@ -6,3 +6,13 @@ add_library(arango_actor_standalone INTERFACE)
 target_include_directories(arango_actor_standalone INTERFACE include/)
 target_link_libraries(arango_actor_standalone INTERFACE velocypack fmt)
 target_compile_definitions(arango_actor_standalone INTERFACE STANDALONE)
+
+target_include_directories(arango_actor
+        INTERFACE
+        ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2
+        include)
+
+target_include_directories(arango_actor_standalone
+        INTERFACE
+        ${PROJECT_SOURCE_DIR}/3rdParty/iresearch/external/function2
+        include)

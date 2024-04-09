@@ -224,8 +224,9 @@ void StorageManager::triggerQueueWorker(GuardType guard) noexcept {
                          std::shared_ptr<StorageManager> self) noexcept
       -> futures::Future<futures::Unit> {
     auto const resolvePromise = [&](futures::Promise<Result> p, Result res) {
-      self->scheduler->queue(
-          [p = std::move(p), res]() mutable { p.setValue(std::move(res)); });
+      self->scheduler->queue([p = std::move(p), res]() mutable noexcept {
+        p.setValue(std::move(res));
+      });
     };
 
     LOG_CTX("6efe9", TRACE, self->loggerContext)

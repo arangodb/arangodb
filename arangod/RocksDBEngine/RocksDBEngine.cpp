@@ -1840,76 +1840,78 @@ void RocksDBEngine::processTreeRebuilds() {
       return;
     }
 
-    scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, candidate]() {
-      if (!server().isStopping()) {
-        VocbasePtr vocbase;
-        try {
-          auto& df = server().getFeature<DatabaseFeature>();
-          vocbase = df.useDatabase(candidate.first);
-          if (vocbase != nullptr) {
-            auto collection = vocbase->lookupCollectionByUuid(candidate.second);
-            if (collection != nullptr && !collection->deleted()) {
-              LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
-                  << "starting background rebuild of revision tree for "
-                     "collection "
-                  << candidate.first << "/" << collection->name();
-              Result res =
-                  static_cast<RocksDBCollection*>(collection->getPhysical())
-                      ->rebuildRevisionTree()
-                      .get();
-              if (res.ok()) {
-                ++_metricsTreeRebuildsSuccess;
-                LOG_TOPIC("2f997", INFO, Logger::ENGINES)
-                    << "successfully rebuilt revision tree for collection "
-                    << candidate.first << "/" << collection->name();
-              } else {
-                ++_metricsTreeRebuildsFailure;
-                if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
-                  LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
-                      << "failure during revision tree rebuilding for "
+    scheduler->queue(
+        arangodb::RequestLane::CLIENT_SLOW, [this, candidate]() noexcept {
+          if (!server().isStopping()) {
+            VocbasePtr vocbase;
+            try {
+              auto& df = server().getFeature<DatabaseFeature>();
+              vocbase = df.useDatabase(candidate.first);
+              if (vocbase != nullptr) {
+                auto collection =
+                    vocbase->lookupCollectionByUuid(candidate.second);
+                if (collection != nullptr && !collection->deleted()) {
+                  LOG_TOPIC("b96bc", INFO, Logger::ENGINES)
+                      << "starting background rebuild of revision tree for "
                          "collection "
-                      << candidate.first << "/" << collection->name() << ": "
-                      << res.errorMessage();
-                } else {
-                  LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
-                      << "failure during revision tree rebuilding for "
-                         "collection "
-                      << candidate.first << "/" << collection->name() << ": "
-                      << res.errorMessage();
-                }
-                {
-                  // mark as to-be-done again
-                  std::lock_guard locker{_rebuildCollectionsLock};
-                  auto it = _rebuildCollections.find(candidate);
-                  if (it != _rebuildCollections.end()) {
-                    (*it).second = false;
+                      << candidate.first << "/" << collection->name();
+                  Result res =
+                      static_cast<RocksDBCollection*>(collection->getPhysical())
+                          ->rebuildRevisionTree()
+                          .get();
+                  if (res.ok()) {
+                    ++_metricsTreeRebuildsSuccess;
+                    LOG_TOPIC("2f997", INFO, Logger::ENGINES)
+                        << "successfully rebuilt revision tree for collection "
+                        << candidate.first << "/" << collection->name();
+                  } else {
+                    ++_metricsTreeRebuildsFailure;
+                    if (res.is(TRI_ERROR_LOCK_TIMEOUT)) {
+                      LOG_TOPIC("bce3a", WARN, Logger::ENGINES)
+                          << "failure during revision tree rebuilding for "
+                             "collection "
+                          << candidate.first << "/" << collection->name()
+                          << ": " << res.errorMessage();
+                    } else {
+                      LOG_TOPIC("a1fc2", ERR, Logger::ENGINES)
+                          << "failure during revision tree rebuilding for "
+                             "collection "
+                          << candidate.first << "/" << collection->name()
+                          << ": " << res.errorMessage();
+                    }
+                    {
+                      // mark as to-be-done again
+                      std::lock_guard locker{_rebuildCollectionsLock};
+                      auto it = _rebuildCollections.find(candidate);
+                      if (it != _rebuildCollections.end()) {
+                        (*it).second = false;
+                      }
+                    }
+                    // rethrow exception
+                    THROW_ARANGO_EXCEPTION(res);
                   }
                 }
-                // rethrow exception
-                THROW_ARANGO_EXCEPTION(res);
               }
+
+              // tree rebuilding finished successfully. now remove from the list
+              // to-be-rebuilt candidates
+              std::lock_guard locker{_rebuildCollectionsLock};
+              _rebuildCollections.erase(candidate);
+
+            } catch (std::exception const& ex) {
+              LOG_TOPIC("13afc", WARN, Logger::ENGINES)
+                  << "caught exception during tree rebuilding: " << ex.what();
+            } catch (...) {
+              LOG_TOPIC("0bcbf", WARN, Logger::ENGINES)
+                  << "caught unknown exception during tree rebuilding";
             }
           }
 
-          // tree rebuilding finished successfully. now remove from the list
-          // to-be-rebuilt candidates
+          // always count down _runningRebuilds!
           std::lock_guard locker{_rebuildCollectionsLock};
-          _rebuildCollections.erase(candidate);
-
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("13afc", WARN, Logger::ENGINES)
-              << "caught exception during tree rebuilding: " << ex.what();
-        } catch (...) {
-          LOG_TOPIC("0bcbf", WARN, Logger::ENGINES)
-              << "caught unknown exception during tree rebuilding";
-        }
-      }
-
-      // always count down _runningRebuilds!
-      std::lock_guard locker{_rebuildCollectionsLock};
-      TRI_ASSERT(_runningRebuilds > 0);
-      --_runningRebuilds;
-    });
+          TRI_ASSERT(_runningRebuilds > 0);
+          --_runningRebuilds;
+        });
   }
 }
 
@@ -1984,47 +1986,48 @@ void RocksDBEngine::processCompactions() {
           << "' for execution";
     }
 
-    scheduler->queue(arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() {
-      if (server().isStopping()) {
-        LOG_TOPIC("3d619", TRACE, Logger::ENGINES)
-            << "aborting pending compaction due to server shutdown";
-      } else {
-        LOG_TOPIC("9485b", TRACE, Logger::ENGINES)
-            << "executing compaction for range " << bounds;
-        double start = TRI_microtime();
-        try {
-          rocksdb::CompactRangeOptions opts;
-          opts.exclusive_manual_compaction = false;
-          opts.allow_write_stall = true;
-          opts.canceled = &::cancelCompactions;
-          rocksdb::Slice b = bounds.start(), e = bounds.end();
-          _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
-        } catch (std::exception const& ex) {
-          LOG_TOPIC("a4c42", WARN, Logger::ENGINES)
-              << "compaction for range " << bounds
-              << " failed with error: " << ex.what();
-        } catch (...) {
-          // whatever happens, we need to count down _runningCompactions in
-          // all cases
-        }
+    scheduler->queue(
+        arangodb::RequestLane::CLIENT_SLOW, [this, bounds]() noexcept {
+          if (server().isStopping()) {
+            LOG_TOPIC("3d619", TRACE, Logger::ENGINES)
+                << "aborting pending compaction due to server shutdown";
+          } else {
+            LOG_TOPIC("9485b", TRACE, Logger::ENGINES)
+                << "executing compaction for range " << bounds;
+            double start = TRI_microtime();
+            try {
+              rocksdb::CompactRangeOptions opts;
+              opts.exclusive_manual_compaction = false;
+              opts.allow_write_stall = true;
+              opts.canceled = &::cancelCompactions;
+              rocksdb::Slice b = bounds.start(), e = bounds.end();
+              _db->CompactRange(opts, bounds.columnFamily(), &b, &e);
+            } catch (std::exception const& ex) {
+              LOG_TOPIC("a4c42", WARN, Logger::ENGINES)
+                  << "compaction for range " << bounds
+                  << " failed with error: " << ex.what();
+            } catch (...) {
+              // whatever happens, we need to count down _runningCompactions in
+              // all cases
+            }
 
-        LOG_TOPIC("79591", TRACE, Logger::ENGINES)
-            << "finished compaction for range " << bounds
-            << ", took: " << Logger::FIXED(TRI_microtime() - start);
-      }
-      // always count down _runningCompactions!
-      WRITE_LOCKER(locker, _pendingCompactionsLock);
+            LOG_TOPIC("79591", TRACE, Logger::ENGINES)
+                << "finished compaction for range " << bounds
+                << ", took: " << Logger::FIXED(TRI_microtime() - start);
+          }
+          // always count down _runningCompactions!
+          WRITE_LOCKER(locker, _pendingCompactionsLock);
 
-      TRI_ASSERT(_runningCompactionsColumnFamilies.size() ==
-                 _runningCompactions);
+          TRI_ASSERT(_runningCompactionsColumnFamilies.size() ==
+                     _runningCompactions);
 
-      TRI_ASSERT(_runningCompactions > 0);
-      --_runningCompactions;
+          TRI_ASSERT(_runningCompactions > 0);
+          --_runningCompactions;
 
-      TRI_ASSERT(
-          _runningCompactionsColumnFamilies.contains(bounds.columnFamily()));
-      _runningCompactionsColumnFamilies.erase(bounds.columnFamily());
-    });
+          TRI_ASSERT(_runningCompactionsColumnFamilies.contains(
+              bounds.columnFamily()));
+          _runningCompactionsColumnFamilies.erase(bounds.columnFamily());
+        });
   }
 }
 

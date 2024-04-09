@@ -59,7 +59,7 @@ auto DelayedLogFollower::appendEntries(replicated_log::AppendEntriesRequest req)
   auto p =
       _asyncQueue.emplace_back(std::make_shared<AsyncRequest>(std::move(req)));
 
-  scheduler.queue([p, this]() {
+  scheduler.queue([p, this]() noexcept {
     p->promise.setValue(std::move(p->request));
     auto it = std::find(_asyncQueue.begin(), _asyncQueue.end(), p);
     if (it != _asyncQueue.end()) {

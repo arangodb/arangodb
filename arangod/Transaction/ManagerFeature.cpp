@@ -65,7 +65,7 @@ ManagerFeature::ManagerFeature(Server& server)
   startsAfter<SchedulerFeature>();
   startsBefore<DatabaseFeature>();
 
-  _gcfunc = [this](bool canceled) {
+  _gcfunc = [this](bool canceled) noexcept {
     if (canceled) {
       return;
     }

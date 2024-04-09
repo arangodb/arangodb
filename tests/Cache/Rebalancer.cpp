@@ -73,8 +73,9 @@ struct ThreadGuard {
 TEST(CacheRebalancerTest, test_rebalancing_with_plaincache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn =
+      [&scheduler](fu2::unique_function<void() noexcept> fn) noexcept -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -203,8 +204,8 @@ TEST(CacheRebalancerTest,
      test_rebalancing_with_transactionalcache_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -352,8 +353,8 @@ TEST(
     test_rebalancing_with_transactionalcache_and_dispatch_failures_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;

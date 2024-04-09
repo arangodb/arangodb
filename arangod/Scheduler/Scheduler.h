@@ -76,6 +76,7 @@ class Scheduler {
   void queue(RequestLane lane, F&& fn) noexcept {
     // doQueue() will always return true for unbounded queues.
     // in the case of failure, doQueue() will throw
+    static_assert(std::is_nothrow_invocable_r_v<void, F>);
     [[maybe_unused]] bool result =
         doQueue(lane, std::forward<F>(fn), /*bounded*/ false);
     TRI_ASSERT(result);
@@ -85,9 +86,14 @@ class Scheduler {
   futures::Future<R> queueWithFuture(RequestLane lane, F&& fn) {
     auto p = futures::Promise<R>{};
     auto f = p.getFuture();
-    queue(lane, [p = std::move(p), fn = std::forward<F>(fn)]() mutable {
-      p.setValue(std::forward<F>(fn)());
-    });
+    queue(lane,
+          [p = std::move(p), fn = std::forward<F>(fn)]() mutable noexcept {
+            try {
+              p.setValue(std::forward<F>(fn)());
+            } catch (...) {
+              p.setException(std::current_exception());
+            }
+          });
     return f;
   }
 
@@ -104,7 +110,7 @@ class Scheduler {
   // DelayedWorkItem are dropped, the task is canceled.
   [[nodiscard]] virtual WorkHandle queueDelayed(
       std::string_view name, RequestLane lane, clock::duration delay,
-      fu2::unique_function<void(bool canceled)> handler) noexcept;
+      fu2::unique_function<void(bool canceled) noexcept> handler) noexcept;
 
   // Returns the scheduler's server object
   ArangodServer& server() noexcept { return _server; }
@@ -127,8 +133,8 @@ class Scheduler {
 
     explicit DelayedWorkItem(
         std::string_view name,
-        fu2::unique_function<void(bool canceled)>&& handler, RequestLane lane,
-        Scheduler* scheduler)
+        fu2::unique_function<void(bool canceled) noexcept>&& handler,
+        RequestLane lane, Scheduler* scheduler)
         : _name(name),
           _handler(std::move(handler)),
           _lane(lane),
@@ -153,7 +159,7 @@ class Scheduler {
         // Thus any reference to class to self in the _handler will be released
         // as soon as the scheduler executed the _handler lambda.
         _scheduler->queue(_lane, [handler = std::move(_handler),
-                                  arg]() mutable { handler(arg); });
+                                  arg]() mutable noexcept { handler(arg); });
       }
     }
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -163,7 +169,7 @@ class Scheduler {
 
    private:
     std::string_view _name;
-    fu2::unique_function<void(bool)> _handler;
+    fu2::unique_function<void(bool) noexcept> _handler;
     RequestLane _lane;
     std::atomic<bool> _disable;
     Scheduler* _scheduler;
@@ -174,7 +180,7 @@ class Scheduler {
 
   struct WorkItemBase {
     virtual ~WorkItemBase() = default;
-    virtual void invoke() = 0;
+    virtual void invoke() noexcept = 0;
   };
 
   template<typename F>
@@ -186,7 +192,8 @@ class Scheduler {
     ~WorkItem() {
       schedulerJobMemoryAccounting(-static_cast<int64_t>(sizeof(*this)));
     }
-    void invoke() override {
+    void invoke() noexcept override {
+      static_assert(noexcept(this->operator()()));
       LogContext::ScopedContext ctxGuard(logContext);
       this->operator()();
     }
@@ -226,10 +233,11 @@ class Scheduler {
     futures::Promise<bool> p;
     futures::Future<bool> f = p.getFuture();
 
-    auto item = queueDelayed(name, RequestLane::DELAYED_FUTURE, d,
-                             [pr = std::move(p)](bool cancelled) mutable {
-                               pr.setValue(cancelled);
-                             });
+    auto item =
+        queueDelayed(name, RequestLane::DELAYED_FUTURE, d,
+                     [pr = std::move(p)](bool cancelled) mutable noexcept {
+                       pr.setValue(cancelled);
+                     });
 
     if (item == nullptr) {
       return futures::makeFuture();
@@ -248,7 +256,7 @@ class Scheduler {
     struct awaitable {
       bool await_ready() { return false; }
       void await_suspend(std::coroutine_handle<> coro) {
-        sched->queue(lane, [coro] { coro.resume(); });
+        sched->queue(lane, [coro]() noexcept { coro.resume(); });
       }
       void await_resume() {}
       Scheduler* sched;

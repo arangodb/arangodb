@@ -527,7 +527,7 @@ void AgencyCache::triggerWaiting(index_t commitIndex) {
       auto pp = std::make_shared<futures::Promise<Result>>(std::move(promise));
       if (executor == Executor::Scheduler && scheduler && !this->isStopping()) {
         scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                         [pp] { pp->setValue(Result()); });
+                         [pp]() noexcept { pp->setValue(Result()); });
       } else {
         promisesToResolve.emplace_back(std::move(pp));
       }

@@ -107,8 +107,8 @@ class SharedQueryState final
       std::forward<F>(cb)(false);
       return false;
     }
-    bool queued =
-        queueAsyncTask([cb(std::forward<F>(cb)), self(shared_from_this())] {
+    bool queued = queueAsyncTask(
+        [cb(std::forward<F>(cb)), self(shared_from_this())]() noexcept {
           if (self->_valid) {
             try {
               cb(true);
@@ -142,7 +142,7 @@ class SharedQueryState final
   void notifyWaiter(std::unique_lock<std::mutex>& guard);
   void queueHandler();
 
-  bool queueAsyncTask(fu2::unique_function<void()>);
+  bool queueAsyncTask(fu2::unique_function<void() noexcept>);
 
  private:
   ArangodServer& _server;

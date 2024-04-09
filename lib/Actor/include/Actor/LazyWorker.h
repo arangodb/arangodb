@@ -34,7 +34,7 @@ struct LazyWorker {
   // be empty and work will just not be executed
   explicit LazyWorker(IWorkable* work) : work(work->weak_from_this()) {}
 
-  void operator()() {
+  void operator()() noexcept {
     auto me = work.lock();
     if (me != nullptr) {
       me->work();

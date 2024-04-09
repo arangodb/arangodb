@@ -257,7 +257,7 @@ bool RestBatchHandler::executeNextHandler() {
 
   // now schedule the real handler
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
-      lane, [this, self = shared_from_this(), handler]() {
+      lane, [this, self = shared_from_this(), handler]() noexcept {
         // start to work for this handler
         // ignore any errors here, will be handled later by inspecting the
         // response

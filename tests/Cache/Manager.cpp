@@ -60,7 +60,9 @@ struct CacheManagerTest : testing::Test {
 TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
@@ -92,7 +94,9 @@ TEST_F(CacheManagerTest, test_memory_usage_for_cache_creation) {
 TEST_F(CacheManagerTest, test_memory_usage_for_cache_reusage) {
   std::uint64_t requestLimit = 1024 * 1024 * 256;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
@@ -146,7 +150,9 @@ TEST_F(CacheManagerTest,
        test_memory_usage_with_failure_during_allocation_with_reserve) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 256 * 1024 * 1024;
@@ -214,7 +220,9 @@ TEST_F(CacheManagerTest,
        test_memory_usage_with_failure_during_allocation_no_reserve) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
@@ -271,7 +279,9 @@ TEST_F(CacheManagerTest,
 TEST_F(CacheManagerTest, test_create_and_destroy_caches) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   Manager manager(sharedPRNG, postFn, co);
@@ -332,7 +342,9 @@ TEST_F(CacheManagerTest, test_create_and_destroy_caches) {
 TEST_F(CacheManagerTest, test_manager_shutdown) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.maxSpareAllocation = 0;
   co.cacheSize = requestLimit;
@@ -352,7 +364,9 @@ TEST_F(CacheManagerTest, test_manager_shutdown) {
 TEST_F(CacheManagerTest, test_manager_shutdown_with_data_and_stats) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.maxSpareAllocation = 0;
   co.cacheSize = requestLimit;
@@ -394,7 +408,9 @@ TEST_F(CacheManagerTest, test_manager_shutdown_with_data_and_stats) {
 TEST_F(CacheManagerTest, test_basic_constructor_function) {
   std::uint64_t requestLimit = 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   Manager manager(sharedPRNG, postFn, co);
@@ -419,7 +435,9 @@ TEST_F(CacheManagerTest, test_basic_constructor_function) {
 TEST_F(CacheManagerTest, test_memory_usage_for_data) {
   std::uint64_t requestLimit = 128 * 1024 * 1024;
 
-  auto postFn = [](std::function<void()>) -> bool { return false; };
+  auto postFn = [](fu2::unique_function<void() noexcept>) -> bool {
+    return false;
+  };
   CacheOptions co;
   co.cacheSize = requestLimit;
   co.maxSpareAllocation = 0;
@@ -495,8 +513,8 @@ TEST_F(CacheManagerTest, test_memory_usage_for_data) {
 TEST_F(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
 
@@ -610,8 +628,8 @@ TEST_F(CacheManagerTest, test_mixed_cache_types_under_mixed_load_LongRunning) {
 TEST_F(CacheManagerTest, test_manager_under_cache_lifecycle_chaos_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
 

@@ -398,7 +398,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 
     auto queueDelayed(
         std::string_view name, std::chrono::steady_clock::duration delay,
-        fu2::unique_function<void(bool canceled)> handler) noexcept
+        fu2::unique_function<void(bool canceled) noexcept> handler) noexcept
         -> WorkItemHandle override {
       auto handle = SchedulerFeature::SCHEDULER->queueDelayed(
           name, RequestLane::CLUSTER_INTERNAL, delay, std::move(handler));
@@ -409,7 +409,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
       return std::make_shared<MyWorkItem>(std::move(handle));
     }
 
-    void queue(fu2::unique_function<void()> cb) noexcept override {
+    void queue(fu2::unique_function<void() noexcept> cb) noexcept override {
       SchedulerFeature::SCHEDULER->queue(RequestLane::CLUSTER_INTERNAL,
                                          std::move(cb));
     }

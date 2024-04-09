@@ -1518,10 +1518,10 @@ void Agent::triggerPollsNoLock(query_t qu, SteadyTimePoint const& tp) {
   auto pit = _promises.begin();
   while (pit != _promises.end()) {
     if (pit->first < tp) {
-      auto pp =
-          std::make_shared<futures::Promise<query_t>>(std::move(pit->second));
       scheduler->queue(RequestLane::CLUSTER_INTERNAL,
-                       [pp = std::move(pp), qu] { pp->setValue(qu); });
+                       [pp = std::move(pit->second), qu]() mutable noexcept {
+                         pp.setValue(qu);
+                       });
       pit = _promises.erase(pit);
     } else {
       ++pit;

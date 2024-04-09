@@ -290,8 +290,8 @@ void Task::setParameter(
 
 void Task::setUser(std::string const& user) { _user = user; }
 
-std::function<void(bool cancelled)> Task::callbackFunction() {
-  return [self = shared_from_this(), this](bool cancelled) {
+fu2::function<void(bool cancelled) noexcept> Task::callbackFunction() {
+  return [self = shared_from_this(), this](bool cancelled) noexcept {
     if (cancelled) {
       std::lock_guard guard{_tasksLock};
 
@@ -326,7 +326,7 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
 
     // now do the work:
     SchedulerFeature::SCHEDULER->queue(
-        RequestLane::INTERNAL_LOW, [self, this, execContext] {
+        RequestLane::INTERNAL_LOW, [self, this, execContext]() noexcept {
           ExecContextScope scope(
               _user.empty() ? ExecContext::superuserAsShared() : execContext);
           work();
@@ -337,9 +337,8 @@ std::function<void(bool cancelled)> Task::callbackFunction() {
                 [this]() -> bool { return queue(_interval); }, Logger::FIXME,
                 "queue task");
             if (!queued) {
-              THROW_ARANGO_EXCEPTION_MESSAGE(
-                  TRI_ERROR_QUEUE_FULL,
-                  "Failed to queue task for 5 minutes, gave up.");
+              LOG_TOPIC("0aaa1", ERR, Logger::FIXME)
+                  << "Failed to queue task for 5 minutes, gave up.";
             }
           } else {
             // in case of one-off tasks or in case of a shutdown, simply

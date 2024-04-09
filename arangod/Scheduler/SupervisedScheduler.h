@@ -141,7 +141,8 @@ class SupervisedScheduler final : public Scheduler {
     bool start();
   };
 
-  std::unique_ptr<WorkItemBase> getWork(std::shared_ptr<WorkerState>& state);
+  std::unique_ptr<WorkItemBase> getWork(
+      std::shared_ptr<WorkerState>& state) noexcept;
   void startOneThread();
   void stopOneThread();
 
@@ -154,7 +155,7 @@ class SupervisedScheduler final : public Scheduler {
   // This is used to give priority to "FAST" and "MED" lanes accordingly.
   bool canPullFromQueue(uint64_t queueIdx) const noexcept;
 
-  void runWorker();
+  void runWorker() noexcept;
   void runSupervisor();
 
   [[nodiscard]] bool queueItem(RequestLane lane,

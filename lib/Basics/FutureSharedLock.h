@@ -230,9 +230,10 @@ struct FutureSharedLock {
     void scheduleNode(Node& node) {
       // TODO in theory `this` can die before execute callback
       //  so probably better to use `shared_from_this()`, but it's slower
-      _scheduler.queue([promise = std::move(node.promise), this]() mutable {
-        promise.setValue(LockGuard(this));
-      });
+      _scheduler.queue(
+          [promise = std::move(node.promise), this]() mutable noexcept {
+            promise.setValue(LockGuard(this));
+          });
     }
 
     void scheduleTimeout(
@@ -241,7 +242,7 @@ struct FutureSharedLock {
       (*queueIterator)->_workItem = _scheduler.queueDelayed(
           [self = this->weak_from_this(),
            node = std::weak_ptr<Node>(*queueIterator),
-           queueIterator](bool cancelled) mutable {
+           queueIterator](bool cancelled) mutable noexcept {
             if (auto me = self.lock(); me) {
               if (auto nodePtr = node.lock(); nodePtr) {
                 std::unique_lock lock(me->_mutex);

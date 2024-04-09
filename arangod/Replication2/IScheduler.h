@@ -41,10 +41,10 @@ struct IScheduler {
 
   virtual auto queueDelayed(
       std::string_view name, std::chrono::nanoseconds delay,
-      fu2::unique_function<void(bool canceled)>
+      fu2::unique_function<void(bool canceled) noexcept>
           handler) noexcept(true)  // otherwise cppcheck chokes on this line
                                    // 04/2023
       -> WorkItemHandle = 0;
-  virtual void queue(fu2::unique_function<void()>) noexcept = 0;
+  virtual void queue(fu2::unique_function<void() noexcept>) noexcept = 0;
 };
 }  // namespace arangodb::replication2

@@ -98,8 +98,8 @@ TEST(CacheWithBackingStoreTest,
      test_hit_rate_for_readonly_hotset_workload_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -154,8 +154,8 @@ TEST(CacheWithBackingStoreTest,
 TEST(CacheWithBackingStoreTest, test_hit_rate_for_mixed_workload_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -248,8 +248,8 @@ TEST(CacheWithBackingStoreTest,
      test_transactionality_for_mixed_workload_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;
@@ -336,8 +336,8 @@ TEST(CacheWithBackingStoreTest,
 TEST(CacheWithBackingStoreTest, test_rebalancing_in_the_wild_LongRunning) {
   RandomGenerator::initialize(RandomGenerator::RandomType::MERSENNE);
   MockScheduler scheduler(4);
-  auto postFn = [&scheduler](std::function<void()> fn) -> bool {
-    scheduler.post(fn);
+  auto postFn = [&scheduler](fu2::unique_function<void() noexcept> fn) -> bool {
+    scheduler.post(std::move(fn));
     return true;
   };
   MockMetricsServer server;

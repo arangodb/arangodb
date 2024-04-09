@@ -48,7 +48,7 @@
 namespace {
 void queueGarbageCollection(std::mutex& mutex,
                             arangodb::Scheduler::WorkHandle& workItem,
-                            std::function<void(bool)>& gcfunc,
+                            fu2::function<void(bool) noexcept>& gcfunc,
                             std::chrono::seconds offset) {
   std::lock_guard<std::mutex> guard(mutex);
   workItem = arangodb::SchedulerFeature::SCHEDULER->queueDelayed(
@@ -313,7 +313,7 @@ void NetworkFeature::prepare() {
   _pool = std::make_unique<network::ConnectionPool>(config);
   _poolPtr.store(_pool.get(), std::memory_order_relaxed);
 
-  _gcfunc = [this, ci](bool canceled) {
+  _gcfunc = [this, ci](bool canceled) noexcept {
     if (canceled) {
       return;
     }
@@ -599,7 +599,7 @@ void NetworkFeature::finishRequest(network::ConnectionPool const& pool,
 void NetworkFeature::retryRequest(
     std::shared_ptr<network::RetryableRequest> req, RequestLane lane,
     std::chrono::steady_clock::duration duration) {
-  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) {
+  auto cb = [this, weak = std::weak_ptr(req)](bool cancelled) noexcept {
     std::unique_lock guard(_workItemMutex);
     if (auto self = weak.lock(); self) {
       _retryRequests.erase(self);

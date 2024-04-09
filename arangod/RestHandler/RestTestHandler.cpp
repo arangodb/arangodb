@@ -127,7 +127,7 @@ RestStatus RestTestHandler::execute() {
 
   auto self(shared_from_this());
   bool ok = SchedulerFeature::SCHEDULER->tryBoundedQueue(
-      res.get(), [this, self, duration]() {
+      res.get(), [this, self, duration]() noexcept {
         auto stop = clock::now() + duration;
 
         uint64_t count = 0;

@@ -785,7 +785,7 @@ AnalyzerModificationTransaction::Ptr createAnalyzerModificationTransaction(
 
 // Auto-repair of dangling AnalyzersRevisions
 void queueGarbageCollection(std::mutex& mutex, Scheduler::WorkHandle& workItem,
-                            std::function<void(bool)>& gcfunc) {
+                            fu2::function<void(bool) noexcept>& gcfunc) {
   std::lock_guard<std::mutex> guard(mutex);
   workItem = SchedulerFeature::SCHEDULER->queueDelayed(
       "analyzers-gc", RequestLane::INTERNAL_LOW, std::chrono::seconds(5),
@@ -1106,7 +1106,7 @@ IResearchAnalyzerFeature::IResearchAnalyzerFeature(Server& server)
   startsAfter<QueryRegistryFeature>();
   startsAfter<SchedulerFeature>();
 
-  _gcfunc = [this](bool canceled) {
+  _gcfunc = [this](bool canceled) noexcept {
     if (canceled) {
       return;
     }
