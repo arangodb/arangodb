@@ -77,6 +77,11 @@ or commit hash using the `--branch` parameter for the clone command as follows:
 
     git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 8 --branch v3.12.0 https://github.com/arangodb/arangodb
 
+On Windows, Git's automatic conversion to CRLF line endings needs to be disabled.
+Otherwise, [compiling](#building-the-binaries) in the Linux build container fails.
+You can use `git clone --config core.autocrlf=input ...` so that it only affects
+this working copy.
+
 ### Git Setup
 
 Setting up git for automatically merging certain automatically generated files
