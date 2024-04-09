@@ -22,6 +22,7 @@
 
 #pragma once
 
+#include "Basics/Guarded.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/LeaseManager/LeaseEntry.h"
 #include "Cluster/LeaseManager/LeaseId.h"
@@ -31,9 +32,6 @@
 #include <vector>
 
 namespace arangodb {
-namespace network {
-class ConnectionPool;
-}
 namespace velocypack {
 class Builder;
 }
@@ -41,6 +39,7 @@ struct PeerState;
 namespace cluster {
 class LeaseId;
 class RebootTracker;
+struct ILeaseManagerNetworkHandler;
 
 struct LeaseManager {
 
@@ -65,7 +64,7 @@ struct LeaseManager {
     std::unordered_map<LeaseId, std::unique_ptr<LeaseEntry>> _mapping;
   };
 
-  LeaseManager(RebootTracker& rebootTracker, network::ConnectionPool* pool);
+  LeaseManager(RebootTracker& rebootTracker, std::unique_ptr<ILeaseManagerNetworkHandler> networkHandler);
 
   template<typename F>
   [[nodiscard]] auto requireLease(PeerState const& peerState, F&& onLeaseLost)
@@ -78,10 +77,29 @@ struct LeaseManager {
 
   auto leasesToVPack() const -> arangodb::velocypack::Builder;
 
+#ifdef ARANGODB_USE_GOOGLE_TESTS
+  // Read only method to make testing easier.
+  auto getLeasesToAbort() const
+      -> std::unordered_map<ServerID, std::vector<LeaseId>> {
+    std::unordered_map<ServerID, std::vector<LeaseId>> res;
+    _leasesToAbort.doUnderLock([&res](auto const& list) {
+      res = list.abortList;
+    });
+    return res;
+  }
+
+  // Get Access to the NetworkHandler for Mocking
+  auto getNetworkHandler() const -> ILeaseManagerNetworkHandler* {
+    return _networkHandler.get();
+  }
+#endif
+
  private:
 
   [[nodiscard]] auto requireLeaseInternal(PeerState const& peerState,
                     std::unique_ptr<LeaseEntry> abortMethod) -> LeaseIdGuard;
+
+  auto sendAbortRequestsForAbandonedLeases() noexcept -> void;
 
   auto returnLease(PeerState const& peerState, LeaseId const& leaseId) noexcept -> void;
 
@@ -89,8 +107,21 @@ struct LeaseManager {
 
   uint64_t _lastUsedLeaseId{0};
   RebootTracker& _rebootTracker;
-  network::ConnectionPool* _pool;
-  std::unordered_map<PeerState, LeaseListOfPeer> _leases;
+  std::unique_ptr<ILeaseManagerNetworkHandler> _networkHandler;
+  struct OpenLeases {
+    std::unordered_map<PeerState, LeaseListOfPeer> list;
+  };
+  Guarded<OpenLeases> _leases;
+  // NOTE: We do not use the RebootID here.
+  // We guarantee that the LeaseId is unique to our Local ServerID/RebootID combination
+  // Hence we can safely abort all LeaseIds for a given ServerID, regardless if the server
+  // has rebooted or not. This is also important if the Server was just disconnected and
+  // got injected a new RebootID.
+  struct LeasesToAbort {
+    std::unordered_map<ServerID, std::vector<LeaseId>> abortList;
+  };
+  Guarded<LeasesToAbort> _leasesToAbort;
+
 };
 }  // namespace cluster
 }  // namespace arangodb

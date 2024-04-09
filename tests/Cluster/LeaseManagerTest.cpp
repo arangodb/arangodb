@@ -21,12 +21,16 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include "gtest/gtest.h"
+#include <gmock/gmock.h>
 
+#include "Basics/voc-errors.h"
 #include "Cluster/AgencyCache.h"
 #include "Cluster/LeaseManager/LeaseManager.h"
+#include "Cluster/LeaseManager/LeaseManagerNetworkHandler.h"
 #include "Cluster/ClusterFeature.h"
 #include "Cluster/ClusterTypes.h"
 #include "Cluster/RebootTracker.h"
+#include "IResearch/RestHandlerMock.h"
 #include "Metrics/MetricsFeature.h"
 #include "Scheduler/SchedulerFeature.h"
 #include "Scheduler/SupervisedScheduler.h"
@@ -39,6 +43,12 @@ using namespace arangodb::cluster;
 using namespace arangodb::tests;
 using namespace arangodb::tests::mocks;
 
+struct MockLeaseManagerNetworkHandler : public ILeaseManagerNetworkHandler {
+  MOCK_METHOD(futures::Future<Result>, abortIds,
+              (ServerID const& server, std::vector<LeaseId> const& ids),
+              (const, noexcept, override));
+};
+
 class LeaseManagerTest : public ::testing::Test {
  protected:
   LeaseManagerTest()
@@ -48,21 +58,12 @@ class LeaseManagerTest : public ::testing::Test {
             128, 0.0, 42,
             mockApplicationServer.server()
                 .template getFeature<arangodb::metrics::MetricsFeature>())),
-        rebootTracker(scheduler.get()),
-        connectionPool(std::make_unique<PreparedResponseConnectionPool>(
-            mockApplicationServer.server()
-                .template getFeature<ClusterFeature>()
-                .agencyCache(),
-            arangodb::network::ConnectionPool::Config{
-                mockApplicationServer.server()
-                    .template getFeature<
-                        arangodb::metrics::MetricsFeature>()})) {
+        rebootTracker(scheduler.get()){
   }
 
   MockRestServer mockApplicationServer;
   std::unique_ptr<SupervisedScheduler> scheduler;
   RebootTracker rebootTracker;
-  std::unique_ptr<PreparedResponseConnectionPool> connectionPool;
 
   static ServerID const serverA;
   static ServerID const serverB;
@@ -133,7 +134,22 @@ class LeaseManagerTest : public ::testing::Test {
   }
 
   auto buildManager() -> LeaseManager {
-    return LeaseManager{rebootTracker, connectionPool.get()};
+    auto networkMock = std::make_unique<testing::NiceMock<MockLeaseManagerNetworkHandler>>();
+    // Add default behaviour: Successfully abort all IDs.
+    ON_CALL(*networkMock, abortIds).WillByDefault([&]() -> auto {
+      auto promise = futures::Promise<Result>{};
+      auto future = promise.getFuture();
+      scheduler->queue(RequestLane::CONTINUATION, [promise = std::move(promise)]() mutable -> void {
+        promise.setValue(Result{});
+      });
+      return future;
+    });
+    return LeaseManager{rebootTracker, std::move(networkMock)};
+  }
+
+  auto getNetworkMock(LeaseManager& manager) -> testing::NiceMock<MockLeaseManagerNetworkHandler>* {
+    return static_cast<testing::NiceMock<MockLeaseManagerNetworkHandler>*>(
+        manager.getNetworkHandler());
   }
 
   auto assertLeaseListContainsLease(VPackSlice leasesVPack,
@@ -193,6 +209,7 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
 TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
   bool rebootCallbackCalled = false;
   auto leaseManager = buildManager();
+  auto networkMock = getNetworkMock(leaseManager);
   auto leaseIsFor = getPeerState(serverA);
   LeaseId storedId;
   {
@@ -203,11 +220,14 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
     storedId = lease.id();
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+    // Prepare to be called to abort this ID.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
     assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
                                        storedId);
+
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
   waitForSchedulerEmpty();
@@ -397,3 +417,15 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
 }
 
 // TODO Add tests with Multiple Servers.
+
+#if 0
+// Example imeplementation to create a bad response on the networkMock.
+EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).WillOnce([&]() -> auto {
+  auto promise = futures::Promise<Result>{};
+  auto future = promise.getFuture();
+  scheduler->queue(RequestLane::CONTINUATION, [promise = std::move(promise)]() mutable -> void {
+    promise.setValue(Result{TRI_ERROR_HTTP_NOT_FOUND});
+  });
+  return future;
+});
+#endif
