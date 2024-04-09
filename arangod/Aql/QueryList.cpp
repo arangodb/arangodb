@@ -34,18 +34,18 @@
 #include "Basics/WriteLocker.h"
 #include "Basics/conversions.h"
 #include "Basics/system-functions.h"
+#include "Containers/SmallVector.h"
 #include "Logger/LogMacros.h"
 #include "Logger/Logger.h"
 #include "Logger/LoggerStream.h"
 #include "RestServer/QueryRegistryFeature.h"
 #include "VocBase/vocbase.h"
 
+#include <absl/strings/str_cat.h>
 #include <velocypack/Builder.h>
 #include <velocypack/Dumper.h>
 #include <velocypack/Sink.h>
 #include <velocypack/Value.h>
-
-#include "Containers/SmallVector.h"
 
 using namespace arangodb;
 using namespace arangodb::aql;
@@ -134,6 +134,9 @@ bool QueryList::insert(Query& query) {
     // return whether or not insertion worked
     bool inserted =
         _current.insert({query.id(), query.weak_from_this()}).second;
+
+    writeLocker.unlock();
+
     _queryRegistryFeature.trackQueryStart();
     return inserted;
   } catch (...) {
@@ -237,8 +240,6 @@ void QueryList::remove(Query& query) {
                          : QueryExecutionState::ValueType::FINISHED,
           isStreaming, resultCode);
 
-      // _slow is an std::list, but since c++11 the size() method of all
-      // standard containers is O(1), so this is ok
       if (_slow.size() > _maxSlowQueries) {
         // free first element
         _slow.pop_front();
@@ -384,10 +385,10 @@ size_t QueryList::count() {
 }
 
 void QueryList::killQuery(Query& query, size_t maxLength, bool silent) {
-  std::string msg = "killing AQL query '" +
-                    query.extractQueryString(maxLength, trackQueryString()) +
-                    "', id: " + std::to_string(query.id()) + ", token: QRY" +
-                    std::to_string(query.id());
+  std::string msg =
+      absl::StrCat("killing AQL query '",
+                   query.extractQueryString(maxLength, trackQueryString()),
+                   "', id: ", query.id(), ", token: QRY", query.id());
 
   if (silent) {
     LOG_TOPIC("f7722", TRACE, arangodb::Logger::QUERIES) << msg;
