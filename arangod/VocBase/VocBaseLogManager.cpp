@@ -417,7 +417,7 @@ auto VocBaseLogManager::GuardedData::buildReplicatedStateWithMethods(
 
   auto maybeMetadata = storage->readMetadata();
   if (!maybeMetadata) {
-    throw basics::Exception(std::move(maybeMetadata).result(), ADB_HERE);
+    throw basics::Exception(std::move(maybeMetadata).result());
   }
 
   auto sched = std::make_shared<MyScheduler>();
