@@ -21,13 +21,8 @@
 /// @author Lars Maier
 ////////////////////////////////////////////////////////////////////////////////
 #pragma once
-#if defined(_LIBCPP_VERSION) && _LIBCPP_VERSION < 14000
-#include <experimental/coroutine>
-namespace std_coro = std::experimental;
-#else
+
 #include <coroutine>
-namespace std_coro = std;
-#endif
 #include <optional>
 
 #include "Basics/Exceptions.h"
@@ -62,11 +57,11 @@ class Future;
 template<typename T>
 struct FutureAwaitable {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+  bool await_suspend(std::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
     _execContext = ExecContext::currentAsShared();
     std::move(_future).thenFinal(
-        [coro, this](futures::Try<T>&& result) mutable noexcept {
+        [coro, this](Try<T>&& result) mutable noexcept {
           _result = std::move(result);
           if (_counter.fetch_sub(1) == 1) {
             ExecContextScope exec(_execContext);
@@ -81,7 +76,7 @@ struct FutureAwaitable {
  private:
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
-  std::optional<futures::Try<T>> _result;
+  std::optional<Try<T>> _result;
   std::shared_ptr<ExecContext const> _execContext;
 };
 
@@ -96,7 +91,7 @@ auto operator co_await(Future<T>&& f) noexcept {
 template<typename T, typename F>
 struct FutureTransformAwaitable : F {
   [[nodiscard]] auto await_ready() const noexcept -> bool { return false; }
-  bool await_suspend(std_coro::coroutine_handle<> coro) noexcept {
+  bool await_suspend(std::coroutine_handle<> coro) noexcept {
     // returning false resumes `coro`
     _execContext = ExecContext::currentAsShared();
     std::move(_future).thenFinal(
@@ -109,7 +104,7 @@ struct FutureTransformAwaitable : F {
         });
     return _counter.fetch_sub(1) != 1;
   }
-  using ResultType = std::invoke_result_t<F, futures::Try<T>&&>;
+  using ResultType = std::invoke_result_t<F, Try<T>&&>;
   auto await_resume() noexcept -> ResultType {
     return std::move(_result.value());
   }
@@ -117,7 +112,7 @@ struct FutureTransformAwaitable : F {
       : F(std::forward<F>(f)), _future(std::move(fut)) {}
 
  private:
-  static_assert(std::is_nothrow_invocable_v<F, futures::Try<T>&&>);
+  static_assert(std::is_nothrow_invocable_v<F, Try<T>&&>);
   std::atomic_uint8_t _counter{2};
   Future<T> _future;
   std::optional<ResultType> _result;
@@ -127,20 +122,19 @@ struct FutureTransformAwaitable : F {
 template<typename T>
 auto asTry(Future<T>&& f) noexcept {
   return FutureTransformAwaitable{
-      std::move(f),
-      [](futures::Try<T>&& res) noexcept { return std::move(res); }};
+      std::move(f), [](Try<T>&& res) noexcept { return std::move(res); }};
 }
 
 static inline auto asResult(Future<Unit>&& f) noexcept {
   return FutureTransformAwaitable{
-      std::move(f), [](futures::Try<Unit>&& res) noexcept -> Result {
+      std::move(f), [](Try<Unit>&& res) noexcept -> Result {
         return basics::catchVoidToResult([&] { return res.get(); });
       }};
 }
 
 static inline auto asResult(Future<Result>&& f) noexcept {
   return FutureTransformAwaitable{
-      std::move(f), [](futures::Try<Result>&& res) noexcept -> Result {
+      std::move(f), [](Try<Result>&& res) noexcept -> Result {
         return basics::catchToResult([&] { return res.get(); });
       }};
 }
@@ -148,7 +142,7 @@ static inline auto asResult(Future<Result>&& f) noexcept {
 template<typename T>
 auto asResult(Future<ResultT<T>>&& f) noexcept {
   return FutureTransformAwaitable{
-      std::move(f), [](futures::Try<ResultT<T>>&& res) noexcept -> ResultT<T> {
+      std::move(f), [](Try<ResultT<T>>&& res) noexcept -> ResultT<T> {
         return basics::catchToResult([&] { return res.get(); });
       }};
 }
@@ -159,7 +153,7 @@ auto asResult(Future<ResultT<T>>&& f) noexcept {
 /// is a helper class providing a few methods to configure the behaviour
 /// of the coroutine. This can either be a member type called `promise_type`
 /// of the return type of the coroutine, or, as in our case, it is determined
-/// using the `std_coro::coroutine_traits` template with template parameters
+/// using the `std::coroutine_traits` template with template parameters
 /// using the return type (see
 ///   https://en.cppreference.com/w/cpp/language/coroutines
 /// under "Promise") and then some. Since our return type for coroutines
@@ -167,12 +161,12 @@ auto asResult(Future<ResultT<T>>&& f) noexcept {
 /// to configure our coroutines (for an explanation see below the class):
 
 template<typename T, typename... Args>
-struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
+struct std::coroutine_traits<arangodb::futures::Future<T>, Args...> {
   struct promise_type {
     arangodb::futures::Promise<T> promise;
     arangodb::futures::Try<T> result;
 
-    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto initial_suspend() noexcept { return std::suspend_never{}; }
     auto final_suspend() noexcept {
       // TODO use symmetric transfer here
       struct awaitable {
@@ -229,7 +223,7 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
 /// `Future<T>` from the `promise` member, so that it is associated with
 /// the `promise` member. This is what will be returned when the coroutine
 /// is first suspended.
-/// Since `initial_suspend` returns `std_coro::suspend_never{}` no
+/// Since `initial_suspend` returns `std::suspend_never{}` no
 /// suspension happens before the first code of the coroutine is run.
 /// When the coroutine reaches a `co_await`, the expression behind it is
 /// first evaluated. It is then the "awaitable" object (unless there is
@@ -253,13 +247,13 @@ struct std_coro::coroutine_traits<arangodb::futures::Future<T>, Args...> {
 /// basically).
 
 template<typename... Args>
-struct std_coro::coroutine_traits<
-    arangodb::futures::Future<arangodb::futures::Unit>, Args...> {
+struct std::coroutine_traits<arangodb::futures::Future<arangodb::futures::Unit>,
+                             Args...> {
   struct promise_type {
     arangodb::futures::Promise<arangodb::futures::Unit> promise;
     arangodb::futures::Try<arangodb::futures::Unit> result;
 
-    auto initial_suspend() noexcept { return std_coro::suspend_never{}; }
+    auto initial_suspend() noexcept { return std::suspend_never{}; }
     auto final_suspend() noexcept {
       // TODO use symmetric transfer here
       struct awaitable {
