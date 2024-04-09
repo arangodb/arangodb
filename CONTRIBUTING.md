@@ -75,7 +75,7 @@ want to commit changes, you can speed up cloning substantially by using the
 `--depth` and `--shallow-submodules` parameters and specifying a branch, tag,
 or commit hash using the `--branch` parameter for the clone command as follows:
 
-    git clone --depth 1 --shallow-submodules --branch v3.12.0 https://github.com/arangodb/arangodb
+    git clone --depth 1 --recurse-submodules --shallow-submodules --jobs 8 --branch v3.12.0 https://github.com/arangodb/arangodb
 
 ### Git Setup
 
@@ -245,19 +245,27 @@ build process will likely fail.
 ### Building the binaries
 
 To compile ArangoDB 3.12 or later, you can use a Docker build container that
-is based on Ubuntu and includes the necessary toolchain.
+is based on Ubuntu and includes the necessary toolchain. You need Git on the
+host system to [get the source code](#get-the-source-code) and mount it into the
+container, however.
 
 Check the [`.circleci/base_config.yml`](.circleci/base_config.yml) file for the
 default `build-docker-image` value to ensure it's the matching image tag for the
 version you want to build.
 
-You can start the build container as follows:
+You can start the build container as follows in a Bash-like terminal:
 
     cd arangodb
-    docker run -it -v $(pwd):/root/project arangodb/ubuntubuildarangodb-devel:3
+    docker run -it -v $(pwd):/root/project -p 3000:3000 arangodb/ubuntubuildarangodb-devel:3
+
+In PowerShell, use `${pwd}` instead of `$(pwd)`.
+
+The port mapping is for accessing the web interface in case you want to run a
+development server for working on the frontend.
 
 In the fish shell of the container, run the following commands for a release-like
-build using the officially supported Clang compiler (also see the [`VERSIONS`](VERSIONS) file):
+build using the officially supported version of the Clang compiler
+(also see the [`VERSIONS`](VERSIONS)):
 
     cd /root/project
     cmake --preset community -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld" -DCMAKE_LIBRARY_PATH=$OPENSSL_ROOT_DIR/lib -DOPENSSL_ROOT_DIR=/opt
@@ -283,6 +291,14 @@ To build specific targets instead of all, you can specify them like shown below:
 You can find the output files at `build-presets/<preset-name>/`,
 with the compiled executables in the `bin/` subfolder.
 
+To collect all files for packaging, you can run the following command (with
+`<preset-name>` substituted, e.g. with `community`):
+
+    cmake --install ./build-presets/<preset-name> --prefix output
+
+It copies the needed files to a folder called `output`.
+It may fail if you only built a subset of the targets.
+
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
 
@@ -293,7 +309,7 @@ Building ArangoDB also builds the frontend unless `-DUSE_FRONTEND=Off` was
 specified when configuring CMake or if the `frontend` target was left out for
 the build.
 
-To build the web interface via CMake, you can run the following:
+To build the web interface via CMake, you can run the following commands:
 
     cmake --preset community
     cmake --build --preset community --target frontend
@@ -318,7 +334,7 @@ and run the following command:
 It should start your browser and open the web interface at `http://localhost:3000`.
 Changes to any frontend source files trigger an automatic re-build and reload
 the browser tab. If you use the build container, make sure to start it with a
-port mapping for the development server, like `-p 3000:3000`.
+port mapping for the development server.
 
 #### Cross Origin Policy (CORS) error
 
@@ -341,12 +357,12 @@ cmd + c
 Then restart `arangodb` server with the command below:
 
 ```bash
-./build/bin/arangod ../Arango --http.trusted-origin '*'
+./build-presets/<preset-name>/bin/arangod ../Arango --http.trusted-origin '*'
 ```
 
 Note:
 
-a: `./build/bin/arangod`: represents the location of `arangodb` binaries in your machine.
+a: `./build-presets/<preset-name>/bin/arangod`: represents the location of `arangodb` binaries in your machine.
 
 b: `../Arango`: is the database directory where the data will be stored.
 
@@ -354,7 +370,7 @@ c: `--http.trusted-origin '*'` the prefix that allows cross-origin requests.
 
 #### NPM Dependencies
 
-To add new NPM dependencies switch into the `js/node` folder and install them
+To add new NPM dependencies, switch into the `js/node` folder and install them
 with npm using the following options:
 
 `npm install [<@scope>/]<name> --global-style --save --save-exact`
