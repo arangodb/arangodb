@@ -25,13 +25,23 @@
 #endif
 
 #include "Logger/LogMacros.h"
+#include "Metrics/Counter.h"
 
 #include "SimpleThreadPool.h"
 
 using namespace arangodb;
 
-ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
-    : numThreads(threadCount), _threads(threadCount) {
+namespace {
+void incCounter(metrics::Counter* cnt, uint64_t delta = 1) {
+  if (cnt) {
+    *cnt += delta;
+  }
+}
+}  // namespace
+
+ThreadPool::ThreadPool(const char* name, std::size_t threadCount,
+                       ThreadPoolMetrics metrics)
+    : numThreads(threadCount), _metrics(metrics), _threads(threadCount) {
   std::generate_n(std::back_inserter(_threads), threadCount, [&]() {
     auto thread = std::jthread([this]() noexcept {
       auto stoken = _stop.get_token();
@@ -42,6 +52,7 @@ ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
           LOG_TOPIC("d5fb2", WARN, Logger::FIXME)
               << "Scheduler just swallowed an exception.";
         }
+        incCounter(_metrics.jobsDone);
         statistics.done += 1;
       }
     });
@@ -55,16 +66,21 @@ ThreadPool::ThreadPool(const char* name, std::size_t threadCount)
 }
 
 ThreadPool::~ThreadPool() {
-  std::unique_lock guard(_mutex);
-  _stop.request_stop();
+  {
+    std::unique_lock guard(_mutex);
+    _stop.request_stop();
+  }
   _cv.notify_all();
 }
 
 void ThreadPool::push(std::unique_ptr<WorkItem>&& task) noexcept {
-  std::unique_lock guard(_mutex);
-  _tasks.emplace_back(std::move(task));
+  {
+    std::unique_lock guard(_mutex);
+    _tasks.emplace_back(std::move(task));
+  }
   _cv.notify_one();
   statistics.queued += 1;
+  incCounter(_metrics.jobsQueued);
 }
 
 auto ThreadPool::pop(std::stop_token stoken) noexcept
@@ -74,7 +90,7 @@ auto ThreadPool::pop(std::stop_token stoken) noexcept
   if (more) {
     auto task = std::move(_tasks.front());
     _tasks.pop_front();
-    statistics.dequeued += 1;
+    incCounter(_metrics.jobsDequeued);
     return task;
   }
   // stop was requested

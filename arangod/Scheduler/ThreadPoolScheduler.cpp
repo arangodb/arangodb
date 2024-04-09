@@ -86,21 +86,29 @@ ThreadPoolScheduler::ThreadPoolScheduler(
     ArangodServer& server, uint64_t maxThreads,
     std::shared_ptr<SchedulerMetrics> metrics)
     : Scheduler(server), _metrics(std::move(metrics)) {
+  ThreadPoolMetrics poolMetrics = {
+      .jobsDone = &_metrics->_metricsJobsDoneTotal,
+      .jobsQueued = &_metrics->_metricsJobsSubmittedTotal,
+      .jobsDequeued = &_metrics->_metricsJobsDequeuedTotal,
+  };
+
   _threadPools.reserve(4);
+
+  poolMetrics.queueLength = metrics->_metricsQueueLengths[0];
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMaintenance", std::max(std::ceil(maxThreads * 0.1), 2.)));
+
+  poolMetrics.queueLength = metrics->_metricsQueueLengths[1];
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedHigh", std::max(std::ceil(maxThreads * 0.4), 8.)));
+
+  poolMetrics.queueLength = metrics->_metricsQueueLengths[2];
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedMedium", std::max(std::ceil(maxThreads * 0.4), 8.)));
+
+  poolMetrics.queueLength = metrics->_metricsQueueLengths[3];
   _threadPools.emplace_back(std::make_unique<ThreadPool>(
       "SchedLow", std::max(std::ceil(maxThreads * 0.6), 16.)));
-  // _metrics->_metricsStackMemoryWorkerThreads =
-  //     approxWorkerStackSize *
-  //     std::accumulate(_threadPools.begin(), _threadPools.end(), 0,
-  //                     [](std::size_t accum, auto const& pool) {
-  //                       return accum + pool->numThreads;
-  //                     });
 }
 
 void ThreadPoolScheduler::shutdown() {

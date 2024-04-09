@@ -27,12 +27,22 @@
 
 #include "Scheduler.h"
 
+#include "Metrics/Fwd.h"
+
 namespace arangodb {
+
+struct ThreadPoolMetrics {
+  metrics::Gauge<uint64_t>* queueLength = nullptr;
+  metrics::Counter* jobsDone = nullptr;
+  metrics::Counter* jobsQueued = nullptr;
+  metrics::Counter* jobsDequeued = nullptr;
+};
 
 struct ThreadPool {
   using WorkItem = Scheduler::WorkItemBase;
 
-  ThreadPool(const char* name, std::size_t threadCount);
+  ThreadPool(const char* name, std::size_t threadCount,
+             ThreadPoolMetrics metrics = {});
   ~ThreadPool();
   void push(std::unique_ptr<WorkItem>&& task) noexcept;
 
@@ -60,6 +70,7 @@ struct ThreadPool {
   const std::size_t numThreads;
 
  private:
+  ThreadPoolMetrics _metrics;
   std::unique_ptr<WorkItem> pop(std::stop_token) noexcept;
 
   using Clock = std::chrono::steady_clock;
