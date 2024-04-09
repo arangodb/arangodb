@@ -37,6 +37,7 @@ const arangodb = require('@arangodb');
 const fs = require('fs');
 const pu = require('@arangodb/testutils/process-utils');
 const db = arangodb.db;
+const isEnterprise = require("internal").isEnterprise();
 
 function verifySstSuite() {
   'use strict';
@@ -122,6 +123,10 @@ function verifySstSuite() {
 
 }
 
-jsunity.run(verifySstSuite);
+if (isEnterprise) {
+  // we can only take hot backups in enterprise - thus the
+  // test can only run in the enterprise version
+  jsunity.run(verifySstSuite);
+}
 
 return jsunity.done();
