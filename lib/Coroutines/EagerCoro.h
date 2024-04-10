@@ -40,35 +40,25 @@ struct [[nodiscard]] Task {
   using promise_type = Promise<Result>;
   std::coroutine_handle<promise_type> _handle{};
 
-  explicit Task(std::coroutine_handle<promise_type> handle) : _handle(handle) {
-    LOG_DEVEL << ADB_HERE << " " << this << " << " << handle.address();
-  }
+  explicit Task(std::coroutine_handle<promise_type> handle) : _handle(handle) {}
   explicit Task(Task&& other) : _handle(std::move(other._handle)) {
     other._handle = nullptr;
-    LOG_DEVEL << ADB_HERE << " " << this << "(" << &other << ") << "
-              << _handle.address();
   }
   explicit Task(Task const& other) = delete;
   auto operator=(Task&& other) -> Task& {
     _handle = other._handle;
     other._handle = nullptr;
-    LOG_DEVEL << ADB_HERE << " " << this << " = " << &other << " << "
-              << _handle.address();
     return *this;
   }
   auto operator=(Task const& other) -> Task& = delete;
 
   ~Task() {
     if (_handle != nullptr) {
-      LOG_DEVEL << ADB_HERE << " " << this << " destroys " << _handle.address();
       _handle.destroy();
     }
   }
 
-  void resume() {
-    LOG_DEVEL << ADB_HERE << " " << this << " resume called on task";
-    return _handle.resume();
-  }
+  void resume() { return _handle.resume(); }
 
   auto& res() & { return _handle.promise()._res; }
   auto&& res() && { return std::move(_handle.promise()._res); }
@@ -83,8 +73,6 @@ struct [[nodiscard]] Task {
 
       bool await_ready() { return false; }
       bool await_suspend([[maybe_unused]] std::coroutine_handle<> caller) {
-        LOG_DEVEL << ADB_HERE << " setting caller of " << _handle.address()
-                  << " to " << caller.address();
         _handle.promise()._caller = caller;
         return !_handle.promise()._res.valid();
       }
@@ -112,18 +100,12 @@ struct Promise {
       auto await_suspend(std::coroutine_handle<Promise<Result>> h) noexcept
           -> std::coroutine_handle<> {
         if (auto caller = h.promise()._caller; caller != nullptr) {
-          LOG_DEVEL << ADB_HERE << " " << h.address() << " resuming "
-                    << caller.address();
           return caller;
         } else {
-          LOG_DEVEL << ADB_HERE << " " << h.address() << " resuming nothing";
           return std::noop_coroutine();
         }
       }
     };
-    LOG_DEVEL << ADB_HERE << " "
-              << std::coroutine_handle<Promise<Result>>::from_promise(*this)
-                     .address();
     return FinalAwaiter{};
   }
 

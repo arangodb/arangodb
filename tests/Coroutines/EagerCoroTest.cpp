@@ -42,9 +42,7 @@ struct CoroRunner {
     std::suspend_never initial_suspend() noexcept { return {}; }
     std::suspend_never final_suspend() noexcept { return {}; }
   };
-  CoroRunner(std::coroutine_handle<promise_type> handle) {
-    LOG_DEVEL << ADB_HERE << " " << handle.address();
-  }
+  CoroRunner(std::coroutine_handle<promise_type> handle) {}
 };
 
 template<auto rv = std::monostate{}>
@@ -70,22 +68,16 @@ struct Suspension {
     TRI_ASSERT(_resolved == false);
     _resolved = true;
     if (_caller != nullptr) {  // caller already waiting, resume
-      LOG_DEVEL << "suspension resuming " << _caller.address();
       _caller.resume();
     }
   }
 };
 
 TEST(EagerCoroTest, test1) {
-  auto g = []() -> Task<unsigned> {
-    LOG_DEVEL << "g()";
-    co_return 3;
-  };
+  auto g = []() -> Task<unsigned> { co_return 3; };
 
   auto f = [&g]() -> Task<int> {
-    LOG_DEVEL << "f()";
     auto x = co_await g();
-    LOG_DEVEL << "f() 2";
     co_return 7 + x;
   };
 
@@ -125,13 +117,9 @@ TEST(EagerCoroTest, test3) {
 
   auto g = [&]() -> Task<unsigned> {
     auto res = 0;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension1;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension2;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension3;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     co_return res + 3;
   };
 
@@ -163,13 +151,9 @@ TEST(EagerCoroTest, test4) {
 
   auto g = [&]() -> Task<unsigned> {
     auto res = 0;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension1;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension2;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     res += co_await suspension3;
-    LOG_DEVEL << ADB_HERE << " res=" << res;
     co_return res + 3;
   };
 
