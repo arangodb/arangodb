@@ -240,7 +240,7 @@ target_include_directories(llhttp PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/llhttp/inc
 ## NGHTTP2
 ################################################################################
 
-add_subdirectory(nghttp2)
+add_subdirectory(nghttp2-lib)
 
 ################################################################################
 ## IMMER
