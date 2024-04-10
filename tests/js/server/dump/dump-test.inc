@@ -1458,6 +1458,10 @@
       },
 
       testSmartGraphSharding: function () {
+        if (db._properties().sharding === "single") {
+          print("Skipping testSmartGraphSharding for oneshard db");
+          return 0;
+        }
         const eCol = getCollection(edges);
         const eProp = eCol.properties();
         const vCol = getCollection(vertices);
