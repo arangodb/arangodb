@@ -253,8 +253,7 @@ struct FutureSharedLock {
                   lock.unlock();
                   nodePtr->promise.setException(::arangodb::basics::Exception(
                       cancelled ? TRI_ERROR_REQUEST_CANCELED
-                                : TRI_ERROR_LOCK_TIMEOUT,
-                      ADB_HERE));
+                                : TRI_ERROR_LOCK_TIMEOUT));
                 }
               }
             }

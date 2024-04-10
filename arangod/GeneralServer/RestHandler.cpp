@@ -356,12 +356,13 @@ futures::Future<Result> RestHandler::forwardRequest(bool& forwarded) {
 
 void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   auto buildException = [this](ErrorCode code, std::string message,
-                               char const* file, int line) {
+                               SourceLocation location =
+                                   SourceLocation::current()) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("b6302", WARN, arangodb::Logger::FIXME)
         << "maintainer mode: " << message;
 #endif
-    Exception err(code, std::move(message), file, line);
+    Exception err(code, std::move(message), location);
     handleError(err);
   };
 
@@ -372,7 +373,7 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
   } catch (Exception const& ex) {
     std::string message =
         absl::StrCat("caught exception in ", name(), ": ", ex.what());
-    buildException(ex.code(), std::move(message), __FILE__, __LINE__);
+    buildException(ex.code(), std::move(message));
   } catch (velocypack::Exception const& ex) {
     bool const isParseError =
         (ex.errorCode() == arangodb::velocypack::Exception::ParseError ||
@@ -382,19 +383,18 @@ void RestHandler::handleExceptionPtr(std::exception_ptr eptr) noexcept try {
         absl::StrCat("caught velocypack error in ", name(), ": ", ex.what());
     buildException(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::move(message), __FILE__, __LINE__);
+        std::move(message));
   } catch (std::bad_alloc const& ex) {
     std::string message =
         absl::StrCat("caught memory exception in ", name(), ": ", ex.what());
-    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message), __FILE__,
-                   __LINE__);
+    buildException(TRI_ERROR_OUT_OF_MEMORY, std::move(message));
   } catch (std::exception const& ex) {
     std::string message =
         absl::StrCat("caught exception in ", name(), ": ", ex.what());
-    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
+    buildException(TRI_ERROR_INTERNAL, std::move(message));
   } catch (...) {
     std::string message = absl::StrCat("caught unknown exception in ", name());
-    buildException(TRI_ERROR_INTERNAL, std::move(message), __FILE__, __LINE__);
+    buildException(TRI_ERROR_INTERNAL, std::move(message));
   }
 } catch (...) {
   // we can only get here if putting together an error response or an
@@ -479,7 +479,7 @@ void RestHandler::prepareEngine() {
   if (_canceled) {
     _state = HandlerState::FAILED;
 
-    Exception err(TRI_ERROR_REQUEST_CANCELED, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_REQUEST_CANCELED);
     handleError(err);
     return;
   }
@@ -491,10 +491,10 @@ void RestHandler::prepareEngine() {
   } catch (Exception const& ex) {
     handleError(ex);
   } catch (std::exception const& ex) {
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL, ex.what());
     handleError(err);
   } catch (...) {
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL);
     handleError(err);
   }
 
@@ -543,8 +543,7 @@ void RestHandler::executeEngine(bool isContinue) {
     }
 
     if (_response == nullptr) {
-      Exception err(TRI_ERROR_INTERNAL, "no response received from handler",
-                    __FILE__, __LINE__);
+      Exception err(TRI_ERROR_INTERNAL, "no response received from handler");
       handleError(err);
     }
 
@@ -569,7 +568,7 @@ void RestHandler::executeEngine(bool isContinue) {
              arangodb::velocypack::Exception::UnexpectedControlCharacter);
     Exception err(
         isParseError ? TRI_ERROR_HTTP_CORRUPTED_JSON : TRI_ERROR_INTERNAL,
-        std::string("VPack error: ") + ex.what(), __FILE__, __LINE__);
+        std::string("VPack error: ") + ex.what());
     handleError(err);
   } catch (std::bad_alloc const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -577,7 +576,7 @@ void RestHandler::executeEngine(bool isContinue) {
         << "maintainer mode: caught memory exception in " << name() << ": "
         << ex.what();
 #endif
-    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_OUT_OF_MEMORY, ex.what());
     handleError(err);
   } catch (std::exception const& ex) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
@@ -585,14 +584,14 @@ void RestHandler::executeEngine(bool isContinue) {
         << "maintainer mode: caught exception in " << name() << ": "
         << ex.what();
 #endif
-    Exception err(TRI_ERROR_INTERNAL, ex.what(), __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL, ex.what());
     handleError(err);
   } catch (...) {
 #ifdef ARANGODB_ENABLE_MAINTAINER_MODE
     LOG_TOPIC("f729c", WARN, arangodb::Logger::FIXME)
         << "maintainer mode: caught unknown exception in " << name();
 #endif
-    Exception err(TRI_ERROR_INTERNAL, __FILE__, __LINE__);
+    Exception err(TRI_ERROR_INTERNAL);
     handleError(err);
   }
 
