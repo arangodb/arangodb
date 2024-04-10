@@ -234,7 +234,7 @@ struct std::coroutine_traits<arangodb::futures::Future<T>, Args...> {
 /// means of an `operator co_await` defined earlier in this file. It
 /// essentially wraps our `Future<T'>` into a `FutureAwaitable` class
 /// also defined above.
-/// The C++ coroutine framework will then cal methods on the "awaiter"
+/// The C++ coroutine framework will then call methods on the "awaiter"
 /// for events to unfold: First it calls `await_ready` to see if we have
 /// to suspend after all. We always return `false` there.
 /// Then it calls `await_suspend` to suspend and later `await_resume` to

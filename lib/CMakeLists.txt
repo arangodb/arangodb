@@ -178,6 +178,7 @@ add_library(arango STATIC
   Basics/tri-zip.cpp
   Containers/MerkleTree.cpp
   Containers/MerkleTreeHelpers.cpp
+  Coroutines/EagerCoro.cpp Coroutines/EagerCoro.h
   Endpoint/Endpoint.cpp
   Endpoint/EndpointIp.cpp
   Endpoint/EndpointIpV4.cpp
