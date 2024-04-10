@@ -152,9 +152,12 @@ class LeaseManagerTest : public ::testing::Test {
         manager.getNetworkHandler());
   }
 
-  auto assertLeaseListContainsLease(VPackSlice leasesVPack,
-                                    PeerState const& leaseIsFor,
-                                    LeaseId const& leaseId) {
+  auto assertLeasedFromListContainsLease(VPackSlice leasesVPack,
+                                         PeerState const& leaseIsFor,
+                                         LeaseId const& leaseId) {
+    ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey("leasedFromRemote"));
+    leasesVPack = leasesVPack.get("leasedFromRemote");
     ASSERT_TRUE(leasesVPack.isObject());
     ASSERT_TRUE(leasesVPack.hasKey(peerStateToJSONKey(leaseIsFor)))
         << "LeaseManager should have an entry for the server "
@@ -166,11 +169,48 @@ class LeaseManagerTest : public ::testing::Test {
         << " full list: " << leaseList.toJson();
   }
 
-  auto assertLeaseListDoesNotContainLease(VPackSlice leasesVPack,
-                                          PeerState const& leaseIsFor,
-                                          LeaseId const& leaseId) {
+  auto assertLeasedFromListDoesNotContainLease(VPackSlice leasesVPack,
+                                               PeerState const& leaseIsFor,
+                                               LeaseId const& leaseId) {
+    ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey("leasedFromRemote"));
+    leasesVPack = leasesVPack.get("leasedFromRemote");
     ASSERT_TRUE(leasesVPack.isObject());
     if (auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsFor));
+        !leaseList.isNone()) {
+      EXPECT_FALSE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+          << "LeaseManager should not have an entry for the lease " << leaseId
+          << " full list: " << leaseList.toJson();
+    }
+    // Else case okay if we have no entry for the server, we cannot have an
+    // entry for the lease.
+  }
+
+  auto assertLeasedToListContainsLease(VPackSlice leasesVPack,
+                                       PeerState const& leaseIsTo,
+                                       LeaseId const& leaseId) {
+    ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey("leasedToRemote"));
+    leasesVPack = leasesVPack.get("leasedToRemote");
+    ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey(peerStateToJSONKey(leaseIsTo)))
+        << "LeaseManager should have an entry for the server "
+        << peerStateToJSONKey(leaseIsTo)
+        << " full list: " << leasesVPack.toJson();
+    auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsTo));
+    EXPECT_TRUE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
+        << "LeaseManager should have an entry for the lease " << leaseId
+        << " full list: " << leaseList.toJson();
+  }
+
+  auto assertLeasedToListDoesNotContainLease(VPackSlice leasesVPack,
+                                             PeerState const& leaseIsTo,
+                                             LeaseId const& leaseId) {
+    ASSERT_TRUE(leasesVPack.isObject());
+    ASSERT_TRUE(leasesVPack.hasKey("leasedToRemote"));
+    leasesVPack = leasesVPack.get("leasedToRemote");
+    ASSERT_TRUE(leasesVPack.isObject());
+    if (auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsTo));
         !leaseList.isNone()) {
       EXPECT_FALSE(leaseList.hasKey(basics::StringUtils::itoa(leaseId.id())))
           << "LeaseManager should not have an entry for the lease " << leaseId
@@ -192,18 +232,37 @@ TEST_F(LeaseManagerTest, test_every_lease_has_a_unique_id) {
   auto guardOne = leaseManager.requireLease(leaseIsFor, ignoreMe);
   auto guardTwo = leaseManager.requireLease(leaseIsFor, ignoreMe);
   EXPECT_NE(guardOne.id(), guardTwo.id());
-  auto leasesVPackBuilder = leaseManager.leasesToVPack();
-  auto leasesVPack = leasesVPackBuilder.slice();
-  ASSERT_TRUE(leasesVPack.isObject());
-  EXPECT_EQ(leasesVPack.length(), 1);
-  ASSERT_TRUE(leasesVPack.hasKey(peerStateToJSONKey(leaseIsFor)));
-  auto leaseList = leasesVPack.get(peerStateToJSONKey(leaseIsFor));
-  EXPECT_TRUE(leaseList.hasKey(basics::StringUtils::itoa(guardOne.id().id())))
-      << "LeaseManager should have a key for the first lease " << guardOne.id()
-      << " full list: " << leasesVPack.toJson();
-  EXPECT_TRUE(leaseList.hasKey(basics::StringUtils::itoa(guardTwo.id().id())))
-      << "LeaseManager should have a key for the second lease " << guardTwo.id()
-      << " full list: " << leasesVPack.toJson();
+  auto leaseReport = leaseManager.leasesToVPack();
+  assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                    guardOne.id());
+  assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                    guardTwo.id());
+}
+
+TEST_F(LeaseManagerTest, test_cannot_handout_same_lease_id_twice_for_same_peer) {
+  auto leaseManager = buildManager();
+  auto leaseIsFor = getPeerState(serverA);
+  bool wasCalled = false;
+  auto ignoreMe = [&wasCalled]() noexcept -> void {
+    wasCalled = true;
+  };
+  auto leaseId = LeaseId{42};
+  auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+  EXPECT_EQ(guardOne.id(), leaseId) << "LeaseId should be the same.";
+  EXPECT_THROW(
+      std::ignore = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe),
+      ::arangodb::basics::Exception);
+  EXPECT_FALSE(wasCalled) << "One of the abort callbacks triggered, should not happen.";
+}
+
+TEST_F(LeaseManagerTest, test_can_handout_same_lease_id_twice_for_different_peers) {
+  auto leaseManager = buildManager();
+  auto leaseIsFor = getPeerState(serverA);
+  auto leaseIsForOther = getPeerState(serverB);
+  auto ignoreMe = []() noexcept -> void {};
+  auto leaseId = LeaseId{42};
+  auto guardOne = leaseManager.handoutLease(leaseIsFor, leaseId, ignoreMe);
+  auto guardTwo = leaseManager.handoutLease(leaseIsForOther, leaseId, ignoreMe);
 }
 
 TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
@@ -219,14 +278,15 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
     auto lease = leaseManager.requireLease(leaseIsFor, callback);
     storedId = lease.id();
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+    assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                      lease.id());
     // Prepare to be called to abort this ID.
     EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                       storedId);
+    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            storedId);
 
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
@@ -235,7 +295,37 @@ TEST_F(LeaseManagerTest, test_lease_is_removed_from_list_on_guard_destruction) {
   EXPECT_FALSE(rebootCallbackCalled);
 }
 
-TEST_F(LeaseManagerTest, test_lease_can_cancel_abort_callback) {
+TEST_F(LeaseManagerTest, test_lease_to_remote_is_removed_from_list_on_guard_destruction) {
+  bool rebootCallbackCalled = false;
+  auto leaseManager = buildManager();
+  auto networkMock = getNetworkMock(leaseManager);
+  auto leaseIsTo = getPeerState(serverA);
+  LeaseId storedId{42};
+  {
+    // We need to hold the lease until the end of the scope.
+    // otherwise the destructor callback might be lost.
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+    auto lease = leaseManager.handoutLease(leaseIsTo, storedId, callback);
+
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeasedToListContainsLease(leaseReport.slice(), leaseIsTo,
+                                      lease.id());
+    // Prepare to be called to abort this ID.
+    EXPECT_CALL(*networkMock, abortIds(serverA, std::vector<LeaseId>{storedId})).Times(1);
+  }
+  {
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsTo,
+                                            storedId);
+
+  }
+  // Need to wait for the scheduler to actually work on the RebootTracker.
+  waitForSchedulerEmpty();
+  // We locally lost the lease, we should not call the onLeaseLost callback.
+  EXPECT_FALSE(rebootCallbackCalled);
+}
+
+TEST_F(LeaseManagerTest, test_lease_from_remote_can_cancel_abort_callback) {
   bool rebootCallbackCalled = false;
   auto leaseManager = buildManager();
   auto leaseIsFor = getPeerState(serverA);
@@ -247,13 +337,14 @@ TEST_F(LeaseManagerTest, test_lease_can_cancel_abort_callback) {
     auto lease = leaseManager.requireLease(leaseIsFor, callback);
     storedId = lease.id();
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+    assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                      lease.id());
     lease.cancel();
   }
   {
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                       storedId);
+    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            storedId);
   }
   // Need to wait for the scheduler to actually work on the RebootTracker.
   // (Should not do anything here)
@@ -263,7 +354,36 @@ TEST_F(LeaseManagerTest, test_lease_can_cancel_abort_callback) {
   EXPECT_FALSE(rebootCallbackCalled);
 }
 
-TEST_F(LeaseManagerTest, test_lease_is_aborted_on_peer_reboot) {
+TEST_F(LeaseManagerTest, test_lease_to_remote_can_cancel_abort_callback) {
+  bool rebootCallbackCalled = false;
+  auto leaseManager = buildManager();
+  auto leaseIsFor = getPeerState(serverA);
+  LeaseId storedId{42};
+  {
+    // We need to hold the lease until the end of the scope.
+    // otherwise the destructor callback might be lost.
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+    auto lease = leaseManager.handoutLease(leaseIsFor, storedId, callback);
+    storedId = lease.id();
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+                                    lease.id());
+    lease.cancel();
+  }
+  {
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                          storedId);
+  }
+  // Need to wait for the scheduler to actually work on the RebootTracker.
+  // (Should not do anything here)
+  waitForSchedulerEmpty();
+  // We locally lost the lease, we should not call the onLeaseLost callback.
+  // So completing the lease does not actually change anything here.
+  EXPECT_FALSE(rebootCallbackCalled);
+}
+
+TEST_F(LeaseManagerTest, test_lease_from_remote_is_aborted_on_peer_reboot) {
   {
     bool rebootCallbackCalled = false;
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
@@ -278,14 +398,33 @@ TEST_F(LeaseManagerTest, test_lease_is_aborted_on_peer_reboot) {
     // triggered
     EXPECT_TRUE(rebootCallbackCalled);
     auto leaseReport = leaseManager.leasesToVPack();
-    assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                       lease.id());
-    // In fact we should not even have a server entry anymore.
-    EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+    assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            lease.id());
   }
 }
 
-TEST_F(LeaseManagerTest, test_canceled_lease_is_not_aborted_on_peer_reboot) {
+TEST_F(LeaseManagerTest, test_lease_to_remote_is_aborted_on_peer_reboot) {
+  {
+    bool rebootCallbackCalled = false;
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+    auto leaseManager = buildManager();
+    auto leaseIsFor = getPeerState(serverA);
+    LeaseId storedId{42};
+    // We need to hold the lease until the end of the scope.
+    // otherwise the destructor callback might be lost.
+    [[maybe_unused]] auto lease =
+        leaseManager.handoutLease(leaseIsFor, storedId, callback);
+    rebootServer(serverA);
+    // After a reboot of the other server, the onLeaseAbort callback should be
+    // triggered
+    EXPECT_TRUE(rebootCallbackCalled);
+    auto leaseReport = leaseManager.leasesToVPack();
+    assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            lease.id());
+  }
+}
+
+TEST_F(LeaseManagerTest, test_canceled_lease_from_remote_is_not_aborted_on_peer_reboot) {
   bool rebootCallbackCalled = false;
   {
     auto callback = [&]() noexcept { rebootCallbackCalled = true; };
@@ -299,17 +438,50 @@ TEST_F(LeaseManagerTest, test_canceled_lease_is_not_aborted_on_peer_reboot) {
     {
       // Cancel does not take the Lease out of the list!
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                        lease.id());
     }
     rebootServer(serverA);
     // NOTE: Lease is still in Scope, but the callback should not be called.
     {
       // Rebooting the server does remove the lease from the list.
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                         lease.id());
-      // In fact we should not even have a server entry anymore.
-      EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                              lease.id());
+    }
+    EXPECT_FALSE(rebootCallbackCalled)
+        << "Called callback on canceled lease if server rebooted";
+  }
+  EXPECT_FALSE(rebootCallbackCalled)
+      << "Called callback on canceled lease if guard goes out of scope";
+}
+
+TEST_F(LeaseManagerTest,
+       test_canceled_lease_to_remote_is_not_aborted_on_peer_reboot) {
+  bool rebootCallbackCalled = false;
+  {
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+    auto leaseManager = buildManager();
+    auto leaseIsFor = getPeerState(serverA);
+    LeaseId id{42};
+    // We need to hold the lease until the end of the scope.
+    // otherwise the destructor callback might be lost.
+    [[maybe_unused]] auto lease =
+        leaseManager.handoutLease(leaseIsFor, id, callback);
+    lease.cancel();
+    {
+      // Cancel does not take the Lease out of the list!
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+                                      lease.id());
+    }
+    rebootServer(serverA);
+    // NOTE: Lease is still in Scope, but the callback should not be called.
+    {
+      // Rebooting the server does remove the lease from the list.
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            lease.id());
     }
     EXPECT_FALSE(rebootCallbackCalled)
         << "Called callback on canceled lease if server rebooted";
@@ -321,9 +493,7 @@ TEST_F(LeaseManagerTest, test_canceled_lease_is_not_aborted_on_peer_reboot) {
 TEST_F(LeaseManagerTest, test_acquire_lease_for_rebooted_server) {
   bool rebootCallbackCalled = false;
   {
-    auto callback = [&]() noexcept {
-      rebootCallbackCalled = true;
-    };
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
 
     auto leaseManager = buildManager();
     auto leaseIsFor = getPeerState(serverA);
@@ -342,12 +512,42 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_rebooted_server) {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                         lease.id());
-      // In fact we should not even have a server entry anymore.
-      EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                              lease.id());
     }
-    EXPECT_TRUE(rebootCallbackCalled) << "We registered a lease for a dead server. We need to get called.";
+    EXPECT_TRUE(rebootCallbackCalled)
+        << "We registered a lease for a dead server. We need to get called.";
+  }
+}
+
+TEST_F(LeaseManagerTest, test_handout_lease_for_rebooted_server) {
+  bool rebootCallbackCalled = false;
+  {
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+
+    auto leaseManager = buildManager();
+    auto leaseIsFor = getPeerState(serverA);
+    LeaseId id{42};
+
+    rebootServer(serverA);
+    // Now ServerA is rebooted and the peerState is outdated.
+    ASSERT_LT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, server was not rebooted.";
+
+    EXPECT_THROW(std::ignore = leaseManager.handoutLease(leaseIsFor, id, callback), arangodb::basics::Exception);
+
+    // Requiring a least for an outdated peerState should actually trigger the
+    // RebootTracker to intervene.
+    waitForSchedulerEmpty();
+    {
+      // This situation is handled the same as if reboot would be AFTER
+      // getting the lease. So Server should be dropped here.
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            id);
+    }
+    EXPECT_TRUE(rebootCallbackCalled)
+        << "We registered a lease for a dead server. We need to get called.";
   }
 }
 
@@ -381,7 +581,8 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                        lease.id());
     }
 
     // Now move RebootTracker to new state, it now sees sme id as the leaser.
@@ -394,7 +595,8 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
     {
       // Lease should be in the Report:
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListContainsLease(leaseReport.slice(), leaseIsFor, lease.id());
+      assertLeasedFromListContainsLease(leaseReport.slice(), leaseIsFor,
+                                        lease.id());
     }
 
     // Reboot once more. Now we should be behind the RebootTracker. Causing the callback to be called.
@@ -408,10 +610,76 @@ TEST_F(LeaseManagerTest, test_acquire_lease_for_server_with_newer_reboot_id) {
       // This situation is handled the same as if reboot would be AFTER
       // getting the lease. So Server should be dropped here.
       auto leaseReport = leaseManager.leasesToVPack();
-      assertLeaseListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
-                                         lease.id());
-      // In fact we should not even have a server entry anymore.
-      EXPECT_FALSE(leaseReport.slice().hasKey(peerStateToJSONKey(leaseIsFor)));
+      assertLeasedFromListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                              lease.id());
+    }
+  }
+}
+
+TEST_F(LeaseManagerTest, test_handout_lease_for_server_with_newer_reboot_id) {
+  // NOTE: This can happen in production in the following way:
+  // 1. A peer server reboots, and then sends out a require lease request
+  // 2. The server running the manager receives the request, before the reboot
+  // tracker has updated the state.
+  // 3. Then it has to handout the lease, for a seemingly newer server version.
+  bool rebootCallbackCalled = false;
+  {
+    auto callback = [&]() noexcept { rebootCallbackCalled = true; };
+
+    auto leaseManager = buildManager();
+    auto leaseIsFor = getPeerState(serverA);
+    leaseIsFor.rebootId = RebootId{leaseIsFor.rebootId.value() + 1};
+
+    // Now ServerA is rebooted, the RebootTracker has not yet handled it.
+    ASSERT_GT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, lease is not ahead of RebootTracker.";
+
+    LeaseId id{42};
+    auto lease = leaseManager.handoutLease(leaseIsFor, id, callback);
+
+    // Give RebootTracker time to intervene.
+    waitForSchedulerEmpty();
+
+    EXPECT_FALSE(rebootCallbackCalled)
+        << "We are ahead of the RebootTracker. So we should not get aborted.";
+    {
+      // Lease should be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+                                      lease.id());
+    }
+
+    // Now move RebootTracker to new state, it now sees sme id as the leaser.
+    rebootServer(serverA);
+
+    ASSERT_EQ(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, RebootIds should now be aligned.";
+
+    EXPECT_FALSE(rebootCallbackCalled)
+        << "We are ahead of the RebootTracker. So we should not get aborted.";
+    {
+      // Lease should be in the Report:
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListContainsLease(leaseReport.slice(), leaseIsFor,
+                                      lease.id());
+    }
+
+    // Reboot once more. Now we should be behind the RebootTracker. Causing the
+    // callback to be called.
+    rebootServer(serverA);
+
+    ASSERT_LT(leaseIsFor.rebootId, state.find(serverA)->second.rebootId)
+        << "Test setup incorrect, RebootId of Tracker should now be ahead of "
+           "Lease.";
+
+    EXPECT_TRUE(rebootCallbackCalled)
+        << "Now the reboot tracker has overtaken us, we need to be aborted.";
+    {
+      // This situation is handled the same as if reboot would be AFTER
+      // getting the lease. So Server should be dropped here.
+      auto leaseReport = leaseManager.leasesToVPack();
+      assertLeasedToListDoesNotContainLease(leaseReport.slice(), leaseIsFor,
+                                            lease.id());
     }
   }
 }
