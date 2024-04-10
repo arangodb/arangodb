@@ -45,58 +45,46 @@ RestSupervisionStateHandler::RestSupervisionStateHandler(
     ArangodServer& server, GeneralRequest* request, GeneralResponse* response)
     : RestVocbaseBaseHandler(server, request, response) {}
 
-RestStatus RestSupervisionStateHandler::execute() {
+futures::Future<futures::Unit> RestSupervisionStateHandler::executeAsync() {
   if (!ExecContext::current().isAdminUser()) {
     generateError(rest::ResponseCode::FORBIDDEN, TRI_ERROR_HTTP_FORBIDDEN);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (_request->requestType() != rest::RequestType::GET) {
     generateError(rest::ResponseCode::METHOD_NOT_ALLOWED,
                   TRI_ERROR_HTTP_METHOD_NOT_ALLOWED);
-    return RestStatus::DONE;
+    co_return;
   }
 
   if (!ServerState::instance()->isCoordinator()) {
     generateError(rest::ResponseCode::NOT_IMPLEMENTED,
                   TRI_ERROR_CLUSTER_ONLY_ON_COORDINATOR);
-    return RestStatus::DONE;
+    co_return;
   }
 
-  auto self(shared_from_this());
-
   auto targetPath = arangodb::cluster::paths::root()->arango()->target();
-  return waitForFuture(
-      AsyncAgencyComm()
-          .getValues(targetPath)
-          .thenValue([this, self, targetPath = std::move(targetPath)](
-                         AgencyReadResult&& result) {
-            if (result.ok() && result.statusCode() == fuerte::StatusOK) {
-              VPackBuffer<uint8_t> response;
-              {
-                VPackBuilder bodyBuilder(response);
-                VPackObjectBuilder ob(&bodyBuilder);
-                bodyBuilder.add("ToDo", result.slice().at(0).get(
-                                            targetPath->toDo()->vec()));
-                bodyBuilder.add("Pending", result.slice().at(0).get(
-                                               targetPath->pending()->vec()));
-                bodyBuilder.add("Finished", result.slice().at(0).get(
-                                                targetPath->finished()->vec()));
-                bodyBuilder.add("Failed", result.slice().at(0).get(
-                                              targetPath->failed()->vec()));
-              }
 
-              resetResponse(rest::ResponseCode::OK);
-              _response->setPayload(std::move(response));
-            } else {
-              generateError(result.asResult());
-            }
-          })
-          .thenError<VPackException>([this, self](VPackException const& e) {
-            generateError(Result{TRI_ERROR_HTTP_SERVER_ERROR, e.what()});
-          })
-          .thenError<std::exception>([this, self](std::exception const&) {
-            generateError(rest::ResponseCode::SERVER_ERROR,
-                          TRI_ERROR_HTTP_SERVER_ERROR);
-          }));
+  auto result = co_await AsyncAgencyComm().getValues(targetPath);
+
+  if (result.ok() && result.statusCode() == fuerte::StatusOK) {
+    VPackBuffer<uint8_t> response;
+    {
+      VPackBuilder bodyBuilder(response);
+      VPackObjectBuilder ob(&bodyBuilder);
+      bodyBuilder.add("ToDo",
+                      result.slice().at(0).get(targetPath->toDo()->vec()));
+      bodyBuilder.add("Pending",
+                      result.slice().at(0).get(targetPath->pending()->vec()));
+      bodyBuilder.add("Finished",
+                      result.slice().at(0).get(targetPath->finished()->vec()));
+      bodyBuilder.add("Failed",
+                      result.slice().at(0).get(targetPath->failed()->vec()));
+    }
+
+    resetResponse(rest::ResponseCode::OK);
+    _response->setPayload(std::move(response));
+  } else {
+    generateError(result.asResult());
+  }
 }
