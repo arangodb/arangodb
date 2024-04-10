@@ -365,8 +365,8 @@ _Enterprise Edition only_
 ### nghttp2
 
 * Name: nghttp2
-* Version: 1.40.0
-* Date: 2019-11-15 14:34:03Z
+* Version: 1.61.0
+* Date: 2024-04-04 17:16:56 +09:00
 * GitHub: https://github.com/nghttp2/nghttp2
 * License: https://raw.githubusercontent.com/nghttp2/nghttp2/master/COPYING
 * License Name: MIT License

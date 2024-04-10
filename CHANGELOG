@@ -1,6 +1,11 @@
 devel
 -----
 
+* BTS-1848: Issue with Collection Names Containing Non-ASCII Characters in Web
+  UI.
+
+* Upgrade bundled version of nghttp2 library to version 1.61.0.
+
 * Added internal APIs to dump the contents of the AQL query registry from
   DB-Servers plus the contents of the transaction manager on coordinators and
   DB-Servers.
