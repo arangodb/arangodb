@@ -299,10 +299,13 @@ with the compiled executables in the `bin/` subfolder.
 To collect all files for packaging, you can run the following command (with
 `<preset-name>` substituted, e.g. with `community`):
 
-    cmake --install ./build-presets/<preset-name> --prefix output
+    cmake --install ./build-presets/<preset-name> --prefix install/usr
 
-It copies the needed files to a folder called `output`.
+It copies the needed files to a folder called `install`.
 It may fail if you only built a subset of the targets.
+The folder is organized following the Linux directory structure, with the
+server executable at `usr/sbin/arangod`, the tools in `usr/bin/`, the
+configuration files in `usr/etc/arangodb3/`, and so on.
 
 For building the ArangoDB Starter (`arangodb` executable), see the
 [ArangoDB Starter repository](https://github.com/arangodb-helper/arangodb).
