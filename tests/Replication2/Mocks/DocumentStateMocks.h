@@ -49,7 +49,7 @@ struct MockDocumentStateTransactionHandler;
 struct MockDocumentStateSnapshotHandler;
 
 struct MockTransactionManager : transaction::IManager {
-  MOCK_METHOD(Result, abortManagedTrx,
+  MOCK_METHOD(futures::Future<Result>, abortManagedTrx,
               (TransactionId, std::string const& database), (override));
 };
 

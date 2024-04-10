@@ -123,7 +123,7 @@ void StreamProxy<S, Interface, ILogMethodsT>::throwResignedException() {
   // the stream with resigning (see
   // https://github.com/arangodb/arangodb/pull/17850).
   // It relies on the stream throwing an exception in that case.
-  throw replicated_log::ParticipantResignedException(errorCode, ADB_HERE);
+  throw replicated_log::ParticipantResignedException(errorCode);
 }
 
 template<typename S>
