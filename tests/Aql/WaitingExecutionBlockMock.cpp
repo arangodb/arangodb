@@ -69,13 +69,15 @@ static auto blocksToInfos(std::deque<SharedAqlItemBlockPtr> const& blocks)
 WaitingExecutionBlockMock::WaitingExecutionBlockMock(
     ExecutionEngine* engine, ExecutionNode const* node,
     std::deque<SharedAqlItemBlockPtr>&& data, WaitingBehaviour variant,
-    size_t subqueryDepth, WakeupCallback wakeUpCallback)
+    size_t subqueryDepth, WakeupCallback wakeUpCallback,
+    ExecuteCallback executeCallback)
     : ExecutionBlock(engine, node),
       _hasWaited(false),
       _variant{variant},
       _infos{::blocksToInfos(data)},
       _blockData{*engine, node, _infos},
-      _wakeUpCallback(std::move(wakeUpCallback)) {
+      _wakeUpCallback(std::move(wakeUpCallback)),
+      _executeCallback(std::move(executeCallback)) {
   SkipResult s;
   for (size_t i = 0; i < subqueryDepth; ++i) {
     s.incrementSubquery();
@@ -119,6 +121,8 @@ WaitingExecutionBlockMock::execute(AqlCallStack const& stack) {
 
 std::tuple<ExecutionState, SkipResult, SharedAqlItemBlockPtr>
 WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
+  executeCallback();
+
   auto myCall = stack.peek();
 
   TRI_ASSERT(
@@ -202,5 +206,11 @@ WaitingExecutionBlockMock::executeWithoutTrace(AqlCallStack stack) {
 void WaitingExecutionBlockMock::wakeupCallback() {
   if (_wakeUpCallback) {
     _wakeUpCallback();
+  }
+}
+
+void WaitingExecutionBlockMock::executeCallback() {
+  if (_executeCallback) {
+    _executeCallback();
   }
 }
