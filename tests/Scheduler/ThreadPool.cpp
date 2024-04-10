@@ -20,6 +20,7 @@
 ////////////////////////////////////////////////////////////////////////////////
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "Scheduler/SimpleThreadPool.h"
 
 using namespace arangodb;
@@ -71,37 +72,47 @@ TEST(ThreadPoolTest, work_when_sleeping) {
 
 namespace {
 struct callable;
-callable createLambda(std::atomic<std::size_t>& cnt, ThreadPool& pool, int x,
+callable createLambda(std::atomic<std::uint32_t>& cnt, ThreadPool& pool, int x,
                       int max);
 
 struct callable {
   void operator()() const noexcept {
-    cnt += 1;
+    auto v = cnt.fetch_add(1);
+    if (v + 1 == (2ull << max) - 1) {
+      ASSERT_EQ(x, max);
+      cnt.notify_one();
+    }
     if (x < max) {
       pool.push(createLambda(cnt, pool, x + 1, max));
       pool.push(createLambda(cnt, pool, x + 1, max));
     }
   }
 
-  std::atomic<std::size_t>& cnt;
+  std::atomic<std::uint32_t>& cnt;
   ThreadPool& pool;
   const int x;
   const int max;
 };
 
-callable createLambda(std::atomic<std::size_t>& cnt, ThreadPool& pool, int x,
+callable createLambda(std::atomic<std::uint32_t>& cnt, ThreadPool& pool, int x,
                       int max) {
   return callable{cnt, pool, x, max};
 }
 }  // namespace
 
 TEST(ThreadPoolTest, spawn_work) {
-  std::atomic<std::size_t> counter{0};
-  const auto max = 16;
+  std::atomic<std::uint32_t> counter{0};
+  const auto max = 21;
 
   {
-    ThreadPool pool{"test-sched", 3};
+    ThreadPool pool{"test-sched", 16};
     pool.push(createLambda(counter, pool, 0, max));
+    auto v = counter.load();
+    const auto expected = (2ull << max) - 1;
+    while (v != expected) {
+      counter.wait(v);
+      v = counter.load();
+    }
   }
-  ASSERT_EQ(counter, (2 << max) - 1);
+  ASSERT_EQ(counter, (2ull << max) - 1);
 }
