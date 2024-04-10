@@ -73,7 +73,8 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
       InputAqlItemRow const& input) override;
 
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  void setPostAsyncExecuteCallback(std::function<void()> cb);
+  void setPostAsyncExecuteCallback(std::function<void(ExecutionState)> cb);
+  void setBeforeAsyncExecuteCallback(std::function<void()> cb);
 #endif
 
  private:
@@ -94,7 +95,8 @@ class ExecutionBlockImpl<AsyncExecutor> : public ExecutionBlock {
   AsyncState _internalState = AsyncState::Empty;
   int _numWakeupsQueued = 0;
 #ifdef ARANGODB_USE_GOOGLE_TESTS
-  std::function<void()> _postAsyncExecuteCallback;
+  std::function<void(ExecutionState)> _postAsyncExecuteCallback;
+  std::function<void()> _beforeAsyncExecuteCallback;
 #endif
 };
 
