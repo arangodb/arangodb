@@ -135,6 +135,7 @@ dump_encrypted enterprise cluster parallelity=4 size=medium -- --dumpAgencyOnErr
 dump_mixed_cluster_single single size=medium -- --dumpAgencyOnError true
 dump_mixed_single_cluster single size=large -- --dumpAgencyOnError true
 
+dump size=medium cluster name=dump_singleshard_cluster -- --forceOneShard true --dumpAgencyOnError true
 # takes long, needs to go first. However, doesn't utilize the SUT hard.
 dump_with_crashes !mac size=medium parallelity=1 priority=2000 -- --dumpAgencyOnError true
 dump_with_crashes_parallel !mac size=medium parallelity=1 priority=2000 cluster -- --dumpAgencyOnError true 
