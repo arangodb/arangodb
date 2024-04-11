@@ -1,0 +1,68 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ti{
+    units{
+        compound{
+            power2{
+                one{
+                    _{
+                        _{"ትርብዒት {0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"ትርብዒት {0}"}
+                    }
+                }
+            }
+            power3{
+                one{
+                    _{
+                        _{"ኪዩቢክ {0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"ኪዩቢክ {0}"}
+                    }
+                }
+            }
+        }
+        duration{
+            century{
+                dnam{"ዘመናት"}
+            }
+            decade{
+                dnam{"ዓሰርተታት ዓመታት"}
+                one{"{0} ዓሰርተ ዓመት"}
+                other{"{0} ዓሰርተታት ዓመታት"}
+            }
+            year{
+                dnam{"ዓመታት"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            decade{
+                one{"{0} ዓ.ዓ."}
+                other{"{0} ዓ.ዓ."}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            century{
+                dnam{"ዘመን"}
+                one{"{0} ዘመን"}
+                other{"{0} ዘመናት"}
+            }
+            decade{
+                dnam{"ዓሰርተ ዓመት"}
+                one{"{0} ዓሰ.ዓመ."}
+                other{"{0} ዓሰ.ዓመ."}
+            }
+        }
+    }
+}

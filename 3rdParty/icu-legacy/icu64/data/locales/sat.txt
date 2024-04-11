@@ -1,0 +1,263 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sat{
+    ExemplarCharacters{"[ᱚ ᱛ ᱜ ᱝ ᱞ ᱟ ᱠ ᱡ ᱢ ᱣ ᱤ ᱥ ᱦ ᱧ ᱨ ᱩ ᱪ ᱫ ᱬ ᱭ ᱮ ᱯ ᱰ ᱱ ᱲ ᱳ ᱴ ᱵ ᱶ ᱷ ᱸ ᱹ ᱺ ᱻ ᱼ ᱽ]"}
+    ExemplarCharactersNumbers{"[\\- ‑ , . % + 0᱐ 1᱑ 2᱒ 3᱓ 4᱔ 5᱕ 6᱖ 7᱗ 8᱘ 9᱙]"}
+    NumberElements{
+        default{"olck"}
+        latn{
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        one{"¤0 ᱜᱮᱞᱥᱟᱭ"}
+                        other{"¤ 0 ᱜᱮᱞᱥᱟᱭ"}
+                        two{"¤ 0 ᱜᱮᱞᱥᱟᱭ"}
+                    }
+                    100000{
+                        one{"¤ 000 ᱜᱮᱞᱥᱟᱭ"}
+                        other{"¤ 000 ᱜᱮᱞᱥᱟᱭ"}
+                        two{"¤ 000 ᱜᱮᱞᱥᱟᱭ"}
+                    }
+                }
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "ᱥᱮᱛᱟᱜ",
+                "ᱧᱤᱫᱟᱹ",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "d/M/yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yyMd",
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "ᱥᱤᱸ",
+                        "ᱚᱛ",
+                        "ᱵᱟ",
+                        "ᱥᱟᱹ",
+                        "ᱥᱟᱹᱨ",
+                        "ᱡᱟᱹ",
+                        "ᱧᱩ",
+                    }
+                    wide{
+                        "ᱥᱤᱸᱜᱮ",
+                        "ᱚᱛᱮ",
+                        "ᱵᱟᱞᱮ",
+                        "ᱥᱟᱹᱜᱩᱱ",
+                        "ᱥᱟᱹᱨᱫᱤ",
+                        "ᱡᱟᱹᱨᱩᱢ",
+                        "ᱧᱩᱦᱩᱢ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ᱥ",
+                        "ᱚ",
+                        "ᱵ",
+                        "ᱥ",
+                        "ᱥ",
+                        "ᱡ",
+                        "ᱧ",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "ᱥᱮᱨᱢᱟ ᱞᱟᱦᱟ",
+                    "ᱤᱥᱣᱤ",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ᱡᱟᱱ",
+                        "ᱯᱷᱟ",
+                        "ᱢᱟᱨ",
+                        "ᱟᱯᱨ",
+                        "ᱢᱮ",
+                        "ᱡᱩᱱ",
+                        "ᱡᱩᱞ",
+                        "ᱟᱜᱟ",
+                        "ᱥᱮᱯ",
+                        "ᱚᱠᱴ",
+                        "ᱱᱟᱣ",
+                        "ᱫᱤᱥ",
+                    }
+                    wide{
+                        "ᱡᱟᱱᱣᱟᱨᱤ",
+                        "ᱯᱷᱟᱨᱣᱟᱨᱤ",
+                        "ᱢᱟᱨᱪ",
+                        "ᱟᱯᱨᱮᱞ",
+                        "ᱢᱮ",
+                        "ᱡᱩᱱ",
+                        "ᱡᱩᱞᱟᱭ",
+                        "ᱟᱜᱟᱥᱛ",
+                        "ᱥᱮᱯᱴᱮᱢᱵᱟᱨ",
+                        "ᱚᱠᱴᱚᱵᱟᱨ",
+                        "ᱱᱟᱣᱟᱢᱵᱟᱨ",
+                        "ᱫᱤᱥᱟᱢᱵᱟᱨ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ᱡ",
+                        "ᱯ",
+                        "ᱢ",
+                        "ᱟ",
+                        "ᱢ",
+                        "ᱡ",
+                        "ᱡ",
+                        "ᱟ",
+                        "ᱥ",
+                        "ᱚ",
+                        "ᱱ",
+                        "ᱫ",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    wide{
+                        "᱑ᱟᱜ ᱯᱮ ᱪᱟᱸᱫᱚᱠᱤᱭᱟᱹ",
+                        "᱒ᱟᱜ ᱯᱮ ᱪᱟᱸᱫᱚᱠᱤᱭᱟᱹ",
+                        "᱓ᱭᱟᱜ ᱯᱮ ᱪᱟᱸᱫᱚᱠᱤᱭᱟᱹ",
+                        "᱔ᱟᱜ ᱯᱮ ᱪᱟᱸᱫᱚᱠᱤᱭᱟᱹ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "᱑",
+                        "᱒",
+                        "᱓",
+                        "᱔",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"ᱠᱟᱹᱢᱤ"}
+        african_scripts{"ᱟᱯᱷᱨᱤᱠᱟᱭ ᱞᱤᱯᱤ"}
+        american_scripts{"ᱟᱢᱮᱨᱤᱠᱤ ᱞᱤᱯᱤ"}
+        body{"ᱦᱚᱲᱢᱚ"}
+        currency_symbols{"ᱯᱩᱭᱥᱟᱹ ᱪᱤᱱᱦᱟᱹ"}
+        digits{"ᱮᱞᱠᱷᱟ"}
+        emoji{"ᱤᱢᱚᱡᱤ"}
+        female{"ᱠᱩᱲᱤ"}
+        flag{"ᱪᱤᱨ"}
+        flags{"ᱪᱤᱨ ᱠᱚ"}
+    }
+    fields{
+        day{
+            dn{"ᱢᱟᱦᱟ"}
+            relative{
+                "-1"{"ᱦᱚᱞᱟ"}
+                "0"{"ᱛᱮᱦᱮᱧ"}
+                "1"{"ᱜᱟᱯᱟ"}
+            }
+        }
+        dayOfYear{
+            dn{"ᱥᱮᱨᱢᱟ ᱨᱮᱭᱟᱠ ᱢᱟᱦᱟ"}
+        }
+        dayperiod{
+            dn{"ᱥᱮᱛᱟᱜ/ᱟᱹᱭᱩᱵ"}
+        }
+        era{
+            dn{"ᱡᱩᱜᱽ"}
+        }
+        era-narrow{
+            dn{"ᱡ"}
+        }
+        era-short{
+            dn{"ᱡᱩ"}
+        }
+        hour{
+            dn{"ᱴᱟᱲᱟᱝ"}
+        }
+        minute{
+            dn{"ᱴᱤᱯᱤᱡ"}
+        }
+        month{
+            dn{"ᱪᱟᱸᱫᱚ"}
+        }
+        quarter{
+            dn{"ᱯᱮᱪᱟᱸᱫᱚ"}
+        }
+        second{
+            dn{"ᱴᱤᱨᱤᱡ"}
+        }
+        sun{
+            relative{
+                "-1"{"ᱢᱟᱲᱟᱝ ᱥᱤᱸᱜᱮ"}
+                "0"{"ᱱᱤᱭᱟᱹ ᱥᱤᱸᱜᱮ"}
+                "1"{"ᱦᱟᱹᱡᱩᱜ ᱠᱟᱱ ᱥᱤᱸᱜᱮ"}
+            }
+        }
+        week{
+            dn{"ᱦᱟᱯᱛᱟ/ᱮᱢᱦᱟ"}
+        }
+        weekOfMonth{
+            dn{"ᱪᱟᱸᱫᱚ ᱨᱮᱭᱟᱠ ᱦᱟᱯᱛᱟ"}
+        }
+        weekday{
+            dn{"ᱦᱟᱯᱛᱟ ᱨᱮᱭᱟᱜ ᱢᱟᱦᱟ"}
+        }
+        weekdayOfMonth{
+            dn{"ᱪᱟᱸᱫᱚ ᱨᱮᱭᱟᱠ ᱢᱟᱦᱟ"}
+        }
+        year{
+            dn{"ᱥᱮᱨᱢᱟ/ᱵᱚᱪᱷᱚᱞᱨ"}
+        }
+        year-short{
+            dn{"ᱥᱮᱨᱢᱟ"}
+        }
+        zone{
+            dn{"ᱴᱚᱴᱷᱟ"}
+        }
+    }
+    measurementSystemNames{
+        UK{"ᱭᱩᱠᱮ"}
+        US{"ᱭᱩᱮᱥ"}
+        metric{"ᱢᱮᱴᱨᱤᱠ"}
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "sat",
+            }
+            surnameFirst{
+                "ko",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+    }
+}

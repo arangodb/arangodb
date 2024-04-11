@@ -1,0 +1,216 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sw_KE{
+    Keys{
+        hc{"Kipindi cha saa (12 dhidi ya 24)"}
+        va{"Tofauti ya Lugha"}
+    }
+    Languages{
+        alt{"Kialtai cha Kusini"}
+        arq{"Kiarabu cha Aljeria"}
+        atj{"Kiatikameku"}
+        az{"Kiazabaijani"}
+        ban{"Kibalini"}
+        bho{"Kibojpuri"}
+        bn{"Kibangla"}
+        ce{"Kichechen"}
+        ceb{"Kisebuano"}
+        ch{"Kichamoro"}
+        chk{"Kichuuki"}
+        chr{"Kicheroki"}
+        ckb{"Kikurdi cha Kati"}
+        clc{"Kichilkotini"}
+        crg{"Kimichif"}
+        crk{"Kikrii cha Chini"}
+        crm{"Kimoosekrii"}
+        crr{"Kialgiki cha Carolina"}
+        csw{"Kikrii cha Kinamasi"}
+        cu{"Kislovakia cha Kanisa la Jadi"}
+        cy{"Kiwels"}
+        de_AT{"Kijerumani cha Austria"}
+        de_CH{"Kijerumani cha Kawaida cha Uswisi"}
+        dje{"Kizama"}
+        en_AU{"Kiingereza cha Australia"}
+        en_CA{"Kiingereza cha Kanada"}
+        en_GB{"Kiingereza cha Uingereza"}
+        en_US{"Kiingereza cha Marekani"}
+        es_419{"Kihispania cha Amerika Kusini"}
+        es_ES{"Kihispania cha Ulaya"}
+        es_MX{"Kihispania cha Meksiko"}
+        fa_AF{"Kidari"}
+        ff{"Kifula"}
+        fo{"Kifaro"}
+        fr_CA{"Kifaransa cha Kanada"}
+        fr_CH{"Kifaransa cha Uswisi"}
+        frr{"Kifrisi cha Kaskazini"}
+        fur{"Kifriuli"}
+        fy{"Kifrisi cha Magharibi"}
+        gaa{"Kiga"}
+        gez{"Kigiiz"}
+        gil{"Kigilbert"}
+        grc{"Kigiriki cha Kale"}
+        gv{"Kimaniksi"}
+        gwi{"Kigwichʼin"}
+        haw{"Kihawaii"}
+        hr{"Kikroeshia"}
+        hsb{"Kisorbia cha Juu"}
+        ht{"Kikrioli cha Haiti"}
+        hup{"Kihupa"}
+        hur{"Kihalkomelem"}
+        ia{"Lugha ya kimataifa"}
+        ig{"Kiibo"}
+        ii{"Kiiyi cha Sichuan"}
+        ikt{"Kiinuktitut cha Kanada Magharibi"}
+        ilo{"Kiiloko"}
+        inh{"Kiingushi"}
+        is{"Kiaisilandi"}
+        jbo{"Kilojbani"}
+        kac{"Kikachini"}
+        kbd{"Kikabadi"}
+        kea{"Kikabuvedi"}
+        khq{"Kikoyrachiini"}
+        kj{"Kikuanyama"}
+        kk{"Kikazaki"}
+        kkj{"Kikako"}
+        km{"Kikhema"}
+        koi{"Kikomipermyak"}
+        kpe{"Kikpele"}
+        krc{"Kikarachaybalka"}
+        krl{"Kakareli"}
+        kru{"Kikuruki"}
+        ksb{"Kisambala"}
+        ksh{"Kikolon"}
+        kum{"Kikumyk"}
+        kw{"Kikoni"}
+        ky{"Kikirigizi"}
+        lag{"Kilangi"}
+        lam{"Kilamba"}
+        lez{"Kilezighi"}
+        li{"Kilimbugi"}
+        luy{"Kiluyia"}
+        mak{"Kimakasaa"}
+        mas{"Kimasai"}
+        mdf{"Kimoksha"}
+        mfe{"Kimorisi"}
+        mh{"Kimashali"}
+        mic{"Kimi'kmak"}
+        mk{"Kimasedonia"}
+        ml{"Kimalayalam"}
+        moh{"Kimohok"}
+        mos{"Kimosi"}
+        mus{"Kimuskogii"}
+        mwl{"Kimiranda"}
+        my{"Kibama"}
+        nds{"Kijerumani cha Chini"}
+        nnh{"Kiingiemboon"}
+        nqo{"Kiin’ko"}
+        nr{"Kindebele cha Kusini"}
+        oc{"Kiositia"}
+        ojc{"Kiojibwa cha Kati"}
+        or{"Kiodia"}
+        pag{"Kipangasini"}
+        pcm{"Kipijini cha Naijeria"}
+        pt_BR{"Kireno cha Brazili"}
+        pt_PT{"Kireno cha Ulaya"}
+        rm{"Kirumi"}
+        rwk{"Kirwa"}
+        sba{"Kingambei"}
+        sc{"Kisadini"}
+        scn{"Kisisilia"}
+        ses{"Kikoyraborosenni"}
+        shn{"Kishani"}
+        shu{"Kiarabu cha Chadi"}
+        slh{"Kilushootseed cha Kusini"}
+        srn{"Kisranantongo"}
+        st{"Kisotho cha Kusini"}
+        str{"Kisali cha Straits"}
+        su{"Kisundani"}
+        sw_CD{"Kiswahili cha Kongo"}
+        swb{"Kikomoro"}
+        syr{"Kisiria"}
+        tce{"Kituchone cha Kusini"}
+        tem{"Kitimne"}
+        tgx{"Kitagi"}
+        tht{"Kitahlti"}
+        tn{"Kiswana"}
+        tok{"Kitokipona"}
+        ts{"Kisonga"}
+        ttm{"Kituchone cha Kaskazini"}
+        tw{"Kitwi"}
+        tzm{"Kitamazight cha Atlas ya Kati"}
+        udm{"Kiudumurti"}
+        ug{"Kiuiguri"}
+        uk{"Kiukreni"}
+        umb{"Kiumbundu"}
+        wa{"Kiwaluni"}
+        wae{"Kiwalsa"}
+        wal{"Kiwolaitta"}
+        war{"Kiwarai"}
+        wo{"Kiwolof"}
+        xh{"Kikhosa"}
+        yav{"Kiyangbeni"}
+        yi{"Kiyidi"}
+        zgh{"Kitamazight cha Kawaida cha Moroko"}
+        zh_Hans{"Kichina Kilichorahisishwa"}
+        zh_Hant{"Kichina cha Kawaida"}
+    }
+    Languages%long{
+        zh_Hans{"Kichina cha Kimandarini Kilichorahisishwa"}
+        zh_Hant{"Kichina cha Kimandarini cha Kawaida"}
+    }
+    Languages%menu{
+        ckb{"Kikurdi, Kati"}
+        zh{"Kichina, Kimandarini"}
+    }
+    Languages%short{
+        en_GB{"Kiingereza cha Uingereza"}
+        en_US{"Kiingereza cha Marekani)"}
+    }
+    Languages%variant{
+        ckb{"Kikurdi, Sorani"}
+        hi_Latn{"Kihindi na Kiingereza"}
+    }
+    Scripts{
+        Beng{"Kibangla"}
+        Brai{"Breli"}
+        Cans{"Silabi za Asili Zilizounganishwa za Kanada"}
+        Cher{"Kicherokii"}
+        Cyrl{"Kikrili"}
+        Ethi{"Kihabeshi"}
+        Hanb{"Kihan chenye Kibopomofo"}
+        Hans{"Kilichorahisishwa"}
+        Hira{"Kihiragana"}
+        Hrkt{"Silabi za Kijapani"}
+        Jamo{"Kijamo"}
+        Khmr{"Kikhema"}
+        Mtei{"Kimeiteimayek"}
+        Mymr{"Kimyanma"}
+        Nkoo{"Kiin’ko"}
+        Olck{"Kiolchiki"}
+        Orya{"Kiodia"}
+        Sund{"Kisundani"}
+        Syrc{"Kisiria"}
+        Taml{"Kitamili"}
+        Yiii{"Kiiyi"}
+        Zmth{"Mwandiko wa kihisabati"}
+    }
+    Scripts%stand-alone{
+        Hans{"Kihan Kilichorahisishwa"}
+    }
+    Types{
+        calendar{
+            dangi{"Kalenda ya Kidangi"}
+            ethiopic{"Kalenda ya Kihabeshi"}
+            hebrew{"Kalenda ya kihibrania"}
+        }
+        numbers{
+            ethi{"Nambari za Kihabeshi"}
+            geor{"Nambari za Kijiojia"}
+            hebr{"Nambari za Kihibrania"}
+            mlym{"Nambari za Kimalayalam"}
+            mymr{"Nambari za Kimyama"}
+            tamldec{"Nambari za Kitamili"}
+        }
+    }
+}

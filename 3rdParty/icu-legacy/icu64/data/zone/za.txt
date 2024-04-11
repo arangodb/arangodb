@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+za{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"Gwzlinzveihci Byauhcunj Sizgenh"}
+        }
+        regionFormat{"{0} Sizgenh"}
+        regionFormatDaylight{"{0} Yaling Sizgenh"}
+        regionFormatStandard{"{0} Byauhcunj Sizgenh"}
+    }
+}

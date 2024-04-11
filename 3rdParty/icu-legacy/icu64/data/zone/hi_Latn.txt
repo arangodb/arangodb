@@ -1,0 +1,103 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+hi_Latn{
+    %%Parent{"en_IN"}
+    zoneStrings{
+        "Africa:Asmera"{
+            ec{"Asmera"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Porto Novo"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"Sao Tome"}
+        }
+        "America:Asuncion"{
+            ec{"Asuncion"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bahia Banderas"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"Blanc Sablon"}
+        }
+        "America:Cancun"{
+            ec{"Cancun"}
+        }
+        "America:Ciudad_Juarez"{
+            ec{"Ciudad Juarez"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Coral Harbour"}
+        }
+        "America:Curacao"{
+            ec{"Curacao"}
+        }
+        "America:Merida"{
+            ec{"Merida"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St Barthelemy"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"DumontDUrville"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aqtau"}
+        }
+        "Asia:Macau"{
+            ec{"Macau"}
+        }
+        "Asia:Qostanay"{
+            ec{"Qostanay"}
+        }
+        "Asia:Saigon"{
+            ec{"Saigon"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Faeroe"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunion"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulu"}
+            sg{"HST"}
+        }
+        "Pacific:Ponape"{
+            ec{"Ponape"}
+        }
+        "Pacific:Truk"{
+            ec{"Truk"}
+        }
+        "meta:America_Central"{
+            ld{"North America Central Daylight Time"}
+            lg{"North America Central Time"}
+            ls{"North America Central Standard Time"}
+        }
+        "meta:America_Eastern"{
+            ld{"North America Eastern Daylight Time"}
+            lg{"North America Eastern Time"}
+            ls{"North America Eastern Standard Time"}
+        }
+        "meta:America_Mountain"{
+            ld{"North America Mountain Daylight Time"}
+            lg{"North America Mountain Time"}
+            ls{"North America Mountain Standard Time"}
+        }
+        "meta:America_Pacific"{
+            ld{"North America Pacific Daylight Time"}
+            lg{"North America Pacific Time"}
+            ls{"North America Pacific Standard Time"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"St. Pierre & Miquelon Daylight Time"}
+            lg{"St. Pierre & Miquelon Time"}
+            ls{"St. Pierre & Miquelon Standard Time"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion Time"}
+        }
+    }
+}

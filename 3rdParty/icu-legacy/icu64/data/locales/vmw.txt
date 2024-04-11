@@ -1,0 +1,70 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+vmw{
+    AuxExemplarCharacters{"[b d g q]"}
+    ExemplarCharacters{"[a c e f h i j k {kh} l m n o p {ph} r s t {th} {tt} {tth} u v w x y z]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] @ / \\& # ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "vaasisu",
+                "makaaripi",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "ettiminku",
+                        "nihiku noolempwa",
+                        "namaanli",
+                        "namararu",
+                        "namaxexe",
+                        "namathanu",
+                        "esaabadu",
+                    }
+                }
+            }
+            intervalFormats{
+                fallback{"{0} ‘mpakha’ {1}"}
+            }
+            monthNames{
+                format{
+                    wide{
+                        "janeiru",
+                        "fevereiru",
+                        "marsu",
+                        "abril",
+                        "maiu",
+                        "junyu",
+                        "julyu",
+                        "agostu",
+                        "setembru",
+                        "outubru",
+                        "novembru",
+                        "dezembru",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"RU"}
+        US{"EUA"}
+        metric{"metrikhu"}
+    }
+}

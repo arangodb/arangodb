@@ -1,0 +1,460 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mi{
+    units{
+        area{
+            acre{
+                other{"{0} eka"}
+            }
+            hectare{
+                other{"{0} heketea"}
+            }
+            square-centimeter{
+                dnam{"mitarau pūrua"}
+                other{"{0} mitarau pūrua"}
+                per{"{0} ki te mitarau pūrua"}
+            }
+            square-foot{
+                other{"{0} pūtu pūrua"}
+            }
+            square-inch{
+                dnam{"īnihi pūrua"}
+                other{"{0} īnihi pūrua"}
+                per{"{0} ki te īnihi pūrua"}
+            }
+            square-kilometer{
+                dnam{"manomita pūrua"}
+                other{"{0} ki te manomita pūrua"}
+                per{"{0} ki te manomita pūrua"}
+            }
+            square-meter{
+                other{"{0} mita pūrua"}
+                per{"{0} ki te mita pūrua"}
+            }
+            square-mile{
+                other{"{0} māero pūrua"}
+                per{"{0} ki te māero pūrua"}
+            }
+            square-yard{
+                other{"{0} iari pūrua"}
+            }
+        }
+        coordinate{
+            dnam{"kāpehu maha"}
+            east{"{0} rāwhiti"}
+            north{"{0} raki"}
+            south{"{0} tonga"}
+            west{"{0} uru"}
+        }
+        duration{
+            century{
+                dnam{"rautau"}
+            }
+            day{
+                per{"{0} i te rā"}
+            }
+            decade{
+                dnam{"ngahurutau"}
+                other{"{0} ngahurutau"}
+            }
+            hour{
+                other{"{0} haora"}
+                per{"{0} i te haora"}
+            }
+            microsecond{
+                dnam{"hēkonamiriona"}
+                other{"{0} hēkonamiriona"}
+            }
+            millisecond{
+                other{"{0} hēkonamano"}
+            }
+            minute{
+                dnam{"meneti"}
+                other{"{0} meneti"}
+                per{"{0} i te meneti"}
+            }
+            month{
+                other{"{0} marama"}
+                per{"{0} i te marama"}
+            }
+            nanosecond{
+                other{"{0} nanohēkona"}
+            }
+            quarter{
+                dnam{"hauwhā"}
+                other{"{0} hauwhā"}
+            }
+            second{
+                dnam{"hēkona"}
+                other{"{0} hēkona"}
+                per{"{0} i te hēkona"}
+            }
+            week{
+                other{"{0} wiki"}
+                per{"{0} i te wiki"}
+            }
+            year{
+                per{"{0} i te tau"}
+            }
+        }
+        graphics{
+            em{
+                dnam{"em tātai tuhituhi"}
+            }
+            pixel{
+                other{"{0} tongiiti"}
+            }
+            pixel-per-centimeter{
+                dnam{"tongiiti ki te mitarau"}
+                other{"{0} tongiiti ki te mitarau"}
+            }
+            pixel-per-inch{
+                dnam{"tongiiti ki te īnihi"}
+                other{"{0} tongiiti ki te īnihi"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"waeine mātai arorangi"}
+                other{"{0} waeine mātai arorangi"}
+            }
+            centimeter{
+                dnam{"mitarau"}
+                other{"{0} mitarau"}
+                per{"{0} ki te mitarau"}
+            }
+            decimeter{
+                dnam{"mitatekau"}
+                other{"{0} mitatekau"}
+            }
+            earth-radius{
+                dnam{"pūtoro o te ao"}
+                other{"{0} pūtoro o te ao"}
+            }
+            foot{
+                per{"{0}ki te pūtu"}
+            }
+            inch{
+                other{"{0} īnihi"}
+                per{"{0} ki te īnihi"}
+            }
+            kilometer{
+                dnam{"manomita"}
+                other{"{0} manomita"}
+                per{"{0} ki te manomita"}
+            }
+            meter{
+                dnam{"mita"}
+                other{"{0} mita"}
+                per{"{0} ki te mita"}
+            }
+            micrometer{
+                other{"{0} mitamiriona"}
+            }
+            millimeter{
+                dnam{"mitamano"}
+                other{"{0} mitamano"}
+            }
+            nanometer{
+                dnam{"mitanano"}
+                other{"{0} mitanano"}
+            }
+            nautical-mile{
+                dnam{"māero moana"}
+                other{"{0} māero moana"}
+            }
+            picometer{
+                dnam{"mitapiko"}
+                other{"{0} mitapiko"}
+            }
+        }
+        volume{
+            centiliter{
+                dnam{"ritarau"}
+                other{"{0} ritarau"}
+            }
+            cubic-centimeter{
+                dnam{"mitarau pūtoru"}
+                other{"{0} mitarau pūtoru"}
+                per{"{0} ki te mitarau pūtoru"}
+            }
+            cubic-foot{
+                dnam{"pūtu pūtoru"}
+                other{"{0} pūtu pūtoru"}
+            }
+            cubic-inch{
+                dnam{"īnihi pūtoru"}
+                other{"{0} īnihi pūtoru"}
+            }
+            cubic-kilometer{
+                dnam{"manomita pūtoru"}
+                other{"{0} manomita pūtoru"}
+            }
+            cubic-meter{
+                dnam{"mita pūtoru"}
+                other{"{0} mita pūtoru"}
+                per{"{0} ki te mita pūtoru"}
+            }
+            cubic-mile{
+                dnam{"māero pūtoru"}
+                other{"{0} māero pūtoru"}
+            }
+            cubic-yard{
+                dnam{"iari pūtoru"}
+                other{"{0} iari pūtoru"}
+            }
+            cup{
+                other{"{0} kapu"}
+            }
+            fluid-ounce{
+                dnam{"aunihi kūtere"}
+                other{"{0} aunihi kūtere"}
+            }
+            fluid-ounce-imperial{
+                dnam{"aunihi kūtere emepaea"}
+                other{"{0} aunihi kūtere emepaea"}
+            }
+            gallon-imperial{
+                dnam{"kārani emepaea"}
+                per{"{0} ki te kārani emepaea"}
+            }
+            liter{
+                per{"{0} ki te rita"}
+            }
+            megaliter{
+                dnam{"rita miriona"}
+                other{"{0} rita miriona"}
+            }
+            milliliter{
+                dnam{"ritamano"}
+                other{"{0} ritamano"}
+            }
+            pint{
+                other{"{0} paina"}
+            }
+            quart{
+                dnam{"kuata"}
+                other{"{0} kuata"}
+            }
+            quart-imperial{
+                dnam{"kuata emepaea"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            millisecond{
+                dnam{"hēkm"}
+            }
+            nanosecond{
+                dnam{"nhēk"}
+            }
+            second{
+                other{"{0} h"}
+            }
+            year{
+                other{"{0} t"}
+            }
+        }
+        volume{
+            gallon{
+                per{"{0}/kārani"}
+            }
+        }
+    }
+    unitsShort{
+        area{
+            acre{
+                dnam{"eka"}
+                other{"{0} ek"}
+            }
+            hectare{
+                dnam{"heketea"}
+            }
+            square-foot{
+                dnam{"pūtu pūrua"}
+                other{"{0} pūtu²"}
+            }
+            square-inch{
+                dnam{"īnihi²"}
+            }
+            square-meter{
+                dnam{"mita pūrua"}
+            }
+            square-mile{
+                dnam{"māero pūrua"}
+            }
+            square-yard{
+                dnam{"iari pūrua"}
+                other{"{0} iari²"}
+            }
+        }
+        coordinate{
+            dnam{"kāpehu"}
+            east{"{0} Rā"}
+            north{"{0} Ra"}
+            south{"{0} T"}
+            west{"{0} U"}
+        }
+        duration{
+            century{
+                dnam{"r"}
+                other{"{0} r"}
+            }
+            day{
+                dnam{"rā"}
+                other{"{0} rā"}
+                per{"{0}/rā"}
+            }
+            decade{
+                dnam{"nga"}
+                other{"{0} nga"}
+            }
+            hour{
+                dnam{"haora"}
+            }
+            microsecond{
+                dnam{"μhēk"}
+                other{"{0} μhēk"}
+            }
+            millisecond{
+                dnam{"hēkonamano"}
+                other{"{0} hm"}
+            }
+            minute{
+                dnam{"men"}
+                other{"{0} men"}
+                per{"{0}/men"}
+            }
+            month{
+                dnam{"marama"}
+            }
+            nanosecond{
+                dnam{"nanohēkona"}
+                other{"{0} nhēk"}
+            }
+            quarter{
+                dnam{"hwh"}
+                other{"{0} hwh"}
+                per{"{0}/hwh"}
+            }
+            second{
+                dnam{"hēk"}
+                other{"{0} hēk"}
+            }
+            week{
+                dnam{"wiki"}
+            }
+            year{
+                dnam{"tau"}
+                other{"{0} tau"}
+                per{"{0}/t"}
+            }
+        }
+        graphics{
+            megapixel{
+                dnam{"miriona tongiiti"}
+            }
+            pixel{
+                dnam{"tongiiti"}
+            }
+        }
+        length{
+            fathom{
+                dnam{"mārō"}
+                other{"{0} mārō"}
+            }
+            foot{
+                dnam{"pūtu"}
+                other{"{0} pūtu"}
+                per{"{0}/pūtu"}
+            }
+            inch{
+                dnam{"īnihi"}
+            }
+            light-year{
+                dnam{"tau aho"}
+                other{"{0} tau aho"}
+            }
+            meter{
+                dnam{"m"}
+            }
+            micrometer{
+                dnam{"mitamiriona"}
+            }
+            mile{
+                dnam{"māero"}
+                other{"{0} māero"}
+            }
+            solar-radius{
+                dnam{"pūtoro kōmaru"}
+            }
+            yard{
+                dnam{"iari"}
+                other{"{0} iari"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"kāho"}
+                other{"{0} kāho"}
+            }
+            cubic-foot{
+                dnam{"pūtu³"}
+                other{"{0} pūtu³"}
+            }
+            cubic-inch{
+                dnam{"īnihi³"}
+            }
+            cubic-yard{
+                dnam{"iari³"}
+                other{"{0} iari³"}
+            }
+            cup{
+                dnam{"kapu"}
+                other{"{0} k"}
+            }
+            dessert-spoon{
+                dnam{"koko pūrini"}
+                other{"{0} koko pūrini"}
+            }
+            drop{
+                dnam{"pata"}
+                other{"{0} pata"}
+            }
+            gallon{
+                dnam{"kārani"}
+                other{"{0} kārani"}
+                per{"{0} ki te kārani"}
+            }
+            gallon-imperial{
+                other{"{0} kārani emepaea"}
+                per{"{0}/kārani emepaea"}
+            }
+            liter{
+                dnam{"rita"}
+                other{"{0} rita"}
+                per{"{0}/rita"}
+            }
+            pinch{
+                dnam{"kini"}
+                other{"{0} kini"}
+            }
+            pint{
+                dnam{"paina"}
+            }
+            quart-imperial{
+                other{"{0} kuata emepaea"}
+            }
+            tablespoon{
+                dnam{"kokonui"}
+                other{"{0} kokonui"}
+            }
+            teaspoon{
+                dnam{"kokoiti"}
+                other{"{0} kokoiti"}
+            }
+        }
+    }
+}

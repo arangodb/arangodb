@@ -1,0 +1,43 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lrc{
+    Currencies{
+        BRL{
+            "R$",
+            "رئال بئرئزیل",
+        }
+        CNY{
+            "CN¥",
+            "یوان چین",
+        }
+        EUR{
+            "€",
+            "یورو",
+        }
+        GBP{
+            "£",
+            "پوند بئریتانیا",
+        }
+        INR{
+            "₹",
+            "روٙپیه هئن",
+        }
+        IQD{
+            "د.ع.‏",
+            "IQD",
+        }
+        JPY{
+            "JP¥",
+            "یئن جاپوٙن",
+        }
+        RUB{
+            "RUB",
+            "روٙبل روٙسیه",
+        }
+        XXX{
+            "¤",
+            "پیل نادیار",
+        }
+    }
+}

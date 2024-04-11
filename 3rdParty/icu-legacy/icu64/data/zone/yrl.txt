@@ -1,0 +1,1828 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl{
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"Abidiyã"}
+        }
+        "Africa:Accra"{
+            ec{"Akara"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"Adisi Abeba"}
+        }
+        "Africa:Algiers"{
+            ec{"Ageu"}
+        }
+        "Africa:Asmera"{
+            ec{"Asimara"}
+        }
+        "Africa:Bamako"{
+            ec{"Bamaku"}
+        }
+        "Africa:Bangui"{
+            ec{"Bãki"}
+        }
+        "Africa:Banjul"{
+            ec{"Bãjú"}
+        }
+        "Africa:Bissau"{
+            ec{"Bisau"}
+        }
+        "Africa:Blantyre"{
+            ec{"Barãtire"}
+        }
+        "Africa:Brazzaville"{
+            ec{"Barazawiri"}
+        }
+        "Africa:Bujumbura"{
+            ec{"Buyũbura"}
+        }
+        "Africa:Cairo"{
+            ec{"Kairu"}
+        }
+        "Africa:Casablanca"{
+            ec{"Uka Murutĩga"}
+        }
+        "Africa:Ceuta"{
+            ec{"Seuta"}
+        }
+        "Africa:Conakry"{
+            ec{"Kunakiri"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"Katuawa ruka"}
+        }
+        "Africa:Djibouti"{
+            ec{"Dijibuti"}
+        }
+        "Africa:Douala"{
+            ec{"Duwala"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"Eu Ayũ"}
+        }
+        "Africa:Freetown"{
+            ec{"Firetũ"}
+        }
+        "Africa:Gaborone"{
+            ec{"Gaburuni"}
+        }
+        "Africa:Johannesburg"{
+            ec{"Juanesibugu"}
+        }
+        "Africa:Juba"{
+            ec{"Yuba"}
+        }
+        "Africa:Kampala"{
+            ec{"Kãpara"}
+        }
+        "Africa:Khartoum"{
+            ec{"Katũ"}
+        }
+        "Africa:Kigali"{
+            ec{"Kigari"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kĩxasa"}
+        }
+        "Africa:Lagos"{
+            ec{"Ipawaita"}
+        }
+        "Africa:Libreville"{
+            ec{"Riberevili"}
+        }
+        "Africa:Lome"{
+            ec{"Rumé"}
+        }
+        "Africa:Luanda"{
+            ec{"Ruãda"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"Lubũbaxi"}
+        }
+        "Africa:Malabo"{
+            ec{"Malabu"}
+        }
+        "Africa:Maputo"{
+            ec{"Maputu"}
+        }
+        "Africa:Mbabane"{
+            ec{"Ũbabani"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mugadisiku"}
+        }
+        "Africa:Monrovia"{
+            ec{"Mũruwiya"}
+        }
+        "Africa:Nairobi"{
+            ec{"Nairubi"}
+        }
+        "Africa:Ndjamena"{
+            ec{"N’ Diyamena"}
+        }
+        "Africa:Niamey"{
+            ec{"Niamei"}
+        }
+        "Africa:Nouakchott"{
+            ec{"Nowakixuti"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"Uwagadugu"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Igarapawa Pisasú"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"Sã Tumé"}
+        }
+        "Africa:Tripoli"{
+            ec{"Tiripuri"}
+        }
+        "Africa:Tunis"{
+            ec{"Tuni-ita"}
+        }
+        "Africa:Windhoek"{
+            ec{"Wĩdueki"}
+        }
+        "America:Adak"{
+            ec{"Adaki"}
+        }
+        "America:Anchorage"{
+            ec{"Ãkurage"}
+        }
+        "America:Anguilla"{
+            ec{"Ãgira"}
+        }
+        "America:Antigua"{
+            ec{"Ãtiguwa"}
+        }
+        "America:Araguaina"{
+            ec{"Araguayina"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"Ra Rioya"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"Paranã Garegu-ita"}
+        }
+        "America:Argentina:Salta"{
+            ec{"Sauta"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"Sã Yuwã"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"Sã Rui"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"Tukumã"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"Uxuwaya"}
+        }
+        "America:Asuncion"{
+            ec{"Asũsiyõ"}
+        }
+        "America:Bahia"{
+            ec{"Baíya"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bãdera-ita Kuara"}
+        }
+        "America:Barbados"{
+            ec{"Barabadu"}
+        }
+        "America:Belem"{
+            ec{"Belẽ"}
+        }
+        "America:Belize"{
+            ec{"Berise"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"Iwikuí Murutĩga"}
+        }
+        "America:Boa_Vista"{
+            ec{"Buwa Vista"}
+        }
+        "America:Bogota"{
+            ec{"Bugutá"}
+        }
+        "America:Boise"{
+            ec{"Buwisé"}
+        }
+        "America:Buenos_Aires"{
+            ec{"Buwenusairi"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Kẽbiriyi Kuara"}
+        }
+        "America:Campo_Grande"{
+            ec{"Kãpu Wasu"}
+        }
+        "America:Cancun"{
+            ec{"Kãkũ"}
+        }
+        "America:Caracas"{
+            ec{"Karaka"}
+        }
+        "America:Catamarca"{
+            ec{"Katamaka"}
+        }
+        "America:Cayenne"{
+            ec{"Kayena"}
+        }
+        "America:Cayman"{
+            ec{"Kaimã"}
+        }
+        "America:Chicago"{
+            ec{"Xikagu"}
+        }
+        "America:Chihuahua"{
+            ec{"Sivava"}
+        }
+        "America:Coral_Harbour"{
+            ec{"Atikokã"}
+        }
+        "America:Cordoba"{
+            ec{"Kóduba"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kupé Rika"}
+        }
+        "America:Creston"{
+            ec{"Kerestũ"}
+        }
+        "America:Cuiaba"{
+            ec{"Kuyaba"}
+        }
+        "America:Curacao"{
+            ec{"Kurasau"}
+        }
+        "America:Danmarkshavn"{
+            ec{"Dinamarakasãv"}
+        }
+        "America:Dawson"{
+            ec{"Dausũ"}
+        }
+        "America:Dawson_Creek"{
+            ec{"Dausũ Kiriki"}
+        }
+        "America:Denver"{
+            ec{"Dẽwer"}
+        }
+        "America:Dominica"{
+            ec{"Duminika"}
+        }
+        "America:Edmonton"{
+            ec{"Edimũtũ"}
+        }
+        "America:Eirunepe"{
+            ec{"Eirunepé"}
+        }
+        "America:El_Salvador"{
+            ec{"Eu Sawadu"}
+        }
+        "America:Fort_Nelson"{
+            ec{"Futi Neusũ"}
+        }
+        "America:Fortaleza"{
+            ec{"Futaresa"}
+        }
+        "America:Glace_Bay"{
+            ec{"Yrusãgusu-atã Kuara"}
+        }
+        "America:Godthab"{
+            ec{"Nuki"}
+        }
+        "America:Goose_Bay"{
+            ec{"Ipekawasu Kuara"}
+        }
+        "America:Grand_Turk"{
+            ec{"Wasú Turiku"}
+        }
+        "America:Grenada"{
+            ec{"Garanada"}
+        }
+        "America:Guadeloupe"{
+            ec{"Guadarupi"}
+        }
+        "America:Guatemala"{
+            ec{"Guatemara"}
+        }
+        "America:Guayaquil"{
+            ec{"Guayakiu"}
+        }
+        "America:Guyana"{
+            ec{"Giyana"}
+        }
+        "America:Havana"{
+            ec{"Hawana"}
+        }
+        "America:Hermosillo"{
+            ec{"Hemusiru"}
+        }
+        "America:Indiana:Knox"{
+            ec{"Knox, Ĩdiana"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"Marẽgu, Ĩdiana"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"Pitirisibugi, Ĩdiana"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"Tell Tawa-wasú, Ĩdiana"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"Wewai, Ĩdiana"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"Wĩsene-ita, Ĩdiana"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"Winãmaki, Ĩdiana"}
+        }
+        "America:Indianapolis"{
+            ec{"Ĩdianapuri"}
+        }
+        "America:Inuvik"{
+            ec{"Inuwiki"}
+        }
+        "America:Iqaluit"{
+            ec{"Ikaruiti"}
+        }
+        "America:Jamaica"{
+            ec{"Yamaika"}
+        }
+        "America:Jujuy"{
+            ec{"Yuyui"}
+        }
+        "America:Juneau"{
+            ec{"Yuneau"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"Mũtiseru, Kẽtuki"}
+        }
+        "America:Kralendijk"{
+            ec{"Kararẽdiki"}
+        }
+        "America:Lima"{
+            ec{"Rima"}
+        }
+        "America:Louisville"{
+            ec{"Luwisiviri"}
+        }
+        "America:Lower_Princes"{
+            ec{"Pirĩsipi Quarter Uirpewara"}
+        }
+        "America:Maceio"{
+            ec{"Maseyó"}
+        }
+        "America:Managua"{
+            ec{"Manáguwa"}
+        }
+        "America:Manaus"{
+            ec{"Manau"}
+        }
+        "America:Marigot"{
+            ec{"Mariguti"}
+        }
+        "America:Martinique"{
+            ec{"Matinika"}
+        }
+        "America:Matamoros"{
+            ec{"Moroitayuká"}
+        }
+        "America:Mazatlan"{
+            ec{"Masatarã"}
+        }
+        "America:Mendoza"{
+            ec{"Mẽdusa"}
+        }
+        "America:Menominee"{
+            ec{"Menomini"}
+        }
+        "America:Metlakatla"{
+            ec{"Metirakatira"}
+        }
+        "America:Mexico_City"{
+            ec{"Ẽmã tỹ Mẽsiku"}
+        }
+        "America:Miquelon"{
+            ec{"Mikirũ"}
+        }
+        "America:Moncton"{
+            ec{"Mũkitũ"}
+        }
+        "America:Monterrey"{
+            ec{"Mõterei"}
+        }
+        "America:Montevideo"{
+            ec{"Mũtiwidewu"}
+        }
+        "America:Montserrat"{
+            ec{"Mõtiserati"}
+        }
+        "America:Nassau"{
+            ec{"Nasau"}
+        }
+        "America:New_York"{
+            ec{"Yurki Pisasú"}
+        }
+        "America:Nome"{
+            ec{"Réra"}
+        }
+        "America:Noronha"{
+            ec{"Fenãdu Nuruyã"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beur, Dakota Nuti suí"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Sẽte, Dakota Nuti suí"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"Pisasú Sarẽ, Dakota Nuti suí"}
+        }
+        "America:Ojinaga"{
+            ec{"Oyinaga"}
+        }
+        "America:Panama"{
+            ec{"Panamã"}
+        }
+        "America:Paramaribo"{
+            ec{"Paramaribu"}
+        }
+        "America:Phoenix"{
+            ec{"Puwenikisi"}
+        }
+        "America:Port-au-Prince"{
+            ec{"Igarapawa Pirĩsipi"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Esipãya Igarapawa"}
+        }
+        "America:Porto_Velho"{
+            ec{"Igarapawa Kuximawara"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Igarapawa Riku"}
+        }
+        "America:Punta_Arenas"{
+            ec{"Pũta Arena-ita"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"Rãkĩ Uikesawa"}
+        }
+        "America:Recife"{
+            ec{"Resifi"}
+        }
+        "America:Regina"{
+            ec{"Rejĩnỹ"}
+        }
+        "America:Resolute"{
+            ec{"Resoruti"}
+        }
+        "America:Rio_Branco"{
+            ec{"Paranã Murutĩga"}
+        }
+        "America:Santarem"{
+            ec{"Sãtarẽ"}
+        }
+        "America:Santiago"{
+            ec{"Sãtiyagu"}
+        }
+        "America:Santo_Domingo"{
+            ec{"Sãtu Dumĩgu"}
+        }
+        "America:Sao_Paulo"{
+            ec{"Sã Pauru"}
+        }
+        "America:Scoresbysund"{
+            ec{"Itukutumiti"}
+        }
+        "America:Sitka"{
+            ec{"Sitika"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Sã Batulumeu"}
+        }
+        "America:St_Johns"{
+            ec{"Sãti Juni"}
+        }
+        "America:St_Kitts"{
+            ec{"Sã Kirituwãu"}
+        }
+        "America:St_Lucia"{
+            ec{"Sãta Lusiya"}
+        }
+        "America:St_Thomas"{
+            ec{"Sãti Tomá"}
+        }
+        "America:St_Vincent"{
+            ec{"Sã Wisẽti"}
+        }
+        "America:Swift_Current"{
+            ec{"Paranã Pirãtã"}
+        }
+        "America:Tegucigalpa"{
+            ec{"Tegusigaupa"}
+        }
+        "America:Thule"{
+            ec{"Tixuri"}
+        }
+        "America:Tijuana"{
+            ec{"Tijuvỹnỹ"}
+        }
+        "America:Toronto"{
+            ec{"Turũtu"}
+        }
+        "America:Tortola"{
+            ec{"Tutura"}
+        }
+        "America:Vancouver"{
+            ec{"Vãkuweri"}
+        }
+        "America:Whitehorse"{
+            ec{"Kawaru Murutĩga"}
+        }
+        "America:Winnipeg"{
+            ec{"Winĩpegi"}
+        }
+        "America:Yakutat"{
+            ec{"Yakutati"}
+        }
+        "Antarctica:Casey"{
+            ec{"Kasei"}
+        }
+        "Antarctica:Davis"{
+            ec{"Dawi"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"Makikuari"}
+        }
+        "Antarctica:Mawson"{
+            ec{"Mausũ"}
+        }
+        "Antarctica:McMurdo"{
+            ec{"MakiMudu"}
+        }
+        "Antarctica:Palmer"{
+            ec{"Paumere"}
+        }
+        "Antarctica:Rothera"{
+            ec{"Rotera"}
+        }
+        "Antarctica:Syowa"{
+            ec{"Siyowa"}
+        }
+        "Antarctica:Vostok"{
+            ec{"Wosituki"}
+        }
+        "Arctic:Longyearbyen"{
+            ec{"Longyear Tawa-wasú"}
+        }
+        "Asia:Aden"{
+            ec{"Adẽ"}
+        }
+        "Asia:Almaty"{
+            ec{"Aumati"}
+        }
+        "Asia:Amman"{
+            ec{"Amã"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadi"}
+        }
+        "Asia:Aqtau"{
+            ec{"Akitau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Akitubi"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Asigabati"}
+        }
+        "Asia:Atyrau"{
+            ec{"Atirau"}
+        }
+        "Asia:Baghdad"{
+            ec{"Magna"}
+        }
+        "Asia:Bahrain"{
+            ec{"Barẽi"}
+        }
+        "Asia:Bangkok"{
+            ec{"Mág-kóki"}
+        }
+        "Asia:Barnaul"{
+            ec{"Barnau"}
+        }
+        "Asia:Beirut"{
+            ec{"Beirute"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bisikeki"}
+        }
+        "Asia:Brunei"{
+            ec{"Burunei"}
+        }
+        "Asia:Calcutta"{
+            ec{"Kaukutá"}
+        }
+        "Asia:Chita"{
+            ec{"Xita"}
+        }
+        "Asia:Choibalsan"{
+            ec{"Xuibausã"}
+        }
+        "Asia:Colombo"{
+            ec{"Kurũbu"}
+        }
+        "Asia:Damascus"{
+            ec{"Damasiku"}
+        }
+        "Asia:Dhaka"{
+            ec{"Daka"}
+        }
+        "Asia:Dili"{
+            ec{"Diri"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Duxãbi"}
+        }
+        "Asia:Famagusta"{
+            ec{"Famaguita"}
+        }
+        "Asia:Gaza"{
+            ec{"Gasa"}
+        }
+        "Asia:Hebron"{
+            ec{"Heburũ"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Hũg Kũg"}
+        }
+        "Asia:Hovd"{
+            ec{"Howidi"}
+        }
+        "Asia:Irkutsk"{
+            ec{"Irkutisiki"}
+        }
+        "Asia:Jakarta"{
+            ec{"Jakata"}
+        }
+        "Asia:Jayapura"{
+            ec{"Yayapura"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Yerusarẽi"}
+        }
+        "Asia:Kabul"{
+            ec{"Kabú"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kãxatika"}
+        }
+        "Asia:Karachi"{
+            ec{"Karaxi"}
+        }
+        "Asia:Katmandu"{
+            ec{"Katimãdu"}
+        }
+        "Asia:Khandyga"{
+            ec{"Kãdiga"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"Karasinoyarisiki"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"Kuara Rũpuru"}
+        }
+        "Asia:Kuching"{
+            ec{"Kuxĩgi"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuwaiti"}
+        }
+        "Asia:Macau"{
+            ec{"Makau"}
+        }
+        "Asia:Magadan"{
+            ec{"Magadã"}
+        }
+        "Asia:Manila"{
+            ec{"Manira"}
+        }
+        "Asia:Muscat"{
+            ec{"Masikati"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nikosiya"}
+        }
+        "Asia:Novokuznetsk"{
+            ec{"Kusinetisiki Pisasú"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"Sibirisiki Pisasú"}
+        }
+        "Asia:Omsk"{
+            ec{"Omisiki"}
+        }
+        "Asia:Oral"{
+            ec{"Raure"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"Pinõ Pẽi"}
+        }
+        "Asia:Pontianak"{
+            ec{"Pũtianaka"}
+        }
+        "Asia:Pyongyang"{
+            ec{"Piũgiãgi"}
+        }
+        "Asia:Qatar"{
+            ec{"Katari"}
+        }
+        "Asia:Qostanay"{
+            ec{"Kositanai"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Kisiroda"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rãgũ"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riade"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Sakarina"}
+        }
+        "Asia:Samarkand"{
+            ec{"Samakãda"}
+        }
+        "Asia:Seoul"{
+            ec{"Seú"}
+        }
+        "Asia:Shanghai"{
+            ec{"Xãgai"}
+        }
+        "Asia:Singapore"{
+            ec{"Sĩgapura"}
+        }
+        "Asia:Srednekolymsk"{
+            ec{"Xeredinekorimiziki"}
+        }
+        "Asia:Tashkent"{
+            ec{"Tasikẽti"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tibilisi"}
+        }
+        "Asia:Tehran"{
+            ec{"Teyerã"}
+        }
+        "Asia:Thimphu"{
+            ec{"Tĩpu"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tokiyu"}
+        }
+        "Asia:Tomsk"{
+            ec{"Tomisiki"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Urã Baturu"}
+        }
+        "Asia:Urumqi"{
+            ec{"Urũki"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"Usiti-Nera"}
+        }
+        "Asia:Vientiane"{
+            ec{"Viẽtiane"}
+        }
+        "Asia:Vladivostok"{
+            ec{"Waradiwosituki"}
+        }
+        "Asia:Yakutsk"{
+            ec{"Yakutisiki"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"Ekaterĩbugu"}
+        }
+        "Asia:Yerevan"{
+            ec{"Yerewã"}
+        }
+        "Atlantic:Azores"{
+            ec{"Asori-ita"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bemuda"}
+        }
+        "Atlantic:Canary"{
+            ec{"Kanariya-ita"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Kabu Suikiri"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Kapuãma-ita Faruwe"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"Reikiyawiki"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Geugiya Su suí"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"Sãta Erẽna"}
+        }
+        "Atlantic:Stanley"{
+            ec{"Isitãrei"}
+        }
+        "Australia:Adelaide"{
+            ec{"Aderaidi"}
+        }
+        "Australia:Brisbane"{
+            ec{"Biribani"}
+        }
+        "Australia:Broken_Hill"{
+            ec{"Iwitera Mupenaíra"}
+        }
+        "Australia:Darwin"{
+            ec{"Dariwĩ"}
+        }
+        "Australia:Eucla"{
+            ec{"Eukara"}
+        }
+        "Australia:Hobart"{
+            ec{"Hobati"}
+        }
+        "Australia:Lindeman"{
+            ec{"Rĩdemã"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"Lurudi Howe"}
+        }
+        "Australia:Melbourne"{
+            ec{"Meubúni"}
+        }
+        "Australia:Perth"{
+            ec{"Periti"}
+        }
+        "Australia:Sydney"{
+            ec{"Sidinei"}
+        }
+        "Etc:UTC"{
+            ls{"Hurariyu Mũdi turususawa Kurdenadu"}
+        }
+        "Etc:Unknown"{
+            ec{"Tawa-wasú Ũbawaukuamamẽ"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Amiteridã"}
+        }
+        "Europe:Andorra"{
+            ec{"Ãdura"}
+        }
+        "Europe:Astrakhan"{
+            ec{"Asitarakã"}
+        }
+        "Europe:Athens"{
+            ec{"Atena-ita"}
+        }
+        "Europe:Belgrade"{
+            ec{"Beugaradu"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlim"}
+        }
+        "Europe:Bratislava"{
+            ec{"Baratisilawa"}
+        }
+        "Europe:Brussels"{
+            ec{"Buruxera"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukareti"}
+        }
+        "Europe:Budapest"{
+            ec{"Budapeti"}
+        }
+        "Europe:Busingen"{
+            ec{"Busĩgeni"}
+        }
+        "Europe:Chisinau"{
+            ec{"Xisinau"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopẽyagi"}
+        }
+        "Europe:Dublin"{
+            ec{"Dubirĩ"}
+            ld{"Hurariyu Retewa Irãdei"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Gibarautá"}
+        }
+        "Europe:Guernsey"{
+            ec{"Guwẽnisei"}
+        }
+        "Europe:Helsinki"{
+            ec{"Heusĩke"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Mã Kapuãma"}
+        }
+        "Europe:Istanbul"{
+            ec{"Istambul"}
+        }
+        "Europe:Jersey"{
+            ec{"Jersei"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Karinĩgaradu"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiyewe"}
+        }
+        "Europe:Kirov"{
+            ec{"Kirowi"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisboa"}
+        }
+        "Europe:Ljubljana"{
+            ec{"Riubiriana"}
+        }
+        "Europe:London"{
+            ec{"Londres"}
+            ld{"Hurariyu Kurasí Ara Biritãniku"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Ruxẽbugu"}
+        }
+        "Europe:Madrid"{
+            ec{"Madri"}
+        }
+        "Europe:Malta"{
+            ec{"Mauta"}
+        }
+        "Europe:Mariehamn"{
+            ec{"Mariẽyã"}
+        }
+        "Europe:Minsk"{
+            ec{"Mĩsiki"}
+        }
+        "Europe:Monaco"{
+            ec{"Munaku"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskou"}
+        }
+        "Europe:Oslo"{
+            ec{"Usiru"}
+        }
+        "Europe:Podgorica"{
+            ec{"Pudigurika"}
+        }
+        "Europe:Prague"{
+            ec{"Praga"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:San_Marino"{
+            ec{"Sã Marinu"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Sarayewo"}
+        }
+        "Europe:Saratov"{
+            ec{"Saratuwo"}
+        }
+        "Europe:Simferopol"{
+            ec{"Sĩwerupu"}
+        }
+        "Europe:Skopje"{
+            ec{"Isikupiye"}
+        }
+        "Europe:Sofia"{
+            ec{"Sufiya"}
+        }
+        "Europe:Stockholm"{
+            ec{"Estocolmo"}
+        }
+        "Europe:Tallinn"{
+            ec{"Tarĩ"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Ulyanovsk"{
+            ec{"Ulianuwiki"}
+        }
+        "Europe:Vaduz"{
+            ec{"Vadusi"}
+        }
+        "Europe:Vatican"{
+            ec{"Watikanu"}
+        }
+        "Europe:Vienna"{
+            ec{"Wiyena"}
+        }
+        "Europe:Vilnius"{
+            ec{"Viwiu-ita"}
+        }
+        "Europe:Volgograd"{
+            ec{"Wugogaradu"}
+        }
+        "Europe:Warsaw"{
+            ec{"Warisówiya"}
+        }
+        "Europe:Zagreb"{
+            ec{"Sagarebi"}
+        }
+        "Europe:Zurich"{
+            ec{"Zuriki"}
+        }
+        "Indian:Antananarivo"{
+            ec{"Ãtananariu"}
+        }
+        "Indian:Chagos"{
+            ec{"Xagu-ita"}
+        }
+        "Indian:Christmas"{
+            ec{"Kiritima-ita"}
+        }
+        "Indian:Cocos"{
+            ec{"Kuku-ita"}
+        }
+        "Indian:Comoro"{
+            ec{"Kumure-ita"}
+        }
+        "Indian:Kerguelen"{
+            ec{"Kergelẽ"}
+        }
+        "Indian:Mahe"{
+            ec{"Maé"}
+        }
+        "Indian:Maldives"{
+            ec{"Maudiwa-ita"}
+        }
+        "Indian:Mauritius"{
+            ec{"Maurisiyu"}
+        }
+        "Indian:Mayotte"{
+            ec{"Mayuti"}
+        }
+        "Indian:Reunion"{
+            ec{"Yumuatirisawa"}
+        }
+        "Pacific:Apia"{
+            ec{"Apiya"}
+        }
+        "Pacific:Auckland"{
+            ec{"Ókirãdi"}
+        }
+        "Pacific:Bougainville"{
+            ec{"Bugaĩwiri"}
+        }
+        "Pacific:Chatham"{
+            ec{"Xatinã"}
+        }
+        "Pacific:Easter"{
+            ec{"Pasikuwa Kapuãma"}
+        }
+        "Pacific:Efate"{
+            ec{"Efaté"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Ẽdeburi"}
+        }
+        "Pacific:Fakaofo"{
+            ec{"Fakaufu"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fiyi"}
+        }
+        "Pacific:Galapagos"{
+            ec{"Garapagu-ita"}
+        }
+        "Pacific:Gambier"{
+            ec{"Gãbiere"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"Guadaukanau"}
+        }
+        "Pacific:Guam"{
+            ec{"Guwã"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Hunururu"}
+        }
+        "Pacific:Kosrae"{
+            ec{"Kusirai"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"Kuayarẽi"}
+        }
+        "Pacific:Majuro"{
+            ec{"Mayuru"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Makesa-ita"}
+        }
+        "Pacific:Midway"{
+            ec{"Midiwei"}
+        }
+        "Pacific:Niue"{
+            ec{"Niwe"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Nurufuki"}
+        }
+        "Pacific:Noumea"{
+            ec{"Numeya"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"Pagu Pagu"}
+        }
+        "Pacific:Palau"{
+            ec{"Parau"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"Igarapawa Moresby"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"Rarutũga"}
+        }
+        "Pacific:Saipan"{
+            ec{"Saipã"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Taiti"}
+        }
+        "Pacific:Tongatapu"{
+            ec{"Tũgatapu"}
+        }
+        "Pacific:Wallis"{
+            ec{"Wari-ita"}
+        }
+        "meta:Acre"{
+            ld{"Hurariyu Kurasí Ara Acre yara"}
+            lg{"Hurariyu Acre yara"}
+            ls{"Hurariyu Retewa Acre yara"}
+            sd{"ACST"}
+            sg{"ACT"}
+            ss{"ACT"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afegãniretãma Hurariyu"}
+        }
+        "meta:Africa_Central"{
+            ls{"Afirika Piterawara Hurariyu"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Afirika Uriẽtawara Hurariyu"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Afirika Su suí Hurariyu"}
+        }
+        "meta:Africa_Western"{
+            ld{"Afirika Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Afirikia Usidẽtawara Hurariyu"}
+            ls{"Afirika Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Alaska"{
+            ld{"Alasika Kurasí Ara Hurariyu"}
+            lg{"Alasika Hurariyu"}
+            ls{"Alasika Hurariyu Eté"}
+        }
+        "meta:Almaty"{
+            ld{"Aumati Kurasí Ara Hurariyu"}
+            lg{"Aumati Hurariyu"}
+            ls{"Aumati Hurariyu Eté"}
+        }
+        "meta:Amazon"{
+            ld{"Amasuna Kurasí Ara Hurariyu"}
+            lg{"Amasuna Hurariyu"}
+            ls{"Amasuna Hurariyu Eté"}
+            sd{"AMST"}
+            sg{"AMT"}
+            ss{"AMT"}
+        }
+        "meta:America_Central"{
+            ld{"Hurariyu Kurasí Ara Piterawara"}
+            lg{"Óra Kuju"}
+            ls{"Hurariyu Retewa Piterawara"}
+        }
+        "meta:America_Eastern"{
+            ld{"Hurariyu Kurasí Ara Lesiti"}
+            lg{"Hurariyu Lesiti"}
+            ls{"Hurariyu Retewa Lesiti yara"}
+        }
+        "meta:America_Mountain"{
+            ld{"Rỹ kã Óra Krĩ-ag tá"}
+            lg{"Óra Krĩ-ag tá"}
+            ls{"Óra Pã Krĩ-ag tá"}
+        }
+        "meta:America_Pacific"{
+            ld{"Rỹ Kã Óra Pasifiku tá"}
+            lg{"Óra Pasifiku tá"}
+            ls{"Óra Pã Pasifiku tá"}
+        }
+        "meta:Anadyr"{
+            ld{"Anadí Kurasí Ara Hurariyu"}
+            lg{"Anadí Hurariyu"}
+            ls{"Anadí Hurariyu Retewa"}
+        }
+        "meta:Apia"{
+            ld{"Apiya Kurasí Ara Hurariyu"}
+            lg{"Apiya Hurariyu"}
+            ls{"Apiya Uraruiyu Retewa"}
+        }
+        "meta:Aqtau"{
+            ld{"Akitau Kurasí Ara Hurariyu"}
+            lg{"Akitau Hurariyu"}
+            ls{"Akitau Hurariyu Retewa"}
+        }
+        "meta:Aqtobe"{
+            ld{"Akitubi Kurasí Ara Hurariyu"}
+            lg{"Akitubi Hurariyu"}
+            ls{"Akitubi Hurariyu Retewa"}
+        }
+        "meta:Arabian"{
+            ld{"Arabiya Kurasí Ara Hurariyu"}
+            lg{"Arábiya Hurariyu"}
+            ls{"Arábiya Hurariyu Retewa"}
+        }
+        "meta:Argentina"{
+            ld{"Argẽtina Kurasí Ara Hurariyu"}
+            lg{"Argẽtina Hurariyu"}
+            ls{"Argẽtina Hurariyu Retewa"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Argẽtina Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Argẽtina Usidẽtawara Hurariyu"}
+            ls{"Argẽtina Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Armenia"{
+            ld{"Arimẽniya Kurasí Ara Hurariyu"}
+            lg{"Arimẽniya Hurariyu"}
+            ls{"Arimẽniya Hurariyu Retewa"}
+        }
+        "meta:Atlantic"{
+            ld{"Atalãtku Kurasí Ara Hurariyu"}
+            lg{"Atalãtiku Hurariyu"}
+            ls{"Atalãtiku Hurariyu Retewa"}
+        }
+        "meta:Australia_Central"{
+            ld{"Ausitaraliya Piterawara Kurasí Ara Hurariyu"}
+            lg{"Ausitaraliya Piterawara Hurariyu"}
+            ls{"Ausitaraliya Piterawara Hurariyu Retewa"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Ausitaraliya Piterawara-Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Ausitaraliya Piterawara-Usidẽtawara Hurariyu"}
+            ls{"Ausitaraliya Piterawara-Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Ausitaraliya Uriẽtawara Kurasí Ara Hurariyu"}
+            lg{"Ausitaraliya Uriẽtawara Hurariyu"}
+            ls{"Ausitaraliya Uriẽtawara Hurariyu Retewa"}
+        }
+        "meta:Australia_Western"{
+            ld{"Ausitaraliya Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Ausitaraliya Usidẽtawara Hurariyu"}
+            ls{"Ausitaraliya Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Aseriretãma Kurasí Ara Hurariyu"}
+            lg{"Aseriretãma Hurariyu"}
+            ls{"Aseriretãma Hurariyu Retewa"}
+        }
+        "meta:Azores"{
+            ld{"Asori-ita Kurasí Ara Hurariyu"}
+            lg{"Asori-ita Hurariyu"}
+            ls{"Asori-ita Hurariyu Retewa"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bãkaradexi Kurasí Ara Horariyu"}
+            lg{"Bãkaradexi Horariyu"}
+            ls{"Bãkaradexi Horariyu Retewa"}
+        }
+        "meta:Bhutan"{
+            ls{"Butãu Hurariyu"}
+        }
+        "meta:Bolivia"{
+            ls{"Buríwia Hurariyu"}
+        }
+        "meta:Brasilia"{
+            ld{"Rỹ Kã Óra Brasília tá"}
+            lg{"Óra Brasília tá"}
+            ls{"Óra Pã Brasília tá"}
+            sd{"BRST"}
+            sg{"BRT"}
+            ss{"BRT"}
+        }
+        "meta:Brunei"{
+            ls{"Burunei Darusaram Hurariyu"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Kabu Suikiri Kurasí Ara Hurariyu"}
+            lg{"Kabu Suikiri Hurariyu"}
+            ls{"Kabu Suikiri Hurariyu Retewa"}
+        }
+        "meta:Chamorro"{
+            ls{"Xamoro Hurariyu"}
+        }
+        "meta:Chatham"{
+            ld{"Xatham Kurasí Ara Hurariyu"}
+            lg{"Xatham Hurariyu"}
+            ls{"Xatham Hurariyu Retewa"}
+        }
+        "meta:Chile"{
+            ld{"Xiri Kurasí Ara Hurariyu"}
+            lg{"Xiri Hurariyu"}
+            ls{"Xiri Hurariyu Retewa"}
+        }
+        "meta:China"{
+            ld{"Xina Kurasí Ara Hurariyu"}
+            lg{"Xina Hurariyu"}
+            ls{"Xina Hurariyu Retewa"}
+        }
+        "meta:Choibalsan"{
+            ld{"Xoibasã Kurasí Ara Hurariyu"}
+            lg{"Xoibasã Hurariyu"}
+            ls{"Xoibasã Hurariyu Retewa"}
+        }
+        "meta:Christmas"{
+            ls{"KapuãmaKiritima Hurariyu"}
+        }
+        "meta:Cocos"{
+            ls{"Kapuã-ita Kuku-ita Hurariyu"}
+        }
+        "meta:Colombia"{
+            ld{"Kurũbia Kurasí Ara Hurariyu"}
+            lg{"Kurũbia Hurariyu"}
+            ls{"Kurũbia Hurariyu Retewa"}
+        }
+        "meta:Cook"{
+            ld{"Kapuã-ita Kooki Kurasí Ara Pitera Hurariyu"}
+            lg{"Kapuã-ita Kooki Hurariyu"}
+            ls{"Kapuã-ita Kooki Hurariyu Retewa"}
+        }
+        "meta:Cuba"{
+            ld{"Kuba Kurasí Ara Hurariyu"}
+            lg{"Kuba Hurariyu"}
+            ls{"Kuba Hurariyu Retewa"}
+        }
+        "meta:Davis"{
+            ls{"Dawi Hurariyu"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d’Urville Hurariyu"}
+        }
+        "meta:East_Timor"{
+            ls{"Timu-Semusawa Hurariyu"}
+        }
+        "meta:Easter"{
+            ld{"Pasikuwa Kapuãma Kurasí Ara Hurariyu"}
+            lg{"Pasikuwa Kapuãma Hurariyu"}
+            ls{"Pasikuwa Kapuãma Hurariyu Retewa"}
+        }
+        "meta:Ecuador"{
+            ls{"Ekuadú Hurariyu"}
+        }
+        "meta:Europe_Central"{
+            ld{"Eurupa Piterawara Kurasí Ara Hurariyu"}
+            lg{"Eurupa Piterawara Hurariyu"}
+            ls{"Eurupa Piterawara Hurariyu Retewa"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Eurupa Uriẽtawara Kurasí Ara Hurariyu"}
+            lg{"Eurupa Uriẽtawara Hurariyu"}
+            ls{"Eurupa Uriẽtawara Hurariyu Retewa"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"Eurupa Lesiti-eté Hurariyu"}
+        }
+        "meta:Europe_Western"{
+            ld{"Eurupa Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Eurupa Usidẽtawara Hurariyu"}
+            ls{"Eurupa Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Falkland"{
+            ld{"Kapuã-ita Mawina Kurasí Ara Hurariyu"}
+            lg{"Kapuã-ita Mawina Hurariyu"}
+            ls{"Kapuã-ita Mawina Hurariyu Retewa"}
+        }
+        "meta:Fiji"{
+            ld{"Fiyi Kurasí Ara Hurariyu"}
+            lg{"Fiyi Hurariyu"}
+            ls{"Fiyi Hurariyu Retewa"}
+        }
+        "meta:French_Guiana"{
+            ls{"Giyana Frãsa yara Hurariyu"}
+        }
+        "meta:French_Southern"{
+            ls{"Tetãma Su suí Frãsa yara asuí Ãtartida Hurariyu"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich Miridiyanu yara Hurariyu"}
+        }
+        "meta:Galapagos"{
+            ls{"Garapagu-ita Hurariyu"}
+        }
+        "meta:Gambier"{
+            ls{"Gãbiere Hurariyu"}
+        }
+        "meta:Georgia"{
+            ld{"Geugiya Kurasí Ara Hurariyu"}
+            lg{"Geugiya Hurariyu"}
+            ls{"Geugiya Hurariyu Retewa"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Kapuã-ita Yubetu Hurariyu"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Guruẽrãdiya Uriẽtawara Kurasí Ara Hurariyu"}
+            lg{"Guruẽrãdiya Uriẽtawara Hurariyu"}
+            ls{"Guruẽrãdiya Uriẽtawara Hurariyu Retewa"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Guruẽrãdiya Usidẽtawara Kurasí Ara Hurariyu"}
+            lg{"Guruẽrãdiya Usidẽtawara Hurariyu"}
+            ls{"Guruẽrãdiya Usidẽtawara Hurariyu Retewa"}
+        }
+        "meta:Guam"{
+            ls{"Guwã Hurariyu Retewa"}
+        }
+        "meta:Gulf"{
+            ls{"Golfo Hurariyu"}
+        }
+        "meta:Guyana"{
+            ls{"Giyana Hurariyu"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaí asuí Kapuã-ita Areuta-ita Kurasí Ara Hurariyu"}
+            lg{"Hawaí asuí Kapuã-ita Areuta-ita Hurariyu"}
+            ls{"Hawaí asuí Kapuã-ita Areuta-ita Hurariyu Retewa"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hũg Kũg Kurasí Ara Hurariyu"}
+            lg{"Hũg Kũg Hurariyu"}
+            ls{"Hũg Kũg Hurariyu Retewa"}
+        }
+        "meta:Hovd"{
+            ld{"Howidi Kurasí Ara Hurariyu"}
+            lg{"Howidi Hurariyu"}
+            ls{"Howidi Hurariyu Retewa"}
+        }
+        "meta:India"{
+            ls{"Ĩdia Hurariyu Retewa"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Useyanu Ĩdiku Hurariyu"}
+        }
+        "meta:Indochina"{
+            ls{"Ĩdoxina Hurariyu"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Ĩdonesiya Piterawara Hurariyu"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Ĩdonesiya Uriẽtawara Hurariyu"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Ĩdonesiya Usidẽtawara Hurariyu"}
+        }
+        "meta:Iran"{
+            ld{"Irã Kurasí Ara Hurariyu"}
+            lg{"Irã Hurariyu"}
+            ls{"Irã Hurariyu Retewa"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutisiki Kurasí Ara Hurariyu"}
+            lg{"Irkutisiki Hurariyu"}
+            ls{"Irkutisiki Hurariyu Retewa"}
+        }
+        "meta:Israel"{
+            ld{"Isirayeu Kurasí Ara Hurariyu"}
+            lg{"Isirayeu Hurariyu"}
+            ls{"Isirayeu Hurariyu Retewa"}
+        }
+        "meta:Japan"{
+            ld{"Nipõ Kurasí Ara Hurariyu"}
+            lg{"Nipõ Hurariyu"}
+            ls{"Nipõ Hurariyu Retewa"}
+        }
+        "meta:Kamchatka"{
+            ld{"Petropavlovsk-Kamchatski Kurasí Ara Hurariyu"}
+            lg{"Petropavlovsk-Kamchatski Hurariyu"}
+            ls{"Petropavlovsk-Kamchatski Hurariyu Retewa"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Kasakiretãma Uriẽtawara Hurariyu"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Kasakiretãma Usidẽtawara Hurariyu"}
+        }
+        "meta:Korea"{
+            ld{"Kureya Kurasí Ara Hurariyu"}
+            lg{"Kureya Hurariyu"}
+            ls{"Kureya Hurariyu Retewa"}
+        }
+        "meta:Kosrae"{
+            ls{"Kusirai Hurariyu"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Karasinoyarisiki Kurasí Ara Hurariyu"}
+            lg{"Karasinoyarisiki Hurariyu"}
+            ls{"Karasinoyarisiki Hurariyu Retewa"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Kirigiretãma Hurariyu"}
+        }
+        "meta:Lanka"{
+            ls{"Rãka Hurariyu"}
+        }
+        "meta:Line_Islands"{
+            ls{"Kapuã-ita Inĩbu Hurariyu"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lurudi Howe Kurasí Ara Hurariyu"}
+            lg{"Lurudi Howe Hurariyu"}
+            ls{"Lurudi Howe Hurariyu Retewa"}
+        }
+        "meta:Macau"{
+            ld{"Makau Kurasí Ara Hurariyu"}
+            lg{"Makau Hurariyu"}
+            ls{"Makau Hurariyu Retewa"}
+        }
+        "meta:Magadan"{
+            ld{"Magadã Kurasí Ara Hurariyu"}
+            lg{"Magadã Hurariyu"}
+            ls{"Magadã Hurariyu Retewa"}
+        }
+        "meta:Malaysia"{
+            ls{"Malasiya Hurariyu"}
+        }
+        "meta:Maldives"{
+            ls{"Kapuã-ita Maudiwa-ita Hurariyu"}
+        }
+        "meta:Marquesas"{
+            ls{"Makesa-ita Hurariyu"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Kapuã-ita Marshall Hurariyu"}
+        }
+        "meta:Mauritius"{
+            ld{"Maurisiyu Kurasí Ara Hurariyu"}
+            lg{"Maurisiyu Hurariyu"}
+            ls{"Maurisiyu Hurariyu Retewa"}
+        }
+        "meta:Mawson"{
+            ls{"Mausũ Hurariyu"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Pasifiku Mexikanu Kurasí Ara Hurariyu"}
+            lg{"Pasifiku Mexikanu Hurariyu"}
+            ls{"Pasifiku Mexikanu Hurariyu Retewa"}
+        }
+        "meta:Mongolia"{
+            ld{"Urã Baturu Kurasí Ara Hurariyu"}
+            lg{"Urã Baturu Hurariyu"}
+            ls{"Urã Baturu Hurariyu Retewa"}
+        }
+        "meta:Moscow"{
+            ld{"Moskou Kurasí Ara Hurariyu"}
+            lg{"Moskou Hurariyu"}
+            ls{"Moskou Hurariyu Retewa"}
+        }
+        "meta:Myanmar"{
+            ls{"Miyamá Hurariyu"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru Hurariyu"}
+        }
+        "meta:Nepal"{
+            ls{"Nepau Hurariyu"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Karedũniya Pisasú Kurasí Ara Hurariyu"}
+            lg{"Karedũniya Pisasú Hurariyu"}
+            ls{"Karedũniya Pisasú Hurariyu Retewa"}
+        }
+        "meta:New_Zealand"{
+            ld{"Serãdiya Pisasú Kurasí Ara Hurariyu"}
+            lg{"Serãdiya Pisasú Hurariyu"}
+            ls{"Serãdiya Pisasú Hurariyu Retewa"}
+        }
+        "meta:Newfoundland"{
+            ld{"Iwí Pisasú Kurasí Ara Hurariyu"}
+            lg{"Iwí Pisasú Hurariyu"}
+            ls{"Iwí Pisasú Hurariyu Retewa"}
+        }
+        "meta:Niue"{
+            ls{"Niwe Hurariyu"}
+        }
+        "meta:Norfolk"{
+            ld{"Kapuãma Norfolk Kurasí Ara Hurariyu"}
+            lg{"Kapuãma Norfolk Hurariyu"}
+            ls{"Kapuãma Norfolk Hurariyu Retewa"}
+        }
+        "meta:Noronha"{
+            ld{"Fenãdu Nuruyã Kurasí Ara Hurariyu"}
+            lg{"Fenãdu Nuruyã Hurariyu"}
+            ls{"Fenãdu Nuruyã Hurariyu Retewa"}
+        }
+        "meta:North_Mariana"{
+            ls{"Kapuã-ita Mariyãna Nuti suí Hurariyu"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Sibirisiki Pisasú Kurasí Ara Hurariyu"}
+            lg{"Sibirisiki Pisasú Hurariyu"}
+            ls{"Sibirisiki Pisasú Hurariyu Retewa"}
+        }
+        "meta:Omsk"{
+            ld{"Omisiki Kurasí Ara Hurariyu"}
+            lg{"Omisiki Hurariyu"}
+            ls{"Omisiki Hurariyu Retewa"}
+        }
+        "meta:Pakistan"{
+            ld{"Pakiretãma Kurasí Ara Hurariyu"}
+            lg{"Pakiretãma Hurariyu"}
+            ls{"Pakiretãma Hurariyu Retewa"}
+        }
+        "meta:Palau"{
+            ls{"Parau Hurariyu"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papuwa-Giné Pisasú Hurariyu"}
+        }
+        "meta:Paraguay"{
+            ld{"ParaguwaiKurasí Ara Hurariyu"}
+            lg{"Paraguwai Hurariyu"}
+            ls{"Paraguwai Hurariyu Retewa"}
+        }
+        "meta:Peru"{
+            ld{"Peru Kurasí Ara Hurariyu"}
+            lg{"Peru Hurariyu"}
+            ls{"Peru Hurariyu Retewa"}
+        }
+        "meta:Philippines"{
+            ld{"Firipina Kurasí Ara Hurariyu"}
+            lg{"Firipina Hurariyu"}
+            ls{"Firipina Hurariyu Retewa"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Kapuã-ita Fẽnix"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Sã Peduru asuí Mikirãu Kurasí Ara Hurariyu"}
+            lg{"Sã Peduru asuí Mikirãu Hurariyu"}
+            ls{"Sã Peduru asuí Mikirãu Hurariyu Retewa"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairn Hurariyu"}
+        }
+        "meta:Ponape"{
+            ls{"Ponape Hurariyu"}
+        }
+        "meta:Pyongyang"{
+            ls{"Piúgiãgi Hurariyu"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Kisiroda Kurasí Ara Hurariyu"}
+            lg{"Kisiroda Hurariyu"}
+            ls{"Kisiroda Hurariyu Retewa"}
+        }
+        "meta:Reunion"{
+            ls{"Yumuatirisawa Hurariyu"}
+        }
+        "meta:Rothera"{
+            ls{"Rotera Hurariyu"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sakarina Kurasí Ara Hurariyu"}
+            lg{"Sakarina Hurariyu"}
+            ls{"Sakarina Hurariyu Retewa"}
+        }
+        "meta:Samara"{
+            ld{"Samara Kurasí Ara Hurariyu"}
+            lg{"Samara Hurariyu"}
+            ls{"Samara Hurariyu Retewa"}
+        }
+        "meta:Samoa"{
+            ld{"Samowa Kurasí Ara Hurariyu"}
+            lg{"Samowa Hurariyu"}
+            ls{"Samowa Hurariyu Retewa"}
+        }
+        "meta:Seychelles"{
+            ls{"Seixeri Hurariyu"}
+        }
+        "meta:Singapore"{
+            ls{"Sĩgapura Hurariyu Retewa"}
+        }
+        "meta:Solomon"{
+            ls{"Kapuãma-ita Sarumũ Hurariyu"}
+        }
+        "meta:South_Georgia"{
+            ls{"Geugiya Su suí Hurariyu"}
+        }
+        "meta:Suriname"{
+            ls{"Suriname Hurariyu"}
+        }
+        "meta:Syowa"{
+            ls{"Siyowa Hurariyu"}
+        }
+        "meta:Tahiti"{
+            ls{"Taiti Hurariyu"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei Kurasí Ara Hurariyu"}
+            lg{"Taipei Hurariyu"}
+            ls{"Taipei Hurariyu Retewa"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tayikiretãma Hurariyu"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokerau Hurariyu"}
+        }
+        "meta:Tonga"{
+            ld{"Tõga Kurasí Ara Hurariyu"}
+            lg{"Tõga Hurariyu"}
+            ls{"Tõga Hurariyu Retewa"}
+        }
+        "meta:Truk"{
+            ls{"Chuuk Hurariyu"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkuranaretãma Kurasí Ara Hurariyu"}
+            lg{"Turkuranaretãma Hurariyu"}
+            ls{"Turkuranaretãma Hurariyu Retewa"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvaru Hurariyu"}
+        }
+        "meta:Uruguay"{
+            ld{"Uruguwai Kurasí Ara Hurariyu"}
+            lg{"Uruguwai Hurariyu"}
+            ls{"Uruguwai Hurariyu Retewa"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Yũbuesara-retãma Kurasí Ara Hurariyu"}
+            lg{"Yũbuesara-retãma Hurariyu"}
+            ls{"Yũbuesara-retãma Hurariyu Retewa"}
+        }
+        "meta:Vanuatu"{
+            ld{"Wanuatu Kurasí Ara Hurariyu"}
+            lg{"Wanuatu Hurariyu"}
+            ls{"Wanuatu Hurariyu Retewa"}
+        }
+        "meta:Venezuela"{
+            ls{"Wenẽsuera Hurariyu"}
+        }
+        "meta:Vladivostok"{
+            ld{"Waradiwosituki Kurasí Ara Hurariyu"}
+            lg{"Waradiwosituki Hurariyu"}
+            ls{"Waradiwosituki Hurariyu Retewa"}
+        }
+        "meta:Volgograd"{
+            ld{"Worwogaradu Kurasí Ara Hurariyu"}
+            lg{"Worwogaradu Hurariyu"}
+            ls{"Worwogaradu Hurariyu Retewa"}
+        }
+        "meta:Vostok"{
+            ls{"Wosituki Hurariyu"}
+        }
+        "meta:Wake"{
+            ls{"Kapuã-ita Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Wari asuí Futuna Hurariyu"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutisiki Kurasí Ara Hurariyu"}
+            lg{"Yakutisiki Hurariyu"}
+            ls{"Yakutisiki Hurariyu Retewa"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Ekaterĩbugu Kurasí Ara Hurariyu"}
+            lg{"Ekaterĩbugu Hurariyu"}
+            ls{"Ekaterĩbugu Hurariyu Retewa"}
+        }
+        regionFormat{"Hurariyu {0}"}
+        regionFormatDaylight{"Kurasí Ara Hurariyu: {0}"}
+        regionFormatStandard{"Hurariyu Retewa: {0}"}
+    }
+}

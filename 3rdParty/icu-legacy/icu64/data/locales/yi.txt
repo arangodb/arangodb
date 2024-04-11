@@ -1,0 +1,439 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yi{
+    AuxExemplarCharacters{"[\u200E\u200F]"}
+    ExemplarCharacters{
+        "[א{אַ}{אָ} ב {בֿ} ג ד {דזש} ה ו{וּ}{וו}{וי} ז {זש} ח ט {טש} י{יִ}{יי}{ײַ} {כ"
+        "ּ} כך ל מם נן ס ע {פּ} {פֿ}ף צץ ק ר ש {שׂ} {תּ} ת]"
+    }
+    ExemplarCharactersIndex{"[ׂ ּ ֿ א ב ג ד ה ו ז ח ט י כ ל מ נ ס ע פ צ ק ר ש ת]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . '׳ \u0022״ ( ) \\[ \\] / ־]"}
+    NumberElements{
+        traditional{"hebr"}
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "G y MMMM d, EEEE",
+                "G y MMMM d",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "פֿאַרמיטאָג",
+                "נאָכמיטאָג",
+            }
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, dטן MMMM y",
+                "dטן MMMM y",
+                "dטן MMM y",
+                "dd/MM/yy",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yyMMdd",
+            }
+            appendItems{
+                Timezone{"{1} {0}"}
+            }
+            availableFormats{
+                Ed{"E דעם dטן"}
+                GyMMMEd{"E דעם dטן MMM yG"}
+                GyMMMd{"dטן MMM y G"}
+                MEd{"E, d/M"}
+                yMEd{"E, d/M/y"}
+                yMM{"MM/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, dטן MMM y"}
+                yMMMd{"dטן MMM y"}
+                yMd{"d-M-y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "זונטיק",
+                        "מאָנטיק",
+                        "דינסטיק",
+                        "מיטוואך",
+                        "דאנערשטיק",
+                        "פֿרײַטיק",
+                        "שבת",
+                    }
+                }
+            }
+            intervalFormats{
+                MEd{
+                    M{"EEEE dd/MM – EEEE dd/MM"}
+                    d{"EEEE dd/MM – EEEE dd/MM"}
+                }
+                MMMEd{
+                    M{"EEEE d MMM – EEEE d MMM"}
+                    d{"EEEE d MMM – EEEE d MMM"}
+                }
+                MMMM{
+                    M{"LLLL–LLLL"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"dd/MM – dd/MM"}
+                    d{"dd/MM – dd/MM"}
+                }
+                fallback{"{0} – {1}"}
+                yM{
+                    M{"MM/y – MM/y"}
+                    y{"MM/y – MM/y"}
+                }
+                yMEd{
+                    M{"EEEE dd/MM/y – EEEE dd/MM/y"}
+                    d{"EEEE dd/MM/y – EEEE dd/MM/y"}
+                    y{"EEEE dd/MM/y – EEEE dd/MM/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"EEEE d MMM – EEEE d MMM y"}
+                    d{"EEEE d MMM – EEEE d MMM y"}
+                    y{"EEEE d MMM y – EEEE d MMM y"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM y"}
+                    y{"MMMM y–MMMM y"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y"}
+                    d{"d–d MMM y"}
+                    y{"d MMM y – d MMM y"}
+                }
+                yMd{
+                    M{"dd/MM/y – dd/MM/y"}
+                    y{"dd/MM/y – dd/MM/y"}
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "יאַנואַר",
+                        "פֿעברואַר",
+                        "מערץ",
+                        "אַפּריל",
+                        "מיי",
+                        "יוני",
+                        "יולי",
+                        "אויגוסט",
+                        "סעפּטעמבער",
+                        "אקטאבער",
+                        "נאוועמבער",
+                        "דעצעמבער",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "יאַנ",
+                        "פֿעב",
+                        "מערץ",
+                        "אַפּר",
+                        "מיי",
+                        "יוני",
+                        "יולי",
+                        "אויג",
+                        "סעפּ",
+                        "אקט",
+                        "נאוו",
+                        "דעצ",
+                    }
+                }
+            }
+        }
+        hebrew{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                {
+                    "EEEE, d MMMM y",
+                    "hebr",
+                }
+                {
+                    "d MMMM y",
+                    "hebr",
+                }
+                {
+                    "d בMMMM y",
+                    "hebr",
+                }
+                {
+                    "d בMMMM y",
+                    "hebr",
+                }
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                {
+                    "yMMMMEEEEd",
+                    "hebr",
+                }
+                {
+                    "yMMMMd",
+                    "hebr",
+                }
+                {
+                    "yMMMMd",
+                    "hebr",
+                }
+                {
+                    "yMMMMd",
+                    "hebr",
+                }
+            }
+            availableFormats{
+                GyMMM{"MMMM y G"}
+                GyMMMEd{"E, d MMMM y G"}
+                GyMMMd{"d MMMM y G"}
+                M{"MMMM"}
+                MEd{"E, d בMMMM"}
+                MMM{"MMMM"}
+                MMMEd{"E, d בMMMM"}
+                MMMMEd{"E, d בMMMM"}
+                MMMMd{"d בMMMM"}
+                MMMd{"d בMMMM"}
+                Md{"d בMMMM"}
+                yyyyM{"MMMM y"}
+                yyyyMEd{"E, d בMMMM y"}
+                yyyyMMM{"MMMM y"}
+                yyyyMMMEd{"E, d בMMMM y"}
+                yyyyMMMM{"MMMM y"}
+                yyyyMMMd{"d בMMMM y"}
+                yyyyMd{"d בMMMM y"}
+            }
+            eras{
+                abbreviated{
+                    "לבה״ע",
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "תשרי",
+                        "חשוון",
+                        "כסלו",
+                        "טבת",
+                        "שבט",
+                        "אדר א׳",
+                        "אדר",
+                        "ניסן",
+                        "אייר",
+                        "סיון",
+                        "תמוז",
+                        "אב",
+                        "אלול",
+                        "אדר ב׳",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "תשרי",
+                        "חשון",
+                        "כסלו",
+                        "טבת",
+                        "שבט",
+                        "אדר א׳",
+                        "אדר",
+                        "ניסן",
+                        "אייר",
+                        "סיון",
+                        "תמוז",
+                        "אב",
+                        "אלול",
+                        "אדר ב׳",
+                    }
+                    narrow{
+                        "תש",
+                        "חש",
+                        "כס",
+                        "טב",
+                        "שב",
+                        "אא",
+                        "אד",
+                        "ני",
+                        "אי",
+                        "סי",
+                        "תמ",
+                        "אב",
+                        "אל",
+                        "א2",
+                    }
+                    wide{
+                        "תשרי",
+                        "חשון",
+                        "כסלו",
+                        "טבת",
+                        "שבט",
+                        "אדר א׳",
+                        "אדר",
+                        "ניסן",
+                        "אייר",
+                        "סיון",
+                        "תמוז",
+                        "אב",
+                        "אלול",
+                        "אדר ב׳",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationStart{"’"}
+        quotationStart{"”"}
+    }
+    fields{
+        day{
+            dn{"טאָג"}
+            relative{
+                "-1"{"נעכטן"}
+                "0"{"היינט"}
+                "1"{"מארגן"}
+            }
+            relativeTime{
+                future{
+                    one{"אין {0} טאָג אַרום"}
+                    other{"אין {0} טעג אַרום"}
+                }
+            }
+        }
+        era{
+            dn{"תקופֿה"}
+        }
+        hour{
+            dn{"שעה"}
+        }
+        minute{
+            dn{"מינוט"}
+        }
+        month{
+            dn{"מאנאַט"}
+            relative{
+                "-1"{"פֿאַרגאנגענעם חודש"}
+                "0"{"דעם חודש"}
+                "1"{"קומענדיקן חודש"}
+            }
+            relativeTime{
+                future{
+                    one{"איבער {0} חודש"}
+                    other{"איבער {0} חדשים"}
+                }
+                past{
+                    one{"פֿאַר {0} חודש"}
+                    other{"פֿאַר {0} חדשים"}
+                }
+            }
+        }
+        second{
+            dn{"סעקונדע"}
+        }
+        week{
+            dn{"וואך"}
+            relative{
+                "-1"{"last week"}
+                "0"{"this week"}
+                "1"{"איבער אַכט טאָג"}
+            }
+        }
+        weekday{
+            dn{"טאָג אין דער וואך"}
+        }
+        year{
+            dn{"יאָר"}
+            relative{
+                "-1"{"פֿאַראַיאָר"}
+                "0"{"הײַ יאָר"}
+                "1"{"איבער א יאָר"}
+            }
+            relativeTime{
+                future{
+                    one{"איבער {0} יאָר"}
+                    other{"איבער {0} יאָר"}
+                }
+                past{
+                    one{"פֿאַר {0} יאָר"}
+                    other{"פֿאַר {0} יאָר"}
+                }
+            }
+        }
+        year-narrow{
+            relativeTime{
+                future{
+                    one{"איבער {0} יאָר"}
+                    other{"איבער {0} יאָר"}
+                }
+            }
+        }
+        year-short{
+            relativeTime{
+                future{
+                    one{"איבער א יאָר"}
+                    other{"איבער {0} יאָר"}
+                }
+            }
+        }
+        zone{
+            dn{"צײַטזאנע"}
+        }
+    }
+    layout{
+        characters{"right-to-left"}
+    }
+    listPattern{
+        standard{
+            2{"{0} און {1}"}
+            end{"{0} און {1}"}
+        }
+    }
+    measurementSystemNames{
+        metric{"מעטריש"}
+    }
+}

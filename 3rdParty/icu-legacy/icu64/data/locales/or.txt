@@ -1,0 +1,1314 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+or{
+    AuxExemplarCharacters{"[\u200C\u200D]"}
+    ExemplarCharacters{
+        "[଼ ଅ ଆ ଇ ଈ ଉ ଊ ଋ ଏ ଐ ଓ ଔ ଁ ଂ ଃ କ ଖ ଗ ଘ ଙ ଚ ଛ ଜ ଝ ଞ ଟ ଠ ଡ{ଡ଼} ଢ{ଢ଼} ଣ ତ ଥ ଦ ଧ"
+        " ନ ପ ଫ ବ ଭ ମ ଯୟ ର ଲ ଳ ଵ ୱ ଶ ଷ ସ ହ ା ି ୀ ୁ ୂ ୃ େ ୈ ୋ ୌ ୍]"
+    }
+    ExemplarCharactersIndex{
+        "[ଅ ଆ ଇ ଈ ଉ ଊ ଋ ଏ ଐ ଓ ଔ କ ଖ ଗ ଘ ଙ ଚ ଛ ଜ ଝ ଞ ଟ ଠ ଡ ଢ ଣ ତ ଥ ଦ ଧ ନ ପ ଫ ବ ଭ ମ ଯ ର"
+        " ଲ ଳ ଶ ଷ ସ ହ {କ୍ଷ}]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0୦ 1୧ 2୨ 3୩ 4୪ 5୫ 6୬ 7୭ 8୮ 9୯]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    NumberElements{
+        latn{
+            miscPatterns{
+                atLeast{"{0}+"}
+            }
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat%alphaNextToNumber{"¤ #,##0.00;(¤ #,##0.00)"}
+                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 ହଜାର"}
+                        other{"0 ହଜାର"}
+                    }
+                    10000{
+                        one{"00 ହଜାର"}
+                        other{"00 ହଜାର"}
+                    }
+                    100000{
+                        one{"000 ହଜାର"}
+                        other{"000 ହଜାର"}
+                    }
+                    1000000{
+                        one{"0 ନିୟୁତ"}
+                        other{"0 ନିୟୁତ"}
+                    }
+                    10000000{
+                        one{"00 ନିୟୁତ"}
+                        other{"00 ନିୟୁତ"}
+                    }
+                    100000000{
+                        one{"000 ନିୟୁତ"}
+                        other{"000 ନିୟୁତ"}
+                    }
+                    1000000000{
+                        one{"0 ଶହକୋଟି"}
+                        other{"0 ଶହକୋଟି"}
+                    }
+                    10000000000{
+                        one{"00 ଶହକୋଟି"}
+                        other{"00 ଶହକୋଟି"}
+                    }
+                    100000000000{
+                        one{"000 ଶହକୋଟି"}
+                        other{"000 ଶହକୋଟି"}
+                    }
+                    1000000000000{
+                        one{"0 ଲକ୍ଷକୋଟି"}
+                        other{"0 ଲକ୍ଷକୋଟି"}
+                    }
+                    10000000000000{
+                        one{"00 ଲକ୍ଷକୋଟି"}
+                        other{"00 ଲକ୍ଷକୋଟି"}
+                    }
+                    100000000000000{
+                        one{"000 ଲକ୍ଷକୋଟି"}
+                        other{"000 ଲକ୍ଷକୋଟି"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        one{"¤0ହ"}
+                        other{"¤0ହ"}
+                    }
+                    10000{
+                        one{"¤00ହ"}
+                        other{"¤00ହ"}
+                    }
+                    100000{
+                        one{"¤000ହ"}
+                        other{"¤000ହ"}
+                    }
+                    1000000{
+                        one{"¤0ନି"}
+                        other{"¤0ନି"}
+                    }
+                    10000000{
+                        one{"¤00ନି"}
+                        other{"¤00ନି"}
+                    }
+                    100000000{
+                        one{"¤000ନି"}
+                        other{"¤000ନି"}
+                    }
+                    1000000000{
+                        one{"¤0ବି"}
+                        other{"¤0ବି"}
+                    }
+                    10000000000{
+                        one{"¤00ବି"}
+                        other{"¤00ବି"}
+                    }
+                    100000000000{
+                        one{"¤000ବି"}
+                        other{"¤000ବି"}
+                    }
+                    1000000000000{
+                        one{"¤0ଟ୍ରି"}
+                        other{"¤0ଟ୍ରି"}
+                    }
+                    10000000000000{
+                        one{"¤00ଟ୍ରି"}
+                        other{"¤00ଟ୍ରି"}
+                    }
+                    100000000000000{
+                        one{"¤000ଟ୍ରି"}
+                        other{"¤000ଟ୍ରି"}
+                    }
+                }
+                currencyFormat%alphaNextToNumber{
+                    1000{
+                        one{"¤ 0ହ"}
+                        other{"¤ 0ହ"}
+                    }
+                    10000{
+                        one{"¤ 00ହ"}
+                        other{"¤ 00ହ"}
+                    }
+                    100000{
+                        one{"¤ 000ହ"}
+                        other{"¤ 000ହ"}
+                    }
+                    1000000{
+                        one{"¤ 0ନି"}
+                        other{"¤ 0ନି"}
+                    }
+                    10000000{
+                        one{"¤ 00ନି"}
+                        other{"¤ 00ନି"}
+                    }
+                    100000000{
+                        one{"¤ 000ନି"}
+                        other{"¤ 000ନି"}
+                    }
+                    1000000000{
+                        one{"¤ 0ବି"}
+                        other{"¤ 0ବି"}
+                    }
+                    10000000000{
+                        one{"¤ 00ବି"}
+                        other{"¤ 00ବି"}
+                    }
+                    100000000000{
+                        one{"¤ 000ବି"}
+                        other{"¤ 000ବି"}
+                    }
+                    1000000000000{
+                        one{"¤ 0T"}
+                        other{"¤ 0T"}
+                    }
+                    10000000000000{
+                        one{"¤ 00T"}
+                        other{"¤ 00T"}
+                    }
+                    100000000000000{
+                        one{"¤ 000T"}
+                        other{"¤ 000T"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0ହ"}
+                        other{"0ହ"}
+                    }
+                    10000{
+                        one{"00ହ"}
+                        other{"00ହ"}
+                    }
+                    100000{
+                        one{"000ହ"}
+                        other{"000ହ"}
+                    }
+                    1000000{
+                        one{"0ନି"}
+                        other{"0ନି"}
+                    }
+                    10000000{
+                        one{"00ନି"}
+                        other{"00ନି"}
+                    }
+                    100000000{
+                        one{"000ନି"}
+                        other{"000ନି"}
+                    }
+                    1000000000{
+                        one{"0ବି"}
+                        other{"0ବି"}
+                    }
+                    10000000000{
+                        one{"00ବି"}
+                        other{"00ବି"}
+                    }
+                    100000000000{
+                        one{"000ବି"}
+                        other{"000ବି"}
+                    }
+                    1000000000000{
+                        one{"0ଟ୍ରି"}
+                        other{"0ଟ୍ରି"}
+                    }
+                    10000000000000{
+                        one{"00ଟ୍ରି"}
+                        other{"00ଟ୍ରି"}
+                    }
+                    100000000000000{
+                        one{"000ଟ୍ରି"}
+                        other{"000ଟ୍ରି"}
+                    }
+                }
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"ଡାହାଣରେ ଥିବା {0} ନିଅନ୍ତୁ"}
+            }
+            plural{
+                one{"{0} ଦିନ"}
+                other{"{0} ଦିନଗୁଡ଼ିକ"}
+            }
+        }
+        native{"orya"}
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, MMMM d, y G",
+                "MMMM d, y G",
+                "MMM d, y G",
+                "M/d/y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} ରେ {0}",
+                "{1} ରେ {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "GyMMMMEEEEd",
+                "GyMMMMd",
+                "GyMMMd",
+                "GGGGGyMd",
+            }
+            availableFormats{
+                Ed{"d E"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, MMM d, y G"}
+                GyMMMd{"MMM d, y G"}
+                MEd{"E, M/d"}
+                MMMEd{"E, MMM d"}
+                MMdd{"dd-MM"}
+                Md{"M/d"}
+                y{"y G"}
+                yMM{"MM-y G"}
+                yMMMM{"MMMM y G"}
+                yQQQ{"QQQ y G"}
+                yyyy{"y G"}
+                yyyyM{"M/y GGGGG"}
+                yyyyMEd{"E, M/d/y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E, MMM d, y G"}
+                yyyyMMMM{"MMMM y G"}
+                yyyyMMMd{"MMM d, y G"}
+                yyyyMd{"M/d/y GGGGG"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ y G"}
+            }
+            intervalFormats{
+                M{
+                    M{"M – M"}
+                }
+                MEd{
+                    M{"E, M/d – E, M/d"}
+                    d{"E, M/d – E, M/d"}
+                }
+                MMM{
+                    M{"MMM – MMM"}
+                }
+                MMMEd{
+                    M{"E, MMM d – E, MMM d"}
+                    d{"E, MMM d – E, MMM d"}
+                }
+                MMMd{
+                    d{"MMM d – d"}
+                }
+                Md{
+                    d{"M/d – M/d"}
+                }
+                fallback{"{0} – {1}"}
+                y{
+                    y{"y – y G"}
+                }
+                yM{
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
+                }
+                yMEd{
+                    M{"E, M/d/y – E, M/d/y GGGGG"}
+                    d{"E, M/d/y – E, M/d/y GGGGG"}
+                    y{"E, M/d/y – E, M/d/y GGGGG"}
+                }
+                yMMM{
+                    M{"MMM – MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                yMMMEd{
+                    M{"E, MMM d – E, MMM d, y G"}
+                    d{"E, MMM d – E, MMM d, y G"}
+                    y{"E, MMM d, y – E, MMM d, y G"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y G"}
+                    y{"MMMM y – MMMM y G"}
+                }
+                yMMMd{
+                    M{"MMM d – MMM d, y G"}
+                    d{"MMM d – d, y G"}
+                    y{"MMM d, y – MMM d, y G"}
+                }
+                yMd{
+                    M{"M/d/y – M/d/y GGGGG"}
+                    d{"M/d/y – M/d/y GGGGG"}
+                    y{"M/d/y – M/d/y GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkersNarrow{
+                "ପୂ",
+                "ଅ",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, MMMM d, y",
+                "MMMM d, y",
+                "MMM d, y",
+                "M/d/yy",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimePatterns%atTime{
+                "{0} ଠାରେ {1}",
+                "{0} ଠାରେ {1}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yyMd",
+            }
+            availableFormats{
+                Ed{"d E"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, MMM d, y G"}
+                GyMMMd{"MMM d, y G"}
+                MEd{"E, M/d"}
+                MMMEd{"E, MMM d"}
+                MMMMW{
+                    one{"MMMM ର ସପ୍ତାହ W"}
+                    other{"MMMM ର ସପ୍ତାହ W"}
+                }
+                MMdd{"dd-MM"}
+                Md{"M/d"}
+                yM{"M/y"}
+                yMEd{"E, M/d/y"}
+                yMM{"MM-y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, MMM d, y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"MMM d, y"}
+                yMd{"M/d/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+                yw{
+                    one{"Y ର ସପ୍ତାହ w"}
+                    other{"Y ର ସପ୍ତାହ w"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "ରବି",
+                        "ସୋମ",
+                        "ମଙ୍ଗଳ",
+                        "ବୁଧ",
+                        "ଗୁରୁ",
+                        "ଶୁକ୍ର",
+                        "ଶନି",
+                    }
+                    wide{
+                        "ରବିବାର",
+                        "ସୋମବାର",
+                        "ମଙ୍ଗଳବାର",
+                        "ବୁଧବାର",
+                        "ଗୁରୁବାର",
+                        "ଶୁକ୍ରବାର",
+                        "ଶନିବାର",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ର",
+                        "ସୋ",
+                        "ମ",
+                        "ବୁ",
+                        "ଗୁ",
+                        "ଶୁ",
+                        "ଶ",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"ପୂର୍ବାହ୍ନ"}
+                        pm{"ଅପରାହ୍ନ"}
+                    }
+                    narrow{
+                        am{"AM"}
+                        pm{"ଅପରାହ୍ନ"}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "BC",
+                    "AD",
+                }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
+                wide{
+                    "ଖ୍ରୀଷ୍ଟପୂର୍ବ",
+                    "ଖ୍ରୀଷ୍ଟାବ୍ଦ",
+                }
+                wide%variant{
+                    "ସାମ୍ପ୍ରତିକ ଯୁଗ ପୂର୍ବରୁ",
+                    "ସାମ୍ପ୍ରତିକ ଯୁଗ",
+                }
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+            monthNames{
+                format{
+                    wide{
+                        "ଜାନୁଆରୀ",
+                        "ଫେବୃଆରୀ",
+                        "ମାର୍ଚ୍ଚ",
+                        "ଅପ୍ରେଲ",
+                        "ମଇ",
+                        "ଜୁନ",
+                        "ଜୁଲାଇ",
+                        "ଅଗଷ୍ଟ",
+                        "ସେପ୍ଟେମ୍ବର",
+                        "ଅକ୍ଟୋବର",
+                        "ନଭେମ୍ବର",
+                        "ଡିସେମ୍ବର",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ଜା",
+                        "ଫେ",
+                        "ମା",
+                        "ଅ",
+                        "ମଇ",
+                        "ଜୁ",
+                        "ଜୁ",
+                        "ଅ",
+                        "ସେ",
+                        "ଅ",
+                        "ନ",
+                        "ଡି",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    wide{
+                        "1ମ ତ୍ରୟମାସ",
+                        "2ୟ ତ୍ରୟମାସ",
+                        "3ୟ ତ୍ରୟମାସ",
+                        "4ର୍ଥ ତ୍ରୟମାସ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                }
+            }
+        }
+        indian{
+            eras{
+                abbreviated{
+                    "ସାକା",
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "ଚୈତ୍ର",
+                        "ବୈଶାଖ",
+                        "ଜ୍ୟୋଷ୍ଠ",
+                        "ଆଷାଢ଼",
+                        "ଶ୍ରାବଣ",
+                        "ଭାଦ୍ରବ",
+                        "ଆଶ୍ଵିନ",
+                        "କାର୍ତ୍ତିକ",
+                        "ଆଗ୍ରାହୟଣ",
+                        "ପୌଷ",
+                        "ମାଘ",
+                        "ଫାଲଗୁନ",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"କାର୍ଯ୍ୟକଳାପ"}
+        african_scripts{"ଆଫ୍ରିକୀୟ ସ୍କ୍ରିପ୍ଟ"}
+        american_scripts{"ଆମେରିକୀୟ ସ୍କ୍ରିପ୍ଟ"}
+        animal{"ପଶୁ"}
+        animals_nature{"ପଶୁ କିମ୍ବା ପ୍ରକୃତି"}
+        arrows{"ତୀର"}
+        body{"ଶରୀର"}
+        box_drawing{"ବକ୍ସ ଅଙ୍କନ କରିବା"}
+        braille{"ବ୍ରେଲ୍"}
+        building{"ଅଟ୍ଟାଳିକା"}
+        bullets_stars{"ବୁଲେଟ୍‍ କିମ୍ବା ତାରା"}
+        consonantal_jamo{"ବ୍ୟଞ୍ଜନ ବର୍ଣ୍ଣ ସମ୍ବନ୍ଧୀୟ ଜାମୋ"}
+        currency_symbols{"ମୁଦ୍ରା ଚିହ୍ନ"}
+        dash_connector{"ଡ୍ୟାଶ୍‍ କିମ୍ବା ସଂଯୋଜକ"}
+        digits{"ଅଙ୍କ"}
+        dingbats{"ଡିଙ୍ଗବ୍ୟାଟ୍‍"}
+        divination_symbols{"ଅଲୌକିକ ଚିହ୍ନ"}
+        downwards_arrows{"ନିମ୍ନାଭିମୁଖୀ ତୀର"}
+        downwards_upwards_arrows{"ନିମ୍ନାଭିମୁଖୀ ଉର୍ଦ୍ଧ୍ୱମୁଖୀ ତୀର"}
+        east_asian_scripts{"ପୂର୍ବ ଏସିୟ ସ୍କ୍ରିପ୍ଟ"}
+        emoji{"ଇମୋଜି"}
+        european_scripts{"ୟୁରୋପିୟ ସ୍କ୍ରିପ୍ଟ"}
+        female{"ମହିଳା"}
+        flag{"ପତାକା"}
+        flags{"ପତାକାଗୁଡ଼ିକ"}
+        food_drink{"ଖାଦ୍ୟ ଏବଂ ପାନୀୟ"}
+        format{"ଫର୍ମାଟ୍‍"}
+        format_whitespace{"ଫର୍ମାଟ୍‍ ଏବଂ ଧଳା ଖାଲି ସ୍ଥାନ"}
+        full_width_form_variant{"ପୂର୍ଣ୍ଣ-ପ୍ରସ୍ଥ ଭିନ୍ନତା"}
+        geometric_shapes{"ଜ୍ୟାମିତିକ ଆକୃତି"}
+        half_width_form_variant{"ଅର୍ଦ୍ଧ-ପ୍ରସ୍ଥ ଭିନ୍ନତା"}
+        han_characters{"ହାନ୍‍ ବର୍ଣ୍ଣ"}
+        han_radicals{"ହାନ୍‍ ରାଡିକାଲ୍"}
+        hanja{"ହାଞ୍ଜା"}
+        hanzi_simplified{"ହାଞ୍ଜି (ସରଳୀକୃତ)"}
+        hanzi_traditional{"ହାଞ୍ଜି (ପାରମ୍ପରିକ)"}
+        heart{"ହୃଦୟ"}
+        historic_scripts{"ଐତିହାସିକ ସ୍କ୍ରିପ୍ଟ"}
+        ideographic_desc_characters{"ସାଙ୍କେତିକ ବର୍ଣ୍ଣନା ବର୍ଣ୍ଣ"}
+        japanese_kana{"ଜାପାନୀ କାନା"}
+        kanbun{"କାନବୁନ୍‍"}
+        kanji{"କାଞ୍ଜି"}
+        keycap{"କୀକ୍ୟାପ୍‍"}
+        leftwards_arrows{"ବାମମୁଖୀ ତୀର"}
+        leftwards_rightwards_arrows{"ବାମମୁଖୀ ଡାହାଣମୁଖୀ ତୀର"}
+        letterlike_symbols{"ଅକ୍ଷରପରି ଚିହ୍ନ"}
+        limited_use{"ସୀମିତ-ବ୍ୟବହାର"}
+        male{"ପୁରୁଷ"}
+        math_symbols{"ଗାଣିତିକ ଚିହ୍ନ"}
+        middle_eastern_scripts{"ମଧ୍ୟପ୍ରାଚ୍ୟ ସ୍କ୍ରିପ୍ଟ"}
+        miscellaneous{"ବିବିଧ"}
+        modern_scripts{"ଆଧୁନିକ ସ୍କ୍ରିପ୍ଟ"}
+        modifier{"ସଂଶୋଧକ"}
+        musical_symbols{"ସାଙ୍ଗୀତିକ ଚିହ୍ନ"}
+        nature{"ପ୍ରକୃତି"}
+        nonspacing{"ଅଣବ୍ୟବଧାନୀକରଣ"}
+        numbers{"ସଂଖ୍ୟାଗୁଡ଼ିକ"}
+        objects{"ପଦାର୍ଥ"}
+        other{"ଅନ୍ୟ"}
+        paired{"ଯୋଡ଼ା"}
+        person{"ବ୍ୟକ୍ତି"}
+        phonetic_alphabet{"ଫୋନେଟିକ୍‍ ବର୍ଣ୍ଣମାଳା"}
+        pictographs{"ପିକ୍ଟୋଗ୍ରାଫ୍"}
+        place{"ସ୍ଥାନ"}
+        plant{"ଗଛ"}
+        punctuation{"ବିରାମ ଚିହ୍ନ"}
+        rightwards_arrows{"ଡାହାଣମୁଖୀ ତୀର"}
+        sign_standard_symbols{"ଚିହ୍ନ କିମ୍ବା ସଙ୍କେତ"}
+        small_form_variant{"ଛୋଟ ଭିନ୍ନତା"}
+        smiley{"ସ୍ମାଇଲି"}
+        smileys_people{"ସ୍ମାଇଲି କିମ୍ବା ବ୍ୟକ୍ତି"}
+        south_asian_scripts{"ଦକ୍ଷିଣ ଏସିୟ ସ୍କ୍ରିପ୍ଟ"}
+        southeast_asian_scripts{"ଦକ୍ଷିଣପୂର୍ବ ଏସିୟ ସ୍କ୍ରିପ୍ଟ"}
+        spacing{"ବ୍ୟବଧାନୀକରଣ"}
+        sport{"କ୍ରୀଡ଼ା"}
+        symbols{"ସଙ୍କେତ"}
+        technical_symbols{"ବୈଷୟିକ ଚିହ୍ନ"}
+        tone_marks{"ସ୍ୱର ଚିହ୍ନ"}
+        travel{"ଯାତ୍ରା"}
+        travel_places{"ଯାତ୍ରା କିମ୍ବା ସ୍ଥାନ"}
+        upwards_arrows{"ଉର୍ଦ୍ଧ୍ୱମୁଖୀ ତୀରଗୁଡ଼ିକ"}
+        variant_forms{"ଭିନ୍ନତା"}
+        vocalic_jamo{"ସ୍ୱରବର୍ଣ୍ଣ ସମ୍ବନ୍ଧୀୟ ଜାମୋ"}
+        weather{"ପାଣିପାଗ"}
+        western_asian_scripts{"ପଶ୍ଚିମ ଏସିୟ ସ୍କ୍ରିପ୍ଟ"}
+        whitespace{"ଧଳା ଖାଲି ସ୍ଥାନ"}
+    }
+    fields{
+        day{
+            dn{"ଦିନ"}
+            relative{
+                "-1"{"ଗତକାଲି"}
+                "0"{"ଆଜି"}
+                "1"{"ଆସନ୍ତାକାଲି"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଦିନରେ"}
+                    other{"{0} ଦିନରେ"}
+                }
+                past{
+                    one{"{0} ଦିନ ପୂର୍ବେ"}
+                    other{"{0} ଦିନ ପୂର୍ବେ"}
+                }
+            }
+        }
+        dayOfYear{
+            dn{"ବର୍ଷର ଦିନ"}
+        }
+        dayOfYear-short{
+            dn{"ବ. ର ଦିନ"}
+        }
+        dayperiod{
+            dn{"ପୂର୍ବାହ୍ନ/ଅପରାହ୍ନ"}
+        }
+        era{
+            dn{"ଯୁଗ"}
+        }
+        fri{
+            relative{
+                "-1"{"ଗତ ଶୁକ୍ରବାର"}
+                "0"{"ଏହି ଶୁକ୍ରବାର"}
+                "1"{"ଆଗାମୀ ଶୁକ୍ରବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଶୁକ୍ରବାରରେ"}
+                    other{"{0} ଶୁକ୍ରବାରରେ"}
+                }
+                past{
+                    one{"{0} ଶୁକ୍ରବାର ପୂର୍ବେ"}
+                    other{"{0} ଶୁକ୍ରବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        fri-narrow{
+            relativeTime{
+                past{
+                    one{"{0} ଶୁ. ପୂର୍ବେ"}
+                    other{"{0} ଶୁ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"ଗତ ଶୁକ୍ର."}
+                "0"{"ଏହି ଶୁକ୍ର."}
+                "1"{"ଆଗାମୀ ଶୁକ୍ର."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଶୁକ୍ର. ରେ"}
+                    other{"{0} ଶୁକ୍ର. ରେ"}
+                }
+                past{
+                    one{"{0} ଶୁକ୍ର. ପୂର୍ବେ"}
+                    other{"{0} ଶୁକ୍ର. ପୂର୍ବେ"}
+                }
+            }
+        }
+        hour{
+            dn{"ଘଣ୍ଟା"}
+            relative{
+                "0"{"ଏହି ଘଣ୍ଟା"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଘଣ୍ଟାରେ"}
+                    other{"{0} ଘଣ୍ଟାରେ"}
+                }
+                past{
+                    one{"{0} ଘଣ୍ଟା ପୂର୍ବେ"}
+                    other{"{0} ଘଣ୍ଟା ପୂର୍ବେ"}
+                }
+            }
+        }
+        hour-short{
+            dn{"ଘ."}
+            relativeTime{
+                future{
+                    one{"{0} ଘ. ରେ"}
+                    other{"{0} ଘ. ରେ"}
+                }
+                past{
+                    one{"{0} ଘ. ପୂର୍ବେ"}
+                    other{"{0} ଘ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        minute{
+            dn{"ମିନିଟ୍"}
+            relative{
+                "0"{"ଏହି ମିନିଟ୍"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ମିନିଟ୍‌‌ରେ"}
+                    other{"{0} ମିନିଟ୍‌‌ରେ"}
+                }
+                past{
+                    one{"{0} ମିନିଟ୍ ପୂର୍ବେ"}
+                    other{"{0} ମିନିଟ୍ ପୂର୍ବେ"}
+                }
+            }
+        }
+        minute-short{
+            dn{"ମି."}
+            relativeTime{
+                future{
+                    one{"{0} ମି. ରେ"}
+                    other{"{0} ମି. ରେ"}
+                }
+                past{
+                    one{"{0} ମି. ପୂର୍ବେ"}
+                    other{"{0} ମି. ପୂର୍ବେ"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"ଗତ ସୋମବାର"}
+                "0"{"ଏହି ସୋମବାର"}
+                "1"{"ଆସନ୍ତା ସୋମବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ସୋମବାରରେ"}
+                    other{"{0} ସୋମବାରରେ"}
+                }
+                past{
+                    one{"{0} ସୋମବାର ପୂର୍ବେ"}
+                    other{"{0} ସୋମବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"ଗତ ସୋ"}
+                "0"{"ଏହି ସୋ"}
+                "1"{"ଆସନ୍ତା ସୋ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ସୋ ରେ"}
+                    other{"{0} ସୋ ରେ"}
+                }
+                past{
+                    one{"{0} ସୋ ପୂର୍ବେ"}
+                    other{"{0} ସୋ ପୂର୍ବେ"}
+                }
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"ଗତ ସୋମ."}
+                "0"{"ଏହି ସୋମ."}
+                "1"{"ଆସନ୍ତା ସୋମ."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ସୋମ. ରେ"}
+                    other{"{0} ସୋମ. ରେ"}
+                }
+                past{
+                    one{"{0} ସୋମ. ପୂର୍ବେ"}
+                    other{"{0} ସୋମ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        month{
+            dn{"ମାସ"}
+            relative{
+                "-1"{"ଗତ ମାସ"}
+                "0"{"ଏହି ମାସ"}
+                "1"{"ଆଗାମୀ ମାସ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ମାସରେ"}
+                    other{"{0} ମାସରେ"}
+                }
+                past{
+                    one{"{0} ମାସ ପୂର୍ବେ"}
+                    other{"{0} ମାସ ପୂର୍ବେ"}
+                }
+            }
+        }
+        month-short{
+            dn{"ମା."}
+            relativeTime{
+                future{
+                    one{"{0} ମା. ରେ"}
+                    other{"{0} ମା. ରେ"}
+                }
+                past{
+                    one{"{0} ମା. ପୂର୍ବେ"}
+                    other{"{0} ମା. ପୂର୍ବେ"}
+                }
+            }
+        }
+        quarter{
+            dn{"ତ୍ରୟମାସ"}
+            relative{
+                "-1"{"ଗତ ତ୍ରୟମାସ"}
+                "0"{"ଗତ ତ୍ରୟମାସ"}
+                "1"{"ଆଗାମୀ ତ୍ରୟମାସ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ତ୍ରୟମାସରେ"}
+                    other{"{0} ତ୍ରୟମାସରେ"}
+                }
+                past{
+                    one{"{0} ତ୍ରୟମାସ ପୂର୍ବେ"}
+                    other{"{0} ତ୍ରୟମାସ ପୂର୍ବେ"}
+                }
+            }
+        }
+        quarter-narrow{
+            relative{
+                "-1"{"ଗତ ତିନିମାସ"}
+                "0"{"ଏହି ତିନିମାସ"}
+                "1"{"ଆଗାମୀ ତିନିମାସ"}
+            }
+        }
+        quarter-short{
+            dn{"ତ୍ରୟ."}
+            relative{
+                "-1"{"ଗତ ତିନିମାସ"}
+                "0"{"ଏହି ତ୍ରୟମାସ"}
+                "1"{"ଆଗାମୀ ତ୍ରୟମାସ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ତ୍ରୟ. ରେ"}
+                    other{"{0} ତ୍ରୟ. ରେ"}
+                }
+                past{
+                    one{"{0} ତ୍ରୟ. ପୂର୍ବେ"}
+                    other{"{0} ତ୍ରୟ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"ଗତ ଶନିବାର"}
+                "0"{"ଏହି ଶନିବାର"}
+                "1"{"ଆଗାମୀ ଶନିବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଶନିବାରରେ"}
+                    other{"{0} ଶନିବାରରେ"}
+                }
+                past{
+                    one{"{0} ଶନିବାର ପୂର୍ବେ"}
+                    other{"{0} ଶନିବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"ଗତ ଶନି."}
+                "0"{"ଏହି ଶନି."}
+                "1"{"ଆଗାମୀ ଶନି."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଶନି. ରେ"}
+                    other{"{0} ଶନି. ରେ"}
+                }
+                past{
+                    one{"{0} ଶନି. ପୂର୍ବେ"}
+                    other{"{0} ଶନି. ପୂର୍ବେ"}
+                }
+            }
+        }
+        second{
+            dn{"ସେକେଣ୍ଡ୍"}
+            relative{
+                "0"{"ବର୍ତ୍ତମାନ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ସେକେଣ୍ଡରେ"}
+                    other{"{0} ସେକେଣ୍ଡରେ"}
+                }
+                past{
+                    one{"{0} ସେକେଣ୍ଡ ପୂର୍ବେ"}
+                    other{"{0} ସେକେଣ୍ଡ ପୂର୍ବେ"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"ସେ."}
+        }
+        second-short{
+            relativeTime{
+                future{
+                    one{"{0} ସେ. ରେ"}
+                    other{"{0} ସେ. ରେ"}
+                }
+                past{
+                    one{"{0} ସେ. ପୂର୍ବେ"}
+                    other{"{0} ସେ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"ଗତ ରବିବାର"}
+                "0"{"ଏହି ରବିବାର"}
+                "1"{"ଆଗାମୀ ରବିବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ରବିବାରରେ"}
+                    other{"{0} ରବିବାରରେ"}
+                }
+                past{
+                    one{"{0} ରବିବାର ପୂର୍ବେ"}
+                    other{"{0} ରବିବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"ଗତ ରବି."}
+                "0"{"ଏହି ରବି."}
+                "1"{"ଆଗାମୀ ରବି."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ରବି. ରେ"}
+                    other{"{0} ରବି. ରେ"}
+                }
+                past{
+                    one{"{0} ରବି. ପୂର୍ବେ"}
+                    other{"{0} ରବି. ପୂର୍ବେ"}
+                }
+            }
+        }
+        thu{
+            relative{
+                "-1"{"ଗତ ଗୁରୁବାର"}
+                "0"{"ଏହି ଗୁରୁବାର"}
+                "1"{"ଆଗାମୀ ଗୁରୁବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଗୁରୁବାରରେ"}
+                    other{"{0} ଗୁରୁବାରରେ"}
+                }
+                past{
+                    one{"{0} ଗୁରୁବାର ପୂର୍ବେ"}
+                    other{"{0} ଗୁରୁବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"ଗତ ଗୁରୁ."}
+                "0"{"ଏହି ଗୁରୁ."}
+                "1"{"ଆଗାମୀ ଗୁରୁ."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ଗୁରୁ. ରେ"}
+                    other{"{0} ଗୁରୁ. ରେ"}
+                }
+                past{
+                    one{"{0} ଗୁରୁ. ପୂର୍ବେ"}
+                    other{"{0} ଗୁରୁ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        tue{
+            relative{
+                "-1"{"ଗତ ମଙ୍ଗଳବାର"}
+                "0"{"ଏହି ମଙ୍ଗଳବାର"}
+                "1"{"ଆଗାମୀ ମଙ୍ଗଳବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ମଙ୍ଗଳବାରରେ"}
+                    other{"{0} ମଙ୍ଗଳବାରରେ"}
+                }
+                past{
+                    one{"{0} ମଙ୍ଗଳବାର ପୂର୍ବେ"}
+                    other{"{0} ମଙ୍ଗଳବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"ଗତ ମଙ୍ଗଳ."}
+                "0"{"ଏହି ମଙ୍ଗଳ."}
+                "1"{"ଆଗାମୀ ମଙ୍ଗଳ."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ମଙ୍ଗଳ. ରେ"}
+                    other{"{0} ମଙ୍ଗଳ. ରେ"}
+                }
+                past{
+                    one{"{0} ମଙ୍ଗଳ. ପୂର୍ବେ"}
+                    other{"{0} ମଙ୍ଗଳ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        wed{
+            relative{
+                "-1"{"ଗତ ବୁଧବାର"}
+                "0"{"ଏହି ବୁଧବାର"}
+                "1"{"ଆସନ୍ତା ବୁଧବାର"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ବୁଧବାରରେ"}
+                    other{"{0} ବୁଧବାରରେ"}
+                }
+                past{
+                    one{"{0} ବୁଧବାର ପୂର୍ବେ"}
+                    other{"{0} ବୁଧବାର ପୂର୍ବେ"}
+                }
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"ଗତ ବୁଧ"}
+                "0"{"ଏହି ବୁଧ"}
+                "1"{"ଆସନ୍ତା ବୁଧ"}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"ଗତ ବୁଧ."}
+                "0"{"ଏହି ବୁଧ."}
+                "1"{"ଆସନ୍ତା ବୁଧ."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ବୁଧ. ରେ"}
+                    other{"{0} ବୁଧ. ରେ"}
+                }
+                past{
+                    one{"{0} ବୁଧ. ପୂର୍ବେ"}
+                    other{"{0} ବୁଧ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        week{
+            dn{"ସପ୍ତାହ"}
+            relative{
+                "-1"{"ଗତ ସପ୍ତାହ"}
+                "0"{"ଏହି ସପ୍ତାହ"}
+                "1"{"ଆଗାମୀ ସପ୍ତାହ"}
+            }
+            relativePeriod{"{0} ର ସପ୍ତାହ"}
+            relativeTime{
+                future{
+                    one{"{0} ସପ୍ତାହରେ"}
+                    other{"{0} ସପ୍ତାହରେ"}
+                }
+                past{
+                    one{"{0} ସପ୍ତାହ ପୂର୍ବେ"}
+                    other{"{0} ସପ୍ତାହ ପୂର୍ବେ"}
+                }
+            }
+        }
+        week-short{
+            dn{"ସ."}
+            relativeTime{
+                future{
+                    one{"{0} ସପ୍ତା. ରେ"}
+                    other{"{0} ସପ୍ତା. ରେ"}
+                }
+                past{
+                    one{"{0} ସପ୍ତା. ପୂର୍ବେ"}
+                    other{"{0} ସପ୍ତା. ପୂର୍ବେ"}
+                }
+            }
+        }
+        weekOfMonth{
+            dn{"ମାସର ସପ୍ତାହ"}
+        }
+        weekOfMonth-short{
+            dn{"ମା. ର ସ."}
+        }
+        weekday{
+            dn{"ସ. ର ଦିନ"}
+        }
+        weekdayOfMonth{
+            dn{"ସାପ୍ତାହିକ ଦିନର ମାସ"}
+        }
+        weekdayOfMonth-short{
+            dn{"ସା. ଦିନର ମା."}
+        }
+        year{
+            dn{"ବର୍ଷ"}
+            relative{
+                "-1"{"ଗତ ବର୍ଷ"}
+                "0"{"ଏହି ବର୍ଷ"}
+                "1"{"ଆଗାମୀ ବର୍ଷ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ବର୍ଷରେ"}
+                    other{"{0} ବର୍ଷରେ"}
+                }
+                past{
+                    one{"{0} ବର୍ଷ ପୂର୍ବେ"}
+                    other{"{0} ବର୍ଷ ପୂର୍ବେ"}
+                }
+            }
+        }
+        year-short{
+            dn{"ବ."}
+            relativeTime{
+                future{
+                    one{"{0} ବ. ରେ"}
+                    other{"{0} ବ. ରେ"}
+                }
+                past{
+                    one{"{0} ବ. ପୂର୍ବେ"}
+                    other{"{0} ବ. ପୂର୍ବେ"}
+                }
+            }
+        }
+        zone{
+            dn{"ସମୟ କ୍ଷେତ୍ର"}
+        }
+        zone-short{
+            dn{"କ୍ଷେତ୍ର"}
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} କିମ୍ବା {1}"}
+            end{"{0} କିମ୍ବା {1}"}
+        }
+        standard{
+            2{"{0} ଓ {1}"}
+            end{"{0}, ଓ {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"ୟୁକେ"}
+        US{"ୟୁଏସ୍‌"}
+        metric{"ମେଟ୍ରିକ୍‌"}
+    }
+    parse{
+        general{
+            lenient{
+                "[.．․﹒ 。｡︒]",
+                "['＇’ ՚ ᾽᾿ ʼ]",
+                "[%％﹪ ٪]",
+                "[‰ ؉]",
+                "[\$＄﹩]",
+                "[£ ₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₹ ₨ {Rp} {Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-－﹣ ‑ ‒ −⁻₋ ➖]",
+                "[,，﹐︐ ، ٫ 、﹑､︑]",
+                "[+＋﬩﹢⁺₊ ➕]",
+            }
+        }
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "or",
+            }
+            surnameFirst{
+                "ko",
+                "si",
+                "ta",
+                "te",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+        namePattern{
+            givenFirst-long-addressing-formal{"{title} {surname}"}
+            givenFirst-long-addressing-informal{"{given-informal}"}
+            givenFirst-long-monogram-informal{"{given-informal-monogram-allCaps}{surname-monogram-allCaps}"}
+            givenFirst-long-referring-formal{"{given} {given2} {surname} {credentials}"}
+            givenFirst-long-referring-informal{"{given-informal} {surname}"}
+            givenFirst-medium-addressing-formal{"{title} {surname}"}
+            givenFirst-medium-addressing-informal{"{given-informal}"}
+            givenFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-medium-referring-formal{"{given} {given2-initial} {surname} {credentials}"}
+            givenFirst-medium-referring-informal{"{given-informal} {surname}"}
+            givenFirst-short-addressing-formal{"{title} {surname}"}
+            givenFirst-short-addressing-informal{"{given-informal}"}
+            givenFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-short-referring-formal{"{given-initial} {given2-initial} {surname}"}
+            givenFirst-short-referring-informal{"{given-informal} {surname-initial}"}
+            sorting-long-referring-formal{"{surname-core}, {given} {given2} {surname-prefix}"}
+            sorting-long-referring-informal{"{surname}, {given-informal}"}
+            sorting-medium-referring-formal{"{surname-core}, {given} {given2-initial} {surname-prefix}"}
+            sorting-medium-referring-informal{"{surname}, {given-informal}"}
+            sorting-short-referring-formal{"{surname-core}, {given-initial} {given2-initial} {surname-prefix}"}
+            sorting-short-referring-informal{"{surname}, {given-informal}"}
+            surnameFirst-long-addressing-formal{"{title} {surname}"}
+            surnameFirst-long-addressing-informal{"{given-informal}"}
+            surnameFirst-long-monogram-informal{"{surname-monogram-allCaps}{given-informal-monogram-allCaps}"}
+            surnameFirst-long-referring-formal{"{surname} {given} {given2} {credentials}"}
+            surnameFirst-long-referring-informal{"{surname} {given-informal}"}
+            surnameFirst-medium-addressing-formal{"{title} {surname}"}
+            surnameFirst-medium-addressing-informal{"{given-informal}"}
+            surnameFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-medium-referring-formal{"{surname} {given} {given2-initial} {credentials}"}
+            surnameFirst-medium-referring-informal{"{surname} {given-informal}"}
+            surnameFirst-short-addressing-formal{"{title} {surname}"}
+            surnameFirst-short-addressing-informal{"{given-informal}"}
+            surnameFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-short-referring-formal{"{surname} {given-initial} {given2-initial}"}
+            surnameFirst-short-referring-informal{"{surname} {given-initial}"}
+        }
+    }
+}

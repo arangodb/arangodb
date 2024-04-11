@@ -1,0 +1,127 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+bn_IN{
+    Ellipsis{
+        final{"{0}…"}
+        initial{"…{0}"}
+        medial{"{0}…{1}"}
+        word-medial{"{0}…{1}"}
+    }
+    NumberElements{
+        beng{
+            patterns{
+                currencyFormat%alphaNextToNumber{"¤ #,##,##0.00"}
+            }
+        }
+        latn{
+            patterns{
+                accountingFormat{"¤#,##,##0.00;(¤#,##,##0.00)"}
+                accountingFormat%alphaNextToNumber{"¤ #,##,##0.00;(¤ #,##,##0.00)"}
+                currencyFormat{"¤#,##,##0.00"}
+            }
+        }
+        minimalPairs{
+            plural{
+                one{"{0}টি দিন"}
+                other{"{0} দিন"}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            availableFormats{
+                MMMMW{
+                    one{"MMMM এর W নম্বর সপ্তাহ"}
+                    other{"MMMM এর W নম্বর সপ্তাহ"}
+                }
+            }
+            dayNames{
+                format{
+                    short{
+                        "রঃ",
+                        "সোঃ",
+                        "মঃ",
+                        "বুঃ",
+                        "বৃঃ",
+                        "শুঃ",
+                        "শঃ",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    wide{
+                        afternoon1{"দুপুরবেলায়"}
+                        afternoon2{"বিকাল"}
+                        evening1{"সন্ধ্যাবেলায়"}
+                        morning1{"ভোরবেলায়"}
+                        morning2{"সকালবেলায়"}
+                        night1{"রাত্রি"}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "খ্রিঃপূঃ",
+                    "খ্রিঃ",
+                }
+                wide{
+                    "খ্রিঃপূঃ",
+                    "খ্রিষ্টাব্দ",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "জানু",
+                        "ফেব",
+                        "মার্চ",
+                        "এপ্রি",
+                        "মে",
+                        "জুন",
+                        "জুল",
+                        "আগ",
+                        "সেপ্টেঃ",
+                        "অক্টোঃ",
+                        "নভেঃ",
+                        "ডিসেঃ",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "জানু",
+                        "ফেব",
+                        "মার্চ",
+                        "এপ্রিল",
+                        "মে",
+                        "জুন",
+                        "জুলাই",
+                        "আগস্ট",
+                        "সেপ্টেঃ",
+                        "অক্টোঃ",
+                        "নভেঃ",
+                        "ডিসেঃ",
+                    }
+                    narrow{
+                        "জা",
+                        "ফে",
+                        "মা",
+                        "এ",
+                        "মে",
+                        "জুন",
+                        "জুল",
+                        "আ",
+                        "সে",
+                        "অ",
+                        "ন",
+                        "ডি",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        US{"ইউএস"}
+    }
+}

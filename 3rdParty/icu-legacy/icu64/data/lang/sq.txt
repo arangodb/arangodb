@@ -1,0 +1,829 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sq{
+    Keys{
+        calendar{"Kalendari"}
+        cf{"Formati valutor"}
+        collation{"Radhitja"}
+        currency{"Valuta"}
+        hc{"Cikli orar (12 - 24)"}
+        lb{"Stili i gjerësisë së rreshtave"}
+        ms{"Sistemi i njësive matëse"}
+        numbers{"Numrat/shifrat"}
+    }
+    Languages{
+        aa{"afarisht"}
+        ab{"abkazisht"}
+        ace{"akinezisht"}
+        ada{"andangmeisht"}
+        ady{"adigisht"}
+        af{"afrikanisht"}
+        agq{"agemisht"}
+        ain{"ajnuisht"}
+        ak{"akanisht"}
+        ale{"aleutisht"}
+        alt{"altaishte jugore"}
+        am{"amarisht"}
+        an{"aragonezisht"}
+        ann{"oboloisht"}
+        anp{"angikisht"}
+        ar{"arabisht"}
+        ar_001{"arabishte standarde moderne"}
+        arn{"mapuçisht"}
+        arp{"arapahoisht"}
+        ars{"arabishte naxhdi"}
+        as{"asamezisht"}
+        asa{"asuisht"}
+        ast{"asturisht"}
+        atj{"atikamekisht"}
+        av{"avarikisht"}
+        awa{"auadhisht"}
+        ay{"ajmarisht"}
+        az{"azerbajxhanisht"}
+        ba{"bashkirisht"}
+        ban{"balinezisht"}
+        bas{"basaisht"}
+        be{"bjellorusisht"}
+        bem{"bembaisht"}
+        bez{"benaisht"}
+        bg{"bullgarisht"}
+        bgc{"harjanvisht"}
+        bgn{"balokishte perëndimore"}
+        bho{"boxhpurisht"}
+        bi{"bislamisht"}
+        bin{"binisht"}
+        bla{"siksikaisht"}
+        bm{"bambarisht"}
+        bn{"bengalisht"}
+        bo{"tibetisht"}
+        br{"bretonisht"}
+        brx{"bodoisht"}
+        bs{"boshnjakisht"}
+        bug{"buginezisht"}
+        byn{"blinisht"}
+        ca{"katalonisht"}
+        cay{"kajugaisht"}
+        ccp{"çakmaisht"}
+        ce{"çeçenisht"}
+        ceb{"sebuanisht"}
+        cgg{"çigisht"}
+        ch{"kamoroisht"}
+        chk{"çukezisht"}
+        chm{"marisht"}
+        cho{"çoktauisht"}
+        chp{"çipeuajanisht"}
+        chr{"çerokisht"}
+        chy{"çejenisht"}
+        ckb{"kurdishte qendrore"}
+        clc{"çilkotinisht"}
+        co{"korsikisht"}
+        crg{"miçifisht"}
+        crj{"krijishte juglindore"}
+        crk{"krijishte fusharake"}
+        crl{"krijishte verilindore"}
+        crm{"krijishte e Muzit"}
+        crr{"algonkuianishte e Karolinës"}
+        crs{"frëngjishte kreole seselve"}
+        cs{"çekisht"}
+        csw{"krijishte e moçaleve (Ontario)"}
+        cu{"sllavishte kishtare"}
+        cv{"çuvashisht"}
+        cy{"uellsisht"}
+        da{"danisht"}
+        dak{"dakotisht"}
+        dar{"darguaisht"}
+        dav{"tajtaisht"}
+        de{"gjermanisht"}
+        de_AT{"gjermanishte austriake"}
+        de_CH{"gjermanishte zvicerane (dialekti i Alpeve)"}
+        dgr{"dogribisht"}
+        dje{"zarmaisht"}
+        doi{"dogrisht"}
+        dsb{"sorbishte e poshtme"}
+        dua{"dualaisht"}
+        dv{"divehisht"}
+        dyo{"xhulafonjisht"}
+        dz{"xhongaisht"}
+        dzg{"dazagauisht"}
+        ebu{"embuisht"}
+        ee{"eveisht"}
+        efi{"efikisht"}
+        eka{"ekajukisht"}
+        el{"greqisht"}
+        en{"anglisht"}
+        en_AU{"anglishte australiane"}
+        en_CA{"anglishte kanadeze"}
+        en_GB{"anglishte britanike"}
+        en_US{"anglishte amerikane"}
+        eo{"esperanto"}
+        es{"spanjisht"}
+        es_419{"spanjishte amerikano-latine"}
+        es_ES{"spanjishte evropiane"}
+        es_MX{"spanjishte meksikane"}
+        et{"estonisht"}
+        eu{"baskisht"}
+        ewo{"euondoisht"}
+        fa{"persisht"}
+        fa_AF{"darisht"}
+        ff{"fulaisht"}
+        fi{"finlandisht"}
+        fil{"filipinisht"}
+        fj{"fixhianisht"}
+        fo{"faroisht"}
+        fon{"fonisht"}
+        fr{"frëngjisht"}
+        fr_CA{"frëngjishte kanadeze"}
+        fr_CH{"frëngjishte zvicerane"}
+        frc{"frëngjishte kajune"}
+        frr{"frisianishte veriore"}
+        fur{"friulianisht"}
+        fy{"frizianishte perëndimore"}
+        ga{"irlandisht"}
+        gaa{"gaisht"}
+        gag{"gagauzisht"}
+        gd{"galishte skoceze"}
+        gez{"gizisht"}
+        gil{"gilbertazisht"}
+        gl{"galicisht"}
+        gn{"guaranisht"}
+        gor{"gorontaloisht"}
+        gsw{"gjermanishte zvicerane"}
+        gu{"guxharatisht"}
+        guz{"gusisht"}
+        gv{"manksisht"}
+        gwi{"guiçinisht"}
+        ha{"hausisht"}
+        hai{"haidaisht"}
+        haw{"havaisht"}
+        hax{"haidaishte jugore"}
+        he{"hebraisht"}
+        hi{"indisht"}
+        hil{"hiligajnonisht"}
+        hmn{"hmongisht"}
+        hr{"kroatisht"}
+        hsb{"sorbishte e sipërme"}
+        ht{"kreolishte e Haitit"}
+        hu{"hungarisht"}
+        hup{"hupaisht"}
+        hur{"halkemejlemisht"}
+        hy{"armenisht"}
+        hz{"hereroisht"}
+        ia{"interlingua"}
+        iba{"ibanisht"}
+        ibb{"ibibioisht"}
+        id{"indonezisht"}
+        ie{"gjuha oksidentale"}
+        ig{"igboisht"}
+        ii{"sishuanisht"}
+        ikt{"inuktitutishte kanadeze perëndimore"}
+        ilo{"ilokoisht"}
+        inh{"ingushisht"}
+        io{"idoisht"}
+        is{"islandisht"}
+        it{"italisht"}
+        iu{"inuktitutisht"}
+        ja{"japonisht"}
+        jbo{"lojbanisht"}
+        jgo{"ngombisht"}
+        jmc{"maçamisht"}
+        jv{"javanisht"}
+        ka{"gjeorgjisht"}
+        kab{"kabilisht"}
+        kac{"kaçinisht"}
+        kaj{"kajeisht"}
+        kam{"kambaisht"}
+        kbd{"kabardianisht"}
+        kcg{"tjapisht"}
+        kde{"makondisht"}
+        kea{"kreolishte e Kepit të Gjelbër"}
+        kfo{"koroisht"}
+        kgp{"kaingangisht"}
+        kha{"kasisht"}
+        khq{"kojraçinisht"}
+        ki{"kikujuisht"}
+        kj{"kuanjamaisht"}
+        kk{"kazakisht"}
+        kkj{"kakoisht"}
+        kl{"kalalisutisht"}
+        kln{"kalenxhinisht"}
+        km{"kmerisht"}
+        kmb{"kimbunduisht"}
+        kn{"kanadisht"}
+        ko{"koreanisht"}
+        koi{"komi-parmjakisht"}
+        kok{"konkanisht"}
+        kpe{"kpeleisht"}
+        kr{"kanurisht"}
+        krc{"karaçaj-balkarisht"}
+        krl{"karelianisht"}
+        kru{"kurukisht"}
+        ks{"kashmirisht"}
+        ksb{"shambalisht"}
+        ksf{"bafianisht"}
+        ksh{"këlnisht"}
+        ku{"kurdisht"}
+        kum{"kumikisht"}
+        kv{"komisht"}
+        kw{"kornisht"}
+        kwk{"kuakualaisht"}
+        ky{"kirgizisht"}
+        la{"latinisht"}
+        lad{"ladinoisht"}
+        lag{"langisht"}
+        lb{"luksemburgisht"}
+        lez{"lezgianisht"}
+        lg{"gandaisht"}
+        li{"limburgisht"}
+        lij{"ligurianisht"}
+        lil{"lilluetisht"}
+        lkt{"lakotisht"}
+        lmo{"lombardisht"}
+        ln{"lingalisht"}
+        lo{"laosisht"}
+        lou{"kreolishte e Luizianës"}
+        loz{"lozisht"}
+        lrc{"lurishte veriore"}
+        lsm{"samisht"}
+        lt{"lituanisht"}
+        lu{"luba-katangaisht"}
+        lua{"luba-luluaisht"}
+        lun{"lundaisht"}
+        luo{"luoisht"}
+        lus{"mizoisht"}
+        luy{"lujaisht"}
+        lv{"letonisht"}
+        mad{"madurezisht"}
+        mag{"magaisht"}
+        mai{"maitilisht"}
+        mak{"makasarisht"}
+        mas{"masaisht"}
+        mdf{"mokshaisht"}
+        men{"mendisht"}
+        mer{"meruisht"}
+        mfe{"morisjenisht"}
+        mg{"madagaskarisht"}
+        mgh{"makua-mitoisht"}
+        mgo{"metaisht"}
+        mh{"marshallisht"}
+        mi{"maorisht"}
+        mic{"mikmakisht"}
+        min{"minangkabauisht"}
+        mk{"maqedonisht"}
+        ml{"malajalamisht"}
+        mn{"mongolisht"}
+        mni{"manipurisht"}
+        moe{"inuaimunisht"}
+        moh{"mohokisht"}
+        mos{"mosisht"}
+        mr{"maratisht"}
+        ms{"malajisht"}
+        mt{"maltisht"}
+        mua{"mundangisht"}
+        mul{"gjuhë të shumëfishta"}
+        mus{"krikisht"}
+        mwl{"mirandisht"}
+        my{"birmanisht"}
+        myv{"erzjaisht"}
+        mzn{"mazanderanisht"}
+        na{"nauruisht"}
+        nap{"napoletanisht"}
+        naq{"namaisht"}
+        nb{"norvegjishte letrare"}
+        nd{"ndebelishte veriore"}
+        nds{"gjermanishte e vendeve të ulëta"}
+        nds_NL{"gjermanishte saksone e vendeve të ulëta"}
+        ne{"nepalisht"}
+        new{"neuarisht"}
+        ng{"ndongaisht"}
+        nia{"niasisht"}
+        niu{"niueanisht"}
+        nl{"holandisht"}
+        nl_BE{"flamandisht"}
+        nmg{"kuasisht"}
+        nn{"norvegjishte nynorsk"}
+        nnh{"ngiembunisht"}
+        no{"norvegjisht"}
+        nog{"nogajisht"}
+        nqo{"nkoisht"}
+        nr{"ndebelishte jugore"}
+        nso{"sotoishte veriore"}
+        nus{"nuerisht"}
+        nv{"navahoisht"}
+        ny{"nianjisht"}
+        nyn{"niankolisht"}
+        oc{"oksitanisht"}
+        ojb{"oxhibuaishte verilindore"}
+        ojc{"oxhibuaishte qendrore"}
+        ojs{"oxhikrijisht"}
+        ojw{"oxhibuaishte perëndimore"}
+        oka{"okanaganisht"}
+        om{"oromoisht"}
+        or{"odisht"}
+        os{"osetisht"}
+        pa{"punxhabisht"}
+        pag{"pangasinanisht"}
+        pam{"pampangaisht"}
+        pap{"papiamentisht"}
+        pau{"paluanisht"}
+        pcm{"pixhinishte nigeriane"}
+        pis{"pixhinisht"}
+        pl{"polonisht"}
+        pqm{"malisit-pasamakuadisht"}
+        prg{"prusisht"}
+        ps{"pashtoisht"}
+        pt{"portugalisht"}
+        pt_BR{"portugalishte braziliane"}
+        pt_PT{"portugalishte evropiane"}
+        qu{"keçuaisht"}
+        quc{"kiçeisht"}
+        raj{"raxhastanisht"}
+        rap{"rapanuisht"}
+        rar{"rarontonganisht"}
+        rhg{"rohingiaisht"}
+        rm{"retoromanisht"}
+        rn{"rundisht"}
+        ro{"rumanisht"}
+        ro_MD{"moldavisht"}
+        rof{"romboisht"}
+        ru{"rusisht"}
+        rup{"vllahisht"}
+        rw{"kiniaruandisht"}
+        rwk{"ruaisht"}
+        sa{"sanskritisht"}
+        sad{"sandauisht"}
+        sah{"sakaisht"}
+        saq{"samburisht"}
+        sat{"santalisht"}
+        sba{"ngambajisht"}
+        sbp{"sanguisht"}
+        sc{"sardenjisht"}
+        scn{"siçilianisht"}
+        sco{"skotisht"}
+        sd{"sindisht"}
+        sdh{"kurdishte jugore"}
+        se{"samishte veriore"}
+        seh{"senaisht"}
+        ses{"senishte kojrabore"}
+        sg{"sangoisht"}
+        sh{"serbo-kroatisht"}
+        shi{"taçelitisht"}
+        shn{"shanisht"}
+        si{"sinhalisht"}
+        sk{"sllovakisht"}
+        sl{"sllovenisht"}
+        slh{"lashutsidishte jugore"}
+        sm{"samoanisht"}
+        sma{"samishte jugore"}
+        smj{"samishte lule"}
+        smn{"samishte inari"}
+        sms{"samishte skolti"}
+        sn{"shonisht"}
+        snk{"soninkisht"}
+        so{"somalisht"}
+        sq{"shqip"}
+        sr{"serbisht"}
+        srn{"srananisht (sranantongoisht)"}
+        ss{"suatisht"}
+        ssy{"sahoisht"}
+        st{"sotoishte jugore"}
+        str{"sejlishte e Ngushticave të Rozarios"}
+        su{"sundanisht"}
+        suk{"sukumaisht"}
+        sv{"suedisht"}
+        sw{"suahilisht"}
+        sw_CD{"suahilishte kongoleze"}
+        swb{"kamorianisht"}
+        syr{"siriakisht"}
+        ta{"tamilisht"}
+        tce{"tatshonishte jugore"}
+        te{"teluguisht"}
+        tem{"timneisht"}
+        teo{"tesoisht"}
+        tet{"tetumisht"}
+        tg{"taxhikisht"}
+        tgx{"tagishisht"}
+        th{"tajlandisht"}
+        tht{"taltanisht"}
+        ti{"tigrinjaisht"}
+        tig{"tigreisht"}
+        tk{"turkmenisht"}
+        tlh{"klingonisht"}
+        tli{"tlingitisht"}
+        tn{"cuanaisht"}
+        to{"tonganisht"}
+        tok{"tokiponaisht"}
+        tpi{"pisinishte toku"}
+        tr{"turqisht"}
+        trv{"torokoisht"}
+        ts{"congaisht"}
+        tt{"tatarisht"}
+        ttm{"taçoneishte veriore"}
+        tum{"tumbukaisht"}
+        tvl{"tuvaluisht"}
+        tw{"tuisht"}
+        twq{"tasavakisht"}
+        ty{"tahitisht"}
+        tyv{"tuvinianisht"}
+        tzm{"tamazajtisht e Atlasit Qendror"}
+        udm{"udmurtisht"}
+        ug{"ujgurisht"}
+        uk{"ukrainisht"}
+        umb{"umbunduisht"}
+        und{"E panjohur"}
+        ur{"urduisht"}
+        uz{"uzbekisht"}
+        vai{"vaisht"}
+        ve{"vendaisht"}
+        vec{"venetisht"}
+        vi{"vietnamisht"}
+        vo{"volapykisht"}
+        vun{"vunxhoisht"}
+        wa{"ualunisht"}
+        wae{"ualserisht"}
+        wal{"ulajtaisht"}
+        war{"uarajisht"}
+        wbp{"uarlpirisht"}
+        wo{"uolofisht"}
+        wuu{"kinezishte vu"}
+        xal{"kalmikisht"}
+        xh{"xhosaisht"}
+        xog{"sogisht"}
+        yav{"jangbenisht"}
+        ybb{"jembaisht"}
+        yi{"jidisht"}
+        yo{"jorubaisht"}
+        yrl{"nejengatuisht"}
+        yue{"kantonezisht"}
+        zgh{"tamaziatishte standarde marokene"}
+        zh{"kinezisht"}
+        zh_Hans{"kinezishte e thjeshtuar"}
+        zh_Hant{"kinezishte tradicionale"}
+        zu{"zuluisht"}
+        zun{"zunisht"}
+        zxx{"nuk ka përmbajtje gjuhësore"}
+        zza{"zazaisht"}
+    }
+    Languages%long{
+        zh_Hans{"kinezishte mandarine (e thjeshtuar)"}
+        zh_Hant{"kinezishte mandarine (tradicionale)"}
+    }
+    Languages%menu{
+        yue{"kinezishte kantoneze"}
+        zh{"kinezishte mandarine"}
+    }
+    Languages%short{
+        az{"azerisht"}
+        en_GB{"anglishte e Mbretërisë së Bashkuar"}
+        en_US{"anglishte e SHBA-së"}
+    }
+    Scripts{
+        Adlm{"adlam"}
+        Aghb{"albanishte e Kaukazit"}
+        Ahom{"ahomisht"}
+        Arab{"arabik"}
+        Aran{"nastalik"}
+        Armi{"aramaishte perandorake"}
+        Armn{"armen"}
+        Avst{"avestanisht"}
+        Bali{"bali"}
+        Bamu{"bamu"}
+        Bass{"basavahisht"}
+        Batk{"batak"}
+        Beng{"bengal"}
+        Bhks{"baiksukisht"}
+        Bopo{"bopomof"}
+        Brah{"brahmisht"}
+        Brai{"brailisht"}
+        Bugi{"buginisht"}
+        Buhd{"buhidisht"}
+        Cakm{"çakma"}
+        Cans{"rrokje të unifikuara aborigjene kanadeze"}
+        Cari{"karianisht"}
+        Cham{"çam"}
+        Cher{"çeroki"}
+        Chrs{"korasmianisht"}
+        Copt{"koptisht"}
+        Cpmn{"minoishte e Qipros"}
+        Cprt{"qipriotisht"}
+        Cyrl{"cirilik"}
+        Deva{"devanagar"}
+        Diak{"divesakuruisht"}
+        Dogr{"dograisht"}
+        Dsrt{"deseretisht"}
+        Dupl{"duplojanisht - formë e shkurtër"}
+        Egyp{"hieroglife egjiptiane"}
+        Elba{"shkrim i Elbasanit"}
+        Elym{"elimaisht"}
+        Ethi{"etiopik"}
+        Geor{"gjeorgjian"}
+        Glag{"glagolitikisht"}
+        Gong{"gong"}
+        Gonm{"masaramgondisht"}
+        Goth{"gotik"}
+        Gran{"grantaisht"}
+        Grek{"grek"}
+        Gujr{"guxharat"}
+        Guru{"gurmuk"}
+        Hanb{"hanbik"}
+        Hang{"hangul"}
+        Hani{"han"}
+        Hano{"hanunoisht"}
+        Hans{"i thjeshtuar"}
+        Hant{"tradicional"}
+        Hatr{"hatranisht"}
+        Hebr{"hebraik"}
+        Hira{"hiragan"}
+        Hluw{"hieroglife anatoliane"}
+        Hmng{"pahauhmonisht"}
+        Hmnp{"niakeng puaçue hmong"}
+        Hrkt{"alfabet rrokjesor japonez"}
+        Hung{"hungarishte e vjetër"}
+        Ital{"italishte e vjetër"}
+        Jamo{"jamosisht"}
+        Java{"java"}
+        Jpan{"japonez"}
+        Kali{"kajali"}
+        Kana{"katakan"}
+        Kawi{"kavi"}
+        Khar{"karoshtisht"}
+        Khmr{"kmer"}
+        Khoj{"koxhkisht"}
+        Kits{"shkrim i vogël kitan"}
+        Knda{"kanad"}
+        Kore{"korean"}
+        Kthi{"kaitisht"}
+        Lana{"lana"}
+        Laoo{"laosisht"}
+        Latn{"latin"}
+        Lepc{"lepça"}
+        Limb{"limbu"}
+        Lina{"Linear A"}
+        Linb{"Linear B"}
+        Lisu{"fraser"}
+        Lyci{"licianisht"}
+        Lydi{"lidianisht"}
+        Mahj{"mahaxhanisht"}
+        Maka{"makasarisht"}
+        Mand{"mande"}
+        Mani{"manikeanisht"}
+        Marc{"markenisht"}
+        Medf{"medefaidrinisht"}
+        Mend{"mendeisht"}
+        Merc{"meroitik kursiv"}
+        Mero{"meroitik"}
+        Mlym{"malajalam"}
+        Modi{"modisht"}
+        Mong{"mongolisht"}
+        Mroo{"mroisht"}
+        Mtei{"mitei-majek"}
+        Mult{"multanisht"}
+        Mymr{"birman"}
+        Nagm{"nag mundari"}
+        Nand{"nandigarisht"}
+        Narb{"arabishte veriore e vjetër"}
+        Nbat{"nabateanisht"}
+        Newa{"neva"}
+        Nkoo{"nko"}
+        Nshu{"nyshuisht"}
+        Ogam{"ogamisht"}
+        Olck{"ol çiki"}
+        Orkh{"orkonisht"}
+        Orya{"orija"}
+        Osge{"osage"}
+        Osma{"osmaniaisht"}
+        Ougr{"ujgurishte e vjetër"}
+        Palm{"palmirenisht"}
+        Pauc{"pausinhauisht"}
+        Perm{"permike e vjetër"}
+        Phag{"fagspaisht"}
+        Phli{"palavishte mbishkrimesh"}
+        Phlp{"palavishte psalteri"}
+        Phnx{"fenikisht"}
+        Plrd{"polard fonetik"}
+        Prti{"persishte mbishkrimesh"}
+        Qaag{"zaugi"}
+        Rjng{"rexhangisht"}
+        Rohg{"hanifi"}
+        Runr{"runike"}
+        Samr{"samaritanisht"}
+        Sarb{"arabishte jugore e vjetër"}
+        Saur{"saurashtra"}
+        Sgnw{"shkrim sing"}
+        Shaw{"shavianisht"}
+        Shrd{"sharadisht"}
+        Sidd{"sidamisht"}
+        Sind{"kudavadisht"}
+        Sinh{"sinhal"}
+        Sogd{"sogdianisht"}
+        Sogo{"sogdianishte e vjetër"}
+        Sora{"sorasompengisht"}
+        Soyo{"sojomboisht"}
+        Sund{"sundan"}
+        Sylo{"siloti nagri"}
+        Syrc{"siriak"}
+        Tagb{"tagbanvaisht"}
+        Takr{"takri"}
+        Tale{"tai le"}
+        Talu{"tai lue i ri"}
+        Taml{"tamil"}
+        Tang{"tangut"}
+        Tavt{"tai viet"}
+        Telu{"telug"}
+        Tfng{"tifinag"}
+        Tglg{"tagalog"}
+        Thaa{"tanisht"}
+        Thai{"tajlandez"}
+        Tibt{"tibetisht"}
+        Tirh{"tirhuta"}
+        Tnsa{"tangsa"}
+        Toto{"toto"}
+        Ugar{"ugaritik"}
+        Vaii{"vai"}
+        Vith{"vithkuqi"}
+        Wara{"varang kshiti"}
+        Wcho{"vanço"}
+        Xpeo{"persian i vjetër"}
+        Xsux{"kuneiform sumero-akadian"}
+        Yezi{"jezidi"}
+        Yiii{"ji"}
+        Zanb{"katror zanabazar"}
+        Zinh{"zin"}
+        Zmth{"simbole matematikore"}
+        Zsye{"emoji"}
+        Zsym{"me simbole"}
+        Zxxx{"i pashkruar"}
+        Zyyy{"i zakonshëm"}
+        Zzzz{"i panjohur"}
+    }
+    Scripts%stand-alone{
+        Hans{"han i thjeshtuar"}
+        Hant{"han tradicional"}
+    }
+    Types{
+        calendar{
+            buddhist{"kalendar budist"}
+            chinese{"kalendar kinez"}
+            coptic{"kalendar koptik"}
+            dangi{"kalendar dangi"}
+            ethiopic{"kalendari etiopik"}
+            ethiopic-amete-alem{"kalendar etiopik amete-alem"}
+            gregorian{"kalendar gregorian"}
+            hebrew{"kalendar hebraik"}
+            indian{"Kalendari Kombëtar Indian"}
+            islamic{"kalendar islam"}
+            islamic-civil{"kalendar islam (tabelor, epoka civile)"}
+            islamic-tbla{"kalendar islam (tabelor, epoka astronomike)"}
+            islamic-umalqura{"kalendar islam (um al-qura)"}
+            iso8601{"kalendar ISO-8601"}
+            japanese{"kalendar japonez"}
+            persian{"kalendar persian"}
+            roc{"kalendar minguo"}
+        }
+        cf{
+            account{"format valutor llogaritës"}
+            standard{"format valutor standard"}
+        }
+        collation{
+            big5han{"Radhitje e kinezishtes tradicionale - Big5"}
+            compat{"Radhitja e mëparshme, për pajtueshmëri"}
+            dictionary{"Radhitje fjalori"}
+            ducet{"radhitje unikode e parazgjedhur"}
+            emoji{"Radhitje Emoji"}
+            eor{"Rregulla evropiane radhitjeje"}
+            gb2312han{"Radhitje e kinezishtes së thjeshtësuar - GB2312"}
+            phonebook{"Radhitje libri telefonik"}
+            pinyin{"Radhitje pinini"}
+            search{"kërkim i përgjithshëm"}
+            searchjl{"kërkim sipas bashkëtingëllores fillestare hangul"}
+            standard{"radhitje standarde"}
+            stroke{"radhitje me vijëzim"}
+            traditional{"radhitje tradicionale"}
+            unihan{"radhitje me vijëzim radikal"}
+            zhuyin{"radhitje zhujin"}
+        }
+        hc{
+            h11{"sistem 12-orësh (0 - 11)"}
+            h12{"sistem 12-orësh (1 - 12)"}
+            h23{"sistem 24-orësh (0 - 23)"}
+            h24{"sistem 24-orësh (1 - 24)"}
+        }
+        lb{
+            loose{"stil i gjerësisë së rreshtave - i larguar"}
+            normal{"stil i gjerësisë së rreshtave - normal"}
+            strict{"stil i gjerësisë së rreshtave - i ngushtuar"}
+        }
+        ms{
+            metric{"sistem metrik"}
+            uksystem{"sistem imperial (britanik) i njësive matëse"}
+            ussystem{"sistem amerikan i njësive matëse"}
+        }
+        numbers{
+            ahom{"shifra ahom"}
+            arab{"shifra indo-arabe"}
+            arabext{"shifra indo-arabe të zgjatura"}
+            armn{"numra armenë"}
+            armnlow{"numra armenë të vegjël"}
+            bali{"shifra bali"}
+            beng{"shifra bengali"}
+            brah{"shifra brahmi"}
+            cakm{"shifra çakma"}
+            cham{"shifra çam"}
+            cyrl{"numra cirilikë"}
+            deva{"shifra devanagari"}
+            diak{"shifra dives akuru"}
+            ethi{"numra etiopianë"}
+            fullwide{"shifra me largësi të brendshme"}
+            geor{"numra gjeorgjianë"}
+            gong{"shifra gunxhala gondi"}
+            gonm{"shifra masaram gondi"}
+            grek{"numra grekë"}
+            greklow{"numra grekë të vegjël"}
+            gujr{"shifra guxharati"}
+            guru{"shifra gurmuki"}
+            hanidec{"numra dhjetorë kinezë"}
+            hans{"numra të kinezishtes së thjeshtuar"}
+            hansfin{"numra financiarë të kinezishtes së thjeshtuar"}
+            hant{"numra të kinezishtes tradicionale"}
+            hantfin{"numra financiarë të kinezishtes tradicionale"}
+            hebr{"numra hebraikë"}
+            hmng{"shifra pahau hmong"}
+            hmnp{"shifra niakeng puaçue hmong"}
+            java{"shifra java"}
+            jpan{"numra japonezë"}
+            jpanfin{"numra financiarë japonezë"}
+            kali{"shifra kaja li"}
+            kawi{"shifra kavi"}
+            khmr{"shifra kmere"}
+            knda{"shifra kanade"}
+            lana{"shifra tai tam hora"}
+            lanatham{"shifra tai tam tam"}
+            laoo{"shifra lao"}
+            latn{"shifra latino-perëndimore"}
+            lepc{"shifra lepça"}
+            limb{"shifra limbu"}
+            mathbold{"shifra të trasha matematike"}
+            mathdbl{"shifra matematike me dy kalime"}
+            mathmono{"shifra matematike monohapësire"}
+            mathsanb{"shifra të trasha matematike sans-serif"}
+            mathsans{"shifra matematike sans-serif"}
+            mlym{"shifra malajalame"}
+            modi{"shifra modi"}
+            mong{"shifra mongole"}
+            mroo{"shifra mro"}
+            mtei{"shifra mitei-majeke"}
+            mymr{"shifra mianmari"}
+            mymrshan{"shifra mianmar-shan"}
+            mymrtlng{"shifra mianmar tai lang"}
+            nagm{"shifra nag mundan"}
+            nkoo{"shifra nko"}
+            olck{"shifra ol-çikike"}
+            orya{"shifra orije"}
+            osma{"shifra osmania"}
+            rohg{"shifra hanifi rohingia"}
+            roman{"numra romakë"}
+            romanlow{"numra romakë të vegjël"}
+            saur{"shifra saurashtra"}
+            shrd{"shifra sharada"}
+            sind{"shifra kudavadi"}
+            sinh{"shifra sinala lit"}
+            sora{"shifra sora sompeng"}
+            sund{"shifra sundan"}
+            takr{"shifra takri"}
+            talu{"shifra të reja tai lue"}
+            taml{"numra tamilë tradicionalë"}
+            tamldec{"shifra tamile"}
+            telu{"shifra teluguje"}
+            thai{"shifra tajlandeze"}
+            tibt{"shifra tibetiane"}
+            tirh{"shifra tirhuta"}
+            tnsa{"shifra tangsa"}
+            vaii{"shifra vai"}
+            wara{"shifra varang citi"}
+            wcho{"shifra vanço"}
+        }
+    }
+    characterLabelPattern{
+        all{"{0} — Të gjitha"}
+        compatibility{"{0} — Të përputhshme"}
+        enclosed{"{0} — Të mbyllura"}
+        extended{"{0} — Të shtuara"}
+        facing-left{"{0} me drejtim majtas"}
+        facing-right{"{0} me drejtim djathtas"}
+        historic{"{0} — Historike"}
+        miscellaneous{"{0} — Të ndryshme"}
+        other{"{0} — Tjetër"}
+        scripts{"Shkrimet — {0}"}
+        strokes{
+            one{"{0} vijëzim drejtshkrimor"}
+            other{"{0} vijëzime drejtshkrimore"}
+        }
+        subscript{"nënshënim {0}"}
+        superscript{"mbishënim {0}"}
+    }
+    codePatterns{
+        language{"Gjuha: {0}"}
+        script{"Skripti: {0}"}
+        territory{"Rajoni: {0}"}
+    }
+}

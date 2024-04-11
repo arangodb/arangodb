@@ -1,0 +1,62 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ks_Deva{
+    %%Parent{"root"}
+    zoneStrings{
+        "Etc:UTC"{
+            ls{"कोऑर्डनैटिड यूनवर्सल वख"}
+        }
+        "Etc:Unknown"{
+            ec{"नमोलुम शहर"}
+        }
+        "meta:America_Central"{
+            ld{"सेंट्रल डे लाइट वख"}
+            lg{"सेंट्रल वख"}
+            ls{"सेंट्रल स्टैन्डर्ड वख"}
+        }
+        "meta:America_Eastern"{
+            ld{"मशरिकी डे लाइट वख"}
+            lg{"मशरिकी वख"}
+            ls{"मशरिकी स्टैन्डर्ड वख"}
+        }
+        "meta:America_Mountain"{
+            ld{"माउंटेन डे लाइट वख"}
+            lg{"माउंटेन वख"}
+            ls{"माउंटेन स्टैन्डर्ड वख"}
+        }
+        "meta:America_Pacific"{
+            ld{"पेसिफिक डे लाइट वख"}
+            lg{"पेसिफिक वख"}
+            ls{"पेसिफिक स्टैन्डर्ड वख"}
+        }
+        "meta:Atlantic"{
+            ld{"अटलांटिक डे लाइट वख"}
+            lg{"अटलांटिक वख"}
+            ls{"अटलांटिक स्टैन्डर्ड वख"}
+        }
+        "meta:Europe_Central"{
+            ld{"मरकज़ी यूरपी समर वख"}
+            lg{"मरकज़ी यूरपी वख"}
+            ls{"मरकज़ी यूरपी स्टैन्डर्ड वख"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"मशरिकी यूरपी समर वख"}
+            lg{"मशरिकी यूरपी वख"}
+            ls{"मशरिकी यूरपी स्टैन्डर्ड वख"}
+        }
+        "meta:Europe_Western"{
+            ld{"मगरीबी यूरपी समर वख"}
+            lg{"मगरीबी यूरपी वख"}
+            ls{"मगरीबी यूरपी स्टैन्डर्ड वख"}
+        }
+        "meta:GMT"{
+            ls{"ग्रीनविच ओसत वख"}
+        }
+        gmtFormat{"जी एम टी {0}"}
+        gmtZeroFormat{"जी एम टी"}
+        regionFormat{"{0} वख"}
+        regionFormatDaylight{"{0} डे लाइट वख"}
+        regionFormatStandard{"{0} मयॉरी वख"}
+    }
+}

@@ -1,0 +1,784 @@
+# Test data for Person Name Data#  Copyright © 1991-2024 Unicode, Inc.
+#  For terms of use, see http://www.unicode.org/copyright.html
+#  SPDX-License-Identifier: Unicode-3.0
+#  CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
+# CLDR person name formatting test data for: ca
+#
+# Test lines have the following structure:
+#
+# enum ; <type> ; <value>(', ' <value)
+#   For all the elements in <…> below, the possible choices that could appear in the file.
+#   For example, <field> could be any of title, given, … credentials.
+#   Verify that all of these values work with the implementation.
+#
+# name ; <field>('-'<modifier>) ; <value>
+#   A sequence of these is to be used to build a person name object with the given field values.
+#   If the <field> is 'locale', then the value is the locale of the name.
+#     That will always be the last field in the name.
+#     NOTE: the locale for the name (where different than the test file's locale) will generally not match the text.
+#     It is chosen to exercise the person name formatting, by having a different given-surname order than the file's locale.
+#
+# expectedResult; <value>
+#   This line follows a sequence of name lines, and indicates the that all the following parameter lines have this expected value.
+#
+# parameters; <options>; <length>; <usage>; <formality>
+#   Each of these parameter lines should be tested to see that when formatting the current name with these parameters, 
+#   the expected value is produced.
+#
+# endName
+#   Indicates the end of the values to be tested with the current name.
+#
+# =====
+# Example:
+#     enum ; field ; title, given, given2, surname, surname2, generation, credentials
+#     …
+#
+#     name ; given; Iris
+#     name ; surname; Falke
+#     name ; locale; de
+#
+#     expectedResult; Falke, Iris
+#
+#     parameters; sorting; long; referring; formal
+#     parameters; sorting; medium; referring; informal
+#
+#     endName
+#
+#     name ; given; Max
+#     name ; given2; Ben
+#     name ; surname; Mustermann
+#     …
+# =====
+
+enum ; field ; title, given, given2, surname, surname2, generation, credentials
+enum ; modifiers ; informal, allCaps, initialCap, initial, retain, monogram, prefix, core, vocative, genitive
+enum ; order ; givenFirst, surnameFirst, sorting
+enum ; length ; long, medium, short
+enum ; usage ; referring, addressing, monogram
+enum ; formality ; formal, informal
+
+# nativeG
+name ; given; Carolina
+name ; locale; ca_AQ
+
+expectedResult; Carolina
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; C
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeGS
+name ; given; Gal·la
+name ; surname; Roig
+name ; locale; ca_AQ
+
+expectedResult; Roig, Gal·la
+
+parameters; sorting; long; referring; formal
+parameters; sorting; medium; referring; formal
+parameters; sorting; short; referring; formal
+
+expectedResult; Gal·la Roig
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Roig Gal·la
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; Gal·la R.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; G. Roig
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Roig G.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; Gal·la
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; Roig
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; GR
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; RG
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; G
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; R
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# nativeGGS
+name ; given; Rosa Maria
+name ; given2; Ferran
+name ; surname; Ferrer
+name ; locale; ca_AQ
+
+expectedResult; Ferrer, Rosa Maria Ferran
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; Ferrer Rosa Maria Ferran
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; Rosa Maria Ferran Ferrer
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; Ferrer Rosa Maria F.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; Ferrer Rosa Maria
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; Rosa Maria Ferrer
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Ferrer R. M. F.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; R. M. F. Ferrer
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Rosa Maria F.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; Ferrer R. M.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; Rosa Maria
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; Ferrer
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; FRF
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; RFF
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; FR
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; RF
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; F
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; R
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeFull
+name ; title; Sr.
+name ; given; Josep Antoni
+name ; given-informal; Pep
+name ; given2; Carles Joan
+name ; surname-core; Lloret
+name ; surname2; Palol
+name ; generation; II
+name ; credentials; Excm.
+name ; locale; ca_AQ
+
+expectedResult; Excm. Sr. Lloret Palol II, Josep Antoni Carles Joan
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; Excm. Sr. Josep Antoni Carles Joan Lloret Palol II
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; Excm. Sr. Josep Antoni Carles Joan Lloret Palol
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; Excm. Lloret Palol II, Josep Antoni C. J.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; Lloret Palol, Josep Antoni Carles Joan
+
+parameters; sorting; long; referring; formal
+
+expectedResult; Lloret Palol, Josep Antoni C. J.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; Lloret Palol, J. A. C. J.
+
+parameters; surnameFirst; short; referring; formal
+parameters; sorting; short; referring; formal
+
+expectedResult; J. A. C. J. Lloret Palol
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Lloret Palol, J. A.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; Lloret Palol, Pep
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; Pep Lloret Palol
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Sr. Lloret Palol
+
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; Sr. Lloret
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+
+expectedResult; Pep L.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; JCL
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; LJC
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; Pep
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; LP
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; PL
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; L
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; P
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignG
+name ; given; Iñaki
+name ; locale; ko_AQ
+
+expectedResult; Iñaki
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; I
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignGS
+name ; given; Jacqueline
+name ; surname; Beauchêne
+name ; locale; ko_AQ
+
+expectedResult; Beauchêne, Jacqueline
+
+parameters; sorting; long; referring; formal
+parameters; sorting; medium; referring; formal
+parameters; sorting; short; referring; formal
+
+expectedResult; Beauchêne Jacqueline
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; Jacqueline Beauchêne
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Jacqueline B.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; Beauchêne J.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; J. Beauchêne
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Jacqueline
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; Beauchêne
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; BJ
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; JB
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; B
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; J
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignGGS
+name ; given; Adrian
+name ; given2; Dragos
+name ; surname; Ionescu
+name ; locale; ko_AQ
+
+expectedResult; Ionescu, Adrian Dragos
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; Adrian Dragos Ionescu
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; Ionescu Adrian Dragos
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; Ionescu Adrian D.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; Adrian Ionescu
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Ionescu Adrian
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; A. D. Ionescu
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Ionescu A. D.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; Ionescu A.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; Adrian I.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; Ionescu
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; Adrian
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; ADI
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; IAD
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; AI
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; IA
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; A
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; I
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# foreignFull
+name ; title; Dra.
+name ; given; Maria da Graça
+name ; given-informal; Lise
+name ; given2; César Martín
+name ; surname-prefix; van
+name ; surname-core; Dalen
+name ; surname2; Hoogeveen
+name ; generation; II
+name ; credentials; Excma.
+name ; locale; ko_AQ
+
+expectedResult; Excma. Dra. Van Dalen Hoogeveen II, Maria da Graça César Martín
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; Excma. Dra. Maria da Graça César Martín van Dalen Hoogeveen II
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; Excma. Dra. Maria da Graça César Martín van Dalen Hoogeveen
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; Excma. van Dalen Hoogeveen II, Maria da Graça C. M.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; Van Dalen Hoogeveen, Maria da Graça César Martín
+
+parameters; sorting; long; referring; formal
+
+expectedResult; Van Dalen Hoogeveen, Maria da Graça C. M.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; Van Dalen Hoogeveen, M. d. G. C. M.
+
+parameters; surnameFirst; short; referring; formal
+parameters; sorting; short; referring; formal
+
+expectedResult; M. d. G. C. M. van Dalen Hoogeveen
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; Van Dalen Hoogeveen, M. d. G.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; Van Dalen Hoogeveen, Lise
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; Dra. Van Dalen Hoogeveen
+
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; Lise van Dalen Hoogeveen
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; Dra. van Dalen
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+
+expectedResult; Lise v. D.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; Lise
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; MCV
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; VMC
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; LV
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; VL
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; D
+
+parameters; givenFirst; short; monogram; formal
+
+expectedResult; L
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; V
+
+parameters; givenFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName

@@ -1,0 +1,103 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl_CO{
+    units{
+        area{
+            square-mile{
+                dnam{"milla kuadaradu-ita"}
+                one{"{0} milla kuadaradu"}
+                other{"{0} milla kuadaradu-ita"}
+                per{"{0} milla kuadaradu rupi"}
+            }
+        }
+        concentr{
+            permillion{
+                dnam{"pisawera-ita millón rupi"}
+                one{"{0} pisawera millón rupi"}
+                other{"{0} pisawera-ita millón rupi"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"milla-ita karóti rupi"}
+                one{"{0} milla karóti rupi"}
+                other{"{0} milla-ita karóti rupi"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"milla-ita karóti ĩperiawa rupi"}
+                one{"{0} milla karóti ĩperiawa rupi"}
+                other{"{0} milla-ita karóti ĩperiawa rupi"}
+            }
+        }
+        length{
+            mile{
+                dnam{"milla-ita"}
+                one{"{0} milla"}
+                other{"{0} milla-ita"}
+            }
+            mile-scandinavian{
+                dnam{"milla esikãdinaua-ita"}
+                one{"{0} milla esikãdinaua"}
+                other{"{0} milla esikãdinaua-ita"}
+            }
+            nautical-mile{
+                dnam{"milla paranãuara-ita"}
+                one{"{0} milla paranãuara"}
+                other{"{0} milla paranãuara-ita"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                dnam{"milla-ita hura rupi"}
+                one{"{0} milla hura rupi"}
+                other{"{0} milla-ita hura rupi"}
+            }
+        }
+        volume{
+            cubic-mile{
+                dnam{"milla kúbika-ita"}
+                one{"{0} milla kúbika"}
+                other{"{0} milla kúbika-ita"}
+            }
+        }
+    }
+    unitsNarrow{
+        length{
+            mile{
+                one{"{0} milla"}
+                other{"{0} milla"}
+            }
+        }
+    }
+    unitsShort{
+        area{
+            square-mile{
+                dnam{"milla-itá²"}
+            }
+        }
+        concentr{
+            permillion{
+                dnam{"pisawera millón rupi"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"milla-itá/gal"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"millas/gal. imp."}
+            }
+        }
+        length{
+            mile{
+                dnam{"milla"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                dnam{"milla-itá/hura"}
+            }
+        }
+    }
+}

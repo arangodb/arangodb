@@ -1,0 +1,77 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+tok{
+    AuxExemplarCharacters{"[b c d f g h q r v x y z]"}
+    ExemplarCharacters{"[a e i j k l m n o p s t u w]"}
+    ExemplarCharactersIndex{"[A E I J K L M N O P S T U W]"}
+    ExemplarCharactersNumbers{"[\\- ‑ / # % + 0 1 2 3 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- ‑ , ; \\: ! ? . '‘’ \u0022“” ( ) \\[ \\] @ * / #]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,#0.00"}
+                decimalFormat{"#,#0.###"}
+                percentFormat{"%#,#0"}
+            }
+            symbols{
+                decimal{","}
+                group{" "}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "pi open suno",
+                "pi pini suno",
+            }
+            availableFormats{
+                Hm{"#HH:mm"}
+                Hms{"#HH:mm:ss"}
+                Hmsv{"#HH:mm:ss 'lon' v"}
+                hm{"#h:mm a"}
+                hms{"#h:mm:ss a"}
+                hmsv{"#h:mm:ss a 'lon' v"}
+                yMMMd{"'sike' #y ) #M ) #d"}
+                yMd{"#y)#M)#d"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "suno esun #7",
+                        "suno esun #1",
+                        "suno esun #2",
+                        "suno esun #3",
+                        "suno esun #4",
+                        "suno esun #5",
+                        "suno esun #6",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "mun #1",
+                        "mun #2",
+                        "mun #3",
+                        "mun #4",
+                        "mun #5",
+                        "mun #6",
+                        "mun #7",
+                        "mun #8",
+                        "mun #9",
+                        "mun #10",
+                        "mun #11",
+                        "mun #12",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"nasin pi ma Juke"}
+        US{"nasin pi ma Mewika"}
+        metric{"nasin pi ma ale"}
+    }
+}

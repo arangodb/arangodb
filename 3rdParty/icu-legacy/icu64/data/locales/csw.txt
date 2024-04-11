@@ -1,0 +1,68 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+csw{
+    ExemplarCharacters{
+        "[ᐁ ᐃ ᐄ ᐅ ᐆ ᐊ ᐋ ᐍ ᐏ ᐑ ᐓ ᐕ ᐘ ᐚ ᐟ ᐠ ᐢ ᐣ ᐤ ᐦ ᐨ ᐩ ᐯ ᐱ ᐲ ᐳ ᐴ ᐸ ᐹ ᐻ ᐽ ᐿ ᑁ ᑃ ᑅ ᑇ ᑊ ᑌ"
+        " ᑎ ᑏ ᑐ ᑑ ᑕ ᑖ ᑘ ᑚ ᑜ ᑞ ᑠ ᑢ ᑤ ᑫ ᑭ ᑮ ᑯ ᑰ ᑲ ᑳ ᑵ ᑷ ᑹ ᑻ ᑽ ᑿ ᒁ ᒉ ᒋ ᒌ ᒍ ᒎ ᒐ ᒑ ᒓ ᒕ ᒗ ᒙ"
+        " ᒛ ᒝ ᒟ ᒣ ᒥ ᒦ ᒧ ᒨ ᒪ ᒫ ᒭ ᒯ ᒱ ᒳ ᒵ ᒷ ᒹ ᒼ ᓀ ᓂ ᓃ ᓄ ᓅ ᓇ ᓈ ᓊ ᓌ ᓎ ᓭ ᓯ ᓰ ᓱ ᓲ ᓴ ᓵ ᓷ ᓹ ᓻ"
+        " ᓽ ᓿ ᔁ ᔃ ᔦ ᔨ ᔩ ᔪ ᔫ ᔭ ᔮ ᔰ ᔲ ᔴ ᔶ ᔸ ᔺ ᔼ]"
+    }
+    calendar{
+        gregorian{
+            dayNames{
+                format{
+                    wide{
+                        "ᐊᔭᒥᐦᐁᐃ ᑭᓯᑲᐤ",
+                        "ᐯᔭᐠᑭᓯᑲᐤ",
+                        "ᓂᓱᑭᓯᑲᐤ",
+                        "ᐊᐱᐦᑕᐘᐣ",
+                        "ᓀᐓᑭᓯᑲᐤ",
+                        "ᓂᔭᓇᓄᑭᓯᑲᐤ",
+                        "ᒪᑎᓄᐏᑭᓯᑲᐤ",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "ᑭᓴᐱᓯᒼ",
+                        "ᒥᑭᓯᐏᐱᓯᒼ",
+                        "ᓂᐢᑭᐱᓯᒼ",
+                        "ᐊᓂᑭᐱᓯᒼ",
+                        "ᓴᑭᐸᑲᐏᐱᓯᒼ",
+                        "ᐸᐢᑲᐍᐦᐅᐱᓯᒼ",
+                        "ᐸᐢᑯᐏᐱᓯᒼ",
+                        "ᐅᐸᐦᐅᐏᐱᓯᒼ",
+                        "ᑕᐦᑿᑭᐱᓯᒼ",
+                        "ᐱᒪᐦᐊᒧᐏᐱᓯᒼ",
+                        "ᐊᑿᑎᓄᐏᐱᓯᒼ",
+                        "ᐸᐘᐢᒐᑲᓂᓹᐱᓯᒼ",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        person{"ᐊᓂᓯᓂᐤ"}
+    }
+    fields{
+        day{
+            dn{"ᑭᓯᑲᐤ"}
+            relative{
+                "-1"{"ᐅᑕᑯᓯᐠ"}
+                "0"{"ᐊᓄᐢᐨ"}
+                "1"{"ᐘᐸᐦᑫ"}
+            }
+        }
+        month{
+            dn{"ᐱᓯᒧᐘᐠ"}
+        }
+        week{
+            dn{"ᑭᓯᑲᐘ"}
+        }
+        year{
+            dn{"ᐊᐢᑭ"}
+        }
+    }
+}

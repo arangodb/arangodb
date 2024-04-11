@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+oc{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"ora al meridian de Greenwich"}
+        }
+        gmtFormat{"UTC{0}"}
+        gmtZeroFormat{"UTC"}
+        regionFormat{"ora de {0}"}
+        regionFormatDaylight{"{0} (ora d’estiu)"}
+        regionFormatStandard{"{0} (ora estandard)"}
+    }
+}

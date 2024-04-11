@@ -1,0 +1,4565 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lv{
+    units{
+        acceleration{
+            g-force{
+                case{
+                    accusative{
+                        one{"{0} smagumspēku"}
+                        other{"{0} smagumspēkus"}
+                        zero{"{0} smagumspēku"}
+                    }
+                    dative{
+                        one{"{0} smagumspēkam"}
+                        other{"{0} smagumspēkiem"}
+                        zero{"{0} smagumspēku"}
+                    }
+                    genitive{
+                        one{"{0} smagumspēka"}
+                        other{"{0} smagumspēku"}
+                        zero{"{0} smagumspēku"}
+                    }
+                    locative{
+                        one{"{0} smagumspēkā"}
+                        other{"{0} smagumspēkos"}
+                        zero{"{0} smagumspēku"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} smagumspēks"}
+                other{"{0} smagumspēks"}
+                zero{"{0} smagumspēku"}
+            }
+            meter-per-square-second{
+                case{
+                    accusative{
+                        one{"{0} metru sekundē kvadrātā"}
+                        other{"{0} metrus sekundē kvadrātā"}
+                        zero{"{0} metru sekundē kvadrātā"}
+                    }
+                    dative{
+                        one{"{0} metram sekundē kvadrātā"}
+                        other{"{0} metriem sekundē kvadrātā"}
+                        zero{"{0} metru sekundē kvadrātā"}
+                    }
+                    genitive{
+                        one{"{0} metra sekundē kvadrātā"}
+                        other{"{0} metru sekundē kvadrātā"}
+                        zero{"{0} metru sekundē kvadrātā"}
+                    }
+                    locative{
+                        one{"{0} metrā sekundē kvadrātā"}
+                        other{"{0} metros sekundē kvadrātā"}
+                        zero{"{0} metru sekundē kvadrātā"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} metrs sekundē kvadrātā"}
+                other{"{0} metri sekundē kvadrātā"}
+                zero{"{0} metru sekundē kvadrātā"}
+            }
+        }
+        angle{
+            arc-minute{
+                case{
+                    accusative{
+                        one{"{0} leņķa minūti"}
+                        other{"{0} leņķa minūtes"}
+                        zero{"{0} leņķa minūšu"}
+                    }
+                    dative{
+                        one{"{0} leņķa minūtei"}
+                        other{"{0} leņķa minūtēm"}
+                        zero{"{0} leņķa minūšu"}
+                    }
+                    genitive{
+                        one{"{0} leņķa minūtes"}
+                        other{"{0} leņķa minūšu"}
+                        zero{"{0} leņķa minūšu"}
+                    }
+                    locative{
+                        one{"{0} leņķa minūtē"}
+                        other{"{0} leņķa minūtēs"}
+                        zero{"{0} leņķa minūšu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} leņķa minūte"}
+                other{"{0} leņķa minūtes"}
+                zero{"{0} leņķa minūšu"}
+            }
+            arc-second{
+                case{
+                    accusative{
+                        one{"{0} leņķa sekundi"}
+                        other{"{0} leņķa sekundes"}
+                        zero{"{0} leņķa sekunžu"}
+                    }
+                    dative{
+                        one{"{0} leņķa sekundei"}
+                        other{"{0} leņķa sekundēm"}
+                        zero{"{0} leņķa sekunžu"}
+                    }
+                    genitive{
+                        one{"{0} leņķa sekundes"}
+                        other{"{0} leņķa sekunžu"}
+                        zero{"{0} leņķa sekunžu"}
+                    }
+                    locative{
+                        one{"{0} leņķa sekundē"}
+                        other{"{0} leņķa sekundēs"}
+                        zero{"{0} leņķa sekunžu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} leņķa sekunde"}
+                other{"{0} leņķa sekundes"}
+                zero{"{0} leņķa sekunžu"}
+            }
+            degree{
+                case{
+                    accusative{
+                        one{"{0} grādu"}
+                        other{"{0} grādus"}
+                        zero{"{0} grādu"}
+                    }
+                    dative{
+                        one{"{0} grādam"}
+                        other{"{0} grādiem"}
+                        zero{"{0} grādu"}
+                    }
+                    genitive{
+                        one{"{0} grāda"}
+                        other{"{0} grādu"}
+                        zero{"{0} grādu"}
+                    }
+                    locative{
+                        one{"{0} grādā"}
+                        other{"{0} grādos"}
+                        zero{"{0} grādu"}
+                    }
+                }
+                dnam{"grādi"}
+                gender{"masculine"}
+                one{"{0} grāds"}
+                other{"{0} grādi"}
+                zero{"{0} grādu"}
+            }
+            radian{
+                case{
+                    accusative{
+                        one{"{0} radiānu"}
+                        other{"{0} radiānus"}
+                        zero{"{0} radiānu"}
+                    }
+                    dative{
+                        one{"{0} radiānam"}
+                        other{"{0} radiāniem"}
+                        zero{"{0} radiānu"}
+                    }
+                    genitive{
+                        one{"{0} radiāna"}
+                        other{"{0} radiānu"}
+                        zero{"{0} radiānu"}
+                    }
+                    locative{
+                        one{"{0} radiānā"}
+                        other{"{0} radiānos"}
+                        zero{"{0} radiānu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} radiāns"}
+                other{"{0} radiāni"}
+                zero{"{0} radiānu"}
+            }
+            revolution{
+                case{
+                    accusative{
+                        one{"{0} apgriezienu"}
+                        other{"{0} apgriezienus"}
+                        zero{"{0} apgriezienu"}
+                    }
+                    dative{
+                        one{"{0} apgriezienam"}
+                        other{"{0} apgriezieniem"}
+                        zero{"{0} apgriezienu"}
+                    }
+                    genitive{
+                        one{"{0} apgrieziena"}
+                        other{"{0} apgriezienu"}
+                        zero{"{0} apgriezienu"}
+                    }
+                    locative{
+                        one{"{0} apgriezienā"}
+                        other{"{0} apgriezienos"}
+                        zero{"{0} apgriezienu"}
+                    }
+                }
+                dnam{"apgrieziens"}
+                gender{"masculine"}
+                one{"{0} apgrieziens"}
+                other{"{0} apgriezieni"}
+                zero{"{0} apgriezienu"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} akrs"}
+                other{"{0} akri"}
+                zero{"{0} akru"}
+            }
+            hectare{
+                case{
+                    accusative{
+                        one{"{0} hektāru"}
+                        other{"{0} hektāru"}
+                        zero{"{0} hektāru"}
+                    }
+                    dative{
+                        one{"{0} hektāram"}
+                        other{"{0} hektāriem"}
+                        zero{"{0} hektāru"}
+                    }
+                    genitive{
+                        one{"{0} hektāra"}
+                        other{"{0} hektāru"}
+                        zero{"{0} hektāru"}
+                    }
+                    locative{
+                        one{"{0} hektārā"}
+                        other{"{0} hektāros"}
+                        zero{"{0} hektāru"}
+                    }
+                }
+                dnam{"hektāri"}
+                gender{"masculine"}
+                one{"{0} hektārs"}
+                other{"{0} hektāri"}
+                zero{"{0} hektāru"}
+            }
+            square-centimeter{
+                case{
+                    accusative{
+                        one{"{0} kvadrātcentimetru"}
+                        other{"{0} kvadrātcentimetrus"}
+                        zero{"{0} kvadrātcentimetru"}
+                    }
+                    dative{
+                        one{"{0} kvadrātcentimetram"}
+                        other{"{0} kvadrātcentimetriem"}
+                        zero{"{0} kvadrātcentimetru"}
+                    }
+                    genitive{
+                        one{"{0} kvadrātcentimetra"}
+                        other{"{0} kvadrātcentimetru"}
+                        zero{"{0} kvadrātcentimetru"}
+                    }
+                    locative{
+                        one{"{0} kvadrātcentimetrā"}
+                        other{"{0} kvadrātcentimetros"}
+                        zero{"{0} kvadrātcentimetru"}
+                    }
+                }
+                dnam{"kvadrātcentimetri"}
+                gender{"masculine"}
+                one{"{0} kvadrātcentimetrs"}
+                other{"{0} kvadrātcentimetri"}
+                per{"{0} uz kvadrātcentimetru"}
+                zero{"{0} kvadrātcentimetru"}
+            }
+            square-foot{
+                dnam{"kvadrātpēdas"}
+                one{"{0} kvadrātpēda"}
+                other{"{0} kvadrātpēdas"}
+                zero{"{0} kvadrātpēdu"}
+            }
+            square-inch{
+                dnam{"kvadrātcollas"}
+                one{"{0} kvadrātcolla"}
+                other{"{0} kvadrātcollas"}
+                per{"{0} uz kvadrātcollu"}
+                zero{"{0} kvadrātcollu"}
+            }
+            square-kilometer{
+                case{
+                    accusative{
+                        one{"{0} kvadrātkilometru"}
+                        other{"{0} kvadrātkilometrus"}
+                        zero{"{0} kvadrātkilometru"}
+                    }
+                    dative{
+                        one{"{0} kvadrātkilometram"}
+                        other{"{0} kvadrātkilometriem"}
+                        zero{"{0} kvadrātkilometru"}
+                    }
+                    genitive{
+                        one{"{0} kvadrātkilometra"}
+                        other{"{0} kvadrātkilometru"}
+                        zero{"{0} kvadrātkilometru"}
+                    }
+                    locative{
+                        one{"{0} kvadrātkilometrā"}
+                        other{"{0} kvadrātkilometros"}
+                        zero{"{0} kvadrātkilometru"}
+                    }
+                }
+                dnam{"kvadrātkilometri"}
+                gender{"masculine"}
+                one{"{0} kvadrātkilometrs"}
+                other{"{0} kvadrātkilometri"}
+                per{"{0} uz kvadrātkilometru"}
+                zero{"{0} kvadrātkilometru"}
+            }
+            square-meter{
+                case{
+                    accusative{
+                        one{"{0} kvadrātmetru"}
+                        other{"{0} kvadrātmetrus"}
+                        zero{"{0} kvadrātmetru"}
+                    }
+                    dative{
+                        one{"{0} kvadrātmetram"}
+                        other{"{0} kvadrātmetriem"}
+                        zero{"{0} kvadrātmetru"}
+                    }
+                    genitive{
+                        one{"{0} kvadrātmetra"}
+                        other{"{0} kvadrātmetru"}
+                        zero{"{0} kvadrātmetru"}
+                    }
+                    locative{
+                        one{"{0} kvadrātmetrā"}
+                        other{"{0} kvadrātmetros"}
+                        zero{"{0} kvadrātmetru"}
+                    }
+                }
+                dnam{"kvadrātmetri"}
+                gender{"masculine"}
+                one{"{0} kvadrātmetrs"}
+                other{"{0} kvadrātmetri"}
+                per{"{0} uz kvadrātmetru"}
+                zero{"{0} kvadrātmetru"}
+            }
+            square-mile{
+                dnam{"kvadrātjūdzes"}
+                one{"{0} kvadrātjūdze"}
+                other{"{0} kvadrātjūdzes"}
+                per{"{0} uz kvadrātjūdzi"}
+                zero{"{0} kvadrātjūdžu"}
+            }
+            square-yard{
+                dnam{"kvadrātjardi"}
+                one{"{0} kvadrātjards"}
+                other{"{0} kvadrātjardi"}
+                zero{"{0} kvadrātjardu"}
+            }
+        }
+        compound{
+            1024p1{"kibi{0}"}
+            1024p2{"mebi{0}"}
+            1024p3{"gibi{0}"}
+            1024p4{"tebi{0}"}
+            1024p5{"pebi{0}"}
+            1024p6{"eksbi{0}"}
+            1024p7{"zebi{0}"}
+            1024p8{"jobe{0}"}
+            10p-1{"deci{0}"}
+            10p-12{"piko{0}"}
+            10p-15{"femto{0}"}
+            10p-18{"ato{0}"}
+            10p-2{"centi{0}"}
+            10p-21{"zepto{0}"}
+            10p-24{"jokto{0}"}
+            10p-27{"ronto{0}"}
+            10p-3{"mili{0}"}
+            10p-30{"kvekto{0}"}
+            10p-6{"mikro{0}"}
+            10p-9{"nano{0}"}
+            10p1{"deka{0}"}
+            10p12{"tera{0}"}
+            10p15{"peta{0}"}
+            10p18{"eksa{0}"}
+            10p2{"hekto{0}"}
+            10p21{"zeta{0}"}
+            10p24{"jota{0}"}
+            10p27{"ronna{0}"}
+            10p3{"kilo{0}"}
+            10p30{"kveta{0}"}
+            10p6{"mega{0}"}
+            10p9{"giga{0}"}
+            power2{
+                one{
+                    _{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                    feminine{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                    feminine{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                }
+                zero{
+                    _{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                    feminine{
+                        _{"kvadrāt{0}"}
+                        accusative{"kvadrāt{0}"}
+                        dative{"kvadrāt{0}"}
+                        genitive{"kvadrāt{0}"}
+                        locative{"kvadrāt{0}"}
+                    }
+                }
+            }
+            power3{
+                one{
+                    _{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                    feminine{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                    feminine{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                }
+                zero{
+                    _{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                    feminine{
+                        _{"kubik{0}"}
+                        accusative{"kubik{0}"}
+                        dative{"kubik{0}"}
+                        genitive{"kubik{0}"}
+                        locative{"kubik{0}"}
+                    }
+                }
+            }
+        }
+        concentr{
+            item{
+                case{
+                    accusative{
+                        one{"{0} vienumu"}
+                        other{"{0} vienumus"}
+                        zero{"{0} vienumu"}
+                    }
+                    dative{
+                        one{"{0} vienumam"}
+                        other{"{0} vienumiem"}
+                        zero{"{0} vienumu"}
+                    }
+                    genitive{
+                        one{"{0} vienuma"}
+                        other{"{0} vienumu"}
+                        zero{"{0} vienumu"}
+                    }
+                    locative{
+                        one{"{0} vienumā"}
+                        other{"{0} vienumos"}
+                        zero{"{0} vienumu"}
+                    }
+                }
+                dnam{"vienumi"}
+                gender{"masculine"}
+                one{"{0} vienums"}
+                other{"{0} vienumi"}
+                zero{"{0} vienumu"}
+            }
+            karat{
+                case{
+                    accusative{
+                        one{"{0} karātu"}
+                        other{"{0} karātus"}
+                        zero{"{0} karātu"}
+                    }
+                    dative{
+                        one{"{0} karātam"}
+                        other{"{0} karātiem"}
+                        zero{"{0} karātu"}
+                    }
+                    genitive{
+                        one{"{0} karāta"}
+                        other{"{0} karātu"}
+                        zero{"{0} karātu"}
+                    }
+                    locative{
+                        one{"{0} karātā"}
+                        other{"{0} karātos"}
+                        zero{"{0} karātu"}
+                    }
+                }
+                dnam{"karāti"}
+                gender{"masculine"}
+                one{"{0} karāts"}
+                other{"{0} karāti"}
+                zero{"{0} karātu"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"miligrami uz decilitru"}
+                one{"{0} miligrams uz decilitru"}
+                other{"{0} miligrami uz decilitru"}
+                zero{"{0} miligramu uz decilitru"}
+            }
+            millimole-per-liter{
+                case{
+                    accusative{
+                        one{"{0} milimolu uz litru"}
+                        other{"{0} milimolus uz litru"}
+                        zero{"{0} milimolu uz litru"}
+                    }
+                    dative{
+                        one{"{0} milimolam uz litru"}
+                        other{"{0} milimoliem uz litru"}
+                        zero{"{0} milimolu uz litru"}
+                    }
+                    genitive{
+                        one{"{0} milimola uz litru"}
+                        other{"{0} milimolu uz litru"}
+                        zero{"{0} milimolu uz litru"}
+                    }
+                    locative{
+                        one{"{0} milimolā uz litru"}
+                        other{"{0} milimolos uz litru"}
+                        zero{"{0} milimolu uz litru"}
+                    }
+                }
+                dnam{"milimoli uz litru"}
+                gender{"masculine"}
+                one{"{0} milimols uz litru"}
+                other{"{0} milimoli uz litru"}
+                zero{"{0} milimolu uz litru"}
+            }
+            mole{
+                case{
+                    accusative{
+                        one{"{0} molu"}
+                        other{"{0} molus"}
+                        zero{"{0} molu"}
+                    }
+                    dative{
+                        one{"{0} molam"}
+                        other{"{0} moliem"}
+                        zero{"{0} molu"}
+                    }
+                    genitive{
+                        one{"{0} mola"}
+                        other{"{0} molu"}
+                        zero{"{0} molu"}
+                    }
+                    locative{
+                        one{"{0} molā"}
+                        other{"{0} molos"}
+                        zero{"{0} molu"}
+                    }
+                }
+                dnam{"moli"}
+                gender{"masculine"}
+                one{"{0} mols"}
+                other{"{0} moli"}
+                zero{"{0} molu"}
+            }
+            percent{
+                case{
+                    accusative{
+                        one{"{0} procentu"}
+                        other{"{0} procentus"}
+                        zero{"{0} procentu"}
+                    }
+                    dative{
+                        one{"{0} procentam"}
+                        other{"{0} procentiem"}
+                        zero{"{0} procentu"}
+                    }
+                    genitive{
+                        one{"{0} procenta"}
+                        other{"{0} procentu"}
+                        zero{"{0} procentu"}
+                    }
+                    locative{
+                        one{"{0} procentā"}
+                        other{"{0} procentos"}
+                        zero{"{0} procentu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} procents"}
+                other{"{0} procenti"}
+                zero{"{0} procentu"}
+            }
+            permille{
+                case{
+                    accusative{
+                        one{"{0} promili"}
+                        other{"{0} promiļu"}
+                        zero{"{0} promiļu"}
+                    }
+                    dative{
+                        one{"{0} promilei"}
+                        other{"{0} promilēm"}
+                        zero{"{0} promiļu"}
+                    }
+                    genitive{
+                        one{"{0} promiles"}
+                        other{"{0} promiļu"}
+                        zero{"{0} promiļu"}
+                    }
+                    locative{
+                        one{"{0} promilē"}
+                        other{"{0} promilēs"}
+                        zero{"{0} promiļu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} promile"}
+                other{"{0} promiles"}
+                zero{"{0} promiļu"}
+            }
+            permillion{
+                case{
+                    accusative{
+                        one{"{0} miljono daļu"}
+                        other{"{0} miljonās daļas"}
+                        zero{"{0} miljono daļu"}
+                    }
+                    dative{
+                        one{"{0} miljonajai daļai"}
+                        other{"{0} miljonajām daļām"}
+                        zero{"{0} miljono daļu"}
+                    }
+                    genitive{
+                        one{"{0} miljonās daļas"}
+                        other{"{0} miljono daļu"}
+                        zero{"{0} miljono daļu"}
+                    }
+                    locative{
+                        one{"{0} miljonajā daļā"}
+                        other{"{0} miljonajās daļās"}
+                        zero{"{0} miljono daļu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} miljonā daļa"}
+                other{"{0} miljonās daļas"}
+                zero{"{0} miljono daļu"}
+            }
+            permyriad{
+                case{
+                    accusative{
+                        one{"{0} promiriādi"}
+                        other{"{0} promiriāžu"}
+                        zero{"{0}‱"}
+                    }
+                    dative{
+                        one{"{0} promiriādei"}
+                        other{"{0} promiriādēm"}
+                        zero{"{0}‱"}
+                    }
+                    genitive{
+                        one{"{0} promiriādes"}
+                        other{"{0} promiriāžu"}
+                        zero{"{0}‱"}
+                    }
+                    locative{
+                        one{"{0} promiriādē"}
+                        other{"{0} promiriādēs"}
+                        zero{"{0}‱"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} promiriāde"}
+                other{"{0} promiriādes"}
+                zero{"{0}‱"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                case{
+                    accusative{
+                        one{"{0} litru uz 100 kilometriem"}
+                        other{"{0} litrus uz 100 kilometriem"}
+                        zero{"{0} litru uz 100 kilometriem"}
+                    }
+                    dative{
+                        one{"{0} litram uz 100 kilometriem"}
+                        other{"{0} litriem uz 100 kilometriem"}
+                        zero{"{0} litru uz 100 kilometriem"}
+                    }
+                    genitive{
+                        one{"{0} litra uz 100 kilometriem"}
+                        other{"{0} litru uz 100 kilometriem"}
+                        zero{"{0} litru uz 100 kilometriem"}
+                    }
+                    locative{
+                        one{"{0} litrā uz 100 kilometriem"}
+                        other{"{0} litros uz 100 kilometriem"}
+                        zero{"{0} litru uz 100 kilometriem"}
+                    }
+                }
+                dnam{"litri uz 100 kilometriem"}
+                gender{"masculine"}
+                one{"{0} litrs uz 100 kilometriem"}
+                other{"{0} litri uz 100 kilometriem"}
+                zero{"{0} litru uz 100 kilometriem"}
+            }
+            liter-per-kilometer{
+                case{
+                    accusative{
+                        one{"{0} litru uz kilometru"}
+                        other{"{0} litrus uz kilometru"}
+                        zero{"{0} litru uz kilometru"}
+                    }
+                    dative{
+                        one{"{0} litram uz kilometru"}
+                        other{"{0} litriem uz kilometru"}
+                        zero{"{0} litru uz kilometru"}
+                    }
+                    genitive{
+                        one{"{0} litra uz kilometru"}
+                        other{"{0} litru uz kilometru"}
+                        zero{"{0} litru uz kilometru"}
+                    }
+                    locative{
+                        one{"{0} litrā uz kilometru"}
+                        other{"{0} litros uz kilometru"}
+                        zero{"{0} litru uz kilometru"}
+                    }
+                }
+                dnam{"litri uz kilometru"}
+                gender{"masculine"}
+                one{"{0} litrs uz kilometru"}
+                other{"{0} litri uz kilometru"}
+                zero{"{0} litru uz kilometru"}
+            }
+            mile-per-gallon{
+                one{"{0} jūdze uz galonu"}
+                other{"{0} jūdzes uz galonu"}
+                zero{"{0} jūdžu uz galonu"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"jūdzes uz britu galonu"}
+                one{"{0} jūdze uz britu galonu"}
+                other{"{0} jūdzes uz britu galonu"}
+                zero{"{0} jūdžu uz britu galonu"}
+            }
+        }
+        digital{
+            bit{
+                case{
+                    accusative{
+                        one{"{0} bitu"}
+                        other{"{0} bitus"}
+                        zero{"{0} bitu"}
+                    }
+                    dative{
+                        one{"{0} bitam"}
+                        other{"{0} bitiem"}
+                        zero{"{0} bitu"}
+                    }
+                    genitive{
+                        one{"{0} bita"}
+                        other{"{0} bitu"}
+                        zero{"{0} bitu"}
+                    }
+                    locative{
+                        one{"{0} bitā"}
+                        other{"{0} bitos"}
+                        zero{"{0} bitu"}
+                    }
+                }
+                dnam{"biti"}
+                gender{"masculine"}
+                one{"{0} bits"}
+                other{"{0} biti"}
+                zero{"{0} bitu"}
+            }
+            byte{
+                case{
+                    accusative{
+                        one{"{0} baitu"}
+                        other{"{0} baitus"}
+                        zero{"{0} baitu"}
+                    }
+                    dative{
+                        one{"{0} baitam"}
+                        other{"{0} baitiem"}
+                        zero{"{0} baitu"}
+                    }
+                    genitive{
+                        one{"{0} baita"}
+                        other{"{0} baitu"}
+                        zero{"{0} baitu"}
+                    }
+                    locative{
+                        one{"{0} baitā"}
+                        other{"{0} baitos"}
+                        zero{"{0} baitu"}
+                    }
+                }
+                dnam{"baiti"}
+                gender{"masculine"}
+                one{"{0} baits"}
+                other{"{0} baiti"}
+                zero{"{0} baitu"}
+            }
+            gigabit{
+                case{
+                    accusative{
+                        one{"{0} gigabitu"}
+                        other{"{0} gigabitus"}
+                        zero{"{0} gigabitu"}
+                    }
+                    dative{
+                        one{"{0} gigabitam"}
+                        other{"{0} gigabitiem"}
+                        zero{"{0} gigabitu"}
+                    }
+                    genitive{
+                        one{"{0} gigabita"}
+                        other{"{0} gigabitu"}
+                        zero{"{0} gigabitu"}
+                    }
+                    locative{
+                        one{"{0} gigabitā"}
+                        other{"{0} gigabitos"}
+                        zero{"{0} gigabitu"}
+                    }
+                }
+                dnam{"gigabiti"}
+                gender{"masculine"}
+                one{"{0} gigabits"}
+                other{"{0} gigabiti"}
+                zero{"{0} gigabitu"}
+            }
+            gigabyte{
+                case{
+                    accusative{
+                        one{"{0} gigabaitu"}
+                        other{"{0} gigabaitus"}
+                        zero{"{0} gigabaitu"}
+                    }
+                    dative{
+                        one{"{0} gigabaitam"}
+                        other{"{0} gigabaitiem"}
+                        zero{"{0} gigabaitu"}
+                    }
+                    genitive{
+                        one{"{0} gigabaita"}
+                        other{"{0} gigabaitu"}
+                        zero{"{0} gigabaitu"}
+                    }
+                    locative{
+                        one{"{0} gigabaitā"}
+                        other{"{0} gigabaitos"}
+                        zero{"{0} gigabaitu"}
+                    }
+                }
+                dnam{"gigabaiti"}
+                gender{"masculine"}
+                one{"{0} gigabaits"}
+                other{"{0} gigabaiti"}
+                zero{"{0} gigabaitu"}
+            }
+            kilobit{
+                case{
+                    accusative{
+                        one{"{0} kilobitu"}
+                        other{"{0} kilobitus"}
+                        zero{"{0} kilobitu"}
+                    }
+                    dative{
+                        one{"{0} kilobitam"}
+                        other{"{0} kilobitiem"}
+                        zero{"{0} kilobitu"}
+                    }
+                    genitive{
+                        one{"{0} kilobita"}
+                        other{"{0} kilobitu"}
+                        zero{"{0} kilobitu"}
+                    }
+                    locative{
+                        one{"{0} kilobitā"}
+                        other{"{0} kilobitos"}
+                        zero{"{0} kilobitu"}
+                    }
+                }
+                dnam{"kilobiti"}
+                gender{"masculine"}
+                one{"{0} kilobits"}
+                other{"{0} kilobiti"}
+                zero{"{0} kilobitu"}
+            }
+            kilobyte{
+                case{
+                    accusative{
+                        one{"{0} kilobaitu"}
+                        other{"{0} kilobaitus"}
+                        zero{"{0} kilobaitu"}
+                    }
+                    dative{
+                        one{"{0} kilobaitam"}
+                        other{"{0} kilobaitiem"}
+                        zero{"{0} kilobaitu"}
+                    }
+                    genitive{
+                        one{"{0} kilobaita"}
+                        other{"{0} kilobaitu"}
+                        zero{"{0} kilobaitu"}
+                    }
+                    locative{
+                        one{"{0} kilobaitā"}
+                        other{"{0} kilobaitos"}
+                        zero{"{0} kilobaitu"}
+                    }
+                }
+                dnam{"kilobaiti"}
+                gender{"masculine"}
+                one{"{0} kilobaits"}
+                other{"{0} kilobaiti"}
+                zero{"{0} kilobaitu"}
+            }
+            megabit{
+                case{
+                    accusative{
+                        one{"{0} megabitu"}
+                        other{"{0} megabitus"}
+                        zero{"{0} megabitu"}
+                    }
+                    dative{
+                        one{"{0} megabitam"}
+                        other{"{0} megabitiem"}
+                        zero{"{0} megabitu"}
+                    }
+                    genitive{
+                        one{"{0} megabita"}
+                        other{"{0} megabitu"}
+                        zero{"{0} megabitu"}
+                    }
+                    locative{
+                        one{"{0} megabitā"}
+                        other{"{0} megabitos"}
+                        zero{"{0} megabitu"}
+                    }
+                }
+                dnam{"megabiti"}
+                gender{"masculine"}
+                one{"{0} megabits"}
+                other{"{0} megabiti"}
+                zero{"{0} megabitu"}
+            }
+            megabyte{
+                case{
+                    accusative{
+                        one{"{0} megabaitu"}
+                        other{"{0} megabaitus"}
+                        zero{"{0} megabaitu"}
+                    }
+                    dative{
+                        one{"{0} megabaitam"}
+                        other{"{0} megabaitiem"}
+                        zero{"{0} megabaitu"}
+                    }
+                    genitive{
+                        one{"{0} megabaita"}
+                        other{"{0} megabaitu"}
+                        zero{"{0} megabaitu"}
+                    }
+                    locative{
+                        one{"{0} megabaitā"}
+                        other{"{0} megabaitos"}
+                        zero{"{0} megabaitu"}
+                    }
+                }
+                dnam{"megabaiti"}
+                gender{"masculine"}
+                one{"{0} megabaits"}
+                other{"{0} megabaits"}
+                zero{"{0} megabaitu"}
+            }
+            petabyte{
+                case{
+                    accusative{
+                        one{"{0} petabaitu"}
+                        other{"{0} petabaitus"}
+                        zero{"{0} petabaitu"}
+                    }
+                    dative{
+                        one{"{0} petabaitam"}
+                        other{"{0} petabaitiem"}
+                        zero{"{0} petabaitu"}
+                    }
+                    genitive{
+                        one{"{0} petabaita"}
+                        other{"{0} petabaitu"}
+                        zero{"{0} petabaitu"}
+                    }
+                    locative{
+                        one{"{0} petabaitā"}
+                        other{"{0} petabaitos"}
+                        zero{"{0} petabaitu"}
+                    }
+                }
+                dnam{"petabaiti"}
+                gender{"masculine"}
+                one{"{0} petabaits"}
+                other{"{0} petabaiti"}
+                zero{"{0} petabaitu"}
+            }
+            terabit{
+                case{
+                    accusative{
+                        one{"{0} terabitu"}
+                        other{"{0} terabitus"}
+                        zero{"{0} terabitu"}
+                    }
+                    dative{
+                        one{"{0} terabitam"}
+                        other{"{0} terabitiem"}
+                        zero{"{0} terabitu"}
+                    }
+                    genitive{
+                        one{"{0} terabita"}
+                        other{"{0} terabitu"}
+                        zero{"{0} terabitu"}
+                    }
+                    locative{
+                        one{"{0} terabitā"}
+                        other{"{0} terabitos"}
+                        zero{"{0} terabitu"}
+                    }
+                }
+                dnam{"terabiti"}
+                gender{"masculine"}
+                one{"{0} terabits"}
+                other{"{0} terabiti"}
+                zero{"{0} terabitu"}
+            }
+            terabyte{
+                case{
+                    accusative{
+                        one{"{0} terabaitu"}
+                        other{"{0} terabaitus"}
+                        zero{"{0} terabaitu"}
+                    }
+                    dative{
+                        one{"{0} terabaitam"}
+                        other{"{0} terabaitiem"}
+                        zero{"{0} terabaitu"}
+                    }
+                    genitive{
+                        one{"{0} terabaita"}
+                        other{"{0} terabaitu"}
+                        zero{"{0} terabaitu"}
+                    }
+                    locative{
+                        one{"{0} terabaitam"}
+                        other{"{0} terabaitos"}
+                        zero{"{0} terabaitu"}
+                    }
+                }
+                dnam{"terabaiti"}
+                gender{"masculine"}
+                one{"{0} terabaits"}
+                other{"{0} terabaiti"}
+                zero{"{0} terabaitu"}
+            }
+        }
+        duration{
+            century{
+                case{
+                    accusative{
+                        one{"{0} gadsimts"}
+                        other{"{0} gadsimtus"}
+                        zero{"{0} gadsimtu"}
+                    }
+                    dative{
+                        one{"{0} gadsimtam"}
+                        other{"{0} gadsimtiem"}
+                        zero{"{0} gadsimtu"}
+                    }
+                    genitive{
+                        one{"{0} gadsimta"}
+                        other{"{0} gadsimtu"}
+                        zero{"{0} gadsimtu"}
+                    }
+                    locative{
+                        one{"{0} gadsimtā"}
+                        other{"{0} gadsimtos"}
+                        zero{"{0} gadsimtu"}
+                    }
+                }
+                dnam{"gadsimti"}
+                gender{"masculine"}
+                one{"{0} gadsimts"}
+                other{"{0} gadsimti"}
+                zero{"{0} gadsimtu"}
+            }
+            day{
+                case{
+                    accusative{
+                        one{"{0} dienu"}
+                        other{"{0} dienas"}
+                        zero{"{0} dienu"}
+                    }
+                    dative{
+                        one{"{0} dienai"}
+                        other{"{0} dienām"}
+                        zero{"{0} dienu"}
+                    }
+                    genitive{
+                        one{"{0} dienas"}
+                        other{"{0} dienu"}
+                        zero{"{0} dienu"}
+                    }
+                    locative{
+                        one{"{0} dienā"}
+                        other{"{0} dienās"}
+                        zero{"{0} dienu"}
+                    }
+                }
+                dnam{"dienas"}
+                gender{"feminine"}
+                one{"{0} diena"}
+                other{"{0} dienas"}
+                per{"{0} dienā"}
+                zero{"{0} dienu"}
+            }
+            decade{
+                case{
+                    accusative{
+                        one{"{0} dekādi"}
+                        other{"{0} dekādes"}
+                        zero{"{0} dekāžu"}
+                    }
+                    dative{
+                        one{"{0} dekādei"}
+                        other{"{0} dekādēm"}
+                        zero{"{0} dekāžu"}
+                    }
+                    genitive{
+                        one{"{0} dekādes"}
+                        other{"{0} dekāžu"}
+                        zero{"{0} dekāžu"}
+                    }
+                    locative{
+                        one{"{0} dekādē"}
+                        other{"{0} dekādēs"}
+                        zero{"{0} dekāžu"}
+                    }
+                }
+                dnam{"dekādes"}
+                gender{"feminine"}
+                one{"{0} dekāde"}
+                other{"{0} dekādes"}
+                zero{"{0} dekāžu"}
+            }
+            hour{
+                case{
+                    accusative{
+                        one{"{0} stundu"}
+                        other{"{0} stundas"}
+                        zero{"{0} stundu"}
+                    }
+                    dative{
+                        one{"{0} stundai"}
+                        other{"{0} stundām"}
+                        zero{"{0} stundu"}
+                    }
+                    genitive{
+                        one{"{0} stundas"}
+                        other{"{0} stundu"}
+                        zero{"{0} stundu"}
+                    }
+                    locative{
+                        one{"{0} stundā"}
+                        other{"{0} stundās"}
+                        zero{"{0} stundu"}
+                    }
+                }
+                dnam{"stundas"}
+                gender{"feminine"}
+                one{"{0} stunda"}
+                other{"{0} stundas"}
+                per{"{0} stundā"}
+                zero{"{0} stundu"}
+            }
+            microsecond{
+                case{
+                    accusative{
+                        one{"{0} mikrosekundi"}
+                        other{"{0} mikrosekundes"}
+                        zero{"{0} mikrosekunžu"}
+                    }
+                    dative{
+                        one{"{0} mikrosekundei"}
+                        other{"{0} mikrosekundēm"}
+                        zero{"{0} mikrosekunžu"}
+                    }
+                    genitive{
+                        one{"{0} mikrosekundes"}
+                        other{"{0} mikrosekunžu"}
+                        zero{"{0} mikrosekunžu"}
+                    }
+                    locative{
+                        one{"{0} mikrosekundē"}
+                        other{"{0} mikrosekundēs"}
+                        zero{"{0} mikrosekunžu"}
+                    }
+                }
+                dnam{"mikrosekundes"}
+                gender{"feminine"}
+                one{"{0} mikrosekunde"}
+                other{"{0} mikrosekundes"}
+                zero{"{0} mikrosekunžu"}
+            }
+            millisecond{
+                case{
+                    accusative{
+                        one{"{0} milisekundi"}
+                        other{"{0} milisekundes"}
+                        zero{"{0} milisekunžu"}
+                    }
+                    dative{
+                        one{"{0} milisekundei"}
+                        other{"{0} milisekundēm"}
+                        zero{"{0} milisekunžu"}
+                    }
+                    genitive{
+                        one{"{0} milisekundes"}
+                        other{"{0} milisekunžu"}
+                        zero{"{0} milisekunžu"}
+                    }
+                    locative{
+                        one{"{0} milisekundē"}
+                        other{"{0} milisekundēs"}
+                        zero{"{0} milisekunžu"}
+                    }
+                }
+                dnam{"milisekundes"}
+                gender{"feminine"}
+                one{"{0} milisekunde"}
+                other{"{0} milisekundes"}
+                zero{"{0} milisekunžu"}
+            }
+            minute{
+                case{
+                    accusative{
+                        one{"{0} minūti"}
+                        other{"{0} minūtes"}
+                        zero{"{0} minūšu"}
+                    }
+                    dative{
+                        one{"{0} minūtei"}
+                        other{"{0} minūtēm"}
+                        zero{"{0} minūšu"}
+                    }
+                    genitive{
+                        one{"{0} minūtes"}
+                        other{"{0} minūšu"}
+                        zero{"{0} minūšu"}
+                    }
+                    locative{
+                        one{"{0} minūtē"}
+                        other{"{0} minūtēs"}
+                        zero{"{0} minūšu"}
+                    }
+                }
+                dnam{"minūtes"}
+                gender{"feminine"}
+                one{"{0} minūte"}
+                other{"{0} minūtes"}
+                per{"{0} minūtē"}
+                zero{"{0} minūšu"}
+            }
+            month{
+                case{
+                    accusative{
+                        one{"{0} mēnesi"}
+                        other{"{0} mēnešus"}
+                        zero{"{0} mēnešu"}
+                    }
+                    dative{
+                        one{"{0} mēnesim"}
+                        other{"{0} mēnešiem"}
+                        zero{"{0} mēnešu"}
+                    }
+                    genitive{
+                        one{"{0} mēneša"}
+                        other{"{0} mēnešu"}
+                        zero{"{0} mēnešu"}
+                    }
+                    locative{
+                        one{"{0} mēnesī"}
+                        other{"{0} mēnešos"}
+                        zero{"{0} mēnešu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} mēnesis"}
+                other{"{0} mēneši"}
+                per{"{0} mēnesī"}
+                zero{"{0} mēnešu"}
+            }
+            nanosecond{
+                case{
+                    accusative{
+                        one{"{0} nanosekundi"}
+                        other{"{0} nanosekundes"}
+                        zero{"{0} nanosekunžu"}
+                    }
+                    dative{
+                        one{"{0} nanosekundei"}
+                        other{"{0} nanosekundēm"}
+                        zero{"{0} nanosekunžu"}
+                    }
+                    genitive{
+                        one{"{0} nanosekundes"}
+                        other{"{0} nanosekunžu"}
+                        zero{"{0} nanosekunžu"}
+                    }
+                    locative{
+                        one{"{0} nanosekundē"}
+                        other{"{0} nanosekundēs"}
+                        zero{"{0} nanosekunžu"}
+                    }
+                }
+                dnam{"nanosekundes"}
+                gender{"feminine"}
+                one{"{0} nanosekunde"}
+                other{"{0} nanosekundes"}
+                zero{"{0} nanosekunžu"}
+            }
+            quarter{
+                case{
+                    accusative{
+                        one{"{0} ceturksni"}
+                        other{"{0} ceturkšņus"}
+                        zero{"{0} cet."}
+                    }
+                    dative{
+                        one{"{0} ceturksnim"}
+                        other{"{0} ceturkšņiem"}
+                        zero{"{0} cet."}
+                    }
+                    genitive{
+                        one{"{0} ceturkšņa"}
+                        other{"{0} ceturkšņu"}
+                        zero{"{0} cet."}
+                    }
+                    locative{
+                        one{"{0} ceturksnī"}
+                        other{"{0} ceturkšņos"}
+                        zero{"{0} cet."}
+                    }
+                }
+                dnam{"ceturkšņi"}
+                gender{"masculine"}
+                one{"{0} ceturksnis"}
+                other{"{0} ceturkšņi"}
+                zero{"{0} cet."}
+            }
+            second{
+                case{
+                    accusative{
+                        one{"{0} sekundi"}
+                        other{"{0} sekundes"}
+                        zero{"{0} sekunžu"}
+                    }
+                    dative{
+                        one{"{0} sekundei"}
+                        other{"{0} sekundēm"}
+                        zero{"{0} sekunžu"}
+                    }
+                    genitive{
+                        one{"{0} sekundes"}
+                        other{"{0} sekunžu"}
+                        zero{"{0} sekunžu"}
+                    }
+                    locative{
+                        one{"{0} sekundē"}
+                        other{"{0} sekundēs"}
+                        zero{"{0} sekunžu"}
+                    }
+                }
+                dnam{"sekundes"}
+                gender{"feminine"}
+                one{"{0} sekunde"}
+                other{"{0} sekundes"}
+                per{"{0} sekundē"}
+                zero{"{0} sekunžu"}
+            }
+            week{
+                case{
+                    accusative{
+                        one{"{0} nedēļu"}
+                        other{"{0} nedēļas"}
+                        zero{"{0} nedēļu"}
+                    }
+                    dative{
+                        one{"{0} nedēļai"}
+                        other{"{0} nedēļām"}
+                        zero{"{0} nedēļu"}
+                    }
+                    genitive{
+                        one{"{0} nedēļas"}
+                        other{"{0} nedēļu"}
+                        zero{"{0} nedēļu"}
+                    }
+                    locative{
+                        one{"{0} nedēļā"}
+                        other{"{0} nedēļās"}
+                        zero{"{0} nedēļu"}
+                    }
+                }
+                dnam{"nedēļas"}
+                gender{"feminine"}
+                one{"{0} nedēļa"}
+                other{"{0} nedēļas"}
+                per{"{0} nedēļā"}
+                zero{"{0} nedēļu"}
+            }
+            year{
+                case{
+                    accusative{
+                        one{"{0} gadu"}
+                        other{"{0} gadus"}
+                        zero{"{0} gadu"}
+                    }
+                    dative{
+                        one{"{0} gadam"}
+                        other{"{0} gadiem"}
+                        zero{"{0} gadu"}
+                    }
+                    genitive{
+                        one{"{0} gada"}
+                        other{"{0} gadu"}
+                        zero{"{0} gadu"}
+                    }
+                    locative{
+                        one{"{0} gadā"}
+                        other{"{0} gados"}
+                        zero{"{0} gadu"}
+                    }
+                }
+                dnam{"gadi"}
+                gender{"masculine"}
+                one{"{0} gads"}
+                other{"{0} gadi"}
+                per{"{0} gadā"}
+                zero{"{0} gadu"}
+            }
+        }
+        electric{
+            ampere{
+                case{
+                    accusative{
+                        one{"{0} ampēru"}
+                        other{"{0} ampērus"}
+                        zero{"{0} ampēru"}
+                    }
+                    dative{
+                        one{"{0} ampēram"}
+                        other{"{0} ampēriem"}
+                        zero{"{0} ampēru"}
+                    }
+                    genitive{
+                        one{"{0} ampēra"}
+                        other{"{0} ampēru"}
+                        zero{"{0} ampēru"}
+                    }
+                    locative{
+                        one{"{0} ampērā"}
+                        other{"{0} ampēros"}
+                        zero{"{0} ampēru"}
+                    }
+                }
+                dnam{"ampēri"}
+                gender{"masculine"}
+                one{"{0} ampērs"}
+                other{"{0} ampēri"}
+                zero{"{0} ampēru"}
+            }
+            milliampere{
+                case{
+                    accusative{
+                        one{"{0} miliampēru"}
+                        other{"{0} miliampērus"}
+                        zero{"{0} miliampēru"}
+                    }
+                    dative{
+                        one{"{0} miliampēram"}
+                        other{"{0} miliampēriem"}
+                        zero{"{0} miliampēru"}
+                    }
+                    genitive{
+                        one{"{0} miliampēra"}
+                        other{"{0} miliampēru"}
+                        zero{"{0} miliampēru"}
+                    }
+                    locative{
+                        one{"{0} miliampērā"}
+                        other{"{0} miliampēros"}
+                        zero{"{0} miliampēru"}
+                    }
+                }
+                dnam{"miliampēri"}
+                gender{"masculine"}
+                one{"{0} miliampērs"}
+                other{"{0} miliampēri"}
+                zero{"{0} miliampēru"}
+            }
+            ohm{
+                case{
+                    accusative{
+                        one{"{0} omu"}
+                        other{"{0} omus"}
+                        zero{"{0} omu"}
+                    }
+                    dative{
+                        one{"{0} omam"}
+                        other{"{0} omiem"}
+                        zero{"{0} omu"}
+                    }
+                    genitive{
+                        one{"{0} oma"}
+                        other{"{0} omu"}
+                        zero{"{0} omu"}
+                    }
+                    locative{
+                        one{"{0} omā"}
+                        other{"{0} omos"}
+                        zero{"{0} omu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} oms"}
+                other{"{0} omi"}
+                zero{"{0} omu"}
+            }
+            volt{
+                case{
+                    accusative{
+                        one{"{0} voltu"}
+                        other{"{0} voltus"}
+                        zero{"{0} voltu"}
+                    }
+                    dative{
+                        one{"{0} voltam"}
+                        other{"{0} voltiem"}
+                        zero{"{0} voltu"}
+                    }
+                    genitive{
+                        one{"{0} volta"}
+                        other{"{0} voltu"}
+                        zero{"{0} voltu"}
+                    }
+                    locative{
+                        one{"{0} voltā"}
+                        other{"{0} voltos"}
+                        zero{"{0} voltu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} volts"}
+                other{"{0} volti"}
+                zero{"{0} voltu"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"britu termiskās mērvienības"}
+                one{"{0} britu termiskā mērvienība"}
+                other{"{0} britu termiskās mērvienības"}
+                zero{"{0} britu termisko mērvienību"}
+            }
+            calorie{
+                case{
+                    accusative{
+                        one{"{0} kaloriju"}
+                        other{"{0} kalorijas"}
+                        zero{"{0} kaloriju"}
+                    }
+                    dative{
+                        one{"{0} kalorijai"}
+                        other{"{0} kalorijām"}
+                        zero{"{0} kaloriju"}
+                    }
+                    genitive{
+                        one{"{0} kalorijas"}
+                        other{"{0} kalorijas"}
+                        zero{"{0} kaloriju"}
+                    }
+                    locative{
+                        one{"{0} kalorijā"}
+                        other{"{0} kalorijās"}
+                        zero{"{0} kaloriju"}
+                    }
+                }
+                dnam{"kalorijas"}
+                gender{"feminine"}
+                one{"{0} kalorija"}
+                other{"{0} kalorijas"}
+                zero{"{0} kaloriju"}
+            }
+            electronvolt{
+                dnam{"elektronvolti"}
+                one{"{0} elektronvolts"}
+                other{"{0} elektronvolti"}
+                zero{"{0} elektronvoltu"}
+            }
+            foodcalorie{
+                dnam{"kalorijas"}
+                one{"{0} kalorija"}
+                other{"{0} kalorijas"}
+                zero{"{0} kaloriju"}
+            }
+            joule{
+                case{
+                    accusative{
+                        one{"{0} džoulu"}
+                        other{"{0} džoulus"}
+                        zero{"{0} džoulu"}
+                    }
+                    dative{
+                        one{"{0} džoulam"}
+                        other{"{0} džouliem"}
+                        zero{"{0} džoulu"}
+                    }
+                    genitive{
+                        one{"{0} džoula"}
+                        other{"{0} džoulus"}
+                        zero{"{0} džoulu"}
+                    }
+                    locative{
+                        one{"{0} džoulā"}
+                        other{"{0} džoulos"}
+                        zero{"{0} džoulu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} džouls"}
+                other{"{0} džouli"}
+                zero{"{0} džoulu"}
+            }
+            kilocalorie{
+                dnam{"kilokalorijas"}
+                one{"{0} kilokalorija"}
+                other{"{0} kilokalorijas"}
+                zero{"{0} kilokaloriju"}
+            }
+            kilojoule{
+                case{
+                    accusative{
+                        one{"{0} kilodžoulu"}
+                        other{"{0} kilodžoulus"}
+                        zero{"{0} kilodžoulu"}
+                    }
+                    dative{
+                        one{"{0} kilodžoulam"}
+                        other{"{0} kilodžouliem"}
+                        zero{"{0} kilodžoulu"}
+                    }
+                    genitive{
+                        one{"{0} kilodžoula"}
+                        other{"{0} kilodžoulu"}
+                        zero{"{0} kilodžoulu"}
+                    }
+                    locative{
+                        one{"{0} kilodžoulā"}
+                        other{"{0} kilodžoulos"}
+                        zero{"{0} kilodžoulu"}
+                    }
+                }
+                dnam{"kilodžouli"}
+                gender{"masculine"}
+                one{"{0} kilodžouls"}
+                other{"{0} kilodžouli"}
+                zero{"{0} kilodžoulu"}
+            }
+            kilowatt-hour{
+                case{
+                    accusative{
+                        one{"{0} kilovatstundu"}
+                        other{"{0} kilovatstundas"}
+                        zero{"{0} kilovatstundu"}
+                    }
+                    dative{
+                        one{"{0} kilovatstundai"}
+                        other{"{0} kilovatstundām"}
+                        zero{"{0} kilovatstundu"}
+                    }
+                    genitive{
+                        one{"{0} kilovatstundas"}
+                        other{"{0} kilovatstundu"}
+                        zero{"{0} kilovatstundu"}
+                    }
+                    locative{
+                        one{"{0} kilovatstundā"}
+                        other{"{0} kilovatstundās"}
+                        zero{"{0} kilovatstundu"}
+                    }
+                }
+                dnam{"kilovatstundas"}
+                gender{"feminine"}
+                one{"{0} kilovatstunda"}
+                other{"{0} kilovatstundas"}
+                zero{"{0} kilovatstundu"}
+            }
+            therm-us{
+                dnam{"ASV termiskās vienības"}
+                one{"{0} ASV termiskā vienība"}
+                other{"{0} ASV termiskās vienības"}
+                zero{"{0} ASV termisko vienību"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                case{
+                    accusative{
+                        one{"{0} kilovatstundu uz 100 kilometriem"}
+                        other{"{0} kilovatstundas uz 100 kilometriem"}
+                        zero{"{0} kilovatstundu uz 100 kilometriem"}
+                    }
+                    dative{
+                        one{"{0} kilovatstundai uz 100 kilometriem"}
+                        other{"{0} kilovatstundām uz 100 kilometriem"}
+                        zero{"{0} kilovatstundu uz 100 kilometriem"}
+                    }
+                    genitive{
+                        one{"{0} kilovatstundas uz 100 kilometriem"}
+                        other{"{0} kilovatstundu uz 100 kilometriem"}
+                        zero{"{0} kilovatstundu uz 100 kilometriem"}
+                    }
+                    locative{
+                        one{"{0} kilovatstundā uz 100 kilometriem"}
+                        other{"{0} kilovatstundās uz 100 kilometriem"}
+                        zero{"{0} kilovatstundu uz 100 kilometriem"}
+                    }
+                }
+                dnam{"kilovatstunda uz 100 kilometriem"}
+                gender{"feminine"}
+                one{"{0} kilovatstunda uz 100 kilometriem"}
+                other{"{0} kilovatstundas uz 100 kilometriem"}
+                zero{"{0} kilovatstundu uz 100 kilometriem"}
+            }
+            newton{
+                case{
+                    accusative{
+                        one{"{0} ņūtonu"}
+                        other{"{0} ņūtonus"}
+                        zero{"{0} N"}
+                    }
+                    dative{
+                        one{"{0} ņūtonam"}
+                        other{"{0} ņūtoniem"}
+                        zero{"{0} N"}
+                    }
+                    genitive{
+                        one{"{0} ņūtona"}
+                        other{"{0} ņūtonu"}
+                        zero{"{0} N"}
+                    }
+                    locative{
+                        one{"{0} ņūtonā"}
+                        other{"{0} ņūtonos"}
+                        zero{"{0} N"}
+                    }
+                }
+                dnam{"ņūtoni"}
+                gender{"masculine"}
+                one{"{0} ņūtons"}
+                other{"{0} ņūtoni"}
+                zero{"{0} N"}
+            }
+            pound-force{
+                dnam{"jaudas māciņas"}
+                one{"{0} jaudas mārciņa"}
+                other{"{0} jaudas mārciņas"}
+                zero{"{0} jaudas mārciņu"}
+            }
+        }
+        frequency{
+            gigahertz{
+                case{
+                    accusative{
+                        one{"{0} gigaherca"}
+                        other{"{0} gigahercus"}
+                        zero{"{0} gigahercu"}
+                    }
+                    dative{
+                        one{"{0} gigahercam"}
+                        other{"{0} gigaherciem"}
+                        zero{"{0} gigahercu"}
+                    }
+                    genitive{
+                        one{"{0} gigaherca"}
+                        other{"{0} gigahercu"}
+                        zero{"{0} gigahercu"}
+                    }
+                    locative{
+                        one{"{0} gigahercā"}
+                        other{"{0} gigahercos"}
+                        zero{"{0} gigahercu"}
+                    }
+                }
+                dnam{"gigaherci"}
+                gender{"masculine"}
+                one{"{0} gigahercs"}
+                other{"{0} gigaherci"}
+                zero{"{0} gigahercu"}
+            }
+            hertz{
+                case{
+                    accusative{
+                        one{"{0} hercu"}
+                        other{"{0} hercus"}
+                        zero{"{0} hercu"}
+                    }
+                    dative{
+                        one{"{0} hercam"}
+                        other{"{0} herciem"}
+                        zero{"{0} hercu"}
+                    }
+                    genitive{
+                        one{"{0} herca"}
+                        other{"{0} hercu"}
+                        zero{"{0} hercu"}
+                    }
+                    locative{
+                        one{"{0} hercā"}
+                        other{"{0} hercos"}
+                        zero{"{0} hercu"}
+                    }
+                }
+                dnam{"herci"}
+                gender{"masculine"}
+                one{"{0} hercs"}
+                other{"{0} herci"}
+                zero{"{0} hercu"}
+            }
+            kilohertz{
+                case{
+                    accusative{
+                        one{"{0} kilohercu"}
+                        other{"{0} kilohercus"}
+                        zero{"{0} kilohercu"}
+                    }
+                    dative{
+                        one{"{0} kilohercam"}
+                        other{"{0} kiloherciem"}
+                        zero{"{0} kilohercu"}
+                    }
+                    genitive{
+                        one{"{0} kiloherca"}
+                        other{"{0} kilohercu"}
+                        zero{"{0} kilohercu"}
+                    }
+                    locative{
+                        one{"{0} kilohercā"}
+                        other{"{0} kilohercos"}
+                        zero{"{0} kilohercu"}
+                    }
+                }
+                dnam{"kiloherci"}
+                gender{"masculine"}
+                one{"{0} kilohercs"}
+                other{"{0} kiloherci"}
+                zero{"{0} kilohercu"}
+            }
+            megahertz{
+                case{
+                    accusative{
+                        one{"{0} megahercu"}
+                        other{"{0} megahercus"}
+                        zero{"{0} megahercu"}
+                    }
+                    dative{
+                        one{"{0} megahercam"}
+                        other{"{0} megaherciem"}
+                        zero{"{0} megahercu"}
+                    }
+                    genitive{
+                        one{"{0} megaherca"}
+                        other{"{0} megahercu"}
+                        zero{"{0} megahercu"}
+                    }
+                    locative{
+                        one{"{0} megahercā"}
+                        other{"{0} megahercos"}
+                        zero{"{0} megahercu"}
+                    }
+                }
+                dnam{"megaherci"}
+                gender{"masculine"}
+                one{"{0} megahercs"}
+                other{"{0} megaherci"}
+                zero{"{0} megahercu"}
+            }
+        }
+        graphics{
+            dot-per-centimeter{
+                dnam{"punkti centimetrā"}
+                one{"{0} punkts centimetrā"}
+                other{"{0} punkti centimetrā"}
+                zero{"{0} dpc"}
+            }
+            dot-per-inch{
+                dnam{"punkti collā"}
+                one{"{0} punkts collā"}
+                other{"{0} punkti collā"}
+                zero{"{0} ppi"}
+            }
+            em{
+                gender{"feminine"}
+            }
+            megapixel{
+                case{
+                    accusative{
+                        one{"{0} megapikseli"}
+                        other{"{0} megapikseļus"}
+                        zero{"{0} MP"}
+                    }
+                    dative{
+                        one{"{0} megapikselim"}
+                        other{"{0} megapikseļiem"}
+                        zero{"{0} MP"}
+                    }
+                    genitive{
+                        one{"{0} megapikseļa"}
+                        other{"{0} megapikseļu"}
+                        zero{"{0} MP"}
+                    }
+                    locative{
+                        one{"{0} megapikselī"}
+                        other{"{0} megapikseļos"}
+                        zero{"{0} MP"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} megapikselis"}
+                other{"{0} megapikseļi"}
+                zero{"{0} MP"}
+            }
+            pixel{
+                case{
+                    accusative{
+                        one{"{0} pikseli"}
+                        other{"{0} pikseļus"}
+                        zero{"{0} px"}
+                    }
+                    dative{
+                        one{"{0} pikselim"}
+                        other{"{0} pikseļiem"}
+                        zero{"{0} px"}
+                    }
+                    genitive{
+                        one{"{0} pikseļa"}
+                        other{"{0} pikseļu"}
+                        zero{"{0} px"}
+                    }
+                    locative{
+                        one{"{0} pikselī"}
+                        other{"{0} pikseļos"}
+                        zero{"{0} px"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} pikselis"}
+                other{"{0} pikseļi"}
+                zero{"{0} px"}
+            }
+            pixel-per-centimeter{
+                case{
+                    accusative{
+                        one{"{0} pikseli centimetrā"}
+                        other{"{0} pikseļus centimetrā"}
+                        zero{"{0} ppcm"}
+                    }
+                    dative{
+                        one{"{0} pikselim centimetrā"}
+                        other{"{0} pikseļiem centimetrā"}
+                        zero{"{0} ppcm"}
+                    }
+                    genitive{
+                        one{"{0} pikseļa centimetrā"}
+                        other{"{0} pikseļu centimetrā"}
+                        zero{"{0} ppcm"}
+                    }
+                    locative{
+                        one{"{0} pikselī centimetrā"}
+                        other{"{0} pikseļos centimetrā"}
+                        zero{"{0} ppcm"}
+                    }
+                }
+                dnam{"pikseļi centimetrā"}
+                gender{"masculine"}
+                one{"{0} pikselis centimetrā"}
+                other{"{0} pikseļi centimetrā"}
+                zero{"{0} ppcm"}
+            }
+            pixel-per-inch{
+                dnam{"pikseļi collā"}
+                one{"{0} pikselis collā"}
+                other{"{0} pikseļi collā"}
+                zero{"{0} ppi"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"astronomiskās vienības"}
+                one{"{0} astronomiskā vienība"}
+                other{"{0} astronomiskās vienības"}
+                zero{"{0} astronomisko vienību"}
+            }
+            centimeter{
+                case{
+                    accusative{
+                        one{"{0} centimetru"}
+                        other{"{0} centimetrus"}
+                        zero{"{0} centimetru"}
+                    }
+                    dative{
+                        one{"{0} centimetram"}
+                        other{"{0} centimetriem"}
+                        zero{"{0} centimetru"}
+                    }
+                    genitive{
+                        one{"{0} centimetra"}
+                        other{"{0} centimetru"}
+                        zero{"{0} centimetru"}
+                    }
+                    locative{
+                        one{"{0} centimetrā"}
+                        other{"{0} centimetros"}
+                        zero{"{0} centimetru"}
+                    }
+                }
+                dnam{"centimetri"}
+                gender{"masculine"}
+                one{"{0} centimetrs"}
+                other{"{0} centimetri"}
+                per{"{0} centimetrā"}
+                zero{"{0} centimetru"}
+            }
+            decimeter{
+                case{
+                    accusative{
+                        one{"{0} decimetru"}
+                        other{"{0} decimetrus"}
+                        zero{"{0} decimetru"}
+                    }
+                    dative{
+                        one{"{0} decimetram"}
+                        other{"{0} decimetriem"}
+                        zero{"{0} decimetru"}
+                    }
+                    genitive{
+                        one{"{0} decimetra"}
+                        other{"{0} decimetru"}
+                        zero{"{0} decimetru"}
+                    }
+                    locative{
+                        one{"{0} decimetrā"}
+                        other{"{0} decimetros"}
+                        zero{"{0} decimetru"}
+                    }
+                }
+                dnam{"decimetri"}
+                gender{"masculine"}
+                one{"{0} decimetrs"}
+                other{"{0} decimetri"}
+                zero{"{0} decimetru"}
+            }
+            earth-radius{
+                dnam{"Zemes rādiuss"}
+                one{"{0} Zemes rādiuss"}
+                other{"{0} Zemes rādiuss"}
+                zero{"{0} R⊕"}
+            }
+            fathom{
+                one{"{0} fatoms"}
+                other{"{0} fatomi"}
+                zero{"{0} fatomu"}
+            }
+            foot{
+                one{"{0} pēda"}
+                other{"{0} pēdas"}
+                per{"{0} pēdā"}
+                zero{"{0} pēdu"}
+            }
+            inch{
+                one{"{0} colla"}
+                other{"{0} collas"}
+                per{"{0} collā"}
+                zero{"{0} collu"}
+            }
+            kilometer{
+                case{
+                    accusative{
+                        one{"{0} kilometru"}
+                        other{"{0} kilometrus"}
+                        zero{"{0} kilometru"}
+                    }
+                    dative{
+                        one{"{0} kilometram"}
+                        other{"{0} kilometriem"}
+                        zero{"{0} kilometru"}
+                    }
+                    genitive{
+                        one{"{0} kilometra"}
+                        other{"{0} kilometru"}
+                        zero{"{0} kilometru"}
+                    }
+                    locative{
+                        one{"{0} kilometrā"}
+                        other{"{0} kilometros"}
+                        zero{"{0} kilometru"}
+                    }
+                }
+                dnam{"kilometri"}
+                gender{"masculine"}
+                one{"{0} kilometrs"}
+                other{"{0} kilometri"}
+                per{"{0} kilometrā"}
+                zero{"{0} kilometru"}
+            }
+            light-year{
+                dnam{"gaismas gadi"}
+                one{"{0} gaismas gads"}
+                other{"{0} gaismas gadi"}
+                zero{"{0} gaismas gadu"}
+            }
+            meter{
+                case{
+                    accusative{
+                        one{"{0} metru"}
+                        other{"{0} metrus"}
+                        zero{"{0} metru"}
+                    }
+                    dative{
+                        one{"{0} metram"}
+                        other{"{0} metriem"}
+                        zero{"{0} metru"}
+                    }
+                    genitive{
+                        one{"{0} metra"}
+                        other{"{0} metru"}
+                        zero{"{0} metru"}
+                    }
+                    locative{
+                        one{"{0} metrā"}
+                        other{"{0} metros"}
+                        zero{"{0} metru"}
+                    }
+                }
+                dnam{"metri"}
+                gender{"masculine"}
+                one{"{0} metrs"}
+                other{"{0} metri"}
+                per{"{0} metrā"}
+                zero{"{0} metru"}
+            }
+            micrometer{
+                case{
+                    accusative{
+                        one{"{0} mikrometru"}
+                        other{"{0} mikrometrus"}
+                        zero{"{0} mikrometru"}
+                    }
+                    dative{
+                        one{"{0} mikrometram"}
+                        other{"{0} mikrometriem"}
+                        zero{"{0} mikrometru"}
+                    }
+                    genitive{
+                        one{"{0} mikrometra"}
+                        other{"{0} mikrometru"}
+                        zero{"{0} mikrometru"}
+                    }
+                    locative{
+                        one{"{0} mikrometrā"}
+                        other{"{0} mikrometros"}
+                        zero{"{0} mikrometru"}
+                    }
+                }
+                dnam{"mikrometri"}
+                gender{"masculine"}
+                one{"{0} mikrometrs"}
+                other{"{0} mikrometri"}
+                zero{"{0} mikrometru"}
+            }
+            mile{
+                one{"{0} jūdze"}
+                other{"{0} jūdzes"}
+                zero{"{0} jūdžu"}
+            }
+            mile-scandinavian{
+                case{
+                    accusative{
+                        one{"{0} skandināvu jūdzi"}
+                        other{"{0} skandināvu jūdzes"}
+                        zero{"{0} skandināvu jūdžu"}
+                    }
+                    dative{
+                        one{"{0} skandināvu jūdzei"}
+                        other{"{0} skandināvu jūdzēm"}
+                        zero{"{0} skandināvu jūdžu"}
+                    }
+                    genitive{
+                        one{"{0} skandināvu jūdzes"}
+                        other{"{0} skandināvu jūdžu"}
+                        zero{"{0} skandināvu jūdžu"}
+                    }
+                    locative{
+                        one{"{0} skandināvu jūdzē"}
+                        other{"{0} skandināvu jūdzēs"}
+                        zero{"{0} skandināvu jūdžu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} skandināvu jūdze"}
+                other{"{0} skandināvu jūdzes"}
+                zero{"{0} skandināvu jūdžu"}
+            }
+            millimeter{
+                case{
+                    accusative{
+                        one{"{0} milimetru"}
+                        other{"{0} milimetrus"}
+                        zero{"{0} milimetru"}
+                    }
+                    dative{
+                        one{"{0} milimetram"}
+                        other{"{0} milimetriem"}
+                        zero{"{0} milimetru"}
+                    }
+                    genitive{
+                        one{"{0} milimetra"}
+                        other{"{0} milimetru"}
+                        zero{"{0} milimetru"}
+                    }
+                    locative{
+                        one{"{0} milimetrā"}
+                        other{"{0} milimetos"}
+                        zero{"{0} milimetru"}
+                    }
+                }
+                dnam{"milimetri"}
+                gender{"masculine"}
+                one{"{0} milimetrs"}
+                other{"{0} milimetri"}
+                zero{"{0} milimetru"}
+            }
+            nanometer{
+                case{
+                    accusative{
+                        one{"{0} nanometru"}
+                        other{"{0} nanometrus"}
+                        zero{"{0} nanometru"}
+                    }
+                    dative{
+                        one{"{0} nanometram"}
+                        other{"{0} nanometriem"}
+                        zero{"{0} nanometru"}
+                    }
+                    genitive{
+                        one{"{0} nanometra"}
+                        other{"{0} nanometru"}
+                        zero{"{0} nanometru"}
+                    }
+                    locative{
+                        one{"{0} nanometrā"}
+                        other{"{0} nanometros"}
+                        zero{"{0} nanometru"}
+                    }
+                }
+                dnam{"nanometri"}
+                gender{"masculine"}
+                one{"{0} nanometrs"}
+                other{"{0} nanometri"}
+                zero{"{0} nanometru"}
+            }
+            nautical-mile{
+                dnam{"jūras jūdzes"}
+                one{"{0} jūras jūdze"}
+                other{"{0} jūras jūdzes"}
+                zero{"{0} jūras jūdžu"}
+            }
+            parsec{
+                one{"{0} parseks"}
+                other{"{0} parseki"}
+                zero{"{0} parseku"}
+            }
+            picometer{
+                case{
+                    accusative{
+                        one{"{0} pikometru"}
+                        other{"{0} pikometrus"}
+                        zero{"{0} pikometru"}
+                    }
+                    dative{
+                        one{"{0} pikometram"}
+                        other{"{0} pikometriem"}
+                        zero{"{0} pikometru"}
+                    }
+                    genitive{
+                        one{"{0} pikometra"}
+                        other{"{0} pikometru"}
+                        zero{"{0} pikometru"}
+                    }
+                    locative{
+                        one{"{0} pikometrā"}
+                        other{"{0} pikometros"}
+                        zero{"{0} pikometru"}
+                    }
+                }
+                dnam{"pikometri"}
+                gender{"masculine"}
+                one{"{0} pikometrs"}
+                other{"{0} pikometri"}
+                zero{"{0} pikometru"}
+            }
+            point{
+                one{"{0} punkts"}
+                other{"{0} punkti"}
+                zero{"{0} punktu"}
+            }
+            solar-radius{
+                one{"{0} Saules rādiuss"}
+                other{"{0} Saules rādiusi"}
+                zero{"{0} R☉"}
+            }
+            yard{
+                one{"{0} jards"}
+                other{"{0} jardi"}
+                zero{"{0} jardu"}
+            }
+        }
+        light{
+            candela{
+                case{
+                    accusative{
+                        one{"{0} kandelu"}
+                        other{"{0} kandelas"}
+                        zero{"{0} kandelu"}
+                    }
+                    dative{
+                        one{"{0} kandelai"}
+                        other{"{0} kandelām"}
+                        zero{"{0} kandelu"}
+                    }
+                    genitive{
+                        one{"{0} kandelas"}
+                        other{"{0} kandelu"}
+                        zero{"{0} kandelu"}
+                    }
+                    locative{
+                        one{"{0} kandelā"}
+                        other{"{0} kandelām"}
+                        zero{"{0} kandelu"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} kandela"}
+                other{"{0} kandelas"}
+                zero{"{0} kandelu"}
+            }
+            lumen{
+                case{
+                    accusative{
+                        one{"{0} lūmenu"}
+                        other{"{0} lūmenus"}
+                        zero{"{0} lūmenu"}
+                    }
+                    dative{
+                        one{"{0} lūmenam"}
+                        other{"{0} lūmeniem"}
+                        zero{"{0} lūmenu"}
+                    }
+                    genitive{
+                        one{"{0} lūmena"}
+                        other{"{0} lūmenu"}
+                        zero{"{0} lūmenu"}
+                    }
+                    locative{
+                        one{"{0} lūmenā"}
+                        other{"{0} lūmenos"}
+                        zero{"{0} lūmenu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} lūmens"}
+                other{"{0} lūmeni"}
+                zero{"{0} lūmenu"}
+            }
+            lux{
+                case{
+                    accusative{
+                        one{"{0} luksu"}
+                        other{"{0} luksus"}
+                        zero{"{0} luksu"}
+                    }
+                    dative{
+                        one{"{0} luksam"}
+                        other{"{0} luksiem"}
+                        zero{"{0} luksu"}
+                    }
+                    genitive{
+                        one{"{0} luksa"}
+                        other{"{0} luksu"}
+                        zero{"{0} luksu"}
+                    }
+                    locative{
+                        one{"{0} luksā"}
+                        other{"{0} luksos"}
+                        zero{"{0} luksu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} lukss"}
+                other{"{0} luksi"}
+                zero{"{0} luksu"}
+            }
+            solar-luminosity{
+                one{"{0} Saules starjauda"}
+                other{"{0} Saules starjaudas"}
+                zero{"{0} L☉"}
+            }
+        }
+        mass{
+            carat{
+                case{
+                    accusative{
+                        one{"{0} karātu"}
+                        other{"{0} karātus"}
+                        zero{"{0} karātu"}
+                    }
+                    dative{
+                        one{"{0} karātam"}
+                        other{"{0} karātiem"}
+                        zero{"{0} karātu"}
+                    }
+                    genitive{
+                        one{"{0} karāta"}
+                        other{"{0} karātu"}
+                        zero{"{0} karātu"}
+                    }
+                    locative{
+                        one{"{0} karātā"}
+                        other{"{0} karātos"}
+                        zero{"{0} karātu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} karāts"}
+                other{"{0} karāti"}
+                zero{"{0} karātu"}
+            }
+            dalton{
+                one{"{0} daltons"}
+                other{"{0} daltoni"}
+                zero{"{0} Da"}
+            }
+            earth-mass{
+                one{"{0} Zemes masa"}
+                other{"{0} Zemes masas"}
+                zero{"{0} M⊕"}
+            }
+            grain{
+                dnam{"grans"}
+                one{"{0} grans"}
+                other{"{0} grana"}
+                zero{"{0} granu"}
+            }
+            gram{
+                case{
+                    accusative{
+                        one{"{0} gramu"}
+                        other{"{0} gramus"}
+                        zero{"{0} gramu"}
+                    }
+                    dative{
+                        one{"{0} gramam"}
+                        other{"{0} gramiem"}
+                        zero{"{0} gramu"}
+                    }
+                    genitive{
+                        one{"{0} grama"}
+                        other{"{0} gramu"}
+                        zero{"{0} gramu"}
+                    }
+                    locative{
+                        one{"{0} gramā"}
+                        other{"{0} gramos"}
+                        zero{"{0} gramu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} grams"}
+                other{"{0} grami"}
+                per{"{0} uz gramu"}
+                zero{"{0} gramu"}
+            }
+            kilogram{
+                case{
+                    accusative{
+                        one{"{0} kilogramu"}
+                        other{"{0} kilogramus"}
+                        zero{"{0} kilogramu"}
+                    }
+                    dative{
+                        one{"{0} kilogramam"}
+                        other{"{0} kilogramiem"}
+                        zero{"{0} kilogramu"}
+                    }
+                    genitive{
+                        one{"{0} kilograma"}
+                        other{"{0} kilogramu"}
+                        zero{"{0} kilogramu"}
+                    }
+                    locative{
+                        one{"{0} kilogramā"}
+                        other{"{0} kilogramos"}
+                        zero{"{0} kilogramu"}
+                    }
+                }
+                dnam{"kilogrami"}
+                gender{"masculine"}
+                one{"{0} kilograms"}
+                other{"{0} kilogrami"}
+                per{"{0} uz kilogramu"}
+                zero{"{0} kilogramu"}
+            }
+            microgram{
+                case{
+                    accusative{
+                        one{"{0} mikrogramu"}
+                        other{"{0} mikrogramus"}
+                        zero{"{0} mikrogramu"}
+                    }
+                    dative{
+                        one{"{0} mikrogramam"}
+                        other{"{0} mikrogramiem"}
+                        zero{"{0} mikrogramu"}
+                    }
+                    genitive{
+                        one{"{0} mikrograma"}
+                        other{"{0} mikrogramu"}
+                        zero{"{0} mikrogramu"}
+                    }
+                    locative{
+                        one{"{0} mikrogramā"}
+                        other{"{0} mikrogramos"}
+                        zero{"{0} mikrogramu"}
+                    }
+                }
+                dnam{"mikrogrami"}
+                gender{"masculine"}
+                one{"{0} mikrograms"}
+                other{"{0} mikrogrami"}
+                zero{"{0} mikrogramu"}
+            }
+            milligram{
+                case{
+                    accusative{
+                        one{"{0} miligramu"}
+                        other{"{0} miligramus"}
+                        zero{"{0} miligramu"}
+                    }
+                    dative{
+                        one{"{0} miligramam"}
+                        other{"{0} miligramiem"}
+                        zero{"{0} miligramu"}
+                    }
+                    genitive{
+                        one{"{0} miligrama"}
+                        other{"{0} miligramu"}
+                        zero{"{0} miligramu"}
+                    }
+                    locative{
+                        one{"{0} miligramā"}
+                        other{"{0} miligramos"}
+                        zero{"{0} miligramu"}
+                    }
+                }
+                dnam{"miligrami"}
+                gender{"masculine"}
+                one{"{0} miligrams"}
+                other{"{0} miligrami"}
+                zero{"{0} miligramu"}
+            }
+            ounce{
+                one{"{0} unce"}
+                other{"{0} unces"}
+                per{"{0} uz unci"}
+                zero{"{0} unču"}
+            }
+            ounce-troy{
+                one{"{0} Trojas unce"}
+                other{"{0} Trojas unces"}
+                zero{"{0} Trojas unču"}
+            }
+            pound{
+                one{"{0} mārciņa"}
+                other{"{0} mārciņas"}
+                per{"{0} uz mārciņu"}
+                zero{"{0} mārciņu"}
+            }
+            solar-mass{
+                one{"{0} Saules masa"}
+                other{"{0} Saules masas"}
+                zero{"{0} M☉"}
+            }
+            stone{
+                one{"{0} stouns"}
+                other{"{0} stouni"}
+                zero{"{0} stounu"}
+            }
+            ton{
+                one{"{0} tonna"}
+                other{"{0} tonnas"}
+                zero{"{0} tonnu"}
+            }
+            tonne{
+                case{
+                    accusative{
+                        one{"{0} metrisko tonnu"}
+                        other{"{0} metriskās tonnas"}
+                        zero{"{0} metrisko tonnu"}
+                    }
+                    dative{
+                        one{"{0} metriskajai tonnai"}
+                        other{"{0} metriskajām tonnām"}
+                        zero{"{0} metrisko tonnu"}
+                    }
+                    genitive{
+                        one{"{0} metriskās tonnas"}
+                        other{"{0} metrisko tonnu"}
+                        zero{"{0} metrisko tonnu"}
+                    }
+                    locative{
+                        one{"{0} metriskajā tonnā"}
+                        other{"{0} metriskajās tonnās"}
+                        zero{"{0} metrisko tonnu"}
+                    }
+                }
+                dnam{"metriskās tonnas"}
+                gender{"feminine"}
+                one{"{0} metriskā tonna"}
+                other{"{0} metriskās tonnas"}
+                zero{"{0} metrisko tonnu"}
+            }
+        }
+        power{
+            gigawatt{
+                case{
+                    accusative{
+                        one{"{0} gigavatu"}
+                        other{"{0} gigavatus"}
+                        zero{"{0} gigavatu"}
+                    }
+                    dative{
+                        one{"{0} gigavatam"}
+                        other{"{0} gigavatiem"}
+                        zero{"{0} gigavatu"}
+                    }
+                    genitive{
+                        one{"{0} gigavata"}
+                        other{"{0} gigavatu"}
+                        zero{"{0} gigavatu"}
+                    }
+                    locative{
+                        one{"{0} gigavatā"}
+                        other{"{0} gigavatos"}
+                        zero{"{0} gigavatu"}
+                    }
+                }
+                dnam{"gigavati"}
+                gender{"masculine"}
+                one{"{0} gigavats"}
+                other{"{0} gigavati"}
+                zero{"{0} gigavatu"}
+            }
+            horsepower{
+                dnam{"zirgspēki"}
+                one{"{0} zirgspēks"}
+                other{"{0} zirgspēki"}
+                zero{"{0} zirgspēku"}
+            }
+            kilowatt{
+                case{
+                    accusative{
+                        one{"{0} kilovatu"}
+                        other{"{0} kilovatus"}
+                        zero{"{0} kilovatu"}
+                    }
+                    dative{
+                        one{"{0} kilovatam"}
+                        other{"{0} kilovatiem"}
+                        zero{"{0} kilovatu"}
+                    }
+                    genitive{
+                        one{"{0} kilovata"}
+                        other{"{0} kilovatu"}
+                        zero{"{0} kilovatu"}
+                    }
+                    locative{
+                        one{"{0} kilovatā"}
+                        other{"{0} kilovatos"}
+                        zero{"{0} kilovatu"}
+                    }
+                }
+                dnam{"kilovati"}
+                gender{"masculine"}
+                one{"{0} kilovats"}
+                other{"{0} kilovati"}
+                zero{"{0} kilovatu"}
+            }
+            megawatt{
+                case{
+                    accusative{
+                        one{"{0} megavatu"}
+                        other{"{0} megavatus"}
+                        zero{"{0} megavatu"}
+                    }
+                    dative{
+                        one{"{0} megavatam"}
+                        other{"{0} megavatiem"}
+                        zero{"{0} megavatu"}
+                    }
+                    genitive{
+                        one{"{0} megavata"}
+                        other{"{0} megavatu"}
+                        zero{"{0} megavatu"}
+                    }
+                    locative{
+                        one{"{0} megavatā"}
+                        other{"{0} megavatos"}
+                        zero{"{0} megavatu"}
+                    }
+                }
+                dnam{"megavati"}
+                gender{"masculine"}
+                one{"{0} megavats"}
+                other{"{0} megavati"}
+                zero{"{0} megavatu"}
+            }
+            milliwatt{
+                case{
+                    accusative{
+                        one{"{0} milivatu"}
+                        other{"{0} milivatus"}
+                        zero{"{0} milivatu"}
+                    }
+                    dative{
+                        one{"{0} milivatam"}
+                        other{"{0} milivatiem"}
+                        zero{"{0} milivatu"}
+                    }
+                    genitive{
+                        one{"{0} milivata"}
+                        other{"{0} milivatu"}
+                        zero{"{0} milivatu"}
+                    }
+                    locative{
+                        one{"{0} milivatā"}
+                        other{"{0} milivatos"}
+                        zero{"{0} milivatu"}
+                    }
+                }
+                dnam{"milivati"}
+                gender{"masculine"}
+                one{"{0} milivats"}
+                other{"{0} milivati"}
+                zero{"{0} milivatu"}
+            }
+            watt{
+                case{
+                    accusative{
+                        one{"{0} vatu"}
+                        other{"{0} vatus"}
+                        zero{"{0} vatu"}
+                    }
+                    dative{
+                        one{"{0} vatam"}
+                        other{"{0} vatiem"}
+                        zero{"{0} vatu"}
+                    }
+                    genitive{
+                        one{"{0} vata"}
+                        other{"{0} vatu"}
+                        zero{"{0} vatu"}
+                    }
+                    locative{
+                        one{"{0} vatā"}
+                        other{"{0} vatos"}
+                        zero{"{0} vatu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} vats"}
+                other{"{0} vati"}
+                zero{"{0} vatu"}
+            }
+        }
+        pressure{
+            atmosphere{
+                case{
+                    accusative{
+                        one{"{0} atmosfēru"}
+                        other{"{0} atmosfēras"}
+                        zero{"{0} atmosfēras"}
+                    }
+                    dative{
+                        one{"{0} atmosfērai"}
+                        other{"{0} atmosfēras"}
+                        zero{"{0} atmosfēras"}
+                    }
+                    genitive{
+                        one{"{0} atmosfēras"}
+                        other{"{0} atmosfēru"}
+                        zero{"{0} atmosfēras"}
+                    }
+                    locative{
+                        one{"{0} atmosfērā"}
+                        other{"{0} atmosfērās"}
+                        zero{"{0} atmosfēras"}
+                    }
+                }
+                dnam{"atmosfēras"}
+                gender{"feminine"}
+                one{"{0} atmosfēra"}
+                other{"{0} atmosfēras"}
+                zero{"{0} atmosfēras"}
+            }
+            bar{
+                case{
+                    accusative{
+                        one{"{0} bāru"}
+                        other{"{0} bārus"}
+                        zero{"{0} bāru"}
+                    }
+                    dative{
+                        one{"{0} bāram"}
+                        other{"{0} bāriem"}
+                        zero{"{0} bāru"}
+                    }
+                    genitive{
+                        one{"{0} bāra"}
+                        other{"{0} bāru"}
+                        zero{"{0} bāru"}
+                    }
+                    locative{
+                        one{"{0} bārā"}
+                        other{"{0} bāros"}
+                        zero{"{0} bāru"}
+                    }
+                }
+                dnam{"bāri"}
+                gender{"masculine"}
+                one{"{0} bārs"}
+                other{"{0} bāri"}
+                zero{"{0} bāru"}
+            }
+            hectopascal{
+                case{
+                    accusative{
+                        one{"{0} hektopaskālu"}
+                        other{"{0} hektopaskālus"}
+                        zero{"{0} hektopaskālu"}
+                    }
+                    dative{
+                        one{"{0} hektopaskālam"}
+                        other{"{0} hektopaskāiem"}
+                        zero{"{0} hektopaskālu"}
+                    }
+                    genitive{
+                        one{"{0} hektopaskāla"}
+                        other{"{0} hektopaskālu"}
+                        zero{"{0} hektopaskālu"}
+                    }
+                    locative{
+                        one{"{0} hektopaskālā"}
+                        other{"{0} hektopaskālos"}
+                        zero{"{0} hektopaskālu"}
+                    }
+                }
+                dnam{"hektopaskāli"}
+                gender{"masculine"}
+                one{"{0} hektopaskāls"}
+                other{"{0} hektopaskāli"}
+                zero{"{0} hektopaskālu"}
+            }
+            inch-ofhg{
+                dnam{"dzīvsudraba stabiņa collas"}
+                one{"{0} dzīvsudraba stabiņa colla"}
+                other{"{0} dzīvsudraba stabiņa collas"}
+                zero{"{0} dzīvsudraba stabiņa collu"}
+            }
+            kilopascal{
+                case{
+                    accusative{
+                        one{"{0} kilopaskālu"}
+                        other{"{0} kilopaskālus"}
+                        zero{"{0} kPa"}
+                    }
+                    dative{
+                        one{"{0} kilopaskālam"}
+                        other{"{0} kilopaskāliem"}
+                        zero{"{0} kPa"}
+                    }
+                    genitive{
+                        one{"{0} kilopaskāla"}
+                        other{"{0} kilopaskālu"}
+                        zero{"{0} kPa"}
+                    }
+                    locative{
+                        one{"{0} kilopaskālā"}
+                        other{"{0} kilopaskālos"}
+                        zero{"{0} kPa"}
+                    }
+                }
+                dnam{"kilopaskāli"}
+                gender{"masculine"}
+                one{"{0} kilopaskāls"}
+                other{"{0} kilopaskāli"}
+                zero{"{0} kPa"}
+            }
+            megapascal{
+                case{
+                    accusative{
+                        one{"{0} megapaskālu"}
+                        other{"{0} megapaskālus"}
+                        zero{"{0} megapaskālu"}
+                    }
+                    dative{
+                        one{"{0} megapaskālam"}
+                        other{"{0} megapaskāliem"}
+                        zero{"{0} megapaskālu"}
+                    }
+                    genitive{
+                        one{"{0} megapaskāla"}
+                        other{"{0} megapaskālu"}
+                        zero{"{0} megapaskālu"}
+                    }
+                    locative{
+                        one{"{0} megapaskālā"}
+                        other{"{0} megapaskālos"}
+                        zero{"{0} megapaskālu"}
+                    }
+                }
+                dnam{"megapaskāli"}
+                gender{"masculine"}
+                one{"{0} megapaskāls"}
+                other{"{0} megapaskāli"}
+                zero{"{0} megapaskālu"}
+            }
+            millibar{
+                case{
+                    accusative{
+                        one{"{0} milibāru"}
+                        other{"{0} milibārus"}
+                        zero{"{0} milibāru"}
+                    }
+                    dative{
+                        one{"{0} milibāram"}
+                        other{"{0} milibāriem"}
+                        zero{"{0} milibāru"}
+                    }
+                    genitive{
+                        one{"{0} milibāra"}
+                        other{"{0} milibāru"}
+                        zero{"{0} milibāru"}
+                    }
+                    locative{
+                        one{"{0} milibārā"}
+                        other{"{0} milibāros"}
+                        zero{"{0} milibāru"}
+                    }
+                }
+                dnam{"milibāri"}
+                gender{"masculine"}
+                one{"{0} milibārs"}
+                other{"{0} milibāri"}
+                zero{"{0} milibāru"}
+            }
+            millimeter-ofhg{
+                dnam{"dzīvsudraba stabiņa milimetri"}
+                one{"{0} dzīvsudraba stabiņa milimetrs"}
+                other{"{0} dzīvsudraba stabiņa milimetri"}
+                zero{"{0} dzīvsudraba stabiņa milimetru"}
+            }
+            pascal{
+                case{
+                    accusative{
+                        one{"{0} paskālu"}
+                        other{"{0} paskālus"}
+                        zero{"{0} paskālu"}
+                    }
+                    dative{
+                        one{"{0} paskālam"}
+                        other{"{0} paskāliem"}
+                        zero{"{0} paskālu"}
+                    }
+                    genitive{
+                        one{"{0} paskāla"}
+                        other{"{0} paskālu"}
+                        zero{"{0} paskālu"}
+                    }
+                    locative{
+                        one{"{0} paskālā"}
+                        other{"{0} paskālos"}
+                        zero{"{0} paskālu"}
+                    }
+                }
+                dnam{"paskāli"}
+                gender{"masculine"}
+                one{"{0} paskāls"}
+                other{"{0} paskāli"}
+                zero{"{0} paskālu"}
+            }
+            pound-force-per-square-inch{
+                dnam{"mārciņas uz kvadrātcollu"}
+                one{"{0} mārciņa uz kvadrātcollu"}
+                other{"{0} mārciņas uz kvadrātcollu"}
+                zero{"{0} mārciņu uz kvadrātcollu"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"Boforta"}
+                one{"{0} balle pēc Boforta skalas"}
+                other{"{0} balles pēc Boforta skalas"}
+                zero{"{0} baļļu pēc Boforta skalas"}
+            }
+            kilometer-per-hour{
+                case{
+                    accusative{
+                        one{"{0} kilometru stundā"}
+                        other{"{0} kilometrus stundā"}
+                        zero{"{0} kilometru stundā"}
+                    }
+                    dative{
+                        one{"{0} kilometram stundā"}
+                        other{"{0} kilometriem stundā"}
+                        zero{"{0} kilometru stundā"}
+                    }
+                    genitive{
+                        one{"{0} kilometra stundā"}
+                        other{"{0} kilometru stundā"}
+                        zero{"{0} kilometru stundā"}
+                    }
+                    locative{
+                        one{"{0} kilometrā stundā"}
+                        other{"{0} kilometros stundā"}
+                        zero{"{0} kilometru stundā"}
+                    }
+                }
+                dnam{"kilometri stundā"}
+                gender{"masculine"}
+                one{"{0} kilometrs stundā"}
+                other{"{0} kilometri stundā"}
+                zero{"{0} kilometru stundā"}
+            }
+            knot{
+                one{"{0} mezgls"}
+                other{"{0} mezgli"}
+                zero{"{0} mezglu"}
+            }
+            meter-per-second{
+                case{
+                    accusative{
+                        one{"{0} metru sekundē"}
+                        other{"{0} metrus sekundē"}
+                        zero{"{0} metru sekundē"}
+                    }
+                    dative{
+                        one{"{0} metram sekundē"}
+                        other{"{0} metriem sekundē"}
+                        zero{"{0} metru sekundē"}
+                    }
+                    genitive{
+                        one{"{0} metra sekundē"}
+                        other{"{0} metru sekundē"}
+                        zero{"{0} metru sekundē"}
+                    }
+                    locative{
+                        one{"{0} metrā sekundē"}
+                        other{"{0} metros sekundē"}
+                        zero{"{0} metru sekundē"}
+                    }
+                }
+                dnam{"metri sekundē"}
+                gender{"masculine"}
+                one{"{0} metrs sekundē"}
+                other{"{0} metri sekundē"}
+                zero{"{0} metru sekundē"}
+            }
+            mile-per-hour{
+                dnam{"jūdzes stundā"}
+                one{"{0} jūdze stundā"}
+                other{"{0} jūdzes stundā"}
+                zero{"{0} jūdžu stundā"}
+            }
+        }
+        temperature{
+            celsius{
+                case{
+                    accusative{
+                        one{"{0} Celsija grādu"}
+                        other{"{0} Celsija grādus"}
+                        zero{"{0} Celsija grādu"}
+                    }
+                    dative{
+                        one{"{0} Celsija grādam"}
+                        other{"{0} Celsija grādiem"}
+                        zero{"{0} Celsija grādu"}
+                    }
+                    genitive{
+                        one{"{0} Celsija grāda"}
+                        other{"{0} Celsija grādu"}
+                        zero{"{0} Celsija grādu"}
+                    }
+                    locative{
+                        one{"{0} Celsija grādā"}
+                        other{"{0} Celsija grādos"}
+                        zero{"{0} Celsija grādu"}
+                    }
+                }
+                dnam{"Celsija grādi"}
+                gender{"masculine"}
+                one{"{0} Celsija grāds"}
+                other{"{0} Celsija grādi"}
+                zero{"{0} Celsija grādu"}
+            }
+            fahrenheit{
+                dnam{"Fārenheita grādi"}
+                one{"{0} Fārenheita grāds"}
+                other{"{0} Fārenheita grādi"}
+                zero{"{0} Fārenheita grādu"}
+            }
+            generic{
+                case{
+                    accusative{
+                        one{"{0} grādu"}
+                        other{"{0} grādus"}
+                        zero{"{0} grādu"}
+                    }
+                    dative{
+                        one{"{0} grādam"}
+                        other{"{0} grādiem"}
+                        zero{"{0} grādu"}
+                    }
+                    genitive{
+                        one{"{0} grāda"}
+                        other{"{0} grādu"}
+                        zero{"{0} grādu"}
+                    }
+                    locative{
+                        one{"{0} grādā"}
+                        other{"{0} grādos"}
+                        zero{"{0} grādu"}
+                    }
+                }
+                gender{"masculine"}
+                one{"{0} grāds"}
+                other{"{0} grādi"}
+                zero{"{0}°"}
+            }
+            kelvin{
+                case{
+                    accusative{
+                        one{"{0} kelvinu"}
+                        other{"{0} kelvinus"}
+                        zero{"{0} kelvinu"}
+                    }
+                    dative{
+                        one{"{0} kelvinam"}
+                        other{"{0} kelvinam"}
+                        zero{"{0} kelvinu"}
+                    }
+                    genitive{
+                        one{"{0} kelvina"}
+                        other{"{0} kelvinu"}
+                        zero{"{0} kelvinu"}
+                    }
+                    locative{
+                        one{"{0} kelvinā"}
+                        other{"{0} kelvinos"}
+                        zero{"{0} kelvinu"}
+                    }
+                }
+                dnam{"kelvini"}
+                gender{"masculine"}
+                one{"{0} kelvins"}
+                other{"{0} kelvini"}
+                zero{"{0} kelvinu"}
+            }
+        }
+        torque{
+            newton-meter{
+                case{
+                    accusative{
+                        one{"{0} ņūtonmetru"}
+                        other{"{0} ņūtonmetus"}
+                        zero{"{0} ņūtonmetru"}
+                    }
+                    dative{
+                        one{"{0} ņūtonmetram"}
+                        other{"{0} ņūtonmetriem"}
+                        zero{"{0} ņūtonmetru"}
+                    }
+                    genitive{
+                        one{"{0} ņūtonmetra"}
+                        other{"{0} ņūtonmetru"}
+                        zero{"{0} ņūtonmetru"}
+                    }
+                    locative{
+                        one{"{0} ņūtonmetrā"}
+                        other{"{0} ņūtonmetros"}
+                        zero{"{0} ņūtonmetru"}
+                    }
+                }
+                dnam{"ņūtonmetri"}
+                gender{"masculine"}
+                one{"{0} ņūtonmetrs"}
+                other{"{0} ņūtonmetri"}
+                zero{"{0} ņūtonmetru"}
+            }
+            pound-force-foot{
+                one{"{0} mārciņpēda"}
+                other{"{0} mārciņpēdas"}
+                zero{"{0} mārciņpēdu"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"akrpēda"}
+                one{"{0} akrpēda"}
+                other{"{0} akrpēdas"}
+                zero{"{0} akrpēdu"}
+            }
+            barrel{
+                dnam{"bareli"}
+                one{"{0} barels"}
+                other{"{0} bareli"}
+                zero{"{0} bbl"}
+            }
+            bushel{
+                dnam{"bušelis"}
+                one{"{0} bušelis"}
+                other{"{0} bušeļi"}
+                zero{"{0} bušeļu"}
+            }
+            centiliter{
+                case{
+                    accusative{
+                        one{"{0} centilitru"}
+                        other{"{0} centilitrus"}
+                        zero{"{0} centilitru"}
+                    }
+                    dative{
+                        one{"{0} centilitram"}
+                        other{"{0} centilitriem"}
+                        zero{"{0} centilitru"}
+                    }
+                    genitive{
+                        one{"{0} centilitra"}
+                        other{"{0} centilitru"}
+                        zero{"{0} centilitru"}
+                    }
+                    locative{
+                        one{"{0} centilitrā"}
+                        other{"{0} centilitros"}
+                        zero{"{0} centilitru"}
+                    }
+                }
+                dnam{"centilitri"}
+                gender{"masculine"}
+                one{"{0} centilitrs"}
+                other{"{0} centilitri"}
+                zero{"{0} centilitru"}
+            }
+            cubic-centimeter{
+                case{
+                    accusative{
+                        one{"{0} kubikcentimetru"}
+                        other{"{0} kubikcentimetrus"}
+                        zero{"{0} kubikcentimetru"}
+                    }
+                    dative{
+                        one{"{0} kubikcentimetram"}
+                        other{"{0} kubikcentimetriem"}
+                        zero{"{0} kubikcentimetru"}
+                    }
+                    genitive{
+                        one{"{0} kubikcentimetru"}
+                        other{"{0} kubikcentimetru"}
+                        zero{"{0} kubikcentimetru"}
+                    }
+                    locative{
+                        one{"{0} kubikcentimetrā"}
+                        other{"{0} kubikcentimetros"}
+                        zero{"{0} kubikcentimetru"}
+                    }
+                }
+                dnam{"kubikcentimetri"}
+                gender{"masculine"}
+                one{"{0} kubikcentimetrs"}
+                other{"{0} kubikcentimetri"}
+                per{"{0} uz kubikcentimetru"}
+                zero{"{0} kubikcentimetru"}
+            }
+            cubic-foot{
+                dnam{"kubikpēdas"}
+                one{"{0} kubikpēda"}
+                other{"{0} kubikpēdas"}
+                zero{"{0} kubikpēdu"}
+            }
+            cubic-inch{
+                dnam{"kubikcollas"}
+                one{"{0} kubikcolla"}
+                other{"{0} kubikcollas"}
+                zero{"{0} kubikcollu"}
+            }
+            cubic-kilometer{
+                case{
+                    accusative{
+                        one{"{0} kubikkilometru"}
+                        other{"{0} kubikkilometrus"}
+                        zero{"{0} kubikkilometru"}
+                    }
+                    dative{
+                        one{"{0} kubikkilometram"}
+                        other{"{0} kubikkilometriem"}
+                        zero{"{0} kubikkilometru"}
+                    }
+                    genitive{
+                        one{"{0} kubikkilometra"}
+                        other{"{0} kubikkilometru"}
+                        zero{"{0} kubikkilometru"}
+                    }
+                    locative{
+                        one{"{0} kubikkilometrā"}
+                        other{"{0} kubikkilometros"}
+                        zero{"{0} kubikkilometru"}
+                    }
+                }
+                dnam{"kubikkilometri"}
+                gender{"masculine"}
+                one{"{0} kubikkilometrs"}
+                other{"{0} kubikkilometri"}
+                zero{"{0} kubikkilometru"}
+            }
+            cubic-meter{
+                case{
+                    accusative{
+                        one{"{0} kubikmetru"}
+                        other{"{0} kubikmetrus"}
+                        zero{"{0} kubikmetru"}
+                    }
+                    dative{
+                        one{"{0} kubikmetram"}
+                        other{"{0} kubikmetriem"}
+                        zero{"{0} kubikmetru"}
+                    }
+                    genitive{
+                        one{"{0} kubikmetra"}
+                        other{"{0} kubikmetru"}
+                        zero{"{0} kubikmetru"}
+                    }
+                    locative{
+                        one{"{0} kubikmetrā"}
+                        other{"{0} kubikmetros"}
+                        zero{"{0} kubikmetru"}
+                    }
+                }
+                dnam{"kubikmetri"}
+                gender{"masculine"}
+                one{"{0} kubikmetrs"}
+                other{"{0} kubikmetri"}
+                per{"{0} uz kubikmetru"}
+                zero{"{0} kubikmetru"}
+            }
+            cubic-mile{
+                dnam{"kubikjūdzes"}
+                one{"{0} kubikjūdze"}
+                other{"{0} kubikjūdzes"}
+                zero{"{0} kubikjūdžu"}
+            }
+            cubic-yard{
+                dnam{"kubikjardi"}
+                one{"{0} kubikjards"}
+                other{"{0} kubikjardi"}
+                zero{"{0} kubikjardu"}
+            }
+            cup{
+                one{"{0} glāze"}
+                other{"{0} glāzes"}
+                zero{"{0} glāžu"}
+            }
+            cup-metric{
+                case{
+                    accusative{
+                        one{"{0} metrisko glāzi"}
+                        other{"{0} metriskās glāzes"}
+                        zero{"{0} metrisko glāžu"}
+                    }
+                    dative{
+                        one{"{0} metriskajai glāzei"}
+                        other{"{0} metriskajām glāzēm"}
+                        zero{"{0} metrisko glāžu"}
+                    }
+                    genitive{
+                        one{"{0} metriskās glāzes"}
+                        other{"{0} metrisko glāžu"}
+                        zero{"{0} metrisko glāžu"}
+                    }
+                    locative{
+                        one{"{0} metriskajā glāzē"}
+                        other{"{0} metriskajās glāzēs"}
+                        zero{"{0} metrisko glāžu"}
+                    }
+                }
+                dnam{"metriskā glāze"}
+                gender{"feminine"}
+                one{"{0} metriskā glāze"}
+                other{"{0} metriskās glāzes"}
+                zero{"{0} metrisko glāžu"}
+            }
+            deciliter{
+                case{
+                    accusative{
+                        one{"{0} decilitru"}
+                        other{"{0} decilitrus"}
+                        zero{"{0} decilitru"}
+                    }
+                    dative{
+                        one{"{0} decilitram"}
+                        other{"{0} decilitriem"}
+                        zero{"{0} decilitru"}
+                    }
+                    genitive{
+                        one{"{0} decilitra"}
+                        other{"{0} decilitru"}
+                        zero{"{0} decilitru"}
+                    }
+                    locative{
+                        one{"{0} decilitrā"}
+                        other{"{0} decilitros"}
+                        zero{"{0} decilitru"}
+                    }
+                }
+                dnam{"decilitri"}
+                gender{"masculine"}
+                one{"{0} decilitrs"}
+                other{"{0} decilitri"}
+                zero{"{0} decilitru"}
+            }
+            dessert-spoon{
+                dnam{"deserta karote"}
+                one{"{0} deserta karote"}
+                other{"{0} deserta karotes"}
+                zero{"{0} deserta karošu"}
+            }
+            dessert-spoon-imperial{
+                dnam{"britu deserta karote"}
+                one{"{0} britu deserta karote"}
+                other{"{0} britu deserta karotes"}
+                zero{"{0} britu deserta karošu"}
+            }
+            dram{
+                one{"{0} šķidruma drahma"}
+                other{"{0} šķidruma drahmas"}
+                zero{"{0} šķidruma drahmu"}
+            }
+            drop{
+                dnam{"piliens"}
+                one{"{0} piliens"}
+                other{"{0} pilieni"}
+                zero{"{0} pilienu"}
+            }
+            fluid-ounce{
+                dnam{"šķidruma unces"}
+                one{"{0} šķidruma unce"}
+                other{"{0} šķidruma unces"}
+                zero{"{0} šķidruma unču"}
+            }
+            fluid-ounce-imperial{
+                dnam{"britu šķidruma unces"}
+                one{"{0} britu šķidruma unce"}
+                other{"{0} britu šķidruma unces"}
+                zero{"{0} britu šķidruma unču"}
+            }
+            gallon{
+                dnam{"galoni"}
+                one{"{0} galons"}
+                other{"{0} galoni"}
+                per{"{0} uz galonu"}
+                zero{"{0} galonu"}
+            }
+            gallon-imperial{
+                dnam{"britu galoni"}
+                per{"{0} uz britu galonu"}
+            }
+            hectoliter{
+                case{
+                    accusative{
+                        one{"{0} hektolitru"}
+                        other{"{0} hektolitrus"}
+                        zero{"{0} hektolitru"}
+                    }
+                    dative{
+                        one{"{0} hektolitram"}
+                        other{"{0} hektolitriem"}
+                        zero{"{0} hektolitru"}
+                    }
+                    genitive{
+                        one{"{0} hektolitra"}
+                        other{"{0} hektolitru"}
+                        zero{"{0} hektolitru"}
+                    }
+                    locative{
+                        one{"{0} hektolitrā"}
+                        other{"{0} hektolitros"}
+                        zero{"{0} hektolitru"}
+                    }
+                }
+                dnam{"hektolitri"}
+                gender{"masculine"}
+                one{"{0} hektolitrs"}
+                other{"{0} hektolitri"}
+                zero{"{0} hektolitru"}
+            }
+            jigger{
+                one{"{0} mērglāzīte"}
+                other{"{0} mērglāzītes"}
+                zero{"{0} mērglāzīšu"}
+            }
+            liter{
+                case{
+                    accusative{
+                        one{"{0} litru"}
+                        other{"{0} litri"}
+                        zero{"{0} litru"}
+                    }
+                    dative{
+                        one{"{0} litram"}
+                        other{"{0} litriem"}
+                        zero{"{0} litru"}
+                    }
+                    genitive{
+                        one{"{0} litra"}
+                        other{"{0} litru"}
+                        zero{"{0} litru"}
+                    }
+                    locative{
+                        one{"{0} litrā"}
+                        other{"{0} litros"}
+                        zero{"{0} litru"}
+                    }
+                }
+                dnam{"litri"}
+                gender{"masculine"}
+                one{"{0} litrs"}
+                other{"{0} litri"}
+                per{"{0} uz litru"}
+                zero{"{0} litru"}
+            }
+            megaliter{
+                case{
+                    accusative{
+                        one{"{0} megalitru"}
+                        other{"{0} megalitrus"}
+                        zero{"{0} megalitru"}
+                    }
+                    dative{
+                        one{"{0} megalitram"}
+                        other{"{0} megalitriem"}
+                        zero{"{0} megalitru"}
+                    }
+                    genitive{
+                        one{"{0} megalitra"}
+                        other{"{0} megalitru"}
+                        zero{"{0} megalitru"}
+                    }
+                    locative{
+                        one{"{0} megalitrā"}
+                        other{"{0} megalitros"}
+                        zero{"{0} megalitru"}
+                    }
+                }
+                dnam{"megalitri"}
+                gender{"masculine"}
+                one{"{0} megalitrs"}
+                other{"{0} megalitri"}
+                zero{"{0} megalitru"}
+            }
+            milliliter{
+                case{
+                    accusative{
+                        one{"{0} mililitru"}
+                        other{"{0} mililitrus"}
+                        zero{"{0} mililitru"}
+                    }
+                    dative{
+                        one{"{0} mililitram"}
+                        other{"{0} mililitriem"}
+                        zero{"{0} mililitru"}
+                    }
+                    genitive{
+                        one{"{0} mililitra"}
+                        other{"{0} mililitru"}
+                        zero{"{0} mililitru"}
+                    }
+                    locative{
+                        one{"{0} mililitrā"}
+                        other{"{0} mililitros"}
+                        zero{"{0} mililitru"}
+                    }
+                }
+                dnam{"mililitri"}
+                gender{"masculine"}
+                one{"{0} mililitrs"}
+                other{"{0} mililitri"}
+                zero{"{0} mililitru"}
+            }
+            pinch{
+                dnam{"šķipsniņa"}
+                one{"{0} šķipsniņa"}
+                other{"{0} šķipsniņas"}
+                zero{"{0} šķipsniņu"}
+            }
+            pint{
+                one{"{0} pinte"}
+                other{"{0} pintes"}
+                zero{"{0} pinšu"}
+            }
+            pint-metric{
+                case{
+                    accusative{
+                        one{"{0} metrisko pinti"}
+                        other{"{0} metriskās pintes"}
+                        zero{"{0} metrisko pinšu"}
+                    }
+                    dative{
+                        one{"{0} metriskajai pintei"}
+                        other{"{0} metriskajām pintēm"}
+                        zero{"{0} metrisko pinšu"}
+                    }
+                    genitive{
+                        one{"{0} metriskās pintes"}
+                        other{"{0} metrisko pinšu"}
+                        zero{"{0} metrisko pinšu"}
+                    }
+                    locative{
+                        one{"{0} metriskajā pintē"}
+                        other{"{0} metriskajās pintēs"}
+                        zero{"{0} metrisko pinšu"}
+                    }
+                }
+                dnam{"metriskās pintes"}
+                gender{"feminine"}
+                one{"{0} metriskā pinte"}
+                other{"{0} metriskās pintes"}
+                zero{"{0} metrisko pinšu"}
+            }
+            quart{
+                dnam{"kvartas"}
+                one{"{0} kvarta"}
+                other{"{0} kvartas"}
+                zero{"{0} kvartu"}
+            }
+            quart-imperial{
+                dnam{"britu kvarta"}
+                one{"{0} britu kvarta"}
+                other{"{0} britu kvartas"}
+                zero{"{0} britu kvartu"}
+            }
+            tablespoon{
+                dnam{"ēdamkarotes"}
+                one{"{0} ēdamkarote"}
+                other{"{0} ēdamkarotes"}
+                zero{"{0} ēdamkarošu"}
+            }
+            teaspoon{
+                dnam{"tējkarotes"}
+                one{"{0} tējkarote"}
+                other{"{0} tējkarotes"}
+                zero{"{0} tējkarošu"}
+            }
+        }
+    }
+    unitsNarrow{
+        acceleration{
+            g-force{
+                dnam{"Brīvās krišanas paātrinājums:"}
+                one{"{0}G"}
+                other{"{0}G"}
+                zero{"{0}G"}
+            }
+        }
+        area{
+            acre{
+                dnam{"akrs"}
+                one{"{0}ac"}
+                other{"{0}ac"}
+                zero{"{0}ac"}
+            }
+            dunam{
+                dnam{"dunams"}
+            }
+            hectare{
+                one{"{0}ha"}
+                other{"{0}ha"}
+                zero{"{0}ha"}
+            }
+            square-foot{
+                one{"{0}ft²"}
+                other{"{0}ft²"}
+                zero{"{0}ft²"}
+            }
+            square-kilometer{
+                one{"{0}km²"}
+                other{"{0}km²"}
+                zero{"{0}km²"}
+            }
+            square-meter{
+                one{"{0}m²"}
+                other{"{0}m²"}
+                zero{"{0}m²"}
+            }
+            square-mile{
+                one{"{0}mi²"}
+                other{"{0}mi²"}
+                zero{"{0}mi²"}
+            }
+        }
+        duration{
+            hour{
+                dnam{"h"}
+                one{"{0} h"}
+                other{"{0} h"}
+                zero{"{0} h"}
+            }
+            month{
+                dnam{"mēn."}
+                one{"{0} m."}
+                other{"{0} m."}
+                per{"{0}/m."}
+                zero{"{0} m."}
+            }
+            quarter{
+                one{"{0} c."}
+                other{"{0} c."}
+                zero{"{0} cet."}
+            }
+            second{
+                dnam{"s"}
+                one{"{0} s"}
+                other{"{0} s"}
+                per{"{0}/s"}
+                zero{"{0} s"}
+            }
+            week{
+                dnam{"n."}
+                one{"{0} n."}
+                other{"{0} n."}
+                per{"{0}/n."}
+                zero{"{0} n."}
+            }
+        }
+        graphics{
+            megapixel{
+                dnam{"MP"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0}cm"}
+                other{"{0} cm"}
+                zero{"{0} cm"}
+            }
+            foot{
+                one{"{0}ft"}
+                other{"{0}ft"}
+                per{"{0}/pēda"}
+                zero{"{0}ft"}
+            }
+            furlong{
+                one{"{0} furl."}
+                other{"{0} furl."}
+                zero{"{0} furl."}
+            }
+            inch{
+                dnam{"colla"}
+                one{"{0}in"}
+                other{"{0}in"}
+                per{"{0}/colla"}
+                zero{"{0}in"}
+            }
+            light-year{
+                one{"{0}g.g."}
+                other{"{0}g.g."}
+                zero{"{0}g.g."}
+            }
+            mile{
+                one{"{0}mi"}
+                other{"{0}mi"}
+                zero{"{0}mi"}
+            }
+            mile-scandinavian{
+                dnam{"sk.j."}
+                one{"{0} sk.j."}
+                other{"{0} sk.j."}
+                zero{"{0} sk.j."}
+            }
+            millimeter{
+                one{"{0}mm"}
+                other{"{0} mm"}
+                zero{"{0} mm"}
+            }
+            nautical-mile{
+                dnam{"j.j."}
+                one{"{0} j.j."}
+                other{"{0} j.j."}
+                zero{"{0} j.j."}
+            }
+            parsec{
+                dnam{"pars."}
+                one{"{0} pars."}
+                other{"{0} pars."}
+                zero{"{0} pars."}
+            }
+            picometer{
+                one{"{0}pm"}
+                other{"{0}pm"}
+                zero{"{0}pm"}
+            }
+            point{
+                dnam{"pk."}
+            }
+            solar-radius{
+                dnam{"R☉"}
+            }
+            yard{
+                one{"{0}yd"}
+                other{"{0}yd"}
+                zero{"{0}yd"}
+            }
+        }
+        light{
+            solar-luminosity{
+                dnam{"L☉"}
+            }
+        }
+        mass{
+            carat{
+                one{"{0} ct"}
+                other{"{0} ct"}
+                zero{"{0} ct"}
+            }
+            gram{
+                dnam{"grams"}
+            }
+            ounce{
+                one{"{0}oz"}
+                other{"{0}oz"}
+                zero{"{0}oz"}
+            }
+            pound{
+                dnam{"mārc."}
+                one{"{0}lb"}
+                other{"{0}lb"}
+                per{"{0}/mārc."}
+                zero{"{0}lb"}
+            }
+            stone{
+                dnam{"st."}
+                one{"{0} st."}
+                other{"{0} st."}
+                zero{"{0} st."}
+            }
+        }
+        power{
+            kilowatt{
+                one{"{0}kW"}
+                other{"{0}kW"}
+                zero{"{0}kW"}
+            }
+            watt{
+                one{"{0}W"}
+                other{"{0}W"}
+                zero{"{0}W"}
+            }
+        }
+        pressure{
+            hectopascal{
+                one{"{0}hPa"}
+                other{"{0}hPa"}
+                zero{"{0}hPa"}
+            }
+            inch-ofhg{
+                one{"{0}inHg"}
+                other{"{0}inHg"}
+                zero{"{0}inHg"}
+            }
+            millibar{
+                one{"{0}mbar"}
+                other{"{0}mbar"}
+                zero{"{0}mbar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+                zero{"{0} km/h"}
+            }
+            knot{
+                one{"{0} mezgls"}
+                other{"{0} mezgli"}
+                zero{"{0} mezgli"}
+            }
+            meter-per-second{
+                one{"{0}m/s"}
+                other{"{0}m/s"}
+                zero{"{0}m/s"}
+            }
+            mile-per-hour{
+                dnam{"jūdzes/h"}
+                one{"{0}mi/h"}
+                other{"{0}mi/h"}
+                zero{"{0}mi/h"}
+            }
+        }
+        temperature{
+            fahrenheit{
+                one{"{0}°F"}
+                other{"{0}°F"}
+                zero{"{0}°F"}
+            }
+        }
+        torque{
+            pound-force-foot{
+                dnam{"mārc. pēda"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                one{"{0}km³"}
+                other{"{0}km³"}
+                zero{"{0}km³"}
+            }
+            cubic-mile{
+                one{"{0}mi³"}
+                other{"{0}mi³"}
+                zero{"{0}mi³"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"smagumspēks"}
+            }
+            meter-per-square-second{
+                dnam{"metri sekundē kvadrātā"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"leņķa minūtes"}
+            }
+            arc-second{
+                dnam{"leņķa sekundes"}
+            }
+            degree{
+                dnam{"°"}
+            }
+            radian{
+                dnam{"radiāni"}
+            }
+            revolution{
+                dnam{"apgr."}
+                one{"{0} apgr."}
+                other{"{0} apgr."}
+                zero{"{0} apgr."}
+            }
+        }
+        area{
+            acre{
+                dnam{"akri"}
+            }
+            dunam{
+                dnam{"dunami"}
+                one{"{0} dunams"}
+                other{"{0} dunami"}
+                zero{"{0} dunamu"}
+            }
+            hectare{
+                dnam{"ha"}
+            }
+        }
+        compound{
+            10p-24{"j{0}"}
+        }
+        concentr{
+            item{
+                dnam{"vienums"}
+                one{"{0} vienums"}
+                other{"{0} vienumi"}
+                zero{"{0} vienuma"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dl"}
+                one{"{0} mg/dl"}
+                other{"{0} mg/dl"}
+                zero{"{0} mg/dl"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/l"}
+                one{"{0} mmol/l"}
+                other{"{0} mmol/l"}
+                zero{"{0} mmol/l"}
+            }
+            mole{
+                dnam{"mols"}
+            }
+            percent{
+                dnam{"procents"}
+            }
+            permille{
+                dnam{"promile"}
+            }
+            permillion{
+                dnam{"miljonās daļas"}
+            }
+            permyriad{
+                dnam{"promiriāde"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"l/100 km"}
+                one{"{0} l/100 km"}
+                other{"{0} l/100 km"}
+                zero{"{0} l/100 km"}
+            }
+            liter-per-kilometer{
+                dnam{"l/km"}
+                one{"{0} l/km"}
+                other{"{0} l/km"}
+                zero{"{0} l/km"}
+            }
+            mile-per-gallon{
+                dnam{"jūdzes uz galonu"}
+                one{"{0} mpg"}
+                other{"{0} mpg"}
+                zero{"{0} mpg"}
+            }
+        }
+        coordinate{
+            dnam{"debespuse"}
+            east{"{0}A"}
+            north{"{0}Z"}
+            south{"{0}D"}
+            west{"{0}R"}
+        }
+        digital{
+            bit{
+                dnam{"b"}
+                one{"{0} b"}
+                other{"{0} b"}
+                zero{"{0} b"}
+            }
+            byte{
+                dnam{"B"}
+                one{"{0} B"}
+                other{"{0} B"}
+                zero{"{0} B"}
+            }
+        }
+        duration{
+            century{
+                dnam{"gs."}
+                one{"{0} gs."}
+                other{"{0} gs."}
+                zero{"{0} gs."}
+            }
+            day{
+                dnam{"d."}
+                one{"{0} d."}
+                other{"{0} d."}
+                per{"{0}/d."}
+                zero{"{0} d."}
+            }
+            decade{
+                dnam{"dek"}
+                one{"{0} dek"}
+                other{"{0} dek"}
+                zero{"{0} dek"}
+            }
+            hour{
+                dnam{"st."}
+                one{"{0} st."}
+                other{"{0} st."}
+                zero{"{0} st."}
+            }
+            month{
+                dnam{"mēneši"}
+                one{"{0} mēn."}
+                other{"{0} mēn."}
+                per{"{0}/mēn."}
+                zero{"{0} mēn."}
+            }
+            quarter{
+                dnam{"cet."}
+                one{"{0} cet."}
+                other{"{0} cet."}
+                per{"{0}/c."}
+                zero{"{0} cet."}
+            }
+            second{
+                dnam{"sek."}
+                one{"{0} sek."}
+                other{"{0} sek."}
+                per{"{0}/sek."}
+                zero{"{0} sek."}
+            }
+            week{
+                dnam{"ned."}
+                one{"{0} ned."}
+                other{"{0} ned."}
+                per{"{0}/ned."}
+                zero{"{0} ned."}
+            }
+            year{
+                dnam{"g."}
+                one{"{0} g."}
+                other{"{0} g."}
+                per{"{0}/g."}
+                zero{"{0} g."}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"A"}
+            }
+            ohm{
+                dnam{"omi"}
+            }
+            volt{
+                dnam{"volti"}
+            }
+        }
+        energy{
+            electronvolt{
+                dnam{"elektronvolts"}
+            }
+            foodcalorie{
+                dnam{"cal"}
+                one{"{0} cal"}
+                other{"{0} cal"}
+                zero{"{0} kcal"}
+            }
+            joule{
+                dnam{"džouli"}
+            }
+        }
+        force{
+            newton{
+                dnam{"ņūtons"}
+            }
+            pound-force{
+                dnam{"jaudas mārciņa"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"punkts"}
+                one{"{0} p."}
+                other{"{0} p."}
+                zero{"{0} px"}
+            }
+            dot-per-centimeter{
+                dnam{"dpc"}
+                one{"{0} dpc"}
+                other{"{0} dpc"}
+                zero{"{0} dpc"}
+            }
+            megapixel{
+                dnam{"megapikseļi"}
+            }
+            pixel{
+                dnam{"pikseļi"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"a.v."}
+                one{"{0} a.v."}
+                other{"{0} a.v."}
+                zero{"{0} a.v."}
+            }
+            fathom{
+                dnam{"fatomi"}
+                one{"{0} fatoms"}
+                other{"{0} fatomi"}
+                zero{"{0} fatomu"}
+            }
+            foot{
+                dnam{"pēdas"}
+            }
+            furlong{
+                dnam{"furlongi"}
+                one{"{0} furlongs"}
+                other{"{0} furlongi"}
+                zero{"{0} furlongu"}
+            }
+            inch{
+                dnam{"collas"}
+            }
+            light-year{
+                dnam{"g.g."}
+                one{"{0} g.g."}
+                other{"{0} g.g."}
+                zero{"{0} g.g."}
+            }
+            meter{
+                dnam{"m"}
+            }
+            mile{
+                dnam{"jūdzes"}
+                one{"{0} jūdze"}
+                other{"{0} jūdzes"}
+                zero{"{0} jūdzes"}
+            }
+            mile-scandinavian{
+                dnam{"skandināvu jūdze"}
+                one{"{0} skandināvu jūdze"}
+                other{"{0} skandināvu jūdzes"}
+                zero{"{0} skandināvu jūdzes"}
+            }
+            parsec{
+                dnam{"parseki"}
+            }
+            point{
+                dnam{"punkti"}
+                one{"{0} pk."}
+                other{"{0} pk."}
+                zero{"{0} pk."}
+            }
+            solar-radius{
+                dnam{"Saules rādiusi"}
+            }
+            yard{
+                dnam{"jardi"}
+                one{"{0} jards"}
+                other{"{0} jardi"}
+                zero{"{0} jardi"}
+            }
+        }
+        light{
+            candela{
+                dnam{"kandela"}
+            }
+            lumen{
+                dnam{"lūmens"}
+            }
+            lux{
+                dnam{"lukss"}
+            }
+            solar-luminosity{
+                dnam{"Saules starjauda"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"karāti"}
+                one{"{0} ct"}
+                other{"{0} ct"}
+                zero{"{0} ct"}
+            }
+            dalton{
+                dnam{"daltoni"}
+            }
+            earth-mass{
+                dnam{"Zemes masas"}
+            }
+            grain{
+                dnam{"gr."}
+                one{"{0} gr."}
+                other{"{0} gr."}
+                zero{"{0} gr."}
+            }
+            gram{
+                dnam{"grami"}
+            }
+            ounce{
+                dnam{"unces"}
+                one{"{0} unce"}
+                other{"{0} unces"}
+                per{"{0}/unce"}
+                zero{"{0} unču"}
+            }
+            ounce-troy{
+                dnam{"Trojas unces"}
+                one{"{0} Trojas unce"}
+                other{"{0} Trojas unces"}
+                zero{"{0} Trojas unces"}
+            }
+            pound{
+                dnam{"mārciņas"}
+            }
+            solar-mass{
+                dnam{"Saules masas"}
+            }
+            stone{
+                dnam{"stouni"}
+                one{"{0} stouns"}
+                other{"{0} stouni"}
+                zero{"{0} stounu"}
+            }
+            ton{
+                dnam{"tonnas"}
+                one{"{0} tonna"}
+                other{"{0} tonnas"}
+                zero{"{0} tonnas"}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"ZS"}
+                one{"{0} ZS"}
+                other{"{0} ZS"}
+                zero{"{0} ZS"}
+            }
+            watt{
+                dnam{"vati"}
+            }
+        }
+        pressure{
+            millimeter-ofhg{
+                dnam{"mmHg"}
+                one{"{0} mmHg"}
+                other{"{0} mmHg"}
+                zero{"{0} mmHg"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/st."}
+                one{"{0} km/st."}
+                other{"{0} km/st."}
+                zero{"{0} km/st."}
+            }
+            knot{
+                dnam{"mezgls"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0} °C"}
+                other{"{0} °C"}
+                zero{"{0} °C"}
+            }
+            fahrenheit{
+                one{"{0} °F"}
+                other{"{0} °F"}
+                zero{"{0} °F"}
+            }
+        }
+        torque{
+            pound-force-foot{
+                dnam{"mārciņpēda"}
+                one{"{0} mārc. pēda"}
+                other{"{0} mārc. pēdas"}
+                zero{"{0} mārc. pēdu"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"barels"}
+            }
+            centiliter{
+                dnam{"cl"}
+                one{"{0} cl"}
+                other{"{0} cl"}
+                zero{"{0} cl"}
+            }
+            cup{
+                dnam{"glāzes"}
+                one{"{0} gl."}
+                other{"{0} gl."}
+                zero{"{0} gl."}
+            }
+            cup-metric{
+                dnam{"metr. gl."}
+                one{"{0} metr. gl."}
+                other{"{0} metr. gl."}
+                zero{"{0} metr. gl."}
+            }
+            deciliter{
+                dnam{"dl"}
+                one{"{0} dl"}
+                other{"{0} dl"}
+                zero{"{0} dl"}
+            }
+            dessert-spoon{
+                dnam{"des. kar."}
+                one{"{0} des. kar."}
+                other{"{0} des. kar."}
+                zero{"{0} des. kar."}
+            }
+            dessert-spoon-imperial{
+                dnam{"britu des. kar."}
+                one{"{0} britu des. kar."}
+                other{"{0} britu des. kar."}
+                zero{"{0} britu des. kar."}
+            }
+            dram{
+                dnam{"šķidruma drahma"}
+                one{"{0} šķ. drahma"}
+                other{"{0} šķ. drahmas"}
+                zero{"{0} šķi. drahmu"}
+            }
+            drop{
+                dnam{"pil."}
+                one{"{0} pil."}
+                other{"{0} pil."}
+                zero{"{0} pil."}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                one{"{0} fl oz"}
+                other{"{0} fl oz"}
+                zero{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"britu šķidr. unces"}
+                one{"{0} britu šķidr. unce"}
+                other{"{0} britu šķidr. unces"}
+                zero{"{0} britu šķidr. unču"}
+            }
+            gallon{
+                dnam{"gal"}
+                one{"{0} gal"}
+                other{"{0} gal"}
+                per{"{0}/gal."}
+                zero{"{0} gal"}
+            }
+            gallon-imperial{
+                dnam{"britu galons"}
+                one{"{0} britu galons"}
+                other{"{0} britu galoni"}
+                per{"{0}/britu galonu"}
+                zero{"{0} britu galonu"}
+            }
+            hectoliter{
+                dnam{"hl"}
+                one{"{0} hl"}
+                other{"{0} hl"}
+                zero{"{0} hl"}
+            }
+            jigger{
+                dnam{"mērglāzīte"}
+                one{"{0} mērgl."}
+                other{"{0} mērgl."}
+                zero{"{0} mērgl."}
+            }
+            liter{
+                dnam{"l"}
+            }
+            milliliter{
+                dnam{"ml"}
+                one{"{0} ml"}
+                other{"{0} ml"}
+                zero{"{0} ml"}
+            }
+            pinch{
+                dnam{"šķipsn."}
+                one{"{0} šķipsn."}
+                other{"{0} šķipsn."}
+                zero{"{0} šķipsn."}
+            }
+            pint{
+                dnam{"pintes"}
+            }
+            quart-imperial{
+                dnam{"IQT"}
+                one{"{0} IQT"}
+                other{"{0} IQT"}
+                zero{"{0} IQT"}
+            }
+            tablespoon{
+                dnam{"ĒK"}
+                one{"{0} ĒK"}
+                other{"{0} ĒK"}
+                zero{"{0} ĒK"}
+            }
+            teaspoon{
+                dnam{"TK"}
+                one{"{0} TK"}
+                other{"{0} TK"}
+                zero{"{0} TK"}
+            }
+        }
+    }
+}

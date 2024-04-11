@@ -1,0 +1,53 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+doi{
+    Currencies{
+        BRL{
+            "R$",
+            "ब्राजीली रियाल",
+        }
+        CNY{
+            "CN¥",
+            "चीनी युआन",
+        }
+        EUR{
+            "€",
+            "यूरो",
+        }
+        GBP{
+            "£",
+            "ब्रिटिश पाउंड",
+        }
+        INR{
+            "₹",
+            "भारती रपेऽ",
+        }
+        JPY{
+            "¥",
+            "जापानी येन",
+        }
+        RUB{
+            "RUB",
+            "रूसी रूबल",
+        }
+        USD{
+            "$",
+            "यूएस डालर",
+        }
+        XXX{
+            "¤",
+            "अनजांती करंसी",
+        }
+    }
+    CurrencyPlurals{
+        XXX{
+            one{"(अनजांती करंसी)"}
+            other{"(अनजांती करंसी)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+}

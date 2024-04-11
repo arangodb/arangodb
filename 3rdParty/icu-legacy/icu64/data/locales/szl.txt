@@ -1,0 +1,92 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+szl{
+    AuxExemplarCharacters{"[àăâåäąā æ čç ď éèĕêěëęē íìĭîïī ľ ňñ óòöø œ q ŕř š ß ť úùŭûůüū v x ýÿ ž]"}
+    ExemplarCharacters{"[aã b cć d e f g h i j k lł m nń oŏôõō p r sś t u w y zźż]"}
+    ExemplarCharactersIndex{"[A B CĆ D E F G H I J K LŁ M NŃ OÔŌ P Q R SŚ T U V W X Y ZŹŻ]"}
+    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‐‑ – — , ; \\: ! ? . … ' \u0022”„ « » ( ) \\[ \\] \\{ \\} § @ * / \\& #"
+        " % † ‡ ′ ″ ° ~]"
+    }
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            symbols{
+                decimal{","}
+                group{" "}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "do połedniŏ",
+                "po połedniu",
+            }
+            AmPmMarkersAbbr{
+                "do połedniŏ",
+                "po połedniu",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+                yMd{"dd.MM.y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "niydziela",
+                        "pyńdziałek",
+                        "wtorek",
+                        "strzoda",
+                        "sztwortek",
+                        "piōntek",
+                        "sobota",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    wide{
+                        am{"do połedniŏ"}
+                        pm{"po połedniu"}
+                    }
+                }
+            }
+            intervalFormats{
+                fallback{"{0}–{1}"}
+            }
+            monthNames{
+                format{
+                    wide{
+                        "stycznia",
+                        "lutego",
+                        "marca",
+                        "kwietnia",
+                        "moja",
+                        "czyrwca",
+                        "lipca",
+                        "siyrpnia",
+                        "września",
+                        "października",
+                        "listopada",
+                        "grudnia",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"«"}
+        alternateQuotationStart{"»"}
+        quotationStart{"„"}
+    }
+    measurementSystemNames{
+        UK{"brytyjski"}
+        US{"amerykański"}
+        metric{"metryczny"}
+    }
+}

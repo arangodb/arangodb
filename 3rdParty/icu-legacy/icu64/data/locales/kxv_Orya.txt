@@ -1,0 +1,69 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Orya{
+    %%Parent{"root"}
+    ExemplarCharacters{
+        "[଼ ଁଂଃ ଅ {ଅ\\:} ଆ {ଆ\\:} ଇ ଈ ଉ ଊ ଏ {ଏ\\:} କ ଗ ଙ ଚ ଜ ଞ ଟ ଡ ଣ ତ ଦ ନ ପ ବ ମ ୟ ର "
+        "ଲ ଳ ୱ ସ ହ ା ି ୀ ୁ ୂ େ ୍]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0 ୧ ୨ ୩ ୪ ୫ ୬ ୭ ୮ ୯]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+            }
+        }
+        native{"orya"}
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "ଏ ଏମ",
+                "ପି ଏମ",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "ଆଦି ୱାରା",
+                        "ସମ୍ବାରା",
+                        "ମାଙ୍ଗାଡ଼ା",
+                        "ପୁଦାରା",
+                        "ଲାକି ୱାରା",
+                        "ସୁକ୍ରୁ ୱାରା",
+                        "ସାନି ୱାରା",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "ପୁସୁ ଲେଞ୍ଜୁ",
+                        "ମାହାକା ଲେଞ୍ଜୁ",
+                        "ପାଗୁଣି ଲେଞ୍ଜୁ",
+                        "ହିରେ ଲେଞ୍ଜୁ",
+                        "ବେସେ ଲେଞ୍ଜୁ",
+                        "ଜାଟା ଲେଞ୍ଜୁ",
+                        "ଆସାଡ଼ି ଲେଞ୍ଜୁ",
+                        "ସ୍ରାବାଁ ଲେଞ୍ଜୁ",
+                        "ବଦ ଲେଞ୍ଜୁ",
+                        "ଦାସାରା ଲେଞ୍ଜୁ",
+                        "ଦିୱିଡ଼ି ଲେଞ୍ଜୁ",
+                        "ପାଣ୍ଡେ ଲେଞ୍ଜୁ",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"ୟୁକେ"}
+        US{"ୟୁଏସ"}
+        metric{"ମେଟ୍ରିକ"}
+    }
+}

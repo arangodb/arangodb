@@ -1,0 +1,243 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sr_Latn_BA{
+    units{
+        acceleration{
+            g-force{
+                few{"{0} G"}
+                one{"{0} ge sila"}
+                other{"{0} ge sila"}
+            }
+        }
+        compound{
+            1024p8{"jobi{0}"}
+            10p-30{"q{0}"}
+            10p27{"R{0}"}
+            10p30{"Q{0}"}
+        }
+        duration{
+            century{
+                case{
+                    genitive{
+                        few{"{0} vijeka"}
+                        one{"{0} vijeka"}
+                        other{"{0} vijekova"}
+                    }
+                    instrumental{
+                        few{"{0} vijeka"}
+                        one{"{0} vijekom"}
+                        other{"{0} vijekova"}
+                    }
+                }
+                dnam{"vijekovi"}
+                few{"{0} vijeka"}
+                one{"{0} vijek"}
+                other{"{0} vijekova"}
+            }
+            month{
+                case{
+                    genitive{
+                        few{"{0} mjeseca"}
+                        one{"{0} mjeseca"}
+                        other{"{0} mjeseci"}
+                    }
+                    instrumental{
+                        few{"{0} mjeseca"}
+                        one{"{0} mjesecom"}
+                        other{"{0} mjeseci"}
+                    }
+                }
+                few{"{0} mjeseca"}
+                one{"{0} mjesec"}
+                other{"{0} mjeseci"}
+                per{"{0} mjesečno"}
+            }
+            week{
+                case{
+                    accusative{
+                        few{"{0} nedjelje"}
+                        one{"{0} nedjelju"}
+                        other{"{0} nedjelja"}
+                    }
+                    genitive{
+                        few{"{0} nedjelje"}
+                        one{"{0} nedjelje"}
+                        other{"{0} nedjelja"}
+                    }
+                    instrumental{
+                        few{"{0} nedjelje"}
+                        one{"{0} nedjeljom"}
+                        other{"{0} nedjelja"}
+                    }
+                }
+                dnam{"nedjelje"}
+                few{"{0} nedjelje"}
+                one{"{0} nedjelja"}
+                other{"{0} nedjelja"}
+                per{"{0} nedjeljno"}
+            }
+        }
+        electric{
+            milliampere{
+                few{"{0} mA"}
+                one{"{0} miliamper"}
+                other{"{0} miliampera"}
+            }
+        }
+        energy{
+            kilojoule{
+                few{"{0} kJ"}
+                one{"{0} kilodžul"}
+                other{"{0} kilodžula"}
+            }
+        }
+        frequency{
+            hertz{
+                few{"{0} Hz"}
+                one{"{0} herc"}
+                other{"{0} herca"}
+            }
+        }
+        length{
+            light-year{
+                dnam{"svjetlosne godine"}
+                few{"{0} svjetlosne godine"}
+                one{"{0} svjetlosna godina"}
+                other{"{0} svjetlosnih godina"}
+            }
+        }
+        mass{
+            grain{
+                few{"{0} grana"}
+                one{"{0} gran"}
+                other{"{0} granova"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                few{"{0} inHg"}
+                one{"{0} inč živinog stuba"}
+                other{"{0} inča živinog stuba"}
+            }
+            millibar{
+                few{"{0} mbar"}
+                one{"{0} milibar"}
+                other{"{0} milibara"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"Bft"}
+                few{"B {0}"}
+                one{"B {0}"}
+                other{"B {0}"}
+            }
+        }
+        volume{
+            acre-foot{
+                few{"{0} aker stope"}
+                one{"{0} ac ft"}
+                other{"{0} aker stopa"}
+            }
+            gallon-imperial{
+                few{"{0} gal Imp."}
+                one{"{0} imp. galon"}
+                other{"{0} imp. galona"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            month{
+                few{"{0} mjes."}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            second{
+                few{"{0} s"}
+                one{"{0} sek"}
+                other{"{0} s"}
+            }
+            week{
+                few{"{0} n"}
+                one{"{0} ned."}
+                other{"{0} n"}
+            }
+            year{
+                few{"{0} god."}
+                one{"{0} g"}
+                other{"{0} g"}
+            }
+        }
+        power{
+            horsepower{
+                few{"{0} hp"}
+                one{"{0} ks"}
+                other{"{0} ks"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"Bft"}
+                few{"B {0}"}
+                one{"B {0}"}
+                other{"B {0}"}
+            }
+        }
+        volume{
+            barrel{
+                few{"{0} bbl"}
+                one{"{0}bbl"}
+                other{"{0}bbl"}
+            }
+            dessert-spoon{
+                dnam{"d. kaš."}
+                few{"{0} d. kaš."}
+                one{"{0} d. kaš."}
+                other{"{0} d. kaš."}
+            }
+            dessert-spoon-imperial{
+                dnam{"i. d. k."}
+                few{"{0} i. d. k."}
+                one{"{0} i. d. k."}
+                other{"{0} i. d. k."}
+            }
+            gallon-imperial{
+                few{"{0} gal Imp."}
+                one{"{0}/gal Imp"}
+                other{"{0}/gal Imp"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            month{
+                dnam{"mjeseci"}
+                few{"{0} mjes."}
+                one{"{0} mjes."}
+                other{"{0} mjes."}
+            }
+        }
+        length{
+            light-year{
+                dnam{"svjetlosne god."}
+            }
+        }
+        mass{
+            grain{
+                dnam{"gran"}
+                few{"{0} grana"}
+                one{"{0} gran"}
+                other{"{0} granova"}
+            }
+        }
+        speed{
+            beaufort{
+                few{"B {0}"}
+                one{"B {0}"}
+                other{"B {0}"}
+            }
+        }
+    }
+}

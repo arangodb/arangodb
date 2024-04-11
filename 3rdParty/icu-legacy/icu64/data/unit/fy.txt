@@ -1,0 +1,405 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+fy{
+    units{
+        acceleration{
+            g-force{
+                one{"{0} G-kracht"}
+                other{"{0} G-krachten"}
+            }
+        }
+        angle{
+            arc-minute{
+                one{"{0} boogminút"}
+                other{"{0} boogminuten"}
+            }
+            arc-second{
+                one{"{0} boogsekonde"}
+                other{"{0} boogsekonden"}
+            }
+            degree{
+                one{"{0} booggraad"}
+                other{"{0} booggraden"}
+            }
+        }
+        area{
+            hectare{
+                one{"{0} hektare"}
+                other{"{0} hektare"}
+            }
+            square-foot{
+                one{"{0} fjouwerkante foet"}
+                other{"{0} fjouwerkante foet"}
+            }
+            square-kilometer{
+                one{"{0} fjouwerkante kilometer"}
+                other{"{0} fjouwerkante kilometer"}
+            }
+            square-meter{
+                one{"{0} fjouwerkante meter"}
+                other{"{0} fjouwerkante meter"}
+            }
+            square-mile{
+                one{"{0} fjouwerkante myl"}
+                other{"{0} fjouwerkante myl"}
+            }
+        }
+        compound{
+            per{"{0} per {1}"}
+        }
+        duration{
+            millisecond{
+                one{"{0} millisekonde"}
+                other{"{0} millisekonden"}
+            }
+            minute{
+                one{"{0} minút"}
+                other{"{0} minuten"}
+            }
+            month{
+                one{"{0} moanne"}
+                other{"{0} moanneen"}
+            }
+            second{
+                one{"{0} sekonde"}
+                other{"{0} sekonden"}
+            }
+            week{
+                one{"{0} wike"}
+                other{"{0} wiken"}
+            }
+            year{
+                one{"{0} jier"}
+                other{"{0} jier"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0} sentimeter"}
+                other{"{0} sentimeter"}
+            }
+            foot{
+                one{"{0} foet"}
+                other{"{0} foet"}
+            }
+            inch{
+                one{"{0} tomme"}
+                other{"{0} tommen"}
+            }
+            kilometer{
+                one{"{0} kilometer"}
+                other{"{0} kilometer"}
+            }
+            light-year{
+                one{"{0} ljochtjier"}
+                other{"{0} ljochtjier"}
+            }
+            meter{
+                one{"{0} meter"}
+                other{"{0} meter"}
+            }
+            mile{
+                one{"{0} myl"}
+                other{"{0} myl"}
+            }
+            millimeter{
+                one{"{0} millimeter"}
+                other{"{0} millimeter"}
+            }
+            picometer{
+                one{"{0} pikometer"}
+                other{"{0} pikometer"}
+            }
+            yard{
+                one{"{0} yard"}
+                other{"{0} yards"}
+            }
+        }
+        mass{
+            gram{
+                one{"{0} gram"}
+                other{"{0} gram"}
+            }
+            kilogram{
+                one{"{0} kilogram"}
+                other{"{0} kilogram"}
+            }
+        }
+        power{
+            horsepower{
+                one{"{0} hynstekrêft"}
+                other{"{0} hynstekrêften"}
+            }
+            kilowatt{
+                one{"{0} kilowatt"}
+                other{"{0} kilowatt"}
+            }
+            watt{
+                one{"{0} watt"}
+                other{"{0} watt"}
+            }
+        }
+        pressure{
+            hectopascal{
+                one{"{0} hektopaskal"}
+                other{"{0} hektopaskal"}
+            }
+            millibar{
+                one{"{0} millibar"}
+                other{"{0} millibar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                one{"{0} kilometer de oere"}
+                other{"{0} kilometer de oere"}
+            }
+            meter-per-second{
+                one{"{0} meter de sekonde"}
+                other{"{0} meter de sekonde"}
+            }
+            mile-per-hour{
+                one{"{0} myl de oere"}
+                other{"{0} myl de oere"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0} graad Celsius"}
+                other{"{0} graden Celsius"}
+            }
+            fahrenheit{
+                one{"{0} graad Fahrenheit"}
+                other{"{0} graden Fahrenheit"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                one{"{0} kubike kilometer"}
+                other{"{0} kubike kilometer"}
+            }
+            cubic-mile{
+                one{"{0} kubike myl"}
+                other{"{0} kubike myl"}
+            }
+            liter{
+                one{"{0} liter"}
+                other{"{0} liter"}
+            }
+        }
+    }
+    unitsNarrow{
+        area{
+            acre{
+                one{"{0} acre"}
+                other{"{0} acres"}
+            }
+        }
+        duration{
+            day{
+                one{"{0} d"}
+                other{"{0} d"}
+            }
+            hour{
+                one{"{0} u"}
+                other{"{0} u"}
+            }
+            minute{
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            month{
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            second{
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                one{"{0} w"}
+                other{"{0} w"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0} cm"}
+                other{"{0} cm"}
+            }
+            inch{
+                one{"{0}\u0022"}
+                other{"{0}\u0022"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"G-krachten"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"boogminuten"}
+            }
+            arc-second{
+                dnam{"boogsekonden"}
+            }
+            degree{
+                dnam{"booggraden"}
+            }
+        }
+        area{
+            acre{
+                dnam{"ares"}
+                one{"{0} are"}
+                other{"{0} ares"}
+            }
+            hectare{
+                dnam{"hektare"}
+            }
+            square-foot{
+                dnam{"fjouwerkante foet"}
+            }
+            square-kilometer{
+                dnam{"fjouwerkante kilometer"}
+            }
+            square-meter{
+                dnam{"fjouwerkante meter"}
+            }
+            square-mile{
+                dnam{"fjouwerkante myl"}
+            }
+        }
+        duration{
+            day{
+                dnam{"deien"}
+                one{"{0} dei"}
+                other{"{0} deien"}
+            }
+            hour{
+                dnam{"oere"}
+                one{"{0} oere"}
+                other{"{0} oere"}
+            }
+            millisecond{
+                dnam{"millisekonden"}
+            }
+            minute{
+                dnam{"minuten"}
+            }
+            month{
+                dnam{"moanneen"}
+                one{"{0} mn"}
+                other{"{0} mn"}
+            }
+            second{
+                dnam{"sekonden"}
+                one{"{0} sek."}
+                other{"{0} sek."}
+            }
+            week{
+                dnam{"wiken"}
+                one{"{0} wk"}
+                other{"{0} wkn"}
+            }
+            year{
+                dnam{"jier"}
+                one{"{0} jr"}
+                other{"{0} jr"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"sentimeter"}
+                one{"{0} sm"}
+                other{"{0} sm"}
+            }
+            foot{
+                dnam{"foet"}
+            }
+            inch{
+                dnam{"tommen"}
+                one{"{0} tm"}
+                other{"{0} tm"}
+            }
+            kilometer{
+                dnam{"kilometer"}
+            }
+            light-year{
+                dnam{"ljochtjier"}
+                one{"{0} lj"}
+                other{"{0} lj"}
+            }
+            mile{
+                dnam{"myl"}
+            }
+            millimeter{
+                dnam{"millimeter"}
+            }
+            picometer{
+                dnam{"pikometer"}
+            }
+            yard{
+                dnam{"yards"}
+            }
+        }
+        mass{
+            kilogram{
+                dnam{"kilogram"}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"hynstekrêften"}
+                one{"{0} pk"}
+                other{"{0} pk"}
+            }
+            kilowatt{
+                dnam{"kilowatt"}
+            }
+        }
+        pressure{
+            hectopascal{
+                dnam{"hektopaskal"}
+            }
+            millibar{
+                dnam{"millibar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"kilometer de oere"}
+            }
+            meter-per-second{
+                dnam{"meter de sekonde"}
+            }
+            mile-per-hour{
+                dnam{"myl de oere"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"graden Celsius"}
+            }
+            fahrenheit{
+                dnam{"graden Fahrenheit"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                dnam{"kubike kilometer"}
+            }
+            cubic-mile{
+                dnam{"kubike myl"}
+            }
+        }
+    }
+}

@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+tok{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"tenpo pi ma Keni"}
+        }
+        gmtFormat{"tenpo UTC{0}"}
+        gmtZeroFormat{"tenpo UTC"}
+        regionFormat{"tenpo pi {0}"}
+        regionFormatDaylight{"tenpo seli suno pi {0}"}
+        regionFormatStandard{"tenpo pi {0}"}
+    }
+}

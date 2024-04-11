@@ -1,0 +1,627 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mi{
+    Keys{
+        calendar{"Maramataka"}
+        cf{"Hōputu Moni"}
+        collation{"Raupapa Kōmaka"}
+        currency{"Momo Moni"}
+        hc{"Hurihanga Haora (12, 24 rānei)"}
+        lb{"Hātuhi Whati Rārangi"}
+        ms{"Pūnaha Inenga"}
+        numbers{"Tau"}
+    }
+    Languages{
+        ab{"Apakāhiana"}
+        ace{"Akanīhi"}
+        ada{"Atāngami"}
+        ady{"Āteke"}
+        af{"Awherikāna"}
+        agq{"Ākeme"}
+        ain{"Ainu"}
+        ak{"Ākana"}
+        ale{"Ariuta"}
+        alt{"Ātai ki te Tonga"}
+        am{"Amahereka"}
+        an{"Arakonihi"}
+        ann{"Ōporo"}
+        anp{"Anahika"}
+        ar{"Ārapi"}
+        ar_001{"Ārapi Moroko"}
+        arn{"Mapūte"}
+        arp{"Arapaho"}
+        ars{"Arapika Nahāri"}
+        as{"Āhamēhi"}
+        asa{"Ahu"}
+        ast{"Ahitūriana"}
+        atj{"Atikameke"}
+        av{"Āwhāriki"}
+        awa{"Awāti"}
+        ay{"Aimāra"}
+        az{"Atepaihānia"}
+        ba{"Pākīra"}
+        ban{"Pārinīhi"}
+        bas{"Pahā"}
+        be{"Perarūhiana"}
+        bem{"Pema"}
+        bez{"Pena"}
+        bg{"Purukāriana"}
+        bgc{"Herianawhi"}
+        bho{"Pōhipuri"}
+        bi{"Pihirāma"}
+        bin{"Pini"}
+        bla{"Hihika"}
+        bm{"Pāpara"}
+        bn{"Pākara"}
+        bo{"Tipete"}
+        br{"Peretana"}
+        brx{"Pōto"}
+        bs{"Pōngiana"}
+        bug{"Pukenīhi"}
+        byn{"Pirina"}
+        ca{"Katarana"}
+        cay{"Keiūka"}
+        ccp{"Tiakamā"}
+        ce{"Tietiene"}
+        ceb{"Hepuano"}
+        cgg{"Tieka"}
+        ch{"Tiamoro"}
+        chk{"Tiukīhi"}
+        chm{"Mari"}
+        cho{"Tiokatō"}
+        chp{"Tiepewaiana"}
+        chr{"Tierokī"}
+        chy{"Haiene"}
+        ckb{"Kūrihi Waenga"}
+        clc{"Tiekautini"}
+        co{"Kōhikana"}
+        crg{"Mītiwhi"}
+        crj{"Kirī Tonga-mā-Rāwhiti"}
+        crk{"Pareina Kirī"}
+        crl{"Kirī Raki-mā-Rāwhiti"}
+        crm{"Mūhi Kirī"}
+        crr{"Arakōkiana Kararaina"}
+        cs{"Tieke"}
+        csw{"Wāpi Kirī"}
+        cv{"Tiuwhāhi"}
+        cy{"Werehi"}
+        da{"Teina"}
+        dak{"Takōta"}
+        dar{"Tākawa"}
+        dav{"Taita"}
+        de{"Tiamana"}
+        de_AT{"Tiamana Ateriana"}
+        de_CH{"Tiamana Ōkawa Huiterangi"}
+        dgr{"Tōkiripi"}
+        dje{"Tāma"}
+        doi{"Tōkiri"}
+        dsb{"Hōpiana Hakahaka"}
+        dua{"Tuāra"}
+        dv{"Tīwhehi"}
+        dyo{"Hora-Whōni"}
+        dz{"Tonoka"}
+        dzg{"Tahāka"}
+        ebu{"Emepū"}
+        ee{"Ewe"}
+        efi{"Ewhiki"}
+        eka{"Ekatika"}
+        el{"Kariki"}
+        en{"Ingarihi"}
+        en_AU{"Ingarihi Ahitereiriana"}
+        en_CA{"Ingarihi Kānata"}
+        en_GB{"Ingarihi Piritene"}
+        en_US{"Ingarihi Amerikana"}
+        eo{"Eheperāto"}
+        es{"Pāniora"}
+        es_419{"Pāniora Amerikana ki te Tonga"}
+        es_ES{"Pāniora Ūropi"}
+        es_MX{"Pāniora Mehikana"}
+        et{"Etōniana"}
+        eu{"Pākihi"}
+        ewo{"Ewāto"}
+        fa{"Pāhiana"}
+        fa_AF{"Tāri"}
+        ff{"Whūra"}
+        fi{"Whinirānia"}
+        fil{"Piripīno"}
+        fj{"Whītīana"}
+        fo{"Wharoīhi"}
+        fon{"Whāna"}
+        fr{"Wīwī"}
+        fr_CA{"Wīwī Kānata"}
+        fr_CH{"Wīwī Huiterangi"}
+        frc{"Wīwī Keihana"}
+        frr{"Whirīhiana ki te Raki"}
+        fur{"Whiriūriana"}
+        fy{"Whirīhiana ki te Uru"}
+        ga{"Airihi"}
+        gaa{"Kā"}
+        gd{"Keiriki Kotimana"}
+        gez{"Kīhi"}
+        gil{"Kiripatīhi"}
+        gl{"Karīhia"}
+        gn{"Kuaranī"}
+        gor{"Korōtaro"}
+        gsw{"Tiamana Huiterangi"}
+        gu{"Kutarāti"}
+        guz{"Kūhī"}
+        gv{"Manaki"}
+        gwi{"Kuitīna"}
+        ha{"Hauha"}
+        hai{"Heira"}
+        haw{"Wāhu"}
+        hax{"Haira ki te Tonga"}
+        he{"Hīperu"}
+        hi{"Hīni"}
+        hil{"Hirikaina"}
+        hmn{"Mōnga"}
+        hr{"Koroātiana"}
+        hsb{"Hōpiana Maunga"}
+        ht{"Kereō Haiti"}
+        hu{"Hanekari"}
+        hup{"Hupa"}
+        hur{"Hākomerema"}
+        hy{"Āmeniana"}
+        hz{"Herero"}
+        ia{"Inarīngua"}
+        iba{"Īpana"}
+        ibb{"Ipīpio"}
+        id{"Initonīhiana"}
+        ig{"Ikapo"}
+        ii{"Hīhuana Eī"}
+        ikt{"Inukitetūta Kānata ki te Uru"}
+        ilo{"Iroko"}
+        inh{"Inguihi"}
+        io{"Īto"}
+        is{"Tiorangi"}
+        it{"Itāriana"}
+        iu{"Inukitetūta"}
+        ja{"Hapanihi"}
+        jbo{"Rōpāna"}
+        jgo{"Nakōma"}
+        jmc{"Mākame"}
+        jv{"Hāwhanihi"}
+        ka{"Hōriana"}
+        kab{"Kapāiro"}
+        kac{"Katīana"}
+        kaj{"Heiho"}
+        kam{"Kāmapa"}
+        kbd{"Kapāriana"}
+        kcg{"Tiapa"}
+        kde{"Makonote"}
+        kea{"Kapuwētianu"}
+        kfo{"Koro"}
+        kgp{"Keinganga"}
+        kha{"Kahi"}
+        khq{"Kōira Tīni"}
+        ki{"Kikūiu"}
+        kj{"Kuoniāma"}
+        kk{"Kahāka"}
+        kkj{"Kako"}
+        kl{"Kararīhutu"}
+        kln{"Karenini"}
+        km{"Kimēra"}
+        kmb{"Kimipunu"}
+        kn{"Kanara"}
+        ko{"Kōreana"}
+        kok{"Kōkani"}
+        kpe{"Kepēre"}
+        kr{"Kanuri"}
+        krc{"Karatai-Pāka"}
+        krl{"Kareriana"}
+        kru{"Kuruka"}
+        ks{"Kahimiri"}
+        ksb{"Hapāra"}
+        ksf{"Pāwhia"}
+        ksh{"Korōniana"}
+        ku{"Kūrihi"}
+        kum{"Kumiki"}
+        kv{"Komi"}
+        kw{"Kōnihi"}
+        kwk{"Kuakawara"}
+        ky{"Kiakihi"}
+        la{"Rātini"}
+        lad{"Ratino"}
+        lag{"Rangi"}
+        lb{"Rakapuō"}
+        lez{"Rēhiana"}
+        lg{"Kānata"}
+        li{"Ripūkuihi"}
+        lil{"Riruete"}
+        lkt{"Rakōta"}
+        ln{"Ringāra"}
+        lo{"Rao"}
+        lou{"Kreōro Ruihiana"}
+        loz{"Rohi"}
+        lrc{"Ruri ki te Raki"}
+        lsm{"Hāmia"}
+        lt{"Rituānia"}
+        lu{"Rupa Katanga"}
+        lua{"Rupa Rurua"}
+        lun{"Runa"}
+        luo{"Ruo"}
+        lus{"Mīho"}
+        luy{"Rūia"}
+        lv{"Rāwhia"}
+        mad{"Maturīhi"}
+        mag{"Makāhi"}
+        mai{"Maitiri"}
+        mak{"Makahā"}
+        mas{"Māhai"}
+        mdf{"Mōkaha"}
+        men{"Menēte"}
+        mer{"Meru"}
+        mfe{"Morihiene"}
+        mg{"Marakāhi"}
+        mgh{"Makuwa-Mēto"}
+        mgo{"Meta"}
+        mh{"Mararīhi"}
+        mi{"Māori"}
+        mic{"Mīkamā"}
+        min{"Minākapao"}
+        mk{"Makerōnia"}
+        ml{"Mareiārama"}
+        mn{"Mongōria"}
+        mni{"Manipuri"}
+        moe{"Inu-aimuna"}
+        moh{"Mauhōka"}
+        mos{"Mohi"}
+        mr{"Marati"}
+        ms{"Marei"}
+        mt{"Mārata"}
+        mua{"Mūnatanga"}
+        mul{"Ngā reo maha"}
+        mus{"Mukōki"}
+        mwl{"Miranatīhi"}
+        my{"Pēmīhi"}
+        myv{"Erehīa"}
+        mzn{"Mahaterani"}
+        na{"Nauru"}
+        nap{"Neaporitana"}
+        naq{"Nama"}
+        nb{"Pakamō Nōwei"}
+        nd{"Enetepēra ki te Raki"}
+        nds{"Tiamana Hakahaka"}
+        ne{"Nepari"}
+        new{"Newari"}
+        ng{"Natōka"}
+        nia{"Niāhi"}
+        niu{"Niueana"}
+        nl{"Tati"}
+        nl_BE{"Tati Whēmirihi"}
+        nmg{"Kuahio"}
+        nn{"Nīnōka Nōwei"}
+        nnh{"Nekiepūna"}
+        no{"Nōwei"}
+        nog{"Nōkai"}
+        nqo{"Unukō"}
+        nr{"Enetepēra ki te Tonga"}
+        nso{"Hoto ki te Raki"}
+        nus{"Nua"}
+        nv{"Nawahō"}
+        ny{"Niānia"}
+        nyn{"Niānakore"}
+        oc{"Ōkitana"}
+        ojb{"Ōtīpia Raki-mā-Uru"}
+        ojc{"Ohīpawe Waenga"}
+        ojs{"Ōti-Kirī"}
+        ojw{"Ōhīpiwa ki te Uru"}
+        oka{"Ōkanakana"}
+        om{"Ōromo"}
+        or{"Ōtia"}
+        os{"Ōtītiki"}
+        pa{"Punutapi"}
+        pag{"Pāngahina"}
+        pam{"Pamapaka"}
+        pap{"Papiamēto"}
+        pau{"Pārau"}
+        pcm{"Ngāitiriana Kōrapurapu"}
+        pis{"Pītini"}
+        pl{"Pōrihi"}
+        pqm{"Marahiti-Pehamakoare"}
+        ps{"Pāhitō"}
+        pt{"Pōtukīhi"}
+        pt_BR{"Pōtukīhi Parahi"}
+        pt_PT{"Pōtukīhi Uropi"}
+        qu{"Kētua"}
+        raj{"Ratiahitani"}
+        rap{"Rapanui"}
+        rar{"Rarotonga"}
+        rhg{"Rohingia"}
+        rm{"Romānihi"}
+        rn{"Rūniti"}
+        ro{"Romeinia"}
+        rof{"Romopo"}
+        ru{"Ruhiana"}
+        rup{"Aromeiniana"}
+        rw{"Kiniawāna"}
+        rwk{"Rawa"}
+        sa{"Hanahiti"}
+        sad{"Hātawe"}
+        sah{"Hakūta"}
+        saq{"Hāmapuru"}
+        sat{"Hatāri"}
+        sba{"Nekāpei"}
+        sbp{"Hāngu"}
+        sc{"Hārinia"}
+        scn{"Hihiriana"}
+        sco{"Kotimana"}
+        sd{"Hiniti"}
+        se{"Hami ki te Raki"}
+        seh{"Hena"}
+        ses{"Kōiraporo Heni"}
+        sg{"Hāngo"}
+        shi{"Tāhehita"}
+        shn{"Hāna"}
+        si{"Hinihāra"}
+        sk{"Horowākia"}
+        sl{"Horowinia"}
+        slh{"Ratūti ki te Tonga"}
+        sm{"Hāmoa"}
+        smn{"Inari Hami"}
+        sms{"Hakoto Hāmi"}
+        sn{"Hōna"}
+        snk{"Honīke"}
+        so{"Hamāri"}
+        sq{"Arapeiniana"}
+        sr{"Hirupia"}
+        srn{"Harāna Tongo"}
+        ss{"Wāti"}
+        st{"Hōto ki te Tonga"}
+        str{"Hārihi Kuititanga"}
+        su{"Hunanīhi"}
+        suk{"Hukuma"}
+        sv{"Huitene"}
+        sw{"Wāhīri"}
+        swb{"Komōriana"}
+        syr{"Hīriaka"}
+        ta{"Tamira"}
+        tce{"Tatōne ki te Tonga"}
+        te{"Teruku"}
+        tem{"Tīmene"}
+        teo{"Teho"}
+        tet{"Tetumu"}
+        tg{"Tāhiki"}
+        tgx{"Tākihi"}
+        th{"Tai"}
+        tht{"Tātana"}
+        ti{"Tekirinia"}
+        tig{"Tīkara"}
+        tk{"Tākamana"}
+        tlh{"Kirīngona"}
+        tli{"Tirīkiti"}
+        tn{"Hawāna"}
+        to{"Tonga"}
+        tok{"Toki Pona"}
+        tpi{"Toko Pīhini"}
+        tr{"Tākei"}
+        trv{"Taroko"}
+        ts{"Honga"}
+        tt{"Tatā"}
+        ttm{"Tūtone ki te Raki"}
+        tum{"Tumūka"}
+        tvl{"Tuwaru"}
+        twq{"Tahawaka"}
+        ty{"Tahiti"}
+        tyv{"Tuwīniana"}
+        tzm{"Tamahīta Te Puku o Atarihi"}
+        udm{"Ūmutu"}
+        ug{"Wīkura"}
+        uk{"Ukareinga"}
+        umb{"Ūpunu"}
+        und{"Reo Tē Mōhiotia"}
+        ur{"Ūrutu"}
+        uz{"Ūpeke"}
+        vai{"Wai"}
+        ve{"Wēnera"}
+        vi{"Whitināmu"}
+        vun{"Whunio"}
+        wa{"Warūna"}
+        wae{"Wāhere"}
+        wal{"Wareita"}
+        war{"Warei"}
+        wo{"Warawhe"}
+        wuu{"Hainamana Wū"}
+        xal{"Karamiki"}
+        xh{"Tōha"}
+        xog{"Hoka"}
+        yav{"Angapene"}
+        ybb{"Emapa"}
+        yi{"Irihi"}
+        yo{"Ōrūpa"}
+        yrl{"Nīkātū"}
+        yue{"Katonīhi"}
+        zgh{"Moroko Tamatai"}
+        zh{"Hainamana"}
+        zh_Hans{"Hainamana Māmā"}
+        zh_Hant{"Hainamana Tukuiho"}
+        zu{"Tūru"}
+        zun{"Tuni"}
+        zxx{"Wetereo kiko kore"}
+        zza{"Tātā"}
+    }
+    Languages%menu{
+        ckb{"Kūrihi, Waenga"}
+        yue{"Hainamana, Katonīhi"}
+        zh{"Hainamana Manarini"}
+    }
+    Languages%short{
+        az{"Ahēri"}
+        en_GB{"Ingarihi UK"}
+        en_US{"Ingarihi US"}
+    }
+    Languages%variant{
+        ckb{"Kūrihi, Hōrani"}
+    }
+    Scripts{
+        Adlm{"Atarama"}
+        Arab{"Arapika"}
+        Aran{"Nātarika"}
+        Armn{"Āmeniana"}
+        Beng{"Pāngara"}
+        Bopo{"Papamawha"}
+        Brai{"Tuhi Matapō"}
+        Cakm{"Tiakamā"}
+        Cans{"Ngā Kūoro o ngā Iwi Taketake o Kānata kua paiheretia"}
+        Cher{"Terokī"}
+        Cyrl{"Hīririki"}
+        Deva{"Tewhangāngari"}
+        Ethi{"Etiopika"}
+        Geor{"Hōriana"}
+        Grek{"Kariki"}
+        Gujr{"Kutarāti"}
+        Guru{"Kūmuki"}
+        Hanb{"Hana me te Papamawha"}
+        Hang{"Hāngū"}
+        Hani{"Hana"}
+        Hans{"Māmā"}
+        Hant{"Tuku iho"}
+        Hebr{"Hīperu"}
+        Hira{"Hirakana"}
+        Hrkt{"Kūoro Hapanihi"}
+        Jamo{"Hamo"}
+        Jpan{"Hapanihi"}
+        Kana{"Katakana"}
+        Khmr{"Kimēra"}
+        Knda{"Kanāra"}
+        Kore{"Kōreana"}
+        Laoo{"Rao"}
+        Latn{"Rātini"}
+        Mlym{"Maraiārama"}
+        Mong{"Mongōria"}
+        Mtei{"Meitei Maeke"}
+        Mymr{"Mienemā"}
+        Nkoo{"Unukō"}
+        Olck{"Ōtiki"}
+        Orya{"Otia"}
+        Rohg{"Hāniwhi"}
+        Sinh{"Hināra"}
+        Sund{"Hunanihi"}
+        Syrc{"Hīriaka"}
+        Taml{"Tamiera"}
+        Telu{"Teruku"}
+        Tfng{"Tiwhinā"}
+        Thaa{"Tāna"}
+        Thai{"Tai"}
+        Tibt{"Tipete"}
+        Vaii{"Wai"}
+        Yiii{"Eī"}
+        Zmth{"Reo Tohu Pāngarau"}
+        Zsye{"Emohi"}
+        Zsym{"Tohu"}
+        Zxxx{"Tuhikore"}
+        Zyyy{"Komona"}
+        Zzzz{"Momotuhi Tē Mōhiotia"}
+    }
+    Scripts%stand-alone{
+        Hans{"Hana Māmā"}
+        Hant{"Hana Tuku iho"}
+    }
+    Types{
+        calendar{
+            buddhist{"Maramataka Puta"}
+            chinese{"Maramataka Haina"}
+            coptic{"Maramataka Kopitika"}
+            dangi{"Maramataka Tangi"}
+            ethiopic{"Maramataka Etiopia"}
+            ethiopic-amete-alem{"Maramataka Etiopia Amete Arema"}
+            gregorian{"Maramataka Pākehā"}
+            hebrew{"Maramataka Hīperu"}
+            islamic{"Maramataka Hitiuri"}
+            islamic-civil{"Maramataka Hitiuri (tūtohi, wā o naiānei)"}
+            islamic-umalqura{"Maramataka Hitiuri (Uma ara Kura)"}
+            iso8601{"Maramataka ISO-8601"}
+            japanese{"Maramataka Hapanihi"}
+            persian{"Maramataka Pāhia"}
+            roc{"Maramataka Minguo"}
+        }
+        cf{
+            account{"Hōputu Moni Mahi Kaute"}
+            standard{"Hōputu Moni Arowhānui"}
+        }
+        collation{
+            ducet{"Raupapa Kōmaka Unicode Taunoa"}
+            search{"Rapunga Arowhānui"}
+            standard{"Raupapa Kōmaka Arowhānui"}
+        }
+        hc{
+            h11{"Pūnaha Haora 12 (0–11)"}
+            h12{"Pūnaha Haora 12 (1–12)"}
+            h23{"Pūnaha Haora 24 (0–23)"}
+            h24{"Pūnaha Haora 24 (1–24)"}
+        }
+        lb{
+            loose{"Hātuhi Whati Rārangi Tangatanga"}
+            normal{"Hātuhi Whati Rārangi Taunoa"}
+            strict{"Hātuhi Whati Rārangi Pākaha"}
+        }
+        ms{
+            metric{"Pūnaha Ngahuru"}
+            uksystem{"Pūnaha Inenga Emepaea"}
+            ussystem{"Pūnenga Inenga Amerika"}
+        }
+        numbers{
+            arab{"Mati Arapī-Īnia"}
+            arabext{"Mati Arapī-Īnia Whakaroa"}
+            armn{"Tohutau Āmenia"}
+            armnlow{"Tohutau Āmenia Pūriki"}
+            beng{"Mati Pākara"}
+            cakm{"Mati Tiakama"}
+            deva{"Mati Tewanakari"}
+            ethi{"Tohutau Etiopia"}
+            fullwide{"Mati Whānui Rawa"}
+            geor{"Tohutau Hōriana"}
+            grek{"Tohutau Kariki"}
+            greklow{"Tohutau Kariki Pūriki"}
+            gujr{"Mati Kuharati"}
+            guru{"Mati Kuramuki"}
+            hanidec{"Tohutau Haina ā-ira"}
+            hans{"Tohutau Haina Māmā"}
+            hansfin{"Tohutau Ahumoni Haina Māmā"}
+            hant{"Tohutau Haina Tukuiho"}
+            hantfin{"Tohutau Ahumoni Haina Tukuiho"}
+            hebr{"Tohutau Hīperu"}
+            java{"Mati Tiawha"}
+            jpan{"Tohutau Hapanihi"}
+            jpanfin{"Tohutau Ahumoni Hapanihi"}
+            khmr{"Mati Kimēra"}
+            knda{"Mati Kanāta"}
+            laoo{"Mati Rao"}
+            latn{"Ngā Mati Pākehā"}
+            mlym{"Mati Maraiarama"}
+            mtei{"Mati Mētei Maieka"}
+            mymr{"Mati Pēma"}
+            olck{"Mati Oro Tieki"}
+            orya{"Mati Oria"}
+            roman{"Tohutau Rōmana"}
+            romanlow{"Tohutau Rōmana Pūriki"}
+            taml{"Tohutau Tamira Tukuiho"}
+            tamldec{"Mati Tamira"}
+            telu{"Mati Teruku"}
+            thai{"Mati Tai"}
+            tibt{"Mati Tīpete"}
+            vaii{"Mati Wai"}
+        }
+    }
+    characterLabelPattern{
+        all{"{0} — katoa"}
+        compatibility{"{0} — hototahitanga"}
+        enclosed{"{0} — tāpareparenga"}
+        extended{"{0} — koraha"}
+        historic{"{0} — o nehe"}
+        miscellaneous{"{0} — whakaehu"}
+        other{"{0} — tētehi atu"}
+        scripts{"tuhinga — {0}"}
+        strokes{
+            other{"{0} tānga tuhi"}
+        }
+        subscript{"tuhinga āpiti {0}"}
+        superscript{"tuhinga hirahira {0}"}
+    }
+    codePatterns{
+        language{"Reo: {0}"}
+        script{"Momotuhi: {0}"}
+        territory{"Rohe: {0}"}
+    }
+}

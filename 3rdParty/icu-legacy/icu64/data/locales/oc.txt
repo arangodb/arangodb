@@ -1,0 +1,74 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+oc{
+    AuxExemplarCharacters{"[ăâåäãā æ ĕêëē ìĭîī ñ ŏôöøō œ ùŭûū ÿ]"}
+    ExemplarCharacters{"[aáà b cç d eéè f g h iíï j k l m n oóò p q r s t uúü v w x y z]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … ’ \u0022“” « » ( ) \\[ \\] § @ * / \\& # † ‡ ⋅]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"#,##0.00¤"}
+                percentFormat{"#,##0 %"}
+            }
+            symbols{
+                decimal{","}
+                group{" "}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            availableFormats{
+                Hm{"HH'h'mm"}
+                Hms{"HH'h'mm ss 'seg'."}
+                Hmsv{"HH'h'mm ss 'seg'. v"}
+                hm{"h'h'mm a"}
+                hms{"h'h'mm:ss a"}
+                yMMMd{"d MMM y"}
+                yMd{"dd/MM/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "dimenge",
+                        "diluns",
+                        "dimars",
+                        "dimècres",
+                        "dijòus",
+                        "divendres",
+                        "dissabte",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "de genièr",
+                        "de febrièr",
+                        "de març",
+                        "d’abril",
+                        "de mai",
+                        "de junh",
+                        "de julhet",
+                        "d’agost",
+                        "de setembre",
+                        "d’octòbre",
+                        "de novembre",
+                        "de decembre",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"»"}
+        alternateQuotationStart{"«"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    measurementSystemNames{
+        UK{"anglosajon"}
+        US{"estadounidenc"}
+    }
+}

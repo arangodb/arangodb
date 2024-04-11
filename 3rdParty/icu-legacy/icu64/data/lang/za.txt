@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+za{
+    Languages{
+        en{"Yinghyij"}
+        za{"Vahcuengh"}
+    }
+    Scripts{
+        Latn{"Lahdinghvwnz"}
+    }
+    codePatterns{
+        language{"Vah: {0}"}
+        script{"Saw: {0}"}
+        territory{"Dieg: {0}"}
+    }
+}

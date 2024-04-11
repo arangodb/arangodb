@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+vmw{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"okathi oolikana wa Greenwich"}
+        }
+        hourFormat{"+H:mm;-H:mm"}
+        regionFormat{"okathi wa {0}"}
+        regionFormatDaylight{"okathi wa othana wa {0}"}
+        regionFormatStandard{"okathi oolikana wa {0}"}
+    }
+}

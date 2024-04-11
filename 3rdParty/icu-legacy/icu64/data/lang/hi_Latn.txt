@@ -1,0 +1,139 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+hi_Latn{
+    %%Parent{"en_IN"}
+    Keys{
+        colAlternate{"Symbol sorting ignore karein"}
+        colCaseFirst{"Uppercase/Lowercase ke order mein rakhna"}
+        colCaseLevel{"Case Sensitive Sorting"}
+        colNormalization{"Normalized Sorting"}
+        colStrength{"Sorting ki Strength"}
+        fw{"Week kaa pahla din"}
+        hc{"Hours ki Cycle (12 vs 24)"}
+        lb{"Line break ki style"}
+        lw{"Words Setting mein Line Breaks"}
+        ms{"Measurement kaa system"}
+        rg{"Supplemental Data ke liye region"}
+    }
+    Languages{
+        af{"Afreeki"}
+        bgc{"Hariyaanvi"}
+        bn{"Bangla"}
+        bo{"Tibbati"}
+        ckb{"Kurdish, Sorani"}
+        crh{"Crimean Turkish"}
+        fa{"Faarsi"}
+        ff{"Fulah"}
+        lah{"Lahnda"}
+        mic{"Mi'kmaq"}
+        mus{"Muscogee"}
+        nan{"Min Nan"}
+        nb{"Norwegian Bokmal"}
+        nds_NL{"Low Saxon"}
+        ug{"Uighur"}
+        wal{"walamo"}
+    }
+    Scripts{
+        Bali{"Baali"}
+        Beng{"Bangla"}
+        Inds{"Sindhu"}
+        Mymr{"Burmese"}
+        Orya{"Odia"}
+        Talu{"Naya Tai Lue"}
+    }
+    Types{
+        colAlternate{
+            non-ignorable{"Symbols ko sort karein"}
+            shifted{"Symbols ko ignore karte hue sort karein"}
+        }
+        colBackwards{
+            no{"Accents ko normally sort karein"}
+            yes{"Accents ko reverse mein sort karein"}
+        }
+        colCaseFirst{
+            lower{"Pahle lowercase walon ko sort karein"}
+            no{"Normal case order mein sort karein"}
+            upper{"Pahle uppercase walon ko sort karein"}
+        }
+        colCaseLevel{
+            no{"Case insensitive sorting karein"}
+            yes{"Case sensitive sorting karein"}
+        }
+        colNormalization{
+            no{"Bina normalization ke sort karein"}
+            yes{"Sort Unicode Normalized"}
+        }
+        colNumeric{
+            no{"Digits ko alag-alag sort karein"}
+            yes{"Digits ko numerically sort karein"}
+        }
+        colStrength{
+            identical{"Sabhi ko sort karein"}
+            primary{"Sirf Base Letters ko sort karein"}
+            quaternary{"Accents/Case/Width/Kana ko sort karein"}
+            secondary{"Accents ko sort karein"}
+            tertiary{"Accents/Case/Width ko sort karein"}
+        }
+        collation{
+            compat{"Compatibility ke liye, picchla sort order"}
+            dictionary{"Dictionary kaa sort order"}
+            searchjl{"Hangul initial consonant se search karein"}
+        }
+        d0{
+            ascii{"ASCII"}
+            fwidth{"Poori width"}
+            hwidth{"Aadhi width"}
+            lower{"Lowercase"}
+            npinyin{"Numeric tones ke saath pinyin karna"}
+            title{"Titlecase"}
+            upper{"Uppercase"}
+        }
+        em{
+            default{"Emoji Characters ke liye Default Presentation use karein"}
+            emoji{"Emoji Characters ke liye Emoji Presentation prefer karein"}
+            text{"Emoji Characters ke liye Text Presentation prefer karein"}
+        }
+        fw{
+            fri{"Week kaa pahla din Friday"}
+            mon{"Week kaa pahla din Monday"}
+            sat{"Week kaa pahla din Saturday"}
+            sun{"Week kaa pahla din Sunday"}
+            thu{"Week kaa pahla din Thursday"}
+            tue{"Week kaa pahla din Tuesday"}
+            wed{"Week kaa pahla din Wednesday"}
+        }
+        hc{
+            h11{"12 Hour System (0–11)"}
+            h12{"12 Hour System (1–12)"}
+            h23{"24 Hour System (0–23)"}
+            h24{"24 Hour System (1–24)"}
+        }
+        lw{
+            breakall{"Sabhi Words mein Line Breaks allow karein"}
+            keepall{"Sabhi Words mein Line Breaks se bachein"}
+            normal{"Words ke liye normal Line Breaks"}
+            phrase{"Phrases mein Line Breaks se bachein"}
+        }
+        numbers{
+            beng{"Bangla Digits"}
+            hanidec{"Chinese Decimal Numbers"}
+            hans{"Simplified Chinese Numbers"}
+            hansfin{"Simplified Chinese Financial Numbers"}
+            hant{"Traditional Chinese Numbers"}
+            hantfin{"Traditional Chinese Financial Numbers"}
+            hebr{"Hebrew Numbers"}
+            jpan{"Japanese Numbers"}
+            jpanfin{"Japanese Financial Numbers"}
+            orya{"Odia Digits"}
+            roman{"Roman Numbers"}
+            romanlow{"Roman Lowercase Numbers"}
+            taml{"Traditional Tamil Numbers"}
+        }
+    }
+    codePatterns{
+        language{"Bhasha: {0}"}
+        script{"Lipi: {0}"}
+        territory{"Kshetra: {0}"}
+    }
+}

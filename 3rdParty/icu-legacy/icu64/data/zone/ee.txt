@@ -1,0 +1,633 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ee{
+    zoneStrings{
+        "America:Bahia_Banderas"{
+            ec{"Bahia Banderas"}
+        }
+        "America:Cancun"{
+            ec{"Cancun"}
+        }
+        "America:Merida"{
+            ec{"Merida"}
+        }
+        "Asia:Katmandu"{
+            ec{"Kathmandu nutomegaƒoƒome"}
+        }
+        "Asia:Macau"{
+            ec{"Macau"}
+        }
+        "Etc:UTC"{
+            ls{"Xexeme gaƒoƒoɖoanyi me"}
+        }
+        "Etc:Unknown"{
+            ec{"Du manya"}
+        }
+        "Europe:Dublin"{
+            ld{"Ireland nutome gaƒoƒo me"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiev"}
+        }
+        "Europe:London"{
+            ld{"British dzomeŋɔli gaƒoƒo me"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Enderbury"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulu"}
+        }
+        "meta:Afghanistan"{
+            ls{"Afghanistan gaƒoƒo me"}
+        }
+        "meta:Africa_Central"{
+            ls{"Central Africa gaƒoƒo me"}
+            ss{"CAT"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"East Africa gaƒoƒo me"}
+            ss{"EAT"}
+        }
+        "meta:Africa_Southern"{
+            ls{"South Africa nutome gaƒoƒo me"}
+            ss{"SAST"}
+        }
+        "meta:Africa_Western"{
+            ld{"West Africa dzomeŋɔli gaƒoƒo me"}
+            lg{"West Africa gaƒoƒo me"}
+            ls{"West Africa nutome gaƒoƒo me"}
+            sd{"WAST"}
+            sg{"WAT"}
+            ss{"WAT"}
+        }
+        "meta:Alaska"{
+            ld{"Alaska kele gaƒoƒo me"}
+            lg{"Alaska gaƒoƒome"}
+            ls{"Alaska nutome gaƒoƒo me"}
+        }
+        "meta:Amazon"{
+            ld{"Amazon dzomeŋɔli gaƒoƒo me"}
+            lg{"Amazon gaƒoƒome"}
+            ls{"Amazon nutome gaƒoƒo me"}
+        }
+        "meta:America_Central"{
+            ld{"Titina America kele gaƒoƒo me"}
+            lg{"Titina America gaƒoƒome"}
+            ls{"Titina America nutome gaƒoƒo me"}
+        }
+        "meta:America_Eastern"{
+            ld{"Eastern America kele gaƒoƒo me"}
+            lg{"Eastern America gaƒoƒo me"}
+            ls{"Eastern America nutome gaƒoƒo me"}
+        }
+        "meta:America_Mountain"{
+            ld{"Mountain kele gaƒoƒo me"}
+            lg{"Mountain gaƒoƒo me"}
+            ls{"Mountain nutome gaƒoƒo me"}
+        }
+        "meta:America_Pacific"{
+            ld{"Pacific kele gaƒoƒo me"}
+            lg{"Pacific gaƒoƒome"}
+            ls{"Pacific nutome gaƒoƒo me"}
+        }
+        "meta:Apia"{
+            ld{"Apia kele gaƒoƒo me"}
+            lg{"Apia gaƒoƒo me"}
+            ls{"Apia nutome gaƒoƒo me"}
+        }
+        "meta:Arabian"{
+            ld{"Arabia dzomeŋɔli gaƒoƒo me"}
+            lg{"Arabia gaƒoƒo me"}
+            ls{"Arabia nutome gaƒoƒo me"}
+        }
+        "meta:Argentina"{
+            ld{"Argentina dzomeŋɔli gaƒoƒo me"}
+            lg{"Argentina gaƒoƒo me"}
+            ls{"Argentina nutome gaƒoƒo me"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Ɣetoɖoƒe Argentina dzomeŋɔli gaƒoƒo me"}
+            lg{"Ɣetoɖoƒe Argentina gaƒoƒo me"}
+            ls{"Ɣetoɖoƒe Argentina nutome gaƒoƒo me"}
+        }
+        "meta:Armenia"{
+            ld{"Armenia dzomeŋɔli gaƒoƒo me"}
+            lg{"Armenia gaƒoƒo me"}
+            ls{"Armenia nutome gaƒoƒo me"}
+        }
+        "meta:Atlantic"{
+            ld{"Atlantic kele gaƒoƒome"}
+            lg{"Atlantic gaƒoƒome"}
+            ls{"Atlantic nutome gaƒoƒome"}
+        }
+        "meta:Australia_Central"{
+            ld{"Australian Central dzomeli gaƒoƒo me"}
+            lg{"Central Australia gaƒoƒo me"}
+            ls{"Australian Central nutome gaƒoƒo me"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Australian Central Western kele gaƒoƒo me"}
+            lg{"Australian Central Australia ɣetoɖofe gaƒoƒo me"}
+            ls{"Australian Central Western nutome gaƒoƒo me"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Australian Eastern kele gaƒoƒo me"}
+            lg{"Eastern Australia gaƒoƒo me"}
+            ls{"Australian Eastern nutome gaƒoƒo me"}
+        }
+        "meta:Australia_Western"{
+            ld{"Australian Western kele gaƒoƒo me"}
+            lg{"Western Australia gaƒoƒo me"}
+            ls{"Australian Western nutome gaƒoƒo me"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Azerbaijan dzomeŋɔli gaƒoƒo me"}
+            lg{"Azerbaijan gaƒoƒo me"}
+            ls{"Azerbaijan nutome gaƒoƒo me"}
+        }
+        "meta:Azores"{
+            ld{"Azores dzomeŋɔli gaƒoƒo me"}
+            lg{"Azores gaƒoƒo me"}
+            ls{"Azores nutome gaƒoƒo me"}
+        }
+        "meta:Bangladesh"{
+            ld{"Bangladesh dzomeŋɔli gaƒoƒo me"}
+            lg{"Bangladesh gaƒoƒo me"}
+            ls{"Bangladesh nutome gaƒoƒo me"}
+        }
+        "meta:Bhutan"{
+            ls{"Bhutan gaƒoƒo me"}
+        }
+        "meta:Bolivia"{
+            ls{"Bolivia gaƒoƒo me"}
+        }
+        "meta:Brasilia"{
+            ld{"Brasilia dzomeŋɔli gaƒoƒo me"}
+            lg{"Brasilia gaƒoƒo me"}
+            ls{"Brasilia nutome gaƒoƒo me"}
+        }
+        "meta:Brunei"{
+            ls{"Brunei Darussalam gaƒoƒo me"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Cape Verde dzomeŋɔli gaƒoƒo me"}
+            lg{"Cape Verde gaƒoƒo me"}
+            ls{"Cape Verde nutome gaƒoƒo me"}
+        }
+        "meta:Chamorro"{
+            ls{"Chamorro gaƒoƒo me"}
+        }
+        "meta:Chatham"{
+            ld{"Chatham kele gaƒoƒo me"}
+            lg{"Chatham gaƒoƒo me"}
+            ls{"Chatham nutome gaƒoƒo me"}
+        }
+        "meta:Chile"{
+            ld{"Chile dzomeŋɔli gaƒoƒo me"}
+            lg{"Chile gaƒoƒo me"}
+            ls{"Chile nutome gaƒoƒo me"}
+        }
+        "meta:China"{
+            ld{"China kele gaƒoƒo me"}
+            lg{"China gaƒoƒo me"}
+            ls{"China nutome gaƒoƒo me"}
+        }
+        "meta:Choibalsan"{
+            ld{"Choibalsan dzomeŋɔli gaƒoƒo me"}
+            lg{"Choibalsan gaƒoƒo me"}
+            ls{"Choibalsan nutome gaƒoƒo me"}
+        }
+        "meta:Christmas"{
+            ls{"Christmas Island gaƒoƒo me"}
+        }
+        "meta:Cocos"{
+            ls{"Cocos Islands gaƒoƒo me"}
+        }
+        "meta:Colombia"{
+            ld{"Colombia dzomeŋɔli gaƒoƒo me"}
+            lg{"Colombia gaƒoƒo me"}
+            ls{"Colombia nutome gaƒoƒo me"}
+        }
+        "meta:Cook"{
+            ld{"Cook Islands dzomeŋɔli gaƒoƒo me"}
+            lg{"Cook Islands gaƒoƒo me"}
+            ls{"Cook Islands nutome gaƒoƒo me"}
+        }
+        "meta:Cuba"{
+            ld{"Cuba kele gaƒoƒome"}
+            lg{"Cuba gaƒoƒome"}
+            ls{"Cuba nutome gaƒoƒome"}
+        }
+        "meta:Davis"{
+            ls{"Davis gaƒoƒo me"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Dumont-d’Urville gaƒoƒo me"}
+        }
+        "meta:East_Timor"{
+            ls{"East Timor gaƒoƒo me"}
+        }
+        "meta:Easter"{
+            ld{"Easter Island dzomeŋɔli gaƒoƒo me"}
+            lg{"Easter Island gaƒoƒo me"}
+            ls{"Easter Island nutome gaƒoƒo me"}
+        }
+        "meta:Ecuador"{
+            ls{"Ecuador gaƒoƒo me"}
+        }
+        "meta:Europe_Central"{
+            ld{"Central Europe dzomeŋɔli gaƒoƒo me"}
+            lg{"Central Europe gaƒoƒo me"}
+            ls{"Central Europe nutome gaƒoƒo me"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Ɣedzeƒe Europe ŋkekeme gaƒoƒome"}
+            lg{"Ɣedzeƒe Europe gaƒoƒome"}
+            ls{"Ɣedzeƒe Europe gaƒoƒoɖoanyime"}
+        }
+        "meta:Europe_Western"{
+            ld{"Western Europe dzomeŋɔli gaƒoƒo me"}
+            lg{"Western Europe gaƒoƒo me"}
+            ls{"Western Europe nutome gaƒoƒo me"}
+        }
+        "meta:Falkland"{
+            ld{"Falkland Islands dzomeŋɔli gaƒoƒo me"}
+            lg{"Falkland Islands gaƒoƒo me"}
+            ls{"Falkland Islands nutome gaƒoƒo me"}
+        }
+        "meta:Fiji"{
+            ld{"Fiji dzomeŋɔli gaƒoƒo me"}
+            lg{"Fiji gaƒoƒo me"}
+            ls{"Fiji nutome gaƒoƒo me"}
+        }
+        "meta:French_Guiana"{
+            ls{"French Guiana gaƒoƒo me"}
+        }
+        "meta:French_Southern"{
+            ls{"French Southern & Antarctic gaƒoƒo me"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich gaƒoƒo me"}
+        }
+        "meta:Galapagos"{
+            ls{"Galapagos gaƒoƒo me"}
+        }
+        "meta:Gambier"{
+            ls{"Gambier gaƒoƒo me"}
+        }
+        "meta:Georgia"{
+            ld{"Georgia dzomeŋɔli gaƒoƒo me"}
+            lg{"Georgia gaƒoƒo me"}
+            ls{"Georgia nutome gaƒoƒo me"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Gilbert Islands gaƒoƒo me"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"East Greenland dzomeŋɔli gaƒoƒo me"}
+            lg{"East Greenland gaƒoƒome"}
+            ls{"East Greenland nutome gaƒoƒo me"}
+        }
+        "meta:Greenland_Western"{
+            ld{"West Greenland kele gaƒoƒo me"}
+            lg{"West Greenland gaƒoƒo me"}
+            ls{"West Greenland nutome gaƒoƒo me"}
+        }
+        "meta:Gulf"{
+            ls{"Gulf nutome gaƒoƒo me"}
+        }
+        "meta:Guyana"{
+            ls{"Guyana gaƒoƒo me"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Hawaii-Aleutia kele gaƒoƒo me"}
+            lg{"Hawaii-Aleutia gaƒoƒo me"}
+            ls{"Hawaii-Aleutia nutome gaƒoƒo me"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Hong Kong dzomeŋɔli gaƒoƒo me"}
+            lg{"Hong Kong gaƒoƒo me"}
+            ls{"Hong Kong nutome gaƒoƒo me"}
+        }
+        "meta:Hovd"{
+            ld{"Hovd dzomeŋɔli gaƒoƒo me"}
+            lg{"Hovd gaƒoƒo me"}
+            ls{"Hovd nutome gaƒoƒo me"}
+        }
+        "meta:India"{
+            ls{"India gaƒoƒo me"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Indian Ocean gaƒoƒo me"}
+        }
+        "meta:Indochina"{
+            ls{"Indonesia gaƒoƒo me"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Central Indonesia gaƒoƒo me"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Eastern Indonesia gaƒoƒo me"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Western Indonesia gaƒoƒo me"}
+        }
+        "meta:Iran"{
+            ld{"Iran kele gaƒoƒo me"}
+            lg{"Iran gaƒoƒo me"}
+            ls{"Iran nutome gaƒoƒo me"}
+        }
+        "meta:Irkutsk"{
+            ld{"Irkutsk dzomeŋɔli gaƒoƒo me"}
+            lg{"Irkutsk gaƒoƒo me"}
+            ls{"Irkutsk nutome gaƒoƒo me"}
+        }
+        "meta:Israel"{
+            ld{"Israel kele gaƒoƒo me"}
+            lg{"Israel gaƒoƒo me"}
+            ls{"Israel nutome gaƒoƒo me"}
+        }
+        "meta:Japan"{
+            ld{"Japan dzomeŋɔli gaƒoƒo me"}
+            lg{"Japan gaƒoƒo me"}
+            ls{"Japan nutome gaƒoƒo me"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"East Kazakhstan gaƒoƒo me"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"West Kazakhstan gaƒoƒo me"}
+        }
+        "meta:Korea"{
+            ld{"Korea dzomeŋɔli gaƒoƒo me"}
+            lg{"Korea gaƒoƒo me"}
+            ls{"Korea nutome gaƒoƒo me"}
+        }
+        "meta:Kosrae"{
+            ls{"Kosrae gaƒoƒo me"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Krasnoyarsk dzomeŋɔli gaƒoƒo me"}
+            lg{"Krasnoyarsk gaƒoƒo me"}
+            ls{"Krasnoyarsk nutome gaƒoƒo me"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Kyrgystan gaƒoƒo me"}
+        }
+        "meta:Line_Islands"{
+            ls{"Line Islands gaƒoƒo me"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Lord Howe kele gaƒoƒo me"}
+            lg{"Lord Howe gaƒoƒo me"}
+            ls{"Lord Howe nutome gaƒoƒo me"}
+        }
+        "meta:Magadan"{
+            ld{"Magadan dzomeŋɔli gaƒoƒo me"}
+            lg{"Magadan gaƒoƒo me"}
+            ls{"Magadan nutome gaƒoƒo me"}
+        }
+        "meta:Malaysia"{
+            ls{"Malaysia gaƒoƒo me"}
+        }
+        "meta:Maldives"{
+            ls{"Maldives gaƒoƒo me"}
+        }
+        "meta:Marquesas"{
+            ls{"Marquesas gaƒoƒo me"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Marshall Islands gaƒoƒo me"}
+        }
+        "meta:Mauritius"{
+            ld{"Mauritius dzomeŋɔli gaƒoƒo me"}
+            lg{"Mauritius gaƒoƒo me"}
+            ls{"Mauritius nutome gaƒoƒo me"}
+        }
+        "meta:Mawson"{
+            ls{"Mawson gaƒoƒo me"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Mexican Pacific kele gaƒoƒome"}
+            lg{"Mexican Pacific gaƒoƒo me"}
+            ls{"Mexican Pacific nutome gaƒoƒo me"}
+        }
+        "meta:Mongolia"{
+            ld{"Ulan Bator dzomeŋɔli gaƒoƒo me"}
+            lg{"Ulan Bator gaƒoƒo me"}
+            ls{"Ulan Bator nutome gaƒoƒo me"}
+        }
+        "meta:Moscow"{
+            ld{"Moscow dzomeŋɔli gaƒoƒo me"}
+            lg{"Moscow gaƒoƒo me"}
+            ls{"Moscow nutome gaƒoƒo me"}
+        }
+        "meta:Myanmar"{
+            ls{"Myanmar gaƒoƒo me"}
+        }
+        "meta:Nauru"{
+            ls{"Nauru gaƒoƒo me"}
+        }
+        "meta:Nepal"{
+            ls{"Nepal gaƒoƒo me"}
+        }
+        "meta:New_Caledonia"{
+            ld{"New Caledonia dzomeŋɔli gaƒoƒo me"}
+            lg{"New Caledonia gaƒoƒo me"}
+            ls{"New Caledonia nutome gaƒoƒo me"}
+        }
+        "meta:New_Zealand"{
+            ld{"New Zealand kele gaƒoƒo me"}
+            lg{"New Zealand gaƒoƒo me"}
+            ls{"New Zealand nutome gaƒoƒo me"}
+        }
+        "meta:Newfoundland"{
+            ld{"Newfoundland kele gaƒoƒome"}
+            lg{"Newfoundland gaƒoƒome"}
+            ls{"Newfoundland nutome gaƒoƒome"}
+        }
+        "meta:Niue"{
+            ls{"Niue gaƒoƒo me"}
+        }
+        "meta:Norfolk"{
+            ld{"Norfolk Island dzomeŋɔli gaƒoƒo me"}
+            lg{"Norfolk Island gaƒoƒo me"}
+            ls{"Norfolk Island nutome gaƒoƒo me"}
+        }
+        "meta:Noronha"{
+            ld{"Fernando de Noronha dzomeŋɔli gaƒoƒo me"}
+            lg{"Fernando de Noronha gaƒoƒo me"}
+            ls{"Fernando de Noronha nutome gaƒoƒo me"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Novosibirsk dzomeŋɔli gaƒoƒo me"}
+            lg{"Novosibirsk gaƒoƒo me"}
+            ls{"Novosibirsk nutome gaƒoƒo me"}
+        }
+        "meta:Omsk"{
+            ld{"Omsk dzomeŋɔli gaƒoƒo me"}
+            lg{"Omsk gaƒoƒo me"}
+            ls{"Omsk nutome gaƒoƒo me"}
+        }
+        "meta:Pakistan"{
+            ld{"Pakistan dzomeŋɔli gaƒoƒo me"}
+            lg{"Pakistan gaƒoƒo me"}
+            ls{"Pakistan nutome gaƒoƒo me"}
+        }
+        "meta:Palau"{
+            ls{"Palau gaƒoƒo me"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Papua New Guinea gaƒoƒo me"}
+        }
+        "meta:Paraguay"{
+            ld{"Paraguay dzomeŋɔli gaƒoƒo me"}
+            lg{"Paraguay gaƒoƒo me"}
+            ls{"Paraguay nutome gaƒoƒo me"}
+        }
+        "meta:Peru"{
+            ld{"Peru dzomeŋɔli gaƒoƒome"}
+            lg{"Peru gaƒoƒo me"}
+            ls{"Peru nutome gaƒoƒo me"}
+        }
+        "meta:Philippines"{
+            ld{"Philippine dzomeŋɔli gaƒoƒo me"}
+            lg{"Philippine gaƒoƒo me"}
+            ls{"Philippine nutome gaƒoƒo me"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Phoenix Islands gaƒoƒo me"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"St. Pierre & Miquelon kele gaƒoƒome"}
+            lg{"St. Pierre & Miquelon gaƒoƒome"}
+            ls{"St. Pierre & Miquelon nutome gaƒoƒome"}
+        }
+        "meta:Pitcairn"{
+            ls{"Pitcairn gaƒoƒo me"}
+        }
+        "meta:Ponape"{
+            ls{"Ponape gaƒoƒo me"}
+        }
+        "meta:Pyongyang"{
+            ls{"Pyongyang gaƒoƒo me"}
+        }
+        "meta:Reunion"{
+            ls{"Reunion gaƒoƒo me"}
+        }
+        "meta:Rothera"{
+            ls{"Rothera gaƒoƒo me"}
+        }
+        "meta:Sakhalin"{
+            ld{"Sakhalin dzomeŋɔli gaƒoƒo me"}
+            lg{"Sakhalin gaƒoƒo me"}
+            ls{"Sakhalin nutome gaƒoƒo me"}
+        }
+        "meta:Samoa"{
+            ld{"Samoa kele gaƒoƒo me"}
+            lg{"Samoa gaƒoƒo me"}
+            ls{"Samoa nutome gaƒoƒo me"}
+        }
+        "meta:Seychelles"{
+            ls{"Seychelles gaƒoƒo me"}
+        }
+        "meta:Singapore"{
+            ls{"Singapore nutome gaƒoƒo me"}
+        }
+        "meta:Solomon"{
+            ls{"Solomon Islands gaƒoƒo me"}
+        }
+        "meta:South_Georgia"{
+            ls{"South Georgia gaƒoƒo me"}
+        }
+        "meta:Suriname"{
+            ls{"Suriname gaƒoƒome"}
+        }
+        "meta:Syowa"{
+            ls{"Syowa gaƒoƒo me"}
+        }
+        "meta:Tahiti"{
+            ls{"Tahiti gaƒoƒo me"}
+        }
+        "meta:Taipei"{
+            ld{"Taipei kele gaƒoƒo me"}
+            lg{"Taipei gaƒoƒo me"}
+            ls{"Taipei nutome gaƒoƒo me"}
+        }
+        "meta:Tajikistan"{
+            ls{"Tajikistan gaƒoƒo me"}
+        }
+        "meta:Tokelau"{
+            ls{"Tokelau gaƒoƒo me"}
+        }
+        "meta:Tonga"{
+            ld{"Tonga dzomeŋɔli gaƒoƒo me"}
+            lg{"Tonga gaƒoƒo me"}
+            ls{"Tonga nutome gaƒoƒo me"}
+        }
+        "meta:Truk"{
+            ls{"Chuuk gaƒoƒo me"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Turkmenistan dzomeŋɔli gaƒoƒo me"}
+            lg{"Turkmenistan gaƒoƒo me"}
+            ls{"Turkmenistan nutome gaƒoƒo me"}
+        }
+        "meta:Tuvalu"{
+            ls{"Tuvalu gaƒoƒo me"}
+        }
+        "meta:Uruguay"{
+            ld{"Uruguay dzomeŋɔli gaƒoƒo me"}
+            lg{"Uruguay gaƒoƒo me"}
+            ls{"Uruguay nutome gaƒoƒo me"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Uzbekistan dzomeŋɔli gaƒoƒo me"}
+            lg{"Uzbekistan gaƒoƒo me"}
+            ls{"Uzbekistan nutome gaƒoƒo me"}
+        }
+        "meta:Vanuatu"{
+            ld{"Vanuatu dzomeŋɔli gaƒoƒo me"}
+            lg{"Vanuatu gaƒoƒo me"}
+            ls{"Vanuatu nutome gaƒoƒo me"}
+        }
+        "meta:Venezuela"{
+            ls{"Venezuela gaƒoƒo me"}
+        }
+        "meta:Vladivostok"{
+            ld{"Vladivostok dzomeŋɔli gaƒoƒo me"}
+            lg{"Vladivostok gaƒoƒo me"}
+            ls{"Vladivostok nutome gaƒoƒo me"}
+        }
+        "meta:Volgograd"{
+            ld{"Vogograd dzomeŋɔli gaƒoƒo me"}
+            lg{"Volgograd gaƒoƒo me"}
+            ls{"Volgograd nutome gaƒoƒo me"}
+        }
+        "meta:Vostok"{
+            ls{"Vostok gaƒoƒo me"}
+        }
+        "meta:Wake"{
+            ls{"Wake Island gaƒoƒo me"}
+        }
+        "meta:Wallis"{
+            ls{"Wallis & Futuna gaƒoƒo me"}
+        }
+        "meta:Yakutsk"{
+            ld{"Yakutsk dzomeŋɔli gaƒoƒo me"}
+            lg{"Yakutsk gaƒoƒo me"}
+            ls{"Yakutsk nutome gaƒoƒo me"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Yekaterinburg dzomeŋɔli gaƒoƒo me"}
+            lg{"Yekaterinburg gaƒoƒo me"}
+            ls{"Yekaterinburg nutome gaƒoƒo me"}
+        }
+        gmtFormat{"{0} GMT"}
+        regionFormat{"{0} gaƒoƒo me"}
+        regionFormatDaylight{"{0} kele gaƒoƒo me"}
+        regionFormatStandard{"{0} nutome gaƒoƒo me"}
+    }
+}

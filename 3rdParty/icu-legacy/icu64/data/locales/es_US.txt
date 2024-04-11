@@ -1,0 +1,371 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+es_US{
+    %%Parent{"es_419"}
+    MoreInformation{"[...]"}
+    NumberElements{
+        latn{
+            patternsShort{
+                currencyFormat{
+                    10000000000{
+                        one{"¤00 B"}
+                        other{"¤00 B"}
+                    }
+                    100000000000{
+                        one{"¤000 B"}
+                        other{"¤000 B"}
+                    }
+                    1000000000000{
+                        one{"¤0 T"}
+                        other{"¤0 T"}
+                    }
+                    10000000000000{
+                        one{"¤00 T"}
+                        other{"¤00 T"}
+                    }
+                    100000000000000{
+                        one{"¤000 T"}
+                        other{"¤000 T"}
+                    }
+                }
+                currencyFormat%alphaNextToNumber{
+                    10000000000{
+                        one{"¤ 00 B"}
+                        other{"¤ 00 B"}
+                    }
+                    100000000000{
+                        one{"¤ 000 B"}
+                        other{"¤ 000 B"}
+                    }
+                    1000000000000{
+                        one{"¤ 0 T"}
+                        other{"¤ 0 T"}
+                    }
+                    10000000000000{
+                        one{"¤ 00 T"}
+                        other{"¤ 00 T"}
+                    }
+                    100000000000000{
+                        one{"¤ 000 T"}
+                        other{"¤ 000 T"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0 K"}
+                        other{"0 K"}
+                    }
+                    10000{
+                        one{"00 K"}
+                        other{"00 K"}
+                    }
+                    100000{
+                        one{"000 K"}
+                        other{"000 K"}
+                    }
+                }
+            }
+        }
+        minimalPairs{
+            gender{
+                feminine{"{0}a"}
+                masculine{"{0}o"}
+            }
+        }
+    }
+    calendar{
+        generic{
+            availableFormats{
+                yyyyMEd{"E, d/M/y GGGGG"}
+            }
+            intervalFormats{
+                GyMEd{
+                    G{"E, dd/MM/y GGGGG – E, dd/MM/y GGGGG"}
+                    M{"E, dd/MM/y – E, dd/MM/y GGGGG"}
+                    d{"E, dd/MM/y – E, dd/MM/y GGGGG"}
+                    y{"E, dd/MM/y – E, dd/MM/y GGGGG"}
+                }
+                Md{
+                    M{"d/M – d/M"}
+                    d{"d/M – d/M"}
+                }
+                fallback{"{0}-{1}"}
+                yMMMd{
+                    M{"d 'de' MMM – d 'de' MMM 'de' y G"}
+                }
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d 'de' MMMM 'de' y",
+                "d 'de' MMMM 'de' y",
+                "d MMM y",
+                "d/M/y",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMd",
+            }
+            availableFormats{
+                EHm{"E HH:mm"}
+                EHms{"E HH:mm:ss"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                GyMMMd{"d MMM y G"}
+                Hmsvvvv{"HH:mm:ss (vvvv)"}
+                MMMEd{"E, d 'de' MMM"}
+                MMd{"d/MM"}
+                MMdd{"dd/MM"}
+                yMEd{"E, d/M/y"}
+                yMM{"MM/y"}
+                yMMMEd{"EEE, d 'de' MMM 'de' y"}
+                yQQQ{"QQQ y"}
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+            intervalFormats{
+                H{
+                    H{"HH–HH"}
+                }
+                Hm{
+                    H{"HH:mm–HH:mm"}
+                    m{"HH:mm–HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm–HH:mm v"}
+                    m{"HH:mm–HH:mm v"}
+                }
+                Hv{
+                    H{"HH–HH v"}
+                }
+                MEd{
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
+                }
+                MMMd{
+                    d{"d–d 'de' MMM"}
+                }
+                h{
+                    a{"h a – h a"}
+                }
+                hm{
+                    h{"h:mm–h:mm a"}
+                    m{"h:mm–h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a – h:mm a v"}
+                }
+                hv{
+                    a{"h a – h a v"}
+                }
+                yMEd{
+                    M{"E, d/M/y – E, d/M/y"}
+                    d{"E, d/M/y – E, d/M/y"}
+                    y{"E, d/M/y – E, d/M/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM 'de' y"}
+                }
+                yMMMM{
+                    y{"MMMM 'de' y – MMMM 'de' y"}
+                }
+                yMMMd{
+                    M{"d 'de' MMM – d 'de' MMM y"}
+                    d{"d–d 'de' MMM 'de' y"}
+                }
+            }
+            quarters{
+                format{
+                    wide{
+                        "1er trimestre",
+                        "2.º trimestre",
+                        "3.º trimestre",
+                        "4.º trimestre",
+                    }
+                }
+                stand-alone{
+                    wide{
+                        "1er trimestre",
+                        "2.º trimestre",
+                        "3.º trimestre",
+                        "4.º trimestre",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"actividades"}
+        african_scripts{"símbolos de escritura de África"}
+        american_scripts{"símbolos de escritura de América"}
+        arrows{"flechas"}
+        currency_symbols{"símbolo de moneda"}
+        dash_connector{"guion o conector"}
+        digits{"dígito"}
+        dingbats{"dingbat"}
+        divination_symbols{"símbolo de adivinación"}
+        downwards_arrows{"flecha hacia abajo"}
+        east_asian_scripts{"sistema de escritura de Asia Oriental"}
+        food_drink{"comida y bebida"}
+        format{"formato"}
+        full_width_form_variant{"variante de formato ancho completo"}
+        geometric_shapes{"forma geométrica"}
+        half_width_form_variant{"variante de formato medio ancho"}
+        han_characters{"caracter Han"}
+        han_radicals{"radical Han"}
+        keycap{"tecla"}
+        leftwards_arrows{"flecha hacia la izquierda"}
+        leftwards_rightwards_arrows{"flecha hacia la derecha"}
+        male{"hombre"}
+        math_symbols{"símbolo matemático"}
+        miscellaneous{"varios"}
+        rightwards_arrows{"flecha hacia la derecha"}
+        smiley{"cara sonriente"}
+        smileys_people{"cara sonriente o persona"}
+    }
+    delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    fields{
+        dayOfYear-narrow{
+            dn{"día del a"}
+        }
+        dayOfYear-short{
+            dn{"día del a"}
+        }
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+        dayperiod-narrow{
+            dn{"a. m./p. m."}
+        }
+        dayperiod-short{
+            dn{"a. m./p. m."}
+        }
+        fri-narrow{
+            relativeTime{
+                past{
+                    one{"hace {0} VI"}
+                    other{"hace {0} VI"}
+                }
+            }
+        }
+        sat-narrow{
+            relativeTime{
+                past{
+                    one{"hace {0} SA"}
+                    other{"hace {0} SA"}
+                }
+            }
+        }
+        sun{
+            relativeTime{
+                future{
+                    one{"dentro de {0} domingo"}
+                    other{"dentro de {0} domingos"}
+                }
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"el mie. pasado"}
+                "0"{"este mié."}
+                "1"{"el próximo mié."}
+            }
+        }
+        week-narrow{
+            relative{
+                "-1"{"sem. pasada"}
+                "0"{"esta sem."}
+                "1"{"próxima sem."}
+            }
+        }
+        week-short{
+            relative{
+                "-1"{"sem. pasada"}
+                "0"{"esta sem."}
+                "1"{"próxima sem."}
+            }
+        }
+        weekOfMonth-narrow{
+            dn{"sem. de m"}
+        }
+        weekOfMonth-short{
+            dn{"sem. de m"}
+        }
+        weekdayOfMonth{
+            dn{"día de la semana del mes"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"día sem. de m"}
+        }
+        weekdayOfMonth-short{
+            dn{"día sem. de m"}
+        }
+    }
+    listPattern{
+        unit-short{
+            end{"{0} y {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"imperial"}
+    }
+    personNames{
+        namePattern{
+            sorting-long-referring-formal{
+                "{surname}, {title} {given} {given2}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+            sorting-long-referring-informal{
+                "{surname} {surname2}, {given-informal}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+            sorting-medium-referring-formal{
+                "{surname}, {title} {given} {given2-initial}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+            sorting-medium-referring-informal{
+                "{surname}, {given-informal}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+            sorting-short-referring-formal{
+                "{surname}, {title} {given} {given2}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+            sorting-short-referring-informal{
+                "{surname}, {given-informal}",
+                "{surname} {surname2}, {given} {given2}",
+            }
+        }
+    }
+}

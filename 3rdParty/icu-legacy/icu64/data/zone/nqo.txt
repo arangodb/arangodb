@@ -1,0 +1,234 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+nqo{
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"ߊߓߌߖߊ߲߬"}
+        }
+        "Africa:Accra"{
+            ec{"ߊߞߙߊ߫"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"ߊ߬ߘߌ߫ ߛߊ߬ߓߋߓߊ߫"}
+        }
+        "Africa:Algiers"{
+            ec{"ߊߟߑߖ߭ߋ"}
+        }
+        "Africa:Asmera"{
+            ec{"ߊߛߑߡߙߊ߫"}
+        }
+        "Africa:Bamako"{
+            ec{"ߓߡߊ߬ߞߐ߫"}
+        }
+        "Africa:Bangui"{
+            ec{"ߓߊ߲ߜ߭ߌ߫"}
+        }
+        "Africa:Banjul"{
+            ec{"ߓߊ߲ߖߎߟ"}
+        }
+        "Africa:Bissau"{
+            ec{"ߓߌߛߊߥߏ߫"}
+        }
+        "Africa:Blantyre"{
+            ec{"ߓߑߟߊ߲ߕߌ߯ߙ"}
+        }
+        "Africa:Brazzaville"{
+            ec{"ߓߙߖ߭ߊߝ߭ߌߟ"}
+        }
+        "Africa:Bujumbura"{
+            ec{"ߓߎߖ߭ߎ߲ߓߎߙߊ߫"}
+        }
+        "Africa:Cairo"{
+            ec{"ߞߍ߯ߙ"}
+        }
+        "Africa:Casablanca"{
+            ec{"ߞߛߊߓߎߟߊ߲ߞߊ߫"}
+        }
+        "Africa:Conakry"{
+            ec{"ߞߐߣߊߞߙߌ߫"}
+        }
+        "Africa:Dakar"{
+            ec{"ߘߊ߬ߞߊ߯ߙߎ߫"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"ߘߊ߯ߙ-ߛߊ߬ߟߊ߯ߡ"}
+        }
+        "Africa:Djibouti"{
+            ec{"ߖߌߓߎߕߌ߫"}
+        }
+        "Africa:Douala"{
+            ec{"ߘߎߥߟߊ߫"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"ߟߊ߯ߦߎߣ"}
+        }
+        "Africa:Freetown"{
+            ec{"ߝߙߌߕߐ߲߬"}
+        }
+        "Africa:Gaborone"{
+            ec{"ߜ߭ߊߓߏߙߐߣ"}
+        }
+        "Africa:Harare"{
+            ec{"ߤߙߊߙߋ߫"}
+        }
+        "Africa:Johannesburg"{
+            ec{"ߖ߭ߎߥߊߣߍߛߑߓߎ߯ߙ"}
+        }
+        "Africa:Juba"{
+            ec{"ߖߎߓߊ߫"}
+        }
+        "Africa:Kampala"{
+            ec{"ߞߊ߲ߔߟߊ߫"}
+        }
+        "Africa:Khartoum"{
+            ec{"ߞߊߙߑߕߎߡ"}
+        }
+        "Africa:Kigali"{
+            ec{"ߞߌߜ߭ߊߟߌ߫"}
+        }
+        "Africa:Kinshasa"{
+            ec{"ߞߌ߲ߛߊߛߊ߫"}
+        }
+        "Africa:Lagos"{
+            ec{"ߟߋߜ߭ߐߛ"}
+        }
+        "Africa:Libreville"{
+            ec{"ߟߌߓߙߋߝ߭ߌߟ"}
+        }
+        "Africa:Lome"{
+            ec{"ߟߏߡߋ߫"}
+        }
+        "Africa:Luanda"{
+            ec{"ߟߎߥߊ߲ߘߊ߫"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"ߟߎߓߎ߲ߓߊߛߌ߫"}
+        }
+        "Africa:Lusaka"{
+            ec{"ߟߎߛߞߊ߫"}
+        }
+        "Africa:Malabo"{
+            ec{"ߡߟߊߓߏ߫"}
+        }
+        "Africa:Maputo"{
+            ec{"ߡߊߔߎߕߏ߫"}
+        }
+        "Africa:Maseru"{
+            ec{"ߡߊߛߋߙߎ߫"}
+        }
+        "Africa:Mbabane"{
+            ec{"ߒߓߊߓߊߣ"}
+        }
+        "Africa:Mogadishu"{
+            ec{"ߡߏߜ߭ߊߘߌߛߏ߫"}
+        }
+        "Africa:Monrovia"{
+            ec{"ߡߏ߬ߙߏߝ߭ߌߦߊ߫"}
+        }
+        "Africa:Nairobi"{
+            ec{"ߣߊߦߙߏߓߌ߫"}
+        }
+        "Africa:Ndjamena"{
+            ec{"ߒߖߊߡߋߣߊ߫"}
+        }
+        "Africa:Niamey"{
+            ec{"ߢߊߡߋ߫"}
+        }
+        "Africa:Nouakchott"{
+            ec{"ߣߎߥߊߞߑߛߐߕ"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"ߥߜ߭ߊ߬ߘߜ߭ߎ߫"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"ߔߐߙߑߕߏ߫-ߣߝ߭ߏ߫"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"ߛߊߏ-ߕߏߡߋ߫"}
+        }
+        "Africa:Tripoli"{
+            ec{"ߕߙߌߔߟߌ߫ ( ߟߓߌ߫ )"}
+        }
+        "Africa:Tunis"{
+            ec{"ߕߎߣߌߛ"}
+        }
+        "Africa:Windhoek"{
+            ec{"ߥߌ߲ߘߐߞ"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"ߜߦߋߞߎ߲߫-ߝߙߌߛߌ߫"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"ߛߍ߲ߕ ߤߋߟߍߣ"}
+        }
+        "Indian:Antananarivo"{
+            ec{"ߊ߲ߕߣߊߣߊߙߌߝ߭ߏ߫"}
+        }
+        "Indian:Chagos"{
+            ec{"ߛߊߜ߭ߐߛ"}
+        }
+        "Indian:Comoro"{
+            ec{"ߞߐߡߐ߯ߙ"}
+        }
+        "Indian:Kerguelen"{
+            ec{"ߞߍߙߑߜ߭ߋߟߍ߲߫"}
+        }
+        "Indian:Mahe"{
+            ec{"ߡߊߤߋ߫"}
+        }
+        "Indian:Mauritius"{
+            ec{"ߡߏߙߌߛ"}
+        }
+        "Indian:Mayotte"{
+            ec{"ߡߊߦߐߕ"}
+        }
+        "Indian:Reunion"{
+            ec{"ߙߋߣߌߦߐ߲߫"}
+        }
+        "meta:Africa_Central"{
+            ls{"ߝߘߊ߬ߝߌ߲߬ߠߊ߫ ߕߊ߲ߓߊ߲ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"ߝߘߊ߬ߌ߲߬ߠߊ߫ ߓߟߋ߬ߓߐ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:Africa_Southern"{
+            ls{"ߝߘߌ߬ߝߌ߲߬ߠߊ߫ ߥߙߏ߬ߘߎ߮ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:Africa_Western"{
+            ld{"ߝߘߊ߬ߝߌ߲߬ߠߊ߫ ߕߟߋ߬ߓߋ ߕߟߋ߬ߡߊ߬ ߕߎߡߊߙߋ߲"}
+            lg{"ߝߘߊ߬ߝߌ߲߬ߠߊ߫ ߕߟߋ߬ߓߋ ߕߎ߬ߡߊ߬ߙߋ߲"}
+            ls{"ߝߘߊ߬ߝߌ߲߬ߠߊ߫ ߕߟߋ߬ߓߋ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:Cape_Verde"{
+            ld{"ߜߙߋߞߎ߲߫-ߝߙߌߛߌ߫ ߕߟߋ߬ߡߊ߬ ߕߎߡߊߙߋ߲"}
+            lg{"ߜߙߋߞߎ߲߫-ߝߙߌߛߌ߫ ߕߎ߬ߡߊ߬ߙߋ߲"}
+            ls{"ߜߙߋߞߎ߲߫-ߝߙߌߛߌ߫ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:French_Southern"{
+            ls{"ߐߛߑߕߙߊߟߌ߫ ߘߎ߰ߞߟߏ ߣߌ߫ ߝߊ߬ߙߊ߲߬ߛߌ߫ ߊ߲ߕߊߙߑߕߌߞ ߕߎ߬ߡߊ߬ߙߋ"}
+        }
+        "meta:GMT"{
+            ls{"ߜ߭ߙߋߣߍߕ ߕߎ߬ߡߊ߬ߘߊ"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"ߍ߲ߘߎ߫ ߟߌ߲ߓߊ߲ߘߎ߯ ߕߎ߬ߡߊ߬ߙߋ߲"}
+        }
+        "meta:Mauritius"{
+            ld{"ߡߏߙߌߛ ߕߟߋ߬ߡߊ߬ ߕߎߡߊߙߋ߲"}
+            lg{"ߡߏߙߌߛ ߕߎ߬ߡߊ߬ߙߋ߲"}
+            ls{"ߡߏߙߌߛ ߕߎ߬ߡߊ߬ߙߋ߲ ߢߊߓߘߍ"}
+        }
+        "meta:Reunion"{
+            ls{"ߙߋߣߌߦߐ߲߫ ߕߎ߬ߡߊ߬ߙߋ߲"}
+        }
+        "meta:Seychelles"{
+            ls{"ߛߋߦߌߛߌߟ ߕߎ߬ߡߊ߬ߙߋ߲"}
+        }
+        gmtFormat{"ߜ߭ߕߖ{0}"}
+        gmtZeroFormat{"ߜ߭ߕߖ"}
+        regionFormat{"{0} ߕߎ߬ߡߊ"}
+        regionFormatDaylight{"{0} ߕߎ߬ߡߊ߬-ߦߟߍߡߊ߲"}
+        regionFormatStandard{"{0} ߕߎ߬ߡߊ߬-ߦߟߍߡߊ߲ߓߊߟߌ"}
+    }
+}

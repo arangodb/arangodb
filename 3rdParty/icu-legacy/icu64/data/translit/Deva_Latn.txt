@@ -1,0 +1,14 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+#
+# File: Deva_Latn.txt
+# Generated from CLDR
+#
+
+::[\u0951 \u0952 \u0954 \u0953 \u093C \u0901-ः । ॥ ॰ ०-९ ॐ ॲ ऄ-ऋ ॠ ऌ ॡ ऍ-कक़ खख़ गग़ घ-जज़ झ-डड़ ढढ़ ण-फफ़ ब-यय़ र-ह ऽ ॽ ा-\u0944 \u0962 \u0963 \u0945-\u094D];
+::NFD;
+::Devanagari-InterIndic;
+::InterIndic-Latin;
+::NFC;
+

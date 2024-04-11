@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+prg{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"Greenwich kerdā"}
+        }
+        regionFormat{"Kerdā: {0}"}
+        regionFormatDaylight{"Daggas kerdā: {0}"}
+        regionFormatStandard{"Zēimas kerdā: {0}"}
+    }
+}

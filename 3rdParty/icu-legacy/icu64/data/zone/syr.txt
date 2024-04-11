@@ -1,0 +1,1904 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+syr{
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"ܐܒܕܓܢ"}
+        }
+        "Africa:Accra"{
+            ec{"ܐܟܪܐ"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"ܐܕܝܣ ܐܒܒܐ"}
+        }
+        "Africa:Algiers"{
+            ec{"ܓܙܐܐܪ"}
+        }
+        "Africa:Asmera"{
+            ec{"ܐܣܡܐܪܐ"}
+        }
+        "Africa:Bamako"{
+            ec{"ܒܐܡܐܟܘ"}
+        }
+        "Africa:Bangui"{
+            ec{"ܒܐܢܓܐܘܝ"}
+        }
+        "Africa:Banjul"{
+            ec{"ܒܐܢܓܘܠ"}
+        }
+        "Africa:Bissau"{
+            ec{"ܒܝܣܐܘ"}
+        }
+        "Africa:Blantyre"{
+            ec{"ܒܠܢܬܝܪ"}
+        }
+        "Africa:Brazzaville"{
+            ec{"ܒܪܐܙܐܒܝܠ"}
+        }
+        "Africa:Bujumbura"{
+            ec{"ܒܘܓܘܡܒܘܪܐ"}
+        }
+        "Africa:Cairo"{
+            ec{"ܩܐܗܖ̈ܗ"}
+        }
+        "Africa:Casablanca"{
+            ec{"ܟܐܣܐܒܠܢܟܐ"}
+        }
+        "Africa:Ceuta"{
+            ec{"ܣܒܬܐ"}
+        }
+        "Africa:Conakry"{
+            ec{"ܟܘܢܐܟܪܝ"}
+        }
+        "Africa:Dakar"{
+            ec{"ܕܐܟܐܪ"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"ܕܐܪ ܫܠܡܐ"}
+        }
+        "Africa:Djibouti"{
+            ec{"ܓܝܒܘܬܝ"}
+        }
+        "Africa:Douala"{
+            ec{"ܕܘܐܠܐ"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"ܐܠ ܥܝܘܢ"}
+        }
+        "Africa:Freetown"{
+            ec{"ܦܪܝܬܐܘܢ"}
+        }
+        "Africa:Gaborone"{
+            ec{"ܓܒܘܪܘܢ"}
+        }
+        "Africa:Harare"{
+            ec{"ܗܪܐܪܝ"}
+        }
+        "Africa:Johannesburg"{
+            ec{"ܝܘܗܢܝܣܒܘܪܓ"}
+        }
+        "Africa:Juba"{
+            ec{"ܓܘܒܐ"}
+        }
+        "Africa:Kampala"{
+            ec{"ܟܐܡܦܐܠܐ"}
+        }
+        "Africa:Khartoum"{
+            ec{"ܚܪܛܘܡ"}
+        }
+        "Africa:Kigali"{
+            ec{"ܟܝܓܐܠܝ"}
+        }
+        "Africa:Kinshasa"{
+            ec{"ܟܝܢܫܐܣܐ"}
+        }
+        "Africa:Lagos"{
+            ec{"ܠܐܓܘܣ"}
+        }
+        "Africa:Libreville"{
+            ec{"ܠܝܒܪܝܒܝܠ"}
+        }
+        "Africa:Lome"{
+            ec{"ܠܘܡܝ"}
+        }
+        "Africa:Luanda"{
+            ec{"ܠܘܐܢܕܐ"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"ܠܘܒܘܡܒܫܝ"}
+        }
+        "Africa:Lusaka"{
+            ec{"ܠܘܣܐܟܐ"}
+        }
+        "Africa:Malabo"{
+            ec{"ܡܐܠܐܒܘ"}
+        }
+        "Africa:Maputo"{
+            ec{"ܡܐܦܘܬܘ"}
+        }
+        "Africa:Maseru"{
+            ec{"ܡܐܣܝܪܘ"}
+        }
+        "Africa:Mbabane"{
+            ec{"ܡܒܐܒܐܢܝ"}
+        }
+        "Africa:Mogadishu"{
+            ec{"ܡܘܩܕܝܫܘ"}
+        }
+        "Africa:Monrovia"{
+            ec{"ܡܘܢܪܘܒܝܐ"}
+        }
+        "Africa:Nairobi"{
+            ec{"ܢܝܪܘܒܝ"}
+        }
+        "Africa:Ndjamena"{
+            ec{"ܢܓܡܝܢܐ"}
+        }
+        "Africa:Niamey"{
+            ec{"ܢܝܐܡܝ"}
+        }
+        "Africa:Nouakchott"{
+            ec{"ܢܘܐܟܫܘܬ"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"ܐܘܐܓܐܕܐܘܓܐܘ"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"ܦܘܪܬܘ-ܢܘܒܘ"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"ܣܐܘ ܬܘܡܝ"}
+        }
+        "Africa:Tripoli"{
+            ec{"ܛܪܝܦܘܠܝܣ"}
+        }
+        "Africa:Tunis"{
+            ec{"ܬܘܢܣ"}
+        }
+        "Africa:Windhoek"{
+            ec{"ܘܝܢܕܗܘܟ"}
+        }
+        "America:Adak"{
+            ec{"ܐܕܐܟ"}
+        }
+        "America:Anchorage"{
+            ec{"ܐܢܟܘܪܓ"}
+        }
+        "America:Anguilla"{
+            ec{"ܐܢܓܘܝܐ"}
+        }
+        "America:Antigua"{
+            ec{"ܐܢܬܝܓܘܐ"}
+        }
+        "America:Araguaina"{
+            ec{"ܐܪܐܓܐܘܝܢܐ"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"ܠܐ ܪܝܘܗܐ"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"ܪܝܘ ܓܝܓܘܣ"}
+        }
+        "America:Argentina:Salta"{
+            ec{"ܣܠܬܐ"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"ܣܐܢ ܘܐܢ"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"ܣܐܢ ܠܘܝܣ"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"ܬܘܟܘܡܐܢ"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"ܐܘܫܘܐܝܐ"}
+        }
+        "America:Aruba"{
+            ec{"ܐܪܘܒܐ"}
+        }
+        "America:Asuncion"{
+            ec{"ܐܣܘܢܟܣܝܘܢ"}
+        }
+        "America:Bahia"{
+            ec{"ܒܐܗܝܐ"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"ܒܐܗܝܐ ܒܐܢܝܪܣ"}
+        }
+        "America:Barbados"{
+            ec{"ܒܐܪܒܕܘܣ"}
+        }
+        "America:Belem"{
+            ec{"ܒܝܠܝܡ"}
+        }
+        "America:Belize"{
+            ec{"ܒܝܠܝܙ"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"ܒܠܐܢܟ-ܣܐܒܠܘܢ"}
+        }
+        "America:Boa_Vista"{
+            ec{"ܒܘܥ ܒܝܣܬܐ"}
+        }
+        "America:Bogota"{
+            ec{"ܒܘܓܘܬܐ"}
+        }
+        "America:Boise"{
+            ec{"ܒܘܝܙܝ"}
+        }
+        "America:Buenos_Aires"{
+            ec{"ܒܘܐܝܢܘܣ ܥܝܪܣ"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"ܟܡܒܪܓ ܒܐܝ"}
+        }
+        "America:Campo_Grande"{
+            ec{"ܟܐܡܦܘ ܓܪܢܕܝ"}
+        }
+        "America:Cancun"{
+            ec{"ܟܐܢܟܘܢ"}
+        }
+        "America:Caracas"{
+            ec{"ܟܐܪܐܟܣ"}
+        }
+        "America:Catamarca"{
+            ec{"ܟܐܬܐܡܪܟܐ"}
+        }
+        "America:Cayenne"{
+            ec{"ܟܐܝܐܢ"}
+        }
+        "America:Cayman"{
+            ec{"ܟܐܝܡܝܢ"}
+        }
+        "America:Chicago"{
+            ec{"ܫܟܓܘ"}
+        }
+        "America:Chihuahua"{
+            ec{"ܟܝܘܐܘܐ"}
+        }
+        "America:Ciudad_Juarez"{
+            ec{"ܣܝܘܕܐܕ ܐܘܪܝܙ"}
+        }
+        "America:Coral_Harbour"{
+            ec{"ܐܬܝܟܘܟܐܢ"}
+        }
+        "America:Cordoba"{
+            ec{"ܟܘܪܕܘܒܐ"}
+        }
+        "America:Costa_Rica"{
+            ec{"ܟܘܣܬܐ ܪܝܟܐ"}
+        }
+        "America:Creston"{
+            ec{"ܟܪܝܣܬܘܢ"}
+        }
+        "America:Cuiaba"{
+            ec{"ܟܘܝܐܒܐ"}
+        }
+        "America:Curacao"{
+            ec{"ܟܘܪܐܟܐܘ"}
+        }
+        "America:Danmarkshavn"{
+            ec{"ܕܐܢܡܪܟܫܒܝܢ"}
+        }
+        "America:Dawson"{
+            ec{"ܕܐܣܘܢ"}
+        }
+        "America:Dawson_Creek"{
+            ec{"ܕܐܣܘܢ ܟܪܝܟ"}
+        }
+        "America:Denver"{
+            ec{"ܕܢܒܪ"}
+        }
+        "America:Detroit"{
+            ec{"ܕܝܬܪܘܝܬ"}
+        }
+        "America:Dominica"{
+            ec{"ܕܘܡܝܢܝܟܐ"}
+        }
+        "America:Edmonton"{
+            ec{"ܐܕܡܘܢܬܘܢ"}
+        }
+        "America:Eirunepe"{
+            ec{"ܐܝܪܘܢܝܦܝ"}
+        }
+        "America:El_Salvador"{
+            ec{"ܐܠ ܣܠܒܐܕܘܪ"}
+        }
+        "America:Fort_Nelson"{
+            ec{"ܦܘܪܬ ܢܝܠܣܘܢ"}
+        }
+        "America:Fortaleza"{
+            ec{"ܦܘܪܬܐܠܝܙܐ"}
+        }
+        "America:Glace_Bay"{
+            ec{"ܓܠܝܣ ܒܐܝ"}
+        }
+        "America:Godthab"{
+            ec{"ܢܘܟ"}
+        }
+        "America:Goose_Bay"{
+            ec{"ܓܘܣ ܒܐܝ"}
+        }
+        "America:Grand_Turk"{
+            ec{"ܓܪܐܢܕ ܬܘܪܟ"}
+        }
+        "America:Grenada"{
+            ec{"ܓܪܝܢܕܐ"}
+        }
+        "America:Guadeloupe"{
+            ec{"ܓܘܐܕܐܠܘܦܝ"}
+        }
+        "America:Guatemala"{
+            ec{"ܓܘܐܬܡܐܠܐ"}
+        }
+        "America:Guayaquil"{
+            ec{"ܓܘܐܝܐܩܘܝܠ"}
+        }
+        "America:Guyana"{
+            ec{"ܓܘܝܐܢܐ"}
+        }
+        "America:Halifax"{
+            ec{"ܗܠܝܦܐܟܣ"}
+        }
+        "America:Havana"{
+            ec{"ܗܐܒܐܢܐ"}
+        }
+        "America:Hermosillo"{
+            ec{"ܗܝܪܡܘܣܝܐ"}
+        }
+        "America:Indiana:Knox"{
+            ec{"ܢܘܟܣ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"ܡܪܝܢܓܘ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"ܦܝܬܝܪܣܒܝܪܓ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"ܡܢܕܝܬܐ ܕܬܝܠ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"ܒܝܒܐܝ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"ܒܝܢܣܝܢܝܣ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"ܘܝܢܐܡܐܟ، ܐܢܕܝܐܢܐ"}
+        }
+        "America:Indianapolis"{
+            ec{"ܐܢܕܝܐܢܐܦܘܠܝܣ"}
+        }
+        "America:Inuvik"{
+            ec{"ܐܢܘܒܝܟ"}
+        }
+        "America:Iqaluit"{
+            ec{"ܐܝܩܠܘܝܬ"}
+        }
+        "America:Jamaica"{
+            ec{"ܓܡܐܝܟܐ"}
+        }
+        "America:Jujuy"{
+            ec{"ܓܘܓܘܝ"}
+        }
+        "America:Juneau"{
+            ec{"ܓܘܢܘ"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"ܡܘܢܬܐܟܝܠܘ، ܟܝܢܬܐܟܝ"}
+        }
+        "America:Kralendijk"{
+            ec{"ܟܪܠܝܢܓܩ"}
+        }
+        "America:La_Paz"{
+            ec{"ܠܐ ܦܐܙ"}
+        }
+        "America:Lima"{
+            ec{"ܠܝܡܐ"}
+        }
+        "America:Los_Angeles"{
+            ec{"ܠܘܣ ܐܢܓܠܘܣ"}
+        }
+        "America:Louisville"{
+            ec{"ܠܘܝܣܒܝܠ"}
+        }
+        "America:Lower_Princes"{
+            ec{"ܪܘܒ݂ܥܐ ܕܫܠܝܛܐ ܬܚܬܝܐ"}
+        }
+        "America:Maceio"{
+            ec{"ܡܐܣܝܐܘ"}
+        }
+        "America:Managua"{
+            ec{"ܡܐܢܐܓܘܐ"}
+        }
+        "America:Manaus"{
+            ec{"ܡܐܢܐܘܣ"}
+        }
+        "America:Marigot"{
+            ec{"ܡܪܝܓܘܬ"}
+        }
+        "America:Martinique"{
+            ec{"ܡܐܪܬܝܢܝܩ"}
+        }
+        "America:Matamoros"{
+            ec{"ܡܐܬܐܡܘܪܘܣ"}
+        }
+        "America:Mazatlan"{
+            ec{"ܡܙܛܠܐܢ"}
+        }
+        "America:Mendoza"{
+            ec{"ܡܢܕܘܙܐ"}
+        }
+        "America:Menominee"{
+            ec{"ܡܢܘܡܝܢܝ"}
+        }
+        "America:Merida"{
+            ec{"ܡܪܝܕܐ"}
+        }
+        "America:Metlakatla"{
+            ec{"ܡܛܠܟܐܬܠܐ"}
+        }
+        "America:Mexico_City"{
+            ec{"ܡܕܝܢܬܐ ܕܡܟܣܝܟܘ"}
+        }
+        "America:Miquelon"{
+            ec{"ܡܩܘܠܘܢ"}
+        }
+        "America:Moncton"{
+            ec{"ܡܘܢܟܬܘܢ"}
+        }
+        "America:Monterrey"{
+            ec{"ܡܘܢܛܪܐܝ"}
+        }
+        "America:Montevideo"{
+            ec{"ܡܘܢܬܝܒܝܕܝܘ"}
+        }
+        "America:Montserrat"{
+            ec{"ܡܘܢܬܣܝܪܐܬ"}
+        }
+        "America:Nassau"{
+            ec{"ܢܐܣܐܘ"}
+        }
+        "America:New_York"{
+            ec{"ܢܝܘ ܝܘܪܟ"}
+        }
+        "America:Nome"{
+            ec{"ܢܘܡ"}
+        }
+        "America:Noronha"{
+            ec{"ܢܘܪܘܢܗܐ"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"ܒܝܘܠܐ، ܕܐܟܘܬܐ ܓܪܒܝܝܬܐ"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"ܣܝܢܬܪ، ܕܐܟܘܬܐ ܓܪܒܝܝܬܐ"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"ܢܝܘ ܣܐܠܝܡ،‌ ܕܐܟܘܬܐ ܓܪܒܝܝܬܐ"}
+        }
+        "America:Ojinaga"{
+            ec{"ܘܓܝܢܐܓܐ"}
+        }
+        "America:Panama"{
+            ec{"ܦܢܡܐ"}
+        }
+        "America:Paramaribo"{
+            ec{"ܦܐܪܐܡܐܪܝܒܘ"}
+        }
+        "America:Phoenix"{
+            ec{"ܦܝܢܝܟܣ"}
+        }
+        "America:Port-au-Prince"{
+            ec{"ܦܘܪܬ ܐܘ ܦܪܝܢܣ"}
+        }
+        "America:Port_of_Spain"{
+            ec{"ܦܘܪܬ ܕܐܣܦܢܝܐ"}
+        }
+        "America:Porto_Velho"{
+            ec{"ܦܘܪܬܘ ܒܝܠܗܘ"}
+        }
+        "America:Puerto_Rico"{
+            ec{"ܦܘܪܬܘ ܪܝܟܘ"}
+        }
+        "America:Punta_Arenas"{
+            ec{"ܦܘܢܬܐ ܥܪܝܢܣ"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"ܪܐܢܟܢ ܐܢܠܝܬ"}
+        }
+        "America:Recife"{
+            ec{"ܪܝܣܝܦܝ"}
+        }
+        "America:Regina"{
+            ec{"ܪܝܓܝܢܐ"}
+        }
+        "America:Resolute"{
+            ec{"ܪܝܣܘܠܘܬ"}
+        }
+        "America:Rio_Branco"{
+            ec{"ܪܝܘ ܒܪܢܟܘ"}
+        }
+        "America:Santarem"{
+            ec{"ܣܐܢܬܐܪܡ"}
+        }
+        "America:Santiago"{
+            ec{"ܣܐܢܬܝܐܓܘ"}
+        }
+        "America:Santo_Domingo"{
+            ec{"ܣܢܬܘ ܕܘܡܝܢܓܘ"}
+        }
+        "America:Sao_Paulo"{
+            ec{"ܣܐܘ ܦܐܘܠܘ"}
+        }
+        "America:Scoresbysund"{
+            ec{"ܐܝܛܘܩܘܪܡܝܬ"}
+        }
+        "America:Sitka"{
+            ec{"ܣܝܛܟܐ"}
+        }
+        "America:St_Barthelemy"{
+            ec{"ܡܪ ܒܪ ܬܘܠܡܝ"}
+        }
+        "America:St_Johns"{
+            ec{"ܡܪ ܝܘܚܢܢ"}
+        }
+        "America:St_Kitts"{
+            ec{"ܣܐܢܬ ܟܬܣ"}
+        }
+        "America:St_Lucia"{
+            ec{"ܡܪܬܝ ܠܘܫܐ"}
+        }
+        "America:St_Thomas"{
+            ec{"ܡܪ ܬܐܘܡܐ"}
+        }
+        "America:St_Vincent"{
+            ec{"ܡܪ ܒܢܣܢܬ"}
+        }
+        "America:Swift_Current"{
+            ec{"ܢܕܘܪܬܐ"}
+        }
+        "America:Tegucigalpa"{
+            ec{"ܬܝܓܘܣܝܓܐܠܦܐ"}
+        }
+        "America:Thule"{
+            ec{"ܬܘܠ"}
+        }
+        "America:Tijuana"{
+            ec{"ܬܝܐܘܐܢܐ"}
+        }
+        "America:Toronto"{
+            ec{"ܬܘܪܘܢܬܘ"}
+        }
+        "America:Tortola"{
+            ec{"ܬܘܪܬܘܠܐ"}
+        }
+        "America:Vancouver"{
+            ec{"ܒܢܟܘܒܝܪ"}
+        }
+        "America:Whitehorse"{
+            ec{"ܣܘܣܬܐ ܚܘܪܬܐ"}
+        }
+        "America:Winnipeg"{
+            ec{"ܘܝܢܝܦܓ"}
+        }
+        "America:Yakutat"{
+            ec{"ܝܩܘܬܐܬ"}
+        }
+        "Antarctica:Casey"{
+            ec{"ܟܐܝܣܝ"}
+        }
+        "Antarctica:Davis"{
+            ec{"ܕܒܝܣ"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"ܕܘܡܘܢܬ ܕܐܘܪܒܝܠ"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"ܡܐܟܐܘܪܝ"}
+        }
+        "Antarctica:Mawson"{
+            ec{"ܡܐܘܣܘܢ"}
+        }
+        "Antarctica:McMurdo"{
+            ec{"ܡܟܡܘܪܕܘ"}
+        }
+        "Antarctica:Palmer"{
+            ec{"ܦܐܠܡܝܪ"}
+        }
+        "Antarctica:Rothera"{
+            ec{"ܪܘܬܝܪܐ"}
+        }
+        "Antarctica:Syowa"{
+            ec{"ܣܝܘܐ"}
+        }
+        "Antarctica:Troll"{
+            ec{"ܬܪܘܠ"}
+        }
+        "Antarctica:Vostok"{
+            ec{"ܒܘܣܬܘܟ"}
+        }
+        "Arctic:Longyearbyen"{
+            ec{"ܠܘܢܓܝܥܪܒܝܝܢ"}
+        }
+        "Asia:Aden"{
+            ec{"ܥܕܢ"}
+        }
+        "Asia:Almaty"{
+            ec{"ܐܠܡܐܬܝ"}
+        }
+        "Asia:Amman"{
+            ec{"ܥܡܐܢ"}
+        }
+        "Asia:Anadyr"{
+            ec{"ܐܢܐܕܝܪ"}
+        }
+        "Asia:Aqtau"{
+            ec{"ܐܟܬܐܘ"}
+        }
+        "Asia:Aqtobe"{
+            ec{"ܐܟܬܘܒ"}
+        }
+        "Asia:Ashgabat"{
+            ec{"ܥܫܩܐܒܐܕ"}
+        }
+        "Asia:Atyrau"{
+            ec{"ܐܬܝܪܘ"}
+        }
+        "Asia:Baghdad"{
+            ec{"ܒܓܕܕ"}
+        }
+        "Asia:Bahrain"{
+            ec{"ܒܚܪܝܢ"}
+        }
+        "Asia:Baku"{
+            ec{"ܒܐܟܘ"}
+        }
+        "Asia:Bangkok"{
+            ec{"ܒܐܢܟܘܟ"}
+        }
+        "Asia:Barnaul"{
+            ec{"ܒܐܪܢܐܘܠ"}
+        }
+        "Asia:Beirut"{
+            ec{"ܒܝܪܘܬ"}
+        }
+        "Asia:Bishkek"{
+            ec{"ܒܝܫܟܝܟ"}
+        }
+        "Asia:Brunei"{
+            ec{"ܒܪܘܢܐܝ"}
+        }
+        "Asia:Calcutta"{
+            ec{"ܟܘܠܟܬܐ"}
+        }
+        "Asia:Chita"{
+            ec{"ܬܫܝܬܐ"}
+        }
+        "Asia:Choibalsan"{
+            ec{"ܟܘܝܒܠܣܢ"}
+        }
+        "Asia:Colombo"{
+            ec{"ܟܘܠܘܡܒܘ"}
+        }
+        "Asia:Damascus"{
+            ec{"ܕܪܡܣܘܩ"}
+        }
+        "Asia:Dhaka"{
+            ec{"ܕܟܐ"}
+        }
+        "Asia:Dili"{
+            ec{"ܕܝܠܝ"}
+        }
+        "Asia:Dubai"{
+            ec{"ܕܘܒܐܝ"}
+        }
+        "Asia:Dushanbe"{
+            ec{"ܕܘܫܐܢܒܝ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ܦܐܡܐܓܘܣܬܐ"}
+        }
+        "Asia:Gaza"{
+            ec{"ܥܙܐ"}
+        }
+        "Asia:Hebron"{
+            ec{"ܚܒܪܘܢ"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"ܗܘܢܓ ܟܘܢܓ"}
+        }
+        "Asia:Hovd"{
+            ec{"ܗܘܒܕ"}
+        }
+        "Asia:Irkutsk"{
+            ec{"ܐܝܪܟܘܬܣܟ"}
+        }
+        "Asia:Jakarta"{
+            ec{"ܓܐܟܐܪܬܐ"}
+        }
+        "Asia:Jayapura"{
+            ec{"ܓܐܝܦܘܪܐ"}
+        }
+        "Asia:Jerusalem"{
+            ec{"ܐܘܪܫܠܡ"}
+        }
+        "Asia:Kabul"{
+            ec{"ܟܐܒܘܠ"}
+        }
+        "Asia:Kamchatka"{
+            ec{"ܟܐܡܬܫܐܬܟܐ"}
+        }
+        "Asia:Karachi"{
+            ec{"ܟܪܐܟܝ"}
+        }
+        "Asia:Katmandu"{
+            ec{"ܟܐܬܡܐܢܕܘ"}
+        }
+        "Asia:Khandyga"{
+            ec{"ܚܐܢܕܝܓܐ"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"ܟܪܐܣܢܘܝܪܣܟ"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"ܟܘܐܠܐ ܠܘܡܦܘܪ"}
+        }
+        "Asia:Kuching"{
+            ec{"ܟܘܫܝܢܓ"}
+        }
+        "Asia:Kuwait"{
+            ec{"ܟܘܝܬ"}
+        }
+        "Asia:Macau"{
+            ec{"ܡܐܟܐܘ"}
+        }
+        "Asia:Magadan"{
+            ec{"ܡܐܓܐܕܐܢ"}
+        }
+        "Asia:Makassar"{
+            ec{"ܡܐܟܐܣܐܪ"}
+        }
+        "Asia:Manila"{
+            ec{"ܡܐܢܝܠܐ"}
+        }
+        "Asia:Muscat"{
+            ec{"ܡܣܩܛ"}
+        }
+        "Asia:Nicosia"{
+            ec{"ܢܝܩܘܣܝܐ"}
+        }
+        "Asia:Novokuznetsk"{
+            ec{"ܢܘܒܘܟܘܙܢܝܬܣܟ"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"ܢܘܒܘܣܝܒܪܣܟ"}
+        }
+        "Asia:Omsk"{
+            ec{"ܐܘܡܣܟ"}
+        }
+        "Asia:Oral"{
+            ec{"ܐܘܪܐܠ"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"ܦܢܘܡ ܦܢ"}
+        }
+        "Asia:Pontianak"{
+            ec{"ܦܘܢܬܝܐܢܐܟ"}
+        }
+        "Asia:Pyongyang"{
+            ec{"ܦܝܘܢܓܝܢܓ"}
+        }
+        "Asia:Qatar"{
+            ec{"ܩܛܪ"}
+        }
+        "Asia:Qostanay"{
+            ec{"ܟܘܣܬܐܢܐܝ"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"ܟܝܙܝܠܘܪܕܐ"}
+        }
+        "Asia:Rangoon"{
+            ec{"ܝܢܓܘܢ"}
+        }
+        "Asia:Riyadh"{
+            ec{"ܪܝܐܕ"}
+        }
+        "Asia:Saigon"{
+            ec{"ܡܕܝܢܬܐ ܕܗܘ ܟܝ ܡܝܢ"}
+        }
+        "Asia:Sakhalin"{
+            ec{"ܣܐܚܐܠܝܢ"}
+        }
+        "Asia:Samarkand"{
+            ec{"ܣܡܪܟܢܕ"}
+        }
+        "Asia:Seoul"{
+            ec{"ܣܐܘܠ"}
+        }
+        "Asia:Shanghai"{
+            ec{"ܫܢܓܗܐܝܝ"}
+        }
+        "Asia:Singapore"{
+            ec{"ܣܝܢܓܐܦܘܪ"}
+        }
+        "Asia:Srednekolymsk"{
+            ec{"ܣܪܝܕܢܝܟܘܠܝܡܣܟ"}
+        }
+        "Asia:Taipei"{
+            ec{"ܬܐܝܦܐܝ"}
+        }
+        "Asia:Tashkent"{
+            ec{"ܬܫܟܝܢܬ"}
+        }
+        "Asia:Tbilisi"{
+            ec{"ܬܦܠܝܣ"}
+        }
+        "Asia:Tehran"{
+            ec{"ܬܗܪܢ"}
+        }
+        "Asia:Thimphu"{
+            ec{"ܬܝܡܦܘ"}
+        }
+        "Asia:Tokyo"{
+            ec{"ܛܘܟܝܘ"}
+        }
+        "Asia:Tomsk"{
+            ec{"ܬܘܡܣܟ"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"ܐܘܠܐܢܒܐܬܘܪ"}
+        }
+        "Asia:Urumqi"{
+            ec{"ܐܘܪܘܡܟܝ"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"ܐܘܣܬ-ܢܝܪܐ"}
+        }
+        "Asia:Vientiane"{
+            ec{"ܒܝܐܢܬܝܐܢ"}
+        }
+        "Asia:Vladivostok"{
+            ec{"ܒܠܐܕܝܒܘܣܬܘܟ"}
+        }
+        "Asia:Yakutsk"{
+            ec{"ܝܐܟܘܬܣܟ"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"ܝܟܐܬܝܪܢܒܝܪܓ"}
+        }
+        "Asia:Yerevan"{
+            ec{"ܝܪܒܐܢ"}
+        }
+        "Atlantic:Azores"{
+            ec{"ܓܙܪܬܐ ܕܐܙܘܪ"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"ܒܝܪܡܝܘܕܐ"}
+        }
+        "Atlantic:Canary"{
+            ec{"ܟܐܢܪܝ"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"ܟܐܦ ܒܝܪܕܝ"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"ܦܐܪܘ"}
+        }
+        "Atlantic:Madeira"{
+            ec{"ܡܕܐܝܪܐ"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"ܪܐܝܟܒܝܟ"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"ܬܡܝܢ ܓܘܪܓܝܐ"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"ܡܪܬܝ ܗܝܠܝܢܐ"}
+        }
+        "Atlantic:Stanley"{
+            ec{"ܣܬܐܢܠܝ"}
+        }
+        "Australia:Adelaide"{
+            ec{"ܐܕܝܠܝܕ"}
+        }
+        "Australia:Brisbane"{
+            ec{"ܒܪܝܣܒܐܢ"}
+        }
+        "Australia:Broken_Hill"{
+            ec{"ܒܪܘܟܝܢ ܗܝܠ"}
+        }
+        "Australia:Darwin"{
+            ec{"ܕܪܘܝܢ"}
+        }
+        "Australia:Eucla"{
+            ec{"ܐܘܟܠܐ"}
+        }
+        "Australia:Hobart"{
+            ec{"ܗܘܒܪܬ"}
+        }
+        "Australia:Lindeman"{
+            ec{"ܠܝܢܕܡܐܢ"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"ܠܘܪܕ ܗܐܘ"}
+        }
+        "Australia:Melbourne"{
+            ec{"ܡܝܠܒܘܪܢ"}
+        }
+        "Australia:Perth"{
+            ec{"ܦܝܪܬ"}
+        }
+        "Australia:Sydney"{
+            ec{"ܣܝܕܢܝ"}
+        }
+        "Etc:UTC"{
+            ls{"ܥܕܢܘܬܐ ܬܒܠܝܬܐ ܡܛܟܘܣܬܐ"}
+        }
+        "Etc:Unknown"{
+            ec{"ܡܕܝܢܬܐ ܠܐ ܝܕܥܝܬܐ"}
+        }
+        "Europe:Amsterdam"{
+            ec{"ܐܡܣܬܪܕܡ"}
+        }
+        "Europe:Andorra"{
+            ec{"ܐܢܕܘܪܐ"}
+        }
+        "Europe:Astrakhan"{
+            ec{"ܐܣܬܪܐܚܢ"}
+        }
+        "Europe:Athens"{
+            ec{"ܐܬܢܘܣ"}
+        }
+        "Europe:Belgrade"{
+            ec{"ܒܠܓܪܕ"}
+        }
+        "Europe:Berlin"{
+            ec{"ܒܪܠܝܢ"}
+        }
+        "Europe:Bratislava"{
+            ec{"ܒܪܬܝܣܠܒܐ‏"}
+        }
+        "Europe:Brussels"{
+            ec{"ܒܪܘܟܣܠ"}
+        }
+        "Europe:Bucharest"{
+            ec{"ܒܘܩܘܪܫܛ"}
+        }
+        "Europe:Budapest"{
+            ec{"ܒܘܕܦܫܛ"}
+        }
+        "Europe:Busingen"{
+            ec{"ܒܘܣܝܢܓܢ"}
+        }
+        "Europe:Chisinau"{
+            ec{"ܟܝܣܝܢܐܘ"}
+        }
+        "Europe:Copenhagen"{
+            ec{"ܟܘܦܢܗܐܓܢ"}
+        }
+        "Europe:Dublin"{
+            ec{"ܕܒܠܢ"}
+            ld{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܝܪܠܢܕ"}
+        }
+        "Europe:Gibraltar"{
+            ec{"ܓܒܪܠܛܪ"}
+        }
+        "Europe:Guernsey"{
+            ec{"ܓܘܪܢܙܝ"}
+        }
+        "Europe:Helsinki"{
+            ec{"ܗܠܣܢܟܝ"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"ܓܙܪܬܐ ܕܡܐܢ"}
+        }
+        "Europe:Istanbul"{
+            ec{"ܐܣܛܢܒܘܠ"}
+        }
+        "Europe:Jersey"{
+            ec{"ܓܝܪܙܝ"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"ܟܐܠܝܢܝܢܓܪܐܕ"}
+        }
+        "Europe:Kiev"{
+            ec{"ܟܝܝܒ"}
+        }
+        "Europe:Kirov"{
+            ec{"ܟܝܪܘܒ"}
+        }
+        "Europe:Lisbon"{
+            ec{"ܠܫܒܘܢܐ"}
+        }
+        "Europe:Ljubljana"{
+            ec{"ܠܝܘܒܠܝܐܢܐ"}
+        }
+        "Europe:London"{
+            ec{"ܠܘܢܕܘܢ"}
+            ld{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܪܝܛܢܝܐ"}
+        }
+        "Europe:Luxembourg"{
+            ec{"ܠܘܟܣܡܒܘܪܓ"}
+        }
+        "Europe:Madrid"{
+            ec{"ܡܕܪܝܕ"}
+        }
+        "Europe:Malta"{
+            ec{"ܡܝܠܛܐ"}
+        }
+        "Europe:Mariehamn"{
+            ec{"ܡܐܪܝܗܐܡ"}
+        }
+        "Europe:Minsk"{
+            ec{"ܡܝܢܣܟ"}
+        }
+        "Europe:Monaco"{
+            ec{"ܡܘܢܐܟܘ"}
+        }
+        "Europe:Moscow"{
+            ec{"ܡܘܣܟܘ"}
+        }
+        "Europe:Oslo"{
+            ec{"ܐܘܣܠܘ"}
+        }
+        "Europe:Paris"{
+            ec{"ܦܐܪܝܣ"}
+        }
+        "Europe:Podgorica"{
+            ec{"ܦܘܕܓܘܪܝܟܐ"}
+        }
+        "Europe:Prague"{
+            ec{"ܦܪܐܓ"}
+        }
+        "Europe:Riga"{
+            ec{"ܪܝܓܐ"}
+        }
+        "Europe:Rome"{
+            ec{"ܪܘܡܝ"}
+        }
+        "Europe:Samara"{
+            ec{"ܣܡܐܪܐ"}
+        }
+        "Europe:San_Marino"{
+            ec{"ܣܢ ܡܪܝܢܘ"}
+        }
+        "Europe:Sarajevo"{
+            ec{"ܣܪܐܝܝܒܘ"}
+        }
+        "Europe:Saratov"{
+            ec{"ܣܪܐܬܘܒ"}
+        }
+        "Europe:Simferopol"{
+            ec{"ܣܡܦܪܘܦܠ"}
+        }
+        "Europe:Skopje"{
+            ec{"ܣܩܘܦܝܐ"}
+        }
+        "Europe:Sofia"{
+            ec{"ܣܘܦܝܐ"}
+        }
+        "Europe:Stockholm"{
+            ec{"ܣܬܘܟܗܘܠܡ"}
+        }
+        "Europe:Tallinn"{
+            ec{"ܬܐܠܝܢ"}
+        }
+        "Europe:Tirane"{
+            ec{"ܬܝܪܐܢ"}
+        }
+        "Europe:Ulyanovsk"{
+            ec{"ܐܘܠܝܢܘܒܣܟ"}
+        }
+        "Europe:Vaduz"{
+            ec{"ܒܕܘܙ"}
+        }
+        "Europe:Vatican"{
+            ec{"ܘܐܬܝܩܐܢ"}
+        }
+        "Europe:Vienna"{
+            ec{"ܒܝܝܢܐ"}
+        }
+        "Europe:Vilnius"{
+            ec{"ܒܠܢܘܣ"}
+        }
+        "Europe:Volgograd"{
+            ec{"ܒܘܠܓܘܓܪܐܕ"}
+        }
+        "Europe:Warsaw"{
+            ec{"ܘܐܪܣܘ"}
+        }
+        "Europe:Zagreb"{
+            ec{"ܙܐܓܪܒ"}
+        }
+        "Europe:Zurich"{
+            ec{"ܙܝܘܪܚ"}
+        }
+        "Indian:Antananarivo"{
+            ec{"ܐܢܬܐܢܐܢܪܝܒܘ"}
+        }
+        "Indian:Chagos"{
+            ec{"ܬܫܓܘܣ"}
+        }
+        "Indian:Christmas"{
+            ec{"ܟܪܝܣܬܡܣ"}
+        }
+        "Indian:Cocos"{
+            ec{"ܟܘܟܘܣ"}
+        }
+        "Indian:Comoro"{
+            ec{"ܟܘܡܘܪܘ"}
+        }
+        "Indian:Kerguelen"{
+            ec{"ܟܝܪܓܘܠܝܢ"}
+        }
+        "Indian:Mahe"{
+            ec{"ܡܐܗܝ"}
+        }
+        "Indian:Maldives"{
+            ec{"ܓܙܪܬܐ ܡܐܠܕܝܒܝܬܐ"}
+        }
+        "Indian:Mauritius"{
+            ec{"ܡܘܪܝܫܘܣ"}
+        }
+        "Indian:Mayotte"{
+            ec{"ܡܐܝܘܬ"}
+        }
+        "Indian:Reunion"{
+            ec{"ܪܝܘܢܝܘܢ"}
+        }
+        "Pacific:Apia"{
+            ec{"ܐܦܝܐ"}
+        }
+        "Pacific:Auckland"{
+            ec{"ܐܟܠܐܢܕ"}
+        }
+        "Pacific:Bougainville"{
+            ec{"ܒܘܓܐܝܢܒܝܠ"}
+        }
+        "Pacific:Chatham"{
+            ec{"ܬܫܐܬܡ"}
+        }
+        "Pacific:Easter"{
+            ec{"ܦܨܚܐ"}
+        }
+        "Pacific:Efate"{
+            ec{"ܝܦܐܬ"}
+        }
+        "Pacific:Fakaofo"{
+            ec{"ܦܐܟܐܘܦܘ"}
+        }
+        "Pacific:Fiji"{
+            ec{"ܦܝܓܝ"}
+        }
+        "Pacific:Funafuti"{
+            ec{"ܦܘܢܐܦܘܬܝ"}
+        }
+        "Pacific:Galapagos"{
+            ec{"ܓܐܠܐܦܓܘܣ"}
+        }
+        "Pacific:Gambier"{
+            ec{"ܓܡܒܝܪ"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"ܓܘܐܕܐܠܟܐܢܐܠ"}
+        }
+        "Pacific:Guam"{
+            ec{"ܓܘܐܡ"}
+        }
+        "Pacific:Kanton"{
+            ec{"ܟܐܢܬܘܢ"}
+        }
+        "Pacific:Kiritimati"{
+            ec{"ܟܝܪܝܡܐܬܝ"}
+        }
+        "Pacific:Kosrae"{
+            ec{"ܟܘܣܪܐܝ"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"ܟܘܐܓܐܠܝܢ"}
+        }
+        "Pacific:Majuro"{
+            ec{"ܡܐܓܘܪܘ"}
+        }
+        "Pacific:Marquesas"{
+            ec{"ܡܐܪܟܐܘܣܐܣ"}
+        }
+        "Pacific:Midway"{
+            ec{"ܡܝܕܘܐܝ"}
+        }
+        "Pacific:Nauru"{
+            ec{"ܢܐܘܪܘ"}
+        }
+        "Pacific:Niue"{
+            ec{"ܢܝܘܝ"}
+        }
+        "Pacific:Norfolk"{
+            ec{"ܢܘܪܦܠܟ"}
+        }
+        "Pacific:Noumea"{
+            ec{"ܢܘܡܝܐ"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"ܦܐܓܘ ܦܐܓܘ"}
+        }
+        "Pacific:Palau"{
+            ec{"ܦܠܐܘ"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"ܦܝܬܟܐܝܪܢ"}
+        }
+        "Pacific:Ponape"{
+            ec{"ܦܘܗܢܦܐܝ"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"ܦܘܪܬ ܡܘܪܝܣܒܐܝ"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"ܪܐܪܘܬܘܢܓܐ"}
+        }
+        "Pacific:Saipan"{
+            ec{"ܣܐܝܦܐܢ"}
+        }
+        "Pacific:Tahiti"{
+            ec{"ܬܐܗܝܬܝ"}
+        }
+        "Pacific:Tarawa"{
+            ec{"ܬܐܪܐܘܐ"}
+        }
+        "Pacific:Tongatapu"{
+            ec{"ܬܘܢܓܐܬܐܦܘ"}
+        }
+        "Pacific:Truk"{
+            ec{"ܬܫܘܟ"}
+        }
+        "Pacific:Wake"{
+            ec{"ܘܐܝܟ"}
+        }
+        "Pacific:Wallis"{
+            ec{"ܘܝܠܝܣ"}
+        }
+        "meta:Acre"{
+            ld{"ܥܕܢܘܬܐ ܩܝܬܝܬܐ ܕܐܝܟܝܪ"}
+            lg{"ܥܕܢܘܬܐ ܕܐܝܟܝܪ"}
+            ls{"ܥܕܢܘܬܐ ܫܪܫܝܬܐ ܥܕܢܘܬܐ ܫܪܫܝܬܐ ܕܐܝܟܝܪ"}
+        }
+        "meta:Afghanistan"{
+            ls{"ܥܕܢܐ ܕܐܦܓܐܢܣܬܐܢ"}
+        }
+        "meta:Africa_Central"{
+            ls{"ܥܕܢܐ ܕܡܨܥܝܬܐ ܐܦܪܝܩܐ"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"ܥܕܢܐ ܕܡܕܢܚ ܐܦܪܝܩܐ"}
+        }
+        "meta:Africa_Southern"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܝܡܢ ܐܦܪܝܩܐ"}
+        }
+        "meta:Africa_Western"{
+            ld{"ܥܕܢܐ ܩܝܬܝܬܐ ܕܡܥܪܒ ܐܦܪܝܩܐ"}
+            lg{"ܥܕܢܐ ܕܡܥܪܒ ܐܦܪܝܩܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܥܪܒ ܐܦܪܝܩܐ"}
+        }
+        "meta:Alaska"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܠܐܣܟܐ"}
+            lg{"ܥܕܢܐ ܕܐܠܐܣܟܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܠܐܣܟܐ"}
+        }
+        "meta:Almaty"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܠܡܐܬܝ"}
+            lg{"ܥܕܢܐ ܕܐܠܡܐܬܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܠܡܐܬܝ"}
+        }
+        "meta:Amazon"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܡܙܢ"}
+            lg{"ܥܕܢܐ ܕܐܡܙܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܡܙܢ"}
+        }
+        "meta:America_Central"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܡܨܥܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            lg{"ܥܕܢܐ ܡܨܥܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܡܨܥܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:America_Eastern"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܡܕܢܚܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            lg{"ܥܕܢܐ ܡܕܢܚܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܡܕܢܚܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:America_Mountain"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܛܘܪܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            lg{"ܥܕܢܐ ܛܘܪܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܛܘܪܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:America_Pacific"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܫܝܢܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            lg{"ܥܕܢܐ ܫܝܢܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܫܝܢܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:Anadyr"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܢܐܕܝܪ"}
+            lg{"ܥܕܢܐ ܕܐܢܐܕܝܪ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܢܐܕܝܪ"}
+        }
+        "meta:Apia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܦܝܐ"}
+            lg{"ܥܕܢܐ ܕܐܦܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܦܝܐ"}
+        }
+        "meta:Aqtau"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܟܬܐܘ"}
+            lg{"ܥܕܢܐ ܐܟܬܐܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܟܬܐܘ"}
+        }
+        "meta:Aqtobe"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܟܬܘܒ"}
+            lg{"ܥܕܢܐ ܕܐܟܬܘܒ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܟܬܘܒ"}
+        }
+        "meta:Argentina"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܪܓܢܬܝܢܐ"}
+            lg{"ܥܕܢܐ ܕܐܪܓܢܬܝܢܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܪܓܢܬܝܢܐ"}
+        }
+        "meta:Argentina_Western"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܪܓܢܬܝܢܐ ܡܥܪܒܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܪܓܢܬܝܢܐ ܡܥܪܒܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܪܓܢܬܝܢܐ ܡܥܪܒܝܬܐ"}
+        }
+        "meta:Armenia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܪܡܢܝܐ"}
+            lg{"ܥܕܢܐ ܕܐܪܡܢܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܪܡܢܝܐ"}
+        }
+        "meta:Atlantic"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܐܛܠܢܛܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            lg{"ܥܕܢܐ ܐܛܠܢܛܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܐܛܠܢܛܝܬܐ ܕܐܡܪܝܟܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:Australia_Central"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܣܬܪܠܝܐ ܡܨܥܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܣܬܪܠܝܐ ܡܨܥܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܣܬܪܠܝܐ ܡܨܥܝܬܐ"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܡܥܪܒܝܬܐ ܡܨܥܝܬܐ ܕܐܘܣܬܪܠܝܐ"}
+            lg{"ܥܕܢܐ ܡܥܪܒܝܬܐ ܡܨܥܝܬܐ ܕܐܘܣܬܪܠܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܡܥܪܒܝܬܐ ܡܨܥܝܬܐ ܕܐܘܣܬܪܠܝܐ"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܣܬܪܠܝܐ ܡܕܢܚܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܣܬܪܠܝܐ ܡܕܢܚܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܣܬܪܠܝܐ ܡܕܢܚܝܬܐ"}
+        }
+        "meta:Australia_Western"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܣܬܪܠܝܐ ܡܥܪܒܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܣܬܪܠܝܐ ܡܥܪܒܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܣܬܪܠܝܐ ܡܥܪܒܝܬܐ"}
+        }
+        "meta:Azerbaijan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܙܪܒܝܓܐܢ"}
+            lg{"ܥܕܢܐ ܕܐܙܪܒܝܓܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܙܪܒܝܓܐܢ"}
+        }
+        "meta:Azores"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܙܘܪ"}
+            lg{"ܥܕܢܐ ܕܐܙܘܪ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܙܘܪ"}
+        }
+        "meta:Bangladesh"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܒܢܓܠܐܕܝܫ"}
+            lg{"ܥܕܢܐ ܕܒܢܓܠܐܕܝܫ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܢܓܠܐܕܝܫ"}
+        }
+        "meta:Bhutan"{
+            ls{"ܥܕܢܐ ܕܒܘܬܐܢ"}
+        }
+        "meta:Bolivia"{
+            ls{"ܥܕܢܐ ܕܒܘܠܝܒܝܐ"}
+        }
+        "meta:Brasilia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܒܪܐܣܝܠܝܐ"}
+            lg{"ܥܕܢܐ ܕܒܪܐܣܝܠܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܪܐܣܝܠܝܐ"}
+        }
+        "meta:Brunei"{
+            ls{"ܥܕܢܐ ܕܒܪܘܢܐܝ ܕܐܪܘܣܐܠܡ"}
+        }
+        "meta:Cape_Verde"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܐܦ ܒܝܪܕܝ"}
+            lg{"ܥܕܢܐ ܕܟܐܦ ܒܝܪܕܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܐܦ ܒܝܪܕܝ"}
+        }
+        "meta:Casey"{
+            ls{"ܥܕܢܐ ܕܟܐܝܣܝ"}
+        }
+        "meta:Chamorro"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܫܐܡܘܪܘ"}
+        }
+        "meta:Chatham"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܬܫܐܬܡ"}
+            lg{"ܥܕܢܐ ܕܬܫܐܬܡ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܫܐܬܡ"}
+        }
+        "meta:Chile"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܬܫܝܠܝ"}
+            lg{"ܥܕܢܐ ܕܬܫܝܠܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܫܝܠܝ"}
+        }
+        "meta:China"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܨܝܢ"}
+            lg{"ܥܕܢܐ ܕܨܝܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܨܝܢ"}
+        }
+        "meta:Choibalsan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܘܝܒܠܣܢ"}
+            lg{"ܥܕܢܐ ܕܟܘܝܒܠܣܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܘܝܒܠܣܢ"}
+        }
+        "meta:Christmas"{
+            ls{"ܥܕܢܐ ܕܓܙܪܬܐ ܕܟܪܝܣܬܡܣ"}
+        }
+        "meta:Cocos"{
+            ls{"ܥܕܢܐ ܕܓܙܝܖ̈ܐ ܕܟܘܟܘܣ"}
+        }
+        "meta:Colombia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܘܠܘܡܒܝܐ"}
+            lg{"ܥܕܢܐ ܕܟܘܠܘܡܒܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܘܠܘܡܒܝܐ"}
+        }
+        "meta:Cook"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܓܙܝܪ̈ܐ ܕܟܘܟ"}
+            lg{"ܥܕܢܐ ܓܙܝܪ̈ܐ ܕܟܘܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܓܙܝܪ̈ܐ ܕܟܘܟ"}
+        }
+        "meta:Cuba"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܘܒܐ"}
+            lg{"ܥܕܢܐ ܕܟܘܒܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܘܒܐ"}
+        }
+        "meta:Davis"{
+            ls{"ܥܕܢܐ ܕܕܒܝܣ"}
+        }
+        "meta:DumontDUrville"{
+            ls{"ܥܕܢܐ ܕܕܘܡܘܢܬ ܕܐܘܪܒܝܠ"}
+        }
+        "meta:East_Timor"{
+            ls{"ܥܕܢܐ ܕܡܕܢܚ ܬܝܡܘܪ"}
+        }
+        "meta:Easter"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܓܙܪܬܐ ܦܨܚܐ"}
+            lg{"ܥܕܢܐ ܕܓܙܪܬܐ ܦܨܚܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܙܪܬܐ ܦܨܚܐ"}
+        }
+        "meta:Ecuador"{
+            ls{"ܥܕܢܐ ܕܐܩܘܐܕܘܪ"}
+        }
+        "meta:Europe_Central"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܪܘܦܐ ܡܨܥܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܪܘܦܐ ܡܨܥܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܪܘܦܐ ܡܨܥܝܬܐ"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܪܘܦܐ ܡܕܢܚܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܪܘܦܐ ܡܕܢܚܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܪܘܦܐ ܡܕܢܚܝܬܐ"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"ܥܕܢܐ ܕܐܘܪܘܦܐ (ܗܡ ܡܕܢܚܐ)"}
+        }
+        "meta:Europe_Western"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܪܘܦܐ ܡܥܪܒܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܐܘܪܘܦܐ ܡܥܪܒܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܪܘܦܐ ܡܥܪܒܝܬܐ"}
+        }
+        "meta:Falkland"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܓܙܝܪ̈ܐ ܕܦܠܟܠܢܕ"}
+            lg{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܦܠܟܠܢܕ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܙܝܪ̈ܐ ܕܦܠܟܠܢܕ"}
+        }
+        "meta:Fiji"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܝܓܝ"}
+            lg{"ܥܕܢܐ ܕܦܝܓܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܝܓܝ"}
+        }
+        "meta:French_Guiana"{
+            ls{"ܥܕܢܐ ܕܓܘܝܐܢܐ ܦܪܢܣܝܬܐ"}
+        }
+        "meta:French_Southern"{
+            ls{"ܥܕܢܐ ܕܦܪܢܣܐ ܬܝܡܢܝܬܐ ܘܐܢܬܪܬܝܟܐ"}
+        }
+        "meta:GMT"{
+            ls{"ܥܕܢܐ ܕܓܪܝܢܟ"}
+        }
+        "meta:Galapagos"{
+            ls{"ܥܕܢܐ ܕܓܐܠܦܐܓܘܣ"}
+        }
+        "meta:Gambier"{
+            ls{"ܥܕܢܐ ܕܓܡܒܝܪ"}
+        }
+        "meta:Georgia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܓܘܪܓܝܐ"}
+            lg{"ܥܕܢܐ ܕܓܘܪܓܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܘܪܓܝܐ"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܓܝܠܒܪܬ"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܓܪܝܢܠܢܕ ܡܕܢܚܝܬܐ"}
+            lg{"ܥܕܢܐ ܓܪܝܢܠܢܕ ܡܕܢܚܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܓܪܝܢܠܢܕ ܡܕܢܚܝܬܐ"}
+        }
+        "meta:Greenland_Western"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܓܪܝܢܠܢܕ ܕܡܥܪܒܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܓܪܝܢܠܢܕ ܕܡܥܪܒܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܪܝܢܠܢܕ ܕܡܥܪܒܝܬܐ"}
+        }
+        "meta:Guam"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܘܐܡ"}
+        }
+        "meta:Gulf"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܥܠܢܐ"}
+        }
+        "meta:Guyana"{
+            ls{"ܥܕܢܐ ܕܓܘܝܐܢܐ"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܗܐܘܐܝܝ ܐܠܘܫܝܢ"}
+            lg{"ܥܕܢܐ ܕܗܐܘܐܝܝ ܐܠܘܫܝܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܗܐܘܐܝܝ ܐܠܘܫܝܢ"}
+        }
+        "meta:Hong_Kong"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܗܘܢܓ ܟܘܢܓ"}
+            lg{"ܥܕܢܐ ܕܗܘܢܓ ܟܘܢܓ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܗܘܢܓ ܟܘܢܓ"}
+        }
+        "meta:Hovd"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܗܘܒܕ"}
+            lg{"ܕܗܘܒܕ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܗܘܒܕ"}
+        }
+        "meta:India"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܗܢܕܘ"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"ܥܕܢܐ ܕܐܘܩܝܢܘܣ ܗܢܕܘܝܐ"}
+        }
+        "meta:Indochina"{
+            ls{"ܥܕܢܐ ܕܗܢܕܘܨܝܢ"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"ܥܕܢܐ ܕܗܢܕܘܨܝܢ ܡܨܥܝܬܐ"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"ܥܕܢܐ ܕܗܢܕܘܨܝܢ ܡܕܢܚܝܬܐ"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"ܥܕܢܐ ܕܗܢܕܘܨܝܢ ܡܥܪܒܝܬܐ"}
+        }
+        "meta:Iran"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܝܪܐܢ"}
+            lg{"ܥܕܢܐ ܕܐܝܪܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܝܪܐܢ"}
+        }
+        "meta:Irkutsk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܝܪܟܘܬܣܟ"}
+            lg{"ܥܕܢܐ ܕܐܝܪܟܘܬܣܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܝܪܟܘܬܣܟ"}
+        }
+        "meta:Israel"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܝܣܪܐܝܠ"}
+            lg{"ܥܕܢܐ ܕܐܝܣܪܐܝܠ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܝܣܪܐܝܠ"}
+        }
+        "meta:Japan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܝܦܢ"}
+            lg{"ܥܕܢܐ ܕܝܦܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܝܦܢ"}
+        }
+        "meta:Kamchatka"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܝܬܪܘܦܒܠܒܣܟܝ-ܟܐܡܟܬܣܟܝ"}
+            lg{"ܥܕܢܐ ܕܦܝܬܪܘܦܒܠܒܣܟܝ-ܟܐܡܟܬܣܟܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܝܬܪܘܦܒܠܒܣܟܝ-ܟܐܡܟܬܣܟܝ"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"ܥܕܢܐ ܕܡܕܢܚ ܟܙܩܣܬܐܢ"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"ܥܕܢܐ ܕܡܥܪܒ ܟܙܩܣܬܐܢ"}
+        }
+        "meta:Korea"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܘܪܝܝܐ"}
+            lg{"ܥܕܢܐ ܕܟܘܪܝܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܘܪܝܝܐ"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܪܐܣܢܘܝܪܣܟ"}
+            lg{"ܥܕܢܐ ܕܟܪܐܣܢܘܝܪܣܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܪܐܣܢܘܝܪܣܟ"}
+        }
+        "meta:Kyrgystan"{
+            ls{"ܥܕܢܐ ܕܩܝܪܓܝܙܣܬܐܢ"}
+        }
+        "meta:Lanka"{
+            ls{"ܥܕܢܐ ܕܠܐܢܟܐ"}
+        }
+        "meta:Line_Islands"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܠܐܝܢ"}
+        }
+        "meta:Lord_Howe"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܠܘܪܕ ܗܐܘ"}
+            lg{"ܥܕܢܐ ܕܠܘܪܕ ܗܐܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܠܘܪܕ ܗܐܘ"}
+        }
+        "meta:Macau"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܡܐܟܐܘ"}
+            lg{"ܥܕܢܐ ܕܡܐܟܐܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܐܟܐܘ"}
+        }
+        "meta:Magadan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܡܐܓܕܐܢ"}
+            lg{"ܥܕܢܐ ܕܡܐܓܐܕܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܐܓܕܐܢ"}
+        }
+        "meta:Malaysia"{
+            ls{"ܥܕܢܐ ܕܡܠܝܙܝܐ"}
+        }
+        "meta:Maldives"{
+            ls{"ܥܕܢܐ ܕܓܙܪܬܐ ܡܐܠܕܝܒܝܬܐ"}
+        }
+        "meta:Marquesas"{
+            ls{"ܥܕܢܐ ܕܡܐܪܟܐܘܣܐܣ"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܡܐܪܫܐܠ"}
+        }
+        "meta:Mauritius"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܡܘܪܝܛܝܘܣ"}
+            lg{"ܥܕܢܐ ܕܡܘܪܝܛܝܘܣ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܘܪܝܛܝܘܣ"}
+        }
+        "meta:Mawson"{
+            ls{"ܥܕܢܐ ܕܡܐܘܣܘܢ"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܡܟܣܝܩܘ ܫܝܢܝܬܐ"}
+            lg{"ܥܕܢܐ ܕܡܟܣܝܩܘ ܫܝܢܝܬܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܟܣܝܩܘ ܫܝܢܝܬܐ"}
+        }
+        "meta:Mongolia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܠܐܢܒܐܬܘܪ"}
+            lg{"ܥܕܢܐ ܕܐܘܠܐܢܒܐܬܘܪ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܠܐܢܒܐܬܘܪ"}
+        }
+        "meta:Moscow"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܡܘܣܟܘ"}
+            lg{"ܥܕܢܐ ܕܡܘܣܟܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܡܘܣܟܘ"}
+        }
+        "meta:Myanmar"{
+            ls{"ܥܕܢܐ ܕܡܝܐܢܡܐܪ"}
+        }
+        "meta:Nauru"{
+            ls{"ܥܕܢܐ ܕܢܐܘܪܘ"}
+        }
+        "meta:Nepal"{
+            ls{"ܥܕܢܐ ܕܢܝܦܐܠ"}
+        }
+        "meta:New_Caledonia"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܢܝܘ ܟܠܝܕܘܢܝܐ"}
+            lg{"ܥܕܢܐ ܕܢܝܘ ܟܠܝܕܘܢܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܢܝܘ ܟܠܝܕܘܢܝܐ"}
+        }
+        "meta:New_Zealand"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܢܝܘ ܙܝܠܢܕ"}
+            lg{"ܥܕܢܐ ܕܢܝܘ ܙܝܠܢܕ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܢܝܘ ܙܝܠܢܕ"}
+        }
+        "meta:Newfoundland"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܢܝܘܦܐܘܢܠܢܕ"}
+            lg{"ܥܕܢܐ ܕܢܝܘܦܐܘܢܠܢܕ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܢܝܘܦܐܘܢܠܢܕ"}
+        }
+        "meta:Niue"{
+            ls{"ܥܕܢܐ ܕܢܝܘܝ"}
+        }
+        "meta:Norfolk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܓܙܪܬܐ ܕܢܘܪܦܠܟ"}
+            lg{"ܥܕܢܐ ܕܓܙܪܬܐ ܕܢܘܪܦܠܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܓܙܪܬܐ ܕܢܘܪܦܠܟ"}
+        }
+        "meta:Noronha"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܪܢܢܕܘ ܕܢܘܪܘܢܗܐ"}
+            lg{"ܥܕܢܐ ܕܦܪܢܢܕܘ ܕܢܘܪܘܢܗܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܪܢܢܕܘ ܕܢܘܪܘܢܗܐ"}
+        }
+        "meta:North_Mariana"{
+            ls{"ܥܕܢܐ ܕܓܙܝܖ̈ܐ ܕܡܪܝܐܢܐ ܓܪܒܝܝܬܐ"}
+        }
+        "meta:Novosibirsk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܢܘܒܘܣܝܒܪܣܟ"}
+            lg{"ܥܕܢܐ ܕܢܘܒܘܣܝܒܪܣܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܢܘܒܘܣܝܒܪܣܟ"}
+        }
+        "meta:Omsk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܘܡܣܟ"}
+            lg{"ܥܕܢܐ ܕܘܡܣܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܘܡܣܟ"}
+        }
+        "meta:Pakistan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܐܟܣܬܐܢ"}
+            lg{"ܥܕܢܐ ܕܦܐܟܣܬܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܐܟܣܬܐܢ"}
+        }
+        "meta:Palau"{
+            ls{"ܥܕܢܐ ܕܦܠܐܘ"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"ܥܕܢܐ ܕܦܐܦܘܐ ܓܝܢܝܐ ܚܕܬܐ"}
+        }
+        "meta:Paraguay"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܪܓܘܐܝ"}
+            lg{"ܥܕܢܐ ܕܦܪܓܘܐܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܪܓܘܐܝ"}
+        }
+        "meta:Peru"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܝܪܘ"}
+            lg{"ܥܕܢܐ ܕܦܝܪܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܝܪܘ"}
+        }
+        "meta:Philippines"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܦܝܠܝܦܝܢܝܐ"}
+            lg{"ܥܕܢܐ ܕܦܝܠܝܦܝܢܝܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܦܝܠܝܦܝܢܝܐ"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܦܝܢܝܟܣ"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܣܐܢܬ ܦܝܥܪ ܘܡܩܘܠܘܢ"}
+            lg{"ܥܕܢܐ ܕܣܐܢܬ ܦܝܥܪ ܘܡܩܘܠܘܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܣܐܢܬ ܦܝܥܪ ܘܡܩܘܠܘܢ"}
+        }
+        "meta:Pitcairn"{
+            ls{"ܥܕܢܐ ܕܦܝܬܟܐܝܪܢ"}
+        }
+        "meta:Ponape"{
+            ls{"ܥܕܢܐ ܕܦܘܢܐܦܝ"}
+        }
+        "meta:Pyongyang"{
+            ls{"ܥܕܢܐ ܕܦܝܘܢܓܝܢܓ"}
+        }
+        "meta:Qyzylorda"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܟܝܙܝܠܘܪܕܐ"}
+            lg{"ܥܕܢܐ ܕܟܝܙܝܠܘܪܕܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܟܝܙܝܠܘܪܕܐ"}
+        }
+        "meta:Reunion"{
+            ls{"ܥܕܢܐ ܕܪܝܘܢܝܘܢ"}
+        }
+        "meta:Rothera"{
+            ls{"ܥܕܢܐ ܕܪܘܬܝܪܐ"}
+        }
+        "meta:Sakhalin"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܣܐܚܐܠܝܢ"}
+            lg{"ܥܕܢܐ ܕܣܐܚܐܠܝܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܣܐܚܐܠܝܢ"}
+        }
+        "meta:Samara"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܣܡܐܪܐ"}
+            lg{"ܥܕܢܐ ܕܣܡܐܪܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܣܡܐܪܐ"}
+        }
+        "meta:Samoa"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܣܡܘܐ"}
+            lg{"ܥܕܢܐ ܕܣܡܘܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܣܡܘܐ"}
+        }
+        "meta:Seychelles"{
+            ls{"ܥܕܢܐ ܕܣܐܝܫܝܠ"}
+        }
+        "meta:Singapore"{
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܣܝܢܓܐܦܘܪ"}
+        }
+        "meta:Solomon"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܫܠܝܡܘܢ"}
+        }
+        "meta:South_Georgia"{
+            ls{"ܥܕܢܐ ܕܓܝܘܪܓܝܐ ܬܝܡܢܝܬܐ"}
+        }
+        "meta:Suriname"{
+            ls{"ܥܕܢܐ ܕܣܘܪܝܢܐܡ"}
+        }
+        "meta:Syowa"{
+            ls{"ܥܕܢܐ ܕܣܝܘܐ"}
+        }
+        "meta:Tahiti"{
+            ls{"ܥܕܢܐ ܕܬܗܝܬܝ"}
+        }
+        "meta:Taipei"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܬܐܝܦܐܝ"}
+            lg{"ܥܕܢܐ ܕܬܐܝܦܐܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܐܝܦܐܝ"}
+        }
+        "meta:Tajikistan"{
+            ls{"ܥܕܢܐ ܕܬܐܓܝܟܣܬܐܢ"}
+        }
+        "meta:Tokelau"{
+            ls{"ܥܕܢܐ ܕܬܘܟܝܠܐܘ"}
+        }
+        "meta:Tonga"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܬܘܢܓܐ"}
+            lg{"ܥܕܢܐ ܬܘܢܓܐ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܬܘܢܓܐ"}
+        }
+        "meta:Truk"{
+            ls{"ܥܕܢܐ ܕܬܫܘܟ"}
+        }
+        "meta:Turkmenistan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܬܘܪܟܡܢܣܬܐܢ"}
+            lg{"ܥܕܢܐ ܕܬܘܪܟܡܢܣܬܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܬܘܪܟܡܢܣܬܐܢ"}
+        }
+        "meta:Tuvalu"{
+            ls{"ܥܕܢܐ ܕܬܘܒܐܠܘ"}
+        }
+        "meta:Uruguay"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܪܘܓܘܐܝ"}
+            lg{"ܥܕܢܐ ܕܐܘܪܘܓܘܐܝ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܪܘܓܘܐܝ"}
+        }
+        "meta:Uzbekistan"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܐܘܙܒܟܣܬܐܢ"}
+            lg{"ܥܕܢܐ ܕܐܘܙܒܟܣܬܐܢ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܐܘܙܒܟܣܬܐܢ"}
+        }
+        "meta:Vanuatu"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܒܐܢܘܐܛܘ"}
+            lg{"ܥܕܢܐ ܕܒܐܢܘܐܛܘ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܐܢܘܐܛܘ"}
+        }
+        "meta:Venezuela"{
+            ls{"ܥܕܢܐ ܕܒܢܙܘܝܠܐ"}
+        }
+        "meta:Vladivostok"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܒܠܐܕܝܒܘܣܬܘܟ"}
+            lg{"ܥܕܢܐ ܕܒܠܐܕܝܒܘܣܬܘܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܠܐܕܝܒܘܣܬܘܟ"}
+        }
+        "meta:Volgograd"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܒܘܠܓܘܓܪܐܕ"}
+            lg{"ܥܕܢܐ ܕܒܘܠܓܘܓܪܐܕ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܒܘܠܓܘܓܪܐܕ"}
+        }
+        "meta:Vostok"{
+            ls{"ܥܕܢܐ ܕܒܘܣܬܘܟ"}
+        }
+        "meta:Wake"{
+            ls{"ܥܕܢܐ ܕܓܙܝܪ̈ܐ ܕܘܐܝܟ"}
+        }
+        "meta:Wallis"{
+            ls{"ܥܕܢܐ ܕܘܝܠܝܣ ܘܦܘܬܘܢܐ"}
+        }
+        "meta:Yakutsk"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܝܐܟܘܬܣܟ"}
+            lg{"ܥܕܢܐ ܕܝܐܟܘܬܣܟ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܝܐܟܘܬܣܟ"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ ܕܝܟܐܬܝܪܢܒܝܪܓ"}
+            lg{"ܥܕܢܐ ܕܝܟܐܬܝܪܢܒܝܪܓ"}
+            ls{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ ܕܝܟܐܬܝܪܢܒܝܪܓ"}
+        }
+        "meta:Yukon"{
+            ls{"ܥܕܢܐ ܕܝܘܩܘܢ"}
+        }
+        regionFormat{"ܥܕܢܐ {0}"}
+        regionFormatDaylight{"ܥܕܢܐ ܕܒܗܪ ܝܘܡܐ {0}"}
+        regionFormatStandard{"ܥܕܢܐ ܡܫܘܚܬܢܝܬܐ {0}"}
+    }
+}

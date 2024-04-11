@@ -1,0 +1,466 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv{
+    ExemplarCharacters{"[aā {aa}{āā} b c dḍ eē g h iī j k lḷ m nñṅṇ oō p rṛ s tṭ uū v y]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
+                currencyFormat{"¤#,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+            }
+        }
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, MMMM d, y G",
+                "G d MMMM y",
+                "G d MMM y",
+                "G d/M/y",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'aa'~ {0}",
+                "{1} 'aa'~ {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                GyMMMEd{"G E, d MMM y"}
+                GyMMMd{"G d MMM y"}
+                GyMd{"GGGGG d/M/y"}
+                M{"M"}
+                MEd{"E, d/M"}
+                MMM{"MMM"}
+                MMMEd{"E, d MMM"}
+                MMMd{"d MMM"}
+                Md{"d/M"}
+                yyyyM{"GGGGG M/y"}
+                yyyyMEd{"G E, d/M/y"}
+                yyyyMMM{"G MMM y"}
+                yyyyMMMEd{"G E, d MMM y"}
+                yyyyMMMd{"G d MMM y"}
+                yyyyMd{"G d/M/y"}
+                yyyyQQQ{"QQQ G y"}
+                yyyyQQQQ{"QQQQ G y"}
+            }
+            intervalFormats{
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"d/M – d/M"}
+                    d{"d/M – d/M"}
+                }
+                y{
+                    y{"y–y G"}
+                }
+                yM{
+                    M{"M/y – M/y G"}
+                    y{"M/y – M/y G"}
+                }
+                yMEd{
+                    M{"E, d/M/y – E, d/M/y G"}
+                    d{"E, d/M/y – E, d/M/y G"}
+                    y{"E, d/M/y – E, d/M/y G"}
+                }
+                yMMM{
+                    M{"MMM–MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM y G"}
+                    d{"E, d MMM – E, d MMM y G"}
+                    y{"E, d MMM y – E, d MMM y G"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM y G"}
+                    y{"MMMM y – MMMM y G"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y G"}
+                    d{"d – d MMM y G"}
+                    y{"d MMM y – d MMM y G"}
+                }
+                yMd{
+                    M{"d/M/y – d/M/y G"}
+                    d{"d/M/y – d/M/y G"}
+                    y{"d/M/y – d/M/y G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "am",
+                "pm",
+            }
+            AmPmMarkersNarrow{
+                "a",
+                "p",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "d/M/yy",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'aã' {0}",
+                "{1} 'aã' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                Bh{"B h"}
+                Bhm{">B h:mm"}
+                Bhms{"B h:mm:ss"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                Ed{"E d"}
+                Ehm{"E h:mm a"}
+                Ehms{"E h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"MMM G y"}
+                GyMMMEd{"E, d MMM y G"}
+                GyMMMd{"d MMM y G"}
+                GyMd{"GGGGG d/M/y"}
+                MEd{"E, d/M"}
+                MMMEd{"E, d MMM"}
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"d/M"}
+                yM{"M/y"}
+                yMEd{"E, d/M/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d MMM y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "aadi",
+                        "smba",
+                        "manga",
+                        "puda",
+                        "laki",
+                        "sukru",
+                        "sani",
+                    }
+                    short{
+                        "aa",
+                        "s",
+                        "ma",
+                        "pu",
+                        "laki",
+                        "su",
+                        "sa",
+                    }
+                    wide{
+                        "aadi vara",
+                        "smbara",
+                        "mangaḍa",
+                        "pudara",
+                        "laki vara",
+                        "sukru vara",
+                        "sani vara",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "aa",
+                        "s",
+                        "ma",
+                        "pu",
+                        "la",
+                        "su",
+                        "sa",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    narrow{
+                        am{"a"}
+                        pm{"p"}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "bc",
+                    "ad",
+                }
+                abbreviated%variant{
+                    "bce",
+                    "ce",
+                }
+                wide{
+                    "krisṭ purb nki",
+                    "krisṭabd",
+                }
+                wide%variant{
+                    "neeti nki jug",
+                    "neeti jug",
+                }
+            }
+            intervalFormats{
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d–d MMM"}
+                }
+                Md{
+                    M{"d/M – d/M"}
+                    d{"d/M – d/M"}
+                }
+                yM{
+                    M{"M/y – M/y"}
+                    y{"M/y – M/y"}
+                }
+                yMEd{
+                    M{"E, d/M/y – E, d/M/y"}
+                    d{"E, d/M/y – E, d/M/y"}
+                    y{"E, d/M/y – E, d/M/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM y"}
+                    d{"E, d MMM – E, d MMM y"}
+                    y{"E, d MMM y – E, d MMM y"}
+                }
+                yMMMM{
+                    M{"MMMM – MMMM y"}
+                    y{"MMMM y – MMMM y"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM y"}
+                    d{"d–d MMM y"}
+                    y{"d MMM y – d MMM y"}
+                }
+                yMd{
+                    M{"d/M/y – d/M/y"}
+                    d{"d/M/y – d/M/y"}
+                    y{"d/M/y – d/M/y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "pusu",
+                        "maha",
+                        "pagu",
+                        "hire",
+                        "bese",
+                        "jaṭṭa",
+                        "aasaḍi",
+                        "srabĩ",
+                        "bado",
+                        "dasara",
+                        "divi",
+                        "pande",
+                    }
+                    wide{
+                        "pusu lenju",
+                        "maha lenju",
+                        "pagu lenju",
+                        "hire lenju",
+                        "bese lenju",
+                        "jaṭṭa lenju",
+                        "aasaḍi lenju",
+                        "srabĩ lenju",
+                        "bado lenju",
+                        "dasara lenju",
+                        "divi lenju",
+                        "pande lenju",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "pu",
+                        "ma",
+                        "pa",
+                        "hi",
+                        "be",
+                        "ja",
+                        "aa",
+                        "sra",
+                        "b",
+                        "da",
+                        "di",
+                        "pa",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                    wide{
+                        "1sṭ kuarṭr",
+                        "2nḍ kuarṭr",
+                        "3rḍ kuarṭr",
+                        "4th kuarṭr",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"dina"}
+            relative{
+                "-1"{"raaala"}
+                "0"{"inju"}
+                "1"{"vie"}
+            }
+        }
+        dayperiod{
+            dn{"am/pm"}
+        }
+        era{
+            dn{"jug"}
+        }
+        hour{
+            dn{"belā"}
+        }
+        hour-short{
+            dn{"be"}
+        }
+        minute{
+            dn{"miniṭ"}
+        }
+        minute-short{
+            dn{"min."}
+        }
+        month{
+            dn{"lenju"}
+        }
+        month-short{
+            dn{"le"}
+        }
+        quarter{
+            dn{"kuarṭer"}
+        }
+        second{
+            dn{"sekenḍ"}
+        }
+        second-short{
+            dn{"sek."}
+        }
+        week{
+            dn{"vara"}
+        }
+        week-short{
+            dn{"va"}
+        }
+        weekday{
+            dn{"vara ti dina"}
+        }
+        year{
+            dn{"barsa"}
+        }
+        year-short{
+            dn{"ba."}
+        }
+        zone{
+            dn{"belā muṭha"}
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} aaḍẽ {1}"}
+            end{"{0}, aadtẽ {1}"}
+        }
+        standard{
+            2{"{0} aḍe {1}"}
+            end{"{0}, aḍe {1}"}
+        }
+        unit{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"yuke"}
+        US{"yues"}
+        metric{"meṭric"}
+    }
+}

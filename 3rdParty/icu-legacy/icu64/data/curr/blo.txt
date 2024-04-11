@@ -1,0 +1,1436 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+blo{
+    Currencies{
+        AED{
+            "AED",
+            "Emiir baGanɔ gaɖɔŋkɔnɔ kaAlaaributǝna kaɖiram",
+        }
+        AFN{
+            "AFN",
+            "Afganistan kahafganii",
+        }
+        ALL{
+            "ALL",
+            "Albanii kalɛɛkɩ",
+        }
+        AMD{
+            "AMD",
+            "Armenii kaɖram",
+        }
+        ANG{
+            "ANG",
+            "Holanɖ kaKarayiib kafɔlɔrɛŋ",
+        }
+        AOA{
+            "AOA",
+            "Aŋgolaa kakʊwansa",
+        }
+        ARS{
+            "ARS",
+            "Arjantin kapɛsoo",
+        }
+        AUD{
+            "A$",
+            "Ɔstraliya kaɖala",
+        }
+        AWG{
+            "AWG",
+            "Arubaa kafɔlɔrɛŋ",
+        }
+        AZN{
+            "AZN",
+            "Asɛrbaɩjaŋ kamanaatɩ",
+        }
+        BAM{
+            "BAM",
+            "Bɔsniya na Hɛrsegɔfina kamarkɩ",
+        }
+        BBD{
+            "BBD",
+            "Barbaɖɔɔsɩ kaɖala",
+        }
+        BDT{
+            "BDT",
+            "Baŋglaɖɛɛshɩ kataka",
+        }
+        BGN{
+            "BGN",
+            "Bulgarii kalɛɛfʊ",
+        }
+        BHD{
+            "BHD",
+            "Barɛɛn kaɖinaa",
+        }
+        BIF{
+            "BIF",
+            "Burunɖii kafaraŋ",
+        }
+        BMD{
+            "BMD",
+            "Bɛrmuɖaa kaɖala",
+        }
+        BND{
+            "BND",
+            "Brunɛɩ kaɖala",
+        }
+        BOB{
+            "BOB",
+            "Bolifiya kabolifiyano",
+        }
+        BRL{
+            "R$",
+            "Bresil kareyal",
+        }
+        BSD{
+            "BSD",
+            "Bahamaasɩ kaɖala",
+        }
+        BTN{
+            "BTN",
+            "Butan kaŋgulturɔm",
+        }
+        BWP{
+            "BWP",
+            "Bɔsʊwanaa kapula",
+        }
+        BYN{
+            "BYN",
+            "Belaruus karubǝl",
+        }
+        BZD{
+            "BZD",
+            "Beliis kaɖala",
+        }
+        CAD{
+            "CA$",
+            "Kanaɖaa kaɖala",
+        }
+        CDF{
+            "CDF",
+            "Koŋgoo kafaraŋ",
+        }
+        CHF{
+            "CHF",
+            "Suwis kafaraŋ",
+        }
+        CLP{
+            "CLP",
+            "Shilii kapɛsoo",
+        }
+        CNH{
+            "CNH",
+            "Caɩna kayuwan ba sǝ̂ra afʊba ma",
+        }
+        CNY{
+            "CN¥",
+            "Caɩna kayuwan",
+        }
+        COP{
+            "COP",
+            "Kolɔmbii kapɛsoo",
+        }
+        CRC{
+            "CRC",
+            "Kɔsta Rikaa kakolɔn",
+        }
+        CUC{
+            "CUC",
+            "Kubaa kapɛsoo ba sǝ̂ra afʊba ma",
+        }
+        CUP{
+            "CUP",
+            "Kubaa kapɛsoo",
+        }
+        CVE{
+            "CVE",
+            "Kapfɛɛr kahɛskuɖoo",
+        }
+        CZK{
+            "CZK",
+            "Cɛk kakrona",
+        }
+        DJF{
+            "DJF",
+            "Jibutii kafaraŋ",
+        }
+        DKK{
+            "DKK",
+            "Ɖanǝmark kakrona",
+        }
+        DOP{
+            "DOP",
+            "Ɖominikaa kapɛsoo",
+        }
+        DZD{
+            "DZD",
+            "Aljerii kaɖinaa",
+        }
+        EGP{
+            "EGP",
+            "Ejipti kapɔŋ",
+        }
+        ERN{
+            "ERN",
+            "Eritree kanafka",
+        }
+        ETB{
+            "ETB",
+            "Etiyopii kabiir",
+        }
+        EUR{
+            "€",
+            "eroo",
+        }
+        FJD{
+            "FJD",
+            "Fiji kaɖala",
+        }
+        FKP{
+            "FKP",
+            "Fɔklanɖ kaBʊtukǝltǝna kapɔŋ",
+        }
+        GBP{
+            "£",
+            "Gagɛɛshɩtǝna kapɔŋ",
+        }
+        GEL{
+            "GEL",
+            "Jɔrjiya kalari",
+        }
+        GHS{
+            "GHS",
+            "Gana kasiɖi",
+        }
+        GIP{
+            "GIP",
+            "Gibraltaa kapɔŋ",
+        }
+        GMD{
+            "GMD",
+            "Gambii kaɖalaasi",
+        }
+        GNF{
+            "GNF",
+            "Ginee kafaraŋ",
+        }
+        GTQ{
+            "GTQ",
+            "Guwatemalaa kakesaal",
+        }
+        GYD{
+            "GYD",
+            "Guyanaa kaɖala",
+        }
+        HKD{
+            "HK$",
+            "Hɔŋ Kɔŋ kaɖala",
+        }
+        HNL{
+            "HNL",
+            "Hɔnɖuraasɩ kalampira",
+        }
+        HRK{
+            "HRK",
+            "Krowasii kakuna",
+        }
+        HTG{
+            "HTG",
+            "Hayitii kaguurɖi",
+        }
+        HUF{
+            "HUF",
+            "Ɔŋgrii kafɔrɩntɩ",
+        }
+        IDR{
+            "IDR",
+            "Ɛnɖonosii karupiyaa",
+        }
+        ILS{
+            "₪",
+            "Yishraɛl kashekɛl afɔlɩ",
+        }
+        INR{
+            "₹",
+            "Inɖiya karupii",
+        }
+        IQD{
+            "IQD",
+            "Ɩraakɩ kaɖinaa",
+        }
+        IRR{
+            "IRR",
+            "Iraŋ kariyal",
+        }
+        ISK{
+            "ISK",
+            "Islanɖ kakrona",
+        }
+        JMD{
+            "JMD",
+            "Jamaɩka kaɖala",
+        }
+        JOD{
+            "JOD",
+            "Jɔrɖanii kaɖinaa",
+        }
+        JPY{
+            "JP¥",
+            "Japaŋ kayɛn",
+        }
+        KES{
+            "KES",
+            "Keniya kashílè",
+        }
+        KGS{
+            "KGS",
+            "Kirgistan kasɔm",
+        }
+        KHR{
+            "KHR",
+            "Kamboɖiya kariyɛl",
+        }
+        KMF{
+            "KMF",
+            "Komɔɔr kafaraŋ",
+        }
+        KPW{
+            "KPW",
+            "Koree gʊnyɩpɛnɛlaŋ kawɔn",
+        }
+        KRW{
+            "₩",
+            "Koree gʊnyɩsonolaŋ kawɔn",
+        }
+        KWD{
+            "KWD",
+            "Koweeti kaɖinaa",
+        }
+        KYD{
+            "KYD",
+            "Kayimaan kaBʊtukǝltǝna kaɖala",
+        }
+        KZT{
+            "KZT",
+            "Kasastan katɛŋgɛ",
+        }
+        LAK{
+            "LAK",
+            "Lawɔs kakip",
+        }
+        LBP{
+            "LBP",
+            "Liibaaŋ kapɔŋ",
+        }
+        LKR{
+            "LKR",
+            "Siri Laŋkaa karupii",
+        }
+        LRD{
+            "LRD",
+            "Liberiya kaɖala",
+        }
+        LSL{
+            "LSL",
+            "Lesotoo kaloti",
+        }
+        LYD{
+            "LYD",
+            "Libii kaɖinaa",
+        }
+        MAD{
+            "MAD",
+            "Morooko kaɖiram",
+        }
+        MDL{
+            "MDL",
+            "Molɖafiya kalewu",
+        }
+        MGA{
+            "MGA",
+            "Maɖagaskaa kaharɩyaarɩ",
+        }
+        MKD{
+            "MKD",
+            "Maseɖoniya kaɖenaa",
+        }
+        MMK{
+            "MMK",
+            "Miyanmaa kakiyaatɩ",
+        }
+        MNT{
+            "MNT",
+            "Mɔŋgolii katugiriiki",
+        }
+        MOP{
+            "MOP",
+            "Makawoo kapataka",
+        }
+        MRU{
+            "MRU",
+            "Moritanii kahugiya",
+        }
+        MUR{
+            "MUR",
+            "Imoris karupii",
+        }
+        MVR{
+            "MVR",
+            "Malɖiifu karufiyaa",
+        }
+        MWK{
+            "MWK",
+            "Malawii kakʊwaasha",
+        }
+        MXN{
+            "MX$",
+            "Mɛsik kapɛsoo",
+        }
+        MYR{
+            "MYR",
+            "Malɛsii kariŋgiiti",
+        }
+        MZN{
+            "MZN",
+            "Mosambii kametikal",
+        }
+        NAD{
+            "NAD",
+            "Namibii kaɖala",
+        }
+        NGN{
+            "NGN",
+            "Nanjiiriya kanɛɛra",
+        }
+        NIO{
+            "NIO",
+            "Nikaraguwaa kakɔrɖoba",
+        }
+        NOK{
+            "NOK",
+            "Nɔrfɛsh kakrona",
+        }
+        NPR{
+            "NPR",
+            "Neepal karupii",
+        }
+        NZD{
+            "NZ$",
+            "Selanɖ afɔlɩ kaɖala",
+        }
+        OMR{
+            "OMR",
+            "Oman kariyal",
+        }
+        PAB{
+            "PAB",
+            "Panamaa kabalbowa",
+        }
+        PEN{
+            "PEN",
+            "Peruu kasol",
+        }
+        PGK{
+            "PGK",
+            "Papuasii Ginee afɔlɩ kakina",
+        }
+        PHP{
+            "₱",
+            "Filipiin kapɛsoo",
+        }
+        PKR{
+            "PKR",
+            "Pakistan karupii",
+        }
+        PLN{
+            "PLN",
+            "Polanɖ kasǝlɔɔtɩ",
+        }
+        PYG{
+            "PYG",
+            "Paraguwee kaguwarani",
+        }
+        QAR{
+            "QAR",
+            "Kataa kariyal",
+        }
+        RON{
+            "RON",
+            "Romanii kalewu",
+        }
+        RSD{
+            "RSD",
+            "Sɛrbii kaɖinaa",
+        }
+        RUB{
+            "RUB",
+            "Rɔɔshɩya karubǝl",
+        }
+        RWF{
+            "RWF",
+            "Rʊwanɖaa kafaraŋ",
+        }
+        SAR{
+            "SAR",
+            "Sauɖiya kariyal",
+        }
+        SBD{
+            "SBD",
+            "Salomɔɔn kaBʊtukǝltǝna kaɖala",
+        }
+        SCR{
+            "SCR",
+            "Seshɛl karupii",
+        }
+        SDG{
+            "SDG",
+            "Suɖaŋ kapɔŋ",
+        }
+        SEK{
+            "SEK",
+            "Sʊwɛɖ kakrona",
+        }
+        SGD{
+            "SGD",
+            "Siŋgapuur kaɖala",
+        }
+        SHP{
+            "SHP",
+            "Sɛŋ Elenaa kapɔŋ",
+        }
+        SLE{
+            "SLE",
+            "Seraleyɔn kaleyɔn",
+        }
+        SLL{
+            "SLL",
+            "Seraleyɔn kaleyɔn (1964—2022)",
+        }
+        SOS{
+            "SOS",
+            "Somalii kashílè",
+        }
+        SRD{
+            "SRD",
+            "Surinam kaɖala",
+        }
+        SSP{
+            "SSP",
+            "Suɖaŋ gʊnyɩsonolaŋ kapɔŋ",
+        }
+        STN{
+            "STN",
+            "Saotomee kaɖobra",
+        }
+        SYP{
+            "SYP",
+            "Sirii kapɔŋ",
+        }
+        SZL{
+            "SZL",
+            "Sʊwasilanɖ kalilaŋgenii",
+        }
+        THB{
+            "THB",
+            "Taɩlanɖ kabaatɩ",
+        }
+        TJS{
+            "TJS",
+            "Tajikistan kasomooni",
+        }
+        TMT{
+            "TMT",
+            "Turkmenistan kamanaatɩ",
+        }
+        TND{
+            "TND",
+            "Tunisii kaɖinaa",
+        }
+        TOP{
+            "TOP",
+            "Tɔŋga kapaŋga",
+        }
+        TRY{
+            "TRY",
+            "Turkii kalira",
+        }
+        TTD{
+            "TTD",
+            "Triniɖaaɖ na Tobagoo kaɖala",
+        }
+        TWD{
+            "NT$",
+            "Taɩwan kaɖala afɔlɩ",
+        }
+        TZS{
+            "TZS",
+            "Taŋsanii kashílè",
+        }
+        UAH{
+            "UAH",
+            "Ikrɛɛn karifniya",
+        }
+        UGX{
+            "UGX",
+            "Uganɖaa kashílè",
+        }
+        USD{
+            "US$",
+            "Amalɩka kaɖala",
+        }
+        UYU{
+            "UYU",
+            "Uruguwee kapɛsoo",
+        }
+        UZS{
+            "UZS",
+            "Usbeekistan kasɔm",
+        }
+        VES{
+            "VES",
+            "Fenesuwelaa kabolifar",
+        }
+        VND{
+            "₫",
+            "Fɛtnam kaɖɔŋgɩ",
+        }
+        VUV{
+            "VUV",
+            "Fanuwatu kafatu",
+        }
+        WST{
+            "WST",
+            "Samowa katala",
+        }
+        XAF{
+            "FCFA",
+            "Garɩɖontǝna gɩcɩɩca kasɛɛfa",
+        }
+        XCD{
+            "EC$",
+            "Karayiib gajakalaŋ kaɖala",
+        }
+        XOF{
+            "F CFA",
+            "Garɩɖontǝna gɩteŋshilelaŋ kasɛɛfa",
+        }
+        XPF{
+            "CFPF",
+            "Polinesiya Gafɔntǝna kaja kafaraŋ",
+        }
+        XXX{
+            "¤",
+            "gɩtanɩɩ kʊyɔʊ ʊ mana ma",
+        }
+        YER{
+            "YER",
+            "Yemɛn kariyal",
+        }
+        ZAR{
+            "ZAR",
+            "Sautafrika karanɖɩ",
+        }
+        ZMW{
+            "ZMW",
+            "Sambii kakʊwaasha",
+        }
+    }
+    CurrencyPlurals{
+        AED{
+            one{"Emiir baGanɔ gaɖɔŋkɔnɔ kaAlaaributǝna kaɖiram"}
+            other{"Emiir baGanɔ gaɖɔŋkɔnɔ kaAlaaributǝna kɩɖiram"}
+            zero{"baa Emiir baGanɔ gaɖɔŋkɔnɔ kaAlaaributǝna kaɖiram"}
+        }
+        AFN{
+            one{"Afganistan kahafganii"}
+            other{"Afganistan kɩhafganii"}
+            zero{"baa Afganistan kahafganii"}
+        }
+        ALL{
+            one{"Albanii kalɛɛkɩ"}
+            other{"Albanii kɩlɛɛkɩ"}
+            zero{"baa Albanii kalɛɛkɩ"}
+        }
+        AMD{
+            one{"Armenii kaɖram"}
+            other{"Armenii kɩɖram"}
+            zero{"baa Armenii kaɖram"}
+        }
+        ANG{
+            one{"Holanɖ kaKarayiib kafɔlɔrɛŋ"}
+            other{"Holanɖ kaKarayiib kɩfɔlɔrɛŋ"}
+            zero{"baa Holanɖ kaKarayiib kafɔlɔrɛŋ"}
+        }
+        AOA{
+            one{"Aŋgolaa kakʊwansa"}
+            other{"Aŋgolaa kɩkʊwansa"}
+            zero{"baa Aŋgolaa kakʊwansa"}
+        }
+        ARS{
+            one{"Arjantin kapɛsoo"}
+            other{"Arjantin kɩpɛsoo"}
+            zero{"baa Arjantin kapɛsoo"}
+        }
+        AUD{
+            one{"Ɔstraliya kaɖala"}
+            other{"Ɔstraliya kɩɖala"}
+            zero{"baa Ɔstraliya kaɖala"}
+        }
+        AWG{
+            one{"Arubaa kafɔlɔrɛŋ"}
+            other{"Arubaa kɩfɔlɔrɛŋ"}
+            zero{"baa Arubaa kafɔlɔrɛŋ"}
+        }
+        AZN{
+            one{"Asɛrbaɩjaŋ kamanaatɩ"}
+            other{"Asɛrbaɩjaŋ kɩmanaatɩ"}
+            zero{"baa Asɛrbaɩjaŋ kamanaatɩ"}
+        }
+        BAM{
+            one{"Bɔsniya na Hɛrsegɔfina kamarkɩ"}
+            other{"Bɔsniya na Hɛrsegɔfina kɩmarkɩ"}
+            zero{"baa Bɔsniya na Hɛrsegɔfina kamarkɩ"}
+        }
+        BBD{
+            one{"Barbaɖɔɔsɩ kaɖala"}
+            other{"Barbaɖɔɔsɩ kɩɖala"}
+            zero{"baa Barbaɖɔɔsɩ kaɖala"}
+        }
+        BDT{
+            one{"Baŋglaɖɛɛshɩ kataka"}
+            other{"Baŋglaɖɛɛshɩ kɩtaka"}
+            zero{"baa Baŋglaɖɛɛshɩ kataka"}
+        }
+        BGN{
+            one{"Bulgarii kalɛɛfʊ"}
+            other{"Bulgarii kɩlɛɛfʊ"}
+            zero{"baa Bulgarii kalɛɛfʊ"}
+        }
+        BHD{
+            one{"Barɛɛn kaɖinaa"}
+            other{"Barɛɛn kɩɖinaa"}
+            zero{"baa Barɛɛn kaɖinaa"}
+        }
+        BIF{
+            one{"Burunɖii kafaraŋ"}
+            other{"Burunɖii kɩfaraŋ"}
+            zero{"baa Burunɖii kafaraŋ"}
+        }
+        BMD{
+            one{"Bɛrmuɖaa kaɖala"}
+            other{"Bɛrmuɖaa kɩɖala"}
+            zero{"baa Bɛrmuɖaa kaɖala"}
+        }
+        BND{
+            one{"Brunɛɩ kaɖala"}
+            other{"Brunɛɩ kɩɖala"}
+            zero{"baa Brunɛɩ kaɖala"}
+        }
+        BOB{
+            one{"Bolifiya kabolifiyano"}
+            other{"Bolifiya kɩbolifiyano"}
+            zero{"baa Bolifiya kabolifiyano"}
+        }
+        BRL{
+            one{"Bresil kareyal"}
+            other{"Bresil kɩreyal"}
+            zero{"baa Bresil kareyal"}
+        }
+        BSD{
+            one{"Bahamaasɩ kaɖala"}
+            other{"Bahamaasɩ kɩɖala"}
+            zero{"baa Bahamaasɩ kaɖala"}
+        }
+        BTN{
+            one{"Butan kaŋgulturɔm"}
+            other{"Butan kɩŋgulturɔm"}
+            zero{"baa Butan kaŋgulturɔm"}
+        }
+        BWP{
+            one{"Bɔsʊwanaa kapula"}
+            other{"Bɔsʊwanaa kɩpula"}
+            zero{"baa Bɔsʊwanaa kapula"}
+        }
+        BYN{
+            one{"Belaruus karubǝl"}
+            other{"Belaruus kɩrubǝl"}
+            zero{"baa Belaruus karubǝl"}
+        }
+        BZD{
+            one{"Beliis kaɖala"}
+            other{"Beliis kɩɖala"}
+            zero{"baa Beliis kaɖala"}
+        }
+        CAD{
+            one{"Kanaɖaa kaɖala"}
+            other{"Kanaɖaa kɩɖala"}
+            zero{"baa Kanaɖaa kaɖala"}
+        }
+        CDF{
+            one{"Koŋgoo kafaraŋ"}
+            other{"Koŋgoo kɩfaraŋ"}
+            zero{"baa Koŋgoo kafaraŋ"}
+        }
+        CHF{
+            one{"Suwis kafaraŋ"}
+            other{"Suwis kɩfaraŋ"}
+            zero{"baa Suwis kafaraŋ"}
+        }
+        CLP{
+            one{"Shilii kapɛsoo"}
+            other{"Shilii kɩpɛsoo"}
+            zero{"baa Shilii kapɛsoo"}
+        }
+        CNH{
+            one{"Caɩna kayuwan ba sǝ̂ra afʊba ma"}
+            other{"Caɩna kɩyuwan ba sǝ̂ra afʊba ma"}
+            zero{"baa Caɩna kayuwan ba sǝ̂ra afʊba ma"}
+        }
+        CNY{
+            one{"Caɩna kayuwan"}
+            other{"Caɩna kɩyuwan"}
+            zero{"baa Caɩna kayuwan"}
+        }
+        COP{
+            one{"Kolɔmbii kapɛsoo"}
+            other{"Kolɔmbii kɩpɛsoo"}
+            zero{"baa Kolɔmbii kapɛsoo"}
+        }
+        CRC{
+            one{"Kɔsta Rikaa kakolɔn"}
+            other{"Kɔsta Rikaa kɩkolɔn"}
+            zero{"baa Kɔsta Rikaa kakolɔn"}
+        }
+        CUC{
+            one{"Kubaa kapɛsoo ba sǝ̂ra afʊba ma"}
+            other{"Kubaa kɩpɛsoo ba sǝ̂ra afʊba ma"}
+            zero{"baa Kubaa kapɛsoo ba sǝ̂ra afʊba ma"}
+        }
+        CUP{
+            one{"Kubaa kapɛsoo"}
+            other{"Kubaa kɩpɛsoo"}
+            zero{"baa Kubaa kapɛsoo"}
+        }
+        CVE{
+            one{"Kapfɛɛr kahɛskuɖoo"}
+            other{"Kapfɛɛr kɩhɛskuɖoo"}
+            zero{"baa Kapfɛɛr kahɛskuɖoo"}
+        }
+        CZK{
+            one{"Cɛk kakrona"}
+            other{"Cɛk kɩkrona"}
+            zero{"baa Cɛk kakrona"}
+        }
+        DJF{
+            one{"Jibutii kafaraŋ"}
+            other{"Jibutii kɩfaraŋ"}
+            zero{"baa Jibutii kafaraŋ"}
+        }
+        DKK{
+            one{"Ɖanǝmark kakrona"}
+            other{"Ɖanǝmark kɩkrona"}
+            zero{"baa Ɖanǝmark kakrona"}
+        }
+        DOP{
+            one{"Ɖominikaa kapɛsoo"}
+            other{"Ɖominikaa kɩpɛsoo"}
+            zero{"baa Ɖominikaa kapɛsoo"}
+        }
+        DZD{
+            one{"Aljerii kaɖinaa"}
+            other{"Aljerii kɩɖinaa"}
+            zero{"baa Aljerii kaɖinaa"}
+        }
+        EGP{
+            one{"Ejipti kapɔŋ"}
+            other{"Ejipti kɩpɔŋ"}
+            zero{"baa Ejipti kapɔŋ"}
+        }
+        ERN{
+            one{"Eritree kanafka"}
+            other{"Eritree kɩnafka"}
+            zero{"baa Eritree kanafka"}
+        }
+        ETB{
+            one{"Etiyopii kabiir"}
+            other{"Etiyopii kɩbiir"}
+            zero{"baa Etiyopii kabiir"}
+        }
+        EUR{
+            one{"eroo"}
+            other{"eroo mána"}
+            zero{"baa eroo"}
+        }
+        FJD{
+            one{"Fiji kaɖala"}
+            other{"Fiji kɩɖala"}
+            zero{"baa Fiji kaɖala"}
+        }
+        FKP{
+            one{"Fɔklanɖ kaBʊtukǝltǝna kapɔŋ"}
+            other{"Fɔklanɖ kaBʊtukǝltǝna kɩpɔŋ"}
+            zero{"baa Fɔklanɖ kaBʊtukǝltǝna kapɔŋ"}
+        }
+        GBP{
+            one{"Gagɛɛshɩtǝna kapɔŋ"}
+            other{"Gagɛɛshɩtǝna kɩpɔŋ"}
+            zero{"baa Gagɛɛshɩtǝna kapɔŋ"}
+        }
+        GEL{
+            one{"Jɔrjiya kalari"}
+            other{"Jɔrjiya kɩlari"}
+            zero{"baa Jɔrjiya kalari"}
+        }
+        GHS{
+            one{"Gana kasiɖi"}
+            other{"Gana kɩsiɖi"}
+            zero{"baa Gana kasiɖi"}
+        }
+        GIP{
+            one{"Gibraltaa kapɔŋ"}
+            other{"Gibraltaa kɩpɔŋ"}
+            zero{"baa Gibraltaa kapɔŋ"}
+        }
+        GMD{
+            one{"Gambii kaɖalaasi"}
+            other{"Gambii kɩɖalaasi"}
+            zero{"baa Gambii kaɖalaasi"}
+        }
+        GNF{
+            one{"Ginee kafaraŋ"}
+            other{"Ginee kɩfaraŋ"}
+            zero{"baa Ginee kafaraŋ"}
+        }
+        GTQ{
+            one{"Guwatemalaa kakesaal"}
+            other{"Guwatemalaa kɩkesaal"}
+            zero{"baa Guwatemalaa kakesaal"}
+        }
+        GYD{
+            one{"Guyanaa kaɖala"}
+            other{"Guyanaa kɩɖala"}
+            zero{"baa Guyanaa kaɖala"}
+        }
+        HKD{
+            one{"Hɔŋ Kɔŋ kaɖala"}
+            other{"Hɔŋ Kɔŋ kɩɖala"}
+            zero{"baa Hɔŋ Kɔŋ kaɖala"}
+        }
+        HNL{
+            one{"Hɔnɖuraasɩ kalampira"}
+            other{"Hɔnɖuraasɩ kɩlampira"}
+            zero{"baa Hɔnɖuraasɩ kalampira"}
+        }
+        HRK{
+            one{"Krowasii kakuna"}
+            other{"Krowasii kɩkuna"}
+            zero{"baa Krowasii kakuna"}
+        }
+        HTG{
+            one{"Hayitii kaguurɖi"}
+            other{"Hayitii kɩguurɖi"}
+            zero{"baa Hayitii kaguurɖi"}
+        }
+        HUF{
+            one{"Ɔŋgrii kafɔrɩntɩ"}
+            other{"Ɔŋgrii kɩfɔrɩntɩ"}
+            zero{"baa Ɔŋgrii kafɔrɩntɩ"}
+        }
+        IDR{
+            one{"Ɛnɖonosii karupiyaa"}
+            other{"Ɛnɖonosii kɩrupiyaa"}
+            zero{"baa Ɛnɖonosii karupiyaa"}
+        }
+        ILS{
+            one{"Yishraɛl kashekɛl afɔlɩ"}
+            other{"Yishraɛl kɩshekɛl bafɔlɩ"}
+            zero{"baa Yishraɛl kashekɛl afɔlɩ"}
+        }
+        INR{
+            one{"Inɖiya karupii"}
+            other{"Inɖiya kɩrupii"}
+            zero{"baa Inɖiya karupii"}
+        }
+        IQD{
+            one{"Ɩraakɩ kaɖinaa"}
+            other{"Ɩraakɩ kɩɖinaa"}
+            zero{"baa Ɩraakɩ kaɖinaa"}
+        }
+        IRR{
+            one{"Iraŋ kariyal"}
+            other{"Iraŋ kɩriyal"}
+            zero{"baa Iraŋ kariyal"}
+        }
+        ISK{
+            one{"Islanɖ kakrona"}
+            other{"Islanɖ kɩkrona"}
+            zero{"baa Islanɖ kakrona"}
+        }
+        JMD{
+            one{"Jamaɩka kaɖala"}
+            other{"Jamaɩka kɩɖala"}
+            zero{"baa Jamaɩka kaɖala"}
+        }
+        JOD{
+            one{"Jɔrɖanii kaɖinaa"}
+            other{"Jɔrɖanii kɩɖinaa"}
+            zero{"baa Jɔrɖanii kaɖinaa"}
+        }
+        JPY{
+            one{"Japaŋ kayɛn"}
+            other{"Japaŋ kɩyɛn"}
+            zero{"baa Japaŋ kayɛn"}
+        }
+        KES{
+            one{"Keniya kashílè"}
+            other{"Keniya kɩshílè"}
+            zero{"baa Keniya kashílè"}
+        }
+        KGS{
+            one{"Kirgistan kasɔm"}
+            other{"Kirgistan kɩsɔm"}
+            zero{"baa Kirgistan kasɔm"}
+        }
+        KHR{
+            one{"Kamboɖiya kariyɛl"}
+            other{"Kamboɖiya kɩriyɛl"}
+            zero{"baa Kamboɖiya kariyɛl"}
+        }
+        KMF{
+            one{"Komɔɔr kafaraŋ"}
+            other{"Komɔɔr kɩfaraŋ"}
+            zero{"baa Komɔɔr kafaraŋ"}
+        }
+        KPW{
+            one{"Koree gʊnyɩpɛnɛlaŋ kawɔn"}
+            other{"Koree gʊnyɩpɛnɛlaŋ kɩwɔn"}
+            zero{"baa Koree gʊnyɩpɛnɛlaŋ kawɔn"}
+        }
+        KRW{
+            one{"Koree gʊnyɩsonolaŋ kawɔn"}
+            other{"Koree gʊnyɩsonolaŋ kɩwɔn"}
+            zero{"baa Koree gʊnyɩsonolaŋ kawɔn"}
+        }
+        KWD{
+            one{"Koweeti kaɖinaa"}
+            other{"Koweeti kɩɖinaa"}
+            zero{"baa Koweeti kaɖinaa"}
+        }
+        KYD{
+            one{"Kayimaan kaBʊtukǝltǝna kaɖala"}
+            other{"Kayimaan kaBʊtukǝltǝna kɩɖala"}
+            zero{"baa Kayimaan kaBʊtukǝltǝna kaɖala"}
+        }
+        KZT{
+            one{"Kasastan katɛŋgɛ"}
+            other{"Kasastan kɩtɛŋgɛ"}
+            zero{"baa Kasastan katɛŋgɛ"}
+        }
+        LAK{
+            one{"Lawɔs kakip"}
+            other{"Lawɔs kɩkip"}
+            zero{"baa Lawɔs kakip"}
+        }
+        LBP{
+            one{"Liibaaŋ kapɔŋ"}
+            other{"Liibaaŋ kɩpɔŋ"}
+            zero{"baa Liibaaŋ kapɔŋ"}
+        }
+        LKR{
+            one{"Siri Laŋkaa karupii"}
+            other{"Siri Laŋkaa kɩrupii"}
+            zero{"baa Siri Laŋkaa karupii"}
+        }
+        LRD{
+            one{"Liberiya kaɖala"}
+            other{"Liberiya kɩɖala"}
+            zero{"baa Liberiya kaɖala"}
+        }
+        LSL{
+            one{"Lesotoo kaloti"}
+            other{"Lesotoo kɩloti"}
+            zero{"baa Lesotoo kaloti"}
+        }
+        LYD{
+            one{"Libii kaɖinaa"}
+            other{"Libii kɩɖinaa"}
+            zero{"baa Libii kaɖinaa"}
+        }
+        MAD{
+            one{"Morooko kaɖiram"}
+            other{"Morooko kɩɖiram"}
+            zero{"baa Morooko kaɖiram"}
+        }
+        MDL{
+            one{"Molɖafiya kalewu"}
+            other{"Molɖafiya kɩlewu"}
+            zero{"baa Molɖafiya kalewu"}
+        }
+        MGA{
+            one{"Maɖagaskaa kaharɩyaarɩ"}
+            other{"Maɖagaskaa kɩharɩyaarɩ"}
+            zero{"baa Maɖagaskaa kaharɩyaarɩ"}
+        }
+        MKD{
+            one{"Maseɖoniya kaɖenaa"}
+            other{"Maseɖoniya kɩɖenaa"}
+            zero{"baa Maseɖoniya kaɖenaa"}
+        }
+        MMK{
+            one{"Miyanmaa kakiyaatɩ"}
+            other{"Miyanmaa kɩkiyaatɩ"}
+            zero{"baa Miyanmaa kakiyaatɩ"}
+        }
+        MNT{
+            one{"Mɔŋgolii katugiriiki"}
+            other{"Mɔŋgolii kɩtugiriiki"}
+            zero{"baa Mɔŋgolii katugiriiki"}
+        }
+        MOP{
+            one{"Makawoo kapataka"}
+            other{"Makawoo kɩpataka"}
+            zero{"baa Makawoo kapataka"}
+        }
+        MRU{
+            one{"Moritanii kahugiya"}
+            other{"Moritanii kɩhugiya"}
+            zero{"baa Moritanii kahugiya"}
+        }
+        MUR{
+            one{"Imoris karupii"}
+            other{"Imoris kɩrupii"}
+            zero{"baa Imoris karupii"}
+        }
+        MVR{
+            one{"Malɖiifu karufiyaa"}
+            other{"Malɖiifu kɩrufiyaa"}
+            zero{"baa Malɖiifu karufiyaa"}
+        }
+        MWK{
+            one{"Malawii kakʊwaasha"}
+            other{"Malawii kɩkʊwaasha"}
+            zero{"baa Malawii kakʊwaasha"}
+        }
+        MXN{
+            one{"Mɛsik kapɛsoo"}
+            other{"Mɛsik kɩpɛsoo"}
+            zero{"baa Mɛsik kapɛsoo"}
+        }
+        MYR{
+            one{"Malɛsii kariŋgiiti"}
+            other{"Malɛsii kɩriŋgiiti"}
+            zero{"baa Malɛsii kariŋgiiti"}
+        }
+        MZN{
+            one{"Mosambii kametikal"}
+            other{"Mosambii kɩmetikal"}
+            zero{"baa Mosambii kametikal"}
+        }
+        NAD{
+            one{"Namibii kaɖala"}
+            other{"Namibii kɩɖala"}
+            zero{"baa Namibii kaɖala"}
+        }
+        NGN{
+            one{"Nanjiiriya kanɛɛra"}
+            other{"Nanjiiriya kɩnɛɛra"}
+            zero{"baa Nanjiiriya kanɛɛra"}
+        }
+        NIO{
+            one{"Nikaraguwaa kakɔrɖoba"}
+            other{"Nikaraguwaa kɩkɔrɖoba"}
+            zero{"baa Nikaraguwaa kakɔrɖoba"}
+        }
+        NOK{
+            one{"Nɔrfɛsh kakrona"}
+            other{"Nɔrfɛsh kɩkrona"}
+            zero{"baa Nɔrfɛsh kakrona"}
+        }
+        NPR{
+            one{"Neepal karupii"}
+            other{"Neepal kɩrupii"}
+            zero{"baa Neepal karupii"}
+        }
+        NZD{
+            one{"Selanɖ afɔlɩ kaɖala"}
+            other{"Selanɖ afɔlɩ kɩɖala"}
+            zero{"baa Selanɖ afɔlɩ kaɖala"}
+        }
+        OMR{
+            one{"Oman kariyal"}
+            other{"Oman kɩriyal"}
+            zero{"baa Oman kariyal"}
+        }
+        PAB{
+            one{"Panamaa kabalbowa"}
+            other{"Panamaa kɩbalbowa"}
+            zero{"baa Panamaa kabalbowa"}
+        }
+        PEN{
+            one{"Peruu kasol"}
+            other{"Peruu kɩsol"}
+            zero{"baa Peruu kasol"}
+        }
+        PGK{
+            one{"Papuasii Ginee afɔlɩ kakina"}
+            other{"Papuasii Ginee afɔlɩ kɩkina"}
+            zero{"baa Papuasii Ginee afɔlɩ kakina"}
+        }
+        PHP{
+            one{"Filipiin kapɛsoo"}
+            other{"Filipiin kɩpɛsoo"}
+            zero{"baa Filipiin kapɛsoo"}
+        }
+        PKR{
+            one{"Pakistan karupii"}
+            other{"Pakistan kɩrupii"}
+            zero{"baa Pakistan karupii"}
+        }
+        PLN{
+            one{"Polanɖ kasǝlɔɔtɩ"}
+            other{"Polanɖ kɩsǝlɔɔtɩ"}
+            zero{"baa Polanɖ kasǝlɔɔtɩ"}
+        }
+        PYG{
+            one{"Paraguwee kaguwarani"}
+            other{"Paraguwee kɩguwarani"}
+            zero{"baa Paraguwee kaguwarani"}
+        }
+        QAR{
+            one{"Kataa kariyal"}
+            other{"Kataa kɩriyal"}
+            zero{"baa Kataa kariyal"}
+        }
+        RON{
+            one{"Romanii kalewu"}
+            other{"Romanii kɩlewu"}
+            zero{"baa Romanii kalewu"}
+        }
+        RSD{
+            one{"Sɛrbii kaɖinaa"}
+            other{"Sɛrbii kɩɖinaa"}
+            zero{"baa Sɛrbii kaɖinaa"}
+        }
+        RUB{
+            one{"Rɔɔshɩya karubǝl"}
+            other{"Rɔɔshɩya kɩrubǝl"}
+            zero{"baa Rɔɔshɩya karubǝl"}
+        }
+        RWF{
+            one{"Rʊwanɖaa kafaraŋ"}
+            other{"Rʊwanɖaa kɩfaraŋ"}
+            zero{"baa Rʊwanɖaa kafaraŋ"}
+        }
+        SAR{
+            one{"Sauɖiya kariyal"}
+            other{"Sauɖiya kɩriyal"}
+            zero{"baa Sauɖiya kariyal"}
+        }
+        SBD{
+            one{"Salomɔɔn kaBʊtukǝltǝna kaɖala"}
+            other{"Salomɔɔn kaBʊtukǝltǝna kɩɖala"}
+            zero{"baa Salomɔɔn kaBʊtukǝltǝna kaɖala"}
+        }
+        SCR{
+            one{"Seshɛl karupii"}
+            other{"Seshɛl kɩrupii"}
+            zero{"baa Seshɛl karupii"}
+        }
+        SDG{
+            one{"Suɖaŋ kapɔŋ"}
+            other{"Suɖaŋ kɩpɔŋ"}
+            zero{"baa Suɖaŋ kapɔŋ"}
+        }
+        SEK{
+            one{"Sʊwɛɖ kakrona"}
+            other{"Sʊwɛɖ kɩkrona"}
+            zero{"baa Sʊwɛɖ kakrona"}
+        }
+        SGD{
+            one{"Siŋgapuur kaɖala"}
+            other{"Siŋgapuur kɩɖala"}
+            zero{"baa Siŋgapuur kaɖala"}
+        }
+        SHP{
+            one{"Sɛŋ Elenaa kapɔŋ"}
+            other{"Sɛŋ Elenaa kɩpɔŋ"}
+            zero{"baa Sɛŋ Elenaa kapɔŋ"}
+        }
+        SLE{
+            one{"Seraleyɔn kaleyɔn"}
+            other{"Seraleyɔn kɩleyɔn"}
+            zero{"baa Seraleyɔn kaleyɔn"}
+        }
+        SLL{
+            one{"Seraleyɔn kaleyɔn (1964—2022)"}
+            other{"Seraleyɔn kɩleyɔn (1964—2022)"}
+            zero{"baa Seraleyɔn kaleyɔn (1964—2022)"}
+        }
+        SOS{
+            one{"Somalii kashílè"}
+            other{"Somalii kɩshílè"}
+            zero{"baa Somalii kashílè"}
+        }
+        SRD{
+            one{"Surinam kaɖala"}
+            other{"Surinam kɩɖala"}
+            zero{"baa Surinam kaɖala"}
+        }
+        SSP{
+            one{"Suɖaŋ gʊnyɩsonolaŋ kapɔŋ"}
+            other{"Suɖaŋ gʊnyɩsonolaŋ kɩpɔŋ"}
+            zero{"baa Suɖaŋ gʊnyɩsonolaŋ kapɔŋ"}
+        }
+        STN{
+            one{"Saotomee kaɖobra"}
+            other{"Saotomee kɩɖobra"}
+            zero{"baa Saotomee kaɖobra"}
+        }
+        SYP{
+            one{"Sirii kapɔŋ"}
+            other{"Sirii kɩpɔŋ"}
+            zero{"baa Sirii kapɔŋ"}
+        }
+        SZL{
+            one{"Sʊwasilanɖ kalilaŋgenii"}
+            other{"Sʊwasilanɖ kɩlilaŋgenii"}
+            zero{"baa Sʊwasilanɖ kalilaŋgenii"}
+        }
+        THB{
+            one{"Taɩlanɖ kabaatɩ"}
+            other{"Taɩlanɖ kɩbaatɩ"}
+            zero{"baa Taɩlanɖ kabaatɩ"}
+        }
+        TJS{
+            one{"Tajikistan kasomooni"}
+            other{"Tajikistan kɩsomooni"}
+            zero{"baa Tajikistan kasomooni"}
+        }
+        TMT{
+            one{"Turkmenistan kamanaatɩ"}
+            other{"Turkmenistan kɩmanaatɩ"}
+            zero{"baa Turkmenistan kamanaatɩ"}
+        }
+        TND{
+            one{"Tunisii kaɖinaa"}
+            other{"Tunisii kɩɖinaa"}
+            zero{"baa Tunisii kaɖinaa"}
+        }
+        TOP{
+            one{"Tɔŋga kapaŋga"}
+            other{"Tɔŋga kɩpaŋga"}
+            zero{"baa Tɔŋga kapaŋga"}
+        }
+        TRY{
+            one{"Turkii kalira"}
+            other{"Turkii kɩlira"}
+            zero{"baa Turkii kalira"}
+        }
+        TTD{
+            one{"Triniɖaaɖ na Tobagoo kaɖala"}
+            other{"Triniɖaaɖ na Tobagoo kɩɖala"}
+            zero{"baa Triniɖaaɖ na Tobagoo kaɖala"}
+        }
+        TWD{
+            one{"Taɩwan kaɖala afɔlɩ"}
+            other{"Taɩwan kɩɖala bafɔlɩ"}
+            zero{"baa Taɩwan kaɖala afɔlɩ"}
+        }
+        TZS{
+            one{"Taŋsanii kashílè"}
+            other{"Taŋsanii kɩshílè"}
+            zero{"baa Taŋsanii kashílè"}
+        }
+        UAH{
+            one{"Ikrɛɛn karifniya"}
+            other{"Ikrɛɛn kɩrifniya"}
+            zero{"baa Ikrɛɛn karifniya"}
+        }
+        UGX{
+            one{"Uganɖaa kashílè"}
+            other{"Uganɖaa kɩshílè"}
+            zero{"baa Uganɖaa kashílè"}
+        }
+        USD{
+            one{"Amalɩka kaɖala"}
+            other{"Amalɩka kɩɖala"}
+            zero{"baa Amalɩka kaɖala"}
+        }
+        UYU{
+            one{"Uruguwee kapɛsoo"}
+            other{"Uruguwee kɩpɛsoo"}
+            zero{"baa Uruguwee kapɛsoo"}
+        }
+        UZS{
+            one{"Usbeekistan kasɔm"}
+            other{"Usbeekistan kɩsɔm"}
+            zero{"baa Usbeekistan kasɔm"}
+        }
+        VES{
+            one{"Fenesuwelaa kabolifar"}
+            other{"Fenesuwelaa kɩbolifar"}
+            zero{"baa Fenesuwelaa kabolifar"}
+        }
+        VND{
+            one{"Fɛtnam kaɖɔŋgɩ"}
+            other{"Fɛtnam kɩɖɔŋgɩ"}
+            zero{"baa Fɛtnam kaɖɔŋgɩ"}
+        }
+        VUV{
+            one{"Fanuwatu kafatu"}
+            other{"Fanuwatu kɩfatu"}
+            zero{"baa Fanuwatu kafatu"}
+        }
+        WST{
+            one{"Samowa katala"}
+            other{"Samowa kɩtala"}
+            zero{"baa Samowa katala"}
+        }
+        XAF{
+            one{"Garɩɖontǝna gɩcɩɩca kasɛɛfa"}
+            other{"Garɩɖontǝna gɩcɩɩca kɩsɛɛfa"}
+            zero{"baa Garɩɖontǝna gɩcɩɩca kasɛɛfa"}
+        }
+        XCD{
+            one{"Karayiib gajakalaŋ kaɖala"}
+            other{"Karayiib gajakalaŋ kɩɖala"}
+            zero{"baa Karayiib gajakalaŋ kaɖala"}
+        }
+        XOF{
+            one{"Garɩɖontǝna gɩteŋshilelaŋ kasɛɛfa"}
+            other{"Garɩɖontǝna gɩteŋshilelaŋ kɩsɛɛfa"}
+            zero{"baa Garɩɖontǝna gɩteŋshilelaŋ kasɛɛfa"}
+        }
+        XPF{
+            one{"Polinesiya Gafɔntǝna kaja kafaraŋ"}
+            other{"Polinesiya Gafɔntǝna kaja kɩfaraŋ"}
+            zero{"baa Polinesiya Gafɔntǝna kaja kafaraŋ"}
+        }
+        XXX{
+            one{"gɩtanɩɩ kʊyɔʊ ʊ mana ma"}
+            other{"ɩtanɩɩ kʊyɔʊ ʊ mana ma"}
+            zero{"baa gɩtanɩɩ kʊyɔʊ ʊ mana ma"}
+        }
+        YER{
+            one{"Yemɛn kariyal"}
+            other{"Yemɛn kɩriyal"}
+            zero{"baa Yemɛn kariyal"}
+        }
+        ZAR{
+            one{"Sautafrika karanɖɩ"}
+            other{"Sautafrika kɩranɖɩ"}
+            zero{"baa Sautafrika karanɖɩ"}
+        }
+        ZMW{
+            one{"Sambii kakʊwaasha"}
+            other{"Sambii kɩkʊwaasha"}
+            zero{"baa Sambii kakʊwaasha"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{1} {0}"}
+        zero{"{0} {1}"}
+    }
+}

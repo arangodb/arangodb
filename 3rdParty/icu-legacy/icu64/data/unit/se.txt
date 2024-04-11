@@ -1,0 +1,592 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+se{
+    units{
+        acceleration{
+            g-force{
+                one{"{0} Maapallo gravitaatiovoima"}
+                other{"{0} Maapallo gravitaatiovoimat"}
+                two{"{0} Maapallo gravitaatiovoimat"}
+            }
+        }
+        angle{
+            arc-minute{
+                one{"{0} jorbbas minuhta"}
+                other{"{0} jorbbas minuhtta"}
+                two{"{0} jorbbas minuhtta"}
+            }
+            arc-second{
+                one{"{0} jorbbas sekunda"}
+                other{"{0} jorbbas sekundda"}
+                two{"{0} jorbbas sekundda"}
+            }
+            degree{
+                one{"{0} grádat"}
+                other{"{0} grádat"}
+                two{"{0} grádat"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} Amerihká tynnyrinala"}
+                other{"{0} Amerihká tynnyrinala"}
+                two{"{0} Amerihká tynnyrinala"}
+            }
+            hectare{
+                one{"{0} hehtaari"}
+                other{"{0} hehtaaria"}
+                two{"{0} hehtaaria"}
+            }
+            square-foot{
+                one{"{0} neliöjuolgi"}
+                other{"{0} neliöjuolgi"}
+                two{"{0} neliöjuolgi"}
+            }
+            square-kilometer{
+                one{"{0} neliökilomehter"}
+                other{"{0} neliökilomehtera"}
+                two{"{0} neliökilomehtera"}
+            }
+            square-meter{
+                one{"{0} neliömehter"}
+                other{"{0} neliömehtera"}
+                two{"{0} neliömehtera"}
+            }
+            square-mile{
+                one{"{0} eangas neliömiil"}
+                other{"{0} eangas neliömiila"}
+                two{"{0} eangas neliömiila"}
+            }
+        }
+        compound{
+            per{"{0} juohke {1}"}
+        }
+        duration{
+            day{
+                one{"{0} jándor"}
+                other{"{0} jándora"}
+                two{"{0} jándora"}
+            }
+            hour{
+                one{"{0} diibmu"}
+                other{"{0} diibmur"}
+                two{"{0} diimmur"}
+            }
+            millisecond{
+                one{"{0} millisekunda"}
+                other{"{0} millisekundda"}
+                two{"{0} millisekundda"}
+            }
+            minute{
+                one{"{0} minuhta"}
+                other{"{0} minuhtta"}
+                two{"{0} minuhtta"}
+            }
+            month{
+                one{"{0} mánotbadji"}
+                other{"{0} mánotbadji"}
+                two{"{0} mánotbaji"}
+            }
+            second{
+                one{"{0} sekunda"}
+                other{"{0} sekundda"}
+                two{"{0} sekundda"}
+            }
+            week{
+                one{"{0} váhku"}
+                other{"{0} váhkku"}
+                two{"{0} váhkku"}
+            }
+            year{
+                one{"{0} jahki"}
+                other{"{0} jahkki"}
+                two{"{0} jahkki"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0} sentimehter"}
+                other{"{0} sentimehtera"}
+                two{"{0} sentimehtera"}
+            }
+            kilometer{
+                one{"{0} kilomehter"}
+                other{"{0} kilomehtera"}
+                two{"{0} kilomehtera"}
+            }
+            light-year{
+                one{"{0} chuovgat jagi"}
+                other{"{0} chuovgat jagi"}
+                two{"{0} chuovgat jagi"}
+            }
+            meter{
+                one{"{0} mehter"}
+                other{"{0} mehtera"}
+                two{"{0} mehtera"}
+            }
+            mile{
+                one{"{0} eangas miil"}
+                other{"{0} eangas miila"}
+                two{"{0} eangas miila"}
+            }
+            millimeter{
+                one{"{0} millimehter"}
+                other{"{0} millimehtera"}
+                two{"{0} millimehtera"}
+            }
+            picometer{
+                one{"{0} pikomehter"}
+                other{"{0} pikomehtera"}
+                two{"{0} pikomehtera"}
+            }
+            yard{
+                one{"{0} eangas yard"}
+                other{"{0} eangas yard"}
+                two{"{0} eangas yard"}
+            }
+        }
+        mass{
+            gram{
+                one{"{0} gram"}
+                other{"{0} gram"}
+                two{"{0} gram"}
+            }
+            kilogram{
+                one{"{0} kilogram"}
+                other{"{0} kilogram"}
+                two{"{0} kilogram"}
+            }
+        }
+        power{
+            horsepower{
+                one{"{0} hevosvoima"}
+                other{"{0} hevosvoima"}
+                two{"{0} hevosvoima"}
+            }
+            kilowatt{
+                one{"{0} kilowatt"}
+                other{"{0} kilowatt"}
+                two{"{0} kilowatt"}
+            }
+            watt{
+                one{"{0} watt"}
+                other{"{0} watt"}
+                two{"{0} watt"}
+            }
+        }
+        pressure{
+            hectopascal{
+                one{"{0} hehtopascal"}
+                other{"{0} hehtopascal"}
+                two{"{0} hehtopascal"}
+            }
+            inch-ofhg{
+                one{"{0} bealgi kvikksølv"}
+                other{"{0} bealgi kvikksølv"}
+                two{"{0} bealgi kvikksølv"}
+            }
+            millibar{
+                one{"{0} millibar"}
+                other{"{0} millibar"}
+                two{"{0} millibar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                one{"{0} kilomehter kohti diibmu"}
+                other{"{0} kilomehtera kohti diibmu"}
+                two{"{0} kilomehtera kohti diibmu"}
+            }
+            meter-per-second{
+                one{"{0} mehter kohti sekunti"}
+                other{"{0} mehtera kohti sekunti"}
+                two{"{0} mehtera kohti sekunti"}
+            }
+            mile-per-hour{
+                one{"{0} eangas miil kohti diibmu"}
+                other{"{0} eangas miila kohti diibmu"}
+                two{"{0} eangas miila kohti diibmu"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0} grádat Celsius"}
+                other{"{0} grádat Celsius"}
+                two{"{0} grádat Celsius"}
+            }
+            fahrenheit{
+                one{"{0} grádat Fahrenheit"}
+                other{"{0} grádat Fahrenheit"}
+                two{"{0} grádat Fahrenheit"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                one{"{0} kubikkilomehter"}
+                other{"{0} kubikkilomehtera"}
+                two{"{0} kubikkilomehtera"}
+            }
+            cubic-mile{
+                one{"{0} eangas kubikkmiil"}
+                other{"{0} eangas kubikkmiila"}
+                two{"{0} eangas kubikkmiila"}
+            }
+            liter{
+                one{"{0} lihtar"}
+                other{"{0} lihtara"}
+                two{"{0} lihtara"}
+            }
+        }
+    }
+    unitsNarrow{
+        acceleration{
+            g-force{
+                one{"{0}G"}
+                other{"{0}G"}
+                two{"{0}G"}
+            }
+        }
+        area{
+            hectare{
+                one{"{0}ha"}
+                other{"{0}ha"}
+                two{"{0}ha"}
+            }
+            square-kilometer{
+                one{"{0}km²"}
+                other{"{0}km²"}
+                two{"{0}km²"}
+            }
+            square-meter{
+                one{"{0}m²"}
+                other{"{0}m²"}
+                two{"{0}m²"}
+            }
+        }
+        duration{
+            day{
+                one{"{0}d"}
+                other{"{0}d"}
+                two{"{0}d"}
+            }
+            hour{
+                one{"{0}h"}
+                other{"{0}h"}
+                two{"{0}h"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+                two{"{0}ms"}
+            }
+            minute{
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            month{
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            second{
+                one{"{0}s"}
+                other{"{0}s"}
+                two{"{0}s"}
+            }
+            week{
+                one{"{0}v"}
+                other{"{0}v"}
+                two{"{0}v"}
+            }
+            year{
+                one{"{0}j"}
+                other{"{0}j"}
+                two{"{0}j"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0}cm"}
+                other{"{0}cm"}
+                two{"{0}cm"}
+            }
+            kilometer{
+                one{"{0}km"}
+                other{"{0}km"}
+                two{"{0}km"}
+            }
+            meter{
+                one{"{0}m"}
+                other{"{0}m"}
+                two{"{0}m"}
+            }
+            millimeter{
+                one{"{0}mm"}
+                other{"{0}mm"}
+                two{"{0}mm"}
+            }
+            picometer{
+                one{"{0}pm"}
+                other{"{0}pm"}
+                two{"{0}pm"}
+            }
+        }
+        mass{
+            gram{
+                one{"{0}g"}
+                other{"{0}g"}
+                two{"{0}g"}
+            }
+            kilogram{
+                one{"{0}kg"}
+                other{"{0}kg"}
+                two{"{0}kg"}
+            }
+        }
+        power{
+            horsepower{
+                one{"{0}hv"}
+                other{"{0}hv"}
+                two{"{0}hv"}
+            }
+            kilowatt{
+                one{"{0}kW"}
+                other{"{0}kW"}
+                two{"{0}kW"}
+            }
+            watt{
+                one{"{0}W"}
+                other{"{0}W"}
+                two{"{0}W"}
+            }
+        }
+        pressure{
+            hectopascal{
+                one{"{0}hPa"}
+                other{"{0}hPa"}
+                two{"{0}hPa"}
+            }
+            millibar{
+                one{"{0}mbar"}
+                other{"{0}mbar"}
+                two{"{0}mbar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                one{"{0}km/h"}
+                other{"{0}km/h"}
+                two{"{0}km/h"}
+            }
+            meter-per-second{
+                one{"{0}m/s"}
+                other{"{0}m/s"}
+                two{"{0}m/s"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°"}
+                other{"{0}°"}
+                two{"{0}°"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                one{"{0}km³"}
+                other{"{0}km³"}
+                two{"{0}km³"}
+            }
+            liter{
+                one{"{0}L"}
+                other{"{0}L"}
+                two{"{0}L"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"Maapallo gravitaatiovoimat"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"jorbbas minuhtta"}
+            }
+            arc-second{
+                dnam{"jorbbas sekundda"}
+            }
+            degree{
+                dnam{"grádat"}
+            }
+        }
+        area{
+            acre{
+                dnam{"Amerihká tynnyrinala"}
+            }
+            hectare{
+                dnam{"hehtaaria"}
+            }
+            square-foot{
+                dnam{"neliöjuolgi"}
+            }
+            square-kilometer{
+                dnam{"neliökilomehtera"}
+            }
+            square-meter{
+                dnam{"neliömehtera"}
+            }
+            square-mile{
+                dnam{"eangas neliömiila"}
+            }
+        }
+        duration{
+            day{
+                dnam{"jándora"}
+            }
+            hour{
+                dnam{"diibmur"}
+            }
+            millisecond{
+                dnam{"millisekundda"}
+            }
+            minute{
+                dnam{"minuhtta"}
+            }
+            month{
+                dnam{"mánotbadji"}
+                one{"{0} mán"}
+                other{"{0} mán"}
+                two{"{0} mán"}
+            }
+            second{
+                dnam{"sekundda"}
+            }
+            week{
+                dnam{"váhkku"}
+                one{"{0} v"}
+                other{"{0} v"}
+                two{"{0} v"}
+            }
+            year{
+                dnam{"jahkki"}
+                one{"{0} jah"}
+                other{"{0} jah"}
+                two{"{0} jah"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"sentimehtera"}
+            }
+            foot{
+                dnam{"juolgi"}
+                one{"{0} juolgi"}
+                other{"{0} juolgi"}
+                two{"{0} juolgi"}
+            }
+            inch{
+                dnam{"bealgi"}
+                one{"{0} bealgi"}
+                other{"{0} bealgi"}
+                two{"{0} bealgi"}
+            }
+            kilometer{
+                dnam{"kilomehtera"}
+            }
+            light-year{
+                dnam{"chuovgat jagi"}
+            }
+            meter{
+                dnam{"mehtera"}
+            }
+            mile{
+                dnam{"eangas miila"}
+            }
+            millimeter{
+                dnam{"millimehtera"}
+            }
+            picometer{
+                dnam{"pikomehtera"}
+            }
+            yard{
+                dnam{"eangas yard"}
+            }
+        }
+        mass{
+            kilogram{
+                dnam{"kilogram"}
+            }
+            ounce{
+                dnam{"unssi"}
+                one{"{0} unssi"}
+                other{"{0} unssi"}
+                two{"{0} unssi"}
+            }
+            pound{
+                dnam{"pauna"}
+                one{"{0} pauna"}
+                other{"{0} pauna"}
+                two{"{0} pauna"}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"hevosvoima"}
+                one{"{0} hv"}
+                other{"{0} hv"}
+                two{"{0} hv"}
+            }
+            kilowatt{
+                dnam{"kilowatt"}
+            }
+        }
+        pressure{
+            hectopascal{
+                dnam{"hehtopascal"}
+            }
+            inch-ofhg{
+                dnam{"bealgi kvikksølv"}
+                one{"{0} bealgi Hg"}
+                other{"{0} bealgi Hg"}
+                two{"{0} bealgi Hg"}
+            }
+            millibar{
+                dnam{"millibar"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"kilomehtera kohti diibmu"}
+            }
+            meter-per-second{
+                dnam{"mehtera kohti sekunti"}
+            }
+            mile-per-hour{
+                dnam{"eangas miila kohti diibmu"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"grádat Celsius"}
+            }
+            fahrenheit{
+                dnam{"grádat Fahrenheit"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                dnam{"kubikkilomehtera"}
+            }
+            cubic-mile{
+                dnam{"eangas kubikkmiila"}
+            }
+            liter{
+                dnam{"lihtara"}
+            }
+        }
+    }
+}

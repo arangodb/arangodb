@@ -1,0 +1,1316 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+am{
+    ExemplarCharacters{
+        "[ሀ ሁ ሂ ሃ ሄ ህ ሆ ለ ሉ ሊ ላ ሌ ል ሎ ሏ ሐ ሑ ሒ ሓ ሔ ሕ ሖ ሗ መ ሙ ሚ ማ ሜ ም ሞ ሟ ሠ ሡ ሢ ሣ ሤ ሥ ሦ"
+        " ሧ ረ ሩ ሪ ራ ሬ ር ሮ ሯ ሰ ሱ ሲ ሳ ሴ ስ ሶ ሷ ሸ ሹ ሺ ሻ ሼ ሽ ሾ ሿ ቀ ቁ ቂ ቃ ቄ ቅ ቆ ቈ ቊ ቋ ቌ ቍ በ"
+        " ቡ ቢ ባ ቤ ብ ቦ ቧ ቨ ቩ ቪ ቫ ቬ ቭ ቮ ቯ ተ ቱ ቲ ታ ቴ ት ቶ ቷ ቸ ቹ ቺ ቻ ቼ ች ቾ ቿ ኀ ኁ ኂ ኃ ኄ ኅ ኆ"
+        " ኈ ኊ ኋ ኌ ኍ ነ ኑ ኒ ና ኔ ን ኖ ኗ ኘ ኙ ኚ ኛ ኜ ኝ ኞ ኟ አ ኡ ኢ ኣ ኤ እ ኦ ኧ ከ ኩ ኪ ካ ኬ ክ ኮ ኰ ኲ"
+        " ኳ ኴ ኵ ኸ ኹ ኺ ኻ ኼ ኽ ኾ ወ ዉ ዊ ዋ ዌ ው ዎ ዐ ዑ ዒ ዓ ዔ ዕ ዖ ዘ ዙ ዚ ዛ ዜ ዝ ዞ ዟ ዠ ዡ ዢ ዣ ዤ ዥ"
+        " ዦ ዧ የ ዩ ዪ ያ ዬ ይ ዮ ደ ዱ ዲ ዳ ዴ ድ ዶ ዷ ጀ ጁ ጂ ጃ ጄ ጅ ጆ ጇ ገ ጉ ጊ ጋ ጌ ግ ጎ ጐ ጒ ጓ ጔ ጕ ጠ"
+        " ጡ ጢ ጣ ጤ ጥ ጦ ጧ ጨ ጩ ጪ ጫ ጬ ጭ ጮ ጯ ጰ ጱ ጲ ጳ ጴ ጵ ጶ ጷ ጸ ጹ ጺ ጻ ጼ ጽ ጾ ጿ ፀ ፁ ፂ ፃ ፄ ፅ ፆ"
+        " ፈ ፉ ፊ ፋ ፌ ፍ ፎ ፏ ፐ ፑ ፒ ፓ ፔ ፕ ፖ ፗ]"
+    }
+    ExemplarCharactersIndex{
+        "[ሀ ለ ሐ መ ሠ ረ ሰ ሸ ቀ ቈ በ ቨ ተ ቸ ኀ ኈ ነ ኘ አ ከ ኰ ኸ ወ ዐ ዘ ዠ የ ደ ጀ ገ ጐ ጠ ጨ ጰ ጸ ፀ ፈ ፐ"
+        "]"
+    }
+    ExemplarCharactersPunctuation{"[‐ – , ፡ ፣ ፤ ፥ ፦ ! ? . ። ‹ › « » ( ) \\[ \\]]"}
+    NumberElements{
+        latn{
+            miscPatterns{
+                atLeast{"{0}+"}
+            }
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat%alphaNextToNumber{"¤ #,##0.00;(¤ #,##0.00)"}
+                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
+                currencyFormat{"¤#,##0.00"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 ሺ"}
+                        other{"0 ሺ"}
+                    }
+                    10000{
+                        one{"00 ሺ"}
+                        other{"00 ሺ"}
+                    }
+                    100000{
+                        one{"000 ሺ"}
+                        other{"000 ሺ"}
+                    }
+                    1000000{
+                        one{"0 ሚሊዮን"}
+                        other{"0 ሚሊዮን"}
+                    }
+                    10000000{
+                        one{"00 ሚሊዮን"}
+                        other{"00 ሚሊዮን"}
+                    }
+                    100000000{
+                        one{"000 ሚሊዮን"}
+                        other{"000 ሚሊዮን"}
+                    }
+                    1000000000{
+                        one{"0 ቢሊዮን"}
+                        other{"0 ቢሊዮን"}
+                    }
+                    10000000000{
+                        one{"00 ቢሊዮን"}
+                        other{"00 ቢሊዮን"}
+                    }
+                    100000000000{
+                        one{"000 ቢሊዮን"}
+                        other{"000 ቢሊዮን"}
+                    }
+                    1000000000000{
+                        one{"0 ትሪሊዮን"}
+                        other{"0 ትሪሊዮን"}
+                    }
+                    10000000000000{
+                        one{"00 ትሪሊዮን"}
+                        other{"00 ትሪሊዮን"}
+                    }
+                    100000000000000{
+                        one{"000 ትሪሊዮን"}
+                        other{"000 ትሪሊዮን"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        one{"¤0 ሺ"}
+                        other{"¤0 ሺ"}
+                    }
+                    10000{
+                        one{"¤00 ሺ"}
+                        other{"¤00 ሺ"}
+                    }
+                    100000{
+                        one{"¤000 ሺ"}
+                        other{"¤000 ሺ"}
+                    }
+                    1000000{
+                        one{"¤0 ሚ"}
+                        other{"¤0 ሚ"}
+                    }
+                    10000000{
+                        one{"¤00 ሚ"}
+                        other{"¤00 ሚ"}
+                    }
+                    100000000{
+                        one{"¤000 ሚ"}
+                        other{"¤000 ሚ"}
+                    }
+                    1000000000{
+                        one{"¤0 ቢ"}
+                        other{"¤0 ቢ"}
+                    }
+                    10000000000{
+                        one{"¤00 ቢ"}
+                        other{"¤00 ቢ"}
+                    }
+                    100000000000{
+                        one{"¤000 ቢ"}
+                        other{"¤000 ቢ"}
+                    }
+                    1000000000000{
+                        one{"¤0 ት"}
+                        other{"¤0 ት"}
+                    }
+                    10000000000000{
+                        one{"¤00 ት"}
+                        other{"¤00 ት"}
+                    }
+                    100000000000000{
+                        one{"¤000 ት"}
+                        other{"¤000 ት"}
+                    }
+                }
+                currencyFormat%alphaNextToNumber{
+                    1000{
+                        one{"¤ 0 ሺ"}
+                        other{"¤ 0 ሺ"}
+                    }
+                    10000{
+                        one{"¤ 00 ሺ"}
+                        other{"¤ 00 ሺ"}
+                    }
+                    100000{
+                        one{"¤ 000 ሺ"}
+                        other{"¤ 000 ሺ"}
+                    }
+                    1000000{
+                        one{"¤ 0 ሚ"}
+                        other{"¤ 0 ሚ"}
+                    }
+                    10000000{
+                        one{"¤ 00 ሚ"}
+                        other{"¤ 00 ሚ"}
+                    }
+                    100000000{
+                        one{"¤ 000 ሚ"}
+                        other{"¤ 000 ሚ"}
+                    }
+                    1000000000{
+                        one{"¤ 0 ቢ"}
+                        other{"¤ 0 ቢ"}
+                    }
+                    10000000000{
+                        one{"¤ 00 ቢ"}
+                        other{"¤ 00 ቢ"}
+                    }
+                    100000000000{
+                        one{"¤ 000 ቢ"}
+                        other{"¤ 000 ቢ"}
+                    }
+                    1000000000000{
+                        one{"¤ 0 ት"}
+                        other{"¤ 0 ት"}
+                    }
+                    10000000000000{
+                        one{"¤ 00 ት"}
+                        other{"¤ 00 ት"}
+                    }
+                    100000000000000{
+                        one{"¤ 000 ት"}
+                        other{"¤ 000 ት"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0 ሺ"}
+                        other{"0 ሺ"}
+                    }
+                    10000{
+                        one{"00 ሺ"}
+                        other{"00 ሺ"}
+                    }
+                    100000{
+                        one{"000 ሺ"}
+                        other{"000 ሺ"}
+                    }
+                    1000000{
+                        one{"0 ሚ"}
+                        other{"0 ሚ"}
+                    }
+                    10000000{
+                        one{"00 ሚ"}
+                        other{"00 ሚ"}
+                    }
+                    100000000{
+                        one{"000 ሚ"}
+                        other{"000 ሚ"}
+                    }
+                    1000000000{
+                        one{"0 ቢ"}
+                        other{"0 ቢ"}
+                    }
+                    10000000000{
+                        one{"00 ቢ"}
+                        other{"00 ቢ"}
+                    }
+                    100000000000{
+                        one{"000 ቢ"}
+                        other{"000 ቢ"}
+                    }
+                    1000000000000{
+                        one{"0 ት"}
+                        other{"0 ት"}
+                    }
+                    10000000000000{
+                        one{"00 ት"}
+                        other{"00 ት"}
+                    }
+                    100000000000000{
+                        one{"000 ት"}
+                        other{"000 ት"}
+                    }
+                }
+            }
+        }
+        minimalPairs{
+            case{
+                accusative{"{0} ዩኬ የሻይ ማንኪያው"}
+                nominative{"የዩኬ {0} የሻይ ማንኪያ"}
+            }
+            ordinal{
+                other{"በቀኝ በኩል ባለው በ{0}ኛው መታጠፊያ ግባ።"}
+            }
+            plural{
+                one{"{0} ቀን"}
+                other{"{0} ቀናት"}
+            }
+        }
+        traditional{"ethi"}
+    }
+    calendar{
+        buddhist{
+            availableFormats{
+                GyMMM{"MMM፣ y G"}
+            }
+        }
+        ethiopic{
+            availableFormats{
+                GyMMM{"MMM፣ y G"}
+                MMMMEd{"E, MMMM d"}
+            }
+            monthNames{
+                format{
+                    wide{
+                        "መስከረም",
+                        "ጥቅምት",
+                        "ኅዳር",
+                        "ታኅሣሥ",
+                        "ጥር",
+                        "የካቲት",
+                        "መጋቢት",
+                        "ሚያዝያ",
+                        "ግንቦት",
+                        "ሰኔ",
+                        "ሐምሌ",
+                        "ነሐሴ",
+                        "ጳጉሜን",
+                    }
+                }
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE፣ d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd/MM/y GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                GyMMMEd{"E MMM d፣ y G"}
+                GyMMMd{"MMM d፣ y G"}
+                GyMd{"M/d/y GGGGG"}
+                H{"H"}
+                MEd{"E፣ M/d"}
+                MMMEd{"E፣ MMM d"}
+                MMMMEd{"E፣ MMMM d"}
+                Md{"M/d"}
+                y{"y"}
+                yM{"M/y"}
+                yMEd{"E፣ d/M/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E፣ MMM d y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+                yyyyMMMM{"MMMM y G"}
+            }
+            intervalFormats{
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E፣ d/M – E፣ d/M"}
+                    d{"E d/M – E d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    M{"E፣ MMM d – E፣ MMM d"}
+                    d{"E d – E d፣ MMM"}
+                }
+                Md{
+                    M{"d/M – d/M"}
+                    d{"d–d/M"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    h{"h – h a"}
+                }
+                hm{
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
+                }
+                hmv{
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
+                }
+                hv{
+                    h{"h – h a v"}
+                }
+                y{
+                    y{"y–y"}
+                }
+                yM{
+                    M{"M/y – M/y"}
+                    y{"M/y – M/y"}
+                }
+                yMEd{
+                    M{"E d/M/ – E d/M፣ y"}
+                    d{"E፣ d/M/y – E፣ d/M/y"}
+                    y{"E፣ d/M/y – E፣ d/M/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM፣ y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"E MMM d – E MMM d፣ y"}
+                    d{"E MMM d – E MMM d፣ y"}
+                    y{"E፣ MMM d፣ y – E፣ MMM d፣ y"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM y"}
+                    y{"MMMM y – MMMM y"}
+                }
+                yMMMd{
+                    M{"MMM d – MMM d፣ y"}
+                    d{"MMM d–d፣ y"}
+                    y{"MMM d፣ y – MMM d፣ y"}
+                }
+                yMd{
+                    M{"d/M/y – d/M/y"}
+                    d{"d/M/y – d/M/y"}
+                    y{"d/M/y – d/M/y"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "ጥዋት",
+                "ከሰዓት",
+            }
+            AmPmMarkersNarrow{
+                "ጠ",
+                "ከ",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "y MMMM d, EEEE",
+                "d MMMM y",
+                "d MMM y",
+                "dd/MM/y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            availableFormats{
+                Ed{"E d"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMd{"M/d/y GGGGG"}
+                H{"H"}
+                MEd{"E፣ M/d"}
+                MMMEd{"E፣ MMM d"}
+                MMMMEd{"E፣ MMMM d"}
+                MMMMW{
+                    one{"ሳምንት W የ MMMM"}
+                    other{"ሳምንት W የ MMMM"}
+                }
+                Md{"M/d"}
+                yM{"M/y"}
+                yMEd{"E፣ d/M/y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E፣ MMM d y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "እሑድ",
+                        "ሰኞ",
+                        "ማክሰ",
+                        "ረቡዕ",
+                        "ሐሙስ",
+                        "ዓርብ",
+                        "ቅዳሜ",
+                    }
+                    short{
+                        "እ",
+                        "ሰ",
+                        "ማ",
+                        "ረ",
+                        "ሐ",
+                        "ዓ",
+                        "ቅ",
+                    }
+                    wide{
+                        "እሑድ",
+                        "ሰኞ",
+                        "ማክሰኞ",
+                        "ረቡዕ",
+                        "ሐሙስ",
+                        "ዓርብ",
+                        "ቅዳሜ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "እ",
+                        "ሰ",
+                        "ማ",
+                        "ረ",
+                        "ሐ",
+                        "ዓ",
+                        "ቅ",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"ከሰዓት"}
+                        evening1{"በምሽት"}
+                        midnight{"እኩለ ሌሊት"}
+                        morning1{"ጥዋት"}
+                        night1{"በሌሊት"}
+                        noon{"ቀትር"}
+                    }
+                    narrow{
+                        afternoon1{"ከሰዓት"}
+                        evening1{"በምሽት"}
+                        midnight{"እኩለ ሌሊት"}
+                        morning1{"ጥዋት"}
+                        night1{"በሌሊት"}
+                        noon{"ቀ"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        afternoon1{"ከሰዓት በኋላ"}
+                        evening1{"ምሽት"}
+                        morning1{"ጥዋት"}
+                        night1{"ሌሊት"}
+                    }
+                    narrow{
+                        afternoon1{"ከሰዓት በኋላ"}
+                        am{"ጠ"}
+                        evening1{"ማታ"}
+                        morning1{"ጥዋት"}
+                        night1{"ሌሊት"}
+                        pm{"ከ"}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "ዓ/ዓ",
+                    "ዓ/ም",
+                }
+                abbreviated%variant{
+                    "ዓ/ዓ",
+                    "መዓ",
+                }
+                wide{
+                    "ዓመተ ዓለም",
+                    "ዓመተ ምሕረት",
+                }
+                wide%variant{
+                    "ዓ/ዓ",
+                    "ዓ/ም",
+                }
+            }
+            intervalFormats{
+                GyM{
+                    G{"GGGGG M/y – GGGGG M/y"}
+                    M{"GGGGG M/y – M/y"}
+                    y{"GGGGG M/y – M/y"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM–MMM፣ y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G E፣ MMM d፣ y – G E፣ MMM d፣ y"}
+                    M{"G E MMM d፣ y – E MMM d"}
+                    d{"G E MMM d – E MMM d፣ y"}
+                    y{"G E፣ MMM d፣ y – E፣ MMM d፣ y"}
+                }
+                GyMMMd{
+                    G{"G MMM d፣ y – G MMM d፣ y"}
+                    M{"G MMM d – MMM d፣ y"}
+                    d{"G MMM d–d፣ y"}
+                    y{"G MMM d፣ y – MMM d፣ y"}
+                }
+                GyMd{
+                    G{"GGGGG d/M/y – GGGGG d/M/y"}
+                    M{"GGGGG d/M/y – d/M/y"}
+                    d{"GGGGG d/M/y – d/M/y"}
+                    y{"GGGGG d/M/y – d/M/y"}
+                }
+                M{
+                    M{"M–M"}
+                }
+                MEd{
+                    M{"E፣ d/M – E፣ d/M"}
+                    d{"E d/M – E d/M"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    d{"E d – E d፣ MMM"}
+                }
+                Md{
+                    M{"d/M – d/M"}
+                    d{"d–d/M"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    h{"h – h a"}
+                }
+                hm{
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
+                }
+                hmv{
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
+                }
+                hv{
+                    h{"h – h a v"}
+                }
+                yM{
+                    M{"M/y – M/y"}
+                    y{"M/y – M/y"}
+                }
+                yMEd{
+                    M{"E d/M/ – E d/M፣ y"}
+                    y{"E፣ d/M/y – E፣ d/M/y"}
+                }
+                yMMM{
+                    M{"MMM–MMM፣ y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"E MMM d – E MMM d፣ y"}
+                    d{"E MMM d – E MMM d፣ y"}
+                    y{"E፣ MMM d፣ y – E፣ MMM d፣ y"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM y"}
+                    y{"MMMM y – MMMM y"}
+                }
+                yMMMd{
+                    M{"MMM d – MMM d፣ y"}
+                    d{"MMM d–d፣ y"}
+                    y{"MMM d፣ y – MMM d፣ y"}
+                }
+                yMd{
+                    M{"d/M/y – d/M/y"}
+                    d{"d/M/y – d/M/y"}
+                    y{"d/M/y – d/M/y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ጃን",
+                        "ፌብ",
+                        "ማርች",
+                        "ኤፕሪ",
+                        "ሜይ",
+                        "ጁን",
+                        "ጁላይ",
+                        "ኦገስ",
+                        "ሴፕቴ",
+                        "ኦክቶ",
+                        "ኖቬም",
+                        "ዲሴም",
+                    }
+                    wide{
+                        "ጃንዋሪ",
+                        "ፌብሩዋሪ",
+                        "ማርች",
+                        "ኤፕሪል",
+                        "ሜይ",
+                        "ጁን",
+                        "ጁላይ",
+                        "ኦገስት",
+                        "ሴፕቴምበር",
+                        "ኦክቶበር",
+                        "ኖቬምበር",
+                        "ዲሴምበር",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ጃ",
+                        "ፌ",
+                        "ማ",
+                        "ኤ",
+                        "ሜ",
+                        "ጁ",
+                        "ጁ",
+                        "ኦ",
+                        "ሴ",
+                        "ኦ",
+                        "ኖ",
+                        "ዲ",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "ሩብ1",
+                        "ሩብ2",
+                        "ሩብ3",
+                        "ሩብ4",
+                    }
+                    wide{
+                        "1ኛው ሩብ",
+                        "2ኛው ሩብ",
+                        "3ኛው ሩብ",
+                        "4ኛው ሩብ",
+                    }
+                }
+            }
+        }
+        islamic{
+            monthNames{
+                format{
+                    wide{
+                        "ሙሀረም",
+                        "ሳፈር",
+                        "ረቢዑል አወል",
+                        "ረቢዑል አኺር",
+                        "ጀማደል አወል",
+                        "ጀማደል አኺር",
+                        "ረጀብ",
+                        "ሻእባን",
+                        "ረመዳን",
+                        "ሸዋል",
+                        "ዙልቂዳህ",
+                        "ዙልሂጃህ",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"እንቅስቃሴዎች"}
+        african_scripts{"የአፍሪካ ስክሪፕቶች"}
+        american_scripts{"የአሜሪካ ስክሪፕቶች"}
+        animal{"እንስሳ"}
+        animals_nature{"እንስሳት እና ተፈጥሮ"}
+        arrows{"ቀስቶች"}
+        body{"ሰውነት"}
+        box_drawing{"ስዕላዊ ሳጥን"}
+        braille{"ብሬይል"}
+        building{"ህንጻ"}
+        bullets_stars{"ጥይቶች ወይም ኮከቦች"}
+        consonantal_jamo{"የጃሞ ሆሄያት"}
+        currency_symbols{"የምንዛሪ ምልክቶች"}
+        dash_connector{"ጭረት ወይም አያያዥ"}
+        digits{"ዲጂት"}
+        dingbats{"ነቁጥ"}
+        divination_symbols{"የመለኮት ምልክቶች"}
+        downwards_arrows{"ወደታች ቀስቶች"}
+        downwards_upwards_arrows{"ወደታች ወደላይ ቀስቶች"}
+        east_asian_scripts{"ምስራቅ ኤስያ ስክሪፕቶች"}
+        emoji{"ስሜት ገላጭ ምስሎች"}
+        european_scripts{"የኤውሮጳ ስክሪፕቶች"}
+        female{"ሴት"}
+        flag{"ባንዲራ"}
+        flags{"ባንዲራዎች"}
+        food_drink{"ምግብ እና መጠጥ"}
+        format{"ቅርጸት"}
+        format_whitespace{"ቅርጸት እና ባዶቦታ"}
+        full_width_form_variant{"ሙሉ ስፋት የተለያየ መልክ"}
+        geometric_shapes{"ጂኦሜትሪክ ቅርጽ"}
+        half_width_form_variant{"ግማሽ ስፋት የተለያየ መልክ"}
+        han_characters{"ሃን ቁምፊ"}
+        han_radicals{"ሃን ራዲካልስ"}
+        hanja{"ሃንጃ"}
+        hanzi_simplified{"ሃንዚ(በቀላሉ)"}
+        hanzi_traditional{"ሃንዚ(ባህላዊ)"}
+        heart{"ልብ"}
+        historic_scripts{"ታሪካዊ ስክሪፕቶች"}
+        ideographic_desc_characters{"ሃሳባዊ ቁምፊዎች"}
+        japanese_kana{"የጃፓን ፊደል"}
+        kanbun{"ካንቡን"}
+        kanji{"ካንጂ"}
+        keycap{"የአብይ ሆሄ ቁልፍ ማብሪያ"}
+        leftwards_arrows{"ወደግራ ቀስቶች"}
+        leftwards_rightwards_arrows{"ወደግራ ወደቀኝ ቀስቶች"}
+        letterlike_symbols{"ፊደል መሰል ምልክቶች"}
+        limited_use{"የተወሰነ ኣጠቃቀም"}
+        male{"ወንድ"}
+        math_symbols{"የሂሳብ ምልክቶች"}
+        middle_eastern_scripts{"የመካከለኛው ምስራቅ ስክሪፕቶች"}
+        miscellaneous{"የተለያዩ"}
+        modern_scripts{"ዘመናዊ ስክሪፕቶች"}
+        modifier{"ማሻሻያ"}
+        musical_symbols{"የሙዚቃ ምልክቶች"}
+        nature{"ተፈጥሮ"}
+        nonspacing{"የተጣበቁ ቃላት"}
+        numbers{"ቁጥሮች"}
+        objects{"ነገሮች"}
+        other{"ሌሎች"}
+        paired{"የተጣመረ"}
+        person{"ሰው"}
+        phonetic_alphabet{"የድምፅ ፊደል"}
+        pictographs{"ስዕላዊ"}
+        place{"ቦታ"}
+        plant{"አትክልት"}
+        punctuation{"ስርዓተ ነጥብ"}
+        rightwards_arrows{"ወደቀኝ ቀስቶች"}
+        sign_standard_symbols{"አርማ ወይም ምልክት"}
+        small_form_variant{"ትንሽ የተለያየ መልክ"}
+        smiley{"ሳቅ"}
+        smileys_people{"ሳቂታ ወይም ሰው"}
+        south_asian_scripts{"ደቡብ እስያ ስክሪፕት"}
+        southeast_asian_scripts{"ደቡብ ምስራቅ እስያ ስክሪፕት"}
+        spacing{"ባዶ ቦታ"}
+        sport{"ስፖርት"}
+        symbols{"ምልክቶች"}
+        technical_symbols{"ቴክኒካል ምልክቶች"}
+        tone_marks{"የኖታ ምልክት"}
+        travel{"ጉዞ"}
+        travel_places{"ጉዞ እና ቦታ"}
+        upwards_arrows{"ወደላይ ቀስቶች"}
+        variant_forms{"የተለያየ መልክ ቅጾች"}
+        vocalic_jamo{"ቮልካኒክ ጃሞ"}
+        weather{"የአየር ሁኔታ"}
+        western_asian_scripts{"ምእራባዊ ኤስያ ስክሪፕት"}
+        whitespace{"ባዶ ቦታ"}
+    }
+    delimiters{
+        alternateQuotationEnd{"›"}
+        alternateQuotationStart{"‹"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    fields{
+        day{
+            dn{"ቀን"}
+            relative{
+                "-1"{"ትናንት"}
+                "-2"{"ከትናንት ወዲያ"}
+                "0"{"ዛሬ"}
+                "1"{"ነገ"}
+                "2"{"ከነገ ወዲያ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ቀን ውስጥ"}
+                    other{"በ{0} ቀናት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ቀን በፊት"}
+                    other{"ከ{0} ቀናት በፊት"}
+                }
+            }
+        }
+        day-short{
+            relative{
+                "-1"{"ትላንትና"}
+                "0"{"ዛሬ"}
+                "1"{"ነገ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ቀን ውስጥ"}
+                    other{"በ{0} ቀኖች ውስጥ"}
+                }
+                past{
+                    one{"ከ {0} ቀን በፊት"}
+                    other{"ከ{0} ቀኖች በፊት"}
+                }
+            }
+        }
+        dayOfYear{
+            dn{"የዓመቱ ቀን"}
+        }
+        dayperiod{
+            dn{"ጥዋት/ከሰዓት"}
+        }
+        era{
+            dn{"ዘመን"}
+        }
+        fri{
+            relative{
+                "-1"{"ያለፈው ዓርብ"}
+                "0"{"የአሁኑ ዓርብ"}
+                "1"{"የሚቀጥለው ዓርብ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ዓርብ ውስጥ"}
+                    other{"በ{0} ዓርብዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ዓርብ በፊት"}
+                    other{"ከ{0} ዓርብዎች በፊት"}
+                }
+            }
+        }
+        fri-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ዓርብዎች ውስጥ"}
+                    other{"በ{0} ዓርብዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ዓርብዎች በፊት"}
+                    other{"ከ{0} ዓርብዎች በፊት"}
+                }
+            }
+        }
+        hour{
+            dn{"ሰዓት"}
+            relative{
+                "0"{"ይህ ሰዓት"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ሰዓት ውስጥ"}
+                    other{"በ{0} ሰዓቶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሰዓት በፊት"}
+                    other{"ከ{0} ሰዓቶች በፊት"}
+                }
+            }
+        }
+        minute{
+            dn{"ደቂቃ"}
+            relative{
+                "0"{"ይህ ደቂቃ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ደቂቃ ውስጥ"}
+                    other{"በ{0} ደቂቃዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ደቂቃ በፊት"}
+                    other{"ከ{0} ደቂቃዎች በፊት"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"ያለፈው ሰኞ"}
+                "0"{"የአሁኑ ሰኞ"}
+                "1"{"የሚቀጥለው ሰኞ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ሰኞ ውስጥ"}
+                    other{"በ{0} ሰኞዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሰኞ በፊት"}
+                    other{"ከ{0} ሰኞዎች በፊት"}
+                }
+            }
+        }
+        mon-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ሰኞዎች ውስጥ"}
+                    other{"በ{0} ሰኞዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሰኞዎች በፊት"}
+                    other{"ከ{0} ሰኞዎች በፊት"}
+                }
+            }
+        }
+        month{
+            dn{"ወር"}
+            relative{
+                "-1"{"ያለፈው ወር"}
+                "0"{"በዚህ ወር"}
+                "1"{"የሚቀጥለው ወር"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ወር ውስጥ"}
+                    other{"በ{0} ወራት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ወር በፊት"}
+                    other{"ከ{0} ወራት በፊት"}
+                }
+            }
+        }
+        month-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ወራት ውስጥ"}
+                    other{"በ{0} ወራት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ወራት በፊት"}
+                    other{"ከ{0} ወራት በፊት"}
+                }
+            }
+        }
+        quarter{
+            dn{"ሩብ"}
+            relative{
+                "-1"{"የመጨረሻው ሩብ"}
+                "0"{"ይህ ሩብ"}
+                "1"{"የሚቀጥለው ሩብ"}
+            }
+            relativeTime{
+                future{
+                    one{"+{0} ሩብ"}
+                    other{"+{0} ሩብ"}
+                }
+                past{
+                    one{"{0} ሩብ በፊት"}
+                    other{"{0} ሩብ በፊት"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"ያለፈው ቅዳሜ"}
+                "0"{"የአሁኑ ቅዳሜ"}
+                "1"{"የሚቀጥለው ቅዳሜ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ቅዳሜ ውስጥ"}
+                    other{"በ{0} ቅዳሜዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ቅዳሜ በፊት"}
+                    other{"ከ{0} ቅዳሜዎች በፊት"}
+                }
+            }
+        }
+        sat-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ቅዳሜዎች ውስጥ"}
+                    other{"በ{0} ቅዳሜዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ቅዳሜዎች በፊት"}
+                    other{"ከ{0} ቅዳሜዎች በፊት"}
+                }
+            }
+        }
+        second{
+            dn{"ሰከንድ"}
+            relative{
+                "0"{"አሁን"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ሰከንድ ውስጥ"}
+                    other{"በ{0} ሰከንዶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሰከንድ በፊት"}
+                    other{"ከ{0} ሰከንዶች በፊት"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"ያለፈው እሑድ"}
+                "0"{"የአሁኑ እሑድ"}
+                "1"{"የሚቀጥለው እሑድ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} እሑድ ውስጥ"}
+                    other{"በ{0} እሑዶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} እሑድ በፊት"}
+                    other{"ከ{0} እሑዶች በፊት"}
+                }
+            }
+        }
+        sun-short{
+            relativeTime{
+                future{
+                    one{"በ{0} እሑዶች ውስጥ"}
+                    other{"በ{0} እሑዶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} እሑዶች በፊት"}
+                    other{"ከ{0} እሑዶች በፊት"}
+                }
+            }
+        }
+        thu{
+            relative{
+                "-1"{"ያለፈው ሐሙስ"}
+                "0"{"የአሁኑ ሐሙስ"}
+                "1"{"የሚቀጥለው ሐሙስ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ሐሙስ ውስጥ"}
+                    other{"በ{0} ሐሙሶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሐሙስ በፊት"}
+                    other{"ከ{0} ሐሙሶች በፊት"}
+                }
+            }
+        }
+        thu-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ሐሙሶች ውስጥ"}
+                    other{"በ{0} ሐሙሶች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሐሙሶች በፊት"}
+                    other{"ከ{0} ሐሙሶች በፊት"}
+                }
+            }
+        }
+        tue{
+            relative{
+                "-1"{"ያለፈው ማክሰኞ"}
+                "0"{"የአሁኑ ማክሰኞ"}
+                "1"{"የሚቀጥለው ማክሰኞ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ማክሰኞ ውስጥ"}
+                    other{"በ{0} ማክሰኞዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ማክሰኞ በፊት"}
+                    other{"ከ{0} ማክሰኞዎች በፊት"}
+                }
+            }
+        }
+        tue-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ማክሰኞዎች ውስጥ"}
+                    other{"በ{0} ማክሰኞዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ማክሰኞዎች በፊት"}
+                    other{"ከ{0} ማክሰኞዎች በፊት"}
+                }
+            }
+        }
+        wed{
+            relative{
+                "-1"{"ያለፈው ረቡዕ"}
+                "0"{"የአሁኑ ረቡዕ"}
+                "1"{"የሚቀጥለው ረቡዕ"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ረቡዕ ውስጥ"}
+                    other{"በ{0} ረቡዕዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ረቡዕ በፊት"}
+                    other{"ከ{0} ረቡዕዎች በፊት"}
+                }
+            }
+        }
+        wed-short{
+            relativeTime{
+                future{
+                    one{"በ{0} ረቡዕዎች ውስጥ"}
+                    other{"በ{0} ረቡዕዎች ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ረቡዕዎች በፊት"}
+                    other{"ከ{0} ረቡዕዎች በፊት"}
+                }
+            }
+        }
+        week{
+            dn{"ሳምንት"}
+            relative{
+                "-1"{"ያለፈው ሳምንት"}
+                "0"{"በዚህ ሳምንት"}
+                "1"{"የሚቀጥለው ሳምንት"}
+            }
+            relativePeriod{"{0} ሳምንት"}
+            relativeTime{
+                future{
+                    one{"በ{0} ሳምንት ውስጥ"}
+                    other{"በ{0} ሳምንታት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሳምንት በፊት"}
+                    other{"ከ{0} ሳምንታት በፊት"}
+                }
+            }
+        }
+        week-short{
+            relative{
+                "-1"{"ባለፈው ሳምንት"}
+                "0"{"በዚህ ሣምንት"}
+                "1"{"የሚቀጥለው ሳምንት"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ሳምንታት ውስጥ"}
+                    other{"በ{0} ሳምንታት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ሳምንታት በፊት"}
+                    other{"ከ{0} ሳምንታት በፊት"}
+                }
+            }
+        }
+        weekOfMonth{
+            dn{"የወሩ ሳምንት"}
+        }
+        weekday{
+            dn{"አዘቦት"}
+        }
+        weekdayOfMonth{
+            dn{"የወሩ የሳምንት ቀን"}
+        }
+        year{
+            dn{"ዓመት"}
+            relative{
+                "-1"{"ያለፈው ዓመት"}
+                "0"{"በዚህ ዓመት"}
+                "1"{"የሚቀጥለው ዓመት"}
+            }
+            relativeTime{
+                future{
+                    one{"በ{0} ዓመታት ውስጥ"}
+                    other{"በ{0} ዓመታት ውስጥ"}
+                }
+                past{
+                    one{"ከ{0} ዓመት በፊት"}
+                    other{"ከ{0} ዓመታት በፊት"}
+                }
+            }
+        }
+        year-short{
+            relativeTime{
+                past{
+                    one{"ከ{0} ዓመታት በፊት"}
+                    other{"ከ{0} ዓመታት በፊት"}
+                }
+            }
+        }
+        zone{
+            dn{"የሰዓት ሰቅ"}
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} ወይም {1}"}
+            end{"{0}፣ ወይም {1}"}
+            middle{"{0}፣ {1}"}
+            start{"{0}፣ {1}"}
+        }
+        standard{
+            2{"{0} እና {1}"}
+            end{"{0}፣ እና {1}"}
+            middle{"{0}፣ {1}"}
+            start{"{0}፣ {1}"}
+        }
+        standard-narrow{
+            end{"{0}, እና {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+        }
+        unit-short{
+            2{"{0}፣ {1}"}
+            end{"{0}፣ {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"ዩኬ"}
+        US{"ዩ ኤስ"}
+        metric{"ሜትሪክ"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\- ‑ . /]",
+                "[\\: ∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.．․﹒ 。｡︒]",
+                "['＇’ ՚ ᾽᾿ ʼ]",
+                "[%％﹪ ٪]",
+                "[‰ ؉]",
+                "[\$＄﹩]",
+                "[£ ₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₹ ₨ {Rp} {Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-－﹣ ‑ ‒ −⁻₋ ➖]",
+                "[,，﹐︐ ، ٫ 、﹑､︑]",
+                "[+＋﬩﹢⁺₊ ➕]",
+            }
+            stricter{
+                "[,，﹐︐ ٫]",
+                "[.．․﹒ ｡]",
+            }
+        }
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "am",
+            }
+            surnameFirst{
+                "ko",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+    }
+}

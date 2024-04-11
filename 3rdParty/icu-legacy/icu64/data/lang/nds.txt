@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+nds{
+    Languages{
+        en{"Engelsch"}
+        nds{"Neddersass’sch"}
+    }
+    Scripts{
+        Latn{"Latiensch"}
+    }
+    codePatterns{
+        language{"Spraak: {0}"}
+        script{"Schrift: {0}"}
+        territory{"Regioon: {0}"}
+    }
+}

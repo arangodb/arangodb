@@ -1,0 +1,137 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+es_DO{
+    %%Parent{"es_419"}
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+            }
+        }
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d 'de' MMMM 'de' y G",
+                "d 'de' MMMM 'de' y G",
+                "dd/MM/y G",
+                "d/M/y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "GyMMMMEEEEd",
+                "GyMMMMd",
+                "GyMMdd",
+                "GGGGGyyMMdd",
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersAbbr{
+                "a. m.",
+                "p. m.",
+            }
+            availableFormats{
+                yMMMd{"d MMM 'de' y"}
+            }
+            dayPeriod{
+                format{
+                    narrow{
+                        evening1{"tarde"}
+                        morning1{"día"}
+                        morning2{"mañana"}
+                        night1{"noche"}
+                        noon{"mediodía"}
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        noon{"m."}
+                        pm{"p. m."}
+                    }
+                    wide{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+            eras{
+                wide%variant{
+                    "antes de la Era Común",
+                    "Era Común",
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "Q1",
+                        "Q2",
+                        "Q3",
+                        "Q4",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"Día"}
+        }
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+        era{
+            dn{"Era"}
+        }
+        minute{
+            dn{"Minuto"}
+        }
+        month{
+            dn{"Mes"}
+        }
+        quarter{
+            dn{"Trimestre"}
+        }
+        second{
+            dn{"Segundo"}
+        }
+        week{
+            dn{"Semana"}
+        }
+        weekday{
+            dn{"Día de la semana"}
+        }
+        year{
+            dn{"Año"}
+        }
+    }
+    listPattern{
+        unit-narrow{
+            end{"{0} y {1}"}
+        }
+        unit-short{
+            end{"{0} y {1}"}
+        }
+    }
+}

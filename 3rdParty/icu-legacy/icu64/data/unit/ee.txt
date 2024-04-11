@@ -1,0 +1,78 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ee{
+    units{
+        duration{
+            minute{
+                one{"aɖabaƒoƒo {0}"}
+                other{"aɖabaƒoƒo {0}"}
+            }
+            second{
+                one{"sekend {0} wo"}
+                other{"sekend {0} wo"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                dnam{"ŋkeke"}
+            }
+            hour{
+                dnam{"gaƒoƒo"}
+            }
+            minute{
+                dnam{"aɖabaƒoƒo"}
+            }
+            second{
+                one{"s {0}"}
+                other{"s {0}"}
+            }
+            week{
+                dnam{"kɔsiɖa"}
+            }
+            year{
+                dnam{"ƒe"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"ŋkekewo"}
+                one{"ŋkeke {0}"}
+                other{"ŋkeke {0}"}
+            }
+            hour{
+                dnam{"gaƒoƒowo"}
+                one{"gaƒoƒo {0}"}
+                other{"gaƒoƒo {0}"}
+            }
+            minute{
+                dnam{"aɖabaƒoƒowo"}
+                one{"a {0}"}
+                other{"a {0}"}
+            }
+            month{
+                dnam{"ɣletiwo"}
+                one{"ɣleti {0}"}
+                other{"ɣleti {0}"}
+            }
+            second{
+                one{"sekend {0}"}
+                other{"sekend {0}"}
+            }
+            week{
+                dnam{"kɔsiɖawo"}
+                one{"kɔsiɖa {0}"}
+                other{"kɔsiɖa {0}"}
+            }
+            year{
+                dnam{"ƒewo"}
+                one{"ƒe {0}"}
+                other{"ƒe {0}"}
+            }
+        }
+    }
+}

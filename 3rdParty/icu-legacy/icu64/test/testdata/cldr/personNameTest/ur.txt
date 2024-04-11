@@ -1,0 +1,816 @@
+# Test data for Person Name Data#  Copyright © 1991-2024 Unicode, Inc.
+#  For terms of use, see http://www.unicode.org/copyright.html
+#  SPDX-License-Identifier: Unicode-3.0
+#  CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
+# CLDR person name formatting test data for: ur
+#
+# Test lines have the following structure:
+#
+# enum ; <type> ; <value>(', ' <value)
+#   For all the elements in <…> below, the possible choices that could appear in the file.
+#   For example, <field> could be any of title, given, … credentials.
+#   Verify that all of these values work with the implementation.
+#
+# name ; <field>('-'<modifier>) ; <value>
+#   A sequence of these is to be used to build a person name object with the given field values.
+#   If the <field> is 'locale', then the value is the locale of the name.
+#     That will always be the last field in the name.
+#     NOTE: the locale for the name (where different than the test file's locale) will generally not match the text.
+#     It is chosen to exercise the person name formatting, by having a different given-surname order than the file's locale.
+#
+# expectedResult; <value>
+#   This line follows a sequence of name lines, and indicates the that all the following parameter lines have this expected value.
+#
+# parameters; <options>; <length>; <usage>; <formality>
+#   Each of these parameter lines should be tested to see that when formatting the current name with these parameters, 
+#   the expected value is produced.
+#
+# endName
+#   Indicates the end of the values to be tested with the current name.
+#
+# =====
+# Example:
+#     enum ; field ; title, given, given2, surname, surname2, generation, credentials
+#     …
+#
+#     name ; given; Iris
+#     name ; surname; Falke
+#     name ; locale; de
+#
+#     expectedResult; Falke, Iris
+#
+#     parameters; sorting; long; referring; formal
+#     parameters; sorting; medium; referring; informal
+#
+#     endName
+#
+#     name ; given; Max
+#     name ; given2; Ben
+#     name ; surname; Mustermann
+#     …
+# =====
+
+enum ; field ; title, given, given2, surname, surname2, generation, credentials
+enum ; modifiers ; informal, allCaps, initialCap, initial, retain, monogram, prefix, core, vocative, genitive
+enum ; order ; givenFirst, surnameFirst, sorting
+enum ; length ; long, medium, short
+enum ; usage ; referring, addressing, monogram
+enum ; formality ; formal, informal
+
+# nativeG
+name ; given; احمد
+name ; locale; ur_AQ
+
+expectedResult; احمد
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; ا
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeGS
+name ; given; شازیہ
+name ; surname; اصغر
+name ; locale; ur_AQ
+
+expectedResult; اصغر، شازیہ
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; اصغر شازیہ
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; شازیہ اصغر
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; اصغر، ش.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; شازیہ ا.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; اصغر ش.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; ش. اصغر
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; شازیہ
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; اصغر
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; ا ش
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; ش ا
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; ا
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; ش
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeGGS
+name ; given; مریم
+name ; given2; نواز
+name ; surname; خان
+name ; locale; ur_AQ
+
+expectedResult; خان، مریم نواز
+
+parameters; sorting; long; referring; formal
+
+expectedResult; خان مریم نواز
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; مریم نواز خان
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; خان، مریم ن.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; خان مریم ن.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; مریم ن. خان
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; خان، م. ن.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; خان م. ن.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; خان، مریم
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; م. ن. خان
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; خان مریم
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; مریم خان
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; مریم خ.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; خان م.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; خ م ن
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; م ن خ
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; مریم
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; خ م
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; خان
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; م خ
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; خ
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; م
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeFull
+name ; title; محترم
+name ; given; عبد الکریم
+name ; given-informal; پٹھان
+name ; given2; عبد الحمید
+name ; surname-core; سید
+name ; generation; جونیئر
+name ; credentials; ایم پی
+name ; locale; ur_AQ
+
+expectedResult; سید، عبد الکریم عبد الحمید ایم پی
+
+parameters; sorting; long; referring; formal
+
+expectedResult; سید عبد الکریم عبد الحمید ایم پی
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; عبد الکریم عبد الحمید سید ایم پی
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; سید، عبد الکریم ع. ا. ایم پی
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; سید عبد الکریم ع. ا. ایم پی
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; عبد الکریم ع. ا. سید ایم پی
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; سید، ع. ا. ع. ا.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; سید ع. ا. ع. ا.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; ع. ا. ع. ا. سید
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; سید، پٹھان
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; پٹھان سید
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; سید پٹھان
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; سید ع. ا.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; محترم سید
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; پٹھان س.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; پٹھان
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; س ع ع
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; ع ع س
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; پ س
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; س پ
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; پ
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; س
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# foreignG
+name ; given; سندباد
+name ; locale; ja_AQ
+
+expectedResult; سندباد
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; س
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignGS
+name ; given; حاتم
+name ; surname; منصور
+name ; locale; ja_AQ
+
+expectedResult; منصور، حاتم
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; حاتم منصور
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; منصور حاتم
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; منصور، ح.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; ح. منصور
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; منصور ح.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; حاتم م.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; منصور
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; حاتم
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; ح م
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; م ح
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; ح
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; م
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# foreignGGS
+name ; given; محمد
+name ; given2; ہاشم
+name ; surname; صابری
+name ; locale; ja_AQ
+
+expectedResult; صابری، محمد ہاشم
+
+parameters; sorting; long; referring; formal
+
+expectedResult; صابری محمد ہاشم
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; محمد ہاشم صابری
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; صابری، محمد ہ.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; صابری محمد ہ.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; محمد ہ. صابری
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; صابری، م. ہ.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; صابری م. ہ.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; صابری، محمد
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; م. ہ. صابری
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; صابری محمد
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; محمد صابری
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; صابری م.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; محمد ص.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; ص م ہ
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; صابری
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; م ہ ص
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; محمد
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; ص م
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; م ص
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; ص
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; م
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignFull
+name ; title; پروفیسر ڈاکٹر
+name ; given; یاسمین راشد
+name ; given-informal; ملک
+name ; given2; سدرہ منیر
+name ; surname-prefix; ندیم
+name ; surname-core; رضا
+name ; surname2; یوسف زئی
+name ; generation; جونيئر
+name ; credentials; ایم ڈی ڈی ڈی ایس
+name ; locale; ja_AQ
+
+expectedResult; ندیم رضا، یاسمین راشد سدرہ منیر ایم ڈی ڈی ڈی ایس
+
+parameters; sorting; long; referring; formal
+
+expectedResult; ندیم رضا یاسمین راشد سدرہ منیر ایم ڈی ڈی ڈی ایس
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; یاسمین راشد سدرہ منیر ندیم رضا ایم ڈی ڈی ڈی ایس
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; ندیم رضا، یاسمین راشد س. م. ایم ڈی ڈی ڈی ایس
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; ندیم رضا یاسمین راشد س. م. ایم ڈی ڈی ڈی ایس
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; یاسمین راشد س. م. ندیم رضا ایم ڈی ڈی ڈی ایس
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; پروفیسر ڈاکٹر ندیم رضا
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; ندیم رضا، ی. ر. س. م.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; ندیم رضا ی. ر. س. م.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; ی. ر. س. م. ندیم رضا
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; ندیم رضا ی. ر.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; ندیم رضا، ملک
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; ملک ندیم رضا
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; ندیم رضا ملک
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; ملک ن. ر.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; ن ی س
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; ی س ن
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; م ن
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; ملک
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; ن م
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; م
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; ن
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName

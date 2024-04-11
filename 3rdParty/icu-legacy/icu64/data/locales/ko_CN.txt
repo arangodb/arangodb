@@ -1,0 +1,34 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ko_CN{
+    calendar{
+        gregorian{
+            DateTimePatterns{
+                "zzzz HH:mm:ss",
+                "z HH:mm:ss",
+                "HH:mm:ss",
+                "HH:mm",
+                "y년 MMMM d일 EEEE",
+                "y년 MMMM d일",
+                "y. M. d.",
+                "yy. M. d.",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "yMEEEEd",
+                "yMd",
+                "yMd",
+                "yyMd",
+            }
+        }
+    }
+}

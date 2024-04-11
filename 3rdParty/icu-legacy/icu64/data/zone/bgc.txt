@@ -1,0 +1,12 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+bgc{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"ग्रीनविच मीन टाइम"}
+        }
+        regionFormat{"{0} समय"}
+        regionFormatStandard{"{0} (+0) स्टैण्डर्ड समय"}
+    }
+}

@@ -1,0 +1,108 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+en_ID{
+    %%Parent{"en_001"}
+    NumberElements{
+        latn{
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+    }
+    calendar{
+        generic{
+            availableFormats{
+                Bhm{"h.mm B"}
+                Bhms{"h.mm.ss B"}
+                EBhm{"E h.mm B"}
+                EBhms{"E h.mm.ss B"}
+                EHm{"E HH.mm"}
+                EHms{"E HH.mm.ss"}
+                Ehm{"E h.mm a"}
+                Ehms{"E h.mm.ss a"}
+                Hm{"HH.mm"}
+                Hms{"HH.mm.ss"}
+                Hmsv{"HH.mm.ss v"}
+                Hmv{"HH.mm v"}
+                hm{"h.mm a"}
+                hms{"h.mm.ss a"}
+                hmsv{"h.mm.ss. a v"}
+                hmv{"h.mm a v"}
+                ms{"mm.ss"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH.mm.ss zzzz",
+                "HH.mm.ss z",
+                "HH.mm.ss",
+                "HH.mm",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd/MM/y",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            availableFormats{
+                Bhm{"h.mm B"}
+                Bhms{"h.mm.ss B"}
+                EBhm{"E h.mm B"}
+                EBhms{"E h.mm.ss B"}
+                EHm{"E HH.mm"}
+                EHms{"E HH.mm.ss"}
+                Ehm{"E h.mm a"}
+                Ehms{"E h.mm.ss a"}
+                Hm{"HH.mm"}
+                Hms{"HH.mm.ss"}
+                Hmsv{"HH.mm.ss v"}
+                Hmv{"HH.mm v"}
+                hm{"h.mm a"}
+                hms{"h.mm.ss a"}
+                hmsv{"h.mm.ss. a v"}
+                hmv{"h.mm a v"}
+                ms{"mm.ss"}
+            }
+            intervalFormats{
+                Bhm{
+                    B{"h.mm B – h.mm B"}
+                    h{"h.mm – h.mm B"}
+                    m{"h.mm – h.mm B"}
+                }
+                Hm{
+                    H{"HH.mm–HH.mm"}
+                    m{"HH.mm–HH.mm"}
+                }
+                Hmv{
+                    H{"HH.mm–HH.mm v"}
+                    m{"HH.mm–HH.mm v"}
+                }
+                hm{
+                    a{"h.mm a – h.mm a"}
+                    h{"h.mm–h.mm a"}
+                    m{"h.mm–h.mm a"}
+                }
+                hmv{
+                    a{"h.mm a – h.mm a v"}
+                    h{"h.mm–h.mm a v"}
+                    m{"h.mm–h.mm a v"}
+                }
+            }
+        }
+    }
+}

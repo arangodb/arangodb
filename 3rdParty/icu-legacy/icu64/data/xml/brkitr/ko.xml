@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+ Copyright (C) 2016 and later: Unicode, Inc. and others.
+ License & terms of use: http://www.unicode.org/copyright.html
+ Copyright (c) 2006-2015 International Business Machines Corporation and others. All rights reserved.
+-->
+<!DOCTYPE ldml SYSTEM "../../dtd/cldr/common/dtd/ldml.dtd"
+[
+   <!ENTITY % icu SYSTEM "../../dtd/cldr/common/dtd/ldmlICU.dtd">
+   %icu;
+]
+>
+<ldml>
+    <identity>
+        <version number="$Revision$"/>
+        <language type="ko"/>
+    </identity>
+    <special xmlns:icu="http://www.icu-project.org/">
+        <icu:breakIteratorData>
+            <icu:boundaries>
+                <icu:line icu:dependency="line_normal.brk"/>
+                <icu:line alt="loose"  icu:dependency="line_loose_cj.brk"/>
+                <icu:line alt="normal" icu:dependency="line_normal_cj.brk"/>
+                <icu:line alt="strict" icu:dependency="line_cj.brk"/>
+                <icu:line alt="loose_phrase"  icu:dependency="line_loose_phrase_cj.brk"/>
+                <icu:line alt="normal_phrase" icu:dependency="line_normal_phrase_cj.brk"/>
+                <icu:line alt="strict_phrase" icu:dependency="line_phrase_cj.brk"/>
+                <icu:line alt="phrase" icu:dependency="line_phrase_cj.brk"/>
+            </icu:boundaries>
+            <!--
+            <icu:extensions>
+              Korean particles should be added here and dictbe.cpp needs to be adjusted
+              once a Korean dictionary is added. Even without a Korean dictionary,
+              Korean particle list can be used when a Korean word written in CJK ideographs
+              or a Korean word in Hangul and a closing puncutation mark is followed by a Korean
+              particle. Examples include: "大韓民國은  民主共和國이다", "『님의 침묵』이" .
+            </icu:extensions>
+            -->
+        </icu:breakIteratorData>
+    </special>
+</ldml>
+

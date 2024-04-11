@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ie{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"témpore medial de Greenwich"}
+        }
+        gmtFormat{"TMG{0}"}
+        gmtZeroFormat{"TMG"}
+        regionFormat{"témpor de {0}"}
+        regionFormatDaylight{"témpor estival de {0}"}
+        regionFormatStandard{"témpor standard de {0}"}
+    }
+}

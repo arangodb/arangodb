@@ -1,0 +1,124 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+raj{
+    AuxExemplarCharacters{"[आ इ ई उ ऊ ऋ ए ऐ ओ औ]"}
+    ExemplarCharacters{
+        "[ँ ंः अ क ख ग घ ङ च छ ज झ ञ ट ठ ड ढ ण त थ द ध न प फ ब भ म य र ल व श ष स ह ा "
+        "ि ी ु ू ृ ॅ े ै ो ौ ्]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0० 1१ 2२ 3३ 4४ 5५ 6६ 7७ 8८ 9९]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‑ , \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] \\{ \\} § @ * / \\\\ \\& # ` |"
+        "]"
+    }
+    NumberElements{
+        default{"deva"}
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "सबेरे",
+                "सांम",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "y MMMM d, EEEE",
+                "y MMMM d",
+                "y MMM d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            dayNames{
+                format{
+                    wide{
+                        "रविवार",
+                        "सोमवार",
+                        "मंगलवार",
+                        "बुधवार",
+                        "गुरुवार",
+                        "शुक्रवार",
+                        "शनिवार",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "जनवरी",
+                        "फरवरी",
+                        "मार्च",
+                        "अप्रैल",
+                        "मई",
+                        "जून",
+                        "जुलाई",
+                        "अगस्त",
+                        "सितम्बर",
+                        "अक्टूबर",
+                        "नवंबर",
+                        "दिसंबर",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            relative{
+                "-1"{"काल"}
+                "0"{"आज"}
+                "1"{"काल"}
+            }
+        }
+        month{
+            relative{
+                "-1"{"पाछलो मीनो"}
+                "0"{"यों मीनो"}
+                "1"{"आग्लो मीनो"}
+            }
+        }
+        sun{
+            relative{
+                "-1"{"पाछलां दीतवार"}
+                "0"{"ई दीतवार"}
+                "1"{"आग्ल दीतवार"}
+            }
+        }
+        week{
+            relative{
+                "-1"{"पाछलां सप्ताह"}
+                "0"{"ई सप्ताह"}
+                "1"{"आग्ल सप्ताह"}
+            }
+        }
+        year{
+            relative{
+                "-1"{"गत बरस"}
+                "0"{"ई बरस"}
+                "1"{"आग्ल बरस"}
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"यूके"}
+        US{"यू एस"}
+        metric{"मीट्रिक"}
+    }
+}

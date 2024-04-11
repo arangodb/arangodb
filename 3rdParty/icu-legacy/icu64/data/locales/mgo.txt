@@ -1,0 +1,169 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mgo{
+    AuxExemplarCharacters{"[c h l q v x]"}
+    ExemplarCharacters{"[aà b {ch} d eè ə{ə̀} f g {gh} iì j k m n ŋ oò ɔ{ɔ̀} p r s t uù w y z ʼ]"}
+    ExemplarCharactersIndex{"[A B {CH} D E Ə F G {GH} I J K M N Ŋ O Ɔ P R S T U W Y Z ʼ]"}
+    ExemplarCharactersPunctuation{"[, ; \\: ! ? . '‘’ \u0022“”]"}
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, G y MMMM dd",
+                "G y MMMM d",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "GyMMMMEEEEdd",
+                "GyMMMMd",
+                "GyMMMd",
+                "GGGGGyMMdd",
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, y MMMM dd",
+                "y MMMM d",
+                "y MMM d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "yMMMMEEEEdd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            dayNames{
+                format{
+                    short{
+                        "1",
+                        "2",
+                        "3",
+                        "4",
+                        "5",
+                        "6",
+                        "7",
+                    }
+                    wide{
+                        "Aneg 1",
+                        "Aneg 2",
+                        "Aneg 3",
+                        "Aneg 4",
+                        "Aneg 5",
+                        "Aneg 6",
+                        "Aneg 7",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "A1",
+                        "A2",
+                        "A3",
+                        "A4",
+                        "A5",
+                        "A6",
+                        "A7",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "mbegtug",
+                        "imeg àbùbì",
+                        "imeg mbəŋchubi",
+                        "iməg ngwə̀t",
+                        "iməg fog",
+                        "iməg ichiibɔd",
+                        "iməg àdùmbə̀ŋ",
+                        "iməg ichika",
+                        "iməg kud",
+                        "iməg tèsiʼe",
+                        "iməg zò",
+                        "iməg krizmed",
+                    }
+                    wide{
+                        "iməg mbegtug",
+                        "imeg àbùbì",
+                        "imeg mbəŋchubi",
+                        "iməg ngwə̀t",
+                        "iməg fog",
+                        "iməg ichiibɔd",
+                        "iməg àdùmbə̀ŋ",
+                        "iməg ichika",
+                        "iməg kud",
+                        "iməg tèsiʼe",
+                        "iməg zò",
+                        "iməg krizmed",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "M1",
+                        "A2",
+                        "M3",
+                        "N4",
+                        "F5",
+                        "I6",
+                        "A7",
+                        "I8",
+                        "K9",
+                        "10",
+                        "11",
+                        "12",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"anəg"}
+            relative{
+                "-1"{"ikwiri"}
+                "0"{"tèchɔ̀ŋ"}
+                "1"{"isu"}
+                "2"{"isu ywi"}
+            }
+        }
+        month{
+            dn{"iməg"}
+        }
+        week{
+            dn{"nkap"}
+        }
+        weekday{
+            dn{"anəg agu nkap"}
+        }
+        year{
+            dn{"fituʼ"}
+        }
+    }
+}

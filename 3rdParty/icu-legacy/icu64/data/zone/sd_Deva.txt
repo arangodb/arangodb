@@ -1,0 +1,62 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sd_Deva{
+    %%Parent{"root"}
+    zoneStrings{
+        "Etc:UTC"{
+            ls{"गदि॒यल आलमी वक्तु"}
+        }
+        "Etc:Unknown"{
+            ec{"अणजा॒तल शहरु"}
+        }
+        "meta:America_Central"{
+            ld{"मरकज़ी दीं॒ह जो वक्त"}
+            lg{"मरकज़ी वक्त"}
+            ls{"मरकज़ी मअयारी वक्त"}
+        }
+        "meta:America_Eastern"{
+            ld{"ओभरी दीं॒ह जो वक्त"}
+            lg{"ओभरी वक्त"}
+            ls{"ओभरी मअयारी वक्त"}
+        }
+        "meta:America_Mountain"{
+            ld{"पहाड़ी दीं॒ह जो वक्त"}
+            lg{"पहाड़ी वक्त"}
+            ls{"पहाड़ी मअयारी वक्त"}
+        }
+        "meta:America_Pacific"{
+            ld{"पेसिफिक दीं॒ह जो वक्त"}
+            lg{"पेसिफिक वक्त"}
+            ls{"पेसिफिक मअयारी वक्त"}
+        }
+        "meta:Atlantic"{
+            ld{"अटलांटिक दीं॒ह जो वक्त"}
+            lg{"अटलांटिक वक्त"}
+            ls{"अटलांटिक मअयारी वक्त"}
+        }
+        "meta:Europe_Central"{
+            ld{"मरकज़ी यूरोपी उनहारे जो वक्तु"}
+            lg{"मरकज़ी यूरोपी वक्त"}
+            ls{"मरकज़ी यूरोपी मअयारी वक्तु"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"ओभरी यूरोपी उनहारे जो वक्तु"}
+            lg{"ओभरी यूरोपी वक्तु"}
+            ls{"ओभरी यूरोपी मअयारी वक्तु"}
+        }
+        "meta:Europe_Western"{
+            ld{"उलहंदो यूरोपी उनहारे जो वक्तु"}
+            lg{"उलहंदो यूरोपी वक्तु"}
+            ls{"उलहंदो यूरोपी मअयारी वक्तु"}
+        }
+        "meta:GMT"{
+            ls{"ग्रीनविच मीन वक्तु"}
+        }
+        gmtFormat{"जीएमटी{0}"}
+        gmtZeroFormat{"जीएमटी"}
+        regionFormat{"{0} वक्त"}
+        regionFormatDaylight{"{0} दीं॒ह जो वक्त"}
+        regionFormatStandard{"{0} मअयारी वक्त"}
+    }
+}

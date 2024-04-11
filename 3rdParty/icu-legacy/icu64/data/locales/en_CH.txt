@@ -1,0 +1,143 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+en_CH{
+    %%Parent{"en_150"}
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤ #,##0.00;¤-#,##0.00"}
+                currencyFormat{"¤ #,##0.00;¤-#,##0.00"}
+            }
+            symbols{
+                group{"’"}
+                superscriptingExponent{"·"}
+            }
+        }
+    }
+    calendar{
+        chinese{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM r(U)",
+                "d MMMM r(U)",
+                "d MMM r",
+                "dd.MM.r",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                MEd{"E, dd.MM"}
+                UM{"M.U"}
+                UMd{"dd.MM.U"}
+                yyyyM{"MM.r"}
+                yyyyMEd{"E, dd.MM.r"}
+                yyyyMd{"dd.MM.r"}
+            }
+        }
+        dangi{
+            availableFormats{
+                Md{"dd.MM"}
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd.MM.y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                GyMd{"dd.MM.y GGGGG"}
+                MEd{"E, dd.MM"}
+                Md{"dd.MM"}
+                yyyyM{"MM.y GGGGG"}
+                yyyyMEd{"E, dd.MM.y GGGGG"}
+                yyyyMd{"dd.MM.y GGGGG"}
+            }
+        }
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd.MM.y",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                GyMd{"d.M.y G"}
+                MEd{"E, dd.MM"}
+                MMdd{"dd.MM"}
+                Md{"dd.MM"}
+                yM{"MM.y"}
+                yMEd{"E, dd.MM.y"}
+                yMd{"dd.MM.y"}
+            }
+        }
+        islamic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, d MMMM y G",
+                "d MMMM y G",
+                "d MMM y G",
+                "dd.MM.y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                GyMd{"dd.MM.y GGGGG"}
+                MEd{"E dd.MM"}
+                Md{"dd.MM"}
+                yyyyM{"MM.y GGGGG"}
+                yyyyMEd{"E, dd.MM.y GGGGG"}
+                yyyyMd{"dd.MM.y GGGGG"}
+            }
+        }
+        japanese{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE, MMMM d, y G",
+                "MMMM d, y G",
+                "MMM d, y G",
+                "M.d.y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+        }
+    }
+}

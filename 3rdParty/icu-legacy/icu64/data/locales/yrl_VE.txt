@@ -1,0 +1,110 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl_VE{
+    NumberElements{
+        latn{
+            patternsLong{
+                decimalFormat{
+                    1000000{
+                        one{"0 millón"}
+                        other{"0 millón-ita"}
+                    }
+                    10000000{
+                        one{"00 millón"}
+                        other{"00 millón-ita"}
+                    }
+                    100000000{
+                        one{"000 millón"}
+                        other{"000 millón-ita"}
+                    }
+                    1000000000{
+                        one{"0 billón"}
+                        other{"0 billón-ita"}
+                    }
+                    10000000000{
+                        one{"00 billón"}
+                        other{"00 billón-ita"}
+                    }
+                    100000000000{
+                        one{"000 billón"}
+                        other{"000 billón-ita"}
+                    }
+                    1000000000000{
+                        one{"0 tirillón"}
+                        other{"0 tirillón-ita"}
+                    }
+                    10000000000000{
+                        one{"00 tirillón"}
+                        other{"00 tirillón-ita"}
+                    }
+                    100000000000000{
+                        one{"000 tirillón"}
+                        other{"000 tirillón-ita"}
+                    }
+                }
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersAbbr{
+                "a. m.",
+                "p. m.",
+            }
+            AmPmMarkersNarrow{
+                "a. m.",
+                "p. m.",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE, d MMMM y",
+                "d MMMM y",
+                "d MMM y",
+                "dd/MM/y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            dayPeriod{
+                stand-alone{
+                    abbreviated{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    narrow{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                    wide{
+                        am{"a. m."}
+                        pm{"p. m."}
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        punctuation{"pũtuasan"}
+    }
+    fields{
+        dayperiod{
+            dn{"a. m./p. m."}
+        }
+        dayperiod-narrow{
+            dn{"a. m./p. m."}
+        }
+        dayperiod-short{
+            dn{"a. m./p. m."}
+        }
+    }
+}

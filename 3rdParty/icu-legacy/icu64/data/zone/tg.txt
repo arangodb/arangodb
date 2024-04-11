@@ -1,0 +1,63 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+tg{
+    zoneStrings{
+        "Asia:Dushanbe"{
+            ec{"Душанбе"}
+        }
+        "Etc:UTC"{
+            ls{"Вақти ҷаҳонии ҳамоҳангсозӣ"}
+        }
+        "Etc:Unknown"{
+            ec{"Шаҳри номаълум"}
+        }
+        "meta:America_Central"{
+            ld{"Вақти рӯзонаи марказӣ"}
+            lg{"Вақти марказӣ"}
+            ls{"Вақти стандартии марказӣ"}
+        }
+        "meta:America_Eastern"{
+            ld{"Вақти рӯзонаи шарқӣ"}
+            lg{"Вақти шарқӣ"}
+            ls{"Вақти стандартии шарқӣ"}
+        }
+        "meta:America_Mountain"{
+            ld{"Вақти рӯзонаи кӯҳӣ"}
+            lg{"Вақти кӯҳӣ"}
+            ls{"Вақти стандартии кӯҳӣ"}
+        }
+        "meta:America_Pacific"{
+            ld{"Вақти рӯзонаи Уқёнуси Ором"}
+            lg{"Вақти Уқёнуси Ором"}
+            ls{"Вақти стандартии Уқёнуси Ором"}
+        }
+        "meta:Atlantic"{
+            ld{"Вақти рӯзонаи атлантикӣ"}
+            lg{"Вақти атлантикӣ"}
+            ls{"Вақти стандартии атлантикӣ"}
+        }
+        "meta:Europe_Central"{
+            ld{"Вақти тобистонаи аврупоии марказӣ"}
+            lg{"Вақти аврупоии марказӣ"}
+            ls{"Вақти стандартии аврупоии марказӣ"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Вақти тобистонаи аврупоии шарқӣ"}
+            lg{"Вақти аврупоии шарқӣ"}
+            ls{"Вақти стандартии аврупоии шарқӣ"}
+        }
+        "meta:Europe_Western"{
+            ld{"Вақти тобистонаи аврупоии ғарбӣ"}
+            lg{"Вақти аврупоии ғарбӣ"}
+            ls{"Вақти стандартии аврупоии ғарбӣ"}
+        }
+        "meta:GMT"{
+            ls{"Вақти миёнаи Гринвич"}
+        }
+        gmtZeroFormat{"Вақти GMT"}
+        regionFormat{"Вақти {0}"}
+        regionFormatDaylight{"Вақти рӯзонаи {0}"}
+        regionFormatStandard{"Вақти стандартии {0}"}
+    }
+}

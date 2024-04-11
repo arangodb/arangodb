@@ -1,0 +1,46 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv{
+    Currencies{
+        BRL{
+            "R$",
+            "brājil ti riel",
+        }
+        CNY{
+            "CN¥",
+            "cin ti yuān",
+        }
+        EUR{
+            "€",
+            "yuro",
+        }
+        GBP{
+            "£",
+            "briṭis pāunḍ",
+        }
+        INR{
+            "₹",
+            "bārat ti ṭnkā",
+        }
+        JPY{
+            "JP¥",
+            "jāpān ti yēn",
+        }
+        RUB{
+            "RUB",
+            "rūs ti rūbel",
+        }
+        USD{
+            "US$",
+            "iūes ḍalār",
+        }
+        XXX{
+            "¤",
+            "puṇātī lēmbū",
+        }
+    }
+    CurrencyUnitPatterns{
+        other{"{0} {1}"}
+    }
+}

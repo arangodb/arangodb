@@ -1,0 +1,848 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+so{
+    Keys{
+        calendar{"Habeentiris"}
+        cf{"Habka Lacagta"}
+        collation{"Kala Soocidda Dalabka"}
+        currency{"Lacagta"}
+        hc{"Wareegga Saacadda (12 ilaa 24)"}
+        lb{"Habka Jebinta Xariiqda"}
+        ms{"Nidaamka Cabbiraadda"}
+        numbers{"Tirooyinka"}
+    }
+    Languages{
+        ab{"U dhashay Abkhazia"}
+        ace{"Shiinays"}
+        ada{"Adangme"}
+        ady{"U dhashay Ady"}
+        af{"Afrikaanka"}
+        agq{"Ageem"}
+        ain{"U dhashay Ain"}
+        ak{"Akan"}
+        ale{"U dhashay Ale"}
+        alt{"Southern Altai"}
+        am{"Axmaar"}
+        an{"U dhashay Aragon"}
+        ann{"Obolo"}
+        anp{"U dhashay Anp"}
+        ar{"Carabi"}
+        ar_001{"Carabiga rasmiga ah"}
+        arn{"Mapuche"}
+        arp{"U dhashay Arap"}
+        ars{"Najdi Arabic"}
+        as{"Asaamiis"}
+        asa{"Asu"}
+        ast{"Astuuriyaan"}
+        atj{"Atikamekw"}
+        av{"U dhashay Avar"}
+        awa{"Awa"}
+        ay{"U dhashay Aymar"}
+        az{"Asarbayjan"}
+        ba{"Bashkir"}
+        ban{"U dhashay Baline"}
+        bas{"Basaa"}
+        be{"Beleruusiyaan"}
+        bem{"Bemba"}
+        bez{"Bena"}
+        bg{"Bulgeeriyaan"}
+        bgc{"Haryanvi"}
+        bho{"U dhashay Bhohp"}
+        bi{"U dhashay Bislam"}
+        bin{"U dhashay Bin"}
+        bla{"Siksiká"}
+        bm{"Bambaara"}
+        bn{"Bangladesh"}
+        bo{"Tibeetaan"}
+        br{"Biriton"}
+        brx{"Bodo"}
+        bs{"Bosniyaan"}
+        bug{"U dhashay Bugin"}
+        byn{"U dhashay Byn"}
+        ca{"Katalaan"}
+        cay{"Cayuga"}
+        ccp{"Jakma"}
+        ce{"Jejen"}
+        ceb{"Sebuano"}
+        cgg{"Jiga"}
+        ch{"Chamorro"}
+        chk{"Chuukese"}
+        chm{"Mari"}
+        cho{"Choctaw"}
+        chp{"Chipewyan"}
+        chr{"Jerookee"}
+        chy{"Cheyenne"}
+        ckb{"Bartamaha Kurdish"}
+        clc{"Chilcotin"}
+        co{"Korsikan"}
+        crg{"Michif"}
+        crj{"Southern East Cree"}
+        crk{"Plains Cree"}
+        crl{"Northern East Cree"}
+        crm{"Moose Cree"}
+        crr{"Carolina Algonquian"}
+        cs{"Jeeg"}
+        csw{"Swampy Cree"}
+        cu{"Kaniisadda Islaafik"}
+        cv{"Chuvash"}
+        cy{"Welsh"}
+        da{"Dhaanish"}
+        dak{"Dakota"}
+        dar{"Dargwa"}
+        dav{"Taiita"}
+        de{"Jarmal"}
+        de_AT{"Jarmal Awsteeriya"}
+        de_CH{"Iswiiska Sare ee Jarmal"}
+        dgr{"Dogrib"}
+        dje{"Sarma"}
+        doi{"Dogri"}
+        dsb{"Soorbiyaanka Hoose"}
+        dua{"Duaala"}
+        dv{"Divehi"}
+        dyo{"Joola-Foonyi"}
+        dz{"D’zongqa"}
+        dzg{"Dazaga"}
+        ebu{"Embu"}
+        ee{"Eewe"}
+        efi{"Efik"}
+        eka{"Ekajuk"}
+        el{"Giriik"}
+        en{"Ingiriisi"}
+        en_AU{"Ingiriis Austaraaliyaan"}
+        en_CA{"Ingiriis Kanadiyaan"}
+        en_GB{"Ingiriis Biritish"}
+        en_US{"Ingiriis Maraykan"}
+        eo{"Isberaanto"}
+        es{"Isbaanish"}
+        es_419{"Isbaanishka Laatiin Ameerika"}
+        es_ES{"Isbaanish (Isbayn)"}
+        es_MX{"Isbaanishka Mexico"}
+        et{"Istooniyaan"}
+        eu{"Basquu"}
+        ewo{"Eewondho"}
+        fa{"Faarisi"}
+        fa_AF{"Faarsi"}
+        ff{"Fuulah"}
+        fi{"Finishka"}
+        fil{"Filibiino"}
+        fj{"Fijian"}
+        fo{"Farowsi"}
+        fon{"Fon"}
+        fr{"Faransiis"}
+        fr_CA{"Faransiiska Kanada"}
+        fr_CH{"Faransiis (Iswiiserlaand)"}
+        frc{"Faransiiska Cajun"}
+        frr{"Northern Frisian"}
+        fur{"Firiyuuliyaan"}
+        fy{"Firiisiyan Galbeed"}
+        ga{"Ayrish"}
+        gaa{"Ga"}
+        gd{"Iskot Giilik"}
+        gez{"Geez"}
+        gil{"Gilbertese"}
+        gl{"Galiisiyaan"}
+        gn{"Guarani"}
+        gor{"Gorontalo"}
+        gsw{"Jarmal Iswiis"}
+        gu{"Gujaraati"}
+        guz{"Guusii"}
+        gv{"Mankis"}
+        gwi{"Gwichʼin"}
+        ha{"Hawsa"}
+        hai{"Haida"}
+        haw{"Hawaay"}
+        hax{"Southern Haida"}
+        he{"Cibraani"}
+        hi{"Hindi"}
+        hi_Latn{"Hindi (Latin)"}
+        hil{"Hiligaynon"}
+        hmn{"Hamong"}
+        hr{"Koro’eeshiyaan"}
+        hsb{"Sorobiyaanka Sare"}
+        ht{"Heeytiyaan Karawle"}
+        hu{"Hangariyaan"}
+        hup{"Hupa"}
+        hur{"Halkomelem"}
+        hy{"Armeeniyaan"}
+        hz{"Herero"}
+        ia{"Interlinguwa"}
+        iba{"Iban"}
+        ibb{"Ibibio"}
+        id{"Indunusiyaan"}
+        ig{"Igbo"}
+        ii{"Sijuwan Yi"}
+        ikt{"Western Canadian Inuktitut"}
+        ilo{"Iloko"}
+        inh{"Ingush"}
+        io{"Ido"}
+        is{"Ayslandays"}
+        it{"Talyaani"}
+        iu{"Inuktitut"}
+        ja{"Jabaaniis"}
+        jbo{"Lojban"}
+        jgo{"Ingoomba"}
+        jmc{"Chaga"}
+        jv{"Jafaaniis"}
+        ka{"Joorijiyaan"}
+        kab{"Kabayle"}
+        kac{"Kachin"}
+        kaj{"Jju"}
+        kam{"Kaamba"}
+        kbd{"U dhashay Kabardia"}
+        kcg{"Tyap"}
+        kde{"Kimakonde"}
+        kea{"Kabuferdiyanu"}
+        kfo{"Koro"}
+        kgp{"Kaingang"}
+        kha{"Khasi"}
+        khq{"Koyra Jiini"}
+        ki{"Kikuuyu"}
+        kj{"Kuanyama"}
+        kk{"Kasaaq"}
+        kkj{"Kaako"}
+        kl{"Kalaallisuut"}
+        kln{"Kalenjin"}
+        km{"Kamboodhian"}
+        kmb{"Kimbundu"}
+        kn{"Kannadays"}
+        ko{"Kuuriyaan"}
+        kok{"Konkani"}
+        kpe{"Kpelle"}
+        kr{"Kanuri"}
+        krc{"Karachay-Balkar"}
+        krl{"Karelian"}
+        kru{"Kurukh"}
+        ks{"Kaashmiir"}
+        ksb{"Shambaala"}
+        ksf{"Bafia"}
+        ksh{"Kologniyaan"}
+        ku{"Kurdishka"}
+        kum{"Kumyk"}
+        kv{"Komi"}
+        kw{"Kornish"}
+        kwk{"Kwakʼwala"}
+        ky{"Kirgiis"}
+        la{"Laatiin"}
+        lad{"Ladino"}
+        lag{"Laangi"}
+        lb{"Luksaamboorgish"}
+        lez{"Lezghian"}
+        lg{"Gandha"}
+        li{"Limburgish"}
+        lil{"Lillooet"}
+        lkt{"Laakoota"}
+        ln{"Lingala"}
+        lo{"Lao"}
+        lou{"Louisiana Creole"}
+        loz{"Lozi"}
+        lrc{"Luri Waqooyi"}
+        lsm{"Saamia"}
+        lt{"Lituwaanays"}
+        lu{"Luuba-kataanga"}
+        lua{"Luba-Lulua"}
+        lun{"Lunda"}
+        luo{"Luwada"}
+        lus{"Mizo"}
+        luy{"Luyia"}
+        lv{"Laatfiyaan"}
+        mad{"Madurese"}
+        mag{"Magahi"}
+        mai{"Dadka Maithili"}
+        mak{"Makasar"}
+        mas{"Masaay"}
+        mdf{"Moksha"}
+        men{"Mende"}
+        mer{"Meeru"}
+        mfe{"Moorisayn"}
+        mg{"Malagaasi"}
+        mgh{"Makhuwa"}
+        mgo{"Meetaa"}
+        mh{"Marshallese"}
+        mi{"Maaoori"}
+        mic{"Mi'kmaq"}
+        min{"Minangkabau"}
+        mk{"Masadooniyaan"}
+        ml{"Malayalam"}
+        mn{"Mangooli"}
+        mni{"Maniburi"}
+        moe{"Innu-aimun"}
+        moh{"Mohawk"}
+        mos{"Mossi"}
+        mr{"Maarati"}
+        ms{"Malaay"}
+        mt{"Maltiis"}
+        mua{"Miyundhaang"}
+        mul{"Luuqado kala duwan"}
+        mus{"Muscogee"}
+        mwl{"Mirandese"}
+        my{"Burmese"}
+        myv{"Erzya"}
+        mzn{"Masanderaani"}
+        na{"Nauru"}
+        nap{"Neapolitan"}
+        naq{"Nama"}
+        nb{"Nawrijii Bokmål"}
+        nd{"Indhebeele Waqooyi"}
+        nds{"Jarmal Hooseeya"}
+        ne{"Nebaali"}
+        new{"Newari"}
+        ng{"Ndonga"}
+        nia{"Nias"}
+        niu{"Niuean"}
+        nl{"Holandays"}
+        nl_BE{"Af faleemi"}
+        nmg{"Kuwaasiyo"}
+        nn{"Nawriijiga Nynorsk"}
+        nnh{"Ingiyembuun"}
+        no{"Nawriiji"}
+        nog{"Nogai"}
+        nqo{"N’Ko"}
+        nr{"South Ndebele"}
+        nso{"Northern Sotho"}
+        nus{"Nuweer"}
+        nv{"Navajo"}
+        ny{"Inyaanja"}
+        nyn{"Inyankoole"}
+        oc{"Occitan"}
+        ojb{"Northwestern Ojibwa"}
+        ojc{"Central Ojibwa"}
+        ojs{"Oji-Cree"}
+        ojw{"Western Ojibwa"}
+        oka{"Okanagan"}
+        om{"Oromo"}
+        or{"Oodhiya"}
+        os{"Oseetic"}
+        pa{"Bunjaabi"}
+        pag{"Pangasinan"}
+        pam{"Pampanga"}
+        pap{"Papiamento"}
+        pau{"Palauan"}
+        pcm{"Bidjinka Nayjeeriya"}
+        pis{"Pijin"}
+        pl{"Boolish"}
+        pqm{"Maliseet-Passamaquoddy"}
+        prg{"Brashiyaanki Hore"}
+        ps{"Bashtuu"}
+        pt{"Boortaqiis"}
+        pt_BR{"Boortaqiiska Baraasiil"}
+        pt_PT{"Boortaqiis (Boortuqaal)"}
+        qu{"Quwejuwa"}
+        raj{"Rajasthani"}
+        rap{"Rapanui"}
+        rar{"Rarotongan"}
+        rhg{"Rohingya"}
+        rm{"Romaanis"}
+        rn{"Rundhi"}
+        ro{"Romanka"}
+        rof{"Rombo"}
+        ru{"Ruush"}
+        rup{"U dhashay Aromania"}
+        rw{"Ruwaandha"}
+        rwk{"Raawa"}
+        sa{"Sanskrit"}
+        sad{"Sandawe"}
+        sah{"Saaqa"}
+        saq{"Sambuuru"}
+        sat{"Santali"}
+        sba{"Ngambay"}
+        sbp{"Sangu"}
+        sc{"Sardinian"}
+        scn{"Sicilian"}
+        sco{"Scots"}
+        sd{"Siindhi"}
+        se{"Sami Waqooyi"}
+        seh{"Seena"}
+        ses{"Koyraboro Seenni"}
+        sg{"Sango"}
+        shi{"Shilha"}
+        shn{"Shan"}
+        si{"Sinhaleys"}
+        sk{"Isloofaak"}
+        sl{"Islofeeniyaan"}
+        slh{"Southern Lushootseed"}
+        sm{"Samowan"}
+        smn{"Inaari Saami"}
+        sms{"Skolt Sami"}
+        sn{"Shoona"}
+        snk{"Soninke"}
+        so{"Soomaali"}
+        sq{"Albeeniyaan"}
+        sr{"Seerbiyaan"}
+        srn{"Sranan Tongo"}
+        ss{"Swati"}
+        st{"Sesooto"}
+        str{"Straits Salish"}
+        su{"Suudaaniis"}
+        suk{"Sukuma"}
+        sv{"Iswiidhish"}
+        sw{"Sawaaxili"}
+        swb{"Comorian"}
+        syr{"Syria"}
+        ta{"Tamiil"}
+        tce{"Southern Tutchone"}
+        te{"Teluugu"}
+        tem{"Timne"}
+        teo{"Teeso"}
+        tet{"Tetum"}
+        tg{"Taajik"}
+        tgx{"Tagish"}
+        th{"Taaylandays"}
+        tht{"Tahltan"}
+        ti{"Tigrinya"}
+        tig{"Tigre"}
+        tk{"Turkumaanish"}
+        tlh{"Klingon"}
+        tli{"Tlingit"}
+        tn{"Tswana"}
+        to{"Toongan"}
+        tok{"Toki Pona"}
+        tpi{"Tok Pisin"}
+        tr{"Turkish"}
+        trv{"Taroko"}
+        ts{"Tsonga"}
+        tt{"Taatar"}
+        ttm{"Northern Tutchone"}
+        tum{"Tumbuka"}
+        tvl{"Tuvalu"}
+        twq{"Tasaawaq"}
+        ty{"Tahitian"}
+        tyv{"Tuvinia"}
+        tzm{"Bartamaha Atlaas Tamasayt"}
+        udm{"Udmurt"}
+        ug{"Uighur"}
+        uk{"Yukreeniyaan"}
+        umb{"Umbundu"}
+        und{"Af aan la aqoon ama aan sax ahayn"}
+        ur{"Urduu"}
+        uz{"Usbakis"}
+        vai{"Faayi"}
+        ve{"Venda"}
+        vi{"Fiitnaamays"}
+        vo{"Folabuuk"}
+        vun{"Fuunjo"}
+        wa{"Walloon"}
+        wae{"Walseer"}
+        wal{"Wolaytta"}
+        war{"Waray"}
+        wo{"Woolof"}
+        wuu{"Wu Chinese"}
+        xal{"Kalmyk"}
+        xh{"Hoosta"}
+        xog{"Sooga"}
+        yav{"Yaangbeen"}
+        ybb{"Yemba"}
+        yi{"Yadhish"}
+        yo{"Yoruuba"}
+        yrl{"Nheengatu"}
+        yue{"Kantoneese"}
+        zgh{"Morokaanka Tamasayt Rasmiga"}
+        zh{"Shiinaha Mandarin"}
+        zh_Hans{"Shiinaha Rasmiga ah"}
+        zh_Hant{"Shiinahii Hore"}
+        zu{"Zuulu"}
+        zun{"Zuni"}
+        zxx{"Luuqad Looma Hayo"}
+        zza{"Zaza"}
+    }
+    Languages%menu{
+        yue{"Shiinays, Cantonese"}
+    }
+    Languages%short{
+        az{"Aseeri"}
+        en_GB{"Ingiriiska Boqortooyada Midooday"}
+        en_US{"Ingiriiska Maraykanka"}
+    }
+    Languages%variant{
+        ckb{"Kurdi, Sorani"}
+        hi_Latn{"Hinglish"}
+    }
+    Scripts{
+        Adlm{"Adlam"}
+        Aghb{"Qoraalka Luuqada Caucasian Albanian"}
+        Ahom{"Dadka Ahom"}
+        Arab{"Carabi"}
+        Aran{"Farta Luuqada Faarsiga"}
+        Armi{"Luuqada Imperial Aramaic"}
+        Armn{"Armeeniyaan"}
+        Avst{"Luuqada Avestan"}
+        Bali{"Baliniis"}
+        Bamu{"Bamum"}
+        Bass{"Qoraalka Vah"}
+        Batk{"Batak"}
+        Beng{"Baangla"}
+        Bhks{"Qoraalka Bhaiksuki"}
+        Bopo{"Bobomofo"}
+        Brah{"Dhirta Brahmi"}
+        Brai{"Qoraalka Indhoolaha"}
+        Bugi{"Luuqada Buginiiska"}
+        Buhd{"Luuqada Buhid"}
+        Cakm{"Jakma"}
+        Cans{"Qoraalka Luuqada Aborajiinka ee Kanada"}
+        Cari{"Luuqada kaariyaanka"}
+        Cham{"Jam"}
+        Cher{"Jerokee"}
+        Chrs{"Luuqada Korasmiyaanka"}
+        Copt{"Dadka Kotiga"}
+        Cprt{"sibraas dhalad ah"}
+        Cyrl{"Siriylik"}
+        Deva{"Dhefangaari"}
+        Diak{"Luuqadaha Dives Akuru"}
+        Dogr{"Dadka Dogra"}
+        Dsrt{"Gobalka Deseret"}
+        Dupl{"Qoraalka Duployan shorthand"}
+        Egyp{"Fartii hore ee Masaarida"}
+        Elba{"Magaalada Elbasan"}
+        Elym{"Qoraalka Elymaic"}
+        Ethi{"Itoobiya"}
+        Geor{"Joorjiya"}
+        Glag{"Qoraalka Glagolitic"}
+        Gong{"Gumjala Gondi"}
+        Gonm{"Qoraalka Masaram Gondi"}
+        Goth{"Dadka Gothic"}
+        Gran{"Qoraalka Grantha"}
+        Grek{"Giriik"}
+        Gujr{"Gujaraati"}
+        Guru{"Luuqada gujarati"}
+        Hanb{"Han iyo Bobomofo"}
+        Hang{"Hanguul"}
+        Hani{"Han"}
+        Hano{"Qoraalka Hanunoo"}
+        Hans{"La fududeeyay"}
+        Hant{"Hore"}
+        Hatr{"Qoraalka Hatran"}
+        Hebr{"Cibraani"}
+        Hira{"Hiragana"}
+        Hluw{"Qoraalka Anatolian Hieroglyphs"}
+        Hmng{"Hmonga pahawh"}
+        Hmnp{"Hmonga Nyiakeng Puachue"}
+        Hrkt{"Qoraalka Xuruufta Jabaaniiska"}
+        Hung{"Hangariyaankii Hore"}
+        Ital{"Itaaliggii Hore"}
+        Jamo{"Jaamo"}
+        Java{"Jafaniis"}
+        Jpan{"Jabaaniis"}
+        Kali{"Kayah LI"}
+        Kana{"Katakaana"}
+        Khar{"Koraalka kharooshi"}
+        Khmr{"Khamer"}
+        Khoj{"Qoraalka Khojki"}
+        Kits{"Qoraalka yar ee Khitan"}
+        Knda{"Kanada"}
+        Kore{"Kuuriyaan"}
+        Kthi{"kaithi"}
+        Lana{"Lanna"}
+        Laoo{"Dalka Lao"}
+        Latn{"Laatiin"}
+        Lepc{"Lebja"}
+        Limb{"Limbu"}
+        Lina{"Nidaamka qoraalka Linear A"}
+        Linb{"Nidaamka qoraalka Linear B"}
+        Lisu{"Wabiga Fraser"}
+        Lyci{"Lyciantii Hore"}
+        Lydi{"Lydian"}
+        Mahj{"Mahajani"}
+        Maka{"Makasar"}
+        Mand{"Luuqada Mandaean"}
+        Mani{"Manichaean"}
+        Marc{"Marchen"}
+        Medf{"Madefaidrin"}
+        Mend{"Mende"}
+        Merc{"Meroitic Curve"}
+        Mero{"Meroitic"}
+        Mlym{"Maalayalam"}
+        Modi{"Moodi"}
+        Mong{"Mongooliyaan"}
+        Mroo{"Mro"}
+        Mtei{"Qoraalka Luuqada Meitei"}
+        Mult{"Multani"}
+        Mymr{"Mayanmaar"}
+        Nand{"Nandinagari"}
+        Narb{"Carabiyadii Hore ee Wuqooye"}
+        Nbat{"Nabataean"}
+        Newa{"Newa"}
+        Nkoo{"N’Ko"}
+        Nshu{"Nüshu"}
+        Ogam{"Ogham"}
+        Olck{"Ol Jiki"}
+        Orkh{"Orkhon"}
+        Orya{"Oodhiya"}
+        Osge{"Osage"}
+        Osma{"Osmanya"}
+        Palm{"Palmyrene"}
+        Pauc{"Baaw Sin Haaw"}
+        Perm{"Permic gii hore"}
+        Phag{"Qoraalka Phags-pa"}
+        Phli{"Qoraaladii hore ee Pahlavi"}
+        Phlp{"Qoraalka midig laga bilaabo ee faarsiyiintii"}
+        Phnx{"Luuqada Phoenicianka"}
+        Plrd{"Shibanaha"}
+        Prti{"Qoraalka Parthian"}
+        Qaag{"Qoraalka Sawgiga"}
+        Rjng{"Dadka Rejan"}
+        Rohg{"Hanifi Rohingya"}
+        Runr{"Dadka Rejang"}
+        Samr{"Dadka Samaritan"}
+        Sarb{"Crabiyaankii Hore ee Wuqooyi"}
+        Saur{"Sawrashtra"}
+        Sgnw{"Qaabka dhagoolka loola hadlo"}
+        Shaw{"calaamad qoris"}
+        Shrd{"Sharada"}
+        Sidd{"Siddham"}
+        Sind{"khudwadi"}
+        Sinh{"Sinhaala"}
+        Sogd{"Sogdiyaan"}
+        Sogo{"Sogdiyaankii Hore"}
+        Sora{"Qoraalka Sora Sompeng"}
+        Soyo{"Soyombo"}
+        Sund{"Dadka Sundaniiska"}
+        Sylo{"Qoraalka Luuqada Sylheti"}
+        Syrc{"Lahjada Syriac"}
+        Tagb{"Tagbanwa"}
+        Takr{"Takri"}
+        Tale{"Tai Le"}
+        Talu{"Tai Lue cusub"}
+        Taml{"Taamiil"}
+        Tang{"Luuqada Tangut"}
+        Tavt{"Farta lagu Qoro Luuqadaha Tai"}
+        Telu{"Teeluguu"}
+        Tfng{"Farta Tifinagh"}
+        Tglg{"Luuqada Tagalog"}
+        Thaa{"Daana"}
+        Thai{"Taay"}
+        Tibt{"Tibetaan"}
+        Tirh{"Qoraalka Luuqada Maithili"}
+        Ugar{"Luuqada Ugaritic"}
+        Vaii{"Dadka Vai"}
+        Wara{"Nidaamka Qoraalka Luuqada Ho"}
+        Wcho{"Dadka wanjo"}
+        Xpeo{"Faarsigii Hore"}
+        Xsux{"Qoraalkii Hore ee dadka Sumaariyiinta ee dhulka mesobataamiya"}
+        Yezi{"Dadka Yesiidiga"}
+        Yiii{"Tiknoolajiyada Yi"}
+        Zanb{"Xarafka laba jibaaran ee kujira Xarfaha Zanabazar"}
+        Zinh{"Dhaxlay"}
+        Zmth{"Aqoonsiga Xisaabta"}
+        Zsye{"Calaamad Dareen Muujin"}
+        Zsym{"Calaamado"}
+        Zxxx{"Aan la qorin"}
+        Zyyy{"Caadi ahaan"}
+        Zzzz{"Far aan la aqoon amase aan saxnayn"}
+    }
+    Scripts%stand-alone{
+        Hans{"Haan La fududeeyay"}
+        Hant{"Haanti hore"}
+    }
+    Types{
+        calendar{
+            buddhist{"Habeentiriska Buudhist"}
+            chinese{"Habeetiriska Shiinaha"}
+            coptic{"Habeentiriska Koptiga"}
+            dangi{"Habeetiriska Dangi"}
+            ethiopic{"Habeentiriska Itoobiya"}
+            ethiopic-amete-alem{"Taariikhda Itoobiya ee Amete Alem"}
+            gregorian{"Habeetiriska Geregoriyaan"}
+            hebrew{"Habeentiriska yuhuudda"}
+            indian{"Habeentiris Qarameedka Hindiya"}
+            islamic{"Habeentiriska islaamka"}
+            islamic-civil{"Taariikhda Islaamiga (shax ahaan, waayo madaniyeed)"}
+            islamic-tbla{"Taariikhda Islaamiga (shax ahaan, waayo xiddigeed)"}
+            islamic-umalqura{"Taariikhda Islaamiga(Umm al-Qura)"}
+            iso8601{"Habeentiriska ISO-8601"}
+            japanese{"Habeentiriska jabbaanka"}
+            persian{"Habeentiriska Baarshiyaanka"}
+            roc{"Habeentiriska Minguwo"}
+        }
+        cf{
+            account{"Habka Xisaabinta Lacagta"}
+            standard{"Habka Heerka Lacagta"}
+        }
+        collation{
+            big5han{"Isku hagaajinta Shiineeskii Hore - Big5"}
+            compat{"Iswaafajinta Isku hajintii hore"}
+            dictionary{"Isku hagaajinta Qaamuuska"}
+            ducet{"Lambar Sireedka Caalamiga ee Kala Soocidda Dalabka"}
+            emoji{"Isku hagaajinta Emojiga"}
+            eor{"Xeerarka Dalabka Yurub"}
+            gb2312han{"Isku hagaajinta Farta shiineeska"}
+            phonebook{"Isku hagaajinta foonbuuga"}
+            pinyin{"Isku hagaajinta Pinyin"}
+            search{"Raadinta Guud"}
+            searchjl{"Raadinta Shibanaha Hangul"}
+            standard{"Amarka Kala Soocidda Caadiga ah"}
+            stroke{"Isku hagaajinta Farta"}
+            traditional{"Isku hagaajin Fareedkii Hore"}
+            unihan{"Isku hagaajinta Farta Radical-Stroke"}
+            zhuyin{"Isku hagaajinta Farta Zhuyin"}
+        }
+        hc{
+            h11{"12 Saac ee Nidaamka Saacadda (0–12)"}
+            h12{"12 Saac ee Nidaamka Saacadda (1–12)"}
+            h23{"24 Saac ee Nidaamka Saacadda (0–23)"}
+            h24{"24 Saac ee Nidaamka Saacadda (1–24)"}
+        }
+        lb{
+            loose{"Habka Jabinta Xariiqda Dabacsan"}
+            normal{"Habka Jabinta Xariiqda Caadiga ah"}
+            strict{"Habka Jabinta Xariiqda Adag"}
+        }
+        ms{
+            metric{"Nidaamka Metric"}
+            uksystem{"Nidaamka Cabbirka Imperial-ka"}
+            ussystem{"Nidaamka Cabbirka ee US"}
+        }
+        numbers{
+            ahom{"Godadka Ahom"}
+            arab{"Gdadka Carabi-Hindiya"}
+            arabext{"Tirooyinka Dheeraadka ah ee Godadka Carabi-Hindiya"}
+            armn{"Nidaam Tireedka Armeeniya"}
+            armnlow{"Nidaam Tireedka Yaryar ee Armeeniya"}
+            bali{"Godadka Balinese"}
+            beng{"Godadka Banglaa"}
+            brah{"Godadka Brahmi"}
+            cakm{"Godadka Chakma"}
+            cham{"Godadka cham"}
+            cyrl{"Lambarada Cyrillic"}
+            deva{"Godadka Defangaari"}
+            diak{"Godadka Dives Akuru"}
+            ethi{"Nidaam Tireedka Itoobiya"}
+            fullwide{"Ballac Godadka Buuxa"}
+            geor{"Nidaam Tireedka Giyoorgiyaanka"}
+            gong{"Godadka Gunjala Gondi"}
+            gonm{"Lambarada Masaram Gondi"}
+            grek{"Nidaam Tireedka Giriiga"}
+            greklow{"Nidaam Tireedka Yaryar ee Giriiga"}
+            gujr{"Godadka Gujaraati"}
+            guru{"Godadka Gurmukhi"}
+            hanidec{"Nidaamka Tireedka Tobanle ee Shiinaha"}
+            hans{"Nidaam Tireedka Hore La Fududeeyay ee Shiinaha"}
+            hansfin{"Nidaam Tireedka Hore La Fududeeyay ee Dhaqaalaha Shiinaha"}
+            hant{"Nidaam Tireedka Hore ee Shiinaha"}
+            hantfin{"Nidaam Tireedkii Hore ee Dhaqaalaha Shiinaha"}
+            hebr{"Nidaam Tireedka Cibraanka"}
+            hmng{"Nidaam Tireedka Hebrew"}
+            hmnp{"Godadka Nyiakeng Puachue Hmong"}
+            java{"Godadka Javanese"}
+            jpan{"Nidaam Tireedka Jabbaanka"}
+            jpanfin{"Nidaam Tireedka Dhaqaalaha Jabbaanka"}
+            kali{"Godadka Kayah Li"}
+            khmr{"Godadka Khamer"}
+            knda{"Godadka Kanada"}
+            lana{"Godadka Tai Tham Hora"}
+            lanatham{"Godadka Tai Tham"}
+            laoo{"Godadka Laao"}
+            latn{"Godadka Ree Galbeedka"}
+            lepc{"Godadka Lepcha"}
+            limb{"Godadka Limbu"}
+            mathbold{"Godad Xisaabeedka Waaweeyn"}
+            mathdbl{"Godad Xisaabeedka Labalaabma"}
+            mathmono{"Godad Xisaabeedka Monospace"}
+            mathsanb{"Godad xisaabeedka waaweeyn ee Sans-Serif"}
+            mathsans{"Godad xisaabeedka Sans-Serif"}
+            mlym{"Godadka Malayalam"}
+            modi{"Godadka Modi"}
+            mong{"Godadka Mongooliyaanka"}
+            mroo{"Godadka Mro"}
+            mtei{"Godadka Meetei Mayek"}
+            mymr{"Godadka Mayanmaar"}
+            mymrshan{"Godadka Myanmar Shan"}
+            mymrtlng{"Godadka Myanmar Tai Laing"}
+            nkoo{"Godadka N’Ko"}
+            olck{"Godadka Ol Chiki"}
+            orya{"Godadka Oodhiya"}
+            osma{"Godadka Osmanya"}
+            rohg{"Godadka Hanifi Rohingya"}
+            roman{"Nidaam Tireedka Roomaanka"}
+            romanlow{"Nidaam Tireedka yaryar ee Roomaanka"}
+            saur{"Godadka Saurashtra"}
+            shrd{"Godadka Sharada"}
+            sind{"Godadka Khudawadi"}
+            sinh{"Godadka Sinhala Lith"}
+            sora{"Godadka Sora Sompeng"}
+            sund{"Godadka Sundaniiska"}
+            takr{"Godadka Takri"}
+            talu{"Godadka cusub ee Tai Lue"}
+            taml{"Nidaam Tireedki Hore ee Taaamiil"}
+            tamldec{"Godka Tirada Taamiil"}
+            telu{"Godka Tirada Telugu"}
+            thai{"Godka Tirada Thai"}
+            tibt{"Godka Tirada Tibetan"}
+            tirh{"Godadka Tirhuta"}
+            vaii{"Godadka Vai"}
+            wara{"Godadka Warang Citi"}
+            wcho{"Godadka Wancho"}
+        }
+    }
+    Variants{
+        1606NICT{"Fransiiskii dhexe ee ugu dambeeyay ilaa 1606"}
+        1694ACAD{"Faransiiskii Hore"}
+        1901{"orthofraphygii hore ee Jarmalka"}
+        1959ACAD{"Tacliin"}
+        1994{"Heerka orthographyga Resiyaanka"}
+        1996{"Orthigraphygii jarmal ee 1996"}
+        ABL1943{"Qaacideeynta orthographygii 1943"}
+        ALALC97{"ALA-LC Romanization, 1997 daabacaad"}
+        ALUKU{"Lahjada Aluku"}
+        AO1990{"Heshiiska luuqada orthografiga burtuqiiska 1990"}
+        BAKU1926{"Farta Latin Turkiga ee Mideeysan"}
+        BALANKA{"Lahjada Balanka ee Anii"}
+        BARLA{"lahjada kooxda Barlavento ee kabuverdianu"}
+        BISKE{"Lahjada San Giorgio/Bila"}
+        BOHORIC{"Farta Bohorič"}
+        BOONT{"Luuqada Boontling"}
+        BORNHOLM{"BOONHOLM"}
+        COLB1945{"Shirkii orthografiga ee Portuguese-Brazilian 1945"}
+        DAJNKO{"alfabeetka Dajnko"}
+        EKAVSK{"dhaqyada isku jirka ah ee Serbiyaanka iyo Ekviyaan"}
+        EMODENG{"Ingiriiskii hore ee casriga ahaa"}
+        IJEKAVSK{"dhawaaqyada Serbiyaanka iyo Ijekaviyaan"}
+        KKCOR{"orhographyga caadiga ah"}
+        KSCOR{"heerka orthographyga"}
+        LENGADOC{"LENGADOK"}
+        LIPAW{"Lahjada Lipavaz ee Resiyaanka"}
+        LUNA1918{"LUUNA1918"}
+        METELKO{"alfaabeetka nmetelko"}
+        MONOTON{"MOONOTOONIK"}
+        NDYUKA{"lahjada Ndyuka"}
+        NEDIS{"lahjada Natisone"}
+        NEWFOUND{"HELITAANCUSUB"}
+        NICARD{"KAARKANI"}
+        NJIVA{"lahjada Gniva/Njiva"}
+        NULIK{"Folabuka casriga ah"}
+        OSOJS{"lahjada Oseacco/Osojane"}
+        OXENDICT{"hinggaadinta Qaamuuska Ingiriisiga Oxford"}
+        POSIX{"Kombiyuutar"}
+        SAAHO{"Saaho"}
+        SCOTLAND{"Heerka Ingiriisiga Iskootishka"}
+        SCOUSE{"GARAACID"}
+        SIMPLE{"Fudud"}
+        SOLBA{"lahjada Stolvizza/Solbica"}
+        TARASK{"orthographyga Taraskievica"}
+        UCCOR{"orthograpghyga mideeysan"}
+        UCRCOR{"orthographyga mideeysan ee hadana ladul maray"}
+        VALENCIA{"Faleensiyaawi"}
+    }
+    characterLabelPattern{
+        all{"{0} dhamaan"}
+        compatibility{"{0} — waafaqsanaanta"}
+        enclosed{"{0}— xiran"}
+        extended{"{0}— dheereyey"}
+        facing-left{"{0} bidix u jeeda"}
+        facing-right{"{0} midig u jeeda"}
+        historic{"{0}—taariikhi ah"}
+        miscellaneous{"{0}— qaar kale"}
+        other{"{0}—kale"}
+        scripts{"{0}— qoraallo"}
+        strokes{
+            one{"{0} garaaca"}
+            other{"{0} graacis"}
+        }
+        subscript{"kordhig{0}"}
+        superscript{"kordhig {0}"}
+    }
+    codePatterns{
+        language{"Luuqad : {0}"}
+        script{"Qoraal: {0}"}
+        territory{"Gobol : {0}"}
+    }
+}

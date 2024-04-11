@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+prg{
+    Languages{
+        en{"ēngliskan"}
+        prg{"prūsiskan"}
+    }
+    Scripts{
+        Zzzz{"niwaīstan skriptan"}
+    }
+    codePatterns{
+        language{"Bilā: {0}"}
+        script{"Skriptan: {0}"}
+        territory{"Regiōni: {0}"}
+    }
+}

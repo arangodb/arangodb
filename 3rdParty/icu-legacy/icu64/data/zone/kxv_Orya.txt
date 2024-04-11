@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Orya{
+    %%Parent{"root"}
+    zoneStrings{
+        "meta:GMT"{
+            ls{"ଗ୍ରିନୱିଚ ମିନ ବେଲା"}
+        }
+        regionFormat{"{0} ବେଲା"}
+        regionFormatDaylight{"{0} ଡେଲାଇଟ ବେଲା"}
+        regionFormatStandard{"{0} ମାନାଙ୍କ ବେଲା"}
+    }
+}

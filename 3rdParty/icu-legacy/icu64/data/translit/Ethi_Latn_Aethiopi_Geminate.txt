@@ -1,0 +1,26 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+#
+# File: Ethi_Latn_Aethiopi_Geminate.txt
+# Generated from CLDR
+#
+
+########################################################################
+#
+# Preemptive gemination for the Encylopedia Aethiopica Transliteration system.
+#
+# This transformation applies the Ethiopic-to-Ethiopic gemination mappings prior to
+# performing the regular Ethiopic-to-Aethiopica-Latin transform.  These mappings
+# are supported in the forward direction (Ethiopic-to-Latin) only at this time.
+#
+# Documentation for these transforms are given in the am-Ethi-t-am-ethi-m0-geminate.xml
+# and und-Ethi-t-und-latn-m0-aethiopi.xml files respectively.
+#
+########################################################################
+#
+:: Amharic-Amharic/Geminate ;
+:: Ethiopic-Latin/Aethiopica ;
+#
+########################################################################
+

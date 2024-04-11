@@ -1,0 +1,21 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Deva{
+    %%Parent{"root"}
+    Languages{
+        en{"इंराजी"}
+        kxv{"कुवि"}
+    }
+    Scripts{
+        Deva{"देवनागरी"}
+        Latn{"लातिन"}
+        Orya{"ऑड़िया"}
+        Telu{"तेलुगू"}
+    }
+    codePatterns{
+        language{"काता: {0}"}
+        script{"ऑकॉरॉ : {0}"}
+        territory{"मुट्-हा: {0}"}
+    }
+}

@@ -1,0 +1,101 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+blo{
+    Keys{
+        calendar{"ɩshilé n’ɩŋɔrɔ ɩtʊrka"}
+    }
+    Languages{
+        ar{"gɩlaaribuja"}
+        ar_001{"gɩlaaribuja ŋgɩɖee kǝ ba na fʊba na"}
+        blo{"anii kagɩja"}
+        bn{"baŋglaa kagɩja"}
+        de{"gɩjaamaja"}
+        en{"gɛɛshɩ"}
+        en_US{"gɛɛshɩ (Ganɔ gaɖɔŋkɔnɔ kabʊtǝna Amalɩka nɩ)"}
+        es{"gɩspaŋja"}
+        es_419{"gɩspaŋja (latɛŋ kaAmalɩkatǝna)"}
+        fr{"gɩfɔnɔ"}
+        hi_Latn{"hinɖii kagɩja (latɛŋ kʊja)"}
+        id{"Ɛnɖonosii kagɩja"}
+        it{"gɩtaliija"}
+        ja{"gɩjapaŋja"}
+        ko{"Koree kagɩja"}
+        nl{"Holanɖ kagɩja"}
+        pl{"Polanɖ kagɩja"}
+        pt{"gɩpɔrtigalja"}
+        ru{"gɩrɔɔshɩyaja"}
+        th{"taɩ kagɩja"}
+        tr{"gɩturkiija"}
+        und{"gɩkrǝ ŋgɩɖee kʊyɔʊ ʊ mana ma"}
+        zh{"gɩcaɩnaja manɖarɛŋ"}
+        zh_Hans{"gɩcaɩnaja gɩburoka"}
+        zh_Hant{"gɩcaɩnaja tututu"}
+    }
+    Languages%long{
+        zh_Hans{"gɩcaɩnaja manɖarɛŋ gɩburoka"}
+        zh_Hant{"gɩcaɩnaja manɖarɛŋ tututu"}
+    }
+    Languages%menu{
+        zh{"gɩcaɩnaja, manɖarɛŋ"}
+    }
+    Languages%short{
+        en_GB{"gɛɛshɩ (GT)"}
+        en_US{"gɛɛshɩ (GKA)"}
+    }
+    Languages%variant{
+        hi_Latn{"hiŋgliishɩ kagɩja"}
+    }
+    Scripts{
+        Arab{"laaribu kʊja"}
+        Cyrl{"Siril kʊja"}
+        Hans{"aburoka"}
+        Hant{"tututu"}
+        Jpan{"Japaŋ kʊja"}
+        Kore{"Koree kʊja"}
+        Latn{"latɛŋ kʊja"}
+        Zsym{"ɩlamba"}
+        Zxxx{"kǝ ba ŋɔn na"}
+        Zzzz{"ʊŋɔn nɖee kʊyɔʊ ʊ mana ma"}
+    }
+    Scripts%stand-alone{
+        Hans{"Han (aburoka)"}
+        Hant{"Han (tututu)"}
+    }
+    Types{
+        calendar{
+            buddhist{"Buɖa kǝbaja bɩshilé na bɩŋɔrɔ ɩtʊrka"}
+            chinese{"Caɩna kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            coptic{"Kɔpǝt kǝbaja bɩshilé na bɩŋɔrɔ ɩtʊrka"}
+            dangi{"ɖaŋgi kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            ethiopic{"Etiyopii kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            ethiopic-amete-alem{"Etiyopii kɩshilé na kɩŋɔrɔ ɩtʊrka (Amete Alɛm)"}
+            gregorian{"Gregɔɔ ‘ɩshilé n’‘ɩŋɔrɔ ɩtʊrka"}
+            hebrew{"Yahuuɖi kǝbaja bɩshilé na bɩŋɔrɔ ɩtʊrka"}
+            indian{"Inɖiya kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            islamic{"gɩnǝma kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            islamic-civil{"gɩnǝma kɩshilé na kɩŋɔrɔ ɩtʊrka aɖʊ (gatǝna kʊsǝu katam)"}
+            islamic-rgsa{"gɩnǝma kɩshilé na kɩŋɔrɔ ɩtʊrka akʊn aŋɔrɔ (Sauɖiya)"}
+            islamic-tbla{"gɩnǝma kɩshilé na kɩŋɔrɔ ɩtʊrka aɖʊ (ɩŋɔripi ɩceuka katam)"}
+            islamic-umalqura{"gɩnǝma kɩshilé na kɩŋɔrɔ ɩtʊrka (Um al-Kra)"}
+            iso8601{"ISO-8601 kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            japanese{"Japaŋ kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            persian{"Pɛrs kǝbaja bɩshilé na kɩŋɔrɔ ɩtʊrka"}
+            roc{"miŋguwo kɩshilé na kɩŋɔrɔ ɩtʊrka"}
+        }
+        collation{
+            standard{"ɩbii kʊnyaʊ ɖeiɖei"}
+        }
+        numbers{
+            latn{"latɛŋ"}
+        }
+    }
+    codePatterns{
+        language{"gɩkrǝ : {0}"}
+        script{"ʊŋɔn kagʊsʊ̀rá : {0}"}
+        territory{"gʊsaʊ : {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0} : {1}"}
+    }
+}

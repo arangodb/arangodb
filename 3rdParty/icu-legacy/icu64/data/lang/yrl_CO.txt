@@ -1,0 +1,58 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl_CO{
+    Languages{
+        br{"beretan"}
+        chn{"yarigan xinoki"}
+        de{"areman"}
+        de_CH{"areman iwaté (Suisa)"}
+        gmh{"areman iwaté médiu"}
+        goh{"areman arkaiku iwaté"}
+        gsw{"areman (Suisa)"}
+        lv{"retan"}
+        mul{"siía ñeẽga"}
+        nds_NL{"sakisan yatuka"}
+        und{"ũba uyukuau ñeẽga"}
+        wa{"waran"}
+        yrl{"ñengatú"}
+        zgh{"tamasiriti marukinu padran"}
+        zh{"xinañeẽga"}
+        zh_Hans{"xinañeẽga iwasuĩma"}
+        zh_Hant{"xinañeẽga katuwa"}
+        zxx{"ũba aykué ñeẽga sesewaraitá"}
+    }
+    Languages%long{
+        zh_Hans{"xinañeẽga mãdarĩ (iwasuĩma)"}
+        zh_Hant{"xinañeẽga mãdarĩ (katuwa)"}
+    }
+    Languages%menu{
+        zh{"xinañeẽga, mãdarĩ"}
+    }
+    Scripts{
+        Visp{"ñeẽga xipiawera"}
+    }
+    Types{
+        colStrength{
+            primary{"Reyupurawaka letera básika ñũtú"}
+        }
+        collation{
+            big5han{"Xinañẽẽga rikusawarupí muakaresawa - Big5"}
+            gb2312han{"Xinañeẽga iwasuĩma muakarewa - GB2312"}
+            search{"Sikaisá purusawa pañérupí"}
+        }
+    }
+    Variants{
+        1606NICT{"frãsañeẽga kaxiímawara 1606 upé"}
+        1694ACAD{"frãsañeẽga kuiriwara"}
+        AO1990{"Kuatiasawasupí Ewakisawa ñeẽga Putugewara 1990"}
+        COLB1945{"Kõvẽsan kuatiasawasupí Brasiu-Putugau 1945"}
+        KKCOR{"kuatiasawasupí pañé-yara"}
+    }
+    characterLabelPattern{
+        all{"{0} — pañé"}
+    }
+    codePatterns{
+        language{"Ñeẽga: {0}"}
+    }
+}

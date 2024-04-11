@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Deva{
+    %%Parent{"root"}
+    zoneStrings{
+        "meta:GMT"{
+            ls{"ग्रीनविच मीन बेला"}
+        }
+        regionFormat{"{0} बेला"}
+        regionFormatDaylight{"{0} मानांकॉ बेला"}
+        regionFormatStandard{"{0} डेलाइट बेला"}
+    }
+}

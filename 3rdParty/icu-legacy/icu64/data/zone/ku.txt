@@ -1,0 +1,1059 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ku{
+    zoneStrings{
+        "Africa:Accra"{
+            ec{"Akra"}
+        }
+        "Africa:Algiers"{
+            ec{"Cezayîr"}
+        }
+        "Africa:Cairo"{
+            ec{"Qahîre"}
+        }
+        "Africa:Casablanca"{
+            ec{"Kazablanka"}
+        }
+        "Africa:Ceuta"{
+            ec{"Septe"}
+        }
+        "Africa:Conakry"{
+            ec{"Konakrî"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"Daruselam"}
+        }
+        "Africa:Djibouti"{
+            ec{"Cibûtî"}
+        }
+        "Africa:Juba"{
+            ec{"Cuba"}
+        }
+        "Africa:Khartoum"{
+            ec{"Xartûm"}
+        }
+        "Africa:Kigali"{
+            ec{"Kîgalî"}
+        }
+        "Africa:Kinshasa"{
+            ec{"Kînşasa"}
+        }
+        "Africa:Libreville"{
+            ec{"Lîbrevîl"}
+        }
+        "Africa:Maseru"{
+            ec{"Maserû"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadîşû"}
+        }
+        "Africa:Nairobi"{
+            ec{"Naîrobî"}
+        }
+        "Africa:Tripoli"{
+            ec{"Trablûs"}
+        }
+        "Africa:Tunis"{
+            ec{"Tûnis"}
+        }
+        "America:Aruba"{
+            ec{"Arûba"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bahîa Banderas"}
+        }
+        "America:Belize"{
+            ec{"Belîze"}
+        }
+        "America:Cancun"{
+            ec{"Cancûn"}
+        }
+        "America:Ciudad_Juarez"{
+            ec{"Ciûdad Juarez"}
+        }
+        "America:Costa_Rica"{
+            ec{"Kosta Rîka"}
+        }
+        "America:Dominica"{
+            ec{"Domînîka"}
+        }
+        "America:Jamaica"{
+            ec{"Jamaîka"}
+        }
+        "America:Merida"{
+            ec{"Merîda"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beûlah, Dakotaya Bakur"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, Dakotaya Bakur"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Dakotaya Bakur"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Porto Rîko"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Saint Barthelemy"}
+        }
+        "Antarctica:Davis"{
+            ec{"Davîs"}
+        }
+        "Asia:Almaty"{
+            ec{"Almatî"}
+        }
+        "Asia:Amman"{
+            ec{"Eman"}
+        }
+        "Asia:Anadyr"{
+            ec{"Anadir"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aqtaw"}
+        }
+        "Asia:Ashgabat"{
+            ec{"Eşqabat"}
+        }
+        "Asia:Atyrau"{
+            ec{"Atîrav"}
+        }
+        "Asia:Baghdad"{
+            ec{"Bexda"}
+        }
+        "Asia:Bahrain"{
+            ec{"Behreyn"}
+        }
+        "Asia:Baku"{
+            ec{"Bakû"}
+        }
+        "Asia:Beirut"{
+            ec{"Beyrût"}
+        }
+        "Asia:Bishkek"{
+            ec{"Bîşkek"}
+        }
+        "Asia:Brunei"{
+            ec{"Brûney"}
+        }
+        "Asia:Chita"{
+            ec{"Çîta"}
+        }
+        "Asia:Choibalsan"{
+            ec{"Çoybalsan"}
+        }
+        "Asia:Colombo"{
+            ec{"Kolombo"}
+        }
+        "Asia:Damascus"{
+            ec{"Şam"}
+        }
+        "Asia:Dhaka"{
+            ec{"Daka"}
+        }
+        "Asia:Dili"{
+            ec{"Dîlî"}
+        }
+        "Asia:Dubai"{
+            ec{"Dûbaî"}
+        }
+        "Asia:Dushanbe"{
+            ec{"Duşenbe"}
+        }
+        "Asia:Gaza"{
+            ec{"Xeze"}
+        }
+        "Asia:Jakarta"{
+            ec{"Cakarta"}
+        }
+        "Asia:Jayapura"{
+            ec{"Cayapûra"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Quds"}
+        }
+        "Asia:Kabul"{
+            ec{"Kabûl"}
+        }
+        "Asia:Kamchatka"{
+            ec{"Kamçatka"}
+        }
+        "Asia:Karachi"{
+            ec{"Karaçî"}
+        }
+        "Asia:Katmandu"{
+            ec{"Katmandû"}
+        }
+        "Asia:Khandyga"{
+            ec{"Xandîga"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"Kûala Lûmpûr"}
+        }
+        "Asia:Kuching"{
+            ec{"Kûçîng"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kuweyt"}
+        }
+        "Asia:Macau"{
+            ec{"Makao"}
+        }
+        "Asia:Makassar"{
+            ec{"Makasar"}
+        }
+        "Asia:Manila"{
+            ec{"Manîla"}
+        }
+        "Asia:Muscat"{
+            ec{"Muskat"}
+        }
+        "Asia:Nicosia"{
+            ec{"Lefkoşe"}
+        }
+        "Asia:Qatar"{
+            ec{"Qeter"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Qizilorda"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyad"}
+        }
+        "Asia:Saigon"{
+            ec{"Bajarê Ho Chi Minhê"}
+        }
+        "Asia:Sakhalin"{
+            ec{"Saxalîn"}
+        }
+        "Asia:Samarkand"{
+            ec{"Semerkand"}
+        }
+        "Asia:Seoul"{
+            ec{"Seûl"}
+        }
+        "Asia:Shanghai"{
+            ec{"Şanghay"}
+        }
+        "Asia:Singapore"{
+            ec{"Sîngapûr"}
+        }
+        "Asia:Taipei"{
+            ec{"Taîpeî"}
+        }
+        "Asia:Tashkent"{
+            ec{"Taşkent"}
+        }
+        "Asia:Tbilisi"{
+            ec{"Tiflîs"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ûlanbatar"}
+        }
+        "Asia:Urumqi"{
+            ec{"Ûrûmçî"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"Ûst-Nera"}
+        }
+        "Asia:Yerevan"{
+            ec{"Rewan"}
+        }
+        "Atlantic:Azores"{
+            ec{"Giravên Azorê"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Bermûda"}
+        }
+        "Atlantic:Canary"{
+            ec{"Giravên Kanaryayê"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Kap Verde"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Georgiaya Başûr"}
+        }
+        "Australia:Sydney"{
+            ec{"Sîdney"}
+        }
+        "Etc:UTC"{
+            ls{"Saeta Gerdûnî ya Hevdemî"}
+            ss{"SGH"}
+        }
+        "Etc:Unknown"{
+            ec{"Bajarê Nenas"}
+        }
+        "Europe:Andorra"{
+            ec{"Andora"}
+        }
+        "Europe:Astrakhan"{
+            ec{"Astraxan"}
+        }
+        "Europe:Athens"{
+            ec{"Atîna"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrad"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlîn"}
+        }
+        "Europe:Brussels"{
+            ec{"Bruksel"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bukreş"}
+        }
+        "Europe:Budapest"{
+            ec{"Bûdapeşt"}
+        }
+        "Europe:Busingen"{
+            ec{"Bûsîngen"}
+        }
+        "Europe:Chisinau"{
+            ec{"Kişînew"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopenhag"}
+        }
+        "Europe:Dublin"{
+            ec{"Dûblîn"}
+            ld{"Saeta Standard a Îrlandayê"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Gîbraltar"}
+        }
+        "Europe:Helsinki"{
+            ec{"Helsînkî"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Girava Manê"}
+        }
+        "Europe:Istanbul"{
+            ec{"Stenbol"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"Kalînîngrad"}
+        }
+        "Europe:Kiev"{
+            ec{"Kîev"}
+        }
+        "Europe:Kirov"{
+            ec{"Kîrov"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lîzbon"}
+        }
+        "Europe:London"{
+            ec{"Londra"}
+            ld{"Saeta Havînê ya Birîtanyayê"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Luksembûrg"}
+        }
+        "Europe:Madrid"{
+            ec{"Madrîd"}
+        }
+        "Europe:Minsk"{
+            ec{"Mînsk"}
+        }
+        "Europe:Monaco"{
+            ec{"Monako"}
+        }
+        "Europe:Moscow"{
+            ec{"Moskova"}
+        }
+        "Europe:Paris"{
+            ec{"Parîs"}
+        }
+        "Europe:Podgorica"{
+            ec{"Podgorîka"}
+        }
+        "Europe:Prague"{
+            ec{"Prag"}
+        }
+        "Europe:Riga"{
+            ec{"Rîga"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:San_Marino"{
+            ec{"San Marîno"}
+        }
+        "Europe:Sarajevo"{
+            ec{"Saraybosna"}
+        }
+        "Europe:Skopje"{
+            ec{"Uskup"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofya"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stokholm"}
+        }
+        "Europe:Tallinn"{
+            ec{"Talîn"}
+        }
+        "Europe:Tirane"{
+            ec{"Tîran"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatîkan"}
+        }
+        "Europe:Vienna"{
+            ec{"Viyana"}
+        }
+        "Europe:Vilnius"{
+            ec{"Vîlnûs"}
+        }
+        "Europe:Warsaw"{
+            ec{"Warşova"}
+        }
+        "Europe:Zurich"{
+            ec{"Zûrîh"}
+        }
+        "Indian:Comoro"{
+            ec{"Komor"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldîv"}
+        }
+        "Pacific:Easter"{
+            ec{"Girava Paskalyayê"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fîjî"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Tahîtî"}
+        }
+        "meta:Afghanistan"{
+            ls{"Saeta Efxanistanê"}
+        }
+        "meta:Africa_Central"{
+            ls{"Saeta Afrîkaya Navîn"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Saeta Afrîkaya Rojhilat"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Saeta Standard a Afrîkaya Başûr"}
+        }
+        "meta:Africa_Western"{
+            ld{"Saeta Havînê ya Afrîkaya Rojava"}
+            lg{"Saeta Afrîkaya Rojava"}
+            ls{"Saeta Standard a Afrîkaya Rojava"}
+        }
+        "meta:Alaska"{
+            ld{"Saeta Havînê ya Alaskayê"}
+            lg{"Saeta Alaskayê"}
+            ls{"Saeta Standard a Alaskayê"}
+            sd{"SHAK"}
+            sg{"SAK"}
+            ss{"SSAK"}
+        }
+        "meta:Amazon"{
+            ld{"Saeta Havînê ya Amazonê"}
+            lg{"Saeta Amazonê"}
+            ls{"Saeta Standard a Amazonê"}
+        }
+        "meta:America_Central"{
+            ld{"Saeta Havînê ya Navendî ya Amerîkaya Bakur"}
+            lg{"Saeta Navendî ya Amerîkaya Bakur"}
+            ls{"Saeta Standard a Navendî ya Amerîkaya Bakur"}
+            sd{"SHN"}
+            sg{"SN"}
+            ss{"SSN"}
+        }
+        "meta:America_Eastern"{
+            ld{"Saeta Havînê ya Rojhilat ya Amerîkaya Bakur"}
+            lg{"Saeta Rojhilat a Amerîkaya Bakur"}
+            ls{"Saeta Standard a Rojhilat ya Amerîkaya Bakur"}
+            sd{"SHR"}
+            sg{"SR"}
+            ss{"SSR"}
+        }
+        "meta:America_Mountain"{
+            ld{"Saeta Havînê ya Çiyayî ya Amerîkaya Bakur"}
+            lg{"Saeta Çiyayî ya Amerîkaya Bakur"}
+            ls{"Saeta Standard a Çiyayî ya Amerîkaya Bakur"}
+            sd{"SHÇ"}
+            sg{"SÇ"}
+            ss{"SSÇ"}
+        }
+        "meta:America_Pacific"{
+            ld{"Saeta Havînê ya Pasîfîkê ya Amerîkaya Bakur"}
+            lg{"Saeta Pasîfîkê ya Amerîkaya Bakur"}
+            ls{"Saeta Standard a Pasîfîkê ya Amerîkaya Bakur"}
+            sd{"SHP"}
+            sg{"SP"}
+            ss{"SSP"}
+        }
+        "meta:Apia"{
+            ld{"Saeta Havînê ya Apiayê"}
+            lg{"Saeta Apiayê"}
+            ls{"Saeta Standard a Apiayê"}
+        }
+        "meta:Arabian"{
+            ld{"Saeta Havînê ya Erebistanê"}
+            lg{"Saeta Erebistanê"}
+            ls{"Saeta Standard a Erebistanê"}
+        }
+        "meta:Argentina"{
+            ld{"Saeta Havînê ya Arjantînê"}
+            lg{"Saeta Arjantînê"}
+            ls{"Saeta Standard a Arjantînê"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Saeta Havînê ya Arjantîna Rojava"}
+            lg{"Saeta Arjantîna Rojava"}
+            ls{"Saeta Standard a Arjantîna Rojava"}
+        }
+        "meta:Armenia"{
+            ld{"Saeta Havînê ya Ermenistanê"}
+            lg{"Saeta Ermenistanê"}
+            ls{"Saeta Standard a Ermenistanê"}
+        }
+        "meta:Atlantic"{
+            ld{"Saeta Havînê ya Atlantîkê"}
+            lg{"Saeta Atlantîkê"}
+            ls{"Saeta Standard a Atlantîkê"}
+            sd{"SHA"}
+            sg{"SA"}
+            ss{"SSA"}
+        }
+        "meta:Australia_Central"{
+            ld{"Saeta Havînê ya Awistralyaya Navîn"}
+            lg{"Saeta Awistralyaya Navîn"}
+            ls{"Saeta Standard a Awistralyaya Navîn"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Saeta Havînê ya Rojavaya Navîn a Awistralyayê"}
+            lg{"Saeta Rojavaya Navîn a Awistralyayê"}
+            ls{"Saeta Standard a Rojavaya Navîn a Awistralyayê"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Saeta Havînê ya Awistralyaya Rojhilat"}
+            lg{"Saeta Awistralyaya Rojhilat"}
+            ls{"Saeta Standard a Awistralyaya Rojhilat"}
+        }
+        "meta:Australia_Western"{
+            ld{"Saeta Havînê ya Awistralyaya Rojava"}
+            lg{"Saeta Awistralyaya Rojava"}
+            ls{"Saeta Standard a Awistralyaya Rojava"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Saeta Havînê ya Azerbeycanê"}
+            lg{"Saeta Azerbeycanê"}
+            ls{"Saeta Standard a Azerbeycanê"}
+        }
+        "meta:Azores"{
+            ld{"Saeta Havînê ya Azoran"}
+            lg{"Saeta Azoran"}
+            ls{"Saeta Standard a Azoran"}
+        }
+        "meta:Bangladesh"{
+            ld{"Saeta Havînê ya Bengladeşê"}
+            lg{"Saeta Bengladeşê"}
+            ls{"Saeta Standard a Bengladeşê"}
+        }
+        "meta:Bhutan"{
+            ls{"Saeta Bûtanê"}
+        }
+        "meta:Bolivia"{
+            ls{"Saeta Bolîvyayê"}
+        }
+        "meta:Brasilia"{
+            ld{"Saeta Havînê ya Brasîlyayê"}
+            lg{"Saeta Brasîlyayê"}
+            ls{"Saeta Standard a Brasîlyayê"}
+        }
+        "meta:Brunei"{
+            ls{"Saeta Brûney Darusselamê"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Saeta Havînê ya Cape Verdeyê"}
+            lg{"Saeta Cape Verdeyê"}
+            ls{"Saeta Standard a Cape Verdeyê"}
+        }
+        "meta:Chamorro"{
+            ls{"Saeta Standard a Chamorroyê"}
+        }
+        "meta:Chatham"{
+            ld{"Saeta Havînê ya Chathamê"}
+            lg{"Saeta Chathamê"}
+            ls{"Saeta Standard a Chathamê"}
+        }
+        "meta:Chile"{
+            ld{"Saeta Havînê ya Şîliyê"}
+            lg{"Saeta Şîliyê"}
+            ls{"Saeta Standard a Şîliyê"}
+        }
+        "meta:China"{
+            ld{"Saeta Havînê ya Çînê"}
+            lg{"Saeta Çînê"}
+            ls{"Saeta Standard a Çînê"}
+        }
+        "meta:Choibalsan"{
+            ld{"Saeta Havînê ya Choibalsanê"}
+            lg{"Saeta Choibalsanê"}
+            ls{"Saeta Standard a Choibalsanê"}
+        }
+        "meta:Christmas"{
+            ls{"Saeta Girava Christmasê"}
+        }
+        "meta:Cocos"{
+            ls{"Saeta Giravên Cocosê"}
+        }
+        "meta:Colombia"{
+            ld{"Saeta Havînê ya Kolombiyayê"}
+            lg{"Saeta Kolombiyayê"}
+            ls{"Saeta Standard a Kolombiyayê"}
+        }
+        "meta:Cook"{
+            ld{"Saeta Nîvhavînê ya Giravên Cookê"}
+            lg{"Saeta Giravên Cookê"}
+            ls{"Saeta Standard a Giravên Cookê"}
+        }
+        "meta:Cuba"{
+            ld{"Saeta Havînê ya Kubayê"}
+            lg{"Saeta Kubayê"}
+            ls{"Saeta Standard a Kubayê"}
+            sd{"SHK"}
+            sg{"SK"}
+            ss{"SSK"}
+        }
+        "meta:Davis"{
+            ls{"Saeta Davîsê"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Saeta Dumont-d’Urvilleyê"}
+        }
+        "meta:East_Timor"{
+            ls{"Saeta Tîmûra Rojhilat"}
+        }
+        "meta:Easter"{
+            ld{"Saeta Havînê ya Girava Paskalyayê"}
+            lg{"Saeta Girava Paskalyayê"}
+            ls{"Saeta Standard a Girava Paskalyayê"}
+        }
+        "meta:Ecuador"{
+            ls{"Saeta Ekwadorê"}
+        }
+        "meta:Europe_Central"{
+            ld{"Saeta Havînê ya Ewropaya Navîn"}
+            lg{"Saeta Ewropaya Navîn"}
+            ls{"Saeta Standard a Ewropaya Navîn"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Saeta Havînê ya Ewropaya Rojhilat"}
+            lg{"Saeta Ewropaya Rojhilat"}
+            ls{"Saeta Standard a Ewropaya Rojhilat"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"Saeta Ewropaya Rojhilat a Pêştir"}
+        }
+        "meta:Europe_Western"{
+            ld{"Saeta Havînê ya Ewropaya Rojava"}
+            lg{"Saeta Ewropaya Rojava"}
+            ls{"Saeta Standard a Ewropaya Rojava"}
+        }
+        "meta:Falkland"{
+            ld{"Saeta Havînê ya Giravên Falklandê"}
+            lg{"Saeta Giravên Falklandê"}
+            ls{"Saeta Standard a Giravên Falklandê"}
+        }
+        "meta:Fiji"{
+            ld{"Saeta Havînê ya Fîjiyê"}
+            lg{"Saeta Fîjiyê"}
+            ls{"Saeta Standard a Fîjiyê"}
+        }
+        "meta:French_Guiana"{
+            ls{"Saeta Guiyanaya Fransî"}
+        }
+        "meta:French_Southern"{
+            ls{"Saeta Antarktîka û Başûrê Fransayê"}
+        }
+        "meta:GMT"{
+            ls{"Saeta Navînî ya Greenwichê"}
+        }
+        "meta:Galapagos"{
+            ls{"Saeta Galapagosê"}
+        }
+        "meta:Gambier"{
+            ls{"Saeta Gambierê"}
+        }
+        "meta:Georgia"{
+            ld{"Saeta Havînê ya Gurcistanê"}
+            lg{"Saeta Gurcistanê"}
+            ls{"Saeta Standard a Gurcistanê"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Saeta Giravên Gilbertê"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Saeta Havînê ya Grînlanda Rojhilat"}
+            lg{"Saeta Grînlanda Rojhilat"}
+            ls{"Saeta Standard a Grînlanda Rojhilat"}
+            sd{"SHGR"}
+            sg{"SGR"}
+            ss{"SSGR"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Saeta Havînê ya Grînlanda Rojava"}
+            lg{"Saeta Grînlanda Rojava"}
+            ls{"Saeta Standard a Grînlanda Rojava"}
+            sd{"SHGRO"}
+            sg{"SGRO"}
+            ss{"SSGRO"}
+        }
+        "meta:Gulf"{
+            ls{"Saeta Standard a Kendavê"}
+        }
+        "meta:Guyana"{
+            ls{"Saeta Guyanayê"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Saeta Havînê ya Hawaii-Aleutianê"}
+            lg{"Saeta Hawaii-Aleutianê"}
+            ls{"Saeta Standard a Hawaii-Aleutianê"}
+            sd{"SHHA"}
+            sg{"SHAL"}
+            ss{"SSHA"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Saeta Havînê ya Hong Kongê"}
+            lg{"Saeta Hong Kongê"}
+            ls{"Saeta Standard a Hong Kongê"}
+        }
+        "meta:Hovd"{
+            ld{"Saeta Havînê ya Hovdê"}
+            lg{"Saeta Hovdê"}
+            ls{"Saeta Standard a Hovdê"}
+        }
+        "meta:India"{
+            ls{"Saeta Standard a Hindistanê"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Saeta Okyanûsa Hindê"}
+        }
+        "meta:Indochina"{
+            ls{"Saeta Hindiçînê"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Saeta Endonezyaya Navîn"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Saeta Endonezyaya Rojhilat"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Saeta Endonezyaya Rojava"}
+        }
+        "meta:Iran"{
+            ld{"Saeta Havînê ya Îranê"}
+            lg{"Saeta Îranê"}
+            ls{"Saeta Standard a Îranê"}
+        }
+        "meta:Irkutsk"{
+            ld{"Saeta Havînê ya Irkutskê"}
+            lg{"Saeta Irkutskê"}
+            ls{"Saeta Standard a Irkutskê"}
+        }
+        "meta:Israel"{
+            ld{"Saeta Havînê ya Îsraîlê"}
+            lg{"Saeta Îsraîlê"}
+            ls{"Saeta Standard a Îsraîlê"}
+        }
+        "meta:Japan"{
+            ld{"Saeta Havşnê ya Japonyayê"}
+            lg{"Saeta Japonyayê"}
+            ls{"Saeta Standard a Japonyayê"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Saeta Qazaxistana Rojhilat"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Saeta Qazaxistana Rojava"}
+        }
+        "meta:Korea"{
+            ld{"Saeta Havînê ya Koreyê"}
+            lg{"Saeta Koreyê"}
+            ls{"Saeta Standard a Koreyê"}
+        }
+        "meta:Kosrae"{
+            ls{"Saeta Kosraeyê"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Saeta Havînê ya Krasnoyarskê"}
+            lg{"Saeta Krasnoyarskê"}
+            ls{"Saeta Standard a Krasnoyarskê"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Saeta Qirxizistanê"}
+        }
+        "meta:Line_Islands"{
+            ls{"Saeta Giravên Lîneyê"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Saeta Havînê ya Lord Howeyê"}
+            lg{"Saeta Lord Howeyê"}
+            ls{"Saeta Standard a Lord Howeyê"}
+        }
+        "meta:Magadan"{
+            ld{"Saeta Havînê ya Magadanê"}
+            lg{"Saeta Magadanê"}
+            ls{"Saeta Standard a Magadanê"}
+        }
+        "meta:Malaysia"{
+            ls{"Saeta Malezyayê"}
+        }
+        "meta:Maldives"{
+            ls{"Saeta Maldîvan"}
+        }
+        "meta:Marquesas"{
+            ls{"Saeta Marquesasê"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Saeta Giravên Marşalê"}
+        }
+        "meta:Mauritius"{
+            ld{"Saeta Havînê ya Mauritiusê"}
+            lg{"Saeta Mauritiusê"}
+            ls{"Saeta Standard a Mauritiusê"}
+        }
+        "meta:Mawson"{
+            ls{"Saeta Mawsonê"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Saeta Havînê ya Pasîfîka Meksîkayê"}
+            lg{"Saeta Pasîfîka Meksîkayê"}
+            ls{"Saeta Standard a Pasîfîka Meksîkayê"}
+        }
+        "meta:Mongolia"{
+            ld{"Saeta Havînê ya Ûlanbatarê"}
+            lg{"Saeta Ûlanbatarê"}
+            ls{"Saeta Standard a Ûlanbatarê"}
+        }
+        "meta:Moscow"{
+            ld{"Saeta Havînê ya Moskovayê"}
+            lg{"Saeta Moskovayê"}
+            ls{"Saeta Standard a Moskovayê"}
+        }
+        "meta:Myanmar"{
+            ls{"Saeta Myanmarê"}
+        }
+        "meta:Nauru"{
+            ls{"Saeta Naûrûyê"}
+        }
+        "meta:Nepal"{
+            ls{"Saeta Nepalê"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Saeta Havînê ya Kaledonyaya Nû"}
+            lg{"Saeta Kaledonyaya Nû"}
+            ls{"Saeta Standard a Kaledonyaya Nû"}
+        }
+        "meta:New_Zealand"{
+            ld{"Saeta Havînê ya Zelandaya Nû"}
+            lg{"Saeta Zelandaya Nû"}
+            ls{"Saeta Standard a Zelandaya Nû"}
+        }
+        "meta:Newfoundland"{
+            ld{"Saeta Havînê ya Newfoundlandê"}
+            lg{"Saeta Newfoundlandê"}
+            ls{"Saeta Standard a Newfoundlandê"}
+            sd{"SHNF"}
+            sg{"SNF"}
+            ss{"SSNF"}
+        }
+        "meta:Niue"{
+            ls{"Saeta Niueyê"}
+        }
+        "meta:Norfolk"{
+            ld{"Saeta Havînê ya Girava Norfolkê"}
+            lg{"Saeta Girava Norfolkê"}
+            ls{"Saeta Standard a Girava Norfolkê"}
+        }
+        "meta:Noronha"{
+            ld{"Saeta Havînê ya Fernando de Noronhayê"}
+            lg{"Saeta Fernando de Noronhayê"}
+            ls{"Saeta Standard a Fernando de Noronhayê"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Saeta Havînê ya Novosibirskê"}
+            lg{"Saeta Novosibirskê"}
+            ls{"Saeta Standard a Novosibirskê"}
+        }
+        "meta:Omsk"{
+            ld{"Saeta Havînê ya Omskê"}
+            lg{"Saeta Omskê"}
+            ls{"Saeta Standard a Omskê"}
+        }
+        "meta:Pakistan"{
+            ld{"Saeta Havînê ya Pakistanê"}
+            lg{"Saeta Pakistanê"}
+            ls{"Saeta Standard a Pakistanê"}
+        }
+        "meta:Palau"{
+            ls{"Saeta Palauyê"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Saeta Gîneya Nû ya Papûayê"}
+        }
+        "meta:Paraguay"{
+            ld{"Saeta Havînê ya Paragûayê"}
+            lg{"Saeta Paragûayê"}
+            ls{"Saeta Standard a Paragûayê"}
+        }
+        "meta:Peru"{
+            ld{"Saeta Havînê ya Perûyê"}
+            lg{"Saeta Perûyê"}
+            ls{"Saeta Standard a Perûyê"}
+        }
+        "meta:Philippines"{
+            ld{"Saeta Havînê ya Fîlîpînê"}
+            lg{"Saeta Fîlîpînê"}
+            ls{"Saeta Standard a Fîlîpînê"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Saeta Giravên Phoenîks"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Saeta Havînê ya Saint Pierre û Miquelonê"}
+            lg{"Saeta Saint Pierre û Miquelonê"}
+            ls{"Saeta Standard a Saint Pierre û Miquelonê"}
+        }
+        "meta:Pitcairn"{
+            ls{"Saeta Pitcairnê"}
+        }
+        "meta:Ponape"{
+            ls{"Saeta Ponapeyê"}
+        }
+        "meta:Pyongyang"{
+            ls{"Saeta Pyongyangê"}
+        }
+        "meta:Reunion"{
+            ls{"Saeta Réunionê"}
+        }
+        "meta:Rothera"{
+            ls{"Saeta Rotherayê"}
+        }
+        "meta:Sakhalin"{
+            ld{"Saeta Havînê ya Saxalînê"}
+            lg{"Saeta Saxalînê"}
+            ls{"Saeta Standard a Saxalînê"}
+        }
+        "meta:Samoa"{
+            ld{"Saeta Havînê ya Samoayê"}
+            lg{"Saeta Samoayê"}
+            ls{"Saeta Standard a Samoayê"}
+        }
+        "meta:Seychelles"{
+            ls{"Saeta Seyşelerê"}
+        }
+        "meta:Singapore"{
+            ls{"Saeta Standard a Sîngapûrê"}
+        }
+        "meta:Solomon"{
+            ls{"Saeta Giravên Solomonê"}
+        }
+        "meta:South_Georgia"{
+            ls{"Saeta Georgiaya Başûr"}
+        }
+        "meta:Suriname"{
+            ls{"Saeta Surînamê"}
+        }
+        "meta:Syowa"{
+            ls{"Saeta Syowayê"}
+        }
+        "meta:Tahiti"{
+            ls{"Saeta Tahîtiyê"}
+        }
+        "meta:Taipei"{
+            ld{"Saeta Havînê ya Taîpeiyê"}
+            lg{"Saeta Taîpeiyê"}
+            ls{"Saeta Standard a Taîpeiyê"}
+        }
+        "meta:Tajikistan"{
+            ls{"Saeta Tacikistanê"}
+        }
+        "meta:Tokelau"{
+            ls{"Saeta Tokelauyê"}
+        }
+        "meta:Tonga"{
+            ld{"Saeta Havînê ya Tongayê"}
+            lg{"Saeta Tongayê"}
+            ls{"Saeta Standard a Tongayê"}
+        }
+        "meta:Truk"{
+            ls{"Saeta Chuukê"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Saeta Havînê ya Tirkmenistanê"}
+            lg{"Saeta Tirkmenistanê"}
+            ls{"Saeta Standard a Tirkmenistanê"}
+        }
+        "meta:Tuvalu"{
+            ls{"Saeta Tûvalûyê"}
+        }
+        "meta:Uruguay"{
+            ld{"Saeta Havînê ya Ûrûgûayê"}
+            lg{"Saeta Ûrûgûayê"}
+            ls{"Saeta Standard a Ûrûgûayê"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Saeta Havînê ya Ozbekistanê"}
+            lg{"Saeta Ozbekistanê"}
+            ls{"Saeta Standard a Ozbekistanê"}
+        }
+        "meta:Vanuatu"{
+            ld{"Saeta Havînê ya Vanûatûyê"}
+            lg{"Saeta Vanûatûyê"}
+            ls{"Saeta Standard a Vanûatûyê"}
+        }
+        "meta:Venezuela"{
+            ls{"Saeta Venezûelayê"}
+        }
+        "meta:Vladivostok"{
+            ld{"Saeta Havînê ya Vladivostokê"}
+            lg{"Saeta Vladivostokê"}
+            ls{"Saeta Standard a Vladivostokê"}
+        }
+        "meta:Volgograd"{
+            ld{"Saeta Havînê ya Volgogradê"}
+            lg{"Saeta Volgogradê"}
+            ls{"Saeta Standard a Volgogradê"}
+        }
+        "meta:Vostok"{
+            ls{"Saeta Vostokê"}
+        }
+        "meta:Wake"{
+            ls{"Saeta Girava Wakeyê"}
+        }
+        "meta:Wallis"{
+            ls{"Saeta Wallis û Futunayê"}
+        }
+        "meta:Yakutsk"{
+            ld{"Saeta Havînê ya Yakutskê"}
+            lg{"Saeta Yakutskê"}
+            ls{"Saeta Standard a Yakutskê"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Saeta Havînê ya Yekaterinburgê"}
+            lg{"Saeta Yekaterinburgê"}
+            ls{"Saeta Standard a Yekaterinburgê"}
+        }
+        "meta:Yukon"{
+            ls{"Saeta Yukonê"}
+            ss{"SY"}
+        }
+        regionFormat{"Saeta {0}(y)ê"}
+        regionFormatDaylight{"Saeta Havînê ya {0}(y)ê"}
+        regionFormatStandard{"Saeta Standard ya {0}(y)ê"}
+    }
+}

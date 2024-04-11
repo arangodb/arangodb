@@ -1,0 +1,1061 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lo{
+    units{
+        acceleration{
+            g-force{
+                other{"{0} ແຮງຕົກຕາມລຳພັງ"}
+            }
+            meter-per-square-second{
+                dnam{"ແມັດຕໍ່ວິນາທີກໍາລັງສອງ"}
+                other{"{0} ແມັດຕໍ່ວິນາທີກໍາລັງສອງ"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"arcminutes"}
+                other{"{0} ນາທີ"}
+            }
+            arc-second{
+                dnam{"arcseconds"}
+                other{"{0} ວິນາທີ"}
+            }
+            radian{
+                other{"{0} radians"}
+            }
+        }
+        area{
+            hectare{
+                other{"{0} ເຮັກຕາ"}
+            }
+            square-centimeter{
+                dnam{"ຊັງຕີຕາແມັດ"}
+                other{"{0} ຊັງຕີຕາແມັດ"}
+                per{"{0} ຕໍ່ຊັງຕີຕາແມັດ"}
+            }
+            square-foot{
+                dnam{"ຕາ​ຟຸດ"}
+                other{"{0} ຕາ​ຟຸດ"}
+            }
+            square-inch{
+                dnam{"ຕານິ້ວ"}
+                other{"{0} ຕາລາງນິ້ວ"}
+                per{"{0} ຕໍ່ຕາລາງນິ້ວ"}
+            }
+            square-kilometer{
+                dnam{"ກິໂລຕາແມັດ"}
+                other{"{0} ກິໂລຕາແມັດ"}
+                per{"{0} ຕໍ່ຕາກິໂລແມັດກ້ອນ"}
+            }
+            square-meter{
+                dnam{"ຕາແມັດ"}
+                other{"{0} ຕາແມັດ"}
+                per{"{0} ຕໍ່ຕາແມັດ"}
+            }
+            square-mile{
+                dnam{"ຕາ​ລາງໄມລ໌"}
+                other{"{0} ຕາ​ລາງໄມລ໌"}
+            }
+            square-yard{
+                dnam{"square yards"}
+                other{"{0} ຕາລາງຢາດ"}
+            }
+        }
+        compound{
+            1024p1{"kibi{0}"}
+            1024p2{"mebi{0}"}
+            1024p3{"gibi{0}"}
+            1024p4{"tebi{0}"}
+            1024p5{"pebi{0}"}
+            1024p6{"exbi{0}"}
+            1024p7{"zebi{0}"}
+            1024p8{"ໂຢບີ{0}"}
+            10p-1{"ເດຊີ{0}"}
+            10p-12{"ປິໂກ{0}"}
+            10p-15{"ເຟມໂຕ{0}"}
+            10p-18{"ອັດໂຕ{0}"}
+            10p-2{"ຊັງຕີ{0}"}
+            10p-21{"ເຊັບໂຕ{0}"}
+            10p-24{"ຢັອກໂຕ{0}"}
+            10p-27{"ຣອນໂຕ{0}"}
+            10p-3{"ມິນລິ{0}"}
+            10p-30{"ເກັກໂທ{0}"}
+            10p-6{"ໄມໂຄຣ{0}"}
+            10p-9{"ນາໂນ{0}"}
+            10p1{"ເດກາ{0}"}
+            10p12{"ເທຣາ{0}"}
+            10p18{"ເອັກຊາ{0}"}
+            10p2{"ເຮັກໂຕ{0}"}
+            10p21{"ເຊັດຕາ{0}"}
+            10p24{"ຢັອດຕາ{0}"}
+            10p27{"ຣອນນາ{0}"}
+            10p3{"ກິໂລ{0}"}
+            10p30{"ເກັດຕາ{0}"}
+            10p6{"ເມກາ{0}"}
+            10p9{"ກິກາ{0}"}
+            per{"{0} ຕໍ່ {1}"}
+            power2{
+                other{
+                    _{
+                        _{"ຕາ{0}​"}
+                    }
+                }
+            }
+            power3{
+                other{
+                    _{
+                        _{"{0}ກ້ອນ"}
+                    }
+                }
+            }
+        }
+        concentr{
+            karat{
+                other{"{0} ກະຣັດ"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"ມິລິກຣັມຕໍ່ເດຊິລິດ"}
+            }
+            millimole-per-liter{
+                dnam{"ມິລິໂມລຕໍ່ລິດ"}
+                other{"{0} ມິລິໂມລຕໍ່ລິດ"}
+            }
+            mole{
+                dnam{"ໂມ​ລ"}
+                other{"{0} ໂມ​ລ"}
+            }
+            percent{
+                other{"{0} ເປີເຊັນ"}
+            }
+            permille{
+                other{"{0} ຕໍ່ພັນ"}
+            }
+            permillion{
+                dnam{"ພາດຕໍ່ລ້ານ"}
+                other{"{0} ພາດຕໍ່ລ້ານ"}
+            }
+            permyriad{
+                dnam{"ເປີ​ມີ​ຣຽດ"}
+                other{"{0} ເປີ​ມີ​ຣຽດ"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"ລິດ ຕໍ່ 100 ກິໂລເເມັດ"}
+                other{"{0} ລິດຕໍ່ 100 ກີໂລແມັດ"}
+            }
+            liter-per-kilometer{
+                other{"{0} ລິດຕໍ່ກິໂລແມັດ"}
+            }
+            mile-per-gallon{
+                dnam{"ໄມລ໌ຕໍ່ແກລອນ"}
+                other{"{0} ໄມລ໌ຕໍ່ແກລອນ"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"ໄມລ໌ຕໍ່ແກລລອນອັງກິດ"}
+                other{"{0} ໄມລ໌ຕໍ່ແກລລອນອັງກິດ"}
+            }
+        }
+        coordinate{
+            dnam{"ທິດທາງຕາມລຳດັບ"}
+        }
+        digital{
+            petabyte{
+                dnam{"ເພຕາໄບຕ໌"}
+                other{"{0} ເພຕາໄບຕ໌"}
+            }
+        }
+        duration{
+            century{
+                dnam{"ສັດຕະວັດ"}
+                other{"{0} ສັດຕະວັດ"}
+            }
+            day{
+                per{"{0} ຕໍ່ມື້"}
+            }
+            hour{
+                other{"{0} ຊົ່ວໂມງ"}
+                per{"{0} ຕໍ່ຊົ່ວໂມງ"}
+            }
+            microsecond{
+                dnam{"ໄມ​ໂຄຣ​ວິ​ນາ​ທີ"}
+                other{"{0} ໄມ​ໂຄຣ​ວິ​ນາ​ທີ"}
+            }
+            millisecond{
+                dnam{"ມິນລີວິນາທີ"}
+                other{"{0} ມິນລີວິນາທີ"}
+            }
+            minute{
+                dnam{"ນາທີ"}
+                other{"{0} ນາທີ"}
+                per{"{0} ຕໍ່ນາທີ"}
+            }
+            month{
+                other{"{0} ເດືອນ"}
+            }
+            nanosecond{
+                dnam{"ນາ​ໂນ​ວິ​ນາ​ທີ"}
+                other{"{0} ນາ​ໂນ​ວິ​ນາ​ທີ"}
+            }
+            second{
+                dnam{"ວິນາທີ"}
+                other{"{0} ວິນາທີ"}
+                per{"{0} ຕໍ່ວິນາທີ"}
+            }
+            week{
+                other{"{0} ອາທິດ"}
+                per{"{0} ຕໍ່ອາທິດ"}
+            }
+            year{
+                per{"{0} /ປີ"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"ຫົວ​ໜ່ວຍ​ວັດ​ແທກ​ປະ​ລິ​ມານ​ຄວາມ​ຮ້ອນ​ຂ​ອງ​ອັງ​ກິດ"}
+                other{"{0} ຫົວ​ໜ່ວຍ​ວັດ​ແທກ​ປະ​ລິ​ມານ​ຄວາມ​ຮ້ອນ​ຂ​ອງ​ອັງ​ກິດ"}
+            }
+            calorie{
+                dnam{"ແຄລໍລີ່"}
+                other{"{0} ແຄລໍລີ່"}
+            }
+            electronvolt{
+                dnam{"ເອ​ເລັກ​ຕ​ຣົງ​ໂວນ"}
+                other{"{0} ເອ​ເລັກ​ຕ​ຣົງ​ໂວນ"}
+            }
+            foodcalorie{
+                dnam{"ແຄລໍລີ່"}
+                other{"{0} ແຄລໍລີ່"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"ກິໂລວັດໂມງຕໍ່ 100 ກິໂລແມັດ"}
+                other{"{0} ກິໂລວັດໂມງຕໍ່ 100 ກິໂລແມັດ"}
+            }
+            newton{
+                dnam{"ນິວ​ເຕິນ"}
+                other{"{0} ນິວ​ເຕິນ"}
+            }
+            pound-force{
+                dnam{"ແຮງປ​ອນ"}
+                other{"{0} ແຮງປ​ອນ"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"astronomical units"}
+                other{"{0} astronomical units"}
+            }
+            centimeter{
+                dnam{"ຊັງຕີແມັດ"}
+                other{"{0} ຊັງຕີແມັດ"}
+                per{"{0} ຕໍ່ຊັງຕີແມັດ"}
+            }
+            decimeter{
+                dnam{"ເດຊີແມັດ"}
+                other{"{0} ເດຊີແມັດ"}
+            }
+            foot{
+                other{"{0} ຟຸດ"}
+                per{"{0} ຕໍ່ຟຸດ"}
+            }
+            inch{
+                other{"{0} ນິ້ວ"}
+                per{"{0} ຕໍ່ນິ້ວ"}
+            }
+            kilometer{
+                dnam{"ກິໂລແມັດ"}
+                other{"{0} ກິໂລແມັດ"}
+                per{"{0} ຕໍ່ກິໂລແມັດ"}
+            }
+            light-year{
+                other{"{0} ປີແສງ"}
+            }
+            meter{
+                other{"{0} ແມັດ"}
+                per{"{0} ຕໍ່ແມັດ"}
+            }
+            micrometer{
+                dnam{"micrometers"}
+                other{"{0} micrometers"}
+            }
+            mile{
+                other{"{0} ໄມລ໌"}
+            }
+            mile-scandinavian{
+                dnam{"ໄມລ໌ສະກັງດີນາວຽນ"}
+                other{"{0} ໄມລ໌ສະກັງດີນາວຽນ"}
+            }
+            millimeter{
+                dnam{"ມິນລິແມັດ"}
+                other{"{0} ມິນລິແມັດ"}
+            }
+            nanometer{
+                dnam{"ນາໂນແມັດ"}
+                other{"{0} ນາໂນແມັດ"}
+            }
+            nautical-mile{
+                dnam{"ໄມລ໌ທະເລ"}
+                other{"{0} ໄມລ໌ທະເລ"}
+            }
+            parsec{
+                other{"{0} parsecs"}
+            }
+            picometer{
+                dnam{"ປິໂກແມັດ"}
+                other{"{0} ປິໂກແມັດ"}
+            }
+            point{
+                other{"{0} ຈຸດ"}
+            }
+            solar-radius{
+                dnam{"ລັດ​ສະ​ໝີ​ດວງ​ຕາ​ເວັນ"}
+                other{"{0} ລັດ​ສະ​ໝີ​ດວງ​ຕາ​ເວັນ"}
+            }
+        }
+        light{
+            candela{
+                dnam{"ແຄນເດລາ"}
+                other{"{0} ແຄນເດລາ"}
+            }
+            lumen{
+                dnam{"ລູເມນ"}
+                other{"{0} ລູເມນ"}
+            }
+            lux{
+                other{"{0} lux"}
+            }
+            solar-luminosity{
+                dnam{"ຄວາມ​ແຈ້ງດວງ​ຕາ​ເວັນ"}
+                other{"{0} ຄວາມ​ແຈ້ງດວງ​ຕາ​ເວັນ"}
+            }
+        }
+        mass{
+            dalton{
+                dnam{"ດໍ​ຕັນ"}
+                other{"{0} ດໍ​ຕັນ"}
+            }
+            earth-mass{
+                dnam{"ມວນ​ສານ​ໜ່ວຍ​ໂລກ"}
+                other{"{0} ມວນ​ສານ​ໜ່ວຍ​ໂລກ"}
+            }
+            grain{
+                dnam{"ເກຣນ"}
+                other{"{0} ເກຣນ"}
+            }
+            gram{
+                other{"{0} ກຣາມ"}
+            }
+            kilogram{
+                other{"{0} ກິໂລກຣາມ"}
+            }
+            milligram{
+                dnam{"ມິນລີກຣາມ"}
+                other{"{0} ມິນລີກຣາມ"}
+            }
+            ounce{
+                other{"{0} ອອນສ"}
+                per{"{0} ຕໍ່ ອອນສ"}
+            }
+            pound{
+                other{"{0} ປອນ"}
+                per{"{0}/ປອນ"}
+            }
+            solar-mass{
+                dnam{"ມວນ​ສານດວງ​ຕາ​ເວັນ"}
+                other{"{0} ມວນ​ສານດວງ​ຕາ​ເວັນ"}
+            }
+            stone{
+                dnam{"stones"}
+                other{"{0} stones"}
+            }
+            ton{
+                dnam{"ໂຕນ"}
+                other{"{0} ໂຕນ"}
+            }
+        }
+        power{
+            horsepower{
+                other{"{0} ແຮງມ້າ"}
+            }
+            kilowatt{
+                other{"{0} ກິໂລວັດ"}
+            }
+        }
+        pressure{
+            atmosphere{
+                dnam{"atmospheres"}
+                other{"{0} atmospheres"}
+            }
+            hectopascal{
+                dnam{"hectopascals"}
+                other{"{0} hectopascals"}
+            }
+            inch-ofhg{
+                dnam{"ນິ້ວໃນບາຫຼອດ"}
+                other{"{0} ນິ້ວໃນບາຫຼອດ"}
+            }
+            kilopascal{
+                dnam{"ກິ​ໂລ​ປາ​ສ​ການ"}
+                other{"{0} ກິ​ໂລ​ປາ​ສ​ການ"}
+            }
+            megapascal{
+                dnam{"ເມ​ກາ​ປາ​ສ​ການ"}
+                other{"{0} ເມ​ກາ​ປາ​ສ​ການ"}
+            }
+            millibar{
+                dnam{"ມິນລິບາ"}
+                other{"{0} ມິນລິບາ"}
+            }
+            millimeter-ofhg{
+                dnam{"ມິນລີແມັດໃນບາຫຼອດ"}
+                other{"{0} ມິນລີແມັດໃນບາຫຼອດ"}
+            }
+            pound-force-per-square-inch{
+                dnam{"ປອນຕໍ່ຕະລາງນິ້້ວ"}
+                other{"{0} ປອນຕໍ່ຕະລາງນິ້້ວ"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"ໂບຝອດ"}
+                other{"{0} ໂບຝອດ"}
+            }
+            kilometer-per-hour{
+                dnam{"ກິໂລແມັດຕໍ່ຊົ່ວໂມງ"}
+                other{"{0} ກິໂລແມັດຕໍ່ຊົ່ວໂມງ"}
+            }
+            knot{
+                dnam{"ນ໋ອດ"}
+                other{"{0} ນ໋ອດ"}
+            }
+            meter-per-second{
+                dnam{"ແມັດຕໍ່ວິນາທີ"}
+                other{"{0} ແມັດຕໍ່ວິນາທີ"}
+            }
+            mile-per-hour{
+                dnam{"ໄມລ໌ຕໍ່ຊົ່ວໂມງ"}
+                other{"{0} ໄມລ໌ຕໍ່ຊົ່ວໂມງ"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"ອົງສາເຊວຊຽສ"}
+            }
+            fahrenheit{
+                dnam{"ອົງສາຟາເຣນຮາຍ"}
+                other{"{0} ອົງສາຟາເຣນຮາຍ"}
+            }
+            kelvin{
+                dnam{"ອົງສາເຄວິນ"}
+                other{"{0} ອົງສາເຄວິນ"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"ນິວ​ເຕິນ​ແມັດ"}
+                other{"{0} ນິວ​ເຕິນ​ແມັດ"}
+            }
+            pound-force-foot{
+                dnam{"ປອນ​-ຟຸດ"}
+                other{"{0} ປອນ​-ຟຸດ"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"ບາ​ເຣວ"}
+                other{"{0} ບາ​ເຣວ"}
+            }
+            cubic-kilometer{
+                dnam{"ກິໂລແມັດກ້ອນ"}
+                other{"{0} ກິໂລແມັດກ້ອນ"}
+            }
+            cubic-meter{
+                dnam{"ແມັດກ້ອນ"}
+                other{"{0} ແມັດກ້ອນ"}
+                per{"{0} ຕໍ່ມ³"}
+            }
+            cubic-mile{
+                dnam{"ໄມລ໌ກ້ອນ"}
+                other{"{0} ໄມລ໌ກ້ອນ"}
+            }
+            cup-metric{
+                other{"{0} metric cups"}
+            }
+            dram{
+                dnam{"ແດຣມ"}
+                other{"{0} ແດຣມ"}
+            }
+            gallon{
+                per{"{0} ຕໍ່ແກລລອນ"}
+            }
+            gallon-imperial{
+                dnam{"ແກລລອນອັງກິດ"}
+                other{"{0} ແກລລອນອັງກິດ"}
+            }
+            liter{
+                other{"{0} ລິດ"}
+                per{"{0} ຕໍ່ລິດ"}
+            }
+            pint-metric{
+                dnam{"metric pints"}
+                other{"{0} metric pints"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            arc-minute{
+                other{"{0}′"}
+            }
+            arc-second{
+                other{"{0}″"}
+            }
+            degree{
+                other{"{0}°"}
+            }
+        }
+        area{
+            acre{
+                other{"{0} ac"}
+            }
+            hectare{
+                other{"{0} ຮຕ"}
+            }
+            square-foot{
+                other{"{0} ft²"}
+            }
+            square-mile{
+                dnam{"mi²"}
+            }
+            square-yard{
+                dnam{"yd²"}
+            }
+        }
+        concentr{
+            percent{
+                dnam{"%"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                other{"{0} ລ / 100 ກມ"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mpg UK"}
+                other{"{0} m/gUK"}
+            }
+        }
+        duration{
+            day{
+                other{"{0} ມ."}
+            }
+            millisecond{
+                dnam{"ມລວ"}
+                other{"{0} ມລ. ວິ."}
+            }
+            week{
+                dnam{"ອທ."}
+            }
+            year{
+                other{"{0} ປ"}
+            }
+        }
+        energy{
+            foodcalorie{
+                other{"{0}ຄລ"}
+            }
+            joule{
+                dnam{"ຈູນ"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                other{"{0}kWh/100km"}
+            }
+        }
+        graphics{
+            dot-per-centimeter{
+                other{"{0}dpcm"}
+            }
+            dot-per-inch{
+                other{"{0}dpi"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"ກະຣັດ"}
+            }
+            kilogram{
+                other{"{0} ກລ"}
+            }
+            stone{
+                dnam{"ສະໂຕນ"}
+            }
+        }
+        power{
+            kilowatt{
+                other{"{0} kW"}
+            }
+        }
+        speed{
+            meter-per-second{
+                dnam{"ມ/ວ"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"°C"}
+                other{"{0}°"}
+            }
+            fahrenheit{
+                dnam{"°F"}
+                other{"{0}°F"}
+            }
+        }
+        volume{
+            dessert-spoon-imperial{
+                dnam{"dsp Imp"}
+                other{"{0}dsp-Imp"}
+            }
+            dram{
+                dnam{"fl.dr."}
+            }
+            fluid-ounce-imperial{
+                other{"{0} fl oz Im"}
+            }
+            gallon-imperial{
+                other{"{0} galIm"}
+            }
+            liter{
+                other{"{0}L"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"ແຮງຕົກຕາມລຳພັງ"}
+            }
+            meter-per-square-second{
+                dnam{"ແມັດ/ວິນາທີ²"}
+                other{"{0} ມ/ວນທ²"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"arcmins"}
+                other{"{0} arcmins"}
+            }
+            arc-second{
+                dnam{"arcsecs"}
+                other{"{0} arcsecs"}
+            }
+            degree{
+                dnam{"ອົງສາ"}
+                other{"{0} ອົງສາ"}
+            }
+            radian{
+                dnam{"radians"}
+            }
+        }
+        area{
+            acre{
+                dnam{"ເອເຄີ"}
+                other{"{0} ເອເຄີ"}
+            }
+            dunam{
+                dnam{"ດູ​ນຳ"}
+                other{"{0} ດູ​ນຳ"}
+            }
+            hectare{
+                dnam{"ເຮັກຕາ"}
+                other{"{0} ຮຕ."}
+            }
+            square-centimeter{
+                dnam{"ຊມ²"}
+                other{"{0} ຊມ²"}
+                per{"{0}/ຊມ²"}
+            }
+            square-foot{
+                dnam{"ຟຸດ²"}
+                other{"{0} ຟຸດ²"}
+            }
+            square-inch{
+                dnam{"ນິ້ວ²"}
+            }
+            square-kilometer{
+                dnam{"ກມ²"}
+                other{"{0} ກມ²"}
+            }
+            square-meter{
+                dnam{"ແມັດ²"}
+                other{"{0} ມ²"}
+                per{"{0}/ມ²"}
+            }
+            square-mile{
+                dnam{"sq miles"}
+            }
+            square-yard{
+                dnam{"yards²"}
+            }
+        }
+        compound{
+            10p-1{"ດຊ{0}"}
+            10p-12{"ປກ{0}"}
+            10p-15{"ຟຕ{0}"}
+            10p-18{"ອຕ{0}"}
+            10p-2{"ຊມ{0}"}
+            10p-21{"ຊຕ{0}"}
+            10p-24{"ຢຕ{0}"}
+            10p-27{"ຣຕ{0}"}
+            10p-3{"ມມ{0}"}
+            10p-30{"ກທ{0}"}
+            10p-6{"ມຄ{0}"}
+            10p-9{"ນນ{0}"}
+            10p1{"ດກ{0}"}
+            10p12{"ທຣ{0}"}
+            10p15{"ເພຕາ{0}"}
+            10p18{"ອຊ{0}"}
+            10p2{"ຮຕ{0}"}
+            10p21{"ຊ{0}"}
+            10p24{"ຢ{0}"}
+            10p27{"ຣນ{0}"}
+            10p3{"ກມ{0}"}
+            10p30{"ກຕ{0}"}
+            10p6{"ມກ{0}"}
+            10p9{"ກກ{0}"}
+        }
+        concentr{
+            item{
+                dnam{"ອັນ"}
+                other{"{0} ອັນ"}
+            }
+            karat{
+                dnam{"ກະຣັດ"}
+            }
+            millimole-per-liter{
+                dnam{"ມິລິໂມນ/ລິດ"}
+            }
+            percent{
+                dnam{"ເປີເຊັນ"}
+            }
+            permille{
+                dnam{"ຕໍ່ພັນ"}
+            }
+            permillion{
+                dnam{"ພາດ/ລ້ານ"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"ລ/ 100 ກມ"}
+            }
+            liter-per-kilometer{
+                dnam{"ລ/ກມ"}
+                other{"{0} ລ/ກມ"}
+            }
+            mile-per-gallon{
+                dnam{"ໄມລ໌/ແກລ"}
+                other{"{0} mpg"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"ໄມລ໌/ແກລລອນອັງກິດ"}
+            }
+        }
+        coordinate{
+            dnam{"ທິດທາງ"}
+        }
+        digital{
+            petabyte{
+                dnam{"PByte"}
+            }
+        }
+        duration{
+            day{
+                dnam{"ມື້"}
+                other{"{0} ມື້"}
+                per{"{0}/ມື້"}
+            }
+            decade{
+                dnam{"ທົດສະວັດ"}
+                other{"{0} ທົດສະວັດ"}
+            }
+            hour{
+                dnam{"ຊົ່ວໂມງ"}
+                other{"{0} ຊມ"}
+                per{"{0}/ຊມ"}
+            }
+            microsecond{
+                dnam{"μວິ"}
+                other{"{0} μວິ"}
+            }
+            millisecond{
+                dnam{"ມິນລີວິ"}
+                other{"{0} ມລວ"}
+            }
+            minute{
+                dnam{"ນທ."}
+                other{"{0} ນທ"}
+                per{"{0}/ນາທີ"}
+            }
+            month{
+                dnam{"ເດືອນ"}
+                other{"{0} ດ."}
+                per{"{0}/ເດືອນ"}
+            }
+            nanosecond{
+                dnam{"ນາ​ໂນ​ວິ​"}
+                other{"{0} ນນ​ວິ"}
+            }
+            quarter{
+                dnam{"ໄຕມາດ"}
+                other{"{0} ໄຕມາດ"}
+                per{"{0}/ໄຕມາດ"}
+            }
+            second{
+                dnam{"ວິ."}
+                other{"{0} ວິ"}
+                per{"{0}/ວິ"}
+            }
+            week{
+                dnam{"ອາທິດ"}
+                other{"{0} ອທ."}
+                per{"{0}/ອາທິດ"}
+            }
+            year{
+                dnam{"ປີ"}
+                other{"{0} ປີ"}
+                per{"{0}/ປີ"}
+            }
+        }
+        electric{
+            volt{
+                dnam{"ໂວລ"}
+                other{"{0} ໂວລ"}
+            }
+        }
+        energy{
+            calorie{
+                dnam{"ຄລ"}
+                other{"{0} ຄລ"}
+            }
+            foodcalorie{
+                dnam{"ຄລ"}
+                other{"{0} ຄລ"}
+            }
+            kilocalorie{
+                dnam{"ກິໂລແຄລໍລີ່"}
+                other{"{0} ກິໂລແຄລໍລີ່"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"ດັອດ"}
+                other{"{0} ດັອດ"}
+            }
+            dot-per-centimeter{
+                dnam{"dpcm"}
+                other{"{0} dpcm"}
+            }
+            dot-per-inch{
+                dnam{"dpi"}
+                other{"{0} dpi"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"ຊມ"}
+                other{"{0} ຊມ"}
+                per{"{0}/ຊັງຕີແມັດ"}
+            }
+            decimeter{
+                dnam{"ດມ"}
+                other{"{0} ດມ"}
+            }
+            fathom{
+                dnam{"ftm"}
+                other{"{0} ftm"}
+            }
+            foot{
+                dnam{"ຟຸດ"}
+                other{"{0} ຟ"}
+                per{"{0}/ຟ"}
+            }
+            inch{
+                dnam{"ນິ້ວ"}
+                other{"{0} ນິ"}
+                per{"{0}/ນິ"}
+            }
+            kilometer{
+                dnam{"ກມ"}
+                other{"{0} ກມ"}
+                per{"{0}/ກມ"}
+            }
+            light-year{
+                dnam{"ປີແສງ"}
+                other{"{0} ປສ"}
+            }
+            meter{
+                dnam{"ແມັດ"}
+                other{"{0} ມ"}
+                per{"{0}/ມ"}
+            }
+            mile{
+                dnam{"ໄມລ໌"}
+                other{"{0} ໄມ"}
+            }
+            millimeter{
+                dnam{"ມມ"}
+                other{"{0} ມມ"}
+            }
+            nanometer{
+                dnam{"ນມ"}
+                other{"{0} ນມ"}
+            }
+            parsec{
+                dnam{"parsecs"}
+            }
+            picometer{
+                dnam{"ປມ"}
+                other{"{0} ປມ"}
+            }
+            point{
+                dnam{"ຈຸດ"}
+            }
+            yard{
+                dnam{"ຫລາ"}
+                other{"{0} ຫລາ"}
+            }
+        }
+        light{
+            lux{
+                dnam{"lux"}
+            }
+        }
+        mass{
+            grain{
+                dnam{"gr"}
+                other{"{0} gr"}
+            }
+            gram{
+                dnam{"ກຣາມ"}
+                other{"{0} ກຼ"}
+            }
+            kilogram{
+                dnam{"ກິໂລກຣາມ"}
+                other{"{0} ກິໂລ"}
+            }
+            milligram{
+                dnam{"ມກ"}
+                other{"{0} ມກ"}
+            }
+            ounce{
+                dnam{"ອອນສ"}
+                other{"{0} ອ"}
+                per{"{0}/ອ"}
+            }
+            pound{
+                dnam{"ປອນ"}
+                other{"{0} ປ"}
+                per{"{0}/ປ"}
+            }
+            ton{
+                dnam{"ຕ"}
+                other{"{0} ຕ"}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"ແຮງມ້າ"}
+            }
+            kilowatt{
+                dnam{"ກິໂລວັດ"}
+                other{"{0} ກລ. ວັດ"}
+            }
+            watt{
+                dnam{"ວັດ"}
+                other{"{0} ວັດ"}
+            }
+        }
+        pressure{
+            hectopascal{
+                dnam{"hPA"}
+                other{"{0} hPA"}
+            }
+            inch-ofhg{
+                dnam{"in Hg"}
+                other{"{0} in Hg"}
+            }
+        }
+        speed{
+            beaufort{
+                other{"{0} B"}
+            }
+            kilometer-per-hour{
+                dnam{"ກມ/ຊມ"}
+                other{"{0} ກມ/ຊມ"}
+            }
+            meter-per-second{
+                dnam{"ແມັດ/ວິ"}
+                other{"{0} ມ/ວ"}
+            }
+            mile-per-hour{
+                dnam{"ໄມລ໌/ຊົ່ວໂມງ"}
+                other{"{0} ມ/ຊມ"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"ອົງ​ສາ ຊ."}
+                other{"{0} ອົງສາ ຊີ."}
+            }
+            fahrenheit{
+                dnam{"ອົງ​ສາ ຟ."}
+                other{"{0} ອົງສາ ຟ."}
+            }
+            kelvin{
+                dnam{"ອົງສາ ເຄ."}
+                other{"{0}°K"}
+            }
+        }
+        volume{
+            cubic-kilometer{
+                dnam{"ກມ³"}
+                other{"{0} ກມ³"}
+            }
+            cubic-meter{
+                dnam{"ມ³"}
+                other{"{0} ມ³"}
+                per{"{0}/ມ³"}
+            }
+            dram{
+                dnam{"dr fl"}
+                other{"{0} dr fl"}
+            }
+            drop{
+                dnam{"ຢອດ"}
+                other{"{0} ຢອດ"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                other{"{0} fl oz"}
+            }
+            gallon{
+                dnam{"ແກລລອນ"}
+                other{"{0} ແກລລອນ"}
+                per{"{0}/ແກລລອນ"}
+            }
+            liter{
+                dnam{"ລິດ"}
+                other{"{0} L"}
+            }
+            pinch{
+                dnam{"ຢິບ"}
+                other{"{0} ຢິບ"}
+            }
+        }
+    }
+}

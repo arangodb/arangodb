@@ -1,0 +1,816 @@
+# Test data for Person Name Data#  Copyright © 1991-2024 Unicode, Inc.
+#  For terms of use, see http://www.unicode.org/copyright.html
+#  SPDX-License-Identifier: Unicode-3.0
+#  CLDR data files are interpreted according to the LDML specification (http://unicode.org/reports/tr35/)
+# CLDR person name formatting test data for: ne
+#
+# Test lines have the following structure:
+#
+# enum ; <type> ; <value>(', ' <value)
+#   For all the elements in <…> below, the possible choices that could appear in the file.
+#   For example, <field> could be any of title, given, … credentials.
+#   Verify that all of these values work with the implementation.
+#
+# name ; <field>('-'<modifier>) ; <value>
+#   A sequence of these is to be used to build a person name object with the given field values.
+#   If the <field> is 'locale', then the value is the locale of the name.
+#     That will always be the last field in the name.
+#     NOTE: the locale for the name (where different than the test file's locale) will generally not match the text.
+#     It is chosen to exercise the person name formatting, by having a different given-surname order than the file's locale.
+#
+# expectedResult; <value>
+#   This line follows a sequence of name lines, and indicates the that all the following parameter lines have this expected value.
+#
+# parameters; <options>; <length>; <usage>; <formality>
+#   Each of these parameter lines should be tested to see that when formatting the current name with these parameters, 
+#   the expected value is produced.
+#
+# endName
+#   Indicates the end of the values to be tested with the current name.
+#
+# =====
+# Example:
+#     enum ; field ; title, given, given2, surname, surname2, generation, credentials
+#     …
+#
+#     name ; given; Iris
+#     name ; surname; Falke
+#     name ; locale; de
+#
+#     expectedResult; Falke, Iris
+#
+#     parameters; sorting; long; referring; formal
+#     parameters; sorting; medium; referring; informal
+#
+#     endName
+#
+#     name ; given; Max
+#     name ; given2; Ben
+#     name ; surname; Mustermann
+#     …
+# =====
+
+enum ; field ; title, given, given2, surname, surname2, generation, credentials
+enum ; modifiers ; informal, allCaps, initialCap, initial, retain, monogram, prefix, core, vocative, genitive
+enum ; order ; givenFirst, surnameFirst, sorting
+enum ; length ; long, medium, short
+enum ; usage ; referring, addressing, monogram
+enum ; formality ; formal, informal
+
+# nativeG
+name ; given; सुन्दर
+name ; locale; ne_AQ
+
+expectedResult; सुन्दर
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; सु
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeGS
+name ; given; रमिता
+name ; surname; पोख्रेल
+name ; locale; ne_AQ
+
+expectedResult; पोख्रेल, रमिता
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; पोख्रेल रमिता
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; रमिता पोख्रेल
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; पोख्रेल, र.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; पोख्रेल र.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; र. पोख्रेल
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; रमिता पो.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; पोख्रेल
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; रमिता
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; पोर
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; रपो
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; पो
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; र
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# nativeGGS
+name ; given; प्रेमप्रसाद
+name ; given2; हिमलाल
+name ; surname; वास्तोला
+name ; locale; ne_AQ
+
+expectedResult; वास्तोला, प्रेमप्रसाद हिमलाल
+
+parameters; sorting; long; referring; formal
+
+expectedResult; प्रेमप्रसाद हिमलाल वास्तोला
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; वास्तोला प्रेमप्रसाद हिमलाल
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; वास्तोला, प्रेमप्रसाद हि.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; प्रेमप्रसाद हि. वास्तोला
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; वास्तोला प्रेमप्रसाद हि.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; वास्तोला, प्रेमप्रसाद
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; प्रेमप्रसाद वास्तोला
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; वास्तोला प्रेमप्रसाद
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; वास्तोला, प्रे.हि.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; प्रे.हि. वास्तोला
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; वास्तोला प्रे.हि.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; प्रेमप्रसाद वा.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; वास्तोला प्रे.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; प्रेमप्रसाद
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; प्रेहिवा
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; वाप्रेहि
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; वास्तोला
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; प्रेवा
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; वाप्रे
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; प्रे
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; वा
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# nativeFull
+name ; title; श्री
+name ; given; बर्ट्राम विलबरफोर्स
+name ; given-informal; बर्टी
+name ; given2; हेनरी रोबर्ट
+name ; surname-core; वुस्टर
+name ; generation; जेआर
+name ; credentials; एमपी
+name ; locale; ne_AQ
+
+expectedResult; बर्ट्राम विलबरफोर्स हेनरी रोबर्ट वुस्टर एमपी
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; वुस्टर बर्ट्राम विलबरफोर्स हेनरी रोबर्ट एमपी
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; वुस्टर, बर्ट्राम विलबरफोर्स हेनरी रोबर्ट
+
+parameters; sorting; long; referring; formal
+
+expectedResult; बर्ट्राम विलबरफोर्स हे.रो. वुस्टर एमपी
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; वुस्टर बर्ट्राम विलबरफोर्स हे.रो. एमपी
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; वुस्टर, बर्ट्राम विलबरफोर्स हे.रो.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; वुस्टर, ब.वि.हे.रो.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; ब.वि.हे.रो. वुस्टर
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; वुस्टर ब.वि.हे.रो.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; वुस्टर, बर्टी
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; बर्टी वुस्टर
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; वुस्टर ब.वि.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; वुस्टर बर्टी
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; श्री वुस्टर
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; बर्टी वु.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; बर्टी
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; बहेवु
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; वुबहे
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; बवु
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; वुब
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; वु
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; ब
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignG
+name ; given; सिनबाद
+name ; locale; ko_AQ
+
+expectedResult; सिनबाद
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; referring; formal
+parameters; givenFirst; short; referring; informal
+parameters; givenFirst; short; addressing; formal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+parameters; surnameFirst; short; addressing; formal
+parameters; surnameFirst; short; addressing; informal
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; formal
+parameters; sorting; short; referring; informal
+
+expectedResult; सि
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; formal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; formal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignGS
+name ; given; क्याथी
+name ; surname; मुलर
+name ; locale; ko_AQ
+
+expectedResult; मुलर, क्याथी
+
+parameters; sorting; long; referring; formal
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; formal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; क्याथी मुलर
+
+parameters; givenFirst; long; referring; formal
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; formal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; मुलर क्याथी
+
+parameters; surnameFirst; long; referring; formal
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; formal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; मुलर, क्या.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; क्या. मुलर
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; क्याथी मु.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; मुलर क्या.
+
+parameters; surnameFirst; short; referring; formal
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; क्याथी
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; क्यामु
+
+parameters; givenFirst; long; monogram; formal
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; मुक्या
+
+parameters; surnameFirst; long; monogram; formal
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; क्या
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; मुलर
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; मु
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName
+
+# foreignGGS
+name ; given; जाजिला
+name ; given2; हार्निस
+name ; surname; स्टोबर
+name ; locale; ko_AQ
+
+expectedResult; स्टोबर, जाजिला हार्निस
+
+parameters; sorting; long; referring; formal
+
+expectedResult; जाजिला हार्निस स्टोबर
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; स्टोबर जाजिला हार्निस
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; स्टोबर, जाजिला हा.
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; जाजिला हा. स्टोबर
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; स्टोबर जाजिला हा.
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; स्टोबर, जा.हा.
+
+parameters; sorting; short; referring; formal
+
+expectedResult; स्टोबर, जाजिला
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; जा.हा. स्टोबर
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; जाजिला स्टोबर
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; स्टोबर जा.हा.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; स्टोबर जाजिला
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; जाजिला स्टो.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; स्टोबर जा.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; जाहास्टो
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; स्टोजाहा
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; जाजिला
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; जास्टो
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; स्टोजा
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; स्टोबर
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; स्टो
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+expectedResult; जा
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+endName
+
+# foreignFull
+name ; title; प्रोफेसर डाक्टर
+name ; given; एडा कर्नेलिया
+name ; given-informal; नीले
+name ; given2; सिजर मार्टिन
+name ; surname-prefix; भोन
+name ; surname-core; ब्रुहल
+name ; surname2; गोन्जालेज डोमिङ्गोज
+name ; generation; जेनेरेसन
+name ; credentials; एमडी डिडिएस
+name ; locale; ko_AQ
+
+expectedResult; एडा कर्नेलिया सिजर मार्टिन भोन ब्रुहल एमडी डिडिएस
+
+parameters; givenFirst; long; referring; formal
+
+expectedResult; भोन ब्रुहल एडा कर्नेलिया सिजर मार्टिन एमडी डिडिएस
+
+parameters; surnameFirst; long; referring; formal
+
+expectedResult; एडा कर्नेलिया सि.मा. भोन ब्रुहल एमडी डिडिएस
+
+parameters; givenFirst; medium; referring; formal
+
+expectedResult; भोन ब्रुहल एडा कर्नेलिया सि.मा. एमडी डिडिएस
+
+parameters; surnameFirst; medium; referring; formal
+
+expectedResult; ब्रुहल, एडा कर्नेलिया सिजर मार्टिन भोन
+
+parameters; sorting; long; referring; formal
+
+expectedResult; ब्रुहल, एडा कर्नेलिया सि.मा. भोन
+
+parameters; sorting; medium; referring; formal
+
+expectedResult; प्रोफेसर डाक्टर भोन ब्रुहल
+
+parameters; givenFirst; long; addressing; formal
+parameters; givenFirst; medium; addressing; formal
+parameters; givenFirst; short; addressing; formal
+parameters; surnameFirst; long; addressing; formal
+parameters; surnameFirst; medium; addressing; formal
+parameters; surnameFirst; short; addressing; formal
+
+expectedResult; ब्रुहल, ए.क.सि.मा. भोन
+
+parameters; sorting; short; referring; formal
+
+expectedResult; ए.क.सि.मा. भोन ब्रुहल
+
+parameters; givenFirst; short; referring; formal
+
+expectedResult; भोन ब्रुहल ए.क.सि.मा.
+
+parameters; surnameFirst; short; referring; formal
+
+expectedResult; भोन ब्रुहल, नीले
+
+parameters; sorting; long; referring; informal
+parameters; sorting; medium; referring; informal
+parameters; sorting; short; referring; informal
+
+expectedResult; नीले भोन ब्रुहल
+
+parameters; givenFirst; long; referring; informal
+parameters; givenFirst; medium; referring; informal
+
+expectedResult; भोन ब्रुहल ए.क.
+
+parameters; surnameFirst; short; referring; informal
+
+expectedResult; भोन ब्रुहल नीले
+
+parameters; surnameFirst; long; referring; informal
+parameters; surnameFirst; medium; referring; informal
+
+expectedResult; नीले भो.ब्रु.
+
+parameters; givenFirst; short; referring; informal
+
+expectedResult; एसिभो
+
+parameters; givenFirst; long; monogram; formal
+
+expectedResult; भोएसि
+
+parameters; surnameFirst; long; monogram; formal
+
+expectedResult; नीभो
+
+parameters; givenFirst; long; monogram; informal
+
+expectedResult; नीले
+
+parameters; givenFirst; long; addressing; informal
+parameters; givenFirst; medium; addressing; informal
+parameters; givenFirst; short; addressing; informal
+parameters; surnameFirst; long; addressing; informal
+parameters; surnameFirst; medium; addressing; informal
+parameters; surnameFirst; short; addressing; informal
+
+expectedResult; भोनी
+
+parameters; surnameFirst; long; monogram; informal
+
+expectedResult; नी
+
+parameters; givenFirst; medium; monogram; informal
+parameters; givenFirst; short; monogram; informal
+parameters; surnameFirst; medium; monogram; informal
+parameters; surnameFirst; short; monogram; informal
+
+expectedResult; भो
+
+parameters; givenFirst; medium; monogram; formal
+parameters; givenFirst; short; monogram; formal
+parameters; surnameFirst; medium; monogram; formal
+parameters; surnameFirst; short; monogram; formal
+
+endName

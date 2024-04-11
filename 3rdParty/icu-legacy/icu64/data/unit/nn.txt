@@ -1,0 +1,886 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+nn{
+    %%Parent{"no"}
+    units{
+        acceleration{
+            g-force{
+                case{
+                    genitive{
+                        one{"{0} g-krafts"}
+                        other{"{0} g-krefters"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} g-kraft"}
+                other{"{0} g-krefter"}
+            }
+            meter-per-square-second{
+                case{
+                    genitive{
+                        one{"{0} meter per kvadratsekunds"}
+                        other{"{0} meter per kvadratsekunds"}
+                    }
+                }
+                one{"{0} meter per sekund²"}
+                other{"{0} meter per sekund²"}
+            }
+        }
+        angle{
+            arc-minute{
+                case{
+                    genitive{
+                        one{"{0} bogeminutts"}
+                        other{"{0} bogeminutts"}
+                    }
+                }
+                one{"{0} bogeminutt"}
+                other{"{0} bogeminutt"}
+            }
+            arc-second{
+                case{
+                    genitive{
+                        one{"{0} bogesekunds"}
+                        other{"{0} bogesekunds"}
+                    }
+                }
+                dnam{"bogesekund"}
+                one{"{0} bogesekund"}
+                other{"{0} bogesekund"}
+            }
+            radian{
+                case{
+                    genitive{
+                        one{"{0} radians"}
+                        other{"{0} radianars"}
+                    }
+                }
+                one{"{0} radian"}
+                other{"{0} radianar"}
+            }
+            revolution{
+                case{
+                    genitive{
+                        one{"{0} omdreiings"}
+                        other{"{0} omdreiingars"}
+                    }
+                }
+                dnam{"omdreiing"}
+                gender{"feminine"}
+                one{"{0} omdreiing"}
+                other{"{0} omdreiingar"}
+            }
+        }
+        area{
+            square-inch{
+                dnam{"kvadrattommar"}
+                one{"{0} kvadrattomme"}
+                other{"{0} kvadrattommar"}
+            }
+            square-mile{
+                dnam{"engelske kvadratmil"}
+                gender{"feminine"}
+                one{"{0} engelsk kvadratmil"}
+                other{"{0} engelske kvadratmil"}
+                per{"{0} per engelske kvadratmil"}
+            }
+        }
+        concentr{
+            item{
+                case{
+                    genitive{
+                        one{"{0} items"}
+                        other{"{0} elements"}
+                    }
+                }
+                dnam{"element"}
+                one{"{0} element"}
+                other{"{0} element"}
+            }
+            millimole-per-liter{
+                gender{"neuter"}
+            }
+            permillion{
+                case{
+                    genitive{
+                        one{"{0} del per millions"}
+                        other{"{0} delar per millions"}
+                    }
+                }
+                dnam{"delar per million"}
+                one{"{0} milliondel"}
+                other{"{0} milliondelar"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"engelske mil per gallon"}
+                gender{"feminine"}
+                one{"{0} engelsk mil per gallon"}
+                other{"{0} engelske mil per gallon"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"engelske mil per britiske gallon"}
+                gender{"feminine"}
+                one{"{0} engelsk mil per britiske gallon"}
+                other{"{0} engelske mil per britiske gallon"}
+            }
+        }
+        coordinate{
+            east{"{0} aust"}
+        }
+        duration{
+            century{
+                case{
+                    genitive{
+                        one{"{0} hundreårs"}
+                        other{"{0} hundreårs"}
+                    }
+                }
+                dnam{"hundreår"}
+                one{"{0} hundreår"}
+                other{"{0} hundreår"}
+            }
+            hour{
+                case{
+                    genitive{
+                        one{"{0} times"}
+                        other{"{0} timars"}
+                    }
+                }
+                one{"{0} time"}
+                other{"{0} timar"}
+            }
+            microsecond{
+                case{
+                    genitive{
+                        one{"{0} mikrosekunds"}
+                        other{"{0} mikrosekunds"}
+                    }
+                }
+                dnam{"mikrosekund"}
+                one{"{0} mikrosekund"}
+                other{"{0} mikrosekund"}
+            }
+            millisecond{
+                case{
+                    genitive{
+                        one{"{0} millisekunds"}
+                        other{"{0} millisekunds"}
+                    }
+                }
+                dnam{"millisekund"}
+                one{"{0} millisekund"}
+                other{"{0} millisekund"}
+            }
+            minute{
+                case{
+                    genitive{
+                        one{"{0} minutts"}
+                        other{"{0} minutts"}
+                    }
+                }
+                dnam{"minutt"}
+                one{"{0} minutt"}
+                other{"{0} minutt"}
+            }
+            month{
+                case{
+                    genitive{
+                        one{"{0} månads"}
+                        other{"{0} månadars"}
+                    }
+                }
+                one{"{0} månad"}
+                other{"{0} månadar"}
+                per{"{0} per månad"}
+            }
+            nanosecond{
+                case{
+                    genitive{
+                        one{"{0} nanosekunds"}
+                        other{"{0} nanosekunds"}
+                    }
+                }
+                dnam{"nanosekund"}
+                one{"{0} nanosekund"}
+                other{"{0} nanosekund"}
+            }
+            second{
+                case{
+                    genitive{
+                        one{"{0} sekunds"}
+                        other{"{0} sekunds"}
+                    }
+                }
+                dnam{"sekund"}
+                one{"{0} sekund"}
+                other{"{0} sekund"}
+            }
+            week{
+                case{
+                    genitive{
+                        one{"{0} vekes"}
+                        other{"{0} vekers"}
+                    }
+                }
+                gender{"feminine"}
+                one{"{0} veke"}
+                other{"{0} veker"}
+                per{"{0} per veke"}
+            }
+        }
+        electric{
+            ampere{
+                case{
+                    genitive{
+                        one{"{0} amperes"}
+                        other{"{0} amperes"}
+                    }
+                }
+                one{"{0} ampere"}
+                other{"{0} ampere"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"British thermal units"}
+                one{"{0} British thermal unit"}
+                other{"{0} British thermal units"}
+            }
+            calorie{
+                case{
+                    genitive{
+                        one{"{0} kaloris"}
+                        other{"{0} kaloriars"}
+                    }
+                }
+                dnam{"kaloriar"}
+                one{"{0} kalori"}
+                other{"{0} kaloriar"}
+            }
+            foodcalorie{
+                dnam{"kaloriar"}
+                one{"{0} kalori"}
+                other{"{0} kaloriar"}
+            }
+            joule{
+                case{
+                    genitive{
+                        one{"{0} joules"}
+                        other{"{0} joules"}
+                    }
+                }
+                one{"{0} joule"}
+                other{"{0} joule"}
+            }
+            kilocalorie{
+                dnam{"kilokaloriar"}
+                one{"{0} kilokalori"}
+                other{"{0} kilokaloriar"}
+            }
+            kilowatt-hour{
+                case{
+                    genitive{
+                        one{"{0} kilowattimes"}
+                        other{"{0} kilowattimers"}
+                    }
+                }
+                dnam{"kilowattimar"}
+                one{"{0} kilowattime"}
+                other{"{0} kilowattimar"}
+            }
+        }
+        force{
+            pound-force{
+                one{"{0} poundforce"}
+                other{"{0} poundforce"}
+            }
+        }
+        graphics{
+            dot{
+                one{"{0} punkt"}
+                other{"{0} punkt"}
+            }
+            dot-per-centimeter{
+                dnam{"punkt per centimeter"}
+                one{"{0} punkt per centimeter"}
+                other{"{0} punkt per centimeter"}
+            }
+            dot-per-inch{
+                dnam{"punkt per tomme"}
+                one{"{0} punkt per tomme"}
+                other{"{0} punkt per tomme"}
+            }
+            megapixel{
+                case{
+                    genitive{
+                        one{"{0} megapiksels"}
+                        other{"{0} megapikslars"}
+                    }
+                }
+                one{"{0} megapiksel"}
+                other{"{0} megapikslar"}
+            }
+            pixel{
+                case{
+                    genitive{
+                        one{"{0} piksels"}
+                        other{"{0} pikslars"}
+                    }
+                }
+                one{"{0} piksel"}
+                other{"{0} pikslar"}
+            }
+            pixel-per-centimeter{
+                case{
+                    genitive{
+                        one{"{0} piksel per centimeters"}
+                        other{"{0} pikslar per centimeters"}
+                    }
+                }
+                dnam{"pikslar per centimeter"}
+                one{"{0} piksel per centimeter"}
+                other{"{0} pikslar per centimeter"}
+            }
+            pixel-per-inch{
+                dnam{"pikslar per tomme"}
+                one{"{0} piksel per tomme"}
+                other{"{0} pikslar per tomme"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"astronomiske einingar"}
+                one{"{0} astronomisk eining"}
+                other{"{0} astronomiske einingar"}
+            }
+            earth-radius{
+                one{"{0} jordradius"}
+                other{"{0} jordradius"}
+            }
+            fathom{
+                one{"{0} famn"}
+                other{"{0} famner"}
+            }
+            meter{
+                dnam{"meter"}
+            }
+            mile{
+                one{"{0} engelsk mil"}
+                other{"{0} engelske mil"}
+            }
+            mile-scandinavian{
+                gender{"feminine"}
+            }
+            point{
+                dnam{"typografiske punkt"}
+                one{"{0} typografisk punkt"}
+                other{"{0} typografiske punkt"}
+            }
+            solar-radius{
+                dnam{"solradius"}
+                one{"{0} solradius"}
+                other{"{0} solradius"}
+            }
+            yard{
+                one{"{0} engelsk yard"}
+                other{"{0} engelske yard"}
+            }
+        }
+        light{
+            solar-luminosity{
+                one{"{0} solluminositet"}
+                other{"{0} solluminositetar"}
+            }
+        }
+        mass{
+            earth-mass{
+                dnam{"jordmassar"}
+                one{"{0} jordmasse"}
+                other{"{0} jordmassar"}
+            }
+            ounce{
+                gender{"feminine"}
+            }
+            solar-mass{
+                one{"{0} solmasse"}
+                other{"{0} solmassar"}
+            }
+            stone{
+                dnam{"engelske stones"}
+            }
+            ton{
+                one{"{0} amerikansk tonn"}
+                other{"{0} amerikanske tonn"}
+            }
+        }
+        pressure{
+            atmosphere{
+                case{
+                    genitive{
+                        one{"{0} atmosfæres"}
+                        other{"{0} atmosfærars"}
+                    }
+                }
+                dnam{"atmosfærar"}
+                one{"{0} atmosfære"}
+                other{"{0} atmosfærar"}
+            }
+            inch-ofhg{
+                dnam{"tommar kvikksølv"}
+                one{"{0} tomme kvikksølv"}
+                other{"{0} tommar kvikksølv"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                dnam{"engelske mil per time"}
+                gender{"feminine"}
+            }
+        }
+        temperature{
+            generic{
+                case{
+                    genitive{
+                        one{"{0} grads"}
+                        other{"{0} graders"}
+                    }
+                }
+                dnam{"°"}
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+        torque{
+            pound-force-foot{
+                dnam{"pound-feet"}
+                one{"{0} pound-force-foot"}
+                other{"{0} pound-feet"}
+            }
+        }
+        volume{
+            bushel{
+                one{"{0} bushel"}
+                other{"{0} bushels"}
+            }
+            cubic-inch{
+                dnam{"kubikktommar"}
+                one{"{0} kubikktomme"}
+                other{"{0} kubikktommar"}
+            }
+            cubic-mile{
+                dnam{"engelske kubikkmil"}
+                gender{"feminine"}
+                one{"{0} kubikkmile"}
+                other{"{0} engelske kubikkmil"}
+            }
+            cubic-yard{
+                one{"{0} kubikkyard"}
+                other{"{0} kubikkyard"}
+            }
+            cup{
+                one{"{0} kopp"}
+                other{"{0} koppar"}
+            }
+            cup-metric{
+                case{
+                    genitive{
+                        one{"{0} metrisk kopps"}
+                        other{"{0} metriske koppars"}
+                    }
+                }
+                dnam{"metriske koppar"}
+                one{"{0} metrisk kopp"}
+                other{"{0} metriske koppar"}
+            }
+            dessert-spoon{
+                dnam{"dessertskei"}
+                gender{"feminine"}
+                one{"{0} dessertskei"}
+                other{"{0} dessertskeier"}
+            }
+            dessert-spoon-imperial{
+                dnam{"britisk dessertskei"}
+                gender{"feminine"}
+                one{"{0} britisk dessertskei"}
+                other{"{0} britisk dessertskei"}
+            }
+            drop{
+                one{"{0} drope"}
+                other{"{0} dropar"}
+            }
+            fluid-ounce{
+                gender{"feminine"}
+            }
+            fluid-ounce-imperial{
+                gender{"feminine"}
+            }
+            gallon-imperial{
+                per{"{0} per britiske gallon"}
+            }
+            pinch{
+                gender{"feminine"}
+            }
+            tablespoon{
+                dnam{"matskeier"}
+                gender{"feminine"}
+                one{"{0} matskei"}
+                other{"{0} matskeier"}
+            }
+            teaspoon{
+                dnam{"teskeier"}
+                gender{"feminine"}
+                one{"{0} teskei"}
+                other{"{0} teskeier"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            arc-minute{
+                dnam{"bogemin"}
+            }
+            arc-second{
+                dnam{"bogesek"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} ac"}
+                other{"{0} ac"}
+            }
+            square-mile{
+                per{"{0}/mile²"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"l/100 km"}
+            }
+            mile-per-gallon{
+                dnam{"miles/gal"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"miles/brit. gal"}
+            }
+        }
+        duration{
+            hour{
+                per{"{0}/h"}
+            }
+            month{
+                dnam{"månad"}
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            week{
+                dnam{"vk."}
+                one{"{0}v"}
+                other{"{0}v"}
+            }
+        }
+        mass{
+            ounce{
+                one{"{0} unse"}
+                other{"{0} unser"}
+            }
+            stone{
+                dnam{"stone"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                one{"{0} inHg"}
+                other{"{0} inHg"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+        volume{
+            centiliter{
+                one{"{0} cl"}
+                other{"{0} cl"}
+            }
+            deciliter{
+                one{"{0} dl"}
+                other{"{0}dl"}
+            }
+            drop{
+                one{"{0} dr"}
+                other{"{0} drope"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+            }
+            fluid-ounce-imperial{
+                one{"{0} imp. fl oz"}
+                other{"{0} imp. fl oz"}
+            }
+            liter{
+                dnam{"liter"}
+            }
+            milliliter{
+                one{"{0} ml"}
+                other{"{0}ml"}
+            }
+            quart-imperial{
+                dnam{"imp. quart"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            meter-per-square-second{
+                dnam{"m/s²"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"bogeminutt"}
+            }
+            arc-second{
+                dnam{"bogesekund"}
+            }
+            radian{
+                dnam{"radianar"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} acre"}
+                other{"{0} acre"}
+            }
+            square-inch{
+                dnam{"tommar²"}
+                one{"{0} tomme²"}
+                other{"{0} tommar²"}
+                per{"{0}/tomme²"}
+            }
+            square-mile{
+                dnam{"engelske mil²"}
+                one{"{0} mi²"}
+                other{"{0} mi²"}
+                per{"{0}/mi²"}
+            }
+        }
+        compound{
+            times{"{0}{1}"}
+        }
+        concentr{
+            millimole-per-liter{
+                dnam{"mmol/l"}
+            }
+        }
+        consumption{
+            liter-per-kilometer{
+                dnam{"l/km"}
+            }
+            mile-per-gallon{
+                dnam{"eng. mil/gal"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"eng. mil/brit. gal"}
+                one{"{0} mile/brit. gal"}
+                other{"{0} mile/brit. gal"}
+            }
+        }
+        digital{
+            byte{
+                one{"{0} byte"}
+                other{"{0} byte"}
+            }
+            gigabit{
+                dnam{"Gb"}
+            }
+            kilobit{
+                dnam{"kb"}
+            }
+            megabit{
+                dnam{"Mb"}
+            }
+            terabit{
+                dnam{"Tb"}
+            }
+        }
+        duration{
+            century{
+                dnam{"hå."}
+                one{"{0} hå."}
+                other{"{0} hå."}
+            }
+            hour{
+                dnam{"timar"}
+            }
+            microsecond{
+                dnam{"mikrosekund"}
+            }
+            millisecond{
+                dnam{"millisekund"}
+            }
+            minute{
+                dnam{"minutt"}
+            }
+            month{
+                dnam{"månadar"}
+            }
+            second{
+                dnam{"sekund"}
+                one{"{0} s"}
+                other{"{0} s"}
+            }
+            week{
+                dnam{"veker"}
+                one{"{0} v"}
+                other{"{0} v"}
+                per{"{0}/v"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"cal"}
+                one{"{0} cal"}
+                other{"{0} cal"}
+            }
+        }
+        force{
+            pound-force{
+                dnam{"poundforce"}
+            }
+        }
+        graphics{
+            dot-per-inch{
+                dnam{"ppt"}
+                one{"{0} ppt"}
+                other{"{0} ppt"}
+            }
+            megapixel{
+                dnam{"megapikslar"}
+            }
+            pixel{
+                dnam{"pikslar"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"au"}
+                one{"{0} au"}
+                other{"{0} au"}
+            }
+            fathom{
+                dnam{"famner"}
+            }
+            foot{
+                per{"{0}/ft"}
+            }
+            inch{
+                dnam{"tommar"}
+                one{"{0} tomme"}
+                other{"{0} tommar"}
+            }
+            light-year{
+                one{"{0} lysår"}
+                other{"{0} lysår"}
+            }
+            meter{
+                dnam{"m"}
+            }
+            mile{
+                dnam{"engelske mil"}
+                one{"{0} mi"}
+                other{"{0} mi"}
+            }
+            picometer{
+                dnam{"pikometer"}
+            }
+            point{
+                dnam{"pt"}
+            }
+            yard{
+                dnam{"engelske yard"}
+            }
+        }
+        light{
+            solar-luminosity{
+                dnam{"solluminositetar"}
+            }
+        }
+        mass{
+            solar-mass{
+                dnam{"solmassar"}
+            }
+            stone{
+                dnam{"stones"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                dnam{"engelske mil/t"}
+                one{"{0} mile/t"}
+                other{"{0} mile/t"}
+            }
+        }
+        volume{
+            cubic-inch{
+                dnam{"tommar³"}
+                one{"{0} tomme³"}
+                other{"{0} tommar³"}
+            }
+            cubic-mile{
+                dnam{"engelske mil³"}
+                one{"{0} mi³"}
+                other{"{0} mi³"}
+            }
+            cup{
+                dnam{"koppar"}
+            }
+            cup-metric{
+                dnam{"m. koppar"}
+                one{"{0} m. kopp"}
+                other{"{0} m. koppar"}
+            }
+            dessert-spoon{
+                dnam{"dsskei"}
+                one{"{0} dsskei"}
+                other{"{0} dsskei"}
+            }
+            dessert-spoon-imperial{
+                dnam{"brit. dsskei"}
+                one{"{0} brit. dsskei"}
+                other{"{0} imp. bs"}
+            }
+            drop{
+                dnam{"drope"}
+                one{"{0} drope"}
+                other{"{0} drope"}
+            }
+            fluid-ounce{
+                dnam{"væskeunse"}
+            }
+            fluid-ounce-imperial{
+                dnam{"britisk væskeunse"}
+                one{"{0} britisk væskeunse"}
+                other{"{0} britiske væskeunser"}
+            }
+            pint{
+                one{"{0} pt"}
+                other{"{0} pt"}
+            }
+            quart-imperial{
+                dnam{"brit. quart"}
+                one{"{0} b. quart"}
+                other{"{0} b. quart"}
+            }
+            tablespoon{
+                dnam{"ms"}
+                one{"{0} ms"}
+                other{"{0} ms"}
+            }
+        }
+    }
+}

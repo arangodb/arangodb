@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lij{
+    Languages{
+        en{"ingleise"}
+        lij{"ligure"}
+    }
+    Scripts{
+        Latn{"latin"}
+    }
+    codePatterns{
+        language{"Lengua: {0}"}
+        script{"Scrittua: {0}"}
+        territory{"Region: {0}"}
+    }
+}

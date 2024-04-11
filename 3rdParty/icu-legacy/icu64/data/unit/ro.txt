@@ -1,0 +1,2790 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ro{
+    units{
+        acceleration{
+            g-force{
+                case{
+                    genitive{
+                        few{"{0} forță g"}
+                        one{"{0} forță g"}
+                        other{"{0} forță g"}
+                    }
+                }
+                few{"{0} forță g"}
+                gender{"feminine"}
+                one{"{0} forță g"}
+                other{"{0} forță g"}
+            }
+            meter-per-square-second{
+                case{
+                    genitive{
+                        few{"{0} metri pe secundă la pătrat"}
+                        one{"unui metru pe secundă la pătrat"}
+                        other{"{0} de metri pe secundă la pătrat"}
+                    }
+                }
+                dnam{"metri pe secundă la pătrat"}
+                few{"{0} metri pe secundă la pătrat"}
+                gender{"masculine"}
+                one{"{0} metru pe secundă la pătrat"}
+                other{"{0} de metri pe secundă la pătrat"}
+            }
+        }
+        angle{
+            arc-minute{
+                case{
+                    genitive{
+                        few{"{0} minute de arc"}
+                        one{"unui minut de arc"}
+                        other{"{0} de minute de arc"}
+                    }
+                }
+                dnam{"minute de arc"}
+                few{"{0} minute de arc"}
+                gender{"neuter"}
+                one{"{0} minut de arc"}
+                other{"{0} de minute de arc"}
+            }
+            arc-second{
+                case{
+                    genitive{
+                        few{"{0} secunde de arc"}
+                        one{"unei secunde de arc"}
+                        other{"{0} de secunde de arc"}
+                    }
+                }
+                dnam{"secunde de arc"}
+                few{"{0} secunde de arc"}
+                gender{"feminine"}
+                one{"{0} secundă de arc"}
+                other{"{0} de secunde de arc"}
+            }
+            degree{
+                case{
+                    genitive{
+                        few{"{0} grade"}
+                        one{"unui grad"}
+                        other{"{0} de grade"}
+                    }
+                }
+                few{"{0} grade"}
+                gender{"neuter"}
+                one{"{0} grad"}
+                other{"{0} de grade"}
+            }
+            radian{
+                case{
+                    genitive{
+                        few{"{0} radiani"}
+                        one{"unui radian"}
+                        other{"{0} de radiani"}
+                    }
+                }
+                dnam{"radiani"}
+                few{"{0} radiani"}
+                gender{"masculine"}
+                one{"{0} radian"}
+                other{"{0} de radiani"}
+            }
+            revolution{
+                case{
+                    genitive{
+                        few{"{0} revoluții"}
+                        one{"unei revoluții"}
+                        other{"{0} de revoluții"}
+                    }
+                }
+                dnam{"revoluție"}
+                few{"{0} revoluții"}
+                gender{"feminine"}
+                one{"{0} revoluție"}
+                other{"{0} de revoluții"}
+            }
+        }
+        area{
+            acre{
+                few{"{0} acri"}
+                one{"{0} acru"}
+                other{"{0} de acri"}
+            }
+            dunam{
+                few{"{0} dunami"}
+                one{"{0} dunam"}
+                other{"{0} de dunami"}
+            }
+            hectare{
+                case{
+                    genitive{
+                        few{"{0} hectare"}
+                        one{"unui hectar"}
+                        other{"{0} de hectare"}
+                    }
+                }
+                dnam{"hectare"}
+                few{"{0} hectare"}
+                gender{"neuter"}
+                one{"{0} hectar"}
+                other{"{0} de hectare"}
+            }
+            square-centimeter{
+                case{
+                    genitive{
+                        few{"{0} centimetri pătrați"}
+                        one{"unui centimetru pătrat"}
+                        other{"{0} de centimetri pătrați"}
+                    }
+                }
+                dnam{"centimetri pătrați"}
+                few{"{0} centimetri pătrați"}
+                gender{"masculine"}
+                one{"{0} centimetru pătrat"}
+                other{"{0} de centimetri pătrați"}
+                per{"{0} pe centimetru pătrat"}
+            }
+            square-foot{
+                dnam{"picioare pătrate"}
+                few{"{0} picioare pătrate"}
+                one{"{0} picior pătrat"}
+                other{"{0} de picioare pătrate"}
+            }
+            square-inch{
+                dnam{"inchi pătrați"}
+                few{"{0} inchi pătrați"}
+                one{"{0} inch pătrat"}
+                other{"{0} de inchi pătrați"}
+                per{"{0} pe inchi pătrat"}
+            }
+            square-kilometer{
+                case{
+                    genitive{
+                        few{"{0} kilometri pătrați"}
+                        one{"unui kilometru pătrat"}
+                        other{"{0} de kilometri pătrați"}
+                    }
+                }
+                dnam{"kilometri pătrați"}
+                few{"{0} kilometri pătrați"}
+                gender{"masculine"}
+                one{"{0} kilometru pătrat"}
+                other{"{0} de kilometri pătrați"}
+                per{"{0} pe kilometru pătrat"}
+            }
+            square-meter{
+                case{
+                    genitive{
+                        few{"{0} metri pătrați"}
+                        one{"unui metru pătrat"}
+                        other{"{0} de metri pătrați"}
+                    }
+                }
+                dnam{"metri pătrați"}
+                few{"{0} metri pătrați"}
+                gender{"masculine"}
+                one{"{0} metru pătrat"}
+                other{"{0} de metri pătrați"}
+                per{"{0} pe metru pătrat"}
+            }
+            square-mile{
+                dnam{"mile pătrate"}
+                few{"{0} mile pătrate"}
+                one{"{0} milă pătrată"}
+                other{"{0} de mile pătrate"}
+                per{"{0} pe milă pătrată"}
+            }
+            square-yard{
+                dnam{"iarzi pătrați"}
+                few{"{0} iarzi pătrați"}
+                one{"{0} iard pătrat"}
+                other{"{0} de iarzi pătrați"}
+            }
+        }
+        compound{
+            1024p1{"kibi{0}"}
+            1024p2{"mebi{0}"}
+            1024p3{"gibi{0}"}
+            1024p4{"tebi{0}"}
+            1024p5{"pebi{0}"}
+            1024p6{"exbi{0}"}
+            1024p7{"zebi{0}"}
+            1024p8{"yobe{0}"}
+            10p-1{"deci{0}"}
+            10p-12{"pico{0}"}
+            10p-15{"femto{0}"}
+            10p-18{"atto{0}"}
+            10p-2{"centi{0}"}
+            10p-21{"zepto{0}"}
+            10p-24{"yocto{0}"}
+            10p-27{"ronto{0}"}
+            10p-3{"mili{0}"}
+            10p-30{"quecto{0}"}
+            10p-6{"micro{0}"}
+            10p-9{"nano{0}"}
+            10p1{"deca{0}"}
+            10p12{"tera{0}"}
+            10p15{"peta{0}"}
+            10p18{"exa{0}"}
+            10p2{"hecto{0}"}
+            10p21{"zetta{0}"}
+            10p24{"yotta{0}"}
+            10p27{"ronna{0}"}
+            10p3{"kilo{0}"}
+            10p30{"quetta{0}"}
+            10p6{"mega{0}"}
+            10p9{"giga{0}"}
+            per{"{0} pe {1}"}
+            power2{
+                few{
+                    _{
+                        _{"{0} pătrate"}
+                        genitive{"{0} pătrate"}
+                    }
+                    feminine{
+                        _{"{0} pătrate"}
+                        genitive{"{0} pătrate"}
+                    }
+                    masculine{
+                        _{"{0} pătrați"}
+                        genitive{"{0} pătrați"}
+                    }
+                }
+                one{
+                    _{
+                        _{"{0} pătrat"}
+                        genitive{"{0} pătrat"}
+                    }
+                    feminine{
+                        _{"{0} pătrată"}
+                        genitive{"{0} pătrată"}
+                    }
+                    masculine{
+                        _{"{0} pătrat"}
+                        genitive{"{0} pătrat"}
+                    }
+                }
+                other{
+                    _{
+                        _{"{0} pătrate"}
+                        genitive{"{0} pătrate"}
+                    }
+                    feminine{
+                        _{"{0} pătrate"}
+                        genitive{"{0} pătrate"}
+                    }
+                    masculine{
+                        _{"{0} pătrați"}
+                        genitive{"{0} pătrați"}
+                    }
+                }
+            }
+            power3{
+                few{
+                    _{
+                        _{"{0} cubice"}
+                        genitive{"{0} cubice"}
+                    }
+                    feminine{
+                        _{"{0} cubice"}
+                        genitive{"{0} cubice"}
+                    }
+                    masculine{
+                        _{"{0} cubi"}
+                        genitive{"{0} cubi"}
+                    }
+                }
+                one{
+                    _{
+                        _{"{0} cub"}
+                        genitive{"{0} cub"}
+                    }
+                    feminine{
+                        _{"{0} cubică"}
+                        genitive{"{0} cubică"}
+                    }
+                    masculine{
+                        _{"{0} cub"}
+                        genitive{"{0} cub"}
+                    }
+                }
+                other{
+                    _{
+                        _{"{0} cubice"}
+                        genitive{"{0} cubice"}
+                    }
+                    feminine{
+                        _{"{0} cubice"}
+                        genitive{"{0} cubice"}
+                    }
+                    masculine{
+                        _{"{0} cubi"}
+                        genitive{"{0} cubi"}
+                    }
+                }
+            }
+            times{"{0}-{1}"}
+        }
+        concentr{
+            item{
+                case{
+                    genitive{
+                        few{"{0} itemi"}
+                        one{"unui item"}
+                        other{"{0} de itemi"}
+                    }
+                }
+                few{"{0} itemi"}
+                gender{"masculine"}
+                one{"{0} de itemi"}
+                other{"{0} de itemi"}
+            }
+            karat{
+                case{
+                    genitive{
+                        few{"{0} carate"}
+                        one{"unui carat"}
+                        other{"{0} de carate"}
+                    }
+                }
+                dnam{"carate"}
+                few{"{0} carate"}
+                gender{"neuter"}
+                one{"{0} carat"}
+                other{"{0} de carate"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"miligrame pe decilitru"}
+                few{"{0} miligrame pe decilitru"}
+                one{"{0} miligram pe decilitru"}
+                other{"{0} de miligrame pe decilitru"}
+            }
+            millimole-per-liter{
+                case{
+                    genitive{
+                        few{"{0} milimoli pe litru"}
+                        one{"unui milimol pe litru"}
+                        other{"{0} de milimoli pe litru"}
+                    }
+                }
+                dnam{"milimoli pe litru"}
+                few{"{0} milimoli pe litru"}
+                gender{"masculine"}
+                one{"{0} milimol pe litru"}
+                other{"{0} de milimoli pe litru"}
+            }
+            mole{
+                case{
+                    genitive{
+                        few{"{0} moli"}
+                        one{"unui mol"}
+                        other{"{0} de moli"}
+                    }
+                }
+                dnam{"moli"}
+                few{"{0} moli"}
+                gender{"masculine"}
+                one{"{0} mol"}
+                other{"{0} de moli"}
+            }
+            percent{
+                case{
+                    genitive{
+                        few{"{0} procente"}
+                        one{"unui procent"}
+                        other{"{0} de procente"}
+                    }
+                }
+                dnam{"procent"}
+                few{"{0} procente"}
+                gender{"neuter"}
+                one{"{0} procent"}
+                other{"{0} de procente"}
+            }
+            permille{
+                case{
+                    genitive{
+                        few{"{0} promile"}
+                        one{"unei promile"}
+                        other{"{0} de promile"}
+                    }
+                }
+                dnam{"promilă"}
+                few{"{0} promile"}
+                gender{"feminine"}
+                one{"{0} promilă"}
+                other{"{0} de promile"}
+            }
+            permillion{
+                case{
+                    genitive{
+                        few{"{0} părți pe milion"}
+                        one{"unei părți pe milion"}
+                        other{"{0} de părți pe milion"}
+                    }
+                }
+                dnam{"părți pe milion"}
+                few{"{0} părți pe milion"}
+                gender{"feminine"}
+                one{"{0} parte pe milion"}
+                other{"{0} de părți pe milion"}
+            }
+            permyriad{
+                case{
+                    genitive{
+                        few{"{0} părți la zece mii"}
+                        one{"unei părți la zece mii"}
+                        other{"{0} de părți la zece mii"}
+                    }
+                }
+                few{"{0} la zece mii"}
+                gender{"feminine"}
+                one{"{0} la zece mii"}
+                other{"{0} la zece mii"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                case{
+                    genitive{
+                        few{"{0} litri la suta de kilometri"}
+                        one{"unui litru la suta de kilometri"}
+                        other{"{0} de litri la suta de kilometri"}
+                    }
+                }
+                dnam{"litri la suta de kilometri"}
+                few{"{0} litri la suta de kilometri"}
+                gender{"masculine"}
+                one{"{0} litru la suta de kilometri"}
+                other{"{0} de litri la suta de kilometri"}
+            }
+            liter-per-kilometer{
+                case{
+                    genitive{
+                        few{"{0} litri pe kilometru"}
+                        one{"unui litru pe kilometru"}
+                        other{"{0} de litri pe kilometru"}
+                    }
+                }
+                dnam{"litri pe kilometru"}
+                few{"{0} litri pe kilometru"}
+                gender{"masculine"}
+                one{"{0} litru pe kilometru"}
+                other{"{0} de litri pe kilometru"}
+            }
+            mile-per-gallon{
+                dnam{"mile pe galon"}
+                few{"{0} mile pe galon"}
+                one{"{0} milă pe galon"}
+                other{"{0} de mile pe galon"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mile pe galon imperial"}
+                few{"{0} mile pe galon imperial"}
+                one{"{0} milă pe galon imperial"}
+                other{"{0} de mile pe galon imperial"}
+            }
+        }
+        coordinate{
+            dnam{"punct cardinal"}
+            east{"{0} E"}
+            north{"{0} N"}
+            south{"{0} S"}
+            west{"{0} V"}
+        }
+        digital{
+            bit{
+                case{
+                    genitive{
+                        few{"{0} biți"}
+                        one{"unui bit"}
+                        other{"{0} de biți"}
+                    }
+                }
+                dnam{"biți"}
+                few{"{0} biți"}
+                gender{"masculine"}
+                one{"{0} bit"}
+                other{"{0} de biți"}
+            }
+            byte{
+                case{
+                    genitive{
+                        few{"{0} byți"}
+                        one{"unui byte"}
+                        other{"{0} de byți"}
+                    }
+                }
+                dnam{"byți"}
+                few{"{0} byți"}
+                gender{"masculine"}
+                one{"{0} byte"}
+                other{"{0} de byți"}
+            }
+            gigabit{
+                case{
+                    genitive{
+                        few{"{0} gigabiți"}
+                        one{"unui gigabit"}
+                        other{"{0} de gigabiți"}
+                    }
+                }
+                dnam{"gigabiți"}
+                few{"{0} gigabiți"}
+                gender{"masculine"}
+                one{"{0} gigabit"}
+                other{"{0} de gigabiți"}
+            }
+            gigabyte{
+                case{
+                    genitive{
+                        few{"{0} gigabyți"}
+                        one{"unui gigabyte"}
+                        other{"{0} de gigabyți"}
+                    }
+                }
+                dnam{"gigabyți"}
+                few{"{0} gigabyți"}
+                gender{"masculine"}
+                one{"{0} gigabyte"}
+                other{"{0} de gigabyți"}
+            }
+            kilobit{
+                case{
+                    genitive{
+                        few{"{0} kilobiți"}
+                        one{"unui kilobit"}
+                        other{"{0} de kilobiți"}
+                    }
+                }
+                dnam{"kilobiți"}
+                few{"{0} kilobiți"}
+                gender{"masculine"}
+                one{"{0} kilobit"}
+                other{"{0} de kilobiți"}
+            }
+            kilobyte{
+                case{
+                    genitive{
+                        few{"{0} kilobyți"}
+                        one{"unui kilobyte"}
+                        other{"{0} de kilobyți"}
+                    }
+                }
+                dnam{"kilobyți"}
+                few{"{0} kilobyți"}
+                gender{"masculine"}
+                one{"{0} kilobyte"}
+                other{"{0} de kilobyți"}
+            }
+            megabit{
+                case{
+                    genitive{
+                        few{"{0} megabiți"}
+                        one{"unui megabit"}
+                        other{"{0} de megabiți"}
+                    }
+                }
+                dnam{"megabiți"}
+                few{"{0} megabiți"}
+                gender{"masculine"}
+                one{"{0} megabit"}
+                other{"{0} de megabiți"}
+            }
+            megabyte{
+                case{
+                    genitive{
+                        few{"{0} megabyți"}
+                        one{"unui megabyte"}
+                        other{"{0} de megabyți"}
+                    }
+                }
+                dnam{"megabyți"}
+                few{"{0} megabyți"}
+                gender{"masculine"}
+                one{"{0} megabyte"}
+                other{"{0} de megabyți"}
+            }
+            petabyte{
+                case{
+                    genitive{
+                        few{"{0} petabyți"}
+                        one{"unui petabyte"}
+                        other{"{0} de petabyți"}
+                    }
+                }
+                dnam{"petabyți"}
+                few{"{0} petabyți"}
+                gender{"masculine"}
+                one{"{0} petabyte"}
+                other{"{0} de petabyți"}
+            }
+            terabit{
+                case{
+                    genitive{
+                        few{"{0} terabiți"}
+                        one{"unui terabit"}
+                        other{"{0} de terabiți"}
+                    }
+                }
+                dnam{"terabiți"}
+                few{"{0} terabiți"}
+                gender{"masculine"}
+                one{"{0} terabit"}
+                other{"{0} de terabiți"}
+            }
+            terabyte{
+                case{
+                    genitive{
+                        few{"{0} terabyți"}
+                        one{"unui terabyte"}
+                        other{"{0} de terabyți"}
+                    }
+                }
+                dnam{"terabyți"}
+                few{"{0} terabyți"}
+                gender{"masculine"}
+                one{"{0} terabyte"}
+                other{"{0} de terabyți"}
+            }
+        }
+        duration{
+            century{
+                case{
+                    genitive{
+                        few{"{0} secole"}
+                        one{"unui secol"}
+                        other{"{0} de secole"}
+                    }
+                }
+                dnam{"secole"}
+                few{"{0} secole"}
+                gender{"neuter"}
+                one{"{0} secol"}
+                other{"{0} de secole"}
+            }
+            day{
+                case{
+                    genitive{
+                        few{"{0} zile"}
+                        one{"unei zile"}
+                        other{"{0} de zile"}
+                    }
+                }
+                few{"{0} zile"}
+                gender{"feminine"}
+                one{"{0} zi"}
+                other{"{0} de zile"}
+                per{"{0} pe zi"}
+            }
+            decade{
+                case{
+                    genitive{
+                        few{"{0} decenii"}
+                        one{"unui deceniu"}
+                        other{"{0} de decenii"}
+                    }
+                }
+                dnam{"decenii"}
+                few{"{0} decenii"}
+                gender{"neuter"}
+                one{"{0} deceniu"}
+                other{"{0} de decenii"}
+            }
+            hour{
+                case{
+                    genitive{
+                        few{"{0} ore"}
+                        one{"unei ore"}
+                        other{"{0} de ore"}
+                    }
+                }
+                few{"{0} ore"}
+                gender{"feminine"}
+                one{"{0} oră"}
+                other{"{0} de ore"}
+                per{"{0} pe oră"}
+            }
+            microsecond{
+                case{
+                    genitive{
+                        few{"{0} microsecunde"}
+                        one{"unei microsecunde"}
+                        other{"{0} de microsecunde"}
+                    }
+                }
+                dnam{"microsecunde"}
+                few{"{0} microsecunde"}
+                gender{"feminine"}
+                one{"{0} microsecundă"}
+                other{"{0} de microsecunde"}
+            }
+            millisecond{
+                case{
+                    genitive{
+                        few{"{0} milisecunde"}
+                        one{"unei milisecunde"}
+                        other{"{0} de milisecunde"}
+                    }
+                }
+                dnam{"milisecunde"}
+                few{"{0} milisecunde"}
+                gender{"feminine"}
+                one{"{0} milisecundă"}
+                other{"{0} de milisecunde"}
+            }
+            minute{
+                case{
+                    genitive{
+                        few{"{0} minute"}
+                        one{"unui minut"}
+                        other{"{0} de minute"}
+                    }
+                }
+                dnam{"minute"}
+                few{"{0} minute"}
+                gender{"neuter"}
+                one{"{0} minut"}
+                other{"{0} de minute"}
+                per{"{0} pe minut"}
+            }
+            month{
+                case{
+                    genitive{
+                        few{"{0} luni"}
+                        one{"unei luni"}
+                        other{"{0} de luni"}
+                    }
+                }
+                few{"{0} luni"}
+                gender{"feminine"}
+                one{"{0} lună"}
+                other{"{0} de luni"}
+                per{"{0} pe lună"}
+            }
+            nanosecond{
+                case{
+                    genitive{
+                        few{"{0} nanosecunde"}
+                        one{"unei nanosecunde"}
+                        other{"{0} de nanosecunde"}
+                    }
+                }
+                dnam{"nanosecunde"}
+                few{"{0} nanosecunde"}
+                gender{"feminine"}
+                one{"{0} nanosecundă"}
+                other{"{0} de nanosecunde"}
+            }
+            quarter{
+                case{
+                    genitive{
+                        few{"{0} trimestre"}
+                        one{"unui trimestru"}
+                        other{"{0} de trimestre"}
+                    }
+                }
+                dnam{"trimestre"}
+                few{"{0} trimestre"}
+                gender{"neuter"}
+                one{"{0} trimestru"}
+                other{"{0} de trimestre"}
+            }
+            second{
+                case{
+                    genitive{
+                        few{"{0} secunde"}
+                        one{"unei secunde"}
+                        other{"{0} de secunde"}
+                    }
+                }
+                dnam{"secunde"}
+                few{"{0} secunde"}
+                gender{"feminine"}
+                one{"{0} secundă"}
+                other{"{0} de secunde"}
+                per{"{0} pe secundă"}
+            }
+            week{
+                case{
+                    genitive{
+                        few{"{0} săptămâni"}
+                        one{"unei săptămâni"}
+                        other{"{0} de săptămâni"}
+                    }
+                }
+                few{"{0} săptămâni"}
+                gender{"feminine"}
+                one{"{0} săptămână"}
+                other{"{0} de săptămâni"}
+                per{"{0} pe săptămână"}
+            }
+            year{
+                case{
+                    genitive{
+                        few{"{0} ani"}
+                        one{"unui an"}
+                        other{"{0} de ani"}
+                    }
+                }
+                few{"{0} ani"}
+                gender{"masculine"}
+                one{"{0} an"}
+                other{"{0} de ani"}
+                per{"{0} pe an"}
+            }
+        }
+        electric{
+            ampere{
+                case{
+                    genitive{
+                        few{"{0} amperi"}
+                        one{"unui amper"}
+                        other{"{0} de amperi"}
+                    }
+                }
+                dnam{"amperi"}
+                few{"{0} amperi"}
+                gender{"masculine"}
+                one{"{0} amper"}
+                other{"{0} de amperi"}
+            }
+            milliampere{
+                case{
+                    genitive{
+                        few{"{0} miliamperi"}
+                        one{"unui miliamper"}
+                        other{"{0} de miliamperi"}
+                    }
+                }
+                dnam{"miliamperi"}
+                few{"{0} miliamperi"}
+                gender{"masculine"}
+                one{"{0} miliamper"}
+                other{"{0} de miliamperi"}
+            }
+            ohm{
+                case{
+                    genitive{
+                        few{"{0} ohmi"}
+                        one{"unui ohm"}
+                        other{"{0} de ohmi"}
+                    }
+                }
+                dnam{"ohmi"}
+                few{"{0} ohmi"}
+                gender{"masculine"}
+                one{"{0} ohm"}
+                other{"{0} de ohmi"}
+            }
+            volt{
+                case{
+                    genitive{
+                        few{"{0} volți"}
+                        one{"unui volt"}
+                        other{"{0} de volți"}
+                    }
+                }
+                dnam{"volți"}
+                few{"{0} volți"}
+                gender{"masculine"}
+                one{"{0} volt"}
+                other{"{0} de volți"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"unități termice britanice"}
+                few{"{0} unități termice britanice"}
+                one{"{0} unitate termică britanică"}
+                other{"{0} de unități termice britanice"}
+            }
+            calorie{
+                case{
+                    genitive{
+                        few{"{0} calorii"}
+                        one{"unei calorii"}
+                        other{"{0} de calorii"}
+                    }
+                }
+                dnam{"calorii"}
+                few{"{0} calorii"}
+                gender{"feminine"}
+                one{"{0} calorie"}
+                other{"{0} de calorii"}
+            }
+            electronvolt{
+                dnam{"electronvolți"}
+                few{"{0} electronvolți"}
+                one{"{0} electronvolt"}
+                other{"{0} de electronvolți"}
+            }
+            foodcalorie{
+                dnam{"kilocalorii"}
+                few{"{0} kilocalorii"}
+                one{"{0} kilocalorie"}
+                other{"{0} de kilocalorii"}
+            }
+            joule{
+                case{
+                    genitive{
+                        few{"{0} jouli"}
+                        one{"unui joule"}
+                        other{"{0} de jouli"}
+                    }
+                }
+                dnam{"jouli"}
+                few{"{0} jouli"}
+                gender{"masculine"}
+                one{"{0} joule"}
+                other{"{0} de jouli"}
+            }
+            kilocalorie{
+                dnam{"kilocalorii"}
+                few{"{0} kilocalorii"}
+                one{"{0} kilocalorie"}
+                other{"{0} de kilocalorii"}
+            }
+            kilojoule{
+                case{
+                    genitive{
+                        few{"{0} kilojouli"}
+                        one{"unui kilojoule"}
+                        other{"{0} de kilojouli"}
+                    }
+                }
+                dnam{"kilojouli"}
+                few{"{0} kilojouli"}
+                gender{"masculine"}
+                one{"{0} kilojoule"}
+                other{"{0} de kilojouli"}
+            }
+            kilowatt-hour{
+                case{
+                    genitive{
+                        few{"{0} kilowați-oră"}
+                        one{"unui kilowatt-oră"}
+                        other{"{0} de kilowați-oră"}
+                    }
+                }
+                dnam{"kilowați-oră"}
+                few{"{0} kilowați-oră"}
+                gender{"masculine"}
+                one{"kilowatt-oră"}
+                other{"{0} de kilowați-oră"}
+            }
+            therm-us{
+                dnam{"thermi S.U.A."}
+                few{"{0} thermi S.U.A."}
+                one{"{0} therm S.U.A."}
+                other{"{0} de thermi S.U.A."}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                case{
+                    genitive{
+                        few{"{0} kilowați-oră per 100 kilometri"}
+                        one{"unui kilowatt-oră per 100 de kilometri"}
+                        other{"{0} kilowați-oră per 100 kilometri"}
+                    }
+                }
+                dnam{"kilowatt-oră per 100 kilometri"}
+                few{"{0} kilowați-oră per 100 kilometri"}
+                gender{"masculine"}
+                one{"{0} kilowatt-oră per 100 kilometri"}
+                other{"{0} kilowați-oră per 100 kilometri"}
+            }
+            newton{
+                case{
+                    genitive{
+                        few{"{0} newtoni"}
+                        one{"unui newton"}
+                        other{"{0} de newtoni"}
+                    }
+                }
+                dnam{"newtoni"}
+                few{"{0} newtoni"}
+                gender{"masculine"}
+                one{"{0} newton"}
+                other{"{0} de newtoni"}
+            }
+            pound-force{
+                dnam{"livre-forță"}
+                few{"{0} livre-forță"}
+                one{"{0} livră-forță"}
+                other{"{0} de livre-forță"}
+            }
+        }
+        frequency{
+            gigahertz{
+                case{
+                    genitive{
+                        few{"{0} gigahertzi"}
+                        one{"unui gigahertz"}
+                        other{"{0} de gigahertzi"}
+                    }
+                }
+                dnam{"gigahertz"}
+                few{"{0} gigahertzi"}
+                gender{"masculine"}
+                one{"{0} gigahertz"}
+                other{"{0} de gigahertzi"}
+            }
+            hertz{
+                case{
+                    genitive{
+                        few{"{0} hertzi"}
+                        one{"unui hertz"}
+                        other{"{0} de hertzi"}
+                    }
+                }
+                dnam{"hertz"}
+                few{"{0} hertzi"}
+                gender{"masculine"}
+                one{"{0} hertz"}
+                other{"{0} de hertzi"}
+            }
+            kilohertz{
+                case{
+                    genitive{
+                        few{"{0} kilohertzi"}
+                        one{"unui kilohertz"}
+                        other{"{0} de kilohertzi"}
+                    }
+                }
+                dnam{"kilohertz"}
+                few{"{0} kilohertzi"}
+                gender{"masculine"}
+                one{"{0} kilohertz"}
+                other{"{0} de kilohertzi"}
+            }
+            megahertz{
+                case{
+                    genitive{
+                        few{"{0} megahertzi"}
+                        one{"unui megahertz"}
+                        other{"{0} de megahertzi"}
+                    }
+                }
+                dnam{"megahertz"}
+                few{"{0} megahertzi"}
+                gender{"masculine"}
+                one{"{0} megahertz"}
+                other{"{0} de megahertzi"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"puncte tipografice"}
+                few{"{0} puncte"}
+                one{"{0} punct"}
+                other{"{0} de puncte"}
+            }
+            dot-per-centimeter{
+                dnam{"puncte pe centimetru"}
+                few{"{0} puncte pe centimetru"}
+                one{"{0} punct pe centimetru"}
+                other{"{0} de puncte pe centimetru"}
+            }
+            dot-per-inch{
+                dnam{"puncte pe inch"}
+                few{"{0} puncte pe inch"}
+                one{"{0} punct pe inch"}
+                other{"{0} de puncte pe inch"}
+            }
+            em{
+                dnam{"em tipografic"}
+                gender{"masculine"}
+            }
+            megapixel{
+                case{
+                    genitive{
+                        few{"{0} megapixeli"}
+                        one{"unui megapixel"}
+                        other{"{0} de megapixeli"}
+                    }
+                }
+                few{"{0} megapixeli"}
+                gender{"masculine"}
+                one{"{0} megapixel"}
+                other{"{0} de megapixeli"}
+            }
+            pixel{
+                case{
+                    genitive{
+                        few{"{0} pixeli"}
+                        one{"unui pixel"}
+                        other{"{0} de pixeli"}
+                    }
+                }
+                few{"{0} pixeli"}
+                gender{"masculine"}
+                one{"{0} pixel"}
+                other{"{0} de pixeli"}
+            }
+            pixel-per-centimeter{
+                case{
+                    genitive{
+                        few{"{0} pixeli pe centimetru"}
+                        one{"unui pixel pe centimetru"}
+                        other{"{0} de pixeli pe centimetru"}
+                    }
+                }
+                dnam{"pixeli pe centimetru"}
+                few{"{0} pixeli pe centimetru"}
+                gender{"masculine"}
+                one{"{0} pixel pe centimetru"}
+                other{"{0} de pixeli pe centimetru"}
+            }
+            pixel-per-inch{
+                dnam{"pixeli pe inch"}
+                few{"{0} pixeli pe inch"}
+                one{"{0} pixel pe inch"}
+                other{"{0} de pixeli pe inch"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"unități astronomice"}
+                few{"{0} unități astronomice"}
+                one{"{0} unitate astronomică"}
+                other{"{0} de unități astronomice"}
+            }
+            centimeter{
+                case{
+                    genitive{
+                        few{"{0} centimetri"}
+                        one{"unui centimetru"}
+                        other{"{0} de centimetri"}
+                    }
+                }
+                dnam{"centimetri"}
+                few{"{0} centimetri"}
+                gender{"masculine"}
+                one{"{0} centimetru"}
+                other{"{0} de centimetri"}
+                per{"{0} pe centimetru"}
+            }
+            decimeter{
+                case{
+                    genitive{
+                        few{"{0} decimetri"}
+                        one{"unui decimetru"}
+                        other{"{0} de decimetri"}
+                    }
+                }
+                dnam{"decimetri"}
+                few{"{0} decimetri"}
+                gender{"masculine"}
+                one{"{0} decimetru"}
+                other{"{0} de decimetri"}
+            }
+            earth-radius{
+                dnam{"rază terestră"}
+                few{"{0} raze terestre"}
+                one{"{0} rază terestră"}
+                other{"{0} de raze terestre"}
+            }
+            fathom{
+                few{"{0} fathomi"}
+                one{"{0} fathom"}
+                other{"{0} de fathomi"}
+            }
+            foot{
+                dnam{"picioare"}
+                few{"{0} picioare"}
+                one{"{0} picior"}
+                other{"{0} de picioare"}
+                per{"{0} pe picior"}
+            }
+            furlong{
+                few{"{0} furlongi"}
+                one{"{0} furlong"}
+                other{"{0} de furlongi"}
+            }
+            inch{
+                dnam{"inchi"}
+                few{"{0} inchi"}
+                one{"{0} inch"}
+                other{"{0} de inchi"}
+                per{"{0} pe inch"}
+            }
+            kilometer{
+                case{
+                    genitive{
+                        few{"{0} kilometri"}
+                        one{"unui kilometru"}
+                        other{"{0} de kilometri"}
+                    }
+                }
+                dnam{"kilometri"}
+                few{"{0} kilometri"}
+                gender{"masculine"}
+                one{"{0} kilometru"}
+                other{"{0} de kilometri"}
+                per{"{0} pe kilometru"}
+            }
+            light-year{
+                dnam{"ani lumină"}
+                few{"{0} ani lumină"}
+                one{"{0} an lumină"}
+                other{"{0} de ani lumină"}
+            }
+            meter{
+                case{
+                    genitive{
+                        few{"{0} metri"}
+                        one{"unui metru"}
+                        other{"{0} de metri"}
+                    }
+                }
+                few{"{0} metri"}
+                gender{"masculine"}
+                one{"{0} metru"}
+                other{"{0} de metri"}
+                per{"{0} pe metru"}
+            }
+            micrometer{
+                case{
+                    genitive{
+                        few{"{0} micrometri"}
+                        one{"unui micrometru"}
+                        other{"{0} de micrometri"}
+                    }
+                }
+                dnam{"micrometri"}
+                few{"{0} micrometri"}
+                gender{"masculine"}
+                one{"{0} micrometru"}
+                other{"{0} de micrometri"}
+            }
+            mile{
+                dnam{"mile"}
+                few{"{0} mile"}
+                one{"{0} milă"}
+                other{"{0} de mile"}
+            }
+            mile-scandinavian{
+                case{
+                    genitive{
+                        few{"{0} mile scandinave"}
+                        one{"unei mile scandinave"}
+                        other{"{0} de mile scandinave"}
+                    }
+                }
+                dnam{"milă scandinavă"}
+                few{"{0} mile scandinave"}
+                gender{"feminine"}
+                one{"{0} milă scandinavă"}
+                other{"{0} de mile scandinave"}
+            }
+            millimeter{
+                case{
+                    genitive{
+                        few{"{0} milimetri"}
+                        one{"unui milimetru"}
+                        other{"{0} de milimetri"}
+                    }
+                }
+                dnam{"milimetri"}
+                few{"{0} milimetri"}
+                gender{"masculine"}
+                one{"{0} milimetru"}
+                other{"{0} de milimetri"}
+            }
+            nanometer{
+                case{
+                    genitive{
+                        few{"{0} nanometri"}
+                        one{"unui nanometru"}
+                        other{"{0} de nanometri"}
+                    }
+                }
+                dnam{"nanometri"}
+                few{"{0} nanometri"}
+                gender{"masculine"}
+                one{"{0} nanometru"}
+                other{"{0} de nanometri"}
+            }
+            nautical-mile{
+                dnam{"mile nautice"}
+                few{"{0} mile nautice"}
+                one{"{0} milă nautică"}
+                other{"{0} de mile nautice"}
+            }
+            parsec{
+                dnam{"parseci"}
+                few{"{0} parseci"}
+                one{"{0} parsec"}
+                other{"{0} de parseci"}
+            }
+            picometer{
+                case{
+                    genitive{
+                        few{"{0} picometri"}
+                        one{"unui picometru"}
+                        other{"{0} de picometri"}
+                    }
+                }
+                dnam{"picometri"}
+                few{"{0} picometri"}
+                gender{"masculine"}
+                one{"{0} picometru"}
+                other{"{0} de picometri"}
+            }
+            point{
+                dnam{"puncte"}
+                few{"{0} puncte tipografice"}
+                one{"{0} punct tipografic"}
+                other{"{0} de puncte tipografice"}
+            }
+            solar-radius{
+                dnam{"raze solare"}
+                few{"{0} raze solare"}
+                one{"{0} rază solară"}
+                other{"{0} de raze solare"}
+            }
+            yard{
+                dnam{"iarzi"}
+                few{"{0} iarzi"}
+                one{"{0} iard"}
+                other{"{0} de iarzi"}
+            }
+        }
+        light{
+            candela{
+                case{
+                    genitive{
+                        few{"{0} candele"}
+                        one{"unei candele"}
+                        other{"{0} de candele"}
+                    }
+                }
+                dnam{"candelă"}
+                few{"{0} candele"}
+                gender{"feminine"}
+                one{"{0} candelă"}
+                other{"{0} de candele"}
+            }
+            lumen{
+                case{
+                    genitive{
+                        few{"{0} lumeni"}
+                        one{"unui lumen"}
+                        other{"{0} de lumeni"}
+                    }
+                }
+                dnam{"lumen"}
+                few{"{0} lumeni"}
+                gender{"masculine"}
+                one{"{0} lumen"}
+                other{"{0} de lumeni"}
+            }
+            lux{
+                case{
+                    genitive{
+                        few{"{0} lucși"}
+                        one{"unui lux"}
+                        other{"{0} de lucși"}
+                    }
+                }
+                dnam{"lucși"}
+                few{"{0} lucși"}
+                gender{"masculine"}
+                one{"{0} lux"}
+                other{"{0} de lucși"}
+            }
+            solar-luminosity{
+                dnam{"luminozități solare"}
+                few{"{0} luminozități solare"}
+                one{"{0} luminozitate solară"}
+                other{"{0} de luminozități solare"}
+            }
+        }
+        mass{
+            carat{
+                case{
+                    genitive{
+                        few{"{0} carate"}
+                        one{"unui carat"}
+                        other{"{0} de carate"}
+                    }
+                }
+                few{"{0} carate"}
+                gender{"neuter"}
+                one{"{0} carat"}
+                other{"{0} de carate"}
+            }
+            dalton{
+                dnam{"daltoni"}
+                few{"{0} daltoni"}
+                one{"{0} dalton"}
+                other{"{0} de daltoni"}
+            }
+            earth-mass{
+                dnam{"mase terestre"}
+                few{"{0} mase terestre"}
+                one{"{0} masă terestră"}
+                other{"{0} de mase terestre"}
+            }
+            grain{
+                few{"{0} boabe"}
+                one{"{0} boabă"}
+                other{"{0} de boabe"}
+            }
+            gram{
+                case{
+                    genitive{
+                        few{"{0} grame"}
+                        one{"unui gram"}
+                        other{"{0} de grame"}
+                    }
+                }
+                few{"{0} grame"}
+                gender{"neuter"}
+                one{"{0} gram"}
+                other{"{0} de grame"}
+                per{"{0} per gram"}
+            }
+            kilogram{
+                case{
+                    genitive{
+                        few{"{0} kilograme"}
+                        one{"unui kilogram"}
+                        other{"{0} de kilograme"}
+                    }
+                }
+                dnam{"kilograme"}
+                few{"{0} kilograme"}
+                gender{"neuter"}
+                one{"{0} kilogram"}
+                other{"{0} de kilograme"}
+                per{"{0} per kilogram"}
+            }
+            microgram{
+                case{
+                    genitive{
+                        few{"{0} micrograme"}
+                        one{"unui microgram"}
+                        other{"{0} de micrograme"}
+                    }
+                }
+                dnam{"micrograme"}
+                few{"{0} micrograme"}
+                gender{"neuter"}
+                one{"{0} microgram"}
+                other{"{0} de micrograme"}
+            }
+            milligram{
+                case{
+                    genitive{
+                        few{"{0} miligrame"}
+                        one{"unui miligram"}
+                        other{"{0} de miligrame"}
+                    }
+                }
+                dnam{"miligrame"}
+                few{"{0} miligrame"}
+                gender{"neuter"}
+                one{"{0} miligram"}
+                other{"{0} de miligrame"}
+            }
+            ounce{
+                dnam{"uncii"}
+                few{"{0} uncii"}
+                one{"{0} uncie"}
+                other{"{0} de uncii"}
+                per{"{0} per uncie"}
+            }
+            ounce-troy{
+                dnam{"uncii monetare"}
+                few{"{0} uncii monetare"}
+                one{"{0} uncie monetară"}
+                other{"{0} de uncii monetare"}
+            }
+            pound{
+                dnam{"livre"}
+                few{"{0} livre"}
+                one{"{0} livră"}
+                other{"{0} de livre"}
+                per{"{0} per livră"}
+            }
+            solar-mass{
+                dnam{"mase solare"}
+                few{"{0} mase solare"}
+                one{"{0} masă solară"}
+                other{"{0} de mase solare"}
+            }
+            stone{
+                dnam{"stone"}
+                few{"{0} stone"}
+                one{"{0} stone"}
+                other{"{0} de stone"}
+            }
+            ton{
+                dnam{"tone scurte"}
+                few{"{0} tone scurte"}
+                one{"{0} tonă scurtă"}
+                other{"{0} de tone scurte"}
+            }
+            tonne{
+                case{
+                    genitive{
+                        few{"{0} tone metrice"}
+                        one{"unei tone metrice"}
+                        other{"{0} de tone metrice"}
+                    }
+                }
+                dnam{"tone metrice"}
+                few{"{0} tone metrice"}
+                gender{"feminine"}
+                one{"{0} tonă metrică"}
+                other{"{0} de tone metrice"}
+            }
+        }
+        power{
+            gigawatt{
+                case{
+                    genitive{
+                        few{"{0} gigawați"}
+                        one{"unui gigawatt"}
+                        other{"{0} de gigawați"}
+                    }
+                }
+                dnam{"gigawați"}
+                few{"{0} gigawați"}
+                gender{"masculine"}
+                one{"{0} gigawatt"}
+                other{"{0} de gigawați"}
+            }
+            horsepower{
+                dnam{"cai putere"}
+                few{"{0} cai putere"}
+                one{"{0} cal putere"}
+                other{"{0} de cai putere"}
+            }
+            kilowatt{
+                case{
+                    genitive{
+                        few{"{0} kilowați"}
+                        one{"unui kilowatt"}
+                        other{"{0} de kilowați"}
+                    }
+                }
+                dnam{"kilowați"}
+                few{"{0} kilowați"}
+                gender{"masculine"}
+                one{"{0} kilowatt"}
+                other{"{0} de kilowați"}
+            }
+            megawatt{
+                case{
+                    genitive{
+                        few{"{0} megawați"}
+                        one{"unui megawatt"}
+                        other{"{0} de megawați"}
+                    }
+                }
+                dnam{"megawați"}
+                few{"{0} megawați"}
+                gender{"masculine"}
+                one{"{0} megawatt"}
+                other{"{0} de megawați"}
+            }
+            milliwatt{
+                case{
+                    genitive{
+                        few{"{0} miliwați"}
+                        one{"unui miliwatt"}
+                        other{"{0} de miliwați"}
+                    }
+                }
+                dnam{"miliwați"}
+                few{"{0} miliwați"}
+                gender{"masculine"}
+                one{"{0} miliwatt"}
+                other{"{0} de miliwați"}
+            }
+            watt{
+                case{
+                    genitive{
+                        few{"{0} wați"}
+                        one{"unui watt"}
+                        other{"{0} de wați"}
+                    }
+                }
+                dnam{"wați"}
+                few{"{0} wați"}
+                gender{"masculine"}
+                one{"{0} watt"}
+                other{"{0} de wați"}
+            }
+        }
+        pressure{
+            atmosphere{
+                case{
+                    genitive{
+                        few{"{0} atmosfere"}
+                        one{"unei atmosfere"}
+                        other{"{0} de atmosfere"}
+                    }
+                }
+                dnam{"atmosfere"}
+                few{"{0} atmosfere"}
+                gender{"feminine"}
+                one{"{0} atmosferă"}
+                other{"{0} de atmosfere"}
+            }
+            bar{
+                case{
+                    genitive{
+                        few{"{0} bari"}
+                        one{"unui bar"}
+                        other{"{0} de bari"}
+                    }
+                }
+                dnam{"bari"}
+                few{"{0} bari"}
+                gender{"masculine"}
+                one{"{0} bar"}
+                other{"{0} de bari"}
+            }
+            hectopascal{
+                case{
+                    genitive{
+                        few{"{0} hectopascali"}
+                        one{"unui hectopascal"}
+                        other{"{0} de hectopascali"}
+                    }
+                }
+                dnam{"hectopascali"}
+                few{"{0} hectopascali"}
+                gender{"masculine"}
+                one{"{0} hectopascal"}
+                other{"{0} de hectopascali"}
+            }
+            inch-ofhg{
+                dnam{"inchi coloană de mercur"}
+                few{"{0} inchi coloană de mercur"}
+                one{"{0} inch coloană de mercur"}
+                other{"{0} de inchi coloană de mercur"}
+            }
+            kilopascal{
+                case{
+                    genitive{
+                        few{"{0} kilopascali"}
+                        one{"unui kilopascal"}
+                        other{"{0} de kilopascali"}
+                    }
+                }
+                dnam{"kilopascali"}
+                few{"{0} kilopascali"}
+                gender{"masculine"}
+                one{"{0} kilopascal"}
+                other{"{0} de kilopascali"}
+            }
+            megapascal{
+                case{
+                    genitive{
+                        few{"{0} megapascali"}
+                        one{"unui megapascal"}
+                        other{"{0} de megapascali"}
+                    }
+                }
+                dnam{"megapascali"}
+                few{"{0} megapascali"}
+                gender{"masculine"}
+                one{"{0} megapascal"}
+                other{"{0} de megapascali"}
+            }
+            millibar{
+                case{
+                    genitive{
+                        few{"{0} milibari"}
+                        one{"unui milibar"}
+                        other{"{0} de milibari"}
+                    }
+                }
+                dnam{"milibari"}
+                few{"{0} milibari"}
+                gender{"masculine"}
+                one{"{0} milibar"}
+                other{"{0} de milibari"}
+            }
+            millimeter-ofhg{
+                dnam{"milimetri coloană de mercur"}
+                few{"{0} milimetri coloană de mercur"}
+                one{"{0} milimetru coloană de mercur"}
+                other{"{0} de milimetri coloană de mercur"}
+            }
+            pascal{
+                case{
+                    genitive{
+                        few{"{0} pascali"}
+                        one{"unui pascal"}
+                        other{"{0} de pascali"}
+                    }
+                }
+                dnam{"pascali"}
+                few{"{0} pascali"}
+                gender{"masculine"}
+                one{"{0} pascal"}
+                other{"{0} de pascali"}
+            }
+            pound-force-per-square-inch{
+                dnam{"livre pe inch pătrat"}
+                few{"{0} livre pe inch pătrat"}
+                one{"{0} livră pe inch pătrat"}
+                other{"{0} de livre pe inch pătrat"}
+            }
+        }
+        speed{
+            beaufort{
+                few{"Beaufort {0}"}
+                one{"Beaufort {0}"}
+                other{"Beaufort {0}"}
+            }
+            kilometer-per-hour{
+                case{
+                    genitive{
+                        few{"{0} kilometri pe oră"}
+                        one{"unui kilometru pe oră"}
+                        other{"{0} de kilometri pe oră"}
+                    }
+                }
+                dnam{"kilometri pe oră"}
+                few{"{0} kilometri pe oră"}
+                gender{"masculine"}
+                one{"{0} kilometru pe oră"}
+                other{"{0} de kilometri pe oră"}
+            }
+            knot{
+                dnam{"nod"}
+                few{"{0} noduri"}
+                one{"{0} nod"}
+                other{"{0} de noduri"}
+            }
+            meter-per-second{
+                case{
+                    genitive{
+                        few{"{0} metri pe secundă"}
+                        one{"unui metru pe secundă"}
+                        other{"{0} de metri pe secundă"}
+                    }
+                }
+                dnam{"metri pe secundă"}
+                few{"{0} metri pe secundă"}
+                gender{"masculine"}
+                one{"{0} metru pe secundă"}
+                other{"{0} de metri pe secundă"}
+            }
+            mile-per-hour{
+                dnam{"mile pe oră"}
+                few{"{0} mile pe oră"}
+                one{"{0} milă pe oră"}
+                other{"{0} de mile pe oră"}
+            }
+        }
+        temperature{
+            celsius{
+                case{
+                    genitive{
+                        few{"{0} grade Celsius"}
+                        one{"unui grad Celsius"}
+                        other{"{0} de grade Celsius"}
+                    }
+                }
+                dnam{"grade Celsius"}
+                few{"{0} grade Celsius"}
+                gender{"neuter"}
+                one{"{0} grad Celsius"}
+                other{"{0} de grade Celsius"}
+            }
+            fahrenheit{
+                dnam{"grade Fahrenheit"}
+                few{"{0} grade Fahrenheit"}
+                one{"{0} grad Fahrenheit"}
+                other{"{0} de grade Fahrenheit"}
+            }
+            generic{
+                case{
+                    genitive{
+                        few{"{0} grade"}
+                        one{"unui grad"}
+                        other{"{0} de grade"}
+                    }
+                }
+                few{"{0} grade"}
+                gender{"neuter"}
+                one{"{0} grad"}
+                other{"{0} de grade"}
+            }
+            kelvin{
+                case{
+                    genitive{
+                        few{"{0} kelvini"}
+                        one{"unui kelvin"}
+                        other{"{0} de kelvini"}
+                    }
+                }
+                dnam{"kelvini"}
+                few{"{0} kelvini"}
+                gender{"masculine"}
+                one{"{0} kelvin"}
+                other{"{0} de kelvini"}
+            }
+        }
+        torque{
+            newton-meter{
+                case{
+                    genitive{
+                        few{"{0} newton metri"}
+                        one{"unui newton metru"}
+                        other{"{0} de newton metri"}
+                    }
+                }
+                dnam{"newton-metri"}
+                few{"{0} newton metri"}
+                gender{"masculine"}
+                one{"{0} newton metru"}
+                other{"{0} de newton metri"}
+            }
+            pound-force-foot{
+                dnam{"livră-forță picioare"}
+                few{"{0} livră-forță picioare"}
+                one{"{0} livră-forță picior"}
+                other{"{0} de livră-forță picioare"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"acru-picioare"}
+                few{"{0} acru-picioare"}
+                one{"{0} acru-picior"}
+                other{"{0} de acru-picioare"}
+            }
+            barrel{
+                dnam{"barili"}
+                few{"{0} barili"}
+                one{"{0} baril"}
+                other{"{0} de barili"}
+            }
+            bushel{
+                few{"{0} banițe"}
+                one{"{0} baniță"}
+                other{"{0} de banițe"}
+            }
+            centiliter{
+                case{
+                    genitive{
+                        few{"{0} centilitri"}
+                        one{"unui centilitru"}
+                        other{"{0} de centilitri"}
+                    }
+                }
+                dnam{"centilitri"}
+                few{"{0} centilitri"}
+                gender{"masculine"}
+                one{"{0} centilitru"}
+                other{"{0} de centilitri"}
+            }
+            cubic-centimeter{
+                case{
+                    genitive{
+                        few{"{0} centimetri cubi"}
+                        one{"unui centimetru cub"}
+                        other{"{0} de centimetri cubi"}
+                    }
+                }
+                dnam{"centimetri cubi"}
+                few{"{0} centimetri cubi"}
+                gender{"masculine"}
+                one{"{0} centimetru cub"}
+                other{"{0} de centimetri cubi"}
+                per{"{0} pe centimetru cub"}
+            }
+            cubic-foot{
+                dnam{"picioare cubice"}
+                few{"{0} picioare cubice"}
+                one{"{0} picior cubic"}
+                other{"{0} de picioare cubice"}
+            }
+            cubic-inch{
+                dnam{"inchi cubici"}
+                few{"{0} inchi cubici"}
+                one{"{0} inch cubic"}
+                other{"{0} de inchi cubici"}
+            }
+            cubic-kilometer{
+                case{
+                    genitive{
+                        few{"{0} kilometri cubi"}
+                        one{"unui kilometru cub"}
+                        other{"{0} de kilometri cubi"}
+                    }
+                }
+                dnam{"kilometri cubi"}
+                few{"{0} kilometri cubi"}
+                gender{"masculine"}
+                one{"{0} kilometru cub"}
+                other{"{0} de kilometri cubi"}
+            }
+            cubic-meter{
+                case{
+                    genitive{
+                        few{"{0} metri cubi"}
+                        one{"unui metru cub"}
+                        other{"{0} de metri cubi"}
+                    }
+                }
+                dnam{"metri cubi"}
+                few{"{0} metri cubi"}
+                gender{"masculine"}
+                one{"{0} metru cub"}
+                other{"{0} de metri cubi"}
+                per{"{0} pe metru cub"}
+            }
+            cubic-mile{
+                dnam{"mile cubice"}
+                few{"{0} mile cubice"}
+                one{"{0} milă cubică"}
+                other{"{0} de mile cubice"}
+            }
+            cubic-yard{
+                dnam{"iarzi cubici"}
+                few{"{0} iarzi cubici"}
+                one{"{0} iard cubic"}
+                other{"{0} de iarzi cubici"}
+            }
+            cup{
+                few{"{0} căni"}
+                one{"{0} cană"}
+                other{"{0} de căni"}
+            }
+            cup-metric{
+                case{
+                    genitive{
+                        few{"{0} căni metrice"}
+                        one{"unei căni metrice"}
+                        other{"{0} de căni metrice"}
+                    }
+                }
+                dnam{"căni metrice"}
+                few{"{0} căni metrice"}
+                gender{"feminine"}
+                one{"{0} cană metrică"}
+                other{"{0} de căni metrice"}
+            }
+            deciliter{
+                case{
+                    genitive{
+                        few{"{0} decilitri"}
+                        one{"unui decilitru"}
+                        other{"{0} de decilitri"}
+                    }
+                }
+                dnam{"decilitri"}
+                few{"{0} decilitri"}
+                gender{"masculine"}
+                one{"{0} decilitru"}
+                other{"{0} de decilitri"}
+            }
+            dessert-spoon{
+                dnam{"lingură de desert"}
+                few{"{0} linguri de desert"}
+                one{"{0} lingură de desert"}
+                other{"{0} de linguri de desert"}
+            }
+            dessert-spoon-imperial{
+                dnam{"lingură de desert imperială"}
+                few{"{0} linguri de desert imperiale"}
+                one{"{0} lingură de desert imperială"}
+                other{"{0} de linguri de desert imperiale"}
+            }
+            dram{
+                few{"{0} drami lichizi"}
+                one{"{0} dram lichid"}
+                other{"{0} de drami lichizi"}
+            }
+            fluid-ounce{
+                dnam{"uncii lichide"}
+                few{"{0} uncii lichide"}
+                one{"{0} uncie lichidă"}
+                other{"{0} de uncii lichide"}
+            }
+            fluid-ounce-imperial{
+                dnam{"uncii lichide imperiale"}
+                few{"{0} uncii lichide imperiale"}
+                one{"{0} uncie lichidă imperială"}
+                other{"{0} de uncii lichide imperiale"}
+            }
+            gallon{
+                dnam{"galoane"}
+                few{"{0} galoane"}
+                one{"{0} galon"}
+                other{"{0} de galoane"}
+                per{"{0} per galon"}
+            }
+            gallon-imperial{
+                dnam{"galoane imperiale"}
+                few{"{0} galoane imperiale"}
+                one{"{0} galon imperial"}
+                other{"{0} de galoane imperiale"}
+                per{"{0} pe galon imperial"}
+            }
+            hectoliter{
+                case{
+                    genitive{
+                        few{"{0} hectolitri"}
+                        one{"unui hectolitru"}
+                        other{"{0} de hectolitri"}
+                    }
+                }
+                dnam{"hectolitri"}
+                few{"{0} hectolitri"}
+                gender{"masculine"}
+                one{"{0} hectolitru"}
+                other{"{0} de hectolitri"}
+            }
+            jigger{
+                few{"{0} jiggere"}
+                one{"{0} jigger"}
+                other{"{0} de jiggere"}
+            }
+            liter{
+                case{
+                    genitive{
+                        few{"{0} litri"}
+                        one{"unui litru"}
+                        other{"{0} de litri"}
+                    }
+                }
+                few{"{0} litri"}
+                gender{"masculine"}
+                one{"{0} litru"}
+                other{"{0} de litri"}
+                per{"{0} pe litru"}
+            }
+            megaliter{
+                case{
+                    genitive{
+                        few{"{0} megalitri"}
+                        one{"unui megalitru"}
+                        other{"{0} de megalitri"}
+                    }
+                }
+                dnam{"megalitri"}
+                few{"{0} megalitri"}
+                gender{"masculine"}
+                one{"{0} megalitru"}
+                other{"{0} de megalitri"}
+            }
+            milliliter{
+                case{
+                    genitive{
+                        few{"{0} mililitri"}
+                        one{"unui mililitru"}
+                        other{"{0} de mililitri"}
+                    }
+                }
+                dnam{"mililitri"}
+                few{"{0} mililitri"}
+                gender{"masculine"}
+                one{"{0} mililitru"}
+                other{"{0} de mililitri"}
+            }
+            pinch{
+                dnam{"vârf de cuțit"}
+                few{"{0} vârfuri de cuțit"}
+                one{"{0} vârf de cuțit"}
+                other{"{0} de vârfuri de cuțit"}
+            }
+            pint{
+                few{"{0} pinte"}
+                one{"{0} pintă"}
+                other{"{0} de pinte"}
+            }
+            pint-metric{
+                case{
+                    genitive{
+                        few{"{0} pinte metrice"}
+                        one{"unei pinte metrice"}
+                        other{"{0} de pinte metrice"}
+                    }
+                }
+                dnam{"pinte metrice"}
+                few{"{0} pinte metrice"}
+                gender{"feminine"}
+                one{"{0} pintă metrică"}
+                other{"{0} de pinte metrice"}
+            }
+            quart{
+                dnam{"quarte"}
+                few{"{0} quarte"}
+                one{"{0} quart"}
+                other{"{0} de quarte"}
+            }
+            quart-imperial{
+                dnam{"quart imperial"}
+                few{"{0} quarte imperiale"}
+                one{"{0} quart imperial"}
+                other{"{0} de quarte imperiale"}
+            }
+            tablespoon{
+                dnam{"linguri"}
+                few{"{0} linguri"}
+                one{"{0} lingură"}
+                other{"{0} de linguri"}
+            }
+            teaspoon{
+                dnam{"lingurițe"}
+                few{"{0} lingurițe"}
+                one{"{0} linguriță"}
+                other{"{0} de lingurițe"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            arc-minute{
+                few{"{0}′"}
+                one{"{0}′"}
+                other{"{0}′"}
+            }
+            arc-second{
+                few{"{0}″"}
+                one{"{0}″"}
+                other{"{0}″"}
+            }
+            degree{
+                dnam{"grad"}
+            }
+        }
+        area{
+            acre{
+                dnam{"acru"}
+            }
+            dunam{
+                dnam{"dunam"}
+            }
+            hectare{
+                dnam{"hectar"}
+            }
+            square-centimeter{
+                per{"{0}/cm²"}
+            }
+            square-meter{
+                per{"{0}/m²"}
+            }
+        }
+        concentr{
+            item{
+                few{"{0} itemi"}
+                one{"{0} item"}
+                other{"{0} itemi"}
+            }
+            karat{
+                dnam{"carat"}
+            }
+            permille{
+                few{"{0} ‰"}
+                one{"{0} ‰"}
+                other{"{0} ‰"}
+            }
+            permyriad{
+                few{"{0} ‱"}
+                one{"{0} ‱"}
+                other{"{0} ‱"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"mi/gal"}
+                few{"{0} mi/gal"}
+                one{"{0} mi/gal"}
+                other{"{0} mi/gal"}
+            }
+        }
+        duration{
+            day{
+                dnam{"zi"}
+                few{"{0} z"}
+                one{"{0} z"}
+                other{"{0} z"}
+            }
+            hour{
+                dnam{"oră"}
+                few{"{0} h"}
+                one{"{0} h"}
+                other{"{0} h"}
+            }
+            minute{
+                dnam{"m"}
+                few{"{0} m"}
+                one{"{0} m"}
+                other{"{0} m"}
+            }
+            month{
+                dnam{"l"}
+                few{"{0} l"}
+                one{"{0} l"}
+                other{"{0} l"}
+            }
+            week{
+                dnam{"săpt."}
+            }
+            year{
+                dnam{"a"}
+                few{"{0} a"}
+                one{"{0} a"}
+                other{"{0} a"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                few{"{0} kWh/100 km"}
+                one{"{0}kWh/100 km"}
+                other{"{0}kWh/100 km"}
+            }
+            pound-force{
+                dnam{"lbf"}
+            }
+        }
+        graphics{
+            megapixel{
+                dnam{"MP"}
+            }
+            pixel{
+                dnam{"px"}
+            }
+        }
+        length{
+            fathom{
+                dnam{"fathom"}
+            }
+            furlong{
+                dnam{"furlong"}
+            }
+            meter{
+                dnam{"m"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"g"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                few{"{0}″ Hg"}
+                one{"{0}″ Hg"}
+                other{"{0}″ Hg"}
+            }
+            millibar{
+                few{"{0} mb"}
+                one{"{0} mb"}
+                other{"{0} mb"}
+            }
+        }
+        torque{
+            pound-force-foot{
+                dnam{"lbf⋅ft"}
+            }
+        }
+        volume{
+            bushel{
+                dnam{"baniță"}
+            }
+            cup{
+                dnam{"cană"}
+            }
+            dessert-spoon-imperial{
+                dnam{"dsp im"}
+            }
+            dram{
+                dnam{"dr fl"}
+                few{"{0} dr fl"}
+                one{"{0} dr fl"}
+                other{"{0} dr fl"}
+            }
+            drop{
+                few{"{0} pic."}
+                one{"{0} pic."}
+                other{"{0} pic."}
+            }
+            fluid-ounce-imperial{
+                few{"{0} fl oz im"}
+                one{"{0} fl oz im"}
+                other{"{0} fl oz im"}
+            }
+            gallon-imperial{
+                few{"{0} gal im"}
+                one{"{0} gal im"}
+                other{"{0} gal im"}
+            }
+            liter{
+                dnam{"l"}
+            }
+            pinch{
+                dnam{"vf."}
+                few{"{0} vf."}
+                one{"{0} vf."}
+                other{"{0} vf."}
+            }
+            pint{
+                dnam{"pintă"}
+            }
+            quart-imperial{
+                dnam{"qt im"}
+                few{"{0} qt im"}
+                one{"{0} qt im"}
+                other{"{0} qt im"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"forță g"}
+            }
+        }
+        angle{
+            arc-minute{
+                few{"{0} arcmin"}
+                one{"{0} arcmin"}
+                other{"{0} arcmin"}
+            }
+            arc-second{
+                few{"{0} arcsec"}
+                one{"{0} arcsec"}
+                other{"{0} arcsec"}
+            }
+            degree{
+                dnam{"grade"}
+            }
+            revolution{
+                dnam{"rev."}
+                few{"{0} rev."}
+                one{"{0} rev."}
+                other{"{0} rev."}
+            }
+        }
+        area{
+            acre{
+                dnam{"acri"}
+                few{"{0} ac."}
+                one{"{0} ac."}
+                other{"{0} ac."}
+            }
+            dunam{
+                dnam{"dunami"}
+                few{"{0} dunami"}
+                one{"{0} dunam"}
+                other{"{0} dunami"}
+            }
+            hectare{
+                dnam{"ha"}
+            }
+            square-centimeter{
+                per{"{0} pe cm²"}
+            }
+            square-meter{
+                per{"{0} pe m²"}
+            }
+        }
+        compound{
+            times{"{0} {1}"}
+        }
+        concentr{
+            item{
+                few{"{0} itemi"}
+                one{"{0} de itemi"}
+                other{"{0} de itemi"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dl"}
+                few{"{0} mg/dl"}
+                one{"{0} mg/dl"}
+                other{"{0} mg/dl"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/l"}
+                few{"{0} mmol/l"}
+                one{"{0} mmol/l"}
+                other{"{0} mmol/l"}
+            }
+            mole{
+                few{"{0} moli"}
+                one{"{0} mol"}
+                other{"{0} moli"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"l/100 km"}
+                few{"{0} l/100 km"}
+                one{"{0} l/100 km"}
+                other{"{0} l/100 km"}
+            }
+            liter-per-kilometer{
+                dnam{"l/km"}
+                few{"{0} l/km"}
+                one{"{0} l/km"}
+                other{"{0} l/km"}
+            }
+            mile-per-gallon{
+                dnam{"mile/gal."}
+                few{"{0} mile/gal."}
+                one{"{0} milă/gal."}
+                other{"{0} mile/gal."}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mi/gal imp."}
+                few{"{0} mi/gal imp."}
+                one{"{0} mi/gal imp."}
+                other{"{0} mi/gal imp."}
+            }
+        }
+        coordinate{
+            dnam{"direcție"}
+            west{"{0}V"}
+        }
+        digital{
+            bit{
+                dnam{"b"}
+                few{"{0} b"}
+                one{"{0} b"}
+                other{"{0} b"}
+            }
+            byte{
+                dnam{"B"}
+                few{"{0} B"}
+                one{"{0} B"}
+                other{"{0} B"}
+            }
+        }
+        duration{
+            century{
+                dnam{"sec."}
+                few{"{0} sec."}
+                one{"{0} sec."}
+                other{"{0} sec."}
+            }
+            day{
+                dnam{"zile"}
+                few{"{0} zile"}
+                one{"{0} zi"}
+                other{"{0} zile"}
+                per{"{0}/zi"}
+            }
+            decade{
+                dnam{"dec."}
+                few{"{0} dec."}
+                one{"{0} dec."}
+                other{"{0} dec."}
+            }
+            hour{
+                dnam{"ore"}
+                few{"{0} ore"}
+                one{"{0} oră"}
+                other{"{0} ore"}
+            }
+            minute{
+                dnam{"min."}
+                few{"{0} min."}
+                one{"{0} min."}
+                other{"{0} min."}
+                per{"{0}/min."}
+            }
+            month{
+                dnam{"luni"}
+                few{"{0} luni"}
+                one{"{0} lună"}
+                other{"{0} luni"}
+                per{"{0}/lună"}
+            }
+            quarter{
+                dnam{"trim."}
+                few{"{0} trim."}
+                one{"{0} trim."}
+                other{"{0} trim."}
+                per{"{0}/trim."}
+            }
+            second{
+                dnam{"s"}
+            }
+            week{
+                dnam{"săptămâni"}
+                few{"{0} săpt."}
+                one{"{0} săpt."}
+                other{"{0} săpt."}
+                per{"{0}/săpt."}
+            }
+            year{
+                dnam{"ani"}
+                few{"{0} ani"}
+                one{"{0} an"}
+                other{"{0} ani"}
+                per{"{0}/an"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"A"}
+            }
+            ohm{
+                dnam{"Ω"}
+            }
+            volt{
+                dnam{"V"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+                few{"{0} BTU"}
+                one{"{0} BTU"}
+                other{"{0} BTU"}
+            }
+            joule{
+                dnam{"J"}
+            }
+            therm-us{
+                dnam{"thm"}
+                few{"{0} thm"}
+                one{"{0} thm"}
+                other{"{0} thm"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"kWh/100 km"}
+                few{"{0} kWh/100 km"}
+                one{"{0} kWh/100 km"}
+                other{"{0} kWh/100 km"}
+            }
+            pound-force{
+                dnam{"livră-forță"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"pct."}
+                few{"{0} pct."}
+                one{"{0} pct"}
+                other{"{0} pct."}
+            }
+            dot-per-centimeter{
+                dnam{"dpc"}
+                few{"{0} dpc"}
+                one{"{0} dpc"}
+                other{"{0} dpc"}
+            }
+            dot-per-inch{
+                dnam{"dpi"}
+                few{"{0} dpi"}
+                one{"{0} dpi"}
+                other{"{0} dpi"}
+            }
+            megapixel{
+                dnam{"megapixeli"}
+            }
+            pixel{
+                dnam{"pixeli"}
+            }
+            pixel-per-centimeter{
+                dnam{"ppc"}
+                few{"{0} ppc"}
+                one{"{0} ppc"}
+                other{"{0} ppc"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"ua"}
+                few{"{0} ua"}
+                one{"{0} ua"}
+                other{"{0} ua"}
+            }
+            fathom{
+                dnam{"fathomi"}
+            }
+            furlong{
+                dnam{"furlongi"}
+            }
+            light-year{
+                dnam{"a.l."}
+                few{"{0} a.l."}
+                one{"{0} a.l."}
+                other{"{0} a.l."}
+            }
+            meter{
+                dnam{"metri"}
+            }
+            nautical-mile{
+                dnam{"mn"}
+                few{"{0} mn"}
+                one{"{0} mn"}
+                other{"{0} mn"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"carate"}
+                few{"{0} ct"}
+                one{"{0} ct"}
+                other{"{0} ct"}
+            }
+            grain{
+                dnam{"boabă"}
+                few{"{0} boabe"}
+                one{"{0} boabă"}
+                other{"{0} boabe"}
+            }
+            gram{
+                dnam{"grame"}
+            }
+            ton{
+                dnam{"t.s."}
+                few{"{0} t.s."}
+                one{"{0} t.s."}
+                other{"{0} t.s."}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"CP"}
+                few{"{0} CP"}
+                one{"{0} CP"}
+                other{"{0} CP"}
+            }
+            watt{
+                dnam{"W"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                dnam{"in Hg"}
+                few{"{0} in Hg"}
+                one{"{0} in Hg"}
+                other{"{0} in Hg"}
+            }
+        }
+        temperature{
+            celsius{
+                few{"{0} °C"}
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+            fahrenheit{
+                few{"{0} °F"}
+                one{"{0} °F"}
+                other{"{0} °F"}
+            }
+        }
+        torque{
+            pound-force-foot{
+                dnam{"livră-forță picior"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"baril"}
+            }
+            bushel{
+                dnam{"banițe"}
+            }
+            centiliter{
+                dnam{"cl"}
+                few{"{0} cl"}
+                one{"{0} cl"}
+                other{"{0} cl"}
+            }
+            cup{
+                dnam{"căni"}
+            }
+            deciliter{
+                dnam{"dl"}
+                few{"{0} dl"}
+                one{"{0} dl"}
+                other{"{0} dl"}
+            }
+            dessert-spoon-imperial{
+                few{"{0} dsp im"}
+                one{"{0} dsp im"}
+                other{"{0} dsp im"}
+            }
+            dram{
+                dnam{"dram lichid"}
+            }
+            drop{
+                dnam{"picătură"}
+                few{"{0} picături"}
+                one{"{0} picătură"}
+                other{"{0} de picături"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                few{"{0} fl oz"}
+                one{"{0} fl oz"}
+                other{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"fl oz imp."}
+                few{"{0} fl oz imp."}
+                one{"{0} fl oz imp."}
+                other{"{0} fl oz imp."}
+            }
+            gallon{
+                dnam{"gal"}
+                few{"{0} gal"}
+                one{"{0} gal"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            gallon-imperial{
+                dnam{"gal imp."}
+                few{"{0} gal imp."}
+                one{"{0} gal imp."}
+                other{"{0} gal imp."}
+                per{"{0} gal imp."}
+            }
+            hectoliter{
+                dnam{"hl"}
+                few{"{0} hl"}
+                one{"{0} hl"}
+                other{"{0} hl"}
+            }
+            liter{
+                dnam{"litri"}
+            }
+            megaliter{
+                dnam{"Ml"}
+                few{"{0} Ml"}
+                one{"{0} Ml"}
+                other{"{0} Ml"}
+            }
+            milliliter{
+                dnam{"ml"}
+                few{"{0} ml"}
+                one{"{0} ml"}
+                other{"{0} ml"}
+            }
+            pinch{
+                dnam{"vârf"}
+                few{"{0} vârfuri"}
+                one{"{0} vârf"}
+                other{"{0} de vârfuri"}
+            }
+            pint{
+                dnam{"pinte"}
+            }
+            quart-imperial{
+                dnam{"qt imp."}
+                few{"{0} qt imp."}
+                one{"{0} qt imp."}
+                other{"{0} qt imp."}
+            }
+        }
+    }
+}

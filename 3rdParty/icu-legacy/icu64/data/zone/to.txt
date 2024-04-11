@@ -1,0 +1,825 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+to{
+    zoneStrings{
+        "Africa:Sao_Tome"{
+            ec{"Sao Tomé"}
+        }
+        "America:Asuncion"{
+            ec{"Asunción"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"Bahia Banderas"}
+        }
+        "America:Cancun"{
+            ec{"Cancun"}
+        }
+        "America:Curacao"{
+            ec{"Curaçao"}
+        }
+        "America:Merida"{
+            ec{"Merida"}
+        }
+        "America:New_York"{
+            ec{"Niu ʻIoke"}
+        }
+        "America:St_Barthelemy"{
+            ec{"St. Barthélemy"}
+        }
+        "Asia:Hebron"{
+            ec{"Hepeloni"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Selūsalema"}
+        }
+        "Asia:Macau"{
+            ec{"Macau"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangoon"}
+        }
+        "Australia:Adelaide"{
+            ec{"Atelaite"}
+        }
+        "Australia:Brisbane"{
+            ec{"Pelisipane"}
+        }
+        "Australia:Melbourne"{
+            ec{"Melipoane"}
+        }
+        "Australia:Sydney"{
+            ec{"Senē"}
+        }
+        "Etc:UTC"{
+            ls{"taimi fakaemāmani"}
+        }
+        "Etc:Unknown"{
+            ec{"Feituʻu taʻeʻiloa"}
+        }
+        "Europe:Athens"{
+            ec{"ʻAtenisi"}
+        }
+        "Europe:Dublin"{
+            ld{"houa fakaʻaealani taimi totonu"}
+        }
+        "Europe:Kiev"{
+            ec{"Kiev"}
+        }
+        "Europe:London"{
+            ec{"Lonitoni"}
+            ld{"houa fakapilitānia taimi liliu"}
+        }
+        "Europe:Moscow"{
+            ec{"Mosikou"}
+        }
+        "Europe:Paris"{
+            ec{"Palesi"}
+        }
+        "Europe:Rome"{
+            ec{"Loma"}
+        }
+        "Europe:Vatican"{
+            ec{"Vatikani"}
+        }
+        "Indian:Reunion"{
+            ec{"Réunion"}
+        }
+        "Pacific:Auckland"{
+            ec{"ʻAokalani"}
+        }
+        "Pacific:Bougainville"{
+            ec{"Pukanivila"}
+        }
+        "Pacific:Easter"{
+            ec{"Lapanui"}
+        }
+        "Pacific:Enderbury"{
+            ec{"ʻEnitipulī"}
+        }
+        "Pacific:Fiji"{
+            ec{"Fisi"}
+        }
+        "Pacific:Gambier"{
+            ec{"Kamipiē"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"Kuatākanali"}
+        }
+        "Pacific:Guam"{
+            ec{"Kuami"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulu"}
+        }
+        "Pacific:Kanton"{
+            ec{"Kanitoni"}
+        }
+        "Pacific:Kiritimati"{
+            ec{"Kilisimasi"}
+        }
+        "Pacific:Kosrae"{
+            ec{"Kosilae"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"Kuasaleni"}
+        }
+        "Pacific:Majuro"{
+            ec{"Masulo"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Malikuesa"}
+        }
+        "Pacific:Midway"{
+            ec{"Mitiuai"}
+        }
+        "Pacific:Nauru"{
+            ec{"Naulu"}
+        }
+        "Pacific:Niue"{
+            ec{"Niuē"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Noafōki"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"Pangopango"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"Pitikeni"}
+        }
+        "Pacific:Ponape"{
+            ec{"Ponapē"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"Taulanga Molesipi"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"Lalotonga"}
+        }
+        "Pacific:Saipan"{
+            ec{"Saʻipani"}
+        }
+        "Pacific:Tahiti"{
+            ec{"Tahisi"}
+        }
+        "Pacific:Tarawa"{
+            ec{"Talava"}
+        }
+        "Pacific:Truk"{
+            ec{"Tūke"}
+        }
+        "Pacific:Wake"{
+            ec{"Ueke"}
+        }
+        "Pacific:Wallis"{
+            ec{"ʻUvea"}
+        }
+        "meta:Acre"{
+            ld{"houa fakaʻakelī taimi liliu"}
+            lg{"houa fakaʻakelī"}
+            ls{"houa fakaʻakelī taimi totonu"}
+        }
+        "meta:Afghanistan"{
+            ls{"houa fakaʻafikānisitani"}
+        }
+        "meta:Africa_Central"{
+            ls{"houa fakaʻafelika-loto"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"houa fakaʻafelika-hahake"}
+        }
+        "meta:Africa_Southern"{
+            ls{"houa fakaʻafelika-tonga"}
+        }
+        "meta:Africa_Western"{
+            ld{"houa fakaʻafelika-hihifo taimi liliu"}
+            lg{"houa fakaʻafelika-hihifo"}
+            ls{"houa fakaʻafelika-hihifo taimi totonu"}
+        }
+        "meta:Alaska"{
+            ld{"houa fakaʻalasika taimi liliu"}
+            lg{"houa fakaʻalasika"}
+            ls{"houa fakaʻalasika taimi totonu"}
+        }
+        "meta:Almaty"{
+            ld{"houa fakaʻalamati taimi liliu"}
+            lg{"houa fakaʻalamati"}
+            ls{"houa fakaʻalamati taimi totonu"}
+        }
+        "meta:Amazon"{
+            ld{"houa fakaʻamasōne taimi liliu"}
+            lg{"houa fakaʻamasōne"}
+            ls{"houa fakaʻamasōne taimi totonu"}
+        }
+        "meta:America_Central"{
+            ld{"houa fakaʻamelika-tokelau loto taimi liliu"}
+            lg{"houa fakaʻamelika-tokelau loto"}
+            ls{"houa fakaʻamelika-tokelau loto taimi totonu"}
+        }
+        "meta:America_Eastern"{
+            ld{"houa fakaʻamelika-tokelau hahake taimi liliu"}
+            lg{"houa fakaʻamelika-tokelau hahake"}
+            ls{"houa fakaʻamelika-tokelau hahake taimi totonu"}
+        }
+        "meta:America_Mountain"{
+            ld{"houa fakaʻamelika-tokelau moʻunga taimi liliu"}
+            lg{"houa fakaʻamelika-tokelau moʻunga"}
+            ls{"houa fakaʻamelika-tokelau moʻunga taimi totonu"}
+        }
+        "meta:America_Pacific"{
+            ld{"houa fakaʻamelika-tokelau pasifika taimi liliu"}
+            lg{"houa fakaʻamelika-tokelau pasifika"}
+            ls{"houa fakaʻamelika-tokelau pasifika taimi totonu"}
+        }
+        "meta:Anadyr"{
+            ld{"houa fakalūsia-ʻanatili taimi liliu"}
+            lg{"houa fakalūsia-ʻanatili"}
+            ls{"houa fakalūsia-ʻanatili taimi totonu"}
+        }
+        "meta:Apia"{
+            ld{"houa fakaapia taimi liliu"}
+            lg{"houa fakaapia"}
+            ls{"houa fakaapia taimi totonu"}
+        }
+        "meta:Aqtau"{
+            ld{"houa fakaʻakitau taimi liliu"}
+            lg{"houa fakaʻakitau"}
+            ls{"houa fakaʻakitau taimi totonu"}
+        }
+        "meta:Aqtobe"{
+            ld{"houa fakaʻakitōpe taimi liliu"}
+            lg{"houa fakaʻakitōpe"}
+            ls{"houa fakaʻakitōpe taimi totonu"}
+        }
+        "meta:Arabian"{
+            ld{"houa fakaʻalepea taimi liliu"}
+            lg{"houa fakaʻalepea"}
+            ls{"houa fakaʻalepea taimi totonu"}
+        }
+        "meta:Argentina"{
+            ld{"houa fakaʻasenitina taimi liliu"}
+            lg{"houa fakaʻasenitina"}
+            ls{"houa fakaʻasenitina taimi totonu"}
+        }
+        "meta:Argentina_Western"{
+            ld{"houa fakaʻasenitina-hihifo taimi liliu"}
+            lg{"houa fakaʻasenitina-hihifo"}
+            ls{"houa fakaʻasenitina-hihifo taimi totonu"}
+        }
+        "meta:Armenia"{
+            ld{"houa fakaʻāmenia taimi liliu"}
+            lg{"houa fakaʻāmenia"}
+            ls{"houa fakaʻāmenia taimi totonu"}
+        }
+        "meta:Atlantic"{
+            ld{"houa fakaʻamelika-tokelau ʻatalanitiki taimi liliu"}
+            lg{"houa fakaʻamelika-tokelau ʻatalanitiki"}
+            ls{"houa fakaʻamelika-tokelau ʻatalanitiki taimi totonu"}
+        }
+        "meta:Australia_Central"{
+            ld{"houa fakaʻaositelēlia-loto taimi liliu"}
+            lg{"houa fakaʻaositelēlia-loto"}
+            ls{"houa fakaʻaositelēlia-loto taimi totonu"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"houa fakaʻaositelēlia-loto-hihifo taimi liliu"}
+            lg{"houa fakaʻaositelēlia-loto-hihifo"}
+            ls{"houa fakaʻaositelēlia-loto-hihifo taimi totonu"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"houa fakaʻaositelēlia-hahake taimi liliu"}
+            lg{"houa fakaʻaositelēlia-hahake"}
+            ls{"houa fakaʻaositelēlia-hahake taimi totonu"}
+        }
+        "meta:Australia_Western"{
+            ld{"houa fakaʻaositelēlia-hihifo taimi liliu"}
+            lg{"houa fakaʻaositelēlia-hihifo"}
+            ls{"houa fakaʻaositelēlia-hihifo taimi totonu"}
+        }
+        "meta:Azerbaijan"{
+            ld{"houa fakaʻasapaisani taimi liliu"}
+            lg{"houa fakaʻasapaisani"}
+            ls{"houa fakaʻasapaisani taimi totonu"}
+        }
+        "meta:Azores"{
+            ld{"houa fakaʻāsolesi taimi liliu"}
+            lg{"houa fakaʻāsolesi"}
+            ls{"houa fakaʻāsolesi taimi totonu"}
+        }
+        "meta:Bangladesh"{
+            ld{"houa fakapāngilātesi taimi liliu"}
+            lg{"houa fakapāngilātesi"}
+            ls{"houa fakapāngilātesi taimi totonu"}
+        }
+        "meta:Bhutan"{
+            ls{"houa fakapūtani"}
+        }
+        "meta:Bolivia"{
+            ls{"houa fakapolīvia"}
+        }
+        "meta:Brasilia"{
+            ld{"houa fakapalāsila taimi liliu"}
+            lg{"houa fakapalāsila"}
+            ls{"houa fakapalāsila taimi totonu"}
+        }
+        "meta:Brunei"{
+            ls{"houa fakapulunei"}
+        }
+        "meta:Cape_Verde"{
+            ld{"houa fakamuiʻi-vēte taimi liliu"}
+            lg{"houa fakamuiʻi-vēte"}
+            ls{"houa fakamuiʻi-vēte taimi totonu"}
+        }
+        "meta:Casey"{
+            ls{"houa fakakeesi"}
+        }
+        "meta:Chamorro"{
+            ls{"houa fakakamolo"}
+        }
+        "meta:Chatham"{
+            ld{"houa fakasatihami taimi liliu"}
+            lg{"houa fakasatihami"}
+            ls{"houa fakasatihami taimi totonu"}
+        }
+        "meta:Chile"{
+            ld{"houa fakasili taimi liliu"}
+            lg{"houa fakasili"}
+            ls{"houa fakasili taimi totonu"}
+        }
+        "meta:China"{
+            ld{"houa fakasiaina taimi liliu"}
+            lg{"houa fakasiaina"}
+            ls{"houa fakasiaina taimi totonu"}
+        }
+        "meta:Choibalsan"{
+            ld{"houa fakakoipalisani taimi liliu"}
+            lg{"houa fakakoipalisani"}
+            ls{"houa fakakoipalisani taimi totonu"}
+        }
+        "meta:Christmas"{
+            ls{"houa fakamotukilisimasi"}
+        }
+        "meta:Cocos"{
+            ls{"houa fakamotukokosi"}
+        }
+        "meta:Colombia"{
+            ld{"houa fakakolomipia taimi liliu"}
+            lg{"houa fakakolomipia"}
+            ls{"houa fakakolomipia taimi totonu"}
+        }
+        "meta:Cook"{
+            ld{"houa fakaʻotumotukuki taimi liliu"}
+            lg{"houa fakaʻotumotukuki"}
+            ls{"houa fakaʻotumotukuki taimi totonu"}
+        }
+        "meta:Cuba"{
+            ld{"houa fakakiupa taimi liliu"}
+            lg{"houa fakakiupa"}
+            ls{"houa fakakiupa taimi totonu"}
+        }
+        "meta:Davis"{
+            ls{"houa fakatavisi"}
+        }
+        "meta:DumontDUrville"{
+            ls{"houa fakatūmoni-tūvile"}
+        }
+        "meta:East_Timor"{
+            ls{"houa fakatimoa-hahake"}
+        }
+        "meta:Easter"{
+            ld{"houa fakalapanui taimi liliu"}
+            lg{"houa fakalapanui"}
+            ls{"houa fakalapanui taimi totonu"}
+        }
+        "meta:Ecuador"{
+            ls{"houa fakaʻekuetoa"}
+        }
+        "meta:Europe_Central"{
+            ld{"houa fakaʻeulope-loto taimi liliu"}
+            lg{"houa fakaʻeulope-loto"}
+            ls{"houa fakaʻeulope-loto taimi totonu"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"houa fakaʻeulope-hahake taimi liliu"}
+            lg{"houa fakaʻeulope-hahake"}
+            ls{"houa fakaʻeulope-hahake taimi totonu"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"houa fakaʻeulope-hahake-ange"}
+        }
+        "meta:Europe_Western"{
+            ld{"houa fakaʻeulope-hihifo taimi liliu"}
+            lg{"houa fakaʻeulope-hihifo"}
+            ls{"houa fakaʻeulope-hihifo taimi totonu"}
+        }
+        "meta:Falkland"{
+            ld{"houa fakaʻotumotu-fokulani taimi liliu"}
+            lg{"houa fakaʻotumotu-fokulani"}
+            ls{"houa fakaʻotumotu-fokulani taimi totonu"}
+        }
+        "meta:Fiji"{
+            ld{"houa fakafisi taimi liliu"}
+            lg{"houa fakafisi"}
+            ls{"houa fakafisi taimi totonu"}
+        }
+        "meta:French_Guiana"{
+            ls{"houa fakakuiana-fakafalanisē"}
+        }
+        "meta:French_Southern"{
+            ls{"houa fakaʻanetātikafalanisē"}
+        }
+        "meta:GMT"{
+            ls{"houa fakakiliniuisi mālie"}
+        }
+        "meta:Galapagos"{
+            ls{"houa fakakalapakosi"}
+        }
+        "meta:Gambier"{
+            ls{"houa fakakamipiē"}
+        }
+        "meta:Georgia"{
+            ld{"houa fakaseōsia taimi liliu"}
+            lg{"houa fakaseōsia"}
+            ls{"houa fakaseōsia taimi totonu"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"houa fakakilipasi"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"houa fakafonuamata-hahake taimi liliu"}
+            lg{"houa fakafonuamata-hahake"}
+            ls{"houa fakafonuamata-hahake taimi totonu"}
+        }
+        "meta:Greenland_Western"{
+            ld{"houa fakafonuamata-hihifo taimi liliu"}
+            lg{"houa fakafonuamata-hihifo"}
+            ls{"houa fakafonuamata-hihifo taimi totonu"}
+        }
+        "meta:Guam"{
+            ls{"houa fakakuami"}
+        }
+        "meta:Gulf"{
+            ls{"houa fakakūlifi"}
+        }
+        "meta:Guyana"{
+            ls{"houa fakakuiana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"houa fakahauaiʻi-aleuti taimi liliu"}
+            lg{"houa fakahauaiʻi-aleuti"}
+            ls{"houa fakahauaiʻi-aleuti taimi totonu"}
+        }
+        "meta:Hong_Kong"{
+            ld{"houa fakahongi-kongi taimi liliu"}
+            lg{"houa fakahongi-kongi"}
+            ls{"houa fakahongi-kongi taimi totonu"}
+        }
+        "meta:Hovd"{
+            ld{"houa fakahovite taimi liliu"}
+            lg{"houa fakahovite"}
+            ls{"houa fakahovite taimi totonu"}
+        }
+        "meta:India"{
+            ls{"houa fakaʻinitia"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"houa fakamoanaʻinitia"}
+        }
+        "meta:Indochina"{
+            ls{"houa fakaʻinitosiaina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"houa fakaʻinitonisia-loto"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"houa fakaʻinitonisia-hahake"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"houa fakaʻinitonisia-hihifo"}
+        }
+        "meta:Iran"{
+            ld{"houa fakaʻilaani taimi liliu"}
+            lg{"houa fakaʻilaani"}
+            ls{"houa fakaʻilaani taimi totonu"}
+        }
+        "meta:Irkutsk"{
+            ld{"houa fakalūsia-ʻīkutisiki taimi liliu"}
+            lg{"houa fakalūsia-ʻīkutisiki"}
+            ls{"houa fakalūsia-ʻīkutisiki taimi totonu"}
+        }
+        "meta:Israel"{
+            ld{"houa fakaʻisileli taimi liliu"}
+            lg{"houa fakaʻisileli"}
+            ls{"houa fakaʻisileli taimi totonu"}
+        }
+        "meta:Japan"{
+            ld{"houa fakasiapani taimi liliu"}
+            lg{"houa fakasiapani"}
+            ls{"houa fakasiapani taimi totonu"}
+        }
+        "meta:Kamchatka"{
+            ld{"houa fakalūsia-petelopavilovisiki taimi liliu"}
+            lg{"houa fakalūsia-petelopavilovisiki"}
+            ls{"houa fakalūsia-petelopavilovisiki taimi totonu"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"houa fakakasakitani-hahake"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"houa fakakasakitani-hihifo"}
+        }
+        "meta:Korea"{
+            ld{"houa fakakōlea taimi liliu"}
+            lg{"houa fakakōlea"}
+            ls{"houa fakakōlea taimi totonu"}
+        }
+        "meta:Kosrae"{
+            ls{"houa fakakosilae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"houa fakalūsia-kalasinoiāsiki taimi liliu"}
+            lg{"houa fakalūsia-kalasinoiāsiki"}
+            ls{"houa fakalūsia-kalasinoiāsiki taimi totonu"}
+        }
+        "meta:Kyrgystan"{
+            ls{"houa fakakīkisitani"}
+        }
+        "meta:Lanka"{
+            ls{"houa fakalangikā"}
+        }
+        "meta:Line_Islands"{
+            ls{"houa fakaʻotumotulaine"}
+        }
+        "meta:Lord_Howe"{
+            ld{"houa fakamotuʻeikihoue taimi liliu"}
+            lg{"houa fakamotuʻeikihoue"}
+            ls{"houa fakamotuʻeikihoue taimi totonu"}
+        }
+        "meta:Macau"{
+            ld{"houa fakamakau taimi liliu"}
+            lg{"houa fakamakau"}
+            ls{"houa fakamakau taimi totonu"}
+        }
+        "meta:Magadan"{
+            ld{"houa fakalūsia-makatani taimi liliu"}
+            lg{"houa fakalūsia-makatani"}
+            ls{"houa fakalūsia-makatani taimi totonu"}
+        }
+        "meta:Malaysia"{
+            ls{"houa fakamaleisia"}
+        }
+        "meta:Maldives"{
+            ls{"houa fakamalativisi"}
+        }
+        "meta:Marquesas"{
+            ls{"houa fakamākesasi"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"houa fakaʻotumotumasolo"}
+        }
+        "meta:Mauritius"{
+            ld{"houa fakamaulitiusi taimi liliu"}
+            lg{"houa fakamaulitiusi"}
+            ls{"houa fakamaulitiusi taimi totonu"}
+        }
+        "meta:Mawson"{
+            ls{"houa fakamausoni"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"houa fakamekisikou-pasifika taimi liliu"}
+            lg{"houa fakamekisikou-pasifika"}
+            ls{"houa fakamekisikou-pasifika taimi totonu"}
+        }
+        "meta:Mongolia"{
+            ld{"houa fakaʻulānipātā taimi liliu"}
+            lg{"houa fakaʻulānipātā"}
+            ls{"houa fakaʻulānipātā taimi totonu"}
+        }
+        "meta:Moscow"{
+            ld{"houa fakalūsia-mosikou taimi liliu"}
+            lg{"houa fakalūsia-mosikou"}
+            ls{"houa fakalūsia-mosikou taimi totonu"}
+        }
+        "meta:Myanmar"{
+            ls{"houa fakapema"}
+        }
+        "meta:Nauru"{
+            ls{"houa fakanaulu"}
+        }
+        "meta:Nepal"{
+            ls{"houa fakanepali"}
+        }
+        "meta:New_Caledonia"{
+            ld{"houa fakakaletōniafoʻou taimi liliu"}
+            lg{"houa fakakaletōniafoʻou"}
+            ls{"houa fakakaletōniafoʻou taimi totonu"}
+        }
+        "meta:New_Zealand"{
+            ld{"houa fakanuʻusila taimi liliu"}
+            lg{"houa fakanuʻusila"}
+            ls{"houa fakanuʻusila taimi totonu"}
+        }
+        "meta:Newfoundland"{
+            ld{"houa fakafonuaʻilofoʻou taimi liliu"}
+            lg{"houa fakafonuaʻilofoʻou"}
+            ls{"houa fakafonuaʻilofoʻou taimi totonu"}
+        }
+        "meta:Niue"{
+            ls{"houa fakaniuē"}
+        }
+        "meta:Norfolk"{
+            ld{"houa fakanoafōki taimi liliu"}
+            lg{"houa fakanoafōki"}
+            ls{"houa fakanoafōki taimi totonu"}
+        }
+        "meta:Noronha"{
+            ld{"houa fakafēnanito-te-nolōnia taimi liliu"}
+            lg{"houa fakafēnanito-te-nolōnia"}
+            ls{"houa fakafēnanito-te-nolōnia taimi totonu"}
+        }
+        "meta:North_Mariana"{
+            ls{"houa fakamalianatokelau"}
+        }
+        "meta:Novosibirsk"{
+            ld{"houa fakalūsia-novosipīsiki taimi liliu"}
+            lg{"houa fakalūsia-novosipīsiki"}
+            ls{"houa fakalūsia-novosipīsiki taimi totonu"}
+        }
+        "meta:Omsk"{
+            ld{"houa fakalūsia-ʻomisiki taimi liliu"}
+            lg{"houa fakalūsia-ʻomisiki"}
+            ls{"houa fakalūsia-ʻomisiki taimi totonu"}
+        }
+        "meta:Pakistan"{
+            ld{"houa fakapākisitani taimi liliu"}
+            lg{"houa fakapākisitani"}
+            ls{"houa fakapākisitani taimi totonu"}
+        }
+        "meta:Palau"{
+            ls{"houa fakapalau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"houa fakapapuaniukini"}
+        }
+        "meta:Paraguay"{
+            ld{"houa fakapalakuai taimi liliu"}
+            lg{"houa fakapalakuai"}
+            ls{"houa fakapalakuai taimi totonu"}
+        }
+        "meta:Peru"{
+            ld{"houa fakapelū taimi liliu"}
+            lg{"houa fakapelū"}
+            ls{"houa fakapelū taimi totonu"}
+        }
+        "meta:Philippines"{
+            ld{"houa fakafilipaine taimi liliu"}
+            lg{"houa fakafilipaine"}
+            ls{"houa fakafilipaine taimi totonu"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"houa fakaʻotumotufoinikisi"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"houa fakasā-piea-mo-mikeloni taimi liliu"}
+            lg{"houa fakasā-piea-mo-mikeloni"}
+            ls{"houa fakasā-piea-mo-mikeloni taimi totonu"}
+        }
+        "meta:Pitcairn"{
+            ls{"houa fakapitikani"}
+        }
+        "meta:Ponape"{
+            ls{"houa fakapōnapē"}
+        }
+        "meta:Pyongyang"{
+            ls{"houa fakapiongiangi"}
+        }
+        "meta:Qyzylorda"{
+            ld{"houa fakakisilōta taimi liliu"}
+            lg{"houa fakakisilōta"}
+            ls{"houa fakakisilōta taimi totonu"}
+        }
+        "meta:Reunion"{
+            ls{"houa fakalēunioni"}
+        }
+        "meta:Rothera"{
+            ls{"houa fakalotela"}
+        }
+        "meta:Sakhalin"{
+            ld{"houa fakalūsia-sakāline taimi liliu"}
+            lg{"houa fakalūsia-sakāline"}
+            ls{"houa fakalūsia-sakāline taimi totonu"}
+        }
+        "meta:Samara"{
+            ld{"houa fakalūsia-samala taimi liliu"}
+            lg{"houa fakalūsia-samala"}
+            ls{"houa fakalūsia-samala taimi totonu"}
+        }
+        "meta:Samoa"{
+            ld{"houa fakahaʻamoa taimi liliu"}
+            lg{"houa fakahaʻamoa"}
+            ls{"houa fakahaʻamoa taimi totonu"}
+        }
+        "meta:Seychelles"{
+            ls{"houa fakaʻotumotu-seiseli"}
+        }
+        "meta:Singapore"{
+            ls{"houa fakasingapoa"}
+        }
+        "meta:Solomon"{
+            ls{"houa fakaʻotumotusolomone"}
+        }
+        "meta:South_Georgia"{
+            ls{"houa fakasiosiatonga"}
+        }
+        "meta:Suriname"{
+            ls{"houa fakasuliname"}
+        }
+        "meta:Syowa"{
+            ls{"houa fakasioua"}
+        }
+        "meta:Tahiti"{
+            ls{"houa fakatahisi"}
+        }
+        "meta:Taipei"{
+            ld{"houa fakataipei taimi liliu"}
+            lg{"houa fakataipei"}
+            ls{"houa fakataipei taimi totonu"}
+        }
+        "meta:Tajikistan"{
+            ls{"houa fakatasikitani"}
+        }
+        "meta:Tokelau"{
+            ls{"houa fakatokelau"}
+        }
+        "meta:Tonga"{
+            ld{"houa fakatonga taimi liliu"}
+            lg{"houa fakatonga"}
+            ls{"houa fakatonga taimi totonu"}
+        }
+        "meta:Truk"{
+            ls{"houa fakatūke"}
+        }
+        "meta:Turkmenistan"{
+            ld{"houa fakatūkimenisitani taimi liliu"}
+            lg{"houa fakatūkimenisitani"}
+            ls{"houa fakatūkimenisitani taimi totonu"}
+        }
+        "meta:Tuvalu"{
+            ls{"houa fakatūvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"houa fakaʻulukuai taimi liliu"}
+            lg{"houa fakaʻulukuai"}
+            ls{"houa fakaʻulukuai taimi totonu"}
+        }
+        "meta:Uzbekistan"{
+            ld{"houa fakaʻusipekitani taimi liliu"}
+            lg{"houa fakaʻusipekitani"}
+            ls{"houa fakaʻusipekitani taimi totonu"}
+        }
+        "meta:Vanuatu"{
+            ld{"houa fakavanuatu taimi liliu"}
+            lg{"houa fakavanuatu"}
+            ls{"houa fakavanuatu taimi totonu"}
+        }
+        "meta:Venezuela"{
+            ls{"houa fakavenesuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"houa fakalūsia-valativositoki taimi liliu"}
+            lg{"houa fakalūsia-valativositoki"}
+            ls{"houa fakalūsia-valativositoki taimi totonu"}
+        }
+        "meta:Volgograd"{
+            ld{"houa fakalūsia-volikokalati taimi liliu"}
+            lg{"houa fakalūsia-volikokalati"}
+            ls{"houa fakalūsia-volikokalati taimi totonu"}
+        }
+        "meta:Vostok"{
+            ls{"houa fakavositoki"}
+        }
+        "meta:Wake"{
+            ls{"houa fakamotuueke"}
+        }
+        "meta:Wallis"{
+            ls{"houa fakaʻuvea mo futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"houa fakalūsia-ʻiākutisiki taimi liliu"}
+            lg{"houa fakalūsia-ʻiākutisiki"}
+            ls{"houa fakalūsia-ʻiākutisiki taimi totonu"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"houa fakalūsia-ʻiekatelinepūki taimi liliu"}
+            lg{"houa fakalūsia-ʻiekatelinepūki"}
+            ls{"houa fakalūsia-ʻiekatelinepūki taimi totonu"}
+        }
+        "meta:Yukon"{
+            ls{"houa fakaiukoni"}
+        }
+        regionFormat{"Taimi {0}"}
+        regionFormatDaylight{"{0} Taimi liliu"}
+        regionFormatStandard{"{0} Taimi totonu"}
+    }
+}

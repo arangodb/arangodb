@@ -1,0 +1,90 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv{
+    Languages{
+        ar{"arabic"}
+        ar_001{"punijuga mānānka arabic"}
+        bn{"bangali"}
+        de{"jerman"}
+        de_AT{"ausṭriati jerman"}
+        de_CH{"svis high jerman"}
+        en{"ingrajī"}
+        en_AU{"ausṭreliati ingarjī"}
+        en_CA{"kanaḍati ingarjī"}
+        en_GB{"briṭisti ingrajī"}
+        en_US{"amerikati ingrajī"}
+        es{"spenis"}
+        es_419{"laṭin americati spenis"}
+        es_ES{"yuropīyati spenis"}
+        es_MX{"meksikoti spenis"}
+        fr{"prenc"}
+        fr_CA{"kanaḍati prenc"}
+        fr_CH{"svis prenc"}
+        hi_Latn{"hindi"}
+        id{"inḍonesiyati"}
+        it{"iṭaliti"}
+        ja{"japanij"}
+        ko{"koriati"}
+        kxv{"kuvi"}
+        nl{"ḍc"}
+        nl_BE{"vlaams"}
+        pl{"polis"}
+        pt{"portugīj"}
+        pt_BR{"brajilian portugīj"}
+        pt_PT{"yuropīyati portugīj"}
+        ru{"rusiyati"}
+        th{"tae"}
+        tr{"turkis"}
+        zh{"cainati"}
+        zh_Hans{"sahaj cainati"}
+        zh_Hant{"hirudlu cainati"}
+    }
+    Languages%long{
+        zh_Hans{"sahaj manḍarin cainati"}
+        zh_Hant{"hirudlu manḍarin cainati"}
+    }
+    Languages%menu{
+        zh{"cainati, manḍarin"}
+    }
+    Languages%short{
+        en_GB{"juktarajyati ingrajī"}
+        en_US{"juktarasṭrati ingrajī"}
+    }
+    Scripts{
+        Arab{"aarabic"}
+        Cyrl{"sirilik"}
+        Deva{"devnagrī"}
+        Hans{"sahaj"}
+        Hant{"hirudlu"}
+        Latn{"laṭin"}
+        Orya{"oḍiaa"}
+        Telu{"telugu"}
+        Zxxx{"raciaahalee"}
+        Zzzz{"puṇāātiakr"}
+    }
+    Scripts%stand-alone{
+        Hans{"sahaj han"}
+        Hant{"hirudlu han"}
+    }
+    Types{
+        calendar{
+            gregorian{"gregoriyan kelenḍr"}
+            indian{"barat jatiya kelenḍr"}
+        }
+        collation{
+            standard{"mānānka baga lẽ"}
+        }
+        numbers{
+            deva{"devnagrī nmbr"}
+            latn{"veḍa kuṇpu nmbr"}
+            orya{"oḍiya nmbr"}
+            telu{"telugū nmbr"}
+        }
+    }
+    codePatterns{
+        language{"kata: {0}"}
+        script{"akr: {0}"}
+        territory{"muṭha: {0}"}
+    }
+}

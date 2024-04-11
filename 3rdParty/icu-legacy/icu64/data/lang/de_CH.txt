@@ -1,0 +1,38 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+de_CH{
+    Keys{
+        colCaseFirst{"Sortierung nach Gross- bzw. Kleinbuchstaben"}
+        colCaseLevel{"Sortierung nach Gross- oder Kleinschreibung"}
+        ms{"Mass-System"}
+    }
+    Languages{
+        ach{"Acholi-Sprache"}
+        bik{"Bikol-Sprache"}
+        chb{"Chibcha-Sprache"}
+        din{"Dinka-Sprache"}
+        fan{"Pangwe-Sprache"}
+        gba{"Gbaya-Sprache"}
+        prg{"Altpreussisch"}
+        rhg{"Rohingya"}
+        tgx{"Tagisch"}
+    }
+    Languages%long{
+        zh_Hans{"Hochchinesisch (vereinfacht)"}
+        zh_Hant{"Hochchinesisch (traditionell)"}
+    }
+    Types{
+        colCaseFirst{
+            upper{"Grossbuchstaben zuerst aufführen"}
+        }
+        colCaseLevel{
+            no{"Ohne Gross-/Kleinschreibung sortieren"}
+            yes{"Nach Gross-/Kleinschreibung sortieren"}
+        }
+        ms{
+            uksystem{"britisches Mass-System"}
+            ussystem{"US Mass-System"}
+        }
+    }
+}

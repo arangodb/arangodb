@@ -1,0 +1,15 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+bn_IN{
+    Countries{
+        018{"দক্ষিণাঞ্চলীয় আফ্রিকা"}
+        202{"সাহারা-নিম্ন আফ্রিকা"}
+        QO{"ওশিয়ানিয়ার দূরবর্তী অঞ্চল"}
+        UM{"মার্কিন যুক্তরাষ্ট্রের দূরবর্তী দ্বীপপুঞ্জ"}
+    }
+    Countries%variant{
+        CD{"কঙ্গো (DRC)"}
+        NZ{"আওটেয়ারোয়া নিউজিল্যান্ড"}
+    }
+}

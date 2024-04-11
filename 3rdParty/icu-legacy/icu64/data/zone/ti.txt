@@ -1,0 +1,1433 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ti{
+    zoneStrings{
+        "Africa:Abidjan"{
+            ec{"ኣቢጃን"}
+        }
+        "Africa:Accra"{
+            ec{"ኣክራ"}
+        }
+        "Africa:Addis_Ababa"{
+            ec{"ኣዲስ ኣበባ"}
+        }
+        "Africa:Algiers"{
+            ec{"ኣልጀርስ"}
+        }
+        "Africa:Asmera"{
+            ec{"ኣስመራ"}
+        }
+        "Africa:Bamako"{
+            ec{"ባማኮ"}
+        }
+        "Africa:Bangui"{
+            ec{"ባንጊ"}
+        }
+        "Africa:Banjul"{
+            ec{"ባንጁል"}
+        }
+        "Africa:Bissau"{
+            ec{"ቢሳው"}
+        }
+        "Africa:Blantyre"{
+            ec{"ብላንታየር"}
+        }
+        "Africa:Brazzaville"{
+            ec{"ብራዛቪል"}
+        }
+        "Africa:Bujumbura"{
+            ec{"ቡጁምቡራ"}
+        }
+        "Africa:Cairo"{
+            ec{"ካይሮ"}
+        }
+        "Africa:Casablanca"{
+            ec{"ካዛብላንካ"}
+        }
+        "Africa:Ceuta"{
+            ec{"ሴውታ"}
+        }
+        "Africa:Conakry"{
+            ec{"ኮናክሪ"}
+        }
+        "Africa:Dakar"{
+            ec{"ዳካር"}
+        }
+        "Africa:Dar_es_Salaam"{
+            ec{"ዳር ኤስ ሳላም"}
+        }
+        "Africa:Djibouti"{
+            ec{"ጅቡቲ"}
+        }
+        "Africa:Douala"{
+            ec{"ዱዋላ"}
+        }
+        "Africa:El_Aaiun"{
+            ec{"ኤል ኣዩን"}
+        }
+        "Africa:Freetown"{
+            ec{"ፍሪታውን"}
+        }
+        "Africa:Gaborone"{
+            ec{"ጋቦሮን"}
+        }
+        "Africa:Harare"{
+            ec{"ሃራረ"}
+        }
+        "Africa:Johannesburg"{
+            ec{"ጆሃንስበርግ"}
+        }
+        "Africa:Juba"{
+            ec{"ጁባ"}
+        }
+        "Africa:Kampala"{
+            ec{"ካምፓላ"}
+        }
+        "Africa:Khartoum"{
+            ec{"ካርቱም"}
+        }
+        "Africa:Kigali"{
+            ec{"ኪጋሊ"}
+        }
+        "Africa:Kinshasa"{
+            ec{"ኪንሻሳ"}
+        }
+        "Africa:Lagos"{
+            ec{"ሌጎስ"}
+        }
+        "Africa:Libreville"{
+            ec{"ሊብረቪል"}
+        }
+        "Africa:Lome"{
+            ec{"ሎመ"}
+        }
+        "Africa:Luanda"{
+            ec{"ሉዋንዳ"}
+        }
+        "Africa:Lubumbashi"{
+            ec{"ሉቡምባሺ"}
+        }
+        "Africa:Lusaka"{
+            ec{"ሉሳካ"}
+        }
+        "Africa:Malabo"{
+            ec{"ማላቦ"}
+        }
+        "Africa:Maputo"{
+            ec{"ማፑቶ"}
+        }
+        "Africa:Maseru"{
+            ec{"ማሰሩ"}
+        }
+        "Africa:Mbabane"{
+            ec{"ምባባነ"}
+        }
+        "Africa:Mogadishu"{
+            ec{"ሞቓድሾ"}
+        }
+        "Africa:Monrovia"{
+            ec{"ሞንሮቭያ"}
+        }
+        "Africa:Nairobi"{
+            ec{"ናይሮቢ"}
+        }
+        "Africa:Ndjamena"{
+            ec{"ንጃመና"}
+        }
+        "Africa:Niamey"{
+            ec{"ንያመይ"}
+        }
+        "Africa:Nouakchott"{
+            ec{"ንዋክሾት"}
+        }
+        "Africa:Ouagadougou"{
+            ec{"ዋጋዱጉ"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"ፖርቶ ኖቮ"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"ሳኦ ቶመ"}
+        }
+        "Africa:Tripoli"{
+            ec{"ትሪፖሊ"}
+        }
+        "Africa:Tunis"{
+            ec{"ቱኒስ"}
+        }
+        "Africa:Windhoek"{
+            ec{"ዊንድሆክ"}
+        }
+        "America:Adak"{
+            ec{"ኣዳክ"}
+        }
+        "America:Anchorage"{
+            ec{"ኣንኮረጅ"}
+        }
+        "America:Anguilla"{
+            ec{"ኣንጒላ"}
+        }
+        "America:Antigua"{
+            ec{"ኣንቲጓ"}
+        }
+        "America:Araguaina"{
+            ec{"ኣራጓይና"}
+        }
+        "America:Argentina:La_Rioja"{
+            ec{"ላ ርዮሃ"}
+        }
+        "America:Argentina:Rio_Gallegos"{
+            ec{"ርዮ ጋየጎስ"}
+        }
+        "America:Argentina:Salta"{
+            ec{"ሳልታ"}
+        }
+        "America:Argentina:San_Juan"{
+            ec{"ሳን ህዋን"}
+        }
+        "America:Argentina:San_Luis"{
+            ec{"ሳን ልዊስ"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"ቱኩማን"}
+        }
+        "America:Argentina:Ushuaia"{
+            ec{"ኡሽዋያ"}
+        }
+        "America:Aruba"{
+            ec{"ኣሩባ"}
+        }
+        "America:Asuncion"{
+            ec{"ኣሱንስዮን"}
+        }
+        "America:Bahia"{
+            ec{"ባህያ"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"ባእያ ደ ባንደራስ"}
+        }
+        "America:Barbados"{
+            ec{"ባርባዶስ"}
+        }
+        "America:Belem"{
+            ec{"በለም"}
+        }
+        "America:Belize"{
+            ec{"በሊዝ"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"ብላንክ-ሳብሎን"}
+        }
+        "America:Boa_Vista"{
+            ec{"ቦዋ ቪስታ"}
+        }
+        "America:Bogota"{
+            ec{"ቦጎታ"}
+        }
+        "America:Boise"{
+            ec{"ቦይዚ"}
+        }
+        "America:Buenos_Aires"{
+            ec{"ብወኖስ ኣይረስ"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"ካምብሪጅ በይ"}
+        }
+        "America:Campo_Grande"{
+            ec{"ካምፖ ግራንደ"}
+        }
+        "America:Cancun"{
+            ec{"ካንኩን"}
+        }
+        "America:Caracas"{
+            ec{"ካራካስ"}
+        }
+        "America:Catamarca"{
+            ec{"ካታማርካ"}
+        }
+        "America:Cayenne"{
+            ec{"ካየን"}
+        }
+        "America:Cayman"{
+            ec{"ካይማን"}
+        }
+        "America:Chicago"{
+            ec{"ቺካጎ"}
+        }
+        "America:Chihuahua"{
+            ec{"ቺዋዋ"}
+        }
+        "America:Ciudad_Juarez"{
+            ec{"ሲዩዳድ ጁዋረዝ"}
+        }
+        "America:Coral_Harbour"{
+            ec{"ኣቲኮካን"}
+        }
+        "America:Cordoba"{
+            ec{"ኮርዶባ"}
+        }
+        "America:Costa_Rica"{
+            ec{"ኮስታ ሪካ"}
+        }
+        "America:Creston"{
+            ec{"ክረስተን"}
+        }
+        "America:Cuiaba"{
+            ec{"ኩያባ"}
+        }
+        "America:Curacao"{
+            ec{"ኩራሳው"}
+        }
+        "America:Danmarkshavn"{
+            ec{"ዳንማርክሻቭን"}
+        }
+        "America:Dawson"{
+            ec{"ዳውሰን"}
+        }
+        "America:Dawson_Creek"{
+            ec{"ዳውሰን ክሪክ"}
+        }
+        "America:Denver"{
+            ec{"ደንቨር"}
+        }
+        "America:Detroit"{
+            ec{"ዲትሮይት"}
+        }
+        "America:Dominica"{
+            ec{"ዶሚኒካ"}
+        }
+        "America:Edmonton"{
+            ec{"ኤድመንተን"}
+        }
+        "America:Eirunepe"{
+            ec{"ኤይሩኔፒ"}
+        }
+        "America:El_Salvador"{
+            ec{"ኤል ሳልቫዶር"}
+        }
+        "America:Fort_Nelson"{
+            ec{"ፎርት ነልሰን"}
+        }
+        "America:Fortaleza"{
+            ec{"ፎርታለዛ"}
+        }
+        "America:Glace_Bay"{
+            ec{"ግሌስ በይ"}
+        }
+        "America:Godthab"{
+            ec{"ኑክ"}
+        }
+        "America:Goose_Bay"{
+            ec{"ጉዝ በይ"}
+        }
+        "America:Grand_Turk"{
+            ec{"ግራንድ ቱርክ"}
+        }
+        "America:Grenada"{
+            ec{"ግረናዳ"}
+        }
+        "America:Guadeloupe"{
+            ec{"ጓደሉፕ"}
+        }
+        "America:Guatemala"{
+            ec{"ጓቲማላ"}
+        }
+        "America:Guayaquil"{
+            ec{"ጓያኪል"}
+        }
+        "America:Guyana"{
+            ec{"ጉያና"}
+        }
+        "America:Halifax"{
+            ec{"ሃሊፋክስ"}
+        }
+        "America:Havana"{
+            ec{"ሃቫና"}
+        }
+        "America:Hermosillo"{
+            ec{"ኤርሞስዮ"}
+        }
+        "America:Indiana:Knox"{
+            ec{"ኖክስ፣ ኢንድያና"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"ማረንጎ፣ ኢንድያና"}
+        }
+        "America:Indiana:Petersburg"{
+            ec{"ፒተርስበርግ፣ ኢንድያና"}
+        }
+        "America:Indiana:Tell_City"{
+            ec{"ተል ሲቲ፣ ኢንድያና"}
+        }
+        "America:Indiana:Vevay"{
+            ec{"ቪቪ፣ ኢንድያና"}
+        }
+        "America:Indiana:Vincennes"{
+            ec{"ቪንሰንስ፣ ኢንድያና"}
+        }
+        "America:Indiana:Winamac"{
+            ec{"ዊናማክ፣ ኢንድያና"}
+        }
+        "America:Indianapolis"{
+            ec{"ኢንድያናፖሊስ"}
+        }
+        "America:Inuvik"{
+            ec{"ኢኑቪክ"}
+        }
+        "America:Iqaluit"{
+            ec{"ኢቃልዊት"}
+        }
+        "America:Jamaica"{
+            ec{"ጃማይካ"}
+        }
+        "America:Jujuy"{
+            ec{"ሁሁይ"}
+        }
+        "America:Juneau"{
+            ec{"ጁነው"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"ሞንቲቸሎ፣ ከንታኪ"}
+        }
+        "America:Kralendijk"{
+            ec{"ክራለንዳይክ"}
+        }
+        "America:La_Paz"{
+            ec{"ላ ፓዝ"}
+        }
+        "America:Lima"{
+            ec{"ሊማ"}
+        }
+        "America:Los_Angeles"{
+            ec{"ሎስ ኣንጀለስ"}
+        }
+        "America:Louisville"{
+            ec{"ልዊቪል"}
+        }
+        "America:Lower_Princes"{
+            ec{"ለወር ፕሪንሰስ ኳርተር"}
+        }
+        "America:Maceio"{
+            ec{"ማሰዮ"}
+        }
+        "America:Managua"{
+            ec{"ማናጓ"}
+        }
+        "America:Manaus"{
+            ec{"ማናውስ"}
+        }
+        "America:Marigot"{
+            ec{"ማሪጎት"}
+        }
+        "America:Martinique"{
+            ec{"ማርቲኒክ"}
+        }
+        "America:Matamoros"{
+            ec{"ማታሞሮስ"}
+        }
+        "America:Mazatlan"{
+            ec{"ማዛትላን"}
+        }
+        "America:Mendoza"{
+            ec{"መንዶዛ"}
+        }
+        "America:Menominee"{
+            ec{"ሜኖሚኒ"}
+        }
+        "America:Merida"{
+            ec{"መሪዳ"}
+        }
+        "America:Metlakatla"{
+            ec{"መትላካትላ"}
+        }
+        "America:Mexico_City"{
+            ec{"ከተማ ሜክሲኮ"}
+        }
+        "America:Miquelon"{
+            ec{"ሚከሎን"}
+        }
+        "America:Moncton"{
+            ec{"ሞንክተን"}
+        }
+        "America:Monterrey"{
+            ec{"ሞንተረይ"}
+        }
+        "America:Montevideo"{
+            ec{"ሞንተቪደዮ"}
+        }
+        "America:Montserrat"{
+            ec{"ሞንትሰራት"}
+        }
+        "America:Nassau"{
+            ec{"ናሳው"}
+        }
+        "America:New_York"{
+            ec{"ኒው ዮርክ"}
+        }
+        "America:Nome"{
+            ec{"ነውም"}
+        }
+        "America:Noronha"{
+            ec{"ኖሮንያ"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"ብዩላ፣ ሰሜን ዳኮታ"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"ሰንተር፣ ሰሜን ዳኮታ"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"ኒው ሳለም፣ ሰሜን ዳኮታ"}
+        }
+        "America:Ojinaga"{
+            ec{"ኦጂናጋ"}
+        }
+        "America:Panama"{
+            ec{"ፓናማ"}
+        }
+        "America:Paramaribo"{
+            ec{"ፓራማሪቦ"}
+        }
+        "America:Phoenix"{
+            ec{"ፊኒክስ"}
+        }
+        "America:Port-au-Prince"{
+            ec{"ፖርት-ኦ-ፕሪንስ"}
+        }
+        "America:Port_of_Spain"{
+            ec{"ፖርት ኦፍ ስፔን"}
+        }
+        "America:Porto_Velho"{
+            ec{"ፖርቶ ቨልዮ"}
+        }
+        "America:Puerto_Rico"{
+            ec{"ፖርቶ ሪኮ"}
+        }
+        "America:Punta_Arenas"{
+            ec{"ፑንታ ኣረናስ"}
+        }
+        "America:Rankin_Inlet"{
+            ec{"ራንኪን ኢንለት"}
+        }
+        "America:Recife"{
+            ec{"ረሲፈ"}
+        }
+        "America:Regina"{
+            ec{"ረጂና"}
+        }
+        "America:Resolute"{
+            ec{"ረዞሉት"}
+        }
+        "America:Rio_Branco"{
+            ec{"ርዮ ብራንኮ"}
+        }
+        "America:Santarem"{
+            ec{"ሳንታረም"}
+        }
+        "America:Santiago"{
+            ec{"ሳንትያጎ"}
+        }
+        "America:Santo_Domingo"{
+            ec{"ሳንቶ ዶሚንጎ"}
+        }
+        "America:Sao_Paulo"{
+            ec{"ሳኦ ፓውሎ"}
+        }
+        "America:Scoresbysund"{
+            ec{"ኢቶቆርቶሚት"}
+        }
+        "America:Sitka"{
+            ec{"ሲትካ"}
+        }
+        "America:St_Barthelemy"{
+            ec{"ቅዱስ ባርተለሚ"}
+        }
+        "America:St_Johns"{
+            ec{"ቅዱስ ዮሃንስ"}
+        }
+        "America:St_Kitts"{
+            ec{"ቅዱስ ኪትስ"}
+        }
+        "America:St_Lucia"{
+            ec{"ቅድስቲ ሉስያ"}
+        }
+        "America:St_Thomas"{
+            ec{"ሰይንት ቶማስ"}
+        }
+        "America:St_Vincent"{
+            ec{"ቅዱስ ቪንሰንት"}
+        }
+        "America:Swift_Current"{
+            ec{"ስዊፍት ካረንት"}
+        }
+        "America:Tegucigalpa"{
+            ec{"ተጉሲጋልፓ"}
+        }
+        "America:Thule"{
+            ec{"ዙል"}
+        }
+        "America:Tijuana"{
+            ec{"ቲጅዋና"}
+        }
+        "America:Toronto"{
+            ec{"ቶሮንቶ"}
+        }
+        "America:Tortola"{
+            ec{"ቶርቶላ"}
+        }
+        "America:Vancouver"{
+            ec{"ቫንኩቨር"}
+        }
+        "America:Whitehorse"{
+            ec{"ዋይትሆዝ"}
+        }
+        "America:Winnipeg"{
+            ec{"ዊኒፐግ"}
+        }
+        "America:Yakutat"{
+            ec{"ያኩታት"}
+        }
+        "Antarctica:Casey"{
+            ec{"ከይዚ"}
+        }
+        "Antarctica:Davis"{
+            ec{"ደቪስ"}
+        }
+        "Antarctica:DumontDUrville"{
+            ec{"ዱሞንት ዲኡርቪል"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"ማኳሪ"}
+        }
+        "Antarctica:Mawson"{
+            ec{"ማውሰን"}
+        }
+        "Antarctica:McMurdo"{
+            ec{"ማክሙርዶ"}
+        }
+        "Antarctica:Palmer"{
+            ec{"ፓልመር"}
+        }
+        "Antarctica:Rothera"{
+            ec{"ሮዘራ"}
+        }
+        "Antarctica:Syowa"{
+            ec{"ስዮዋ"}
+        }
+        "Antarctica:Troll"{
+            ec{"ትሮል"}
+        }
+        "Antarctica:Vostok"{
+            ec{"ቮስቶክ"}
+        }
+        "Arctic:Longyearbyen"{
+            ec{"ሎንግየርባየን"}
+        }
+        "Asia:Aden"{
+            ec{"ዓደን"}
+        }
+        "Asia:Almaty"{
+            ec{"ኣልማቲ"}
+        }
+        "Asia:Amman"{
+            ec{"ዓማን"}
+        }
+        "Asia:Anadyr"{
+            ec{"ኣናዲር"}
+        }
+        "Asia:Aqtau"{
+            ec{"ኣክታው"}
+        }
+        "Asia:Aqtobe"{
+            ec{"ኣክቶበ"}
+        }
+        "Asia:Ashgabat"{
+            ec{"ኣሽጋባት"}
+        }
+        "Asia:Atyrau"{
+            ec{"ኣቲራው"}
+        }
+        "Asia:Baghdad"{
+            ec{"ባቕዳድ"}
+        }
+        "Asia:Bahrain"{
+            ec{"ባሕሬን"}
+        }
+        "Asia:Baku"{
+            ec{"ባኩ"}
+        }
+        "Asia:Bangkok"{
+            ec{"ባንግኮክ"}
+        }
+        "Asia:Barnaul"{
+            ec{"ባርናውል"}
+        }
+        "Asia:Beirut"{
+            ec{"በይሩት"}
+        }
+        "Asia:Bishkek"{
+            ec{"ቢሽኬክ"}
+        }
+        "Asia:Brunei"{
+            ec{"ብሩነይ"}
+        }
+        "Asia:Calcutta"{
+            ec{"ኮልካታ"}
+        }
+        "Asia:Chita"{
+            ec{"ቺታ"}
+        }
+        "Asia:Choibalsan"{
+            ec{"ቾይባልሳን"}
+        }
+        "Asia:Colombo"{
+            ec{"ኮሎምቦ"}
+        }
+        "Asia:Damascus"{
+            ec{"ደማስቆ"}
+        }
+        "Asia:Dhaka"{
+            ec{"ዳካ"}
+        }
+        "Asia:Dili"{
+            ec{"ዲሊ"}
+        }
+        "Asia:Dubai"{
+            ec{"ዱባይ"}
+        }
+        "Asia:Dushanbe"{
+            ec{"ዱሻንበ"}
+        }
+        "Asia:Famagusta"{
+            ec{"ፋማጉስታ"}
+        }
+        "Asia:Gaza"{
+            ec{"ቓዛ"}
+        }
+        "Asia:Hebron"{
+            ec{"ኬብሮን"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"ሆንግ ኮንግ"}
+        }
+        "Asia:Hovd"{
+            ec{"ሆቭድ"}
+        }
+        "Asia:Irkutsk"{
+            ec{"ኢርኩትስክ"}
+        }
+        "Asia:Jakarta"{
+            ec{"ጃካርታ"}
+        }
+        "Asia:Jayapura"{
+            ec{"ጃያፑራ"}
+        }
+        "Asia:Jerusalem"{
+            ec{"የሩሳሌም"}
+        }
+        "Asia:Kabul"{
+            ec{"ካቡል"}
+        }
+        "Asia:Kamchatka"{
+            ec{"ካምቻትካ"}
+        }
+        "Asia:Karachi"{
+            ec{"ካራቺ"}
+        }
+        "Asia:Katmandu"{
+            ec{"ካትማንዱ"}
+        }
+        "Asia:Khandyga"{
+            ec{"ካንዲጋ"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"ክራስኖያርስክ"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"ኳላ ሉምፑር"}
+        }
+        "Asia:Kuching"{
+            ec{"ኩቺንግ"}
+        }
+        "Asia:Kuwait"{
+            ec{"ኩዌት"}
+        }
+        "Asia:Macau"{
+            ec{"ማካው"}
+        }
+        "Asia:Magadan"{
+            ec{"ማጋዳን"}
+        }
+        "Asia:Makassar"{
+            ec{"ማካሳር"}
+        }
+        "Asia:Manila"{
+            ec{"ማኒላ"}
+        }
+        "Asia:Muscat"{
+            ec{"ሙስካት"}
+        }
+        "Asia:Nicosia"{
+            ec{"ኒኮስያ"}
+        }
+        "Asia:Novokuznetsk"{
+            ec{"ኖቮኩዝነትስክ"}
+        }
+        "Asia:Novosibirsk"{
+            ec{"ኖቮሲቢርስክ"}
+        }
+        "Asia:Omsk"{
+            ec{"ኦምስክ"}
+        }
+        "Asia:Oral"{
+            ec{"ኦራል"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"ፕኖም ፐን"}
+        }
+        "Asia:Pontianak"{
+            ec{"ፖንትያናክ"}
+        }
+        "Asia:Pyongyang"{
+            ec{"ፕዮንግያንግ"}
+        }
+        "Asia:Qatar"{
+            ec{"ቐጠር"}
+        }
+        "Asia:Qostanay"{
+            ec{"ኮስታናይ"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"ኪዚሎርዳ"}
+        }
+        "Asia:Rangoon"{
+            ec{"ያንጎን"}
+        }
+        "Asia:Riyadh"{
+            ec{"ርያድ"}
+        }
+        "Asia:Saigon"{
+            ec{"ከተማ ሆ ቺ ሚን"}
+        }
+        "Asia:Sakhalin"{
+            ec{"ሳካሊን"}
+        }
+        "Asia:Samarkand"{
+            ec{"ሳማርካንድ"}
+        }
+        "Asia:Seoul"{
+            ec{"ሶውል"}
+        }
+        "Asia:Shanghai"{
+            ec{"ሻንግሃይ"}
+        }
+        "Asia:Singapore"{
+            ec{"ሲንጋፖር"}
+        }
+        "Asia:Srednekolymsk"{
+            ec{"ስሬድነኮሊምስክ"}
+        }
+        "Asia:Taipei"{
+            ec{"ታይፐይ"}
+        }
+        "Asia:Tashkent"{
+            ec{"ታሽከንት"}
+        }
+        "Asia:Tbilisi"{
+            ec{"ትቢሊሲ"}
+        }
+        "Asia:Tehran"{
+            ec{"ተህራን"}
+        }
+        "Asia:Thimphu"{
+            ec{"ቲምፉ"}
+        }
+        "Asia:Tokyo"{
+            ec{"ቶክዮ"}
+        }
+        "Asia:Tomsk"{
+            ec{"ቶምስክ"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"ኡላን ባቶር"}
+        }
+        "Asia:Urumqi"{
+            ec{"ኡሩምኪ"}
+        }
+        "Asia:Ust-Nera"{
+            ec{"ኡስት-ኔራ"}
+        }
+        "Asia:Vientiane"{
+            ec{"ቭየንትያን"}
+        }
+        "Asia:Vladivostok"{
+            ec{"ቭላዲቮስቶክ"}
+        }
+        "Asia:Yakutsk"{
+            ec{"ያኩትስክ"}
+        }
+        "Asia:Yekaterinburg"{
+            ec{"የካተሪንበርግ"}
+        }
+        "Asia:Yerevan"{
+            ec{"የረቫን"}
+        }
+        "Atlantic:Azores"{
+            ec{"ኣዞረስ"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"በርሙዳ"}
+        }
+        "Atlantic:Canary"{
+            ec{"ካናሪ"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"ኬፕ ቨርደ"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"ደሴታት ፋሮ"}
+        }
+        "Atlantic:Madeira"{
+            ec{"ማደይራ"}
+        }
+        "Atlantic:Reykjavik"{
+            ec{"ረይክያቪክ"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"ደቡብ ጆርጅያ"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"ቅድስቲ ሄለና"}
+        }
+        "Atlantic:Stanley"{
+            ec{"ስታንሊ"}
+        }
+        "Australia:Adelaide"{
+            ec{"ኣደለይድ"}
+        }
+        "Australia:Brisbane"{
+            ec{"ብሪዝቤን"}
+        }
+        "Australia:Broken_Hill"{
+            ec{"ብሮክን ሂል"}
+        }
+        "Australia:Darwin"{
+            ec{"ዳርዊን"}
+        }
+        "Australia:Eucla"{
+            ec{"ዩክላ"}
+        }
+        "Australia:Hobart"{
+            ec{"ሆባርት"}
+        }
+        "Australia:Lindeman"{
+            ec{"ሊንድማን"}
+        }
+        "Australia:Lord_Howe"{
+            ec{"ሎርድ ሃው"}
+        }
+        "Australia:Melbourne"{
+            ec{"መልበርን"}
+        }
+        "Australia:Perth"{
+            ec{"ፐርዝ"}
+        }
+        "Australia:Sydney"{
+            ec{"ሲድኒ"}
+        }
+        "Etc:UTC"{
+            ls{"ዝተሳነየ ኣድማሳዊ ግዜ"}
+        }
+        "Etc:Unknown"{
+            ec{"ዘይተፈልጠ ከተማ"}
+        }
+        "Europe:Amsterdam"{
+            ec{"ኣምስተርዳም"}
+        }
+        "Europe:Andorra"{
+            ec{"ኣንዶራ"}
+        }
+        "Europe:Astrakhan"{
+            ec{"ኣስትራካን"}
+        }
+        "Europe:Athens"{
+            ec{"ኣቴንስ"}
+        }
+        "Europe:Belgrade"{
+            ec{"በልግሬድ"}
+        }
+        "Europe:Berlin"{
+            ec{"በርሊን"}
+        }
+        "Europe:Bratislava"{
+            ec{"ብራቲስላቫ"}
+        }
+        "Europe:Brussels"{
+            ec{"ብራስልስ"}
+        }
+        "Europe:Bucharest"{
+            ec{"ቡካረስት"}
+        }
+        "Europe:Budapest"{
+            ec{"ቡዳፐስት"}
+        }
+        "Europe:Busingen"{
+            ec{"ቡሲንገን"}
+        }
+        "Europe:Chisinau"{
+            ec{"ኪሺናው"}
+        }
+        "Europe:Copenhagen"{
+            ec{"ኮፐንሃገን"}
+        }
+        "Europe:Dublin"{
+            ec{"ደብሊን"}
+            ld{"Irish Standard Time"}
+        }
+        "Europe:Gibraltar"{
+            ec{"ጂብራልታር"}
+        }
+        "Europe:Guernsey"{
+            ec{"ገርንዚ"}
+        }
+        "Europe:Helsinki"{
+            ec{"ሄልሲንኪ"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"ኣይል ኦፍ ማን"}
+        }
+        "Europe:Istanbul"{
+            ec{"ኢስታንቡል"}
+        }
+        "Europe:Jersey"{
+            ec{"ጀርዚ"}
+        }
+        "Europe:Kaliningrad"{
+            ec{"ካሊኒንግራድ"}
+        }
+        "Europe:Kiev"{
+            ec{"ክየቭ"}
+        }
+        "Europe:Kirov"{
+            ec{"ኪሮቭ"}
+        }
+        "Europe:Lisbon"{
+            ec{"ሊዝበን"}
+        }
+        "Europe:Ljubljana"{
+            ec{"ልዩብልያና"}
+        }
+        "Europe:London"{
+            ec{"ሎንደን"}
+            ld{"ግዜ ክረምቲ ብሪጣንያ"}
+        }
+        "Europe:Luxembourg"{
+            ec{"ሉክሰምበርግ"}
+        }
+        "Europe:Madrid"{
+            ec{"ማድሪድ"}
+        }
+        "Europe:Malta"{
+            ec{"ማልታ"}
+        }
+        "Europe:Mariehamn"{
+            ec{"ማሪሃምን"}
+        }
+        "Europe:Minsk"{
+            ec{"ሚንስክ"}
+        }
+        "Europe:Monaco"{
+            ec{"ሞናኮ"}
+        }
+        "Europe:Moscow"{
+            ec{"ሞስኮ"}
+        }
+        "Europe:Oslo"{
+            ec{"ኦስሎ"}
+        }
+        "Europe:Paris"{
+            ec{"ፓሪስ"}
+        }
+        "Europe:Podgorica"{
+            ec{"ፖድጎሪጻ"}
+        }
+        "Europe:Prague"{
+            ec{"ፕራግ"}
+        }
+        "Europe:Riga"{
+            ec{"ሪጋ"}
+        }
+        "Europe:Rome"{
+            ec{"ሮማ"}
+        }
+        "Europe:Samara"{
+            ec{"ሳማራ"}
+        }
+        "Europe:San_Marino"{
+            ec{"ሳን ማሪኖ"}
+        }
+        "Europe:Sarajevo"{
+            ec{"ሳራየቮ"}
+        }
+        "Europe:Saratov"{
+            ec{"ሳራቶቭ"}
+        }
+        "Europe:Simferopol"{
+            ec{"ሲምፈሮፖል"}
+        }
+        "Europe:Skopje"{
+            ec{"ስኮፕየ"}
+        }
+        "Europe:Sofia"{
+            ec{"ሶፍያ"}
+        }
+        "Europe:Stockholm"{
+            ec{"ስቶክሆልም"}
+        }
+        "Europe:Tallinn"{
+            ec{"ታሊን"}
+        }
+        "Europe:Tirane"{
+            ec{"ቲራና"}
+        }
+        "Europe:Ulyanovsk"{
+            ec{"ኡልያኖቭስክ"}
+        }
+        "Europe:Vaduz"{
+            ec{"ቫዱዝ"}
+        }
+        "Europe:Vatican"{
+            ec{"ቫቲካን"}
+        }
+        "Europe:Vienna"{
+            ec{"ቭየና"}
+        }
+        "Europe:Vilnius"{
+            ec{"ቪልንየስ"}
+        }
+        "Europe:Volgograd"{
+            ec{"ቮልጎግራድ"}
+        }
+        "Europe:Warsaw"{
+            ec{"ዋርሳው"}
+        }
+        "Europe:Zagreb"{
+            ec{"ዛግረብ"}
+        }
+        "Europe:Zurich"{
+            ec{"ዙሪክ"}
+        }
+        "Indian:Antananarivo"{
+            ec{"ኣንታናናሪቮ"}
+        }
+        "Indian:Chagos"{
+            ec{"ቻጎስ"}
+        }
+        "Indian:Christmas"{
+            ec{"ክሪስማስ"}
+        }
+        "Indian:Cocos"{
+            ec{"ኮኮስ"}
+        }
+        "Indian:Comoro"{
+            ec{"ኮሞሮ"}
+        }
+        "Indian:Kerguelen"{
+            ec{"ከርጉለን"}
+        }
+        "Indian:Mahe"{
+            ec{"ማሄ"}
+        }
+        "Indian:Maldives"{
+            ec{"ማልዲቭስ"}
+        }
+        "Indian:Mauritius"{
+            ec{"ማውሪሸስ"}
+        }
+        "Indian:Mayotte"{
+            ec{"ማዮት"}
+        }
+        "Indian:Reunion"{
+            ec{"ርዩንየን"}
+        }
+        "Pacific:Apia"{
+            ec{"ኣፕያ"}
+        }
+        "Pacific:Auckland"{
+            ec{"ኦክላንድ"}
+        }
+        "Pacific:Bougainville"{
+            ec{"ቡገንቪል"}
+        }
+        "Pacific:Chatham"{
+            ec{"ቻታም"}
+        }
+        "Pacific:Easter"{
+            ec{"ደሴት ፋሲካ"}
+        }
+        "Pacific:Efate"{
+            ec{"ኤፋቴ"}
+        }
+        "Pacific:Enderbury"{
+            ec{"ኤንደርበሪ"}
+        }
+        "Pacific:Fakaofo"{
+            ec{"ፋካኦፎ"}
+        }
+        "Pacific:Fiji"{
+            ec{"ፊጂ"}
+        }
+        "Pacific:Funafuti"{
+            ec{"ፉናፉቲ"}
+        }
+        "Pacific:Galapagos"{
+            ec{"ጋላፓጎስ"}
+        }
+        "Pacific:Gambier"{
+            ec{"ጋምብየር"}
+        }
+        "Pacific:Guadalcanal"{
+            ec{"ጓዳልካናል"}
+        }
+        "Pacific:Guam"{
+            ec{"ጓም"}
+        }
+        "Pacific:Honolulu"{
+            ec{"ሆኖሉሉ"}
+        }
+        "Pacific:Kanton"{
+            ec{"ካንቶን"}
+        }
+        "Pacific:Kiritimati"{
+            ec{"ኪሪቲማቲ"}
+        }
+        "Pacific:Kosrae"{
+            ec{"ኮስሬ"}
+        }
+        "Pacific:Kwajalein"{
+            ec{"ክዋጃሊን"}
+        }
+        "Pacific:Majuro"{
+            ec{"ማጁሮ"}
+        }
+        "Pacific:Marquesas"{
+            ec{"ማርኬሳስ"}
+        }
+        "Pacific:Midway"{
+            ec{"ሚድወይ"}
+        }
+        "Pacific:Nauru"{
+            ec{"ናውሩ"}
+        }
+        "Pacific:Niue"{
+            ec{"ኒዩ"}
+        }
+        "Pacific:Norfolk"{
+            ec{"ኖርፎልክ"}
+        }
+        "Pacific:Noumea"{
+            ec{"ኑመያ"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"ፓጎ ፓጎ"}
+        }
+        "Pacific:Palau"{
+            ec{"ፓላው"}
+        }
+        "Pacific:Pitcairn"{
+            ec{"ፒትከርን"}
+        }
+        "Pacific:Ponape"{
+            ec{"ፖንፐይ"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"ፖርት ሞርስቢ"}
+        }
+        "Pacific:Rarotonga"{
+            ec{"ራሮቶንጋ"}
+        }
+        "Pacific:Saipan"{
+            ec{"ሳይፓን"}
+        }
+        "Pacific:Tahiti"{
+            ec{"ታሂቲ"}
+        }
+        "Pacific:Tarawa"{
+            ec{"ታራዋ"}
+        }
+        "Pacific:Tongatapu"{
+            ec{"ቶንጋታፑ"}
+        }
+        "Pacific:Truk"{
+            ec{"ቹክ"}
+        }
+        "Pacific:Wake"{
+            ec{"ዌክ"}
+        }
+        "Pacific:Wallis"{
+            ec{"ዋሊስ"}
+        }
+        "meta:Acre"{
+            ld{"ግዜ ክረምቲ ኣክሪ"}
+            lg{"ግዜ ኣክሪ"}
+            ls{"ምዱብ ግዜ ኣክሪ"}
+        }
+        "meta:Africa_Central"{
+            ls{"ግዜ ማእከላይ ኣፍሪቃ"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"ግዜ ምብራቕ ኣፍሪቃ"}
+        }
+        "meta:Africa_Southern"{
+            ls{"ግዜ ደቡብ ኣፍሪቃ"}
+        }
+        "meta:Africa_Western"{
+            ld{"ግዜ ክረምቲ ምዕራብ ኣፍሪቃ"}
+            lg{"ግዜ ምዕራብ ኣፍሪቃ"}
+            ls{"ምዱብ ግዜ ምዕራብ ኣፍሪቃ"}
+        }
+        "meta:Alaska"{
+            ld{"ግዜ ክረምቲ ኣላስካ"}
+            lg{"ግዜ ኣላስካ"}
+            ls{"ምዱብ ግዜ ኣላስካ"}
+        }
+        "meta:Amazon"{
+            ld{"ግዜ ክረምቲ ኣማዞን"}
+            lg{"ግዜ ኣማዞን"}
+            ls{"ምዱብ ግዜ ኣማዞን"}
+        }
+        "meta:Argentina"{
+            ld{"ግዜ ክረምቲ ኣርጀንቲና"}
+            lg{"ግዜ ኣርጀንቲና"}
+            ls{"ምዱብ ግዜ ኣርጀንቲና"}
+        }
+        "meta:Azores"{
+            ld{"ግዜ ክረምቲ ኣዞረስ"}
+            lg{"ግዜ ኣዞረስ"}
+            ls{"ምዱብ ግዜ ኣዞረስ"}
+        }
+        "meta:Bolivia"{
+            ls{"ግዜ ቦሊቭያ"}
+        }
+        "meta:Brasilia"{
+            ld{"ግዜ ክረምቲ ብራዚልያ"}
+            lg{"ግዜ ብራዚልያ"}
+            ls{"ምዱብ ግዜ ብራዚልያ"}
+        }
+        "meta:Cape_Verde"{
+            ld{"ግዜ ክረምቲ ኬፕ ቨርደ"}
+            lg{"ግዜ ኬፕ ቨርደ"}
+            ls{"ምዱብ ግዜ ኬፕ ቨርደ"}
+        }
+        "meta:Chile"{
+            ld{"ግዜ ክረምቲ ቺሌ"}
+            lg{"ግዜ ቺሌ"}
+            ls{"ምዱብ ግዜ ቺሌ"}
+        }
+        "meta:Colombia"{
+            ld{"ግዜ ክረምቲ ኮሎምብያ"}
+            lg{"ግዜ ኮሎምብያ"}
+            ls{"ምዱብ ግዜ ኮሎምብያ"}
+        }
+        "meta:Easter"{
+            ld{"ግዜ ክረምቲ ደሴት ፋሲካ"}
+            lg{"ግዜ ደሴት ፋሲካ"}
+            ls{"ምዱብ ግዜ ደሴት ፋሲካ"}
+        }
+        "meta:Ecuador"{
+            ls{"ግዜ ኤኳዶር"}
+        }
+        "meta:Europe_Central"{
+            ld{"ግዜ ክረምቲ ኤውሮጳ"}
+            lg{"ግዜ ማእከላይ ኤውሮጳ"}
+            ls{"ምዱብ ግዜ ማእከላይ ኤውሮጳ"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"ግዜ ክረምቲ ምብራቕ ኤውሮጳ"}
+            lg{"ግዜ ምብራቕ ኤውሮጳ"}
+            ls{"ምዱብ ግዜ ምብራቕ ኤውሮጳ"}
+        }
+        "meta:Falkland"{
+            ld{"ግዜ ከረምቲ ደሴታት ፎክላንድ"}
+            lg{"ግዜ ደሴታት ፎክላንድ"}
+            ls{"ምዱብ ግዜ ደሴታት ፎክላንድ"}
+        }
+        "meta:French_Guiana"{
+            ls{"ግዜ ፈረንሳዊት ጊያና"}
+        }
+        "meta:French_Southern"{
+            ls{"ግዜ ፈረንሳዊ ደቡባዊ ግዝኣታትን ኣንታርቲክን"}
+        }
+        "meta:GMT"{
+            ls{"GMT"}
+        }
+        "meta:Galapagos"{
+            ls{"ግዜ ጋላፓጎስ"}
+        }
+        "meta:Guyana"{
+            ls{"ግዜ ጉያና"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"ግዜ ህንዳዊ ውቅያኖስ"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"ግዜ ማእከላይ ኢንዶነዥያ"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"ግዜ ምብራቓዊ ኢንዶነዥያ"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"ግዜ ምዕራባዊ ኢንዶነዥያ"}
+        }
+        "meta:Malaysia"{
+            ls{"ግዜ ማለዥያ"}
+        }
+        "meta:Mauritius"{
+            ld{"ግዜ ክረምቲ ማውሪሸስ"}
+            lg{"ግዜ ማውሪሸስ"}
+            ls{"ምዱብ ግዜ ማውሪሸስ"}
+        }
+        "meta:Noronha"{
+            ld{"ግዜ ክረምቲ ፈርናንዶ ደ ኖሮንያ"}
+            lg{"ግዜ ፈርናንዶ ደ ኖሮንያ"}
+            ls{"ምዱብ ግዜ ፈርናንዶ ደ ኖሮንያ"}
+        }
+        "meta:Paraguay"{
+            ld{"ግዜ ክረምቲ ፓራጓይ"}
+            lg{"ግዜ ፓራጓይ"}
+            ls{"ምዱብ ግዜ ፓራጓይ"}
+        }
+        "meta:Peru"{
+            ld{"ግዜ ክረምቲ ፔሩ"}
+            lg{"ግዜ ፔሩ"}
+            ls{"ምዱብ ግዜ ፔሩ"}
+        }
+        "meta:Reunion"{
+            ls{"ግዜ ርዩንየን"}
+        }
+        "meta:Seychelles"{
+            ls{"ግዜ ሲሸልስ"}
+        }
+        "meta:Singapore"{
+            ls{"ግዜ ሲንጋፖር"}
+        }
+        "meta:South_Georgia"{
+            ls{"ግዜ ደቡብ ጆርጅያ"}
+        }
+        "meta:Suriname"{
+            ls{"ግዜ ሱሪናም"}
+        }
+        "meta:Uruguay"{
+            ld{"ግዜ ክረምቲ ኡራጓይ"}
+            lg{"ግዜ ኡራጓይ"}
+            ls{"ምዱብ ግዜ ኡራጓይ"}
+        }
+        "meta:Venezuela"{
+            ls{"ግዜ ቬኔዝዌላ"}
+        }
+        regionFormat{"ግዜ {0}"}
+        regionFormatDaylight{"ግዜ ክረምቲ {0}"}
+        regionFormatStandard{"ምዱብ ግዜ {0}"}
+    }
+}

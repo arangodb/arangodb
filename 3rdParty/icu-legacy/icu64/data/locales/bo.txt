@@ -1,0 +1,213 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+bo{
+    AuxExemplarCharacters{"[ༀ]"}
+    ExemplarCharacters{
+        "[྄ཿ ཀ {ཀྵ} ཁ ག {གྷ} ང ཅ ཆ ཇ ཉ ཏ ཊ ཐ ཋ ད {དྷ} ཌ {ཌྷ} ན ཎ པ ཕ བ {བྷ} མ ཾ ཙ ཚ ཛ"
+        " {ཛྷ} ཝ ཞ ཟ འ ཡ རཪ ལ ཤ ཥ ས ཧ ཨ ི {ཱི} ྀ {ཱྀ} ུ {ཱུ} ེ ཻ ོ ཽ ྐ {ྐྵ} ྑ ྒ {ྒྷ} "
+        "ྔ ྕ ྖ ྗ ྙ ྟ ྚ ྠ ྛ ྡ {ྡྷ} ྜ {ྜྷ} ྣ ྞ ྤ ྥ ྦ {ྦྷ} ྨ ྩ ྪ ྫ {ྫྷ} ྭ ྺ ྮ ྯ ྰ ྱ ྻ ྲ "
+        "ྼ ླ ྴ ྵ ྶ ྷ ྸ {ྲྀ} ཷ {ླྀ} ཹ]"
+    }
+    ExemplarCharactersIndex{"[ཀ ཁ ག ང ཅ ཆ ཇ ཉ ཏ ཐ ད ན པ ཕ བ མ ཙ ཚ ཛ ཝ ཞ ཟ འ ཡ ར ལ ཤ ས ཧ ཨ]"}
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0༠ 1༡ 2༢ 3༣ 4༤ 5༥ 6༦ 7༧ 8༨ 9༩]"}
+    NumberElements{
+        native{"tibt"}
+        tibt{
+            symbols{
+                nan{"ཨང་མེན་"}
+            }
+        }
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "G y MMMM d, EEEE",
+                "G སྤྱི་ལོ་y MMMMའི་ཚེས་d",
+                "G y ལོའི་MMMཚེས་d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                yMMMMd{"G སྤྱི་ལོ་y MMMMའི་ཚེས་d"}
+                yMMMd{"G y ལོའི་MMMཚེས་d"}
+                yyyyMMMd{"G y ལོའི་MMMཚེས་d"}
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "སྔ་དྲོ་",
+                "ཕྱི་དྲོ་",
+            }
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "y MMMMའི་ཚེས་d, EEEE",
+                "སྤྱི་ལོ་y MMMMའི་ཚེས་d",
+                "y ལོའི་MMMཚེས་d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            availableFormats{
+                GyMMM{"G y LLLL"}
+                MMMEd{"MMMཚེས་d, E"}
+                MMMMd{"MMMMའི་ཚེས་d"}
+                MMMd{"MMMཚེས་d"}
+                yMMM{"y LLL"}
+                yMMMMd{"སྤྱི་ལོ་y MMMMའི་ཚེས་d"}
+                yMMMd{"y ལོའི་MMMཚེས་d"}
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "ཉི་མ་",
+                        "ཟླ་བ་",
+                        "མིག་དམར་",
+                        "ལྷག་པ་",
+                        "ཕུར་བུ་",
+                        "པ་སངས་",
+                        "སྤེན་པ་",
+                    }
+                    wide{
+                        "གཟའ་ཉི་མ་",
+                        "གཟའ་ཟླ་བ་",
+                        "གཟའ་མིག་དམར་",
+                        "གཟའ་ལྷག་པ་",
+                        "གཟའ་ཕུར་བུ་",
+                        "གཟའ་པ་སངས་",
+                        "གཟའ་སྤེན་པ་",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ཉི",
+                        "ཟླ",
+                        "མིག",
+                        "ལྷག",
+                        "ཕུར",
+                        "སངས",
+                        "སྤེན",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "སྤྱི་ལོ་སྔོན་",
+                    "སྤྱི་ལོ་",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "ཟླ་༡",
+                        "ཟླ་༢",
+                        "ཟླ་༣",
+                        "ཟླ་༤",
+                        "ཟླ་༥",
+                        "ཟླ་༦",
+                        "ཟླ་༧",
+                        "ཟླ་༨",
+                        "ཟླ་༩",
+                        "ཟླ་༡༠",
+                        "ཟླ་༡༡",
+                        "ཟླ་༡༢",
+                    }
+                    wide{
+                        "ཟླ་བ་དང་པོ",
+                        "ཟླ་བ་གཉིས་པ",
+                        "ཟླ་བ་གསུམ་པ",
+                        "ཟླ་བ་བཞི་པ",
+                        "ཟླ་བ་ལྔ་པ",
+                        "ཟླ་བ་དྲུག་པ",
+                        "ཟླ་བ་བདུན་པ",
+                        "ཟླ་བ་བརྒྱད་པ",
+                        "ཟླ་བ་དགུ་པ",
+                        "ཟླ་བ་བཅུ་པ",
+                        "ཟླ་བ་བཅུ་གཅིག་པ",
+                        "ཟླ་བ་བཅུ་གཉིས་པ",
+                    }
+                }
+                stand-alone{
+                    wide{
+                        "ཟླ་བ་དང་པོ་",
+                        "ཟླ་བ་གཉིས་པ་",
+                        "ཟླ་བ་གསུམ་པ་",
+                        "ཟླ་བ་བཞི་པ་",
+                        "ཟླ་བ་ལྔ་པ་",
+                        "ཟླ་བ་དྲུག་པ་",
+                        "ཟླ་བ་བདུན་པ་",
+                        "ཟླ་བ་བརྒྱད་པ་",
+                        "ཟླ་བ་དགུ་པ་",
+                        "ཟླ་བ་བཅུ་པ་",
+                        "ཟླ་བ་བཅུ་གཅིག་པ་",
+                        "ཟླ་བ་བཅུ་གཉིས་པ་",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    wide{
+                        "དུས་ཚིགས་དང་པོ།",
+                        "དུས་ཚིགས་གཉིས་པ།",
+                        "དུས་ཚིགས་གསུམ་པ།",
+                        "དུས་ཚིགས་བཞི་པ།",
+                    }
+                }
+            }
+        }
+    }
+    fields{
+        day{
+            dn{"ཉིན།"}
+            relative{
+                "-1"{"ཁས་ས་"}
+                "-2"{"ཁས་ཉིན་"}
+                "0"{"དེ་རིང་"}
+                "1"{"སང་ཉིན་"}
+                "2"{"གནངས་ཉིན་"}
+            }
+        }
+        hour{
+            dn{"ཆུ་ཚོད་"}
+        }
+        minute{
+            dn{"སྐར་མ།"}
+        }
+        month{
+            dn{"ཟླ་བ་"}
+        }
+        second{
+            dn{"སྐར་ཆ།"}
+        }
+        year{
+            dn{"ལོ།"}
+        }
+        zone{
+            dn{"དུས་ཚོད།"}
+        }
+    }
+}

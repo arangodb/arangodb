@@ -1,0 +1,383 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{73632960-B3A6-464D-83A3-4B43365F19B8}</ProjectGuid>
+    <RootNamespace>intltest</RootNamespace>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <!-- The following import will include the 'default' configuration options for VS projects. -->
+  <Import Project="..\..\allinone\Build.Windows.ProjectConfiguration.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir>.\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.\$(Platform)\$(Configuration)\</IntDir>
+    <!-- The ICU projects use "Win32" to mean "x86", so we need to special case it. -->
+    <OutDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</IntDir>
+    <!-- Disable Incremental Linking for Release builds as it prevents Link-time Code Generation -->
+    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
+  </PropertyGroup>
+  <!-- Options that are common to *all* project configurations -->
+  <ItemDefinitionGroup>
+    <Midl>
+      <TypeLibraryName>$(OutDir)\intltest.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <AdditionalIncludeDirectories>..\..\..\include;..\..\common;..\..\i18n;..\..\tools\toolutil;..\..\tools\ctestfw;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>U_ATTRIBUTE_DEPRECATED=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <WarningLevel>Level3</WarningLevel>
+      <CompileAs>Default</CompileAs>
+      <PrecompiledHeaderOutputFile>$(OutDir)/intltest.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)/</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)/intltest.pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <OutputFile>$(OutDir)/intltest.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\$(IcuLibOutputDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <!-- Options that are common to all 'Debug' project configurations -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <BrowseInformation>true</BrowseInformation>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>icuucd.lib;icuind.lib;icutud.lib;icutestd.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <!-- Options that are common to all 'Release' project configurations -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>icuuc.lib;icuin.lib;icutu.lib;icutest.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="bytestrietest.cpp" />
+    <ClCompile Include="collationtest.cpp" />
+    <ClCompile Include="colldata.cpp" />
+    <ClCompile Include="erarulestest.cpp" />
+    <ClCompile Include="numfmtspectest.cpp" />
+    <ClCompile Include="regiontst.cpp" />
+    <ClCompile Include="ucharstrietest.cpp" />
+    <ClCompile Include="itrbbi.cpp" />
+    <ClCompile Include="lstmbetst.cpp" />
+    <ClCompile Include="rbbiapts.cpp" />
+    <ClCompile Include="rbbitst.cpp" />
+    <ClCompile Include="rbbimonkeytest.cpp" />
+    <ClCompile Include="itspoof.cpp" />
+    <ClCompile Include="allcoll.cpp" />
+    <ClCompile Include="alphaindextst.cpp" />
+    <ClCompile Include="apicoll.cpp" />
+    <ClCompile Include="currcoll.cpp" />
+    <ClCompile Include="decoll.cpp" />
+    <ClCompile Include="encoll.cpp" />
+    <ClCompile Include="escoll.cpp" />
+    <ClCompile Include="ficoll.cpp" />
+    <ClCompile Include="frcoll.cpp" />
+    <ClCompile Include="g7coll.cpp" />
+    <ClCompile Include="itercoll.cpp" />
+    <ClCompile Include="jacoll.cpp" />
+    <ClCompile Include="lcukocol.cpp" />
+    <ClCompile Include="mnkytst.cpp" />
+    <ClCompile Include="regcoll.cpp" />
+    <ClCompile Include="srchtest.cpp" />
+    <ClCompile Include="ssearch.cpp" />
+    <ClCompile Include="svccoll.cpp" />
+    <ClCompile Include="thcoll.cpp" />
+    <ClCompile Include="trcoll.cpp" />
+    <ClCompile Include="tscoll.cpp" />
+    <ClCompile Include="ucaconf.cpp" />
+    <ClCompile Include="uvectest.cpp" />
+    <ClCompile Include="v32test.cpp" />
+    <ClCompile Include="simplethread.cpp" />
+    <ClCompile Include="strtest.cpp" />
+    <ClCompile Include="tsmthred.cpp" />
+    <ClCompile Include="tsputil.cpp" />
+    <ClCompile Include="uobjtest.cpp" />
+    <ClCompile Include="astrotst.cpp" />
+    <ClCompile Include="calcasts.cpp" />
+    <ClCompile Include="callimts.cpp" />
+    <ClCompile Include="calregts.cpp" />
+    <ClCompile Include="caltest.cpp" />
+    <ClCompile Include="caltztst.cpp" />
+    <ClCompile Include="compactdecimalformattest.cpp" />
+    <ClCompile Include="dadrcal.cpp" />
+    <ClCompile Include="dadrfmt.cpp" />
+    <ClCompile Include="datadrivennumberformattestsuite.cpp" />
+    <ClCompile Include="dcfmapts.cpp" />
+    <ClCompile Include="dcfmtest.cpp" />
+    <ClCompile Include="dtfmapts.cpp" />
+    <ClCompile Include="dtfmrgts.cpp" />
+    <ClCompile Include="dtfmtrtts.cpp" />
+    <ClCompile Include="dtfmttst.cpp" />
+    <ClCompile Include="dtifmtts.cpp" />
+    <ClCompile Include="dtptngts.cpp" />
+    <ClCompile Include="fldset.cpp" />
+    <ClCompile Include="formatted_string_builder_test.cpp" />
+    <ClCompile Include="genderinfotest.cpp" />
+    <ClCompile Include="incaltst.cpp" />
+    <ClCompile Include="itformat.cpp" />
+    <ClCompile Include="itrbnf.cpp" />
+    <ClCompile Include="itrbnfp.cpp" />
+    <ClCompile Include="itrbnfrt.cpp" />
+    <ClCompile Include="locnmtst.cpp" />
+    <ClCompile Include="measfmttest.cpp" />
+    <ClCompile Include="messageformat2test_builtin.cpp" />
+    <ClCompile Include="messageformat2test.cpp" />
+    <ClCompile Include="messageformat2test_custom.cpp" />
+    <ClCompile Include="messageformat2test_features.cpp" />
+    <ClCompile Include="messageformat2test_fromjson.cpp" />
+    <ClCompile Include="messageformat2test_icu.cpp" />
+    <ClCompile Include="miscdtfm.cpp" />
+    <ClCompile Include="msfmrgts.cpp" />
+    <ClCompile Include="nmfmapts.cpp" />
+    <ClCompile Include="nmfmtrt.cpp" />
+    <ClCompile Include="numberformattesttuple.cpp" />
+    <ClCompile Include="numbertest_affixutils.cpp" />
+    <ClCompile Include="numbertest_api.cpp" />
+    <ClCompile Include="numbertest_decimalquantity.cpp" />
+    <ClCompile Include="numbertest_modifiers.cpp" />
+    <ClCompile Include="numbertest_patternmodifier.cpp" />
+    <ClCompile Include="numbertest_patternstring.cpp" />
+    <ClCompile Include="string_segment_test.cpp" />
+    <ClCompile Include="numbertest_parse.cpp" />
+    <ClCompile Include="displayoptions_test.cpp" />
+    <ClCompile Include="numbertest_doubleconversion.cpp" />
+    <ClCompile Include="numbertest_skeletons.cpp" />
+    <ClCompile Include="numbertest_range.cpp" />
+    <ClCompile Include="numbertest_simple.cpp" />
+    <ClCompile Include="numbertest_permutation.cpp" />
+    <ClCompile Include="numfmtst.cpp" />
+    <ClCompile Include="numfmtdatadriventest.cpp" />
+    <ClCompile Include="numrgts.cpp" />
+    <ClCompile Include="pluralmaptest.cpp" />
+    <ClCompile Include="plurfmts.cpp" />
+    <ClCompile Include="plurults.cpp" />
+    <ClCompile Include="pptest.cpp" />
+    <ClCompile Include="quantityformattertest.cpp" />
+    <ClCompile Include="reldatefmttest.cpp" />
+    <ClCompile Include="scientificnumberformattertest.cpp" />
+    <ClCompile Include="sdtfmtts.cpp" />
+    <ClCompile Include="selfmts.cpp" />
+    <ClCompile Include="simpleformattertest.cpp" />
+    <ClCompile Include="static_unisets_test.cpp" />
+    <ClCompile Include="tchcfmt.cpp" />
+    <ClCompile Include="tfsmalls.cpp" />
+    <ClCompile Include="tmsgfmt.cpp" />
+    <ClCompile Include="tsdate.cpp" />
+    <ClCompile Include="tsdcfmsy.cpp" />
+    <ClCompile Include="tsdtfmsy.cpp" />
+    <ClCompile Include="tsnmfmt.cpp" />
+    <ClCompile Include="tufmtts.cpp" />
+    <ClCompile Include="tzbdtest.cpp" />
+    <ClCompile Include="tzfmttst.cpp" />
+    <ClCompile Include="tzoffloc.cpp" />
+    <ClCompile Include="tzregts.cpp" />
+    <ClCompile Include="tzrulets.cpp" />
+    <ClCompile Include="tztest.cpp" />
+    <ClCompile Include="unifiedcachetest.cpp" />
+    <ClCompile Include="windttst.cpp" />
+    <ClCompile Include="winnmtst.cpp" />
+    <ClCompile Include="idnaconf.cpp" />
+    <ClCompile Include="idnaref.cpp" />
+    <ClCompile Include="nptrans.cpp" />
+    <ClCompile Include="punyref.cpp" />
+    <ClCompile Include="testidn.cpp" />
+    <ClCompile Include="testidna.cpp" />
+    <ClCompile Include="uts46test.cpp" />
+    <ClCompile Include="aliastst.cpp" />
+    <ClCompile Include="loctest.cpp" />
+    <ClCompile Include="restest.cpp" />
+    <ClCompile Include="restsnew.cpp" />
+    <ClCompile Include="intltest.cpp" />
+    <ClCompile Include="itmajor.cpp" />
+    <ClCompile Include="itutil.cpp" />
+    <ClCompile Include="testutil.cpp" />
+    <ClCompile Include="textfile.cpp" />
+    <ClCompile Include="tokiter.cpp" />
+    <ClCompile Include="winutil.cpp" />
+    <ClCompile Include="canittst.cpp" />
+    <ClCompile Include="normconf.cpp" />
+    <ClCompile Include="tstnorm.cpp" />
+    <ClCompile Include="tstnrapi.cpp" />
+    <ClCompile Include="ucdtest.cpp" />
+    <ClCompile Include="usettest.cpp" />
+    <ClCompile Include="regextst.cpp" />
+    <ClCompile Include="icusvtst.cpp" />
+    <ClCompile Include="citrtest.cpp" />
+    <ClCompile Include="reptest.cpp" />
+    <ClCompile Include="sfwdchit.cpp" />
+    <ClCompile Include="strcase.cpp" />
+    <ClCompile Include="ustrtest.cpp" />
+    <ClCompile Include="utxttest.cpp" />
+    <ClCompile Include="cpdtrtst.cpp" />
+    <ClCompile Include="ittrans.cpp" />
+    <ClCompile Include="jamotest.cpp" />
+    <ClCompile Include="transapi.cpp" />
+    <ClCompile Include="transrt.cpp" />
+    <ClCompile Include="transtst.cpp" />
+    <ClCompile Include="trnserr.cpp" />
+    <ClCompile Include="convtest.cpp" />
+    <ClCompile Include="csdetest.cpp" />
+    <ClCompile Include="bidiconf.cpp" />
+    <ClCompile Include="listformattertest.cpp" />
+    <ClCompile Include="formattedvaluetest.cpp" />
+    <ClCompile Include="localebuildertest.cpp" />
+    <ClCompile Include="localematchertest.cpp" />
+    <ClCompile Include="units_data_test.cpp" />
+    <ClCompile Include="units_router_test.cpp" />
+    <ClCompile Include="units_test.cpp" />
+    <ClCompile Include="uchar_type_build_test.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="colldata.h" />
+    <ClInclude Include="erarulestest.h" />
+    <ClInclude Include="itrbbi.h" />
+    <ClInclude Include="rbbiapts.h" />
+    <ClInclude Include="rbbitst.h" />
+    <ClInclude Include="rbbimonkeytest.h" />
+    <ClInclude Include="itspoof.h" />
+    <ClInclude Include="allcoll.h" />
+    <ClInclude Include="alphaindextst.h" />
+    <ClInclude Include="apicoll.h" />
+    <ClInclude Include="currcoll.h" />
+    <ClInclude Include="decoll.h" />
+    <ClInclude Include="encoll.h" />
+    <ClInclude Include="escoll.h" />
+    <ClInclude Include="ficoll.h" />
+    <ClInclude Include="frcoll.h" />
+    <ClInclude Include="g7coll.h" />
+    <ClInclude Include="itercoll.h" />
+    <ClInclude Include="jacoll.h" />
+    <ClInclude Include="lcukocol.h" />
+    <ClInclude Include="mnkytst.h" />
+    <ClInclude Include="regcoll.h" />
+    <ClInclude Include="regiontst.h" />
+    <ClInclude Include="srchtest.h" />
+    <ClInclude Include="ssearch.h" />
+    <ClInclude Include="svccoll.h" />
+    <ClInclude Include="thcoll.h" />
+    <ClInclude Include="trcoll.h" />
+    <ClInclude Include="tscoll.h" />
+    <ClInclude Include="ucaconf.h" />
+    <ClInclude Include="uvectest.h" />
+    <ClInclude Include="v32test.h" />
+    <ClInclude Include="simplethread.h" />
+    <ClInclude Include="strtest.h" />
+    <ClInclude Include="tsmthred.h" />
+    <ClInclude Include="tsputil.h" />
+    <ClInclude Include="uobjtest.h" />
+    <ClInclude Include="astrotst.h" />
+    <ClInclude Include="calcasts.h" />
+    <ClInclude Include="callimts.h" />
+    <ClInclude Include="calregts.h" />
+    <ClInclude Include="caltest.h" />
+    <ClInclude Include="caltztst.h" />
+    <ClInclude Include="dadrcal.h" />
+    <ClInclude Include="dadrfmt.h" />
+    <ClInclude Include="datadrivennumberformattestsuite.h" />
+    <ClInclude Include="dcfmapts.h" />
+    <ClInclude Include="dcfmtest.h" />
+    <ClInclude Include="dtfmapts.h" />
+    <ClInclude Include="dtfmrgts.h" />
+    <ClInclude Include="dtfmtrtts.h" />
+    <ClInclude Include="dtfmttst.h" />
+    <ClInclude Include="dtifmtts.h" />
+    <ClInclude Include="dtptngts.h" />
+    <ClInclude Include="fldset.h" />
+    <ClInclude Include="incaltst.h" />
+    <ClInclude Include="itformat.h" />
+    <ClInclude Include="itrbnf.h" />
+    <ClInclude Include="itrbnfp.h" />
+    <ClInclude Include="itrbnfrt.h" />
+    <ClInclude Include="locnmtst.h" />
+    <ClInclude Include="miscdtfm.h" />
+    <ClInclude Include="msfmrgts.h" />
+    <ClInclude Include="nmfmapts.h" />
+    <ClInclude Include="nmfmtrt.h" />
+    <ClInclude Include="numbertest.h" />
+    <ClInclude Include="numberformattesttuple.h" />
+    <ClInclude Include="numfmtst.h" />
+    <ClInclude Include="numrgts.h" />
+    <ClInclude Include="plurfmts.h" />
+    <ClInclude Include="plurults.h" />
+    <ClInclude Include="pptest.h" />
+    <ClInclude Include="sdtfmtts.h" />
+    <ClInclude Include="selfmts.h" />
+    <ClInclude Include="tchcfmt.h" />
+    <ClInclude Include="tfsmalls.h" />
+    <ClInclude Include="tmsgfmt.h" />
+    <ClInclude Include="tsdate.h" />
+    <ClInclude Include="tsdcfmsy.h" />
+    <ClInclude Include="tsdtfmsy.h" />
+    <ClInclude Include="tsnmfmt.h" />
+    <ClInclude Include="tufmtts.h" />
+    <ClInclude Include="tzbdtest.h" />
+    <ClInclude Include="tzfmttst.h" />
+    <ClInclude Include="tzoffloc.h" />
+    <ClInclude Include="tzregts.h" />
+    <ClInclude Include="tzrulets.h" />
+    <ClInclude Include="tztest.h" />
+    <ClInclude Include="windttst.h" />
+    <ClInclude Include="winnmtst.h" />
+    <ClInclude Include="idnaconf.h" />
+    <ClInclude Include="idnaref.h" />
+    <ClInclude Include="nptrans.h" />
+    <ClInclude Include="punyref.h" />
+    <ClInclude Include="testidna.h" />
+    <ClInclude Include="aliastst.h" />
+    <ClInclude Include="loctest.h" />
+    <ClInclude Include="restest.h" />
+    <ClInclude Include="restsnew.h" />
+    <ClInclude Include="intltest.h" />
+    <ClInclude Include="itmajor.h" />
+    <ClInclude Include="itutil.h" />
+    <ClInclude Include="testutil.h" />
+    <ClInclude Include="textfile.h" />
+    <ClInclude Include="tokiter.h" />
+    <ClInclude Include="winutil.h" />
+    <ClInclude Include="canittst.h" />
+    <ClInclude Include="normconf.h" />
+    <ClInclude Include="tstnorm.h" />
+    <ClInclude Include="ucdtest.h" />
+    <ClInclude Include="usettest.h" />
+    <ClInclude Include="regextst.h" />
+    <ClInclude Include="icusvtst.h" />
+    <ClInclude Include="citrtest.h" />
+    <ClInclude Include="reptest.h" />
+    <ClInclude Include="sfwdchit.h" />
+    <ClInclude Include="ustrtest.h" />
+    <ClInclude Include="utxttest.h" />
+    <ClInclude Include="cpdtrtst.h" />
+    <ClInclude Include="ittrans.h" />
+    <ClInclude Include="jamotest.h" />
+    <ClInclude Include="transapi.h" />
+    <ClInclude Include="transrt.h" />
+    <ClInclude Include="transtst.h" />
+    <ClInclude Include="trnserr.h" />
+    <ClInclude Include="convtest.h" />
+    <ClInclude Include="csdetest.h" />
+    <ClInclude Include="listformattertest.h" />
+    <ClInclude Include="localebuildertest.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

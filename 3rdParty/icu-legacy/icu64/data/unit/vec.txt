@@ -1,0 +1,22 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+vec{
+    units{
+        compound{
+            per{"{0} par {1}"}
+        }
+        coordinate{
+            dnam{"ponto cardinale"}
+            east{"{0} est"}
+            north{"{0} nord"}
+            south{"{0} sud"}
+            west{"{0} ovest"}
+        }
+    }
+    unitsShort{
+        coordinate{
+            dnam{"ponto"}
+        }
+    }
+}

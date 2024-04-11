@@ -1,0 +1,1817 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+dsb{
+    AuxExemplarCharacters{
+        "[áàăâåäãąā æ ç ďđ éèĕêëėęē ğ íìĭîïİī ı ĺľ ňñ òŏôöőøō œ ř ş ß ť úùŭûůüűū ýÿ ż"
+        "]"
+    }
+    ExemplarCharacters{
+        "[a b c č ć d e ě f g h {ch} i j k ł l m n ń oó p q r ŕ s š ś t u v w x y z ž"
+        " ź]"
+    }
+    ExemplarCharactersIndex{"[A B C Č Ć D E F G H {Ch} I J K Ł L M N O P Q R S Š Ś T U V W X Y Z Ž Ź]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‐‑ – — , ; \\: ! ? . … '‘’‚ \u0022“„ « » ( ) \\[ \\] \\{ \\} § @ * / "
+        "\\& #]"
+    }
+    NumberElements{
+        latn{
+            miscPatterns{
+                approximately{"≈{0}"}
+                atLeast{"{0}+"}
+            }
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+                percentFormat{"#,##0 %"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        few{"0 tysac"}
+                        one{"0 tysac"}
+                        other{"0 tysac"}
+                        two{"0 tysac"}
+                    }
+                    10000{
+                        few{"00 tysac"}
+                        one{"00 tysac"}
+                        other{"00 tysac"}
+                        two{"00 tysac"}
+                    }
+                    100000{
+                        few{"000 tysac"}
+                        one{"000 tysac"}
+                        other{"000 tysac"}
+                        two{"000 tysac"}
+                    }
+                    1000000{
+                        few{"0 miliony"}
+                        one{"0 milion"}
+                        other{"0 milionow"}
+                        two{"0 miliona"}
+                    }
+                    10000000{
+                        few{"00 milionow"}
+                        one{"00 milionow"}
+                        other{"00 milionow"}
+                        two{"00 milionow"}
+                    }
+                    100000000{
+                        few{"000 milionow"}
+                        one{"000 milionow"}
+                        other{"000 milionow"}
+                        two{"000 milionow"}
+                    }
+                    1000000000{
+                        few{"0 miliardy"}
+                        one{"0 miliarda"}
+                        other{"0 miliardow"}
+                        two{"0 miliarźe"}
+                    }
+                    10000000000{
+                        few{"00 miliardow"}
+                        one{"00 miliardow"}
+                        other{"00 miliardow"}
+                        two{"00 miliardow"}
+                    }
+                    100000000000{
+                        few{"000 miliardow"}
+                        one{"000 miliardow"}
+                        other{"000 miliardow"}
+                        two{"000 miliardow"}
+                    }
+                    1000000000000{
+                        few{"0 biliony"}
+                        one{"0 bilion"}
+                        other{"0 bilionow"}
+                        two{"0 biliona"}
+                    }
+                    10000000000000{
+                        few{"00 bilionow"}
+                        one{"00 bilionow"}
+                        other{"00 bilionow"}
+                        two{"00 bilionow"}
+                    }
+                    100000000000000{
+                        few{"000 bilionow"}
+                        one{"000 bilionow"}
+                        other{"000 bilionow"}
+                        two{"000 bilionow"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        few{"0 tys'.' ¤"}
+                        one{"0 tys'.' ¤"}
+                        other{"0 tys'.' ¤"}
+                        two{"0 tys'.' ¤"}
+                    }
+                    10000{
+                        few{"00 tys'.' ¤"}
+                        one{"00 tys'.' ¤"}
+                        other{"00 tys'.' ¤"}
+                        two{"00 tys'.' ¤"}
+                    }
+                    100000{
+                        few{"000 tys'.' ¤"}
+                        one{"000 tys'.' ¤"}
+                        other{"000 tys'.' ¤"}
+                        two{"000 tys'.' ¤"}
+                    }
+                    1000000{
+                        few{"0 mio'.' ¤"}
+                        one{"0 mio'.' ¤"}
+                        other{"0 mio'.' ¤"}
+                        two{"0 mio'.' ¤"}
+                    }
+                    10000000{
+                        few{"00 mio'.' ¤"}
+                        one{"00 mio'.' ¤"}
+                        other{"00 mio'.' ¤"}
+                        two{"00 mio'.' ¤"}
+                    }
+                    100000000{
+                        few{"000 mio'.' ¤"}
+                        one{"000 mio'.' ¤"}
+                        other{"000 mio'.' ¤"}
+                        two{"000 mio'.' ¤"}
+                    }
+                    1000000000{
+                        few{"0 mrd'.' ¤"}
+                        one{"0 mrd'.' ¤"}
+                        other{"0 mrd'.' ¤"}
+                        two{"0 mrd'.' ¤"}
+                    }
+                    10000000000{
+                        few{"00 mrd'.' ¤"}
+                        one{"00 mrd'.' ¤"}
+                        other{"00 mrd'.' ¤"}
+                        two{"00 mrd'.' ¤"}
+                    }
+                    100000000000{
+                        few{"000 mrd'.' ¤"}
+                        one{"000 mrd'.' ¤"}
+                        other{"000 mrd'.' ¤"}
+                        two{"000 mrd'.' ¤"}
+                    }
+                    1000000000000{
+                        few{"0 bil'.' ¤"}
+                        one{"0 bil'.' ¤"}
+                        other{"0 bil'.' ¤"}
+                        two{"0 bil'.' ¤"}
+                    }
+                    10000000000000{
+                        few{"00 bil'.' ¤"}
+                        one{"00 bil'.' ¤"}
+                        other{"00 bil'.' ¤"}
+                        two{"00 bil'.' ¤"}
+                    }
+                    100000000000000{
+                        few{"000 bil'.' ¤"}
+                        one{"000 bil'.' ¤"}
+                        other{"000 bil'.' ¤"}
+                        two{"000 bil'.' ¤"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0 tys'.'"}
+                        other{"0 tys'.'"}
+                    }
+                    10000{
+                        one{"00 tys'.'"}
+                        other{"00 tys'.'"}
+                    }
+                    100000{
+                        one{"000 tys'.'"}
+                        other{"000 tys'.'"}
+                    }
+                    1000000{
+                        one{"0 mio'.'"}
+                        other{"0 mio'.'"}
+                    }
+                    10000000{
+                        one{"00 mio'.'"}
+                        other{"00 mio'.'"}
+                    }
+                    100000000{
+                        one{"000 mio'.'"}
+                        other{"000 mio'.'"}
+                    }
+                    1000000000{
+                        one{"0 mrd'.'"}
+                        other{"0 mrd'.'"}
+                    }
+                    10000000000{
+                        one{"00 mrd'.'"}
+                        other{"00 mrd'.'"}
+                    }
+                    100000000000{
+                        one{"000 mrd'.'"}
+                        other{"000 mrd'.'"}
+                    }
+                    1000000000000{
+                        one{"0 bil'.'"}
+                        other{"0 bil'.'"}
+                    }
+                    10000000000000{
+                        one{"00 bil'.'"}
+                        other{"00 bil'.'"}
+                    }
+                    100000000000000{
+                        one{"000 bil'.'"}
+                        other{"000 bil'.'"}
+                    }
+                }
+            }
+            symbols{
+                approximatelySign{"≈"}
+                decimal{","}
+                group{"."}
+                superscriptingExponent{"·"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"Na {0}. wotbocenju napšawo."}
+            }
+            plural{
+                few{"{0} dny"}
+                one{"{0} źeń"}
+                other{"{0} dnjow"}
+                two{"{0} dnja"}
+            }
+        }
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d. MMMM y G",
+                "d. MMMM y G",
+                "d.M.y G",
+                "d.M.yy GGGGG",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'zeger' {0}",
+                "{1} 'zeger' {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "Hmmsszzzz",
+                "Hmmssz",
+                "Hmmss",
+                "Hmm",
+                "GyMMMMEEEEd",
+                "GyMMMMd",
+                "GyMd",
+                "GGGGGyyMd",
+            }
+            availableFormats{
+                Bh{"h 'hodź'. B"}
+                EHm{"E, HH:mm"}
+                EHms{"E, HH:mm:ss"}
+                Ed{"E, d."}
+                Ehm{"E h:mm a"}
+                Ehms{"E, h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, d. MMM y G"}
+                GyMMMd{"d. MMM y G"}
+                GyMd{"d.M.y GGGGG"}
+                H{"HH 'hodź'."}
+                MEd{"E, d.M."}
+                MMMEd{"E, d. MMM"}
+                MMMMd{"d. MMMM"}
+                MMMd{"d. MMM"}
+                Md{"d.M."}
+                h{"h 'hodź'. a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"M.y GGGGG"}
+                yyyyMEd{"E, d.M.y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E, d. MMM y G"}
+                yyyyMMMM{"LLLL y G"}
+                yyyyMMMd{"d. MMM y G"}
+                yyyyMd{"d.M.y GGGGG"}
+                yyyyQQQ{"QQQ y G"}
+                yyyyQQQQ{"QQQQ y G"}
+            }
+            intervalFormats{
+                Bh{
+                    B{"h 'hodź'. B – h 'hodź'. B"}
+                }
+                Bhm{
+                    B{"h:mm 'hodź'. B – h:mm 'hodź'. B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                }
+                GyM{
+                    G{"GGGGG y-MM – GGGGG y-MM"}
+                    M{"GGGGG y-MM – y-MM"}
+                    y{"GGGGG y-MM – y-MM"}
+                }
+                GyMEd{
+                    G{"GGGGG y-MM-dd, E – GGGGG y-MM-dd, E"}
+                    M{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    d{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                    y{"GGGGG y-MM-dd, E – y-MM-dd, E"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    y{"G y MMM d – y MMM d"}
+                }
+                GyMd{
+                    G{"GGGGG y-MM-dd – GGGGG y-MM-dd"}
+                    M{"GGGGG y-MM-dd – y-MM-dd"}
+                    d{"GGGGG y-MM-dd – y-MM-dd"}
+                    y{"GGGGG y-MM-dd – y-MM-dd"}
+                }
+                M{
+                    M{"M. – M."}
+                }
+                MEd{
+                    M{"E, d.M. – E, d.M."}
+                    d{"E, d.M. – E, d.M."}
+                }
+                MMM{
+                    M{"LLL – LLL"}
+                }
+                MMMEd{
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. – E, d. MMM"}
+                }
+                MMMd{
+                    M{"d. MMM – d. MMM"}
+                    d{"d. – d. MMM"}
+                }
+                Md{
+                    M{"d.M. – d.M."}
+                    d{"d.M. – d.M."}
+                }
+                d{
+                    d{"d. – d."}
+                }
+                y{
+                    y{"y–y G"}
+                }
+                yM{
+                    M{"M.y – M.y G"}
+                    y{"M.y – M.y G"}
+                }
+                yMEd{
+                    M{"E, d.M.y – E, d.M.y G"}
+                    d{"E, d.M.y – E, d.M.y G"}
+                    y{"E, d.M.y – E, d.M.y G"}
+                }
+                yMMM{
+                    M{"LLL – LLL y G"}
+                    y{"LLL y – LLL y G"}
+                }
+                yMMMEd{
+                    M{"E, d. MMM – E, d. MMM y G"}
+                    d{"E, d. – E, d. MMM y G"}
+                    y{"E, d. MMM y – E, d. MMM y G"}
+                }
+                yMMMM{
+                    M{"LLLL – LLLL y G"}
+                    y{"LLLL y – LLLL y G"}
+                }
+                yMMMd{
+                    M{"d. MMM – d. MMM y G"}
+                    d{"d. – d. MMM y G"}
+                    y{"d. MMM y – d. MMM y G"}
+                }
+                yMd{
+                    M{"d.M.y – d.M.y G"}
+                    d{"d.M.y – d.M.y G"}
+                    y{"d.M.y – d.M.y G"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "dopołdnja",
+                "wótpołdnja",
+            }
+            AmPmMarkersAbbr{
+                "dop.",
+                "wótp.",
+            }
+            DateTimePatterns{
+                "H:mm:ss zzzz",
+                "H:mm:ss z",
+                "H:mm:ss",
+                "H:mm",
+                "EEEE, d. MMMM y",
+                "d. MMMM y",
+                "d.M.y",
+                "d.M.yy",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'zeger' {0}",
+                "{1} 'zeger' {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "Hmmsszzzz",
+                "Hmmssz",
+                "Hmmss",
+                "Hmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMd",
+                "yyMd",
+            }
+            availableFormats{
+                EHm{"E, 'zeg'. H:mm"}
+                EHms{"E, HH:mm:ss"}
+                Ed{"E, d."}
+                Ehm{"E, h:mm a"}
+                Ehms{"E, h:mm:ss a"}
+                Gy{"y G"}
+                GyMMM{"MMM y G"}
+                GyMMMEd{"E, d. MMM y G"}
+                GyMMMd{"d. MMM y G"}
+                GyMd{"d.M.y GGGGG"}
+                H{"'zeg'. H"}
+                Hm{"'zeg'. H:mm"}
+                Hms{"H:mm:ss"}
+                Hmsv{"H:mm:ss v"}
+                Hmv{"H:mm v"}
+                MEd{"E, d.M."}
+                MMMEd{"E, d. MMM"}
+                MMMMW{
+                    few{"W. 'tyźeń' MMMM"}
+                    one{"W. 'tyźeń' MMMM"}
+                    other{"W. 'tyźeń' MMMM"}
+                    two{"W. 'tyźeń' MMMM"}
+                }
+                MMMMd{"d. MMMM"}
+                MMMd{"d. MMM"}
+                Md{"d.M."}
+                d{"d."}
+                h{"h a"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                yM{"M.y"}
+                yMEd{"E, d.M.y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d. MMM y"}
+                yMMMM{"LLLL y"}
+                yMMMd{"d. MMM y"}
+                yMd{"d.M.y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+                yw{
+                    few{"w. 'tyźeń' 'lěta' Y"}
+                    one{"w. 'tyźeń' 'lěta' Y"}
+                    other{"w. 'tyźeń' 'lěta' Y"}
+                    two{"w. 'tyźeń' 'lěta' Y"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "nje",
+                        "pón",
+                        "wał",
+                        "srj",
+                        "stw",
+                        "pět",
+                        "sob",
+                    }
+                    short{
+                        "nj",
+                        "pó",
+                        "wa",
+                        "sr",
+                        "st",
+                        "pě",
+                        "so",
+                    }
+                    wide{
+                        "njeźela",
+                        "pónjeźele",
+                        "wałtora",
+                        "srjoda",
+                        "stwórtk",
+                        "pětk",
+                        "sobota",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "n",
+                        "p",
+                        "w",
+                        "s",
+                        "s",
+                        "p",
+                        "s",
+                    }
+                }
+            }
+            dayPeriod{
+                stand-alone{
+                    wide{
+                        am{"dopołdnja"}
+                        pm{"wótpołdnja"}
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "pś.Chr.n.",
+                    "pó Chr.n.",
+                }
+                abbreviated%variant{
+                    "pś.n.l.c.",
+                    "n.l.c.",
+                }
+                wide{
+                    "pśed Kristusowym naroźenim",
+                    "pó Kristusowem naroźenju",
+                }
+                wide%variant{
+                    "pśed našym licenim casa",
+                    "našogo licenja casa",
+                }
+            }
+            intervalFormats{
+                Bh{
+                    B{"h 'hodź'. B – h 'hodź'. B"}
+                }
+                Bhm{
+                    B{"h:mm 'hodź'. B – h:mm 'hodź'. B"}
+                }
+                Gy{
+                    G{"G y – G y"}
+                }
+                GyM{
+                    G{"MM/y G – MM/y G"}
+                    M{"MM/y – MM/y G"}
+                    y{"MM.y – MM.y G"}
+                }
+                GyMEd{
+                    G{"E, dd.MM.y G – E, dd.MM.y G"}
+                    M{"E, dd.MM. – E, dd.MM.y G"}
+                    d{"E, dd.MM.y – E, dd.MM.y G"}
+                    y{"E, dd.MM.y – E, dd.MM.y G"}
+                }
+                GyMMM{
+                    G{"MMM y G – MMM y G"}
+                    M{"MMM–MMM y G"}
+                    y{"MMM y – MMM y G"}
+                }
+                GyMMMEd{
+                    G{"E, d. MMM y G – E, d. MMM y G"}
+                    M{"E, d. MMM – E, d. MMM y G"}
+                    d{"E, d. – E, d. MMM y G"}
+                    y{"E, d. MMM y – E, d. MMM y G"}
+                }
+                GyMMMd{
+                    G{"d. MMM y G – d. MMM y G"}
+                    M{"d. MMM – d. MMM y G"}
+                    d{"d.–d. MMM y G"}
+                    y{"d. MMM y – d. MMM y G"}
+                }
+                GyMd{
+                    G{"dd.MM.y G – dd.MM.y G"}
+                    M{"dd.MM. – dd.MM.y G"}
+                    d{"dd.–dd.MM.y G"}
+                    y{"dd.MM.y – dd.MM.y G"}
+                }
+                H{
+                    H{"'zeg'. H–H"}
+                }
+                Hm{
+                    H{"'zeg'. H:mm – H:mm"}
+                    m{"'zeg'. H:mm – H:mm"}
+                }
+                Hmv{
+                    H{"'zeg'. H:mm – H:mm v"}
+                    m{"'zeg'. H:mm – H:mm v"}
+                }
+                Hv{
+                    H{"H–H v"}
+                }
+                M{
+                    M{"M. – M."}
+                }
+                MEd{
+                    M{"E, d.M. – E, d.M."}
+                    d{"E, d.M. – E, d.M."}
+                }
+                MMM{
+                    M{"LLL – LLL"}
+                }
+                MMMEd{
+                    M{"E, d. MMM – E, d. MMM"}
+                    d{"E, d. – E, d. MMM"}
+                }
+                MMMd{
+                    M{"d. MMM – d. MMM"}
+                    d{"d. – d. MMM"}
+                }
+                Md{
+                    M{"d.M. – d.M."}
+                    d{"d.M. – d.M."}
+                }
+                d{
+                    d{"d. – d."}
+                }
+                h{
+                    a{"h a – h a"}
+                    h{"h–h a"}
+                }
+                hm{
+                    a{"h:mm a – h:mm a"}
+                    h{"h:mm – h:mm a"}
+                    m{"h:mm – h:mm a"}
+                }
+                hmv{
+                    a{"h:mm a – h:mm a v"}
+                    h{"h:mm – h:mm a v"}
+                    m{"h:mm – h:mm a v"}
+                }
+                hv{
+                    a{"h a – h a v"}
+                    h{"h–h a v"}
+                }
+                yM{
+                    M{"M.y – M.y"}
+                    y{"M.y – M.y"}
+                }
+                yMEd{
+                    M{"E, d.M.y – E, d.M.y"}
+                    d{"E, d.M.y – E, d.M.y"}
+                    y{"E, d.M.y – E, d.M.y"}
+                }
+                yMMM{
+                    M{"LLL – LLL y"}
+                    y{"LLL y – LLL y"}
+                }
+                yMMMEd{
+                    M{"E, d. MMM – E, d. MMM y"}
+                    d{"E, d. – E, d. MMM y"}
+                    y{"E, d. MMM y – E, d. MMM y"}
+                }
+                yMMMM{
+                    M{"LLLL – LLLL y"}
+                    y{"LLLL y – LLLL y"}
+                }
+                yMMMd{
+                    M{"d. MMM – d. MMM y"}
+                    d{"d. – d. MMM y"}
+                    y{"d. MMM y – d. MMM y"}
+                }
+                yMd{
+                    M{"d.M.y – d.M.y"}
+                    d{"d.M.y – d.M.y"}
+                    y{"d.M.y – d.M.y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "jan.",
+                        "feb.",
+                        "měr.",
+                        "apr.",
+                        "maj.",
+                        "jun.",
+                        "jul.",
+                        "awg.",
+                        "sep.",
+                        "okt.",
+                        "now.",
+                        "dec.",
+                    }
+                    wide{
+                        "januara",
+                        "februara",
+                        "měrca",
+                        "apryla",
+                        "maja",
+                        "junija",
+                        "julija",
+                        "awgusta",
+                        "septembra",
+                        "oktobra",
+                        "nowembra",
+                        "decembra",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "jan",
+                        "feb",
+                        "měr",
+                        "apr",
+                        "maj",
+                        "jun",
+                        "jul",
+                        "awg",
+                        "sep",
+                        "okt",
+                        "now",
+                        "dec",
+                    }
+                    narrow{
+                        "j",
+                        "f",
+                        "m",
+                        "a",
+                        "m",
+                        "j",
+                        "j",
+                        "a",
+                        "s",
+                        "o",
+                        "n",
+                        "d",
+                    }
+                    wide{
+                        "januar",
+                        "februar",
+                        "měrc",
+                        "apryl",
+                        "maj",
+                        "junij",
+                        "julij",
+                        "awgust",
+                        "september",
+                        "oktober",
+                        "nowember",
+                        "december",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "kw1",
+                        "kw2",
+                        "kw3",
+                        "kw4",
+                    }
+                    wide{
+                        "1. kwartal",
+                        "2. kwartal",
+                        "3. kwartal",
+                        "4. kwartal",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"aktiwity"}
+        african_scripts{"afrikańske pisma"}
+        american_scripts{"amerikańske pisma"}
+        animal{"zwěrje"}
+        animals_nature{"flora abo fawna"}
+        arrows{"šypy"}
+        body{"śěło"}
+        box_drawing{"znamuška ramika"}
+        building{"twarjenje"}
+        bullets_stars{"naliceńske znamuška/gwězdki"}
+        consonantal_jamo{"jamo-konsonanty"}
+        currency_symbols{"symbole płaśidłow"}
+        dash_connector{"lažeca smužka/wězawka"}
+        digits{"městna"}
+        dingbats{"pyšnjeńki"}
+        divination_symbols{"symbole wěšćenja"}
+        downwards_arrows{"šypy dołoj"}
+        downwards_upwards_arrows{"šypy górjej - šypy dołoj"}
+        east_asian_scripts{"pódzajšnoaziske pisma"}
+        european_scripts{"europejske pisma"}
+        female{"žeńska"}
+        flag{"chórgoj"}
+        flags{"chórgoje"}
+        food_drink{"jěza & piśe"}
+        format_whitespace{"format a licha tasta"}
+        full_width_form_variant{"warianty w połnej šyrokosći"}
+        geometric_shapes{"geometriske formy"}
+        half_width_form_variant{"warianty w połojcnej šyrokosći"}
+        han_characters{"han-znamuško"}
+        han_radicals{"han- radikale"}
+        hanzi_simplified{"hanzi (zjadnorjone))"}
+        hanzi_traditional{"hanzi (tradicionelne)"}
+        heart{"wutšoba"}
+        historic_scripts{"historiske pisma"}
+        ideographic_desc_characters{"ideografiske wopisujuce znamuška"}
+        japanese_kana{"japańske kana"}
+        keycap{"tasta"}
+        leftwards_arrows{"šypy nalěwo"}
+        leftwards_rightwards_arrows{"šypy nalěwo - šypy napšawo"}
+        letterlike_symbols{"pismikam pódobne symbole"}
+        limited_use{"wobgranicowane wužywanje"}
+        male{"muski"}
+        math_symbols{"mytematiski symbol"}
+        middle_eastern_scripts{"krotkoaziske pisma"}
+        miscellaneous{"(0)-wšake"}
+        modern_scripts{"moderne pisma"}
+        modifier{"póstajenje"}
+        musical_symbols{"muzikaliske symbole"}
+        nature{"pśiroda"}
+        nonspacing{"šćitane znamuška"}
+        numbers{"cyfry"}
+        objects{"objekty"}
+        other{"(0)-druge"}
+        paired{"pórowany"}
+        person{"wósoba"}
+        phonetic_alphabet{"fonetiski alfabet"}
+        pictographs{"piktogramy"}
+        place{"městno"}
+        plant{"rostlina"}
+        punctuation{"interpunkcija"}
+        rightwards_arrows{"šypy napšawo"}
+        sign_standard_symbols{"znamuško abo symbol"}
+        small_form_variant{"małe formowe warianty"}
+        smileys_people{"smiley a luźe"}
+        south_asian_scripts{"pódpołdnjoaziske pisma"}
+        southeast_asian_scripts{"krotkozajtšnoaziske pisma"}
+        spacing{"wótstawk"}
+        technical_symbols{"techniski symbol"}
+        tone_marks{"zukowe znamje"}
+        travel{"drogowanje"}
+        travel_places{"drogowanje a města"}
+        upwards_arrows{"šypy górjej"}
+        variant_forms{"warianta"}
+        vocalic_jamo{"jamo-wokale"}
+        weather{"wjedro"}
+        western_asian_scripts{"pódwjacornoaziske pisma"}
+        whitespace{"pusta tasta"}
+    }
+    delimiters{
+        alternateQuotationEnd{"‘"}
+        alternateQuotationStart{"‚"}
+        quotationEnd{"“"}
+        quotationStart{"„"}
+    }
+    fields{
+        day{
+            dn{"źeń"}
+            relative{
+                "-1"{"cora"}
+                "0"{"źinsa"}
+                "1"{"witśe"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} dny"}
+                    one{"za {0} źeń"}
+                    other{"za {0} dnjow"}
+                    two{"za {0} dnja"}
+                }
+                past{
+                    few{"pśed {0} dnjami"}
+                    one{"pśed {0} dnjom"}
+                    other{"pśed {0} dnjami"}
+                    two{"pśed {0} dnjoma"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"ź"}
+            relative{
+                "-1"{"cr."}
+                "0"{"źis."}
+                "1"{"wit."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} ź"}
+                    one{"za {0} ź"}
+                    other{"za {0} ź"}
+                    two{"za {0} ź"}
+                }
+                past{
+                    few{"pśed {0} d"}
+                    one{"pśed {0} d"}
+                    other{"pśed {0} d"}
+                    two{"pśed {0} d"}
+                }
+            }
+        }
+        day-short{
+            relative{
+                "-1"{"cra."}
+                "0"{"źins."}
+                "1"{"witś."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} dny"}
+                    one{"za {0} źeń"}
+                    other{"za {0} dnj."}
+                    two{"za {0} dnj."}
+                }
+                past{
+                    few{"pśed {0} dnj."}
+                    one{"pśed {0} dnj."}
+                    other{"pśed {0} dnj."}
+                    two{"pśed {0} dnj."}
+                }
+            }
+        }
+        dayOfYear{
+            dn{"źeń lěta"}
+        }
+        dayOfYear-narrow{
+            dn{"ź. lě."}
+        }
+        dayperiod{
+            dn{"połojca dnja"}
+        }
+        dayperiod-narrow{
+            dn{"poł. dnja"}
+        }
+        era{
+            dn{"epocha"}
+        }
+        fri{
+            relative{
+                "-1"{"zajźony pětk"}
+                "0"{"ten pětk"}
+                "1"{"pśiducy pětk"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} pětki"}
+                    one{"za {0} pětk"}
+                    other{"za {0} pětkow"}
+                    two{"za {0} pětka"}
+                }
+                past{
+                    few{"pśed {0} pětkami"}
+                    one{"pśed {0} pětkom"}
+                    other{"pśed {0} pětkami"}
+                    two{"pśed {0} pětkoma"}
+                }
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"zajźony pě."}
+                "0"{"ten pě."}
+                "1"{"pśiducy pě."}
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"zajźony pět."}
+                "0"{"ten pět."}
+                "1"{"pśiducy pět."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} pě."}
+                    one{"za {0} pě."}
+                    other{"za {0} pě."}
+                    two{"za {0} pě."}
+                }
+                past{
+                    few{"pśed {0} pě."}
+                    one{"pśed {0} pě."}
+                    other{"pśed {0} pě."}
+                    two{"pśed {0} pě."}
+                }
+            }
+        }
+        hour{
+            dn{"góźina"}
+            relative{
+                "0"{"w toś tej góźinje"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} góźiny"}
+                    one{"za {0} góźinu"}
+                    other{"za {0} góźin"}
+                    two{"za {0} góźinje"}
+                }
+                past{
+                    few{"pśed {0} góźinami"}
+                    one{"pśed {0} góźinu"}
+                    other{"pśed {0} góźinami"}
+                    two{"pśed {0} góźinoma"}
+                }
+            }
+        }
+        hour-narrow{
+            dn{"g"}
+            relativeTime{
+                future{
+                    few{"za {0} g"}
+                    one{"za {0} g"}
+                    other{"za {0} g"}
+                    two{"za {0} g"}
+                }
+                past{
+                    few{"pśed {0} g"}
+                    one{"pśed {0} g"}
+                    other{"pśed {0} g"}
+                    two{"pśed {0} g"}
+                }
+            }
+        }
+        hour-short{
+            dn{"góź."}
+            relativeTime{
+                future{
+                    few{"za {0} góź."}
+                    one{"za {0} góź."}
+                    other{"za {0} góź."}
+                    two{"za {0} góź."}
+                }
+                past{
+                    few{"pśed {0} góź."}
+                    one{"pśed {0} góź."}
+                    other{"pśed {0} góź."}
+                    two{"pśed {0} góź."}
+                }
+            }
+        }
+        minute{
+            dn{"minuta"}
+            relative{
+                "0"{"w toś tej minuśe"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} minuty"}
+                    one{"za {0} minutu"}
+                    other{"za {0} minutow"}
+                    two{"za {0} minuśe"}
+                }
+                past{
+                    few{"pśed {0} minutami"}
+                    one{"pśed {0} minutu"}
+                    other{"pśed {0} minutami"}
+                    two{"pśed {0} minutoma"}
+                }
+            }
+        }
+        minute-narrow{
+            dn{"m"}
+            relativeTime{
+                future{
+                    few{"za {0} m"}
+                    one{"za {0} m"}
+                    other{"za {0} m"}
+                    two{"za {0} m"}
+                }
+                past{
+                    few{"pśed {0} m"}
+                    one{"pśed {0} m"}
+                    other{"pśed {0} m"}
+                    two{"pśed {0} m"}
+                }
+            }
+        }
+        minute-short{
+            dn{"min."}
+            relativeTime{
+                future{
+                    few{"za {0} min."}
+                    one{"za {0} min."}
+                    other{"za {0} min."}
+                    two{"za {0} min."}
+                }
+                past{
+                    few{"pśed {0} min."}
+                    one{"pśed {0} min."}
+                    other{"pśed {0} min."}
+                    two{"pśed {0} min."}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"zajźone pónjeźele"}
+                "0"{"to pónjeźele"}
+                "1"{"pśiduce pónjeźele"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} pónjeźelu"}
+                    one{"za {0} pónjeźelu"}
+                    other{"za {0} pónnjeźelami"}
+                    two{"za {0} pónjeźelu"}
+                }
+                past{
+                    few{"pśed {0} pónjeźelami"}
+                    one{"pśed {0} pónjeźelu"}
+                    other{"pśed {0} pónjeźelami"}
+                    two{"pśed {0} pónjeźeloma"}
+                }
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"zajźone pó."}
+                "0"{"to pó."}
+                "1"{"pśiduce pó."}
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"zajźone pónj."}
+                "0"{"to pónj."}
+                "1"{"pśiduce pónj."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} pón."}
+                    one{"za {0} pón."}
+                    other{"za {0} pón."}
+                    two{"za {0} pón."}
+                }
+                past{
+                    few{"pśed {0} pón."}
+                    one{"pśed {0} pón."}
+                    other{"pśed {0} pón."}
+                    two{"pśed {0} pón."}
+                }
+            }
+        }
+        month{
+            dn{"mjasec"}
+            relative{
+                "-1"{"zajźony mjasec"}
+                "0"{"ten mjasec"}
+                "1"{"pśiducy mjasec"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} mjasecy"}
+                    one{"za {0} mjasec"}
+                    other{"za {0} mjasecow"}
+                    two{"za {0} mjaseca"}
+                }
+                past{
+                    few{"pśed {0} mjasecami"}
+                    one{"pśed {0} mjasecom"}
+                    other{"pśed {0} mjasecami"}
+                    two{"pśed {0} mjasecoma"}
+                }
+            }
+        }
+        month-narrow{
+            relative{
+                "-1"{"zajź. mjasec"}
+                "0"{"te. mjasec"}
+                "1"{"pśid. mjasec"}
+            }
+        }
+        month-short{
+            dn{"mjas."}
+            relative{
+                "-1"{"zajź. mjasec"}
+                "0"{"tot. mjasec"}
+                "1"{"pśiduc. mjasec"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} mjas."}
+                    one{"za {0} mjas."}
+                    other{"za {0} mjas."}
+                    two{"za {0} mjas."}
+                }
+                past{
+                    few{"pśed {0} mjas."}
+                    one{"pśed {0} mjas."}
+                    other{"pśed {0} mjas."}
+                    two{"pśed {0} mjas."}
+                }
+            }
+        }
+        quarter{
+            dn{"kwartal"}
+            relative{
+                "-1"{"zajźony kwartal"}
+                "0"{"toś ten kwartal"}
+                "1"{"pśiducy kwartal"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} kwartale"}
+                    one{"za {0} kwartal"}
+                    other{"za {0} kwartalow"}
+                    two{"za {0} kwartala"}
+                }
+                past{
+                    few{"pśed {0} kwartalami"}
+                    one{"pśed {0} kwartalom"}
+                    other{"pśed {0} kwartalami"}
+                    two{"pśed {0} kwartaloma"}
+                }
+            }
+        }
+        quarter-narrow{
+            dn{"kw."}
+            relativeTime{
+                future{
+                    few{"za {0} kw."}
+                    one{"za {0} kw."}
+                    other{"za {0} kw."}
+                    two{"za {0} kw."}
+                }
+                past{
+                    few{"pśed {0} kw."}
+                    one{"pśed {0} kw."}
+                    other{"pśed {0} kw."}
+                    two{"pśed {0} kw."}
+                }
+            }
+        }
+        quarter-short{
+            dn{"kwart."}
+            relativeTime{
+                future{
+                    few{"za {0} kwart."}
+                    one{"za {0} kwart."}
+                    other{"za {0} kwart."}
+                    two{"za {0} kwart."}
+                }
+                past{
+                    few{"pśed {0} kwart."}
+                    one{"pśed {0} kwart."}
+                    other{"pśed {0} kwart."}
+                    two{"pśed {0} kwart."}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"zajźonu sobotu"}
+                "0"{"tu sobotu"}
+                "1"{"pśiducu sobotu"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} soboty"}
+                    one{"za {0} sobotu"}
+                    other{"za {0} sobotami"}
+                    two{"za {0} sobośe"}
+                }
+                past{
+                    few{"pśed {0} sobotami"}
+                    one{"pśed {0} sobotu"}
+                    other{"pśed {0} sobotami"}
+                    two{"pśed {0} sobotoma"}
+                }
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"zajźonu so."}
+                "0"{"tu so."}
+                "1"{"pśiducu so."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} so."}
+                    one{"za {0} so."}
+                    other{"za {0} so."}
+                    two{"za {0} so."}
+                }
+                past{
+                    few{"pśed {0} so."}
+                    one{"pśed {0} so."}
+                    other{"pśed {0} so."}
+                    two{"pśed {0} so."}
+                }
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"zajźonu sob."}
+                "0"{"tu sob."}
+                "1"{"pśiducu sob."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} sob."}
+                    one{"za {0} sob."}
+                    other{"za {0} sob."}
+                    two{"za {0} sob."}
+                }
+                past{
+                    few{"pśed {0} sob."}
+                    one{"pśed {0} sob."}
+                    other{"pśed {0} sob."}
+                    two{"pśed {0} sob."}
+                }
+            }
+        }
+        second{
+            dn{"sekunda"}
+            relative{
+                "0"{"něnto"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} sekundy"}
+                    one{"za {0} sekundu"}
+                    other{"za {0} sekundow"}
+                    two{"za {0} sekunźe"}
+                }
+                past{
+                    few{"pśed {0} sekundami"}
+                    one{"pśed {0} sekundu"}
+                    other{"pśed {0} sekundami"}
+                    two{"pśed {0} sekundoma"}
+                }
+            }
+        }
+        second-narrow{
+            dn{"s"}
+            relativeTime{
+                future{
+                    few{"za {0} s"}
+                    one{"za {0} s"}
+                    other{"za {0} s"}
+                    two{"za {0} s"}
+                }
+                past{
+                    few{"pśed {0} s"}
+                    one{"pśed {0} s"}
+                    other{"pśed {0} s"}
+                    two{"pśed {0} s"}
+                }
+            }
+        }
+        second-short{
+            dn{"sek."}
+            relativeTime{
+                future{
+                    few{"za {0} sek."}
+                    one{"za {0} sek."}
+                    other{"za {0} sek."}
+                    two{"za {0} sek."}
+                }
+                past{
+                    few{"pśed {0} sek."}
+                    one{"pśed {0} sek."}
+                    other{"pśed {0} sek."}
+                    two{"pśed {0} sek."}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"zajźonu njeźelu"}
+                "0"{"tu njeźelu"}
+                "1"{"pśiducu njeźelu"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} njeźele"}
+                    one{"za {0} njeźelu"}
+                    other{"za {0} njeźelow"}
+                    two{"za {0} njeźeli"}
+                }
+                past{
+                    few{"pśed {0} njeźelami"}
+                    one{"pśed {0} njeźelu"}
+                    other{"pśed {0} njeźelami"}
+                    two{"pśed {0} njeźeloma"}
+                }
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"zajźonu nj."}
+                "0"{"tu nj."}
+                "1"{"pśiducu nj."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} nj."}
+                    one{"za {0} nj."}
+                    other{"za {0} nj."}
+                    two{"za {0} nj."}
+                }
+                past{
+                    few{"pśed {0} nj."}
+                    one{"pśed {0} nj."}
+                    other{"pśed {0} nj."}
+                    two{"pśed {0} nj."}
+                }
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"zajźonu nje."}
+                "0"{"tu nje."}
+                "1"{"pśiducu nje."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} nje."}
+                    one{"za {0} nje."}
+                    other{"za {0} nje."}
+                    two{"za {0} nje."}
+                }
+                past{
+                    few{"pśed {0} nje."}
+                    one{"pśed {0} nje."}
+                    other{"pśed {0} nje."}
+                    two{"pśed {0} nje."}
+                }
+            }
+        }
+        thu{
+            relative{
+                "-1"{"zajźony stwórtk"}
+                "0"{"ten stwórtk"}
+                "1"{"pśiducy stwórtk"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} stwórtki"}
+                    one{"za {0} stwórtk"}
+                    other{"za {0} stwórtkami"}
+                    two{"za {0} stwórtka"}
+                }
+                past{
+                    few{"pśed {0} stwórtkami"}
+                    one{"pśed {0} stwórtkom"}
+                    other{"pśed {0} stwórtkami"}
+                    two{"pśed {0} stwórtkoma"}
+                }
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"zajźony st."}
+                "0"{"ten st."}
+                "1"{"pśiducy st."}
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"zajźony stw."}
+                "0"{"ten stw."}
+                "1"{"pśiducy stw."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} stw."}
+                    one{"za {0} stw."}
+                    other{"za {0} stw."}
+                    two{"za {0} stw."}
+                }
+                past{
+                    few{"pśed {0} stw."}
+                    one{"pśed {0} stw."}
+                    other{"pśed {0} stw."}
+                    two{"pśed {0} stw."}
+                }
+            }
+        }
+        tue{
+            relative{
+                "-1"{"zajźonu wałtoru"}
+                "0"{"tu wałtoru"}
+                "1"{"pśiducu wałtoru"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} wałtory"}
+                    one{"za {0} wałtoru"}
+                    other{"za {0} wałtorami"}
+                    two{"za {0} wałtorje"}
+                }
+                past{
+                    few{"pśed {0} wałtorami"}
+                    one{"pśed {0} wałtoru"}
+                    other{"pśed {0} wutorami"}
+                    two{"pśed {0} wałtoroma"}
+                }
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"zajźonu wa."}
+                "0"{"tu wa."}
+                "1"{"pśiducu wa."}
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"zajźonu wałt."}
+                "0"{"tu wałt."}
+                "1"{"pśiducu wałt."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} wałt."}
+                    one{"za {0} wałt."}
+                    other{"za {0} wałt."}
+                    two{"za {0} wałt."}
+                }
+                past{
+                    few{"pśed {0} wałt."}
+                    one{"pśed {0} wałt."}
+                    other{"pśed {0} wałt."}
+                    two{"pśed {0} wałt."}
+                }
+            }
+        }
+        wed{
+            relative{
+                "-1"{"zajźonu srjodu"}
+                "0"{"tu srjodu"}
+                "1"{"pśiducu srjodu"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} srjody"}
+                    one{"za {0} srjodu"}
+                    other{"za {0} srjodami"}
+                    two{"za {0} srjoźe"}
+                }
+                past{
+                    few{"pśed {0} srjodami"}
+                    one{"pśed {0} srjodu"}
+                    other{"pśed {0} srjodami"}
+                    two{"pśed {0} srjodoma"}
+                }
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"zajźonu sr."}
+                "0"{"tu sr."}
+                "1"{"pśiducu sr."}
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"zajźonu srj."}
+                "0"{"tu srj."}
+                "1"{"pśiducu srj."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} srj."}
+                    one{"za {0} srj."}
+                    other{"za {0} srj."}
+                    two{"za {0} srj."}
+                }
+                past{
+                    few{"pśed {0} srj."}
+                    one{"pśed {0} srj."}
+                    other{"pśed {0} srj."}
+                    two{"pśed {0} srj."}
+                }
+            }
+        }
+        week{
+            dn{"tyźeń"}
+            relative{
+                "-1"{"zajźony tyźeń"}
+                "0"{"ten tyźeń"}
+                "1"{"pśiducy tyźeń"}
+            }
+            relativePeriod{"tyźeń wot {0}"}
+            relativeTime{
+                future{
+                    few{"za {0} tyźenje"}
+                    one{"za {0} tyźeń"}
+                    other{"za {0} tyźenjow"}
+                    two{"za {0} tyźenja"}
+                }
+                past{
+                    few{"pśed {0} tyźenjami"}
+                    one{"pśed {0} tyźenjom"}
+                    other{"pśed {0} tyźenjami"}
+                    two{"pśed {0} tyźenjoma"}
+                }
+            }
+        }
+        week-narrow{
+            relative{
+                "-1"{"zajź. tyźeń"}
+                "0"{"te. tyźeń"}
+                "1"{"pśid. tyźeń"}
+            }
+        }
+        week-short{
+            dn{"tyź."}
+            relative{
+                "-1"{"zajź. tyźeń"}
+                "0"{"tot. tyźeń"}
+                "1"{"pśiduc. tyźeń"}
+            }
+            relativePeriod{"tyźeń wót {0}"}
+            relativeTime{
+                future{
+                    few{"za {0} tyź."}
+                    one{"za {0} tyź."}
+                    other{"za {0} tyź."}
+                    two{"za {0} tyź."}
+                }
+                past{
+                    few{"pśed {0} tyź."}
+                    one{"pśed {0} tyź."}
+                    other{"pśed {0} tyź."}
+                    two{"pśed {0} tyź."}
+                }
+            }
+        }
+        weekOfMonth{
+            dn{"tyźeń mjaseca"}
+        }
+        weekOfMonth-short{
+            dn{"tyź. mjas."}
+        }
+        weekday{
+            dn{"źeń tyźenja"}
+        }
+        weekdayOfMonth{
+            dn{"źeń tyźenja w mjasecu"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"ź. t. w mjas."}
+        }
+        weekdayOfMonth-short{
+            dn{"ź. tyź. w mjas."}
+        }
+        year{
+            dn{"lěto"}
+            relative{
+                "-1"{"łoni"}
+                "0"{"lětosa"}
+                "1"{"znowa"}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} lěta"}
+                    one{"za {0} lěto"}
+                    other{"za {0} lět"}
+                    two{"za {0} lěśe"}
+                }
+                past{
+                    few{"pśed {0} lětami"}
+                    one{"pśed {0} lětom"}
+                    other{"pśed {0} lětami"}
+                    two{"pśed {0} lětoma"}
+                }
+            }
+        }
+        year-narrow{
+            relative{
+                "-1"{"ło."}
+                "0"{"lět."}
+                "1"{"zno."}
+            }
+        }
+        year-short{
+            dn{"l."}
+            relative{
+                "-1"{"łon."}
+                "0"{"lěts."}
+                "1"{"znow."}
+            }
+            relativeTime{
+                future{
+                    few{"za {0} l."}
+                    one{"za {0} l."}
+                    other{"za {0} l."}
+                    two{"za {0} l."}
+                }
+                past{
+                    few{"pśed {0} l."}
+                    one{"pśed {0} l."}
+                    other{"pśed {0} l."}
+                    two{"pśed {0} l."}
+                }
+            }
+        }
+        zone{
+            dn{"casowe pasmo"}
+        }
+        zone-narrow{
+            dn{"cas. pasmo"}
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} abo {1}"}
+            end{"{0} abo {1}"}
+        }
+        standard{
+            2{"{0} a {1}"}
+            end{"{0} a {1}"}
+        }
+        unit{
+            2{"{0} a {1}"}
+        }
+        unit-narrow{
+            end{"{0}, {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"britiski"}
+        US{"ameriski"}
+        metric{"metriski"}
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "dsb",
+            }
+            surnameFirst{
+                "ko",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+        namePattern{
+            givenFirst-long-addressing-formal{"{title} {surname}"}
+            givenFirst-long-addressing-informal{"{given-informal}"}
+            givenFirst-long-monogram-informal{"{given-informal-monogram-allCaps}{surname-monogram-allCaps}"}
+            givenFirst-long-referring-formal{"{title} {given} {given2} {surname} {generation} {credentials}"}
+            givenFirst-long-referring-informal{"{given-informal} {surname}"}
+            givenFirst-medium-addressing-formal{"{title} {surname}"}
+            givenFirst-medium-addressing-informal{"{given-informal}"}
+            givenFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-medium-referring-formal{"{given} {given2-initial} {surname} {generation} {credentials}"}
+            givenFirst-medium-referring-informal{"{given-informal} {surname}"}
+            givenFirst-short-addressing-formal{"{title} {surname}"}
+            givenFirst-short-addressing-informal{"{given-informal}"}
+            givenFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-short-referring-formal{"{given-initial} {given2-initial} {surname}"}
+            givenFirst-short-referring-informal{"{given-informal} {surname-initial}"}
+            sorting-long-referring-formal{"{surname-core}, {given} {given2} {surname-prefix}"}
+            sorting-long-referring-informal{"{surname}, {given-informal}"}
+            sorting-medium-referring-formal{"{surname-core}, {given} {given2-initial} {surname-prefix}"}
+            sorting-medium-referring-informal{"{surname}, {given-informal}"}
+            sorting-short-referring-formal{"{surname-core}, {given-initial} {given2-initial} {surname-prefix}"}
+            sorting-short-referring-informal{"{surname}, {given-informal}"}
+            surnameFirst-long-addressing-formal{"{title} {surname}"}
+            surnameFirst-long-addressing-informal{"{given-informal}"}
+            surnameFirst-long-monogram-informal{"{surname-monogram-allCaps}{given-informal-monogram-allCaps}"}
+            surnameFirst-long-referring-formal{"{surname}, {title} {given} {given2} {generation} {credentials}"}
+            surnameFirst-long-referring-informal{"{surname}, {given-informal}"}
+            surnameFirst-medium-addressing-formal{"{title} {surname}"}
+            surnameFirst-medium-addressing-informal{"{given-informal}"}
+            surnameFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-medium-referring-formal{"{surname}, {given} {given2-initial} {generation} {credentials}"}
+            surnameFirst-medium-referring-informal{"{surname}, {given-informal}"}
+            surnameFirst-short-addressing-formal{"{title} {surname}"}
+            surnameFirst-short-addressing-informal{"{given-informal}"}
+            surnameFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-short-referring-formal{"{surname}, {given-initial} {given2-initial}"}
+            surnameFirst-short-referring-informal{"{surname}, {given-initial}"}
+        }
+    }
+}

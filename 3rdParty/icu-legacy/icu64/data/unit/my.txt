@@ -1,0 +1,1328 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+my{
+    units{
+        acceleration{
+            g-force{
+                other{"{0} ဆွဲငင်အား"}
+            }
+            meter-per-square-second{
+                other{"{0} မီတာ/စက္ကန့်နှစ်ထပ်ကိန်း"}
+            }
+        }
+        angle{
+            arc-minute{
+                other{"{0} မိနစ်"}
+            }
+            arc-second{
+                other{"{0} စက္ကန့်"}
+            }
+            degree{
+                other{"{0} ဒီဂရီ"}
+            }
+            radian{
+                other{"{0} ရေဒီယဲန်း"}
+            }
+            revolution{
+                dnam{"လည်ပတ်ခြင်း"}
+                other{"{0} လည်ပတ်ခြင်း"}
+            }
+        }
+        area{
+            acre{
+                other{"{0} ဧက"}
+            }
+            hectare{
+                other{"{0} ဟက်တာ"}
+            }
+            square-centimeter{
+                other{"{0} စတုရန်းစင်တီမီတာ"}
+                per{"တစ်စတုရန်းစင်တီမီတာလျှင် {0}"}
+            }
+            square-foot{
+                other{"{0} စတုရန်းပေ"}
+            }
+            square-inch{
+                other{"{0} စတုရန်းလက်မ"}
+                per{"တစ်စတုရန်းလက်မလျှင် {0}"}
+            }
+            square-kilometer{
+                other{"{0} စတုရန်းကီလိုမီတာ"}
+                per{"တစ်စတုရန်းကီလိုမီတာလျှင် {0}"}
+            }
+            square-meter{
+                other{"{0} စတုရန်းမီတာ"}
+                per{"တစ်စတုရန်းမီတာလျှင် {0}"}
+            }
+            square-mile{
+                other{"{0} စတုရန်းမိုင်"}
+                per{"တစ်စတုရန်းမိုင်လျှင် {0}"}
+            }
+            square-yard{
+                other{"{0} စတုရန်းကိုက်"}
+            }
+        }
+        compound{
+            1024p1{"ကီဘီ{0}"}
+            1024p2{"မက်ဘီ{0}"}
+            1024p3{"ဂီဘီ{0}"}
+            1024p4{"တယ်ဘီ{0}"}
+            1024p5{"ပယ်ဘီ{0}"}
+            1024p6{"အိတ်ဇ်ဘီ{0}"}
+            1024p7{"ဇက်ဘီ{0}"}
+            1024p8{"ယိုဘီ{0}"}
+            10p-1{"ဒက်စီ{0}"}
+            10p-12{"ပီကို{0}"}
+            10p-15{"ဖမ်တို{0}"}
+            10p-18{"အက်တို{0}"}
+            10p-2{"စင်တီ{0}"}
+            10p-21{"ဇက်ပ်တို{0}"}
+            10p-24{"ယောက်တို{0}"}
+            10p-27{"ရွန်တို{0}"}
+            10p-3{"မီလီ{0}"}
+            10p-30{"ကွီတို{0}"}
+            10p-6{"မိုက်ခရို{0}"}
+            10p-9{"နာနို{0}"}
+            10p1{"ဒက်ကာ{0}"}
+            10p12{"တယ်ရာ{0}"}
+            10p15{"ပက်တာ{0}"}
+            10p18{"အိတ်စ်ဆာ{0}"}
+            10p2{"ဟက်တို{0}"}
+            10p21{"ဇက်တာ{0}"}
+            10p24{"ယိုဒါ{0}"}
+            10p27{"ရွန်နာ{0}"}
+            10p3{"ကီလို{0}"}
+            10p30{"ကွက်တာ{0}"}
+            10p6{"မီဂါ{0}"}
+            10p9{"ဂီဂါ{0}"}
+            per{"တစ်{1} လျှင် {0}"}
+            power2{
+                other{
+                    _{
+                        _{"စတုရန်း{0}"}
+                    }
+                }
+            }
+            power3{
+                other{
+                    _{
+                        _{"ကုဗ{0}"}
+                    }
+                }
+            }
+        }
+        concentr{
+            karat{
+                other{"{0} ကာရက်"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"တစ်ဒက်စီလီတာရှိ မီလီဂရမ်"}
+                other{"တစ်ဒက်စီလီတာရှိ {0} မီလီဂရမ်"}
+            }
+            millimole-per-liter{
+                dnam{"တစ်လီတာရှိ မီလီမိုးလ်"}
+                other{"တစ်လီတာရှိ {0} မီလီမိုးလ်"}
+            }
+            percent{
+                dnam{"ရာခိုင်နှုန်း"}
+                other{"{0} ရာခိုင်နှုန်း"}
+            }
+            permille{
+                dnam{"ထောင်လီစိတ်"}
+                other{"{0} ထောင်လီစိတ်"}
+            }
+            permillion{
+                other{"တစ်သန်းပုံ {0} ပုံ"}
+            }
+            permyriad{
+                other{"{0} ပါမီရိတ်"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                other{"တစ်ရာကီလိုမီတာရှိ {0} လီတာ"}
+            }
+            liter-per-kilometer{
+                dnam{"တစ်ကီလိုမီတာရှိ လီတာ"}
+                other{"တစ်ကီလိုမီတာရှိ {0} လီတာ"}
+            }
+            mile-per-gallon{
+                dnam{"တစ်ဂါလံ မိုင်နှုန်း"}
+                other{"တစ်ဂါလံလျှင် {0} မိုင်"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"ယူကေတစ်ဂါလံ မိုင်နှုန်း"}
+                other{"ယူကေတစ်ဂါလံလျှင် {0} မိုင်"}
+            }
+        }
+        coordinate{
+            dnam{"အရပ် လေးမျက်နှာ"}
+            east{"{0} အရှေ့"}
+            north{"{0} မြောက်"}
+            south{"{0} တောင်"}
+            west{"{0} အနောက်"}
+        }
+        digital{
+            bit{
+                other{"{0} ဘစ်"}
+            }
+            byte{
+                other{"{0} ဘိုက်"}
+            }
+            gigabit{
+                other{"{0} ဂစ်ဂါဘစ်"}
+            }
+            gigabyte{
+                other{"{0} ဂစ်ဂါဘိုက်"}
+            }
+            kilobit{
+                other{"{0} ကီလိုဘစ်"}
+            }
+            kilobyte{
+                other{"{0} ကီလိုဘိုက်"}
+            }
+            megabit{
+                other{"{0} မီဂါဘစ်"}
+            }
+            megabyte{
+                other{"{0} မီဂါဘိုက်"}
+            }
+            petabyte{
+                other{"{0} ပက်တာဘိုက်"}
+            }
+            terabit{
+                other{"{0} တယ်ရာဘစ်"}
+            }
+            terabyte{
+                other{"{0} တယ်ရာဘိုက်"}
+            }
+        }
+        duration{
+            century{
+                dnam{"ရာစုနှစ်"}
+                other{"{0} ရာစုနှစ်"}
+            }
+            day{
+                per{"တစ်ရက်လျှင် {0}"}
+            }
+            decade{
+                dnam{"ဆယ်စုနှစ်"}
+                other{"{0} ဆယ်စုနှစ်"}
+            }
+            hour{
+                per{"တစ်နာရီလျှင် {0}"}
+            }
+            microsecond{
+                other{"{0} မိုက်ခရိုစက္ကန့်"}
+            }
+            minute{
+                per{"တစ်မိနစ်လျှင် {0}"}
+            }
+            month{
+                per{"တစ်လလျှင် {0}"}
+            }
+            nanosecond{
+                other{"{0} နာနိုစက္ကန့်"}
+            }
+            quarter{
+                dnam{"ကွာတား"}
+                other{"{0} ကွာတား"}
+                per{"{0}/ကွာတား"}
+            }
+            second{
+                other{"{0} စက္ကန့်"}
+                per{"တစ်စက္ကန့်လျှင် {0}"}
+            }
+            week{
+                per{"တစ်ပတ်လျှင် {0}"}
+            }
+            year{
+                per{"တစ်နှစ်လျှင် {0}"}
+            }
+        }
+        electric{
+            ampere{
+                other{"{0} အမ်ပီယာ"}
+            }
+            milliampere{
+                dnam{"မီလီအမ်ပီယာ"}
+                other{"{0} မီလီအမ်ပီယာ"}
+            }
+            ohm{
+                other{"{0} အုမ်း"}
+            }
+            volt{
+                other{"{0} ဗို့"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"ဗြိတိသျှ သာမယ်လ်ယူနစ်"}
+                other{"{0} ဗြိတိသျှ သာမယ်လ်ယူနစ်"}
+            }
+            calorie{
+                other{"{0} ကယ်လိုရီ"}
+            }
+            electronvolt{
+                other{"{0} အီလက်ထရွန်ဗို့"}
+            }
+            foodcalorie{
+                other{"{0} ကယ်လိုရီ"}
+            }
+            joule{
+                other{"{0} ဂျူးလ်"}
+            }
+            kilocalorie{
+                other{"{0} ကီလိုကယ်လိုရီ"}
+            }
+            kilojoule{
+                other{"{0} ကီလိုဂျူးလ်"}
+            }
+            kilowatt-hour{
+                other{"{0} ကီလိုဝပ်-နာရီ"}
+            }
+            therm-us{
+                other{"{0} ယူအက်စ် သာမယ်လ်"}
+            }
+        }
+        force{
+            newton{
+                other{"{0} နယူတန်"}
+            }
+        }
+        frequency{
+            gigahertz{
+                other{"{0} ဂီဂါဟတ်ဇ်"}
+            }
+            hertz{
+                dnam{"ဟတ်ဇ်"}
+                other{"{0} ဟတ်ဇ်"}
+            }
+            kilohertz{
+                dnam{"ကီလိုဟတ်ဇ်"}
+                other{"{0} ကီလိုဟတ်ဇ်"}
+            }
+            megahertz{
+                other{"{0} မီဂါဟတ်ဇ်"}
+            }
+        }
+        graphics{
+            dot{
+                other{"အစက် {0} စက်"}
+            }
+            dot-per-centimeter{
+                dnam{"တစ်စင်တီမီတာပါ အစက်"}
+                other{"တစ်စင်တီမီတာလျှင် {0} စက်"}
+            }
+            dot-per-inch{
+                dnam{"တစ်လက်မပါ အစက်"}
+                other{"တစ်လက်မလျှင် {0} စက်"}
+            }
+            em{
+                dnam{"ပုံနှိပ်စာလုံး အရွယ်အစား"}
+                other{"{0} ems"}
+            }
+            megapixel{
+                other{"{0} မီဂါပစ်ဆယ်"}
+            }
+            pixel{
+                other{"{0} ပစ်ဆယ်"}
+            }
+            pixel-per-centimeter{
+                dnam{"တစ်စင်တီမီတာပါ ပစ်ဆယ်"}
+                other{"တစ်စင်တီမီတာလျှင် {0} ပစ်ဆယ်"}
+            }
+            pixel-per-inch{
+                dnam{"တစ်လက်မပါ ပစ်ဆယ်"}
+                other{"တစ်လက်မလျှင် {0} ပစ်ဆယ်"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"နက်ခတ်တဗဒေယူနဈ"}
+                other{"{0} နက်ခတ်တဗဒေယူနဈ"}
+            }
+            centimeter{
+                dnam{"စင်တီမီတာ"}
+                other{"{0} စင်တီမီတာ"}
+                per{"တစ်စင်တီမီလာလျှင် {0}"}
+            }
+            decimeter{
+                dnam{"ဒက်စီမီတာ"}
+                other{"{0} ဒက်စီမီတာ"}
+            }
+            earth-radius{
+                dnam{"ကမ္ဘာ့ အချင်းဝက်"}
+            }
+            fathom{
+                other{"{0} ဖန်တမ်"}
+            }
+            foot{
+                other{"{0} ပေ"}
+                per{"တစ်ပေလျှင် {0}"}
+            }
+            furlong{
+                other{"{0} ဖာလုံ"}
+            }
+            inch{
+                per{"တစ်လက်မလျှင် {0}"}
+            }
+            kilometer{
+                dnam{"ကီလိုမီတာ"}
+                other{"{0} ကီလိုမီတာ"}
+                per{"တစ်ကီလိုမီတာလျှင် {0}"}
+            }
+            meter{
+                dnam{"မီတာ"}
+                other{"{0} မီတာ"}
+                per{"တစ်မီတာလျှင် {0}"}
+            }
+            micrometer{
+                dnam{"မိုက်ခရိုမီတာ"}
+                other{"{0} မိုက်ခရိုမီတာ"}
+            }
+            mile{
+                other{"{0} မိုင်"}
+            }
+            mile-scandinavian{
+                dnam{"စကင်ဒီနေဗီးယန်း မိုင်"}
+                other{"{0} စကင်ဒီနေဗီးယန်း မိုင်"}
+            }
+            millimeter{
+                dnam{"မီလီမီတာ"}
+                other{"{0} မီလီမီတာ"}
+            }
+            nanometer{
+                dnam{"နာနိုမီတာ"}
+                other{"{0} နာနိုမီတာ"}
+            }
+            nautical-mile{
+                dnam{"ရေမိုင်"}
+                other{"{0} ရေမိုင်"}
+            }
+            parsec{
+                other{"{0} ပါစက်ခ်"}
+            }
+            picometer{
+                dnam{"ပီကိုမီတာ"}
+                other{"{0} ပီကိုမီတာ"}
+            }
+            point{
+                other{"{0} ပွိုင့်"}
+            }
+            solar-radius{
+                other{"{0} ဆိုလာ ရာဒီ"}
+            }
+        }
+        light{
+            candela{
+                dnam{"ကန်ဒဲလာ"}
+                other{"{0} ကန်ဒဲလာ"}
+            }
+            lux{
+                other{"{0} လတ်ခ်"}
+            }
+            solar-luminosity{
+                dnam{"ဆိုလာ လူမီနိုစီတီးစ်"}
+                other{"{0} ဆိုလာ လူမီနိုစီးတီးစ်"}
+            }
+        }
+        mass{
+            carat{
+                other{"{0} ကာရက်"}
+            }
+            dalton{
+                other{"{0} ဒဲလ်တန်စ်"}
+            }
+            earth-mass{
+                other{"{0} ကမ္ဘာ့ဒြပ်ထု"}
+            }
+            gram{
+                other{"{0} ဂရမ်"}
+                per{"တစ်ဂရမ်လျှင် {0}"}
+            }
+            kilogram{
+                other{"{0} ကီလိုဂရမ်"}
+                per{"တစ်ကီလိုဂရမ်လျှင် {0}"}
+            }
+            microgram{
+                dnam{"မိုက်ခရို ဂရမ်"}
+                other{"{0} မိုက်ခရို ဂရမ်"}
+            }
+            milligram{
+                other{"{0} မီလီဂရမ်"}
+            }
+            ounce{
+                other{"{0} အောင်စ"}
+                per{"တစ်အောင်စလျှင် {0}"}
+            }
+            ounce-troy{
+                other{"{0} ထရိုအောင်စ"}
+            }
+            pound{
+                other{"{0} ပေါင်"}
+                per{"တစ်ပေါင်လျှင် {0}"}
+            }
+            solar-mass{
+                other{"{0} နေရောင်ခြည် ဒြပ်ထု"}
+            }
+            ton{
+                other{"{0} တန်"}
+            }
+            tonne{
+                other{"{0} မက်ထရစ်တန်"}
+            }
+        }
+        power{
+            gigawatt{
+                other{"{0} ဂစ်ဂါဝပ်"}
+            }
+            horsepower{
+                dnam{"မြင်းကောင်ရေအား"}
+                other{"{0} မြင်းကောင်ရေအား"}
+            }
+            kilowatt{
+                other{"{0} ကီလိုဝပ်"}
+            }
+            megawatt{
+                other{"{0} မီဂါဝပ်"}
+            }
+            milliwatt{
+                other{"{0} မီလီဝပ်"}
+            }
+            watt{
+                other{"{0} ဝပ်"}
+            }
+        }
+        pressure{
+            atmosphere{
+                dnam{"ကမ္ဘာ့လေထု"}
+                other{"{0} ကမ္ဘာ့လေထု"}
+            }
+            hectopascal{
+                dnam{"ဟက်တိုပါစကယ်"}
+                other{"{0} ဟက်တိုပါစကယ်"}
+            }
+            inch-ofhg{
+                dnam{"ပြဒါးလက်မ"}
+                other{"{0} ပြဒါးလက်မ"}
+            }
+            kilopascal{
+                dnam{"ကီလိုပါစကယ်"}
+                other{"{0} ကီလိုပါစကယ်"}
+            }
+            megapascal{
+                dnam{"မီဂါပါစကယ်"}
+                other{"{0} မီဂါပါစကယ်"}
+            }
+            millibar{
+                other{"{0} မီလီဘား"}
+            }
+            millimeter-ofhg{
+                dnam{"ပြဒါးမီလီမီတာ"}
+                other{"{0} ပြဒါးမီလီမီတာ"}
+            }
+            pound-force-per-square-inch{
+                other{"တစ်စတုရန်းလက်မလျှင် {0} ပေါင်"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"ဗျူးဖို့တ်"}
+                other{"ဗျူးဖို့တ် {0}"}
+            }
+            kilometer-per-hour{
+                other{"တစ်နာရီလျှင် {0} ကီလိုမီတာ"}
+            }
+            knot{
+                dnam{"နော့တီကယ်မိုင်"}
+                other{"{0} နော့တီကယ်မိုင်"}
+            }
+            meter-per-second{
+                other{"တစ်စက္ကန့်လျှင် {0} မီတာ"}
+            }
+            mile-per-hour{
+                other{"တစ်နာရီလျှင် {0} မိုင်"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"ဒီဂရီ စင်တီဂရိတ်"}
+                other{"{0} ဒီဂရီ စင်တီဂရိတ်"}
+            }
+            fahrenheit{
+                dnam{"ဒီဂရီ ဖာရင်ဟိုက်"}
+                other{"{0} ဒီဂရီ ဖာရင်ဟိုက်"}
+            }
+            kelvin{
+                dnam{"ကယ်လ်ဗင်"}
+                other{"{0} ကယ်လ်ဗင်"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"နယူတန်−မီတာ"}
+                other{"{0} နယူတန်−မီတာ"}
+            }
+        }
+        volume{
+            acre-foot{
+                other{"{0} ဧက-ပေ"}
+            }
+            barrel{
+                dnam{"ဘယ်ရလ်စ်"}
+                other{"{0} ဘယ်ရလ်စ်"}
+            }
+            centiliter{
+                other{"{0} စင်တီလီတာ"}
+            }
+            cubic-centimeter{
+                other{"{0} ကုဗစင်တီမီတာ"}
+                per{"တစ်ကုဗစင်တီမီတာလျှင် {0}"}
+            }
+            cubic-foot{
+                other{"{0} ကုဗပေ"}
+            }
+            cubic-inch{
+                other{"{0} ကုဗလက်မ"}
+            }
+            cubic-kilometer{
+                other{"{0} ကုဗကီလိုမီတာ"}
+            }
+            cubic-meter{
+                other{"{0} ကုဗမီတာ"}
+                per{"တစ်ကုဗမီတာလျှင် {0}"}
+            }
+            cubic-mile{
+                dnam{"ကုဗမိုင်"}
+                other{"{0} ကုဗမိုင်"}
+            }
+            cubic-yard{
+                other{"{0} ကုဗကိုက်"}
+            }
+            cup{
+                other{"{0} ခွက်"}
+            }
+            cup-metric{
+                dnam{"မထ္ထရစ် ခွက်"}
+                other{"{0} မထ္ထရစ် ခွက်"}
+            }
+            deciliter{
+                other{"{0} ဒက်စီလီတာ"}
+            }
+            dessert-spoon-imperial{
+                other{"ဗြိတိသျှသုံး အချိုပွဲဇွန်း {0} ဇွန်း"}
+            }
+            fluid-ounce{
+                other{"{0} အရည်အောင်စ"}
+            }
+            fluid-ounce-imperial{
+                other{"{0} Imp. fl oz"}
+            }
+            gallon{
+                per{"တစ်ဂါလံလျှင် {0}"}
+            }
+            gallon-imperial{
+                per{"တစ် ယူကေ ဂါလံလျှင် {0}"}
+            }
+            hectoliter{
+                dnam{"ဟက်တိုလီတာ"}
+                other{"{0} ဟက်တိုမီတာ"}
+            }
+            liter{
+                per{"တစ်လီတာလျှင် {0}"}
+            }
+            megaliter{
+                dnam{"မီဂါလီတာ"}
+                other{"{0} မီဂါလီတာ"}
+            }
+            milliliter{
+                other{"{0} မီလီလီတာ"}
+            }
+            pint{
+                other{"{0} ပိုင့်"}
+            }
+            pint-metric{
+                dnam{"မထ္ထရစ် ပိုင့်"}
+                other{"{0} မထ္ထရစ် ပိုင့်"}
+            }
+            quart{
+                other{"{0} ကွတ်"}
+            }
+            tablespoon{
+                other{"စားပွဲဇွန်း {0} ဇွန်း"}
+            }
+            teaspoon{
+                other{"လက်ဖက်ရည်ဇွန်း {0} ဇွန်း"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            degree{
+                other{"{0}°"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"L/100km"}
+                other{"{0} L/100km"}
+            }
+            liter-per-kilometer{
+                dnam{"L/km"}
+            }
+            mile-per-gallon-imperial{
+                other{"{0}m/gUK"}
+            }
+        }
+        coordinate{
+            east{"{0}E"}
+            north{"{0}N"}
+            south{"{0}S"}
+            west{"{0}W"}
+        }
+        digital{
+            byte{
+                dnam{"B"}
+                other{"{0}B"}
+            }
+            gigabit{
+                dnam{"Gb"}
+            }
+        }
+        duration{
+            millisecond{
+                other{"{0} ms"}
+            }
+            second{
+                other{"{0} s"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"amp"}
+            }
+        }
+        energy{
+            therm-us{
+                other{"{0}US therms"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                other{"{0}kWh/100km"}
+            }
+            newton{
+                dnam{"N"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"GHz"}
+            }
+        }
+        graphics{
+            dot{
+                other{"{0}စက်"}
+            }
+        }
+        length{
+            earth-radius{
+                dnam{"R⊕"}
+                other{"{0}R⊕"}
+            }
+            foot{
+                dnam{"ft"}
+                other{"{0}′"}
+            }
+            inch{
+                dnam{"in"}
+                other{"{0}″"}
+            }
+            kilometer{
+                other{"{0}km"}
+            }
+            light-year{
+                dnam{"ly"}
+                other{"{0} ly"}
+            }
+            micrometer{
+                dnam{"μm"}
+            }
+            mile{
+                dnam{"mi"}
+            }
+            point{
+                dnam{"pts"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+            }
+            yard{
+                dnam{"yd"}
+                other{"{0} yd"}
+            }
+        }
+        light{
+            lumen{
+                dnam{"lm"}
+                other{"{0}lm"}
+            }
+            solar-luminosity{
+                dnam{"L☉"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                dnam{"″ Hg"}
+            }
+            millibar{
+                dnam{"mbar"}
+            }
+            pound-force-per-square-inch{
+                dnam{"psi"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"စည်"}
+            }
+            cubic-centimeter{
+                dnam{"cm³"}
+            }
+            cubic-foot{
+                dnam{"ft³"}
+            }
+            cubic-inch{
+                dnam{"in³"}
+            }
+            cubic-yard{
+                dnam{"yd³"}
+            }
+            drop{
+                dnam{"စက်"}
+            }
+            fluid-ounce-imperial{
+                dnam{"ဗြိတိသျှသုံး အရည်အောင်စ"}
+                other{"{0}fl oz Im"}
+            }
+            gallon-imperial{
+                other{"ယူကေ ဂါလံ {0} ဂါလံ"}
+                per{"{0}/ယူကေ ဂါလံ"}
+            }
+            liter{
+                other{"{0}L"}
+                per{"{0}/လီတာ"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"ဆွဲငင်အား"}
+            }
+            meter-per-square-second{
+                dnam{"မီတာ/စက္ကန့်နှစ်ထပ်ကိန်း"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"မိနစ်"}
+            }
+            arc-second{
+                dnam{"စက္ကန့်"}
+            }
+            degree{
+                dnam{"ဒီဂရီ"}
+                other{"{0} deg"}
+            }
+            radian{
+                dnam{"ရေဒီယဲန်း"}
+            }
+        }
+        area{
+            acre{
+                dnam{"ဧက"}
+            }
+            dunam{
+                dnam{"dunams"}
+            }
+            hectare{
+                dnam{"ဟက်တာ"}
+            }
+            square-centimeter{
+                dnam{"စတုရန်းစင်တီမီတာ"}
+            }
+            square-foot{
+                dnam{"စတုရန်းပေ"}
+            }
+            square-inch{
+                dnam{"စတုရန်းလက်မ"}
+            }
+            square-kilometer{
+                dnam{"စတုရန်းကီလိုမီတာ"}
+            }
+            square-meter{
+                dnam{"စတုရန်းမီတာ"}
+            }
+            square-mile{
+                dnam{"စတုရန်းမိုင်"}
+            }
+            square-yard{
+                dnam{"စတုရန်းကိုက်"}
+            }
+        }
+        concentr{
+            karat{
+                dnam{"ကာရက်"}
+            }
+            permillion{
+                dnam{"တစ်သန်းပုံ တစ်ပုံ"}
+            }
+            permyriad{
+                dnam{"ပါမီရိတ်"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"တစ်ရာကီလိုမီတာရှိ လီတာ"}
+                other{"{0} L/100 km"}
+            }
+            liter-per-kilometer{
+                dnam{"လီတာ/ကီလိုမီတာ"}
+            }
+            mile-per-gallon{
+                dnam{"မိုင်/ဂါလန်"}
+                other{"{0} mpg"}
+            }
+        }
+        coordinate{
+            dnam{"လမ်းကြောင်း"}
+            east{"{0} E"}
+            north{"{0} N"}
+            south{"{0} S"}
+            west{"{0} W"}
+        }
+        digital{
+            bit{
+                dnam{"ဘစ်"}
+            }
+            byte{
+                dnam{"ဘိုက်"}
+            }
+            gigabit{
+                dnam{"ဂစ်ဂါဘစ်"}
+            }
+            gigabyte{
+                dnam{"ဂစ်ဂါဘိုက်"}
+            }
+            kilobit{
+                dnam{"ကီလိုဘစ်"}
+            }
+            kilobyte{
+                dnam{"ကီလိုဘိုက်"}
+            }
+            megabit{
+                dnam{"မီဂါဘစ်"}
+            }
+            megabyte{
+                dnam{"မီဂါဘိုက်"}
+            }
+            petabyte{
+                dnam{"ပက်တာဘိုက်"}
+            }
+            terabit{
+                dnam{"တယ်ရာဘစ်"}
+            }
+            terabyte{
+                dnam{"တယ်ရာဘိုက်"}
+            }
+        }
+        duration{
+            century{
+                dnam{"ရာစု"}
+                other{"{0} ရာစု"}
+            }
+            day{
+                dnam{"ရက်"}
+                other{"{0} ရက်"}
+                per{"{0}/ ရက်"}
+            }
+            decade{
+                dnam{"ဆယ်စု"}
+                other{"{0} ဆယ်စု"}
+            }
+            hour{
+                dnam{"နာရီ"}
+                other{"{0} နာရီ"}
+                per{"{0}/ နာရီ"}
+            }
+            microsecond{
+                dnam{"မိုက်ခရိုစက္ကန့်"}
+            }
+            millisecond{
+                dnam{"မီလီစက္ကန့်"}
+                other{"{0} မီလီစက္ကန့်"}
+            }
+            minute{
+                dnam{"မိနစ်"}
+                other{"{0} မိနစ်"}
+                per{"{0}/ မိနစ်"}
+            }
+            month{
+                dnam{"လ"}
+                other{"{0} လ"}
+                per{"{0}/ လ"}
+            }
+            nanosecond{
+                dnam{"နာနိုစက္ကန့်"}
+            }
+            second{
+                dnam{"စက္ကန့်"}
+                other{"{0} sec"}
+            }
+            week{
+                dnam{"ပတ်"}
+                other{"{0} ပတ်"}
+                per{"{0}/ ပတ်"}
+            }
+            year{
+                dnam{"နှစ်"}
+                other{"{0} နှစ်"}
+                per{"{0}/ နှစ်"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"အမ်ပီယာ"}
+            }
+            ohm{
+                dnam{"အုမ်း"}
+            }
+            volt{
+                dnam{"ဗို့"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"BTU"}
+            }
+            calorie{
+                dnam{"ကယ်လိုရီ"}
+            }
+            electronvolt{
+                dnam{"အီလက်ထရွန်ဗို့"}
+            }
+            foodcalorie{
+                dnam{"ကယ်လိုရီ"}
+                other{"{0} Cal"}
+            }
+            joule{
+                dnam{"ဂျူးလ်"}
+            }
+            kilocalorie{
+                dnam{"ကီလိုကယ်လိုရီ"}
+            }
+            kilojoule{
+                dnam{"ကီလိုဂျူးလ်"}
+            }
+            kilowatt-hour{
+                dnam{"ကီလိုဝပ်-နာရီ"}
+            }
+            therm-us{
+                dnam{"ယူအက်စ် သာမယ်လ်"}
+                other{"{0} ယူအက်စ်သာမယ်လ်"}
+            }
+        }
+        force{
+            newton{
+                dnam{"နယူတန်"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"ဂီဂါဟတ်ဇ်"}
+            }
+            megahertz{
+                dnam{"မီဂါဟတ်ဇ်"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"အစက်"}
+            }
+            dot-per-centimeter{
+                dnam{"dpcm"}
+                other{"{0} dpcm"}
+            }
+            dot-per-inch{
+                dnam{"dpi"}
+                other{"{0} dpi"}
+            }
+            megapixel{
+                dnam{"မီဂါပစ်ဆယ်"}
+            }
+            pixel{
+                dnam{"ပစ်ဆယ်"}
+            }
+        }
+        length{
+            earth-radius{
+                dnam{"ကမ္ဘာ့အချင်းဝက်"}
+                other{"{0} ကမ္ဘာ့အချင်းဝက်"}
+            }
+            fathom{
+                dnam{"ဖန်တမ်"}
+            }
+            foot{
+                dnam{"ပေ"}
+            }
+            furlong{
+                dnam{"ဖာလုံ"}
+            }
+            inch{
+                dnam{"လက်မ"}
+                other{"{0} လက်မ"}
+            }
+            light-year{
+                dnam{"အလင်းနှစ်"}
+                other{"{0} အလင်းနှစ်"}
+            }
+            meter{
+                dnam{"m"}
+            }
+            micrometer{
+                dnam{"μ မီတာ"}
+            }
+            mile{
+                dnam{"မိုင်"}
+            }
+            parsec{
+                dnam{"ပါစက်ခ်"}
+            }
+            point{
+                dnam{"ပွိုင့်"}
+            }
+            solar-radius{
+                dnam{"ဆိုလာ ရာဒီ"}
+            }
+            yard{
+                dnam{"ကိုက်"}
+                other{"{0} ကိုက်"}
+            }
+        }
+        light{
+            lumen{
+                dnam{"လူမန်"}
+                other{"{0} လူမန်"}
+            }
+            lux{
+                dnam{"လတ်ခ်"}
+            }
+            solar-luminosity{
+                dnam{"ဆိုလာ လူမီနိုစီးတီးစ်"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"ကာရက်"}
+            }
+            dalton{
+                dnam{"ဒဲလ်တန်စ်"}
+            }
+            earth-mass{
+                dnam{"ကမ္ဘာ့ဒြပ်ထု"}
+            }
+            grain{
+                dnam{"ဂရိန်"}
+                other{"{0} ဂရိန်"}
+            }
+            gram{
+                dnam{"ဂရမ်"}
+            }
+            kilogram{
+                dnam{"ကီလိုဂရမ်"}
+            }
+            milligram{
+                dnam{"မီလီဂရမ်"}
+            }
+            ounce{
+                dnam{"အောင်စ"}
+            }
+            ounce-troy{
+                dnam{"ထရိုအောင်စ"}
+            }
+            pound{
+                dnam{"ပေါင်"}
+            }
+            solar-mass{
+                dnam{"နေရောင်ခြည် ဒြပ်ထု"}
+            }
+            stone{
+                dnam{"စတုန်"}
+                other{"{0} စတုန်"}
+            }
+            ton{
+                dnam{"တန်"}
+            }
+            tonne{
+                dnam{"မက်ထရစ်တန်"}
+            }
+        }
+        power{
+            gigawatt{
+                dnam{"ဂစ်ဂါဝပ်"}
+            }
+            kilowatt{
+                dnam{"ကီလိုဝပ်"}
+            }
+            megawatt{
+                dnam{"မီဂါဝပ်"}
+            }
+            milliwatt{
+                dnam{"မီလီဝပ်"}
+            }
+            watt{
+                dnam{"ဝပ်"}
+            }
+        }
+        pressure{
+            bar{
+                dnam{"ဘား"}
+                other{"{0} ဘား"}
+            }
+            millibar{
+                dnam{"မီလီဘား"}
+            }
+            pound-force-per-square-inch{
+                dnam{"ပေါင်/စတုရန်းလက်မ"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"ကီလိုမီတာ/နာရီ"}
+            }
+            meter-per-second{
+                dnam{"မီတာ/စက္ကန့်"}
+            }
+            mile-per-hour{
+                dnam{"မိုင်/နာရီ"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N.m"}
+                other{"{0} N.m"}
+            }
+            pound-force-foot{
+                dnam{"lbf.ft"}
+                other{"{0} lbf.ft"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"ဧက-ပေ"}
+            }
+            barrel{
+                dnam{"ဘယ်ရလ်"}
+            }
+            bushel{
+                dnam{"၈ ဂါလံဝင်ပုံး"}
+                other{"၈ ဂါလံဝင်ပုံး {0} ပုံး"}
+            }
+            centiliter{
+                dnam{"စင်တီလီတာ"}
+            }
+            cubic-centimeter{
+                dnam{"ကုဗစင်တီမီတာ"}
+            }
+            cubic-foot{
+                dnam{"ကုဗပေ"}
+            }
+            cubic-inch{
+                dnam{"ကုဗလက်မ"}
+            }
+            cubic-kilometer{
+                dnam{"ကုဗကီလိုမီတာ"}
+            }
+            cubic-meter{
+                dnam{"ကုဗမီတာ"}
+            }
+            cubic-yard{
+                dnam{"ကုဗကိုက်"}
+            }
+            cup{
+                dnam{"ခွက်"}
+            }
+            cup-metric{
+                dnam{"မထ္ထရစ်ခွက်"}
+            }
+            deciliter{
+                dnam{"ဒက်စီလီတာ"}
+            }
+            dessert-spoon{
+                dnam{"အချိုပွဲဇွန်း"}
+                other{"အချိုပွဲဇွန်း {0} ဇွန်း"}
+            }
+            dessert-spoon-imperial{
+                dnam{"ဗြိတိသျှသုံး အချိုပွဲဇွန်း"}
+                other{"ဗြိတိသျှသုံးအချိုပွဲဇွန်း {0} ဇွန်း"}
+            }
+            dram{
+                dnam{"ဒရမ်"}
+                other{"{0} ဒရမ်"}
+            }
+            drop{
+                dnam{"တစ်စက်"}
+                other{"{0} စက်"}
+            }
+            fluid-ounce{
+                dnam{"အရည်အောင်စ"}
+                other{"{0} fl oz"}
+            }
+            gallon{
+                dnam{"ဂါလံ"}
+                other{"{0} ဂါလံ"}
+            }
+            gallon-imperial{
+                dnam{"ယူကေ ဂါလံ"}
+                other{"{0} ယူကေ ဂါလံ"}
+            }
+            jigger{
+                dnam{"ပက်"}
+                other{"{0} ပက်"}
+            }
+            liter{
+                dnam{"လီတာ"}
+                other{"{0} လီတာ"}
+            }
+            milliliter{
+                dnam{"မီလီလီတာ"}
+            }
+            pinch{
+                dnam{"တစ်ဆိတ်"}
+                other{"{0} ဆိတ်"}
+            }
+            pint{
+                dnam{"ပိုင့်"}
+            }
+            pint-metric{
+                dnam{"မထ္ထရစ်ပိုင့်"}
+            }
+            quart{
+                dnam{"ကွတ်"}
+            }
+            quart-imperial{
+                dnam{"ဗြိတိသျှသုံး ကွတ်"}
+                other{"ဗြိတိသျှသုံး {0} ကွတ်"}
+            }
+            tablespoon{
+                dnam{"စားပွဲဇွန်း"}
+            }
+            teaspoon{
+                dnam{"လက်ဖက်ရည်ဇွန်း"}
+            }
+        }
+    }
+}

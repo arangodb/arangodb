@@ -1,0 +1,203 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{3D1246AE-1B32-479B-BECA-AEFA97BE2321}</ProjectGuid>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseOfMfc>false</UseOfMfc>
+    <CharacterSet>MultiByte</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <!-- The following import will include the 'default' configuration options for VS projects. -->
+  <Import Project="..\..\allinone\Build.Windows.ProjectConfiguration.props" />
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir>.\$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>.\$(Platform)\$(Configuration)\</IntDir>
+    <!-- The ICU projects use "Win32" to mean "x86", so we need to special case it. -->
+    <OutDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Platform)'=='Win32'">.\x86\$(Configuration)\</IntDir>
+    <!-- Disable Incremental Linking for Release builds as it prevents Link-time Code Generation -->
+    <LinkIncremental Condition="'$(Configuration)'=='Debug'">true</LinkIncremental>
+    <LinkIncremental Condition="'$(Configuration)'=='Release'">false</LinkIncremental>
+  </PropertyGroup>
+  <!-- Options that are common to *all* configurations -->
+  <ItemDefinitionGroup>
+    <Midl>
+      <TypeLibraryName>$(OutDir)\cintltst.tlb</TypeLibraryName>
+    </Midl>
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <CompileAs>Default</CompileAs>
+      <AdditionalIncludeDirectories>..\..\..\include;..\..\tools\ctestfw;..\..\common;..\..\i18n;..\..\tools\toolutil;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>U_ATTRIBUTE_DEPRECATED=;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeaderOutputFile>$(OutDir)\cintltst.pch</PrecompiledHeaderOutputFile>
+      <AssemblerListingLocation>$(OutDir)/</AssemblerListingLocation>
+      <ObjectFileName>$(OutDir)/</ObjectFileName>
+      <ProgramDataBaseFileName>$(OutDir)\cintltst.pdb</ProgramDataBaseFileName>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <OutputFile>$(OutDir)\cintltst.exe</OutputFile>
+      <AdditionalLibraryDirectories>..\..\..\$(IcuLibOutputDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+  <!-- Options that are common to all 'Debug' project configurations -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <ClCompile>
+      <BrowseInformation>true</BrowseInformation>
+      <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>icuucd.lib;icuind.lib;icutestd.lib;icutud.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <!-- Options that are common to all 'Release' project configurations -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <ClCompile>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>icuuc.lib;icuin.lib;icutest.lib;icutu.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="cbididat.c" />
+    <ClCompile Include="cbiditransformtst.c" />
+    <ClCompile Include="cbiditst.c" />
+    <ClCompile Include="cbiapts.c" />
+    <ClCompile Include="cbkittst.c" />
+    <ClCompile Include="callcoll.c" />
+    <ClCompile Include="capitst.c" />
+    <ClCompile Include="ccolltst.c" />
+    <ClCompile Include="ccurrtst.c" />
+    <ClCompile Include="cdetst.c" />
+    <ClCompile Include="cestst.c" />
+    <ClCompile Include="cfintst.c" />
+    <ClCompile Include="cfrtst.c" />
+    <ClCompile Include="cg7coll.c" />
+    <ClCompile Include="citertst.c" />
+    <ClCompile Include="cjaptst.c" />
+    <ClCompile Include="cmsccoll.c" />
+    <ClCompile Include="cturtst.c" />
+    <ClCompile Include="encoll.c" />
+    <ClCompile Include="usrchtst.c" />
+    <ClCompile Include="chashtst.c" />
+    <ClCompile Include="sorttest.c" />
+    <ClCompile Include="trie2test.c" />
+    <ClCompile Include="trietest.c" />
+    <ClCompile Include="ucptrietest.c" />
+    <ClCompile Include="uenumtst.c" />
+    <ClCompile Include="bocu1tst.c" />
+    <ClCompile Include="ccapitst.c" />
+    <ClCompile Include="cconvtst.c" />
+    <ClCompile Include="cctest.c" />
+    <ClCompile Include="eurocreg.c" />
+    <ClCompile Include="nccbtst.c" />
+    <ClCompile Include="ncnvfbts.c" />
+    <ClCompile Include="ncnvtst.c" />
+    <ClCompile Include="nucnvtst.c" />
+    <ClCompile Include="stdnmtst.c" />
+    <ClCompile Include="ucnvseltst.c" />
+    <ClCompile Include="ucsdetst.c" />
+    <ClCompile Include="udatatst.c"/>
+    <ClCompile Include="ccaltst.c" />
+    <ClCompile Include="cdateintervalformattest.c" />
+    <ClCompile Include="cdattst.c" />
+    <ClCompile Include="cdtdptst.c" />
+    <ClCompile Include="cdtrgtst.c" />
+    <ClCompile Include="cformtst.c" />
+    <ClCompile Include="cgendtst.c" />
+    <ClCompile Include="cmsgtst.c" />
+    <ClCompile Include="cnmdptst.c" />
+    <ClCompile Include="cnumtst.c" />
+    <ClCompile Include="cpluralrulestest.c" />
+    <ClCompile Include="currtest.c" />
+    <ClCompile Include="udatpg_test.c" />
+    <ClCompile Include="utmstest.c" />
+    <ClCompile Include="cldrtest.c" />
+    <ClCompile Include="cloctst.c" />
+    <ClCompile Include="ulocaletst.c" />
+    <ClCompile Include="ulocbuildertst.c" />
+    <ClCompile Include="cposxtst.c" />
+    <ClCompile Include="crelativedateformattest.c" />
+    <ClCompile Include="crestst.c" />
+    <ClCompile Include="creststn.c" />
+    <ClCompile Include="calltest.c" />
+    <ClCompile Include="cintltst.c" />
+    <ClCompile Include="cutiltst.c" />
+    <ClCompile Include="hpmufn.c" />
+    <ClCompile Include="putiltst.c" />
+    <ClCompile Include="tracetst.c" />
+    <ClCompile Include="cnormtst.c" />
+    <ClCompile Include="cucdapi.c" />
+    <ClCompile Include="cucdtst.c" />
+    <ClCompile Include="usettest.c" />
+    <ClCompile Include="cstrcase.c" />
+    <ClCompile Include="cstrtest.c" />
+    <ClCompile Include="custrtrn.c" />
+    <ClCompile Include="custrtst.c" />
+    <ClCompile Include="utexttst.c" />
+    <ClCompile Include="utf16tst.c" />
+    <ClCompile Include="utf8tst.c" />
+    <ClCompile Include="utransts.c" />
+    <ClCompile Include="reapits.c" />
+    <ClCompile Include="idnatest.c" />
+    <ClCompile Include="nfsprep.c" />
+    <ClCompile Include="spreptst.c" />
+    <ClCompile Include="sprpdata.c" />
+    <ClCompile Include="spooftest.c" />
+    <ClCompile Include="uregiontest.c" />
+    <ClCompile Include="ulistfmttest.c" />
+    <ClCompile Include="unumberformattertst.c" />
+    <ClCompile Include="uformattedvaluetst.c" />
+    <ClCompile Include="unumberrangeformattertst.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="cbiditst.h" />
+    <ClInclude Include="cbiapts.h" />
+    <ClInclude Include="callcoll.h" />
+    <ClInclude Include="capitst.h" />
+    <ClInclude Include="ccolltst.h" />
+    <ClInclude Include="ccurrtst.h" />
+    <ClInclude Include="cdetst.h" />
+    <ClInclude Include="cestst.h" />
+    <ClInclude Include="cfintst.h" />
+    <ClInclude Include="cfrtst.h" />
+    <ClInclude Include="cg7coll.h" />
+    <ClInclude Include="citertst.h" />
+    <ClInclude Include="cjaptst.h" />
+    <ClInclude Include="cturtst.h" />
+    <ClInclude Include="encoll.h" />
+    <ClInclude Include="usrchdat.inc" />
+    <ClInclude Include="ccapitst.h" />
+    <ClInclude Include="nccbtst.h" />
+    <ClInclude Include="ncnvfbts.h" />
+    <ClInclude Include="nucnvtst.h" />
+    <ClInclude Include="ucnvseltst.h" />
+    <ClInclude Include="ccaltst.h" />
+    <ClInclude Include="cdattst.h" />
+    <ClInclude Include="cdtdptst.h" />
+    <ClInclude Include="cdtrgtst.h" />
+    <ClInclude Include="cformtst.h" />
+    <ClInclude Include="cmsgtst.h" />
+    <ClInclude Include="cnmdptst.h" />
+    <ClInclude Include="cnumtst.h" />
+    <ClInclude Include="cloctst.h" />
+    <ClInclude Include="crestst.h" />
+    <ClInclude Include="creststn.h" />
+    <ClInclude Include="cintltst.h" />
+    <ClInclude Include="cnormtst.h" />
+    <ClInclude Include="cucdapi.h" />
+    <ClInclude Include="nfsprep.h" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

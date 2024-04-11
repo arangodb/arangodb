@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl_CO{
+    zoneStrings{
+        "America:St_Kitts"{
+            ec{"Sã Kirituwan"}
+        }
+        "meta:Bhutan"{
+            ls{"Butan Hurariyu"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Sã Peduru asuí Mikiran Kurasí Ara Hurariyu"}
+            lg{"Sã Peduru asuí Mikiran Hurariyu"}
+            ls{"Sã Peduru asuí Mikiran Hurariyu Retewa"}
+        }
+    }
+}

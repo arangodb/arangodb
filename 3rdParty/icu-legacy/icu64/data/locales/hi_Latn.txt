@@ -1,0 +1,1210 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+hi_Latn{
+    %%Parent{"en_IN"}
+    AuxExemplarCharacters{"[ā ḍ ĕē ḥ ī ḷ{l̥} ṁ{m̐} ñṅṇ ŏō ṛ{r̥}{r̥̄} śṣ ṭ ū]"}
+    NumberElements{
+        latn{
+            patterns{
+                accountingFormat{"¤#,##,##0.00"}
+                accountingFormat%alphaNextToNumber{"¤ #,##,##0.00"}
+                accountingFormat%noCurrency{"#,##,##0.00"}
+                scientificFormat{"[#E0]"}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                few{"{0}rd right lein."}
+                one{"{0}st right lein."}
+                other{"{0}th right lein."}
+                two{"{0}nd right lein."}
+            }
+        }
+    }
+    calendar{
+        chinese{
+            availableFormats{
+                GyMMM{"MMM r(U)"}
+                GyMMMEd{"E, d MMM r(U)"}
+                yMd{"dd/MM/r"}
+                yyyyMMM{"MMM r(U)"}
+                yyyyMMMEd{"E, d MMM r(U)"}
+            }
+        }
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE d MMMM, y G",
+                "d MMMM, y G",
+                "d MMM, y G",
+                "d/M/y GGGGG",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1}, {0} 'par'",
+                "{1}, {0} 'par'",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                Bhms{"h:mm.ss B"}
+                yyyyMd{"d/M/y GGGGG"}
+            }
+            intervalFormats{
+                MEd{
+                    M{"E, d/M – E, d/M"}
+                    d{"E, d/M – E, d/M"}
+                }
+                yM{
+                    M{"M/y – M/y GGGGG"}
+                    y{"M/y – M/y GGGGG"}
+                }
+                yMEd{
+                    M{"E, d/M/y – E, d/M/y GGGGG"}
+                    d{"E, d/M/y – E, d/M/y GGGGG"}
+                    y{"E, d/M/y – E, d/M/y GGGGG"}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM y G"}
+                    d{"E, d – E, d MMM y G"}
+                    y{"E, d MMM y – E, d MMM y G"}
+                }
+                yMMMd{
+                    d{"d–d MMM, y G"}
+                }
+                yMd{
+                    M{"d/M/y – d/M/y GGGGG"}
+                    d{"d/M/y – d/M/y GGGGG"}
+                    y{"d/M/y – d/M/y GGGGG"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkers{
+                "AM",
+                "PM",
+            }
+            AmPmMarkersAbbr{
+                "AM",
+                "PM",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "EEEE d MMMM, y",
+                "d MMMM, y",
+                "dd MMM, y",
+                "dd/MM/y",
+                "{1} {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1}, {0} 'baje'",
+                "{1}, {0} 'baje'",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMdd",
+                "yMMdd",
+            }
+            availableFormats{
+                Gy{"G y"}
+                GyMMM{"G y MMM"}
+                GyMMMEd{"G y, dd MMM, E"}
+                GyMMMd{"G y, d MMM"}
+                MMMMW{
+                    one{"MMMM 'kaa' 'week' W"}
+                    other{"MMMM 'kaa' 'week' W"}
+                }
+                yMMMd{"d MMM, y"}
+                yw{
+                    one{"Y 'kaa' 'week' w"}
+                    other{"Y 'kaa' 'week' w"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "Ravi",
+                        "Som",
+                        "Mangal",
+                        "Budh",
+                        "Guru",
+                        "Shukra",
+                        "Shani",
+                    }
+                    narrow{
+                        "Ra",
+                        "So",
+                        "Ma",
+                        "Bu",
+                        "Gu",
+                        "Sh",
+                        "Sha",
+                    }
+                    short{
+                        "Ra",
+                        "So",
+                        "Ma",
+                        "Bu",
+                        "Gu",
+                        "Shu",
+                        "Sha",
+                    }
+                    wide{
+                        "Raviwaar",
+                        "Somwaar",
+                        "Mangalwaar",
+                        "Budhwaar",
+                        "Guruwaar",
+                        "Shukrawaar",
+                        "Shaniwaar",
+                    }
+                }
+                stand-alone{
+                    abbreviated{
+                        "Ravi",
+                        "Som",
+                        "Mangal",
+                        "Budh",
+                        "Guru",
+                        "Shukra",
+                        "Shani",
+                    }
+                    narrow{
+                        "Ra",
+                        "So",
+                        "Ma",
+                        "Bu",
+                        "Gu",
+                        "Sh",
+                        "Sha",
+                    }
+                    short{
+                        "Ra",
+                        "So",
+                        "Ma",
+                        "Bu",
+                        "Gu",
+                        "Shu",
+                        "Sha",
+                    }
+                    wide{
+                        "Raviwaar",
+                        "Somwaar",
+                        "Mangalwaar",
+                        "Budhwaar",
+                        "Guruwaar",
+                        "Shukrawaar",
+                        "Shaniwaar",
+                    }
+                }
+            }
+            dayPeriod{
+                format{
+                    abbreviated{
+                        afternoon1{"dopahar"}
+                        evening1{"shaam"}
+                        midnight{"midnight"}
+                        morning1{"subah"}
+                        night1{"raat"}
+                        noon{"noon"}
+                    }
+                    narrow{
+                        afternoon1{"dopahar"}
+                        evening1{"shaam"}
+                        midnight{"mi"}
+                        morning1{"subah"}
+                        night1{"raat"}
+                        noon{"n"}
+                    }
+                    wide{
+                        afternoon1{"dopahar"}
+                        evening1{"shaam"}
+                        midnight{"aadhi raat"}
+                        morning1{"subah"}
+                        night1{"raat"}
+                        noon{"Madhyanh"}
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        am{"AM"}
+                        pm{"PM"}
+                    }
+                    wide{
+                        afternoon1{"dopahar"}
+                        am{"AM"}
+                        evening1{"shaam"}
+                        midnight{"aadhi raat"}
+                        morning1{"subah"}
+                        night1{"raat"}
+                        noon{"Madhyanh"}
+                        pm{"PM"}
+                    }
+                }
+            }
+            intervalFormats{
+                Gy{
+                    G{"G y –G y"}
+                    y{"G y – y"}
+                }
+                GyMMM{
+                    G{"G y MMM – G y MMM"}
+                    M{"G y MMM – MMM"}
+                    y{"G y MMM – y MMM"}
+                }
+                GyMMMEd{
+                    G{"G y MMM d, E – G y MMM d, E"}
+                    M{"G y MMM d, E – MMM d, E"}
+                    d{"G y MMM d, E – MMM d, E"}
+                    y{"G y MMM d, E – y MMM d, E"}
+                }
+                GyMMMd{
+                    G{"G y MMM d – G y MMM d"}
+                    M{"G y MMM d – MMM d"}
+                    d{"G y MMM d–d"}
+                    y{"G y MMM d – y d MMM"}
+                }
+                H{
+                    H{"HH – HH"}
+                }
+                Hm{
+                    H{"HH:mm – HH:mm"}
+                    m{"HH:mm – HH:mm"}
+                }
+                Hmv{
+                    H{"HH:mm – HH:mm v"}
+                    m{"HH:mm – HH:mm v"}
+                }
+                Hv{
+                    H{"HH – HH v"}
+                }
+                yMMMEd{
+                    M{"E, d MMM – E, d MMM, y"}
+                    d{"E, d – E, d MMM, y"}
+                    y{"E, d MMM, y – E, d MMM, y"}
+                }
+                yMMMd{
+                    M{"d MMM – d MMM, y"}
+                    d{"d – d MMM, y"}
+                    y{"d MMM, y – d MMM, y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Jan",
+                        "Feb",
+                        "Mar",
+                        "Apr",
+                        "May",
+                        "Jun",
+                        "Jul",
+                        "Aug",
+                        "Sep",
+                        "Oct",
+                        "Nov",
+                        "Dec",
+                    }
+                }
+            }
+        }
+        islamic{
+            eras{
+                abbreviated{
+                    "Hijri",
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "Muh",
+                        "Saf",
+                        "Rabi 1",
+                        "Rabi 2",
+                        "Jum 1",
+                        "Jum 2",
+                        "Rajab",
+                        "Shab",
+                        "Ram",
+                        "Shaw",
+                        "Zu Q",
+                        "Zu H",
+                    }
+                    wide{
+                        "Muharram",
+                        "Safar",
+                        "Rabi al-Awwal",
+                        "Rabi as-Saani",
+                        "Jumaada al-Awwal",
+                        "Jumaada as-Saani",
+                        "Rajab",
+                        "Shaabaan",
+                        "Ramzaan",
+                        "Shawwaal",
+                        "Zu’l-Qaada",
+                        "Zu’l-Hijja",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        animals_nature{"animal yaa nature"}
+        bullets_stars{"bullet yaa star"}
+        dash_connector{"dash yaa connector"}
+        sign_standard_symbols{"sign yaa symbol"}
+        smileys_people{"smiley yaa person"}
+        travel_places{"travel yaa place"}
+    }
+    fields{
+        day{
+            dn{"din"}
+            relative{
+                "-1"{"kal"}
+                "-2"{"parson"}
+                "0"{"aaj"}
+                "1"{"aane wala kal"}
+                "2"{"aane wala parson"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} din mein"}
+                    other{"{0} din mein"}
+                }
+                past{
+                    one{"{0} din pahle"}
+                    other{"{0} din pahle"}
+                }
+            }
+        }
+        day-narrow{
+            dn{"din"}
+            relative{
+                "-1"{"kal"}
+                "0"{"aaj"}
+                "1"{"aane wala kal"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} din mein"}
+                    other{"{0} din mein"}
+                }
+                past{
+                    one{"{0} din pahle"}
+                    other{"{0} din pahle"}
+                }
+            }
+        }
+        day-short{
+            dn{"din"}
+            relative{
+                "-1"{"kal"}
+                "0"{"aaj"}
+                "1"{"aane wala kal"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} din mein"}
+                    other{"{0} din mein"}
+                }
+                past{
+                    one{"{0} din pahle"}
+                    other{"{0} din pahle"}
+                }
+            }
+        }
+        dayOfYear{
+            dn{"saal kaa din"}
+        }
+        dayOfYear-narrow{
+            dn{"saal kaa din"}
+        }
+        dayOfYear-short{
+            dn{"yr kaa day"}
+        }
+        dayperiod-short{
+            dn{"AM/PM"}
+        }
+        fri{
+            relative{
+                "-1"{"last Friday"}
+                "0"{"Friday"}
+                "1"{"next Friday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Friday mein"}
+                    other{"{0} Fridays mein"}
+                }
+                past{
+                    one{"{0} Friday pahle"}
+                    other{"{0} Fridays pahle"}
+                }
+            }
+        }
+        fri-narrow{
+            relative{
+                "-1"{"last F"}
+                "0"{"F"}
+                "1"{"next F"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} F mein"}
+                    other{"{0} F mein"}
+                }
+                past{
+                    one{"{0} F pahle"}
+                    other{"{0} F pahle"}
+                }
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"last Fri"}
+                "0"{"Fri"}
+                "1"{"next Fri"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Fri. mein"}
+                    other{"{0} Fri. mein"}
+                }
+                past{
+                    one{"{0} Fri. pahle"}
+                    other{"{0} Fri. pahle"}
+                }
+            }
+        }
+        hour{
+            dn{"ghanta"}
+            relative{
+                "0"{"yah ghanta"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ghante mein"}
+                    other{"{0} ghante mein"}
+                }
+                past{
+                    one{"{0} ghante pahle"}
+                    other{"{0} ghante pahle"}
+                }
+            }
+        }
+        hour-narrow{
+            relativeTime{
+                future{
+                    one{"{0}hr mein"}
+                    other{"{0}hr mein"}
+                }
+                past{
+                    one{"{0}hr pahle"}
+                    other{"{0}hr pahle"}
+                }
+            }
+        }
+        hour-short{
+            relativeTime{
+                future{
+                    one{"{0} hr mein"}
+                    other{"{0} hr mein"}
+                }
+                past{
+                    one{"{0} hr pahle"}
+                    other{"{0} hr mein"}
+                }
+            }
+        }
+        minute{
+            relative{
+                "0"{"yah minute"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} minute mein"}
+                    other{"{0} minute mein"}
+                }
+                past{
+                    one{"{0} minute pahle"}
+                    other{"{0} minute pahle"}
+                }
+            }
+        }
+        minute-narrow{
+            relativeTime{
+                future{
+                    one{"{0} min. mein"}
+                    other{"{0} min. mein"}
+                }
+                past{
+                    one{"{0} min. pahle"}
+                    other{"{0} min. pahle"}
+                }
+            }
+        }
+        minute-short{
+            relativeTime{
+                future{
+                    one{"{0} min. mein"}
+                    other{"{0} min. mein"}
+                }
+                past{
+                    one{"{0} min. pahle"}
+                    other{"{0} min. pahle"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"last Monday"}
+                "0"{"Monday"}
+                "1"{"next Monday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Monday mein"}
+                    other{"{0} Mondays mein"}
+                }
+                past{
+                    one{"{0} Monday pahle"}
+                    other{"{0} Mondays pahle"}
+                }
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"last M"}
+                "0"{"M"}
+                "1"{"next M"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} M mein"}
+                    other{"{0} M mein"}
+                }
+                past{
+                    one{"{0} M pahle"}
+                    other{"{0} M pahle"}
+                }
+            }
+        }
+        mon-short{
+            relative{
+                "-1"{"last Mon"}
+                "0"{"Mon"}
+                "1"{"next Mon"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Mon. mein"}
+                    other{"{0} Mon. mein"}
+                }
+                past{
+                    one{"{0} Mon. pahle"}
+                    other{"{0} Mon. pahle"}
+                }
+            }
+        }
+        month{
+            dn{"mahina"}
+            relative{
+                "-1"{"pichhla maheena"}
+                "0"{"yah maheena"}
+                "1"{"agla maheena"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} maheene mein"}
+                    other{"{0} maheene mein"}
+                }
+                past{
+                    one{"{0} maheene pahle"}
+                    other{"{0} maheene pahle"}
+                }
+            }
+        }
+        month-narrow{
+            relative{
+                "-1"{"last mo."}
+                "0"{"is mo."}
+                "1"{"next mo."}
+            }
+            relativeTime{
+                future{
+                    one{"{0}mo mein"}
+                    other{"{0}mo mein"}
+                }
+                past{
+                    one{"{0}mo pahle"}
+                    other{"{0}mo pahle"}
+                }
+            }
+        }
+        month-short{
+            relative{
+                "-1"{"last mo"}
+                "0"{"is mo"}
+                "1"{"next mo"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} mo. mein"}
+                    other{"{0} mo. mein"}
+                }
+                past{
+                    one{"{0} mo. pahle"}
+                    other{"{0} mo. pahle"}
+                }
+            }
+        }
+        quarter{
+            relative{
+                "-1"{"last quarter"}
+                "0"{"is quarter"}
+                "1"{"next quarter"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} quarter mein"}
+                    other{"{0} quarters mein"}
+                }
+                past{
+                    one{"{0} quarter pahle"}
+                    other{"{0} quarters pahle"}
+                }
+            }
+        }
+        quarter-narrow{
+            relativeTime{
+                future{
+                    one{"{0}q mein"}
+                    other{"{0}q mein"}
+                }
+                past{
+                    one{"{0}q pahle"}
+                    other{"{0}q pahle"}
+                }
+            }
+        }
+        quarter-short{
+            relativeTime{
+                future{
+                    one{"{0} qtr. mein"}
+                    other{"{0} qtrs. mein"}
+                }
+                past{
+                    one{"{0} qtr. pahle"}
+                    other{"{0} qtrs. pahle"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"last Saturday"}
+                "0"{"is Saturday"}
+                "1"{"next Saturday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Saturday mein"}
+                    other{"{0} Saturdays mein"}
+                }
+                past{
+                    one{"{0} Saturday pahle"}
+                    other{"{0} Saturdays pahle"}
+                }
+            }
+        }
+        sat-narrow{
+            relative{
+                "-1"{"last Sa"}
+                "0"{"is Sa"}
+                "1"{"next Sa"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Sa mein"}
+                    other{"{0} Sa mein"}
+                }
+                past{
+                    one{"{0} Sa pahle"}
+                    other{"{0} Sa pahle"}
+                }
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"last Sat."}
+                "0"{"is Sat."}
+                "1"{"last Sat."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Sat. mein"}
+                    other{"{0} Sat. mein"}
+                }
+                past{
+                    one{"{0} Sat. pahle"}
+                    other{"{0} Sat. pahle"}
+                }
+            }
+        }
+        second{
+            relative{
+                "0"{"abhi"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} second mein"}
+                    other{"{0} second mein"}
+                }
+                past{
+                    one{"{0} second pahle"}
+                    other{"{0} second pahle"}
+                }
+            }
+        }
+        second-narrow{
+            relativeTime{
+                future{
+                    one{"{0}s mein"}
+                    other{"{0}s mein"}
+                }
+                past{
+                    one{"{0}s pahle"}
+                    other{"{0}s pahle"}
+                }
+            }
+        }
+        second-short{
+            relativeTime{
+                future{
+                    one{"{0} sec. mein"}
+                    other{"{0} sec. mein"}
+                }
+                past{
+                    one{"{0} sec. pahle"}
+                    other{"{0} sec. pahle"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"last Sunday"}
+                "0"{"is Sunday"}
+                "1"{"next Sunday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Sunday mein"}
+                    other{"{0} Sundays mein"}
+                }
+                past{
+                    one{"{0} Sunday pahle"}
+                    other{"{0} Sundays pahle"}
+                }
+            }
+        }
+        sun-narrow{
+            relative{
+                "-1"{"last Su"}
+                "0"{"is Su"}
+                "1"{"next Su"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Su mein"}
+                    other{"{0} Su mein"}
+                }
+                past{
+                    one{"{0} Su pahle"}
+                    other{"{0} Su pahle"}
+                }
+            }
+        }
+        sun-short{
+            relative{
+                "-1"{"last Sun."}
+                "0"{"yah Sun."}
+                "1"{"next Sun."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Sun. mein"}
+                    other{"{0} Sun. mein"}
+                }
+                past{
+                    one{"{0} Sun. pahle"}
+                    other{"{0} Sun. pahle"}
+                }
+            }
+        }
+        thu{
+            relative{
+                "-1"{"last Thursday"}
+                "0"{"yah Thursday"}
+                "1"{"next Thursday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Thursday mein"}
+                    other{"{0} Thursdays mein"}
+                }
+                past{
+                    one{"{0} Thursday pahle"}
+                    other{"{0} Thursdays pahle"}
+                }
+            }
+        }
+        thu-narrow{
+            relative{
+                "-1"{"last Th"}
+                "0"{"is Th"}
+                "1"{"next Th"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Th mein"}
+                    other{"{0} Th mein"}
+                }
+                past{
+                    one{"{0} Th pahle"}
+                    other{"{0} Th pahle"}
+                }
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"last Thu."}
+                "0"{"yah Thu."}
+                "1"{"next Thu."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Thu. mein"}
+                    other{"{0} Thu. mein"}
+                }
+                past{
+                    one{"{0} Thu. pahle"}
+                    other{"{0} Thu. pahle"}
+                }
+            }
+        }
+        tue{
+            relative{
+                "-1"{"last Tuesday"}
+                "0"{"Tuesday"}
+                "1"{"next Tuesday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Tuesday mein"}
+                    other{"{0} Tuesdays mein"}
+                }
+                past{
+                    one{"{0} Tuesday pahle"}
+                    other{"{0} Tuesdays pahle"}
+                }
+            }
+        }
+        tue-narrow{
+            relative{
+                "-1"{"last Tu"}
+                "0"{"is Tu"}
+                "1"{"next Tu"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Tu mein"}
+                    other{"{0} Tu mein"}
+                }
+                past{
+                    one{"{0} Tu pahle"}
+                    other{"{0} Tu pahle"}
+                }
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"last Tue."}
+                "0"{"is Tue."}
+                "1"{"next Tue."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Tue. mein"}
+                    other{"{0} Tue. mein"}
+                }
+                past{
+                    one{"{0} Tue. pahle"}
+                    other{"{0} Tue. pahle"}
+                }
+            }
+        }
+        wed{
+            relative{
+                "-1"{"last Wednesday"}
+                "0"{"is Wednesday"}
+                "1"{"next Wednesday"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Wednesday mein"}
+                    other{"{0} Wednesdays mein"}
+                }
+                past{
+                    one{"{0} Wednesday pahle"}
+                    other{"{0} Wednesdays pahle"}
+                }
+            }
+        }
+        wed-narrow{
+            relative{
+                "-1"{"last W"}
+                "0"{"is W"}
+                "1"{"next W"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} W mein"}
+                    other{"{0} W mein"}
+                }
+                past{
+                    one{"{0} W pahle"}
+                    other{"{0} W pahle"}
+                }
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"last Wed"}
+                "0"{"is Wed"}
+                "1"{"next Wed"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} Wed. mein"}
+                    other{"{0} Wed. mein"}
+                }
+                past{
+                    one{"{0} Wed. pahle"}
+                    other{"{0} Wed. pahle"}
+                }
+            }
+        }
+        week{
+            dn{"hafta"}
+            relative{
+                "-1"{"pichhla hafta"}
+                "0"{"is hafte"}
+                "1"{"agla hafta"}
+            }
+            relativePeriod{"{0} date wala hafta"}
+            relativeTime{
+                future{
+                    one{"{0} hafte mein"}
+                    other{"{0} hafte mein"}
+                }
+                past{
+                    one{"{0} hafte pahle"}
+                    other{"{0} hafte pahle"}
+                }
+            }
+        }
+        week-narrow{
+            relative{
+                "-1"{"last wk"}
+                "0"{"is wk"}
+                "1"{"next wk"}
+            }
+            relativePeriod{"{0} wala week"}
+            relativeTime{
+                future{
+                    one{"{0}w mein"}
+                    other{"{0}w mein"}
+                }
+                past{
+                    one{"{0}w pahle"}
+                    other{"{0}w pahle"}
+                }
+            }
+        }
+        week-short{
+            relative{
+                "-1"{"last wk."}
+                "0"{"is wk."}
+                "1"{"next wk."}
+            }
+            relativePeriod{"{0} wala hafta"}
+            relativeTime{
+                future{
+                    one{"{0} wk. mein"}
+                    other{"{0} wk. mein"}
+                }
+                past{
+                    one{"{0} wk. pahle"}
+                    other{"{0} wk. pahle"}
+                }
+            }
+        }
+        weekOfMonth{
+            dn{"month kaa week"}
+        }
+        weekOfMonth-narrow{
+            dn{"mo kaa wk"}
+        }
+        weekOfMonth-short{
+            dn{"mo kaa wk"}
+        }
+        weekday{
+            dn{"Week kaa din"}
+        }
+        weekday-narrow{
+            dn{"wk kaa din"}
+        }
+        weekday-short{
+            dn{"wk kaa din"}
+        }
+        weekdayOfMonth{
+            dn{"month kaa weekday"}
+        }
+        weekdayOfMonth-narrow{
+            dn{"mo kaa wkday"}
+        }
+        weekdayOfMonth-short{
+            dn{"mo kaa wkday"}
+        }
+        year{
+            dn{"saal"}
+            relative{
+                "-1"{"pichhla saal"}
+                "0"{"is saal"}
+                "1"{"agla saal"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} saal mein"}
+                    other{"{0} saal mein"}
+                }
+                past{
+                    one{"{0} saal pahle"}
+                    other{"{0} saal pahle"}
+                }
+            }
+        }
+        year-narrow{
+            relative{
+                "-1"{"last yr."}
+                "0"{"is yr."}
+                "1"{"next yr."}
+            }
+            relativeTime{
+                future{
+                    one{"{0}y mein"}
+                    other{"{0}y mein"}
+                }
+                past{
+                    one{"{0}y pahle"}
+                    other{"{0}y pahle"}
+                }
+            }
+        }
+        year-short{
+            relative{
+                "-1"{"last yr."}
+                "0"{"is yr."}
+                "1"{"next yr."}
+            }
+            relativeTime{
+                future{
+                    one{"{0} yr. mein"}
+                    other{"{0} yr. mein"}
+                }
+                past{
+                    one{"{0} yr. pahle"}
+                    other{"{0} yr. pahle"}
+                }
+            }
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} yaa {1}"}
+            end{"{0} yaa {1}"}
+        }
+        or-narrow{
+            2{"{0} yaa {1}"}
+            end{"{0} yaa {1}"}
+        }
+        or-short{
+            2{"{0} yaa {1}"}
+            end{"{0} yaa {1}"}
+        }
+        standard{
+            2{"{0} aur {1}"}
+            end{"{0}, aur {1}"}
+        }
+        standard-narrow{
+            2{"{0} aur {1}"}
+            end{"{0}, {1}"}
+        }
+        standard-short{
+            2{"{0} aur {1}"}
+            end{"{0}, aur {1}"}
+        }
+        unit{
+            2{"{0} aur {1}"}
+            end{"{0}, aur {1}"}
+        }
+        unit-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+            middle{"{0}, {1}"}
+            start{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"U.K."}
+        US{"U.S."}
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "hi",
+            }
+            surnameFirst{
+                "ko",
+                "si",
+                "ta",
+                "te",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+    }
+}

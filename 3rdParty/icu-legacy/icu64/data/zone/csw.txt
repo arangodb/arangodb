@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+csw{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"ᕒᐁᐁᐣᐤᐏᐨ ᒣᐊᐣ ᐁᐃᐢᐸᓂᐟ"}
+        }
+        regionFormat{"{0} ᐁᐃᐢᐸᓂᐟ"}
+        regionFormatDaylight{"{0} ᑮᓯᑳᐤ ᐁᐃᐢᐸᓂᐟ"}
+        regionFormatStandard{"{0} ᐯᔭᑯᐦᑕᐃᐧᐣ ᐁᐃᐢᐸᓂᐟ"}
+    }
+}

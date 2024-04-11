@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!--
+ Copyright (C) 2016 and later: Unicode, Inc. and others.
+ License & terms of use: http://www.unicode.org/copyright.html
+ Copyright (c) 2006-2015 International Business Machines Corporation and others. All rights reserved.
+-->
+<!DOCTYPE ldml SYSTEM "../../dtd/cldr/common/dtd/ldml.dtd"
+[
+   <!ENTITY % icu SYSTEM "../../dtd/cldr/common/dtd/ldmlICU.dtd">
+   %icu;
+]
+>
+<ldml>
+    <identity>
+        <version number="$Revision$"/>
+        <language type="ja"/> 
+    </identity>
+    <special xmlns:icu="http://www.icu-project.org/">
+        <icu:breakIteratorData>
+            <icu:boundaries>
+                <icu:line icu:dependency="line_normal.brk"/>
+                <icu:line alt="loose"  icu:dependency="line_loose_cj.brk"/>
+                <icu:line alt="normal" icu:dependency="line_normal_cj.brk"/>
+                <icu:line alt="strict" icu:dependency="line_cj.brk"/>
+                <icu:line alt="loose_phrase"  icu:dependency="line_loose_phrase_cj.brk"/>
+                <icu:line alt="normal_phrase" icu:dependency="line_normal_phrase_cj.brk"/>
+                <icu:line alt="strict_phrase" icu:dependency="line_phrase_cj.brk"/>
+                <icu:line alt="phrase" icu:dependency="line_phrase_cj.brk"/>
+            </icu:boundaries>
+            <icu:extensions>
+                <!--
+                Entries in cjdict.txt categorized as particles (助詞), auxiliary verbs (助動詞),
+                conjugations (活用)  and prefix of them.
+                These entries are connected to the previous words for phrase based line breaking.
+                https://ja.wikipedia.org/wiki/助詞
+                https://ja.wikipedia.org/wiki/助動詞_(国文法)
+                https://ja.wikipedia.org/wiki/活用
+                -->
+                <icu:extension>かい</icu:extension>
+                <icu:extension>かしら</icu:extension>
+                <icu:extension>から</icu:extension>
+                <icu:extension>かれい</icu:extension>
+                <icu:extension>かれつ</icu:extension>
+                <icu:extension>かれる</icu:extension>
+                <icu:extension>かれん</icu:extension>
+                <icu:extension>きり</icu:extension>
+                <icu:extension>くらい</icu:extension>
+                <icu:extension>ぐらい</icu:extension>
+                <icu:extension>けれど</icu:extension>
+                <icu:extension>けれども</icu:extension>
+                <icu:extension>こそ</icu:extension>
+                <icu:extension>さえ</icu:extension>
+                <icu:extension>しか</icu:extension>
+                <icu:extension>した</icu:extension>
+                <icu:extension>ずつ</icu:extension>
+                <icu:extension>せる</icu:extension>
+                <icu:extension>せん</icu:extension>
+                <icu:extension>たい</icu:extension>
+                <icu:extension>たがる</icu:extension>
+                <icu:extension>たく</icu:extension>
+                <icu:extension>たら</icu:extension>
+                <icu:extension>たり</icu:extension>
+                <icu:extension>たれ</icu:extension>
+                <icu:extension>たれる</icu:extension>
+                <icu:extension>だけ</icu:extension>
+                <icu:extension>だに</icu:extension>
+                <icu:extension>だの</icu:extension>
+                <icu:extension>だり</icu:extension>
+                <icu:extension>つつ</icu:extension>
+                <icu:extension>てる</icu:extension>
+                <icu:extension>です</icu:extension>
+                <icu:extension>でも</icu:extension>
+                <icu:extension>ところが</icu:extension>
+                <icu:extension>ところで</icu:extension>
+                <icu:extension>とも</icu:extension>
+                <icu:extension>ない</icu:extension>
+                <icu:extension>なか</icu:extension>
+                <icu:extension>ながら</icu:extension>
+                <icu:extension>なく</icu:extension>
+                <icu:extension>なし</icu:extension>
+                <icu:extension>なぞ</icu:extension>
+                <icu:extension>など</icu:extension>
+                <icu:extension>なら</icu:extension>
+                <icu:extension>なり</icu:extension>
+                <icu:extension>なれる</icu:extension>
+                <icu:extension>なんぞ</icu:extension>
+                <icu:extension>ねる</icu:extension>
+                <icu:extension>ので</icu:extension>
+                <icu:extension>のに</icu:extension>
+                <icu:extension>のみ</icu:extension>
+                <icu:extension>はれる</icu:extension>
+                <icu:extension>ばかり</icu:extension>
+                <icu:extension>へる</icu:extension>
+                <icu:extension>ほど</icu:extension>
+                <icu:extension>まい</icu:extension>
+                <icu:extension>まう</icu:extension>
+                <icu:extension>まし</icu:extension>
+                <icu:extension>ます</icu:extension>
+                <icu:extension>まっ</icu:extension>
+                <icu:extension>まで</icu:extension>
+                <icu:extension>まま</icu:extension>
+                <icu:extension>まれ</icu:extension>
+                <icu:extension>もん</icu:extension>
+                <icu:extension>やら</icu:extension>
+                <icu:extension>やれる</icu:extension>
+                <icu:extension>よう</icu:extension>
+                <icu:extension>より</icu:extension>
+                <icu:extension>らしい</icu:extension>
+                <icu:extension>られる</icu:extension>
+                <icu:extension>れる</icu:extension>
+                <icu:extension>ろう</icu:extension>
+                <icu:extension>わっ</icu:extension>
+                <icu:extension>わな</icu:extension>
+                <icu:extension>わら</icu:extension>
+                <icu:extension>わり</icu:extension>
+                <icu:extension>わる</icu:extension>
+                <icu:extension>われ</icu:extension>
+                <icu:extension>われと</icu:extension>
+                <icu:extension>われる</icu:extension>
+                <icu:extension>わん</icu:extension>
+                <!--
+                Entries added for technical reasons (particle + others).        
+                Entries in cjdict.txt, which are compound words starting from the above categories
+                (i.e. particles, auxiliary verbs and conjunctions).
+                These entries are connected to the previous words for phrase based line breaking.
+                -->
+                <icu:extension>えたい</icu:extension>
+                <icu:extension>えて</icu:extension>
+                <icu:extension>える</icu:extension>
+                <icu:extension>けた</icu:extension>
+                <icu:extension>けたい</icu:extension>
+                <icu:extension>ける</icu:extension>
+                <icu:extension>させる</icu:extension>
+                <icu:extension>そうだ</icu:extension>
+                <icu:extension>っきゃ</icu:extension>
+                <icu:extension>っきり</icu:extension>
+                <icu:extension>っけ</icu:extension>
+                <icu:extension>っす</icu:extension>
+                <icu:extension>ったらしい</icu:extension>
+                <icu:extension>っちゅう</icu:extension>
+                <icu:extension>って</icu:extension>
+                <icu:extension>っていう</icu:extension>
+                <icu:extension>ってか</icu:extension>
+                <icu:extension>ってな</icu:extension>
+                <icu:extension>っと</icu:extension>
+                <icu:extension>っぱなし</icu:extension>
+                <icu:extension>っぷり</icu:extension>
+                <icu:extension>っぽい</icu:extension>
+                <icu:extension>にあう</icu:extension>
+                <icu:extension>にあがる</icu:extension>
+                <icu:extension>にあたって</icu:extension>
+                <icu:extension>にあたり</icu:extension>
+                <icu:extension>にあたりまして</icu:extension>
+                <icu:extension>にあたります</icu:extension>
+                <icu:extension>にあたる</icu:extension>
+                <icu:extension>において</icu:extension>
+                <icu:extension>におきまして</icu:extension>
+                <icu:extension>における</icu:extension>
+                <icu:extension>にかけ</icu:extension>
+                <icu:extension>にかけて</icu:extension>
+                <icu:extension>にかけまして</icu:extension>
+                <icu:extension>にたいして</icu:extension>
+                <icu:extension>にたいしまして</icu:extension>
+                <icu:extension>にたいします</icu:extension>
+                <icu:extension>にたいする</icu:extension>
+                <icu:extension>について</icu:extension>
+                <icu:extension>につき</icu:extension>
+                <icu:extension>につきまして</icu:extension>
+                <icu:extension>につけ</icu:extension>
+                <icu:extension>につれ</icu:extension>
+                <icu:extension>につれて</icu:extension>
+                <icu:extension>にて</icu:extension>
+                <icu:extension>にとって</icu:extension>
+                <icu:extension>にとり</icu:extension>
+                <icu:extension>にとりまして</icu:extension>
+                <icu:extension>にまつわります</icu:extension>
+                <icu:extension>にまつわる</icu:extension>
+                <icu:extension>にもかかわらず</icu:extension>
+                <icu:extension>にゃ</icu:extension>
+                <icu:extension>によって</icu:extension>
+                <icu:extension>により</icu:extension>
+                <icu:extension>によりまして</icu:extension>
+                <icu:extension>によります</icu:extension>
+                <icu:extension>による</icu:extension>
+                <icu:extension>にわたって</icu:extension>
+                <icu:extension>にわたり</icu:extension>
+                <icu:extension>にわたりまして</icu:extension>
+                <icu:extension>にわたります</icu:extension>
+                <icu:extension>にわたる</icu:extension>
+                <icu:extension>に対し</icu:extension>
+                <icu:extension>に対して</icu:extension>
+                <icu:extension>に対しまして</icu:extension>
+                <icu:extension>に対します</icu:extension>
+                <icu:extension>に対する</icu:extension>
+                <icu:extension>に当たって</icu:extension>
+                <icu:extension>に当たり</icu:extension>
+                <icu:extension>に当たりまして</icu:extension>
+                <icu:extension>に当たります</icu:extension>
+                <icu:extension>に当たる</icu:extension>
+                <icu:extension>に従い</icu:extension>
+                <icu:extension>に従いまして</icu:extension>
+                <icu:extension>に従います</icu:extension>
+                <icu:extension>に従う</icu:extension>
+                <icu:extension>に従って</icu:extension>
+                <icu:extension>に関し</icu:extension>
+                <icu:extension>に関して</icu:extension>
+                <icu:extension>に関しまして</icu:extension>
+                <icu:extension>に関します</icu:extension>
+                <icu:extension>に関する</icu:extension>
+                <icu:extension>に際し</icu:extension>
+                <icu:extension>に際して</icu:extension>
+                <icu:extension>ものの</icu:extension>
+                <icu:extension>ろうし</icu:extension>
+                <icu:extension>ろうと</icu:extension>
+                <icu:extension>われと</icu:extension>
+                <icu:extension>をの</icu:extension>
+                <icu:extension>をめぐって</icu:extension>
+                <icu:extension>をめぐりまして</icu:extension>
+                <icu:extension>をめぐります</icu:extension>
+                <icu:extension>をめぐる</icu:extension>
+                <icu:extension>をもちまして</icu:extension>
+                <icu:extension>をもって</icu:extension>
+                <icu:extension>を以て</icu:extension>
+                <icu:extension>を通して</icu:extension>
+                <icu:extension>を通しまして</icu:extension>
+                <icu:extension>を通じ</icu:extension>
+                <icu:extension>を通じて</icu:extension>
+                <icu:extension>を通じまして</icu:extension>
+                <icu:extension>んじゃ</icu:extension>
+                <icu:extension>んで</icu:extension>
+                <!--
+                Entries added for technical reasons (noun suffix).
+                Entries in cjdict.txt, which are suffixes of nouns.
+                These entries should be connected to the previous (noun) words.
+                -->
+                <icu:extension>々宮</icu:extension>
+                <icu:extension>々家</icu:extension>
+                <icu:extension>え目</icu:extension>
+                <icu:extension>が丘</icu:extension>
+                <icu:extension>が台</icu:extension>
+                <icu:extension>が床</icu:extension>
+                <icu:extension>が浜</icu:extension>
+                <icu:extension>の内</icu:extension>
+                <icu:extension>の山公園</icu:extension>
+                <icu:extension>の峰</icu:extension>
+                <icu:extension>の森</icu:extension>
+                <icu:extension>の沢</icu:extension>
+                <icu:extension>の通り</icu:extension>
+                <icu:extension>の里</icu:extension>
+                <icu:extension>ヵ国</icu:extension>
+                <icu:extension>ヵ年</icu:extension>
+                <icu:extension>ヵ所</icu:extension>
+                <icu:extension>ヵ月</icu:extension>
+                <icu:extension>ヵ村</icu:extension>
+                <icu:extension>ヵ条</icu:extension>
+                <icu:extension>ヶ丘</icu:extension>
+                <icu:extension>ヶ国</icu:extension>
+                <icu:extension>ヶ島</icu:extension>
+                <icu:extension>ヶ年</icu:extension>
+                <icu:extension>ヶ所</icu:extension>
+                <icu:extension>ヶ月</icu:extension>
+                <icu:extension>ヶ村</icu:extension>
+                <icu:extension>ヶ条</icu:extension>
+                <icu:extension>ージ</icu:extension>
+                <icu:extension>ーズ</icu:extension>
+                <icu:extension>ータ</icu:extension>
+                <icu:extension>ード</icu:extension>
+                <icu:extension>ーニャ</icu:extension>
+                <icu:extension>ープランス</icu:extension>
+                <icu:extension>ーユ</icu:extension>
+                <icu:extension>ーランド</icu:extension>
+                <icu:extension>ーリンズ</icu:extension>
+                <icu:extension>ーン</icu:extension>
+            </icu:extensions>
+        </icu:breakIteratorData>
+    </special>
+</ldml>
+

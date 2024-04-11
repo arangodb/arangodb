@@ -1,0 +1,906 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yrl{
+    Keys{
+        calendar{"Akayupawa"}
+        cf{"Rupisawa rikuyara"}
+        colAlternate{"Remãtuwa sĩburu muakaripawa"}
+        colBackwards{"Asẽtu-ita muakaripawa yerewá"}
+        colCaseFirst{"Wasupiriara-ita/mirĩpiriara-ita muakarisawa"}
+        colCaseLevel{"Muakaripawa amũrupisawa irũ wasupiriara-ita yuí mirĩpiriara-ita yupú"}
+        colNormalization{"Muakaripawa nurmawaira"}
+        colNumeric{"Papasawa muakaripawa"}
+        colStrength{"Muakaripawa yepésawapawa"}
+        collation{"Isirãsawa"}
+        currency{"Rikuyara"}
+        hc{"Ara urariupura (12 vs 24)"}
+        lb{"Nimũ mupukasawa rupisawa"}
+        ms{"Musũgasawa tekô"}
+        numbers{"Papasawa-itá"}
+        timezone{"Kutu hurariyu"}
+        va{"Tedawasawa muyereusawa"}
+        x{"Purusawa mirapura"}
+    }
+    Languages{
+        aa{"afari"}
+        ab{"abikasiyu"}
+        ace{"axemi"}
+        ach{"akuri"}
+        ada{"adãgime"}
+        ady{"adige"}
+        ae{"awesitiku"}
+        af{"afiriķãner"}
+        afh{"afirihiri"}
+        agq{"agẽ"}
+        ain{"ainú"}
+        ak{"akã"}
+        akk{"akadiãnu"}
+        ale{"areúti"}
+        alt{"autai meridiunau"}
+        am{"amáriku"}
+        an{"aragunẽi"}
+        ang{"ẽgirixi arkaiku"}
+        anp{"ãyika"}
+        ar{"arabi"}
+        ar_001{"arabi mudernu"}
+        arc{"aramaiku"}
+        arn{"mapudũgũ"}
+        arp{"araparu"}
+        ars{"arabi negede"}
+        arw{"arawaki"}
+        as{"asamei"}
+        asa{"asu"}
+        ast{"asiturianu"}
+        av{"awariku"}
+        awa{"awadi"}
+        ay{"aimará"}
+        az{"aserbayanu"}
+        az_Arab{"aseri sú"}
+        ba{"baxikiri"}
+        bal{"barúxi"}
+        ban{"barinei"}
+        bas{"basa"}
+        bax{"bamũ"}
+        bbj{"gumara"}
+        be{"bierurusu"}
+        bej{"beya"}
+        bem{"bẽba"}
+        bez{"bena"}
+        bfd{"bafuti"}
+        bg{"búgaru"}
+        bgn{"baruxi usidẽtawara"}
+        bho{"buyipuri"}
+        bi{"bisiramá"}
+        bik{"bikú"}
+        bin{"biní"}
+        bkm{"kũ"}
+        bla{"sikisika"}
+        bm{"bãbara"}
+        bn{"bẽgari"}
+        bo{"tibetanu"}
+        br{"beretãu"}
+        bra{"barayi"}
+        brx{"budu"}
+        bs{"businiu"}
+        bss{"akusi"}
+        bua{"buriatu"}
+        bug{"buginei"}
+        bum{"buru"}
+        byn{"birĩ"}
+        byv{"medũba"}
+        ca{"katará"}
+        cad{"cadu"}
+        car{"karibi"}
+        cay{"kayuga"}
+        cch{"atisã"}
+        ccp{"xakima"}
+        ce{"xexenu"}
+        ceb{"sebuanu"}
+        cgg{"xiga"}
+        ch{"xamuru"}
+        chb{"xibixa"}
+        chg{"xagatai"}
+        chk{"xukisi"}
+        chm{"mari"}
+        chn{"yarigãu xinoki"}
+        cho{"xokitau"}
+        chp{"xipewiyã"}
+        chr{"xerokí"}
+        chy{"xeyeni"}
+        ckb{"kurdu piterapura"}
+        co{"curisu"}
+        cop{"kupita"}
+        cr{"kiri"}
+        crh{"Kirimeya turiku"}
+        crs{"kiriuru frãsei seixeriwara"}
+        cs{"tieku"}
+        csb{"kaxubiã"}
+        cu{"isirawu ekeresiatiku"}
+        cv{"tiuwaxi"}
+        cy{"garei"}
+        da{"dinamarikei"}
+        dak{"dakuta"}
+        dar{"darigiwa"}
+        dav{"taita"}
+        de{"aremãu"}
+        de_CH{"aremãu iwaté (Suisa)"}
+        del{"deraware"}
+        den{"isireivei"}
+        dgr{"dogiri"}
+        din{"dĩka"}
+        dje{"sarima"}
+        doi{"dogiribi"}
+        dsb{"surábiu yatuka"}
+        dua{"duara"}
+        dum{"hurãdei médiu"}
+        dv{"diweí"}
+        dyo{"yora-funiyi"}
+        dyu{"diura"}
+        dz{"disũga"}
+        dzg{"dasaga"}
+        ebu{"ẽbu"}
+        ee{"ewe"}
+        efi{"efiki"}
+        egy{"egipisiu arkaiku"}
+        eka{"ekayuki"}
+        el{"geregu"}
+        elx{"eramite"}
+        en{"ẽgirixi"}
+        enm{"ẽgirixi médiu"}
+        eo{"esiperãtu"}
+        es{"isipãyu"}
+        et{"eituniyanu"}
+        eu{"basiku"}
+        ewo{"ewũdu"}
+        fa{"perisa"}
+        fan{"fãge"}
+        fat{"fãti"}
+        ff{"fura"}
+        fi{"firãdes"}
+        fil{"firipinu"}
+        fj{"fiyianu"}
+        fo{"faruwesi"}
+        fon{"fũmu"}
+        fr{"frãsei"}
+        frc{"frãsei kayũ"}
+        frm{"frãsei médiu"}
+        fro{"frãsei arkaiku"}
+        frr{"firísiu setẽtiriunau"}
+        frs{"firísiu usidẽtawara"}
+        fur{"friuranu"}
+        fy{"frísiu usidẽtawara"}
+        ga{"irãdeixi médiu"}
+        gaa{"ga"}
+        gag{"gagausi"}
+        gan{"gã"}
+        gay{"gayu"}
+        gba{"gibaya"}
+        gd{"gaériku ekusei"}
+        gez{"giixi"}
+        gil{"giubetei"}
+        gl{"garegu"}
+        gmh{"aremãu iwaté médiu"}
+        gn{"guwarani"}
+        goh{"aremãu arkaiku iwaté"}
+        gon{"gũdi"}
+        gor{"gurũtaru"}
+        got{"gútiku"}
+        grb{"gerebu"}
+        grc{"geregu arkaiku"}
+        gsw{"aremãu (Suisa)"}
+        gu{"guserate"}
+        guz{"gusiyi"}
+        gv{"mãkisi"}
+        gwi{"guwixi-ĩ"}
+        ha{"hausá"}
+        hai{"haida"}
+        hak{"haká"}
+        haw{"hawayanu"}
+        he{"heburaiku"}
+        hi{"hĩdi"}
+        hil{"irigainũ"}
+        hit{"hitita"}
+        hmn{"himũgi"}
+        ho{"hiri mutu"}
+        hr{"kuruata"}
+        hsb{"surábiu iwaté"}
+        hsn{"xiãgi"}
+        ht{"haitianu"}
+        hu{"ũgaru"}
+        hup{"hupa"}
+        hy{"arimẽniu"}
+        hz{"hereru"}
+        ia{"neẽgasuí"}
+        iba{"ibã"}
+        ibb{"ibibiu"}
+        id{"ĩdunésiu"}
+        ie{"neẽgapitera"}
+        ig{"igibu"}
+        ii{"sixuã yi"}
+        ik{"inupiaki"}
+        ilo{"irukanu"}
+        inh{"ĩguxi"}
+        io{"idu"}
+        is{"isirãdei"}
+        it{"itarianu"}
+        iu{"inukitituti"}
+        ja{"yapunei"}
+        jbo{"ruyibã"}
+        jgo{"ĩgẽba"}
+        jmc{"maxami"}
+        jpr{"yudaiku-perisa"}
+        jrb{"yudaiku-arabiku"}
+        jv{"yawanei"}
+        ka{"geurgianu"}
+        kaa{"kara-kaupaki"}
+        kab{"kabire"}
+        kac{"kaxĩ"}
+        kaj{"iyu"}
+        kam{"kãba"}
+        kaw{"kawi"}
+        kbd{"kabaridianu"}
+        kbl{"kanẽbu"}
+        kcg{"tiyapi"}
+        kde{"makũdi"}
+        kea{"kiriuru kabu-suikiriwara"}
+        kfo{"kuru"}
+        kg{"kũgurei"}
+        kgp{"kaĩgãgi"}
+        kha{"kasi"}
+        kho{"kutanei"}
+        khq{"kuyira xini"}
+        ki{"kikuyu"}
+        kj{"kuãyama"}
+        kk{"kasaki"}
+        kkj{"kaku"}
+        kl{"guruẽrãdei"}
+        kln{"karẽyĩ"}
+        km{"kimé"}
+        kmb{"kĩbũdu"}
+        kn{"kanarĩ"}
+        ko{"kurianu"}
+        koi{"kumi-perimiaki"}
+        kok{"kũkani"}
+        kos{"kusirayã"}
+        kpe{"kipere"}
+        kr{"kanúri"}
+        krc{"karaxai-bauká"}
+        krl{"karériu"}
+        kru{"kuruki"}
+        ks{"kaxemira"}
+        ksb{"xãbara"}
+        ksf{"bafia"}
+        ksh{"kurixi"}
+        ku{"kurdu"}
+        kum{"kumiki"}
+        kut{"kutenai"}
+        kv{"kumi"}
+        kw{"kúriniku"}
+        ky{"kirigixi"}
+        la{"ratĩ"}
+        lad{"radinu"}
+        lag{"rãgi"}
+        lah{"rãda"}
+        lam{"rãba"}
+        lb{"ruxẽbugei"}
+        lez{"resigi"}
+        lg{"rugãda"}
+        li{"rĩburgei"}
+        lkt{"rakuta"}
+        ln{"rĩgana"}
+        lo{"rausianu"}
+        lol{"mũgu"}
+        lou{"kiriuru ruisianawara"}
+        loz{"rusi"}
+        lrc{"ruri setẽtiriunau"}
+        lt{"rituanu"}
+        lu{"ruba-katãga"}
+        lua{"ruba-rurua"}
+        lui{"ruisenu"}
+        lun{"rũda"}
+        luo{"ruwu"}
+        lus{"ruxai"}
+        luy{"ruiya"}
+        lv{"retãu"}
+        mad{"madurei"}
+        maf{"mafa"}
+        mag{"magarí"}
+        mai{"maitiri"}
+        mak{"makasá"}
+        man{"mãdĩga"}
+        mas{"masai"}
+        mde{"maba"}
+        mdf{"mukisa"}
+        mdr{"mãdari"}
+        men{"mẽde"}
+        mer{"meru"}
+        mfe{"murisiẽ"}
+        mg{"maugaxe"}
+        mga{"irãdei médiu"}
+        mgh{"makua"}
+        mgo{"metá"}
+        mh{"marixarei"}
+        mi{"mauri"}
+        mic{"mikemake"}
+        min{"minãgikabau"}
+        mk{"masedũniu"}
+        ml{"marayara"}
+        mn{"mũgú"}
+        mnc{"mãxu"}
+        mni{"manipuri"}
+        moh{"muikanu"}
+        mos{"musi"}
+        mr{"marati"}
+        ms{"marayu"}
+        mt{"mautei"}
+        mua{"mũdãgi"}
+        mul{"siía nheẽga"}
+        mus{"kirik"}
+        mwl{"mirãdei"}
+        mwr{"mariwari"}
+        my{"birimanei"}
+        mye{"miyene"}
+        myv{"erisia"}
+        mzn{"masãdarani"}
+        na{"nauruanu"}
+        nan{"mĩ nã"}
+        nap{"napuritanu"}
+        naq{"nama"}
+        nb{"bukimau nuruegei"}
+        nd{"ĩdebere nutiwara"}
+        nds{"aremaũ yatuka"}
+        nds_NL{"sakisãu yatuka"}
+        ne{"neparei"}
+        new{"newari"}
+        ng{"dũgu"}
+        nia{"niyasi"}
+        niu{"niweanu"}
+        nl{"hurãdei"}
+        nl_BE{"faramẽgu"}
+        nmg{"kuwasiu"}
+        nn{"ninorisiki nuruegei"}
+        nnh{"ĩgiẽbũ"}
+        no{"nuruegei"}
+        nog{"nugai"}
+        non{"núridiku arkaiku"}
+        nqo{"nikú"}
+        nr{"ĩdebere suwara"}
+        nso{"sutu setẽtiriunau"}
+        nus{"nuiri"}
+        nv{"nawayu"}
+        nwc{"newari katuwa"}
+        ny{"niãya"}
+        nym{"niãmuwesi"}
+        nyn{"niãkuri"}
+        nyo{"niyuru"}
+        nzi{"ĩsima"}
+        oc{"usitãniku"}
+        oj{"uyibua"}
+        om{"urumu"}
+        or{"uriá"}
+        os{"usetu"}
+        osa{"usayi"}
+        ota{"turiku utumanu"}
+        pa{"pãyabi"}
+        pag{"pãgasinã"}
+        pal{"parawi"}
+        pam{"pãpãga"}
+        pap{"papiamẽtu"}
+        pau{"parauanu"}
+        pcm{"pidigĩ niyerianu"}
+        peo{"persa arkaiku"}
+        phn{"finísiu"}
+        pi{"pári"}
+        pl{"purunei"}
+        pon{"pũpeianu"}
+        prg{"purusianu"}
+        pro{"puruwẽsau arkaiku"}
+        ps{"paxitu"}
+        pt{"putugei"}
+        qu{"kíxua"}
+        quc{"kixé"}
+        raj{"rayasitani"}
+        rap{"rapanui"}
+        rar{"rurutũganu"}
+        rm{"rumãxi"}
+        rn{"rũdi"}
+        ro{"rumenu"}
+        ro_MD{"mudáwiu"}
+        rof{"rũbu"}
+        rom{"rumani"}
+        root{"raisi"}
+        ru{"rusu"}
+        rup{"arumenu"}
+        rw{"kiniaruãda"}
+        rwk{"ruwa"}
+        sa{"sãsikiritu"}
+        sad{"sãdawe"}
+        sah{"saka"}
+        sam{"aramaiku samaritanu"}
+        saq{"sãburu"}
+        sas{"sasak"}
+        sat{"sãtari"}
+        sba{"ĩgãbai"}
+        sbp{"sãgu"}
+        sc{"saridú"}
+        scn{"sisirianu"}
+        sco{"isiutis"}
+        sd{"sĩdi"}
+        sdh{"kuridu meridiunau"}
+        se{"sami setẽtiriunau"}
+        see{"seneka"}
+        seh{"sena"}
+        sel{"seukupi"}
+        ses{"kuiraburu seni"}
+        sg{"sãgú"}
+        sga{"irãdesiarkaiku"}
+        sh{"seriwu-kruata"}
+        shi{"taxeriti"}
+        shn{"xãni"}
+        shu{"arabi xadianu"}
+        si{"sĩgarei"}
+        sid{"sidamu"}
+        sk{"esiruwaku"}
+        sl{"esiruwenu"}
+        sm{"samuanu"}
+        sma{"sami meridiunau"}
+        smj{"sami Lulewara"}
+        smn{"sami Inariwara"}
+        sms{"sami Skoltwara"}
+        sn{"xuna"}
+        snk{"sunĩkê"}
+        so{"sumari"}
+        sog{"sugidianu"}
+        sq{"aubanei"}
+        sr{"sériwiu"}
+        srn{"surinamei"}
+        srr{"serere"}
+        ss{"suási"}
+        ssy{"saru"}
+        st{"sutu suwara"}
+        su{"sũdanei"}
+        suk{"sukuma"}
+        sus{"susu"}
+        sux{"sumeriu"}
+        sv{"sueku"}
+        sw{"suaíri"}
+        sw_CD{"suairi kũguwara"}
+        swb{"kumurianu"}
+        syc{"siriaku katuwa"}
+        syr{"siriaku"}
+        ta{"tamiu"}
+        te{"térugu"}
+        tem{"timine"}
+        teo{"teso"}
+        ter{"terenu"}
+        tet{"tetũ"}
+        tg{"tadiyike"}
+        th{"tairãdei"}
+        ti{"tigirínia"}
+        tig{"tigiré"}
+        tiv{"tivi"}
+        tk{"turikumenu"}
+        tkl{"tukerauanu"}
+        tl{"tagaru"}
+        tlh{"kirĩgũ"}
+        tli{"tirĩgiti"}
+        tmh{"tamaxeki"}
+        tn{"tisuana"}
+        to{"tũganei"}
+        tog{"tũganei Niasawara"}
+        tpi{"tuki pisĩ"}
+        tr{"turku"}
+        trv{"taruku"}
+        ts{"tesũga"}
+        tsi{"tesĩmĩxianu"}
+        tt{"táritaru"}
+        tum{"tũbuka"}
+        tvl{"tuwaruanu"}
+        tw{"tui"}
+        twq{"tasawake"}
+        ty{"taitianu"}
+        tyv{"tuwinianu"}
+        tzm{"tamasiriti Átras katuwa"}
+        udm{"udimurite"}
+        ug{"wiguri"}
+        uga{"ugarítiku"}
+        uk{"ukaranianu"}
+        umb{"ũbũdu"}
+        und{"ũba uyukuau nheẽga"}
+        ur{"urdu"}
+        uz{"usibeki"}
+        vai{"wai"}
+        ve{"wẽda"}
+        vi{"wietinamita"}
+        vo{"wurapuke"}
+        vot{"wútiku"}
+        vun{"wũyu"}
+        wa{"warãu"}
+        wae{"wauseri"}
+        wal{"woraita"}
+        war{"warai"}
+        was{"waxu"}
+        wbp{"waripiri"}
+        wo{"worofi"}
+        wuu{"wurapuki"}
+        xal{"kaumiki"}
+        xh{"xosa"}
+        xog{"rusoga"}
+        yao{"yau"}
+        yap{"yapese"}
+        yav{"yãgibẽ"}
+        ybb{"yẽba"}
+        yi{"yídixi"}
+        yo{"yurubá"}
+        yrl{"nheẽgatu"}
+        yue{"kãtunei"}
+        za{"suãgi"}
+        zap{"saputeku"}
+        zbl{"rãgasaitá brisi"}
+        zen{"senaga"}
+        zgh{"tamasiriti marukinu padrãu"}
+        zh{"xinanheẽga"}
+        zh_Hans{"xinanheẽga iwasuĩma"}
+        zh_Hant{"xinanheẽga katuwa"}
+        zu{"suru"}
+        zun{"sũyi"}
+        zxx{"ũba aykué nheẽga sesewaraitá"}
+        zza{"sasaki"}
+    }
+    Languages%long{
+        zh_Hans{"xinanheẽga mãdarĩ (iwasuĩma)"}
+        zh_Hant{"xinanheẽga mãdarĩ (katuwa)"}
+    }
+    Languages%menu{
+        yue{"kãtunei (katuwa)"}
+        zh{"xinanheẽga, mãdarĩ"}
+    }
+    Languages%variant{
+        ps{"puxitu"}
+    }
+    Scripts{
+        Arab{"arabika"}
+        Armi{"arimi"}
+        Armn{"arimẽniu"}
+        Avst{"awétiku"}
+        Bali{"barineisi"}
+        Bamu{"bamũ"}
+        Batk{"bataki"}
+        Beng{"bẽgari"}
+        Blis{"rãgasaitá bliss"}
+        Bopo{"bupumufu"}
+        Brah{"brami"}
+        Brai{"braire"}
+        Bugi{"buginei"}
+        Buhd{"buwidi"}
+        Cakm{"kakimi"}
+        Cans{"yũpinimasá síraba irũ aburíjini kanadáwara suí"}
+        Cari{"karianu"}
+        Cham{"xãmi"}
+        Cher{"xerokí"}
+        Cirt{"runikarana"}
+        Copt{"kupitiku"}
+        Cprt{"sipiriuta"}
+        Cyrl{"siríriku"}
+        Cyrs{"siríriku isirawu ekeresiatiku"}
+        Deva{"dewanagari"}
+        Dsrt{"desereti"}
+        Egyd{"demútiku egipisiu"}
+        Egyh{"ierátiku egipisiu"}
+        Egyp{"egipsiu-ita kuatiara kuxiímawara"}
+        Ethi{"etiúpiku"}
+        Geok{"kutisuri geurgianu"}
+        Geor{"geurgianu"}
+        Glag{"garagurítiku"}
+        Goth{"gútiku"}
+        Grek{"geregu"}
+        Gujr{"guserati"}
+        Guru{"gumuki"}
+        Hanb{"hãbi"}
+        Hang{"hãgu"}
+        Hani{"hã"}
+        Hano{"hanunu"}
+        Hans{"iwasuĩma"}
+        Hant{"katuwa"}
+        Hebr{"heburaiku"}
+        Hira{"hiragana"}
+        Hmng{"parau himũgi"}
+        Hrkt{"yapunei síraba irũ"}
+        Hung{"ũgaru kuxiímawara"}
+        Inds{"ĩdu"}
+        Ital{"itáriku kuxiímawara"}
+        Jamo{"yamu"}
+        Java{"yawanei"}
+        Jpan{"yapunei"}
+        Kali{"kaya ri"}
+        Kana{"katakaná"}
+        Khar{"karuxiti"}
+        Khmr{"kimé"}
+        Knda{"kãnará"}
+        Kore{"kureanu"}
+        Kthi{"kiti"}
+        Lana{"rana"}
+        Laoo{"rau"}
+        Latf{"ratĩ farakitú"}
+        Latg{"ratĩ gaériku"}
+        Latn{"ratĩ"}
+        Lepc{"repixa"}
+        Limb{"rĩbu"}
+        Lina{"satãbika A"}
+        Linb{"satãbika B"}
+        Lisu{"risu"}
+        Lyci{"rísiu"}
+        Lydi{"rídiu"}
+        Mand{"mãdaiku"}
+        Mani{"manikeanu"}
+        Maya{"maya-ita kuatiara kuxiímawara"}
+        Merc{"meruítiku kusiwu"}
+        Mero{"meruítiku"}
+        Mlym{"marayara"}
+        Mong{"mũgú"}
+        Moon{"Moon kuatiara"}
+        Mtei{"manipuri kuatiara"}
+        Mymr{"birimanei"}
+        Nkoo{"ĩku"}
+        Ogam{"ugãmiku"}
+        Olck{"uxiki"}
+        Orkh{"urikũ"}
+        Orya{"uriá"}
+        Osma{"usmania"}
+        Perm{"périmiku kuxiímawara"}
+        Phag{"phagipa"}
+        Phli{"phli"}
+        Phlp{"phlp"}
+        Phlv{"paravi kuxiímawara"}
+        Phnx{"finísiu"}
+        Plrd{"funétiku miau"}
+        Prti{"prti"}
+        Rjng{"reyãgi"}
+        Roro{"rũgurũgu"}
+        Runr{"rúniku"}
+        Samr{"samaritanu"}
+        Sara{"sarati"}
+        Saur{"sauraxitara"}
+        Sgnw{"sãgawa kuatiara"}
+        Shaw{"xawianu"}
+        Sinh{"sĩgarei"}
+        Sund{"sudãnei"}
+        Sylo{"siruti nagiri"}
+        Syrc{"siríaku"}
+        Syre{"siríaku esitarãgeru"}
+        Syrj{"siriaku usidẽtawara"}
+        Syrn{"siriaku uriẽtawara"}
+        Tagb{"tagibanua"}
+        Tale{"tai re"}
+        Talu{"tai rue pisasú"}
+        Taml{"tãmiu"}
+        Tavt{"tawiti"}
+        Telu{"térugu"}
+        Teng{"tẽguwari"}
+        Tfng{"tifinagi"}
+        Tglg{"tagaru"}
+        Thaa{"ta-ana"}
+        Thai{"tairãdei"}
+        Tibt{"tibetanu"}
+        Ugar{"ugarítiku"}
+        Vaii{"wai"}
+        Visp{"nheẽga xipiawera"}
+        Xpeo{"perisa kuxiímawara"}
+        Xsux{"sumériu-akadianu kune-sãgawa"}
+        Yiii{"yi"}
+        Zinh{"tauxariwa"}
+        Zmth{"matemátika kuatiara"}
+        Zsye{"Emuyi"}
+        Zsym{"zsym"}
+        Zxxx{"yũpinimasáĩma"}
+        Zyyy{"mayewera"}
+        Zzzz{"yũpinimasá ũbawa uyukuau"}
+    }
+    Scripts%stand-alone{
+        Hans{"hã iwasuĩma"}
+        Hant{"hã katuwa"}
+    }
+    Scripts%variant{
+        Arab{"perisu-arabika"}
+    }
+    Types{
+        calendar{
+            buddhist{"Akayupawa Budasuera"}
+            chinese{"Akayupawa Xinawara"}
+            coptic{"Akayupawa Kupitiku"}
+            dangi{"Akayupawa Dãgi"}
+            ethiopic{"Akayupawa Etíupi"}
+            ethiopic-amete-alem{"Akayupawa Amete Alem Etiupiwara"}
+            gregorian{"Akayupawa Greguriuwara"}
+            hebrew{"Akayupawa Yudeu"}
+            indian{"Akayupawa Tetãmapawa Ĩdiawara"}
+            iso8601{"Akayupawa ISSO-8601"}
+            japanese{"Akayupawa Nipõwara"}
+            persian{"Akayupawa Persiyawara"}
+            roc{"Akayupawa Xina Repúbirikawara"}
+        }
+        cf{
+            account{"Rikuyara rupisawa papasawa supé"}
+            standard{"Rikuyara rupisawa retewa"}
+        }
+        colAlternate{
+            non-ignorable{"Reyupurawaka sĩbulu-ita"}
+            shifted{"Reyupurawaka remãtuwa sĩbulu-ita"}
+        }
+        colBackwards{
+            no{"Ypurawaka asẽtu-itá mayewera"}
+            yes{"Yupurawakasa asẽtu-ita amũrupisawa"}
+        }
+        colCaseFirst{
+            lower{"Reyupurawaka mirĩwa rupí"}
+            no{"Yupurawakasawa nurmawa turusuwa yuí mirĩwa piari"}
+            upper{"Reyupurawaka turusuwa rupí"}
+        }
+        colCaseLevel{
+            no{"Yupurawakasawa mirĩwa yuí turusúwa ãmurupí"}
+            yes{"Yupurawakasawa mirĩwa yuí turusúwa amũrupisawa"}
+        }
+        colNormalization{
+            no{"Reyupurawaka nurmawasawaĩma"}
+            yes{"Reyupurawaka Unicode mayeweana"}
+        }
+        colNumeric{
+            no{"Reyupurawaka díyitu-ita yeperawa rupí"}
+            yes{"Reyupurawaka díyitu-ita papasawa rupí"}
+        }
+        colStrength{
+            identical{"Reyupurawaka opaĩ"}
+            primary{"Reyupurawaka letera básika nhũtú"}
+            quaternary{"Reyupurawaka asẽtu-ita/turusuwa-ita yuí mirĩwa-ita/turususawa/kãna"}
+            secondary{"Reyupurawaka asẽtu-ita"}
+            tertiary{"Reyupurawaka asẽtu-ita/turusuwa-ita yuí mirĩwa-ita/turususawa"}
+        }
+        collation{
+            big5han{"Xinanhẽẽga rikusawarupí muakaresawa - Big5"}
+            compat{"Muakaresawa rinũdewa nũgarásawa"}
+            dictionary{"Disiunariu muakaresawa"}
+            ducet{"Unicode muakaresawa retewa"}
+            eor{"Tekô eurupawara muakarésawa supé"}
+            gb2312han{"Xinanheẽga iwasuĩma muakarewa - GB2312"}
+            phonebook{"Terefuni sesewara muakaresawa"}
+            phonetic{"Yupurawakasawa terefuniara mukaresawa"}
+            pinyin{"Pin-yin mukaresawa"}
+            search{"Sikaisá purusawa panhérupí"}
+            searchjl{"Resikai kũsuãti uyupiruwa hangul rupí"}
+            standard{"Mukaresawa retewa"}
+            stroke{"Sikisá-ita mukaresawa"}
+            traditional{"Mukaresawa rikusawarupí"}
+            unihan{"Mukaresawa radikawa - sikisá-ita"}
+        }
+        d0{
+            fwidth{"Turususawa teipausape"}
+            hwidth{"Turususawa pisawera"}
+            npinyin{"Papasawera"}
+        }
+        hc{
+            h11{"Sistẽma 12 húra-ita (0-11)"}
+            h12{"Sistẽma 24 húra-ita (1-24)"}
+            h23{"Sistẽma 24 húra-ita (0-23)"}
+            h24{"Sistẽma 24 húra-ita (1-24)"}
+        }
+        lb{
+            loose{"Mupenasawa ixama upé ikusawa yurawa irũ"}
+            normal{"Mupenasawa ixama upé ikusawa nurmawa irũ"}
+            strict{"Mupenasawa ixama upé ikusawa estiritu irũ"}
+        }
+        m0{
+            bgn{"Sinimukasawa BGN EUA"}
+            ungegn{"Sinimukasawa UN GEGN"}
+        }
+        ms{
+            metric{"Sistẽma métiriku"}
+            uksystem{"Sistẽma musãgasawa ĩperiawa"}
+            ussystem{"Sistẽma musãgasawa amerikapura"}
+        }
+        numbers{
+            arab{"Augarismu-ita ĩdu-arabiku"}
+            arabext{"Augarismu-ita ĩdu-arabiku musapira"}
+            armn{"Augarismu-ita arimẽniyu"}
+            armnlow{"Augarismu-ita arimẽniyu mirĩwa"}
+            beng{"Augarismu-ita bẽgari"}
+            deva{"Augarismu-ita dewanagári"}
+            ethi{"Augarismu-ita etiopiwara"}
+            finance{"Papasawa-ita kariwa-rekuyara"}
+            fullwide{"Augarismu-ita teipausape"}
+            geor{"Augarismu-ita geurgianu"}
+            grek{"Augarismu-ita geregu"}
+            greklow{"Augarismu-ita geregu mirĩwa"}
+            gujr{"Augarismu-ita guserate"}
+            guru{"Augarismu-ita gurmuki"}
+            hanidec{"Augarismu-ita mukũi-pusawa xinawara"}
+            hans{"Augarismu-ita xinawara iwasuíma"}
+            hansfin{"Augarismu-ita kariwa-rekuyara xinawara iwasuíma"}
+            hant{"Augarismu-ita xinawara rikusawarupí"}
+            hantfin{"Augarismu-ita kariwa-rekuyara xinawara rikusawarupí"}
+            hebr{"Augarismu-ita yudeu"}
+            jpan{"Augarismu-ita nipõwara"}
+            jpanfin{"Augarismu-ita kariwa-rekuyara nipõwara"}
+            khmr{"Augarismu-ita kimé"}
+            knda{"Augarismu-ita kanarawara"}
+            laoo{"Augarismu-ita raosiwara"}
+            latn{"Augarismu-ita usidẽtawa"}
+            mlym{"Augarismu-ita marayaro"}
+            mong{"Augarismu-ita mũgúi"}
+            mymr{"Augarismu-ita Miyamawara"}
+            native{"Diyitu-wara-ita"}
+            orya{"Augarismu-ita uriá"}
+            roman{"Augarismu-ita romawara"}
+            romanlow{"Augarismu-ita romawara mirĩwa"}
+            taml{"Augarismu-ita tamir rikusawarupí"}
+            tamldec{"Augarismu-ita ramir"}
+            telu{"Augarismu-ita terugu"}
+            thai{"Augarismu-ita tairãdiyawara"}
+            tibt{"Augarismu-ita tibetewara"}
+            traditional{"Papasawa-ita rikusawarupí"}
+            vaii{"Diyitu-ita vai"}
+        }
+    }
+    Variants{
+        1606NICT{"frãsanheẽga kaxiímawara 1606 upé"}
+        1694ACAD{"frãsanheẽga kuiriwara"}
+        1901{"kuatiasawasupí arimã rikusawarupí"}
+        1959ACAD{"akademiku"}
+        1994{"kuatiasawasupí resiawara muretewa"}
+        1996{"kuatiasawasupí arimã 1996 upé"}
+        ABL1943{"Papira purakari-resé kuatiasawasupí 1943 suí"}
+        AO1990{"Kuatiasawasupí Ewakisawa Nheẽga Putugewara 1990"}
+        AREVELA{"arimẽniyu uriẽtawara"}
+        AREVMDA{"arimẽniyu usidẽtawara"}
+        BAKU1926{"aufabetu ratinu turku yepewasú"}
+        BISCAYAN{"bisikayawara"}
+        BISKE{"diyaretu sã giorgiu/bira"}
+        BOONT{"boontling"}
+        COLB1945{"Kõvẽsãu kuatiasawasupí Brasiu-Putugau 1945"}
+        FONIPA{"funétika Aufabetu Funétiku Ĩtertetãma-ita"}
+        FONUPA{"funétika Aufabetu Funétiku Urariku"}
+        HEPBURN{"romanisasawa hepburn"}
+        HOGNORSK{"nuruwegu iwaté"}
+        KKCOR{"kuatiasawasupí panhé-yara"}
+        LIPAW{"diyaretu ripovai Resian yara"}
+        MONOTON{"yepetũniku"}
+        NDYUKA{"diyaretu ĩdiyuka"}
+        NEDIS{"diyaretu natisuni"}
+        NJIVA{"diyaretu giniwa/niyiwa"}
+        OSOJS{"diyaretu usiaku/usuyani"}
+        PAMAKA{"diyaretu pamaka"}
+        PINYIN{"romanisasawa Piniyĩ"}
+        POLYTON{"tũniku-ita"}
+        POSIX{"kũputarawa"}
+        REVISED{"kuatiasawasupí musatãbikawa"}
+        ROZAJ{"resiawara"}
+        SAAHO{"saho"}
+        SCOTLAND{"ẽgirixi retewa esikusiyei"}
+        SCOUSE{"isikuse"}
+        SOLBA{"diyaretu situwisa/subika"}
+        TARASK{"kuatiasawasupí tarasikiewika"}
+        UCCOR{"kuatiasawasupí yepewasú"}
+        UCRCOR{"kuatiasawasupí musatãbikawa suí yespewasú"}
+        VALENCIA{"warẽsiwara"}
+        WADEGILE{"romanisasawa Wade-Giles"}
+    }
+    characterLabelPattern{
+        all{"{0} — panhé"}
+        compatibility{"{0} — kũpatibilidadi"}
+        enclosed{"{0} — sikĩdawa"}
+        extended{"{0} — pukuwa"}
+        historic{"{0} — purãduwera"}
+        miscellaneous{"{0} — amũrupiara-ita"}
+        other{"{0} — amũ"}
+        scripts{"kuatiasawa-ita — {0}"}
+        strokes{
+            one{"{0} murãgawasawa"}
+            other{"{0} murãgawasawa-ita"}
+        }
+    }
+    codePatterns{
+        language{"Nheẽga: {0}"}
+        script{"Letarasawa-ita: {0}"}
+        territory{"Tẽdawa: {0}"}
+    }
+}

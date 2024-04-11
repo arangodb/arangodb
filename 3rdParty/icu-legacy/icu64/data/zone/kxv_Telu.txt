@@ -1,0 +1,14 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Telu{
+    %%Parent{"root"}
+    zoneStrings{
+        "meta:GMT"{
+            ls{"గ్రీన్‌విచ్ సగటు సమయం"}
+        }
+        regionFormat{"{0} సమయం"}
+        regionFormatDaylight{"{0} పగటి వెలుతురు సమయం"}
+        regionFormatStandard{"{0} ప్రామాణిక సమయం"}
+    }
+}

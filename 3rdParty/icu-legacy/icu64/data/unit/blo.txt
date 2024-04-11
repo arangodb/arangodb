@@ -1,0 +1,25 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+blo{
+    units{
+        compound{
+            per{"{0} {1} nɩ"}
+        }
+        coordinate{
+            east{"{0} gajakalaŋ"}
+            north{"{0} gʊnyɩpɛnɛlaŋ"}
+            south{"{0} gʊnyɩsonolaŋ"}
+            west{"{0} gɩteŋshilelaŋ"}
+        }
+    }
+    unitsShort{
+        coordinate{
+            dnam{"ʊtǝŋu"}
+            east{"{0} gjl"}
+            north{"{0} gpl"}
+            south{"{0} gsl"}
+            west{"{0} gshl"}
+        }
+    }
+}

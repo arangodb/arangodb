@@ -1,0 +1,21 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Orya{
+    %%Parent{"root"}
+    Languages{
+        en{"ଇଂରାଜୀ"}
+        kxv{"କୁୱି"}
+    }
+    Scripts{
+        Deva{"ଦେୱନାଗରୀ"}
+        Latn{"ଲାଟିନ୍"}
+        Orya{"ଅଡ଼ିଆ"}
+        Telu{"ତେଲୁଗୁ"}
+    }
+    codePatterns{
+        language{"କାତା: {0}"}
+        script{"ଅକର: {0}"}
+        territory{"ମୁଟ୍ହା: {0}"}
+    }
+}

@@ -1,0 +1,16 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lij{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"oa do meridian de Greenwich"}
+        }
+        gmtFormat{"UTC{0}"}
+        gmtZeroFormat{"UTC"}
+        hourFormat{"+HH:mm;−HH:mm"}
+        regionFormat{"oa: {0}"}
+        regionFormatDaylight{"oa de stæ: {0}"}
+        regionFormatStandard{"oa standard: {0}"}
+    }
+}

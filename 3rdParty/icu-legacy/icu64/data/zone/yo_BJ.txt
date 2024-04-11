@@ -1,0 +1,242 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+yo_BJ{
+    zoneStrings{
+        "America:Anchorage"{
+            ec{"ìlú Ankɔ́réèjì"}
+        }
+        "America:Bahia_Banderas"{
+            ec{"ìlú Báhì Bándɛ́rásì"}
+        }
+        "America:Barbados"{
+            ec{"ìlú Bábádɔ́ɔ̀sì"}
+        }
+        "America:Belize"{
+            ec{"ìlú Bɛ̀líìsì"}
+        }
+        "America:Blanc-Sablon"{
+            ec{"ìlú Blank Sabulɔ́ɔ̀nì"}
+        }
+        "America:Boise"{
+            ec{"ìlú Bɔ́isè"}
+        }
+        "America:Chihuahua"{
+            ec{"ìlú Shihuahua"}
+        }
+        "America:Coral_Harbour"{
+            ec{"ìlú àtikɔkàn"}
+        }
+        "America:Creston"{
+            ec{"ìlú Kírɛstɔ́ɔ̀nù"}
+        }
+        "America:Curacao"{
+            ec{"ìlú Kurashao"}
+        }
+        "America:Indiana:Knox"{
+            ec{"ìlú nɔ́sì"}
+        }
+        "America:Indiana:Marengo"{
+            ec{"ìlú Marɛ́ngo"}
+        }
+        "America:Kentucky:Monticello"{
+            ec{"ìlú Montisɛ́lò"}
+        }
+        "America:Kralendijk"{
+            ec{"ìlú Kíralɛ́ndáikì"}
+        }
+        "America:Marigot"{
+            ec{"ìlú Marigɔ́ɔ̀tì"}
+        }
+        "America:Mexico_City"{
+            ec{"ìlú Mɛ́síkò"}
+        }
+        "America:Miquelon"{
+            ec{"ìlú Mikulɔ́nì"}
+        }
+        "America:St_Johns"{
+            ec{"ìlú St Jɔ́ɔ̀nù"}
+        }
+        "America:St_Thomas"{
+            ec{"ìlú St Tɔ́màsì"}
+        }
+        "America:Swift_Current"{
+            ec{"ìlú Súfítù Kɔ̀rentì"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"ìlú Bɛ̀múdà"}
+        }
+        "Etc:UTC"{
+            ls{"Àpapɔ̀ Àkókò Àgbáyé"}
+        }
+        "Etc:Unknown"{
+            ec{"Ìlú Àìmɔ̀"}
+        }
+        "meta:Africa_Western"{
+            ld{"Àkókò Ìwɔ̀-Oòrùn Ooru Afírikà"}
+            lg{"Àkókò Ìwɔ̀-Oòrùn Afírikà"}
+            ls{"Àkókò Ìwɔ̀-Oòrùn Àfɛnukò Afírikà"}
+        }
+        "meta:Alaska"{
+            ld{"Àkókò Ìyálɛ̀ta Alásíkà"}
+            lg{"Àkókò Alásíkà"}
+            ls{"Àkókò Àfɛnukò Alásíkà"}
+        }
+        "meta:Amazon"{
+            ld{"Àkókò Oru Amásɔ́nì"}
+            lg{"Àkókò Amásɔ́nì"}
+            ls{"Àkókò Afɛnukò Amásɔ́nì"}
+        }
+        "meta:America_Central"{
+            ld{"Akókò àárín gbùngbùn ojúmɔmɔ"}
+            lg{"àkókò àárín gbùngbùn"}
+            ls{"àkókò asiko àárín gbùngbùn"}
+        }
+        "meta:America_Eastern"{
+            ld{"Àkókò ojúmɔmɔ Ìhà Ìlà Oòrun"}
+            lg{"Àkókò ìhà ìlà oòrùn"}
+            ls{"Akókò Àsikò Ìha Ìla Oòrùn"}
+        }
+        "meta:America_Mountain"{
+            ld{"Àkókò ojúmɔmɔ Ori-òkè"}
+            lg{"Àkókò òkè"}
+            ls{"Àkókò asiko òkè"}
+        }
+        "meta:America_Pacific"{
+            ld{"Àkókò Ìyálɛta Pàsífíìkì"}
+            lg{"Àkókò Pàsífíìkì"}
+            ls{"Àkókò àsikò Pàsífíìkì"}
+        }
+        "meta:Argentina"{
+            ld{"Aago Soma Argentina"}
+            lg{"Aago Ajɛntìnà"}
+            ls{"Aago àsìkò Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Àkókò Oru Iwɔ́-oòrùn Ajɛ́ntínà"}
+            lg{"Àkókò Iwɔ́-oòrùn Ajɛ́ntínà"}
+            ls{"Àkókò Iwɔ́-oòrùn Àfɛnukò Ajɛ́ntínà"}
+        }
+        "meta:Atlantic"{
+            ld{"Àkókò Ìyálɛta Àtìláńtíìkì"}
+            lg{"Àkókò Àtìláńtíìkì"}
+            ls{"Àkókò àsikò Àtìláńtíìkì"}
+        }
+        "meta:Azores"{
+            ld{"Àkókò Ooru Ásɔ́sì"}
+            lg{"Àkókò Ásɔ́sì"}
+            ls{"Àkókò Àfɛnukò Ásɔ́sì"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Àkókò Sɔ́mà Képú Fáàdì"}
+            lg{"Àkókò Képú Fáàdì"}
+            ls{"Àkókò Àfɛnukò Képú Fáàdì"}
+        }
+        "meta:Chile"{
+            ld{"Àkókò Oru Shílè"}
+            lg{"Àkókò Shílè"}
+            ls{"Àkókò Àfɛnukò Shílè"}
+        }
+        "meta:China"{
+            ld{"Àkókò Ojúmɔmɔ Sháínà"}
+            lg{"Àkókò Sháínà"}
+            ls{"Àkókò Ìfɛnukòsí Sháínà"}
+        }
+        "meta:Cuba"{
+            ld{"Àkókò Ojúmɔmɔ Kúbà"}
+            lg{"Àkókò Kúbà"}
+            ls{"Àkókò Àfɛnukò Kúbà"}
+        }
+        "meta:Europe_Central"{
+            ld{"Àkókò Àárin Sɔmà Europe"}
+            lg{"Àkókò Àárin Europe"}
+            ls{"Àkókò Àárin àsikò Europe"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Àkókò Sɔmà Ìha Ìlà Oòrùn Europe"}
+            lg{"Àkókò Ìhà Ìlà Oòrùn Europe"}
+            ls{"Àkókò àsikò Ìhà Ìlà Oòrùn Europe"}
+        }
+        "meta:Europe_Western"{
+            ld{"Àkókò Sɔmà Ìhà Ìwɔ Oòrùn Europe"}
+            lg{"Àkókò Ìwɔ Oòrùn Europe"}
+            ls{"Àkókò àsikò Ìwɔ Oòrùn Europe"}
+        }
+        "meta:Falkland"{
+            ld{"Àkókò Ooru Etíkun Fókílándì"}
+            lg{"Àkókò Fókílándì"}
+            ls{"Àkókò Àfɛnukò Etíkun Fókílándì"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Àkókò ìgbà Ooru Greenland"}
+            lg{"Àkókò Ìlà oorùn Greenland"}
+            ls{"Àkókò Ìwɔ̀ Ìfɛnukò oorùn Greenland"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Àkókò Àfɛnukò Ìgba Oòru Greenland"}
+            lg{"Àkókò Ìwɔ̀ oorùn Greenland"}
+            ls{"Àkókò Àfɛnukò Ìwɔ̀ Oòrùn Greenland"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Àkókò Ojúmɔmɔ Hawaii-Aleutian"}
+            lg{"Àkókò Hawaii-Aleutian"}
+            ls{"Àkókò Àfɛnukò Hawaii-Aleutian"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Àkókò Ìwɔ̀ oorùn Indonesia"}
+        }
+        "meta:Irkutsk"{
+            ld{"Àkókò Sɔmà Íkúsíkì"}
+            lg{"Àkókò Íkósíkì"}
+            ls{"Àkókò Àfɛnukò Íkósíkì"}
+        }
+        "meta:Mauritius"{
+            ld{"Àkókò Ooru Máríshúshì"}
+            lg{"Àkókò Máríshúshì"}
+            ls{"Àkókò Àfɛnukò Máríshúshì"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Àkókò Ojúmɔmɔ Pásífíìkì Mɛ́síkò"}
+            lg{"Àkókò Pásífíìkì Mɛ́shíkò"}
+            ls{"Àkókò Àfɛnukò Pásífíìkì Mɛ́síkò"}
+        }
+        "meta:Newfoundland"{
+            ld{"Àkókò Ojúmɔmɔ Newfoundland"}
+            lg{"Àkókò Newfoundland"}
+            ls{"Àkókò Àfɛnukò Newfoundland"}
+        }
+        "meta:Paraguay"{
+            ld{"Àkókò Ooru Párágúwè"}
+            lg{"Àkókò Párágúwè"}
+            ls{"Àkókò Àfɛnukò Párágúwè"}
+        }
+        "meta:Peru"{
+            ld{"Àkókò Ooru Pérù"}
+            lg{"Àkókò Pérù"}
+            ls{"Àkókò Àfɛnukò Pérù"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Àkókò Ojúmɔmɔ Pierre & Miquelon"}
+            lg{"Àkókò Pierre & Miquelon"}
+            ls{"Àkókò Àfɛnukò Pierre & Miquelon"}
+        }
+        "meta:Reunion"{
+            ls{"Àkókò Rɛ́yúníɔ́nì"}
+        }
+        "meta:Seychelles"{
+            ls{"Àkókò Sèshɛ́ɛ̀lì"}
+        }
+        "meta:South_Georgia"{
+            ls{"Àkókò Gúsù Jɔ́jíà"}
+        }
+        "meta:Uruguay"{
+            ld{"Aago Soma Uruguay"}
+            lg{"Aago Uruguay"}
+            ls{"Àkókò Àfɛnukò Úrúgúwè"}
+        }
+        "meta:Yukon"{
+            ls{"Àkókò Yúkɔ́nì"}
+        }
+        regionFormatDaylight{"{0} Àkókò ojúmɔmɔ"}
+    }
+}

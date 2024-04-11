@@ -1,0 +1,13 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+szl{
+    zoneStrings{
+        "meta:GMT"{
+            ls{"uniwersalnego czasu"}
+        }
+        regionFormat{"czas: {0}"}
+        regionFormatDaylight{"{0} (latowy czas)"}
+        regionFormatStandard{"{0} (sztandardowy czas)"}
+    }
+}

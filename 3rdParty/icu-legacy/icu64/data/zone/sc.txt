@@ -1,0 +1,944 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sc{
+    zoneStrings{
+        "Africa:Addis_Ababa"{
+            ec{"Addis Abeba"}
+        }
+        "Africa:Algiers"{
+            ec{"Algeri"}
+        }
+        "Africa:Cairo"{
+            ec{"Su Càiru"}
+        }
+        "Africa:Mogadishu"{
+            ec{"Mogadìsciu"}
+        }
+        "Africa:Monrovia"{
+            ec{"Monròvia"}
+        }
+        "Africa:Porto-Novo"{
+            ec{"Portu-Nou"}
+        }
+        "Africa:Sao_Tome"{
+            ec{"São Tomé"}
+        }
+        "Africa:Tripoli"{
+            ec{"Trìpoli"}
+        }
+        "Africa:Tunis"{
+            ec{"Tùnisi"}
+        }
+        "America:Argentina:Tucuman"{
+            ec{"Tucumán"}
+        }
+        "America:Curacao"{
+            ec{"Curaçao"}
+        }
+        "America:Havana"{
+            ec{"S’Avana"}
+        }
+        "America:Martinique"{
+            ec{"Martinica"}
+        }
+        "America:Mexico_City"{
+            ec{"Tzitade de su Mèssicu"}
+        }
+        "America:New_York"{
+            ec{"Noa York"}
+        }
+        "America:North_Dakota:Beulah"{
+            ec{"Beulah, Dakota de su Nord"}
+        }
+        "America:North_Dakota:Center"{
+            ec{"Center, Dakota de su Nord"}
+        }
+        "America:North_Dakota:New_Salem"{
+            ec{"New Salem, Dakota de su Nord"}
+        }
+        "America:Panama"{
+            ec{"Pànama"}
+        }
+        "America:Port_of_Spain"{
+            ec{"Portu de Ispagna"}
+        }
+        "America:St_Barthelemy"{
+            ec{"Santu Bartolomeu"}
+        }
+        "America:St_Johns"{
+            ec{"Santu Giuanne"}
+        }
+        "America:St_Kitts"{
+            ec{"Santu Cristolu"}
+        }
+        "America:St_Lucia"{
+            ec{"Santa Lughia"}
+        }
+        "America:St_Thomas"{
+            ec{"Santu Tommasu"}
+        }
+        "America:St_Vincent"{
+            ec{"Santu Vissente"}
+        }
+        "Asia:Aqtau"{
+            ec{"Aktau"}
+        }
+        "Asia:Aqtobe"{
+            ec{"Aktobe"}
+        }
+        "Asia:Bahrain"{
+            ec{"Bahrein"}
+        }
+        "Asia:Calcutta"{
+            ec{"Calcuta"}
+        }
+        "Asia:Chita"{
+            ec{"Čita"}
+        }
+        "Asia:Damascus"{
+            ec{"Damascu"}
+        }
+        "Asia:Dhaka"{
+            ec{"Daca"}
+        }
+        "Asia:Jakarta"{
+            ec{"Giacarta"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Gerusalemme"}
+        }
+        "Asia:Krasnoyarsk"{
+            ec{"Krasnojarsk"}
+        }
+        "Asia:Muscat"{
+            ec{"Mascate"}
+        }
+        "Asia:Qatar"{
+            ec{"Catàr"}
+        }
+        "Asia:Qyzylorda"{
+            ec{"Kyzylorda"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riyàd"}
+        }
+        "Asia:Saigon"{
+            ec{"Tzitade de Ho Chi Minh"}
+        }
+        "Asia:Samarkand"{
+            ec{"Samarcanda"}
+        }
+        "Asia:Seoul"{
+            ec{"Seùl"}
+        }
+        "Asia:Tehran"{
+            ec{"Teheràn"}
+        }
+        "Asia:Ulaanbaatar"{
+            ec{"Ulàn Bator"}
+        }
+        "Atlantic:Azores"{
+            ec{"Azorras"}
+        }
+        "Atlantic:Canary"{
+            ec{"Ìsulas Canàrias"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Cabu Birde"}
+        }
+        "Atlantic:Faeroe"{
+            ec{"Ìsulas Føroyar"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Geòrgia de su Sud"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"Sant’Elene"}
+        }
+        "Etc:UTC"{
+            ls{"Tempus coordinadu universale"}
+            ss{"TCU"}
+        }
+        "Etc:Unknown"{
+            ec{"Tzitade disconnota"}
+        }
+        "Europe:Athens"{
+            ec{"Atene"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgradu"}
+        }
+        "Europe:Berlin"{
+            ec{"Berlinu"}
+        }
+        "Europe:Brussels"{
+            ec{"Bruxelles"}
+        }
+        "Europe:Bucharest"{
+            ec{"Bùcarest"}
+        }
+        "Europe:Budapest"{
+            ec{"Bùdapest"}
+        }
+        "Europe:Busingen"{
+            ec{"Büsingen"}
+        }
+        "Europe:Dublin"{
+            ec{"Dublinu"}
+            ld{"Ora istandard irlandesa"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Gibilterra"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Ìsula de Man"}
+        }
+        "Europe:Istanbul"{
+            ec{"Ìstanbul"}
+        }
+        "Europe:Lisbon"{
+            ec{"Lisbona"}
+        }
+        "Europe:London"{
+            ec{"Londra"}
+            ld{"Ora istiale britànnica"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Lussemburgu"}
+        }
+        "Europe:Monaco"{
+            ec{"Mònacu"}
+        }
+        "Europe:Moscow"{
+            ec{"Mosca"}
+        }
+        "Europe:Paris"{
+            ec{"Parigi"}
+        }
+        "Europe:Prague"{
+            ec{"Praga"}
+        }
+        "Europe:Rome"{
+            ec{"Roma"}
+        }
+        "Europe:San_Marino"{
+            ec{"Santu Marinu"}
+        }
+        "Europe:Stockholm"{
+            ec{"Istocolma"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Vatican"{
+            ec{"Tzitade de su Vaticanu"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varsàvia"}
+        }
+        "Europe:Zagreb"{
+            ec{"Zagàbria"}
+        }
+        "Europe:Zurich"{
+            ec{"Zurigu"}
+        }
+        "Indian:Christmas"{
+            ec{"Natividade"}
+        }
+        "Indian:Maldives"{
+            ec{"Maldivas"}
+        }
+        "Indian:Mauritius"{
+            ec{"Maurìtzius"}
+        }
+        "Indian:Mayotte"{
+            ec{"Maiota"}
+        }
+        "Indian:Reunion"{
+            ec{"Reunione"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Enderbury"}
+        }
+        "Pacific:Guam"{
+            ec{"Guàm"}
+        }
+        "Pacific:Honolulu"{
+            sd{"OLH"}
+            sg{"OIH"}
+            ss{"OIH"}
+        }
+        "Pacific:Kanton"{
+            ec{"Canton"}
+        }
+        "Pacific:Marquesas"{
+            ec{"Marchesas"}
+        }
+        "meta:Acre"{
+            ld{"Ora legale de Acre"}
+            lg{"Ora de Acre"}
+            ls{"Ora istandard de Acre"}
+        }
+        "meta:Afghanistan"{
+            ls{"Ora de s’Afghànistan"}
+        }
+        "meta:Africa_Central"{
+            ls{"Ora de s’Àfrica tzentrale"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Ora de s’Àfrica orientale"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Ora istandard de s’Àfrica meridionale"}
+        }
+        "meta:Africa_Western"{
+            ld{"Ora legale de s’Àfrica otzidentale"}
+            lg{"Ora de s’Àfrica otzidentale"}
+            ls{"Ora istandard de s’Àfrica otzidentale"}
+        }
+        "meta:Alaska"{
+            ld{"Ora legale de s’Alaska"}
+            lg{"Ora de s’Alaska"}
+            ls{"Ora istandard de s’Alaska"}
+            sd{"OLAK"}
+            sg{"OAK"}
+            ss{"OIAK"}
+        }
+        "meta:Almaty"{
+            ld{"Ora legale de Almaty"}
+            lg{"Ora de Almaty"}
+            ls{"Ora istandard de Almaty"}
+        }
+        "meta:Amazon"{
+            ld{"Ora legale de s’Amatzònia"}
+            lg{"Ora de s’Amatzònia"}
+            ls{"Ora istandard de s’Amatzònia"}
+        }
+        "meta:America_Central"{
+            ld{"Ora legale tzentrale USA"}
+            lg{"Ora tzentrale USA"}
+            ls{"Ora istandard tzentrale USA"}
+            sd{"OLT"}
+            sg{"OT"}
+            ss{"OIT"}
+        }
+        "meta:America_Eastern"{
+            ld{"Ora legale orientale USA"}
+            lg{"Ora orientale USA"}
+            ls{"Ora istandard orientale USA"}
+            sd{"OLO"}
+            sg{"OO"}
+            ss{"OIO"}
+        }
+        "meta:America_Mountain"{
+            ld{"Ora legale Montes Pedrosos USA"}
+            lg{"Ora Montes Pedrosos USA"}
+            ls{"Ora istandard Montes Pedrosos USA"}
+            sd{"OLMP"}
+            sg{"OMP"}
+            ss{"OIMP"}
+        }
+        "meta:America_Pacific"{
+            ld{"Ora legale de su Patzìficu USA"}
+            lg{"Ora de su Patzìficu USA"}
+            ls{"Ora istandard de su Patzìficu USA"}
+            sd{"OLP"}
+            sg{"OP"}
+            ss{"OIP"}
+        }
+        "meta:Anadyr"{
+            ld{"Ora legale de Anadyr"}
+            lg{"Ora de Anadyr"}
+            ls{"Ora istandard de Anadyr"}
+        }
+        "meta:Apia"{
+            ld{"Ora legale de Apia"}
+            lg{"Ora de Apia"}
+            ls{"Ora istandard de Apia"}
+        }
+        "meta:Aqtau"{
+            ld{"Ora legale de Aktau"}
+            lg{"Ora de Aktau"}
+            ls{"Ora istandard de Aktau"}
+        }
+        "meta:Aqtobe"{
+            ld{"Ora legale de Aktobe"}
+            lg{"Ora de Aktobe"}
+            ls{"Ora istandard de Aktobe"}
+        }
+        "meta:Arabian"{
+            ld{"Ora legale àraba"}
+            lg{"Ora àraba"}
+            ls{"Ora istandard àraba"}
+        }
+        "meta:Argentina"{
+            ld{"Ora legale de s’Argentina"}
+            lg{"Ora de s’Argentina"}
+            ls{"Ora istandard de s’Argentina"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Ora legale de s’Argentina otzidentale"}
+            lg{"Ora de s’Argentina otzidentale"}
+            ls{"Ora istandard de s’Argentina otzidentale"}
+        }
+        "meta:Armenia"{
+            ld{"Ora legale de s’Armènia"}
+            lg{"Ora de s’Armènia"}
+            ls{"Ora istandard de s’Armènia"}
+        }
+        "meta:Atlantic"{
+            ld{"Ora legale de s’Atlànticu"}
+            lg{"Ora de s’Atlànticu"}
+            ls{"Ora istandard de s’Atlànticu"}
+            sd{"OLA"}
+            sg{"OA"}
+            ss{"OIA"}
+        }
+        "meta:Australia_Central"{
+            ld{"Ora legale de s’Austràlia tzentrale"}
+            lg{"Ora de s’Austràlia tzentrale"}
+            ls{"Ora istandard de s’Austràlia tzentrale"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Ora legale de s’Austràlia tzentru-otzidentale"}
+            lg{"Ora de s’Austràlia tzentru-otzidentale"}
+            ls{"Ora istandard de s’Austràlia tzentru-otzidentale"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Ora legale de s’Austràlia orientale"}
+            lg{"Ora de s’Austràlia orientale"}
+            ls{"Ora istandard de s’Austràlia orientale"}
+        }
+        "meta:Australia_Western"{
+            ld{"Ora legale de s’Austràlia otzidentale"}
+            lg{"Ora de s’Austràlia otzidentale"}
+            ls{"Ora istandard de s’Austràlia otzidentale"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Ora legale de s’Azerbaigiàn"}
+            lg{"Ora de s’Azerbaigiàn"}
+            ls{"Ora istandard de s’Azerbaigiàn"}
+        }
+        "meta:Azores"{
+            ld{"Ora legale de sas Azorras"}
+            lg{"Ora de sas Azorras"}
+            ls{"Ora istandard de sas Azorras"}
+        }
+        "meta:Bangladesh"{
+            ld{"Ora legale de su Bangladesh"}
+            lg{"Ora de su Bangladesh"}
+            ls{"Ora istandard de su Bangladesh"}
+        }
+        "meta:Bhutan"{
+            ls{"Ora de su Bhutàn"}
+        }
+        "meta:Bolivia"{
+            ls{"Ora de sa Bolìvia"}
+        }
+        "meta:Brasilia"{
+            ld{"Ora legale de Brasìlia"}
+            lg{"Ora de Brasìlia"}
+            ls{"Ora istandard de Brasìlia"}
+        }
+        "meta:Brunei"{
+            ls{"Ora de su Brunei"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Ora legale de su Cabu Birde"}
+            lg{"Ora de su Cabu Birde"}
+            ls{"Ora istandard de su Cabu Birde"}
+        }
+        "meta:Casey"{
+            ls{"Ora de Casey"}
+        }
+        "meta:Chamorro"{
+            ls{"Ora istandard de Chamorro"}
+        }
+        "meta:Chatham"{
+            ld{"Ora legale de sas Chatham"}
+            lg{"Ora de sas Chatham"}
+            ls{"Ora istandard de sas Chatham"}
+        }
+        "meta:Chile"{
+            ld{"Ora legale de su Tzile"}
+            lg{"Ora de su Tzile"}
+            ls{"Ora istandard de su Tzile"}
+        }
+        "meta:China"{
+            ld{"Ora legale de sa Tzina"}
+            lg{"Ora de sa Tzina"}
+            ls{"Ora istandard de sa Tzina"}
+        }
+        "meta:Choibalsan"{
+            ld{"Ora legale de Choibalsan"}
+            lg{"Ora de Choibalsan"}
+            ls{"Ora istandard de Choibalsan"}
+        }
+        "meta:Christmas"{
+            ls{"Ora de s’Ìsula de sa Natividade"}
+        }
+        "meta:Cocos"{
+            ls{"Ora de sas Ìsulas Cocos"}
+        }
+        "meta:Colombia"{
+            ld{"Ora legale de sa Colòmbia"}
+            lg{"Ora de sa Colòmbia"}
+            ls{"Ora istandard de sa Colòmbia"}
+        }
+        "meta:Cook"{
+            ld{"Ora legale de sas Ìsulas Cook"}
+            lg{"Ora de sas Ìsulas Cook"}
+            ls{"Ora istandard de sas Ìsulas Cook"}
+        }
+        "meta:Cuba"{
+            ld{"Ora legale de Cuba"}
+            lg{"Ora de Cuba"}
+            ls{"Ora istandard de Cuba"}
+        }
+        "meta:Davis"{
+            ls{"Ora de Davis"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Ora de Dumont-d’Urville"}
+        }
+        "meta:East_Timor"{
+            ls{"Ora de su Timor Est"}
+        }
+        "meta:Easter"{
+            ld{"Ora legale de s’Ìsula de Pasca"}
+            lg{"Ora de s’Ìsula de Pasca"}
+            ls{"Ora istandard de s’Ìsula de Pasca"}
+        }
+        "meta:Ecuador"{
+            ls{"Ora de s’Ecuador"}
+        }
+        "meta:Europe_Central"{
+            ld{"Ora legale de s’Europa tzentrale"}
+            lg{"Ora de s’Europa tzentrale"}
+            ls{"Ora istandard de s’Europa tzentrale"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Ora legale de s’Europa orientale"}
+            lg{"Ora de s’Europa orientale"}
+            ls{"Ora istandard de s’Europa orientale"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"Ora de s’estremu oriente europeu (Kaliningrad)"}
+        }
+        "meta:Europe_Western"{
+            ld{"Ora legale de s’Europa otzidentale"}
+            lg{"Ora de s’Europa otzidentale"}
+            ls{"Ora istandard de s’Europa otzidentale"}
+        }
+        "meta:Falkland"{
+            ld{"Ora legale de sas Ìsulas Falkland"}
+            lg{"Ora de sas Ìsulas Falkland"}
+            ls{"Ora istandard de sas Ìsulas Falkland"}
+        }
+        "meta:Fiji"{
+            ld{"Ora legale de sas Fiji"}
+            lg{"Ora de sas Fiji"}
+            ls{"Ora istandard de sas Fiji"}
+        }
+        "meta:French_Guiana"{
+            ls{"Ora de sa Guiana Frantzesa"}
+        }
+        "meta:French_Southern"{
+            ls{"Ora de sa Terras australes e antàrticas frantzesas"}
+        }
+        "meta:GMT"{
+            ls{"Ora de su meridianu de Greenwich"}
+            ss{"OMG"}
+        }
+        "meta:Galapagos"{
+            ls{"Ora de sas Galàpagos"}
+        }
+        "meta:Gambier"{
+            ls{"Ora de Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Ora legale de sa Geòrgia"}
+            lg{"Ora de sa Geòrgia"}
+            ls{"Ora istandard de sa Geòrgia"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Ora de sas Ìsulas Gilbert"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Ora legale de sa Groenlàndia orientale"}
+            lg{"Ora de sa Groenlàndia orientale"}
+            ls{"Ora istandard de sa Groenlàndia orientale"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Ora legale de sa Groenlàndia otzidentale"}
+            lg{"Ora de sa Groenlàndia otzidentale"}
+            ls{"Ora istandard de sa Groenlàndia otzidentale"}
+        }
+        "meta:Guam"{
+            ls{"Ora istandard de Guàm"}
+        }
+        "meta:Gulf"{
+            ls{"Ora istandard de su Gulfu"}
+        }
+        "meta:Guyana"{
+            ls{"Ora de sa Guyana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Ora legale de sas ìsulas Hawaii-Aleutinas"}
+            lg{"Ora de sas ìsulas Hawaii-Aleutinas"}
+            ls{"Ora istandard de sas ìsulas Hawaii-Aleutinas"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Ora legale de Hong Kong"}
+            lg{"Ora de Hong Kong"}
+            ls{"Ora istandard de Hong Kong"}
+        }
+        "meta:Hovd"{
+            ld{"Ora legale de Hovd"}
+            lg{"Ora de Hovd"}
+            ls{"Ora istandard de Hovd"}
+        }
+        "meta:India"{
+            ls{"Ora istandard de s’Ìndia"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Ora de s’Otzèanu Indianu"}
+        }
+        "meta:Indochina"{
+            ls{"Ora de s’Indotzina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Ora de s’Indonèsia tzentrale"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Ora de s’Indonèsia orientale"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Ora de s’Indonèsia otzidentale"}
+        }
+        "meta:Iran"{
+            ld{"Ora legale de s’Iràn"}
+            lg{"Ora de s’Iràn"}
+            ls{"Ora istandard de s’Iràn"}
+        }
+        "meta:Irkutsk"{
+            ld{"Ora legale de Irkutsk"}
+            lg{"Ora de Irkutsk"}
+            ls{"Ora istandard de Irkutsk"}
+        }
+        "meta:Israel"{
+            ld{"Ora legale de Israele"}
+            lg{"Ora de Israele"}
+            ls{"Ora istandard de Israele"}
+        }
+        "meta:Japan"{
+            ld{"Ora legale de su Giapone"}
+            lg{"Ora de su Giapone"}
+            ls{"Ora istandard de su Giapone"}
+        }
+        "meta:Kamchatka"{
+            ld{"Ora legale de Petropavlovsk-Kamchatski"}
+            lg{"Ora de Petropavlovsk-Kamchatski"}
+            ls{"Ora istandard de Petropavlovsk-Kamchatski"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Ora de su Kazàkistan orientale"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Ora de su Kazàkistan otzidentale"}
+        }
+        "meta:Korea"{
+            ld{"Ora legale coreana"}
+            lg{"Ora coreana"}
+            ls{"Ora istandard coreana"}
+        }
+        "meta:Kosrae"{
+            ls{"Ora de Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Ora legale de Krasnoyarsk"}
+            lg{"Ora de Krasnoyarsk"}
+            ls{"Ora istandard de Krasnoyarsk"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Ora de su Kirghìzistan"}
+        }
+        "meta:Lanka"{
+            ls{"Ora de Lanka"}
+        }
+        "meta:Line_Islands"{
+            ls{"Ora de sas Ìsulas de sa Lìnia"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Ora legale de Lord Howe"}
+            lg{"Ora de Lord Howe"}
+            ls{"Ora istandard de Lord Howe"}
+        }
+        "meta:Macau"{
+            ld{"Ora legale de Macao"}
+            lg{"Ora de Macao"}
+            ls{"Ora istandard de Macao"}
+        }
+        "meta:Magadan"{
+            ld{"Ora legale de Magadan"}
+            lg{"Ora de Magadan"}
+            ls{"Ora istandard de Magadan"}
+        }
+        "meta:Malaysia"{
+            ls{"Ora de sa Malèsia"}
+        }
+        "meta:Maldives"{
+            ls{"Ora de sas Maldivas"}
+        }
+        "meta:Marquesas"{
+            ls{"Ora de sas Marchesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Ora de sas Ìsulas Marshall"}
+        }
+        "meta:Mauritius"{
+            ld{"Ora legale de sas Maurìtzius"}
+            lg{"Ora de sas Maurìtzius"}
+            ls{"Ora istandard de sas Maurìtzius"}
+        }
+        "meta:Mawson"{
+            ls{"Ora de Mawson"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Ora legale de su Patzìficu (Mèssicu)"}
+            lg{"Ora de su Patzìficu (Mèssicu)"}
+            ls{"Ora istandard de su Patzìficu (Mèssicu)"}
+        }
+        "meta:Mongolia"{
+            ld{"Ora legale de Ulàn Bator"}
+            lg{"Ora de Ulàn Bator"}
+            ls{"Ora istandard de Ulàn Bator"}
+        }
+        "meta:Moscow"{
+            ld{"Ora legale de Mosca"}
+            lg{"Ora de Mosca"}
+            ls{"Ora istandard de Mosca"}
+        }
+        "meta:Myanmar"{
+            ls{"Ora de su Myanmàr"}
+        }
+        "meta:Nauru"{
+            ls{"Ora de Nauru"}
+        }
+        "meta:Nepal"{
+            ls{"Ora de su Nepal"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Ora legale de sa Caledònia Noa"}
+            lg{"Ora de sa Caledònia Noa"}
+            ls{"Ora istandard de sa Caledònia Noa"}
+        }
+        "meta:New_Zealand"{
+            ld{"Ora legale de sa Zelanda Noa"}
+            lg{"Ora de sa Zelanda Noa"}
+            ls{"Ora istandard de sa Zelanda Noa"}
+        }
+        "meta:Newfoundland"{
+            ld{"Ora legale de Terranova"}
+            lg{"Ora de Terranova"}
+            ls{"Ora istandard de Terranova"}
+        }
+        "meta:Niue"{
+            ls{"Ora de Niue"}
+        }
+        "meta:Norfolk"{
+            ld{"Ora legale de s’Ìsula Norfolk"}
+            lg{"Ora de s’Ìsula Norfolk"}
+            ls{"Ora istandard de s’Ìsula Norfolk"}
+        }
+        "meta:Noronha"{
+            ld{"Ora legale de su Fernando de Noronha"}
+            lg{"Ora de su Fernando de Noronha"}
+            ls{"Ora istandard de su Fernando de Noronha"}
+        }
+        "meta:North_Mariana"{
+            ls{"Ora de sas Ìsulas Mariannas Setentrionales"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Ora legale de Novosibirsk"}
+            lg{"Ora de Novosibirsk"}
+            ls{"Ora istandard de Novosibirsk"}
+        }
+        "meta:Omsk"{
+            ld{"Ora legale de Omsk"}
+            lg{"Ora de Omsk"}
+            ls{"Ora istandard de Omsk"}
+        }
+        "meta:Pakistan"{
+            ld{"Ora legale de su Pàkistan"}
+            lg{"Ora de su Pàkistan"}
+            ls{"Ora istandard de su Pàkistan"}
+        }
+        "meta:Palau"{
+            ls{"Ora de Palau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Ora de sa Pàpua Guinea Noa"}
+        }
+        "meta:Paraguay"{
+            ld{"Ora legale de su Paraguay"}
+            lg{"Ora de su Paraguay"}
+            ls{"Ora istandard de su Paraguay"}
+        }
+        "meta:Peru"{
+            ld{"Ora legale de su Perù"}
+            lg{"Ora de su Perù"}
+            ls{"Ora istandard de su Perù"}
+        }
+        "meta:Philippines"{
+            ld{"Ora legale de sas Filipinas"}
+            lg{"Ora de sas Filipinas"}
+            ls{"Ora istandard de sas Filipinas"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Ora de sas Ìsulas de sa Fenìtzie"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Ora legale de Saint-Pierre e Miquelon"}
+            lg{"Ora de Saint-Pierre e Miquelon"}
+            ls{"Ora istandard de Saint-Pierre e Miquelon"}
+        }
+        "meta:Pitcairn"{
+            ls{"Ora de sas Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Ora de Pohnpei"}
+        }
+        "meta:Pyongyang"{
+            ls{"Ora de Pyongyang"}
+        }
+        "meta:Qyzylorda"{
+            ld{"Ora legale de Qyzylorda"}
+            lg{"Ora de Qyzylorda"}
+            ls{"Ora istandard de Qyzylorda"}
+        }
+        "meta:Reunion"{
+            ls{"Ora de sa Reunione"}
+        }
+        "meta:Rothera"{
+            ls{"Ora de Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"Ora legale de Sakhalin"}
+            lg{"Ora de Sakhalin"}
+            ls{"Ora istandard de Sakhalin"}
+        }
+        "meta:Samara"{
+            ld{"Ora legale de Samara"}
+            lg{"Ora de Samara"}
+            ls{"Ora istandard de Samara"}
+        }
+        "meta:Samoa"{
+            ld{"Ora legale de sas Samoa"}
+            lg{"Ora de sas Samoa"}
+            ls{"Ora istandard de sas Samoa"}
+        }
+        "meta:Seychelles"{
+            ls{"Ora de sas Seychelles"}
+        }
+        "meta:Singapore"{
+            ls{"Ora de Singapore"}
+        }
+        "meta:Solomon"{
+            ls{"Ora de sas Ìsulas Salomone"}
+        }
+        "meta:South_Georgia"{
+            ls{"Ora de sa Geòrgia de su Sud"}
+        }
+        "meta:Suriname"{
+            ls{"Ora de su Suriname"}
+        }
+        "meta:Syowa"{
+            ls{"Ora de Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Ora de Tahiti"}
+        }
+        "meta:Taipei"{
+            ld{"Ora legale de Taipei"}
+            lg{"Ora de Taipei"}
+            ls{"Ora istandard de Taipei"}
+        }
+        "meta:Tajikistan"{
+            ls{"Ora de su Tagìkistan"}
+        }
+        "meta:Tokelau"{
+            ls{"Ora de su Tokelau"}
+        }
+        "meta:Tonga"{
+            ld{"Ora legale de su Tonga"}
+            lg{"Ora de su Tonga"}
+            ls{"Ora istandard de su Tonga"}
+        }
+        "meta:Truk"{
+            ls{"Ora de su Chuuk"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Ora legale de su Turkmènistan"}
+            lg{"Ora de su Turkmènistan"}
+            ls{"Ora istandard de su Turkmènistan"}
+        }
+        "meta:Tuvalu"{
+            ls{"Ora de su Tuvalu"}
+        }
+        "meta:Uruguay"{
+            ld{"Ora legale de s’Uruguay"}
+            lg{"Ora de s’Uruguay"}
+            ls{"Ora istandard de s’Uruguay"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Ora legale de s’Uzbèkistan"}
+            lg{"Ora de s’Uzbèkistan"}
+            ls{"Ora istandard de s’Uzbèkistan"}
+        }
+        "meta:Vanuatu"{
+            ld{"Ora legale de su Vanuatu"}
+            lg{"Ora de su Vanuatu"}
+            ls{"Ora istandard de su Vanuatu"}
+        }
+        "meta:Venezuela"{
+            ls{"Ora de su Venetzuela"}
+        }
+        "meta:Vladivostok"{
+            ld{"Ora legale de Vladivostok"}
+            lg{"Ora de Vladivostok"}
+            ls{"Ora istandard de Vladivostok"}
+        }
+        "meta:Volgograd"{
+            ld{"Ora legale de Volgograd"}
+            lg{"Ora de Volgograd"}
+            ls{"Ora istandard de Volgograd"}
+        }
+        "meta:Vostok"{
+            ls{"Ora de Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Ora de sas Ìsulas Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Ora de Wallis e Futuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"Ora legale de Yakutsk"}
+            lg{"Ora de Yakutsk"}
+            ls{"Ora istandard de Yakutsk"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Ora legale de Yekaterinburg"}
+            lg{"Ora de Yekaterinburg"}
+            ls{"Ora istandard de Yekaterinburg"}
+        }
+        "meta:Yukon"{
+            ls{"Ora de su Yukon"}
+        }
+        regionFormat{"Ora {0}"}
+        regionFormatDaylight{"Ora legale: {0}"}
+        regionFormatStandard{"Ora istandard: {0}"}
+    }
+}

@@ -1,0 +1,69 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Deva{
+    %%Parent{"root"}
+    ExemplarCharacters{
+        "[ँ ंः अ {अऽ} आ {आऽ} इ ई उ ऊ ए {एऽ} ओ {ओऽ} क ग ङ च ज ञ ट ड{ड़} ण त द न प ब म "
+        "य र ल ळ व स ह ऽ ा ि ी ु ू े ो ्]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0 १ २ ३ ४ ५ ६ ७ ८ ९]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+            }
+        }
+        native{"deva"}
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "ए एम",
+                "पी एम",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "आदि वारा",
+                        "साॅम्वारा",
+                        "मंगाड़ा",
+                        "पुद्दारा",
+                        "लाक्कि वारा",
+                        "सुकुरु वारा",
+                        "सान्नि वारा",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "पुसु लेञ्जु",
+                        "माहाका लेञ्जु",
+                        "पागुणी लेञ्जु",
+                        "हिरे लेञ्जु",
+                        "बेसे लेञ्जु",
+                        "जाटा लेञ्जु",
+                        "आसाड़ी लेञ्जु",
+                        "स्राबाँ लेञ्जु",
+                        "बोदो लेञ्जु",
+                        "दसारा लेञ्जु",
+                        "दिवी लेञ्जु",
+                        "पान्डे लेञ्जु",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"यूके"}
+        US{"यूएस"}
+        metric{"मीट्रिक"}
+    }
+}

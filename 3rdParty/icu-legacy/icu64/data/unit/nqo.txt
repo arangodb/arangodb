@@ -1,0 +1,155 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+nqo{
+    units{
+        duration{
+            day{
+                dnam{"ߟߏ߲"}
+                other{"ߟߏ߲ ߜߍ {0}"}
+                per{"ߟߏ߲ ߠߊ߫ {0}"}
+            }
+            decade{
+                dnam{"ߦߟߍ߬ߘߐ߬ߞߍ"}
+                other{"ߦߟߍ߬ߘߐ߬ߞߍ {0}"}
+            }
+            hour{
+                other{"ߕߎ߬ߡߊ߬ߙߋ߲ {0}"}
+                per{"ߕߎ߬ߡߊ߬ߙߋ߲ ߞߘߐ߫ {0}"}
+            }
+            microsecond{
+                dnam{"ߝߌ߬ߟߊ߲߬ߢߊ߲߯ߕߊ"}
+                other{"ߝߌ߬ߟߊ߲߬ߢߊ߲߯ߕߊ {0}"}
+            }
+            millisecond{
+                dnam{"ߝߌ߬ߟߊ߲߬ߥߊ߰ߘߋ߲"}
+                other{"ߝߌ߬ߟߊ߲߬ߥߊ߰ߘߋ߲ {0}"}
+            }
+            minute{
+                dnam{"ߡߌ߬ߛߍ߲"}
+                other{"ߡߌ߬ߛߍ߲ {0}"}
+                per{"ߡߌ߬ߛߍ߲ ߠߊ߫ {0}"}
+            }
+            month{
+                dnam{"ߞߊߙߏ"}
+                other{"ߞߊߙߏ {0}"}
+                per{"ߞߊߙߏ ߟߊ߫ {0}"}
+            }
+            nanosecond{
+                dnam{"ߝߌ߬ߟߊ߲߬ߞߏߦߋ"}
+                other{"ߝߌ߬ߟߊ߲߬ߞߏߦߋ {0}"}
+            }
+            second{
+                dnam{"ߝߌ߬ߟߊ߲"}
+                other{"ߝߌ߬ߟߊ߲ {0}"}
+            }
+            week{
+                dnam{"ߞߎ߲߬ߢߐ߮"}
+                other{"ߞߎ߲߬ߢߐ߮ {0}"}
+                per{"ߞߎ߲߬ߢߐ߮ ߟߊ߫ {0}"}
+            }
+            year{
+                per{"ߛߊ߲߭ ߠߊ߫ {0}"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            century{
+                other{"ߝߊ߯ߘߞ{0}"}
+            }
+            day{
+                dnam{"ߟߏ߲"}
+                other{"ߟ{0}"}
+            }
+            decade{
+                dnam{"ߦߟߍ߬ߘߐ߬ߞߍ"}
+                other{"ߦߟߍ߬ߘߞ{0}"}
+            }
+            hour{
+                other{"ߕ{0}"}
+            }
+            microsecond{
+                other{"ߝߢ{0}"}
+            }
+            millisecond{
+                other{"ߝߥ{0}"}
+            }
+            minute{
+                other{"ߡߌ߬ߛ{0}"}
+            }
+            month{
+                dnam{"ߞߊߙߏ"}
+                other{"ߞ.{0}"}
+            }
+            nanosecond{
+                dnam{"ߝߞ"}
+                other{"ߝߞ{0}"}
+            }
+            second{
+                other{"ߝ{0}"}
+            }
+            year{
+                other{"ߛߊ߲߭{0}"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            century{
+                dnam{"ߝߊ߯ߘߐߞߍ"}
+                other{"ߝߊ߯ߘߐߞߍ {0}"}
+            }
+            day{
+                dnam{"ߟ"}
+                other{"ߟ {0}"}
+                per{"{0}/ߟ"}
+            }
+            decade{
+                dnam{"ߦߟߍ߬ߘ"}
+            }
+            hour{
+                dnam{"ߕߎ߬ߡߊ߬ߙߋ߲"}
+                other{"ߕ {0}"}
+                per{"{0}/ߕ"}
+            }
+            microsecond{
+                dnam{"ߝߢ"}
+                other{"ߝߢ {0}"}
+            }
+            millisecond{
+                dnam{"ߝߥ"}
+                other{"ߝߥ {0}"}
+            }
+            minute{
+                dnam{"ߡߌ߬ߛ"}
+                other{"ߡߌ߬ߛ {0}"}
+                per{"{0}/ߡߌ߬ߛ"}
+            }
+            month{
+                dnam{"ߞ."}
+                other{"ߞ. {0}"}
+                per{"{0}/ߞ."}
+            }
+            nanosecond{
+                dnam{"ߝߌ߬ߟߞ"}
+                other{"ߝߞ {0}"}
+            }
+            second{
+                dnam{"ߝ"}
+                other{"ߝ {0}"}
+                per{"{0}/ߝ"}
+            }
+            week{
+                dnam{"ߞߎ߲߬ߢ"}
+                other{"ߞߎ߲߬ߢ{0}"}
+                per{"{0}/ߞߎ߲߬ߢ"}
+            }
+            year{
+                dnam{"ߛߊ߲߭"}
+                other{"ߛߊ߲߭ {0}"}
+                per{"{0}/ߛߊ߲߭"}
+            }
+        }
+    }
+}

@@ -1,0 +1,30 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+oc{
+    units{
+        duration{
+            day{
+                other{"{0} jorns"}
+            }
+            hour{
+                other{"{0} oras"}
+            }
+            minute{
+                other{"{0} minutas"}
+            }
+            month{
+                other{"{0} mes"}
+            }
+            second{
+                other{"{0} segondas"}
+            }
+            week{
+                other{"{0} setmanas"}
+            }
+            year{
+                other{"{0} annadas"}
+            }
+        }
+    }
+}

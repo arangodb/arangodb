@@ -1,0 +1,130 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mt{
+    zoneStrings{
+        "Africa:Algiers"{
+            ec{"l-Alġier"}
+        }
+        "America:Guatemala"{
+            ec{"il-Gwatemala"}
+        }
+        "America:Jamaica"{
+            ec{"il-Ġamajka"}
+        }
+        "Asia:Beirut"{
+            ec{"Bejrut"}
+        }
+        "Asia:Damascus"{
+            ec{"Damasku"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Ġerusalemm"}
+        }
+        "Asia:Kuwait"{
+            ec{"il-Belt tal-Kuwajt"}
+        }
+        "Asia:Macau"{
+            ec{"Macau"}
+        }
+        "Asia:Nicosia"{
+            ec{"Nikosija"}
+        }
+        "Asia:Rangoon"{
+            ec{"Rangoon"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"il-Georgia tan-Nofsinhar"}
+        }
+        "Etc:Unknown"{
+            ec{"Belt Mhux Magħruf"}
+        }
+        "Europe:Athens"{
+            ec{"Ateni"}
+        }
+        "Europe:Belgrade"{
+            ec{"Belgrad"}
+        }
+        "Europe:Brussels"{
+            ec{"Brussell"}
+        }
+        "Europe:Gibraltar"{
+            ec{"Ġibiltà"}
+        }
+        "Europe:Lisbon"{
+            ec{"Liżbona"}
+        }
+        "Europe:London"{
+            ec{"Londra"}
+        }
+        "Europe:Luxembourg"{
+            ec{"il-Lussemburgu"}
+        }
+        "Europe:Malta"{
+            ec{"Valletta"}
+        }
+        "Europe:Moscow"{
+            ec{"Moska"}
+        }
+        "Europe:Paris"{
+            ec{"Pariġi"}
+        }
+        "Europe:Prague"{
+            ec{"Praga"}
+        }
+        "Europe:Rome"{
+            ec{"Ruma"}
+        }
+        "Europe:Sofia"{
+            ec{"Sofija"}
+        }
+        "Europe:Stockholm"{
+            ec{"Stokkolma"}
+        }
+        "Europe:Tirane"{
+            ec{"Tirana"}
+        }
+        "Europe:Vatican"{
+            ec{"il-Belt tal-Vatikan"}
+        }
+        "Europe:Vienna"{
+            ec{"Vjenna"}
+        }
+        "Europe:Warsaw"{
+            ec{"Varsavja"}
+        }
+        "Indian:Maldives"{
+            ec{"il-Maldivi"}
+        }
+        "Pacific:Enderbury"{
+            ec{"Enderbury"}
+        }
+        "Pacific:Honolulu"{
+            ec{"Honolulu"}
+        }
+        "meta:Europe_Central"{
+            ld{"Ħin Ċentrali Ewropew tas-Sajf"}
+            lg{"Ħin Ċentrali Ewropew"}
+            ls{"Ħin Ċentrali Ewropew Standard"}
+            sd{"CEST"}
+            sg{"CET"}
+            ss{"CET"}
+        }
+        "meta:Europe_Eastern"{
+            sd{"EEST"}
+            sg{"EET"}
+            ss{"EET"}
+        }
+        "meta:Europe_Western"{
+            sd{"WEST"}
+            sg{"WET"}
+            ss{"WET"}
+        }
+        "meta:GMT"{
+            ls{"Greenwich Mean Time"}
+            ss{"GMT"}
+        }
+        regionFormat{"Ħin ta’ {0}"}
+        regionFormatStandard{"{0} Ħin Standard"}
+    }
+}

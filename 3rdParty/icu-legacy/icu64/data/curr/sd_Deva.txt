@@ -1,0 +1,82 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+sd_Deva{
+    %%Parent{"root"}
+    Currencies{
+        BRL{
+            "R$",
+            "ब्राज़ीली रियालु",
+        }
+        CNY{
+            "CN¥",
+            "चीनी युआनु",
+        }
+        EUR{
+            "€",
+            "यूरो",
+        }
+        GBP{
+            "£",
+            "बरतानवी पाउंडु",
+        }
+        INR{
+            "₹",
+            "हिंदुस्तानी रुपयो",
+        }
+        JPY{
+            "¥",
+            "जापानी येनु",
+        }
+        RUB{
+            "RUB",
+            "रशियनु रुबलु",
+        }
+        USD{
+            "$",
+            "यूएस जो डॉलर",
+        }
+        XXX{
+            "¤",
+            "अणजा॒तल सिको",
+        }
+    }
+    CurrencyPlurals{
+        BRL{
+            one{"ब्राज़ीली रियालु"}
+            other{"ब्राज़ीली रियाल"}
+        }
+        CNY{
+            one{"चीनी युआनु"}
+            other{"चीनी युआन"}
+        }
+        GBP{
+            one{"बरतानवी पाउंडु"}
+            other{"बरतानवी पाउंड"}
+        }
+        INR{
+            one{"हिंदुस्तानी रुपया"}
+            other{"हिंदुस्तानी रुपया"}
+        }
+        JPY{
+            one{"जापानी येनु"}
+            other{"जापानी येन"}
+        }
+        RUB{
+            one{"रशियनु रुबलु"}
+            other{"रशियनु रुबल"}
+        }
+        USD{
+            one{"यूएस जो डॉलर"}
+            other{"यूएस जा डॉलर"}
+        }
+        XXX{
+            one{"(सिके जो अणजा॒तल एको)"}
+            other{"अणजा॒तल सिको"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+}

@@ -1,0 +1,75 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mt{
+    units{
+        concentr{
+            karat{
+                dnam{"karati"}
+            }
+        }
+        consumption{
+            liter-per-kilometer{
+                few{"{0} litri kull kilometru"}
+                many{"{0}-il litru kull kilometru"}
+                one{"{0} litru kull kilometru"}
+                other{"{0} litru kull kilometru"}
+                two{"{0} litri kull kilometru"}
+            }
+        }
+        digital{
+            megabyte{
+                dnam{"megabytes"}
+                few{"{0} megabytes"}
+                many{"{0}-il megabyte"}
+                one{"{0} megabyte"}
+                other{"{0} megabyte"}
+                two{"{0} megabytes"}
+            }
+            terabit{
+                dnam{"terabits"}
+                few{"{0} terabits"}
+                many{"{0} terabits"}
+                one{"{0} terabit"}
+                other{"{0} terabits"}
+                two{"{0} terabits"}
+            }
+            terabyte{
+                dnam{"terabytes"}
+                few{"{0} terabytes"}
+                many{"{0} terabytes"}
+                one{"{0} terabyte"}
+                other{"{0} terabytes"}
+                two{"{0} terabytes"}
+            }
+        }
+        duration{
+            millisecond{
+                dnam{"millisekondi"}
+                few{"{0} millisekondi"}
+                many{"{0}-il millisekonda"}
+                one{"{0} millisekonda"}
+                other{"{0} millisekonda"}
+                two{"{0} millisekondi"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            millisecond{
+                few{"{0}ms"}
+                many{"{0}ms"}
+                one{"{0}ms"}
+                other{"{0}ms"}
+                two{"{0}ms"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            millisecond{
+                dnam{"millisek"}
+            }
+        }
+    }
+}

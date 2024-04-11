@@ -1,0 +1,23 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+xnr{
+    units{
+        compound{
+            per{"{0} हर {1}"}
+            times{"{0}-{1}"}
+        }
+        coordinate{
+            dnam{"खास पास्सा"}
+        }
+    }
+    unitsShort{
+        coordinate{
+            dnam{"दिशा"}
+            east{"{0}पू"}
+            north{"{0}उ"}
+            south{"{0}द"}
+            west{"{0}प"}
+        }
+    }
+}

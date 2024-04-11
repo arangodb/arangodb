@@ -1,0 +1,18 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+csw{
+    Languages{
+        csw{"ᓀᐦᐃᓇᐍᐏᐣ"}
+        en{"ᐊᑲᓇᓯᒧᐏᐣ"}
+        en_CA{"ᒧᓀᐅ ᐏᓂᓀᐤ ᐋᑲᓇᓯᓄᒯᐣ"}
+    }
+    Scripts{
+        Cans{"ᓀᐦᐃᔭᐊᐧᓯᓇᐦᐃᑳᑌᐤ"}
+    }
+    codePatterns{
+        language{"ᐊᔭᒥᐏᐣ: {0}"}
+        script{"ᒪᓯᓇᐦᐃᑫᐃᐧᐣ: {0}"}
+        territory{"ᓀᐦᐃᔭᐊᐧᐢᑭᕀ: {0}"}
+    }
+}

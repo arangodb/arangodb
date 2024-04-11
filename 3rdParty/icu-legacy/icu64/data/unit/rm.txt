@@ -1,0 +1,356 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+rm{
+    units{
+        compound{
+            per{"{0} per {1}"}
+        }
+        coordinate{
+            east{"{0} ost"}
+            north{"{0} nord"}
+            south{"{0} sid"}
+            west{"{0} vest"}
+        }
+        digital{
+            bit{
+                dnam{"bits"}
+                one{"{0} bit"}
+                other{"{0} bits"}
+            }
+            byte{
+                dnam{"bytes"}
+                one{"{0} byte"}
+                other{"{0} bytes"}
+            }
+            gigabit{
+                dnam{"gigabits"}
+                one{"{0} gigabit"}
+                other{"{0} gigabits"}
+            }
+            gigabyte{
+                dnam{"gigabytes"}
+                one{"{0} gigabyte"}
+                other{"{0} gigabytes"}
+            }
+            kilobit{
+                dnam{"kilobits"}
+                one{"{0} kilobit"}
+                other{"{0} kilobits"}
+            }
+            kilobyte{
+                dnam{"kilobytes"}
+                one{"{0} kilobyte"}
+                other{"{0} kilobytes"}
+            }
+            megabit{
+                dnam{"megabits"}
+                one{"{0} megabit"}
+                other{"{0} megabits"}
+            }
+            megabyte{
+                dnam{"megabytes"}
+                one{"{0} megabyte"}
+                other{"{0} megabytes"}
+            }
+            petabyte{
+                dnam{"petabytes"}
+                one{"{0} petabyte"}
+                other{"{0} petabytes"}
+            }
+            terabit{
+                dnam{"terabits"}
+                one{"{0} terabit"}
+                other{"{0} terabits"}
+            }
+            terabyte{
+                dnam{"terabytes"}
+                one{"{0} terabyte"}
+                other{"{0} terabytes"}
+            }
+        }
+        duration{
+            millisecond{
+                dnam{"millisecundas"}
+                one{"{0} millisecunda"}
+                other{"{0} millisecundas"}
+            }
+            minute{
+                one{"{0} minuta"}
+                other{"{0} minutas"}
+                per{"{0} per minuta"}
+            }
+            second{
+                one{"{0} secunda"}
+                other{"{0} secundas"}
+                per{"{0} per secunda"}
+            }
+        }
+        graphics{
+            pixel{
+                one{"{0} pixel"}
+                other{"{0} pixels"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"centimeters"}
+                one{"{0} centimeter"}
+                other{"{0} centimeters"}
+            }
+            kilometer{
+                dnam{"kilometers"}
+                one{"{0} kilometer"}
+                other{"{0} kilometers"}
+            }
+            meter{
+                one{"{0} meter"}
+                other{"{0} meters"}
+            }
+            millimeter{
+                dnam{"millimeters"}
+                one{"{0} millimeter"}
+                other{"{0} millimeters"}
+            }
+        }
+        mass{
+            gram{
+                one{"{0} gram"}
+                other{"{0} grams"}
+            }
+            kilogram{
+                dnam{"kilograms"}
+                one{"{0} kilogram"}
+                other{"{0} kilograms"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"kilometers per ura"}
+                one{"{0} kilometer per ura"}
+                other{"{0} kilometers per ura"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"grads celsius"}
+                one{"{0} grad celsius"}
+                other{"{0} grads celsius"}
+            }
+        }
+        volume{
+            liter{
+                one{"{0} liter"}
+                other{"{0} liters"}
+                per{"{0} per liter"}
+            }
+        }
+    }
+    unitsNarrow{
+        coordinate{
+            east{"{0}O"}
+            south{"{0}S"}
+            west{"{0}V"}
+        }
+        duration{
+            day{
+                dnam{"di"}
+                one{"{0} dis"}
+                other{"{0} dis"}
+            }
+            hour{
+                dnam{"ura"}
+                one{"{0} uras"}
+                other{"{0} uras"}
+            }
+            millisecond{
+                one{"{0}ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                dnam{"min"}
+                one{"{0} mins."}
+                other{"{0} mins."}
+            }
+            second{
+                dnam{"sec"}
+                one{"{0} secs."}
+                other{"{0} secs."}
+            }
+            week{
+                dnam{"emna"}
+                one{"{0} emnas"}
+                other{"{0} emnas"}
+            }
+            year{
+                dnam{"onn"}
+                one{"{0} onns"}
+                other{"{0} onns"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                one{"{0}kWh/100km"}
+                other{"{0}kWh/100km"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0}cm"}
+                other{"{0}cm"}
+            }
+            kilometer{
+                one{"{0}km"}
+                other{"{0}km"}
+            }
+            meter{
+                dnam{"meter"}
+                one{"{0}m"}
+                other{"{0}m"}
+            }
+            millimeter{
+                one{"{0}mm"}
+                other{"{0}mm"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"gram"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°C"}
+                other{"{0}°C"}
+            }
+        }
+        volume{
+            dessert-spoon-imperial{
+                one{"{0}dsp-Imp"}
+                other{"{0}dsp-Imp"}
+            }
+            fluid-ounce-imperial{
+                one{"{0} fl oz imp"}
+                other{"{0} fl oz imp"}
+            }
+            gallon-imperial{
+                one{"{0} gal imp"}
+                other{"{0} gal imp"}
+            }
+            liter{
+                dnam{"liter"}
+            }
+        }
+    }
+    unitsShort{
+        coordinate{
+            dnam{"direcziun"}
+            east{"{0} O"}
+            north{"{0} N"}
+            south{"{0} S"}
+            west{"{0} V"}
+        }
+        digital{
+            gigabit{
+                dnam{"Gbit"}
+            }
+            gigabyte{
+                dnam{"GByte"}
+            }
+            kilobit{
+                dnam{"kbit"}
+            }
+            kilobyte{
+                dnam{"kByte"}
+            }
+            megabit{
+                dnam{"Mbit"}
+            }
+            megabyte{
+                dnam{"MByte"}
+            }
+            petabyte{
+                dnam{"PByte"}
+            }
+            terabit{
+                dnam{"Tbit"}
+            }
+            terabyte{
+                dnam{"TByte"}
+            }
+        }
+        duration{
+            day{
+                dnam{"dis"}
+                one{"{0} di"}
+                other{"{0} dis"}
+            }
+            hour{
+                dnam{"uras"}
+                one{"{0} ura"}
+                other{"{0} uras"}
+            }
+            minute{
+                dnam{"minutas"}
+                one{"{0} min."}
+                other{"{0} mins."}
+            }
+            month{
+                dnam{"mais"}
+                one{"{0} mais"}
+                other{"{0} mais"}
+            }
+            second{
+                dnam{"secundas"}
+                one{"{0} sec."}
+                other{"{0} secs."}
+            }
+            week{
+                dnam{"emnas"}
+                one{"{0} emna"}
+                other{"{0} emnas"}
+            }
+            year{
+                dnam{"onns"}
+                one{"{0} onn"}
+                other{"{0} onns"}
+            }
+        }
+        graphics{
+            pixel{
+                dnam{"pixels"}
+            }
+        }
+        length{
+            meter{
+                dnam{"meters"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"grams"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/ura"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+        }
+        volume{
+            liter{
+                dnam{"liters"}
+            }
+        }
+    }
+}

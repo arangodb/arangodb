@@ -1,0 +1,251 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ckb{
+    AuxExemplarCharacters{"[\u200E\u200F ً ٌ ٍ َ ُ ِ ّ ْ ء آ أ ؤ إ ة ث ذ ص ض ط ظ ك ھ ى ي]"}
+    ExemplarCharacters{"[ئ ا ب پ ت ج چ ح خ د ر ز ڕ ژ س ش ع غ ف ڤ ق ک گ ل ڵ م ن ه ە و ۆ ی ێ]"}
+    ExemplarCharactersNumbers{"[\u200E\u200F \\- ‑ , ٫ ٬ . % ٪ ‰ ؉ + 0٠ 1١ 2٢ 3٣ 4٤ 5٥ 6٦ 7٧ 8٨ 9٩]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — ، ؛ \\: ! ؟ . … ' \u0022 « » ( ) \\[ \\]]"}
+    NumberElements{
+        arab{
+            patterns{
+                percentFormat{"#,##0 %"}
+            }
+            symbols{
+                minusSign{"‏-"}
+                percentSign{"٪"}
+                plusSign{"‏+"}
+            }
+        }
+        default{"arab"}
+        latn{
+            symbols{
+                plusSign{"‎+"}
+            }
+        }
+        native{"arab"}
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "G y MMMM d, EEEE",
+                "dی MMMMی y G",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            availableFormats{
+                Ed{"E dھەم"}
+                MEd{"E، M/d"}
+                MMMEd{"E، dی MMM"}
+                MMMd{"dی MMM"}
+                yM{"M/y"}
+                yMEd{"E، d/M/y"}
+                yMMM{"MMMی y"}
+                yMMMEd{"E، dی MMMی y"}
+                yMMMd{"dی MMMی y"}
+                yMd{"d/M/y"}
+            }
+            intervalFormats{
+                MEd{
+                    M{"E، M/d – E، M/d"}
+                    d{"E، M/d – E، M/d"}
+                }
+                MMM{
+                    M{"MMM–MMM"}
+                }
+                MMMEd{
+                    d{"E، dی MMM – E، dی MMM"}
+                }
+                MMMd{
+                    d{"d–dی MMM"}
+                }
+                fallback{"{0} – {1}"}
+                yMEd{
+                    M{"E، d/M/y – E، d/M/y"}
+                    d{"E، d/M/y – E، d/M/y"}
+                    y{"E، d/M/y – E، d/M/y"}
+                }
+                yMMM{
+                    M{"MMM–MMMی y"}
+                    y{"MMMی y – MMMی y"}
+                }
+                yMMMd{
+                    M{"dی MMM – dی MMMی y"}
+                    d{"d–dی MMMی y"}
+                    y{"dی MMMMی y – dی MMMMی y"}
+                }
+                yMd{
+                    y{"d/M/y – d/M/y"}
+                }
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "ب.ن",
+                "د.ن",
+            }
+            DateTimePatterns{
+                "h:mm:ss a zzzz",
+                "h:mm:ss a z",
+                "h:mm:ss a",
+                "h:mm a",
+                "y MMMM d, EEEE",
+                "dی MMMMی y",
+                "y MMM d",
+                "y-MM-dd",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMMd",
+                "yMMdd",
+            }
+            availableFormats{
+                Ed{"E dھەم"}
+                MEd{"E، M/d"}
+                MMMEd{"E، dی MMM"}
+                MMMMW{
+                    one{"هەفتەی W ی MMMM"}
+                    other{"هەفتەی W ی MMMM"}
+                }
+                MMMd{"dی MMM"}
+                h{"hی a"}
+                yM{"M/y"}
+                yMEd{"E، d/M/y"}
+                yMMM{"MMMی y"}
+                yMMMEd{"E، dی MMMی y"}
+                yMMMd{"dی MMMی y"}
+                yMd{"d/M/y"}
+                yw{
+                    one{"هەفتەی w ی Y"}
+                    other{"هەفتەی w ی Y"}
+                }
+            }
+            dayNames{
+                format{
+                    short{
+                        "١ش",
+                        "٢ش",
+                        "٣ش",
+                        "٤ش",
+                        "٥ش",
+                        "ھ",
+                        "ش",
+                    }
+                    wide{
+                        "یەکشەممە",
+                        "دووشەممە",
+                        "سێشەممە",
+                        "چوارشەممە",
+                        "پێنجشەممە",
+                        "ھەینی",
+                        "شەممە",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ی",
+                        "د",
+                        "س",
+                        "چ",
+                        "پ",
+                        "ھ",
+                        "ش",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "پێش زایین",
+                    "زایینی",
+                }
+                abbreviated%variant{
+                    "BCE",
+                    "CE",
+                }
+            }
+            intervalFormats{
+                fallback{"{0} – {1}"}
+            }
+            monthNames{
+                format{
+                    wide{
+                        "کانوونی دووەم",
+                        "شوبات",
+                        "ئازار",
+                        "نیسان",
+                        "ئایار",
+                        "حوزەیران",
+                        "تەمووز",
+                        "ئاب",
+                        "ئەیلوول",
+                        "تشرینی یەکەم",
+                        "تشرینی دووەم",
+                        "کانونی یەکەم",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "ک",
+                        "ش",
+                        "ئ",
+                        "ن",
+                        "ئ",
+                        "ح",
+                        "ت",
+                        "ئ",
+                        "ئ",
+                        "ت",
+                        "ت",
+                        "ک",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "چ١",
+                        "چ٢",
+                        "چ٣",
+                        "چ٤",
+                    }
+                    wide{
+                        "چارەکی یەکەم",
+                        "چارەکی دووەم",
+                        "چارەکی سێەم",
+                        "چارەکی چوارەم",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "١",
+                        "٢",
+                        "٣",
+                        "٤",
+                    }
+                }
+            }
+        }
+    }
+    layout{
+        characters{"right-to-left"}
+    }
+}

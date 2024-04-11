@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (C) 2016 and later: Unicode, Inc. and others. License & terms of use: http://www.unicode.org/copyright.html -->
+<Project ToolsVersion="14.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <!-- This file is used to set the ICU Major Version number, which is used as a suffix on various file names in other Visual Studio projects. -->
+  <PropertyGroup>
+    <IcuMajorVersion>75</IcuMajorVersion>
+  </PropertyGroup>
+</Project>

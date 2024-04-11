@@ -1,0 +1,196 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ig{
+    units{
+        compound{
+            10p-27{"ronto{0}"}
+            10p-30{"kwekto{0}"}
+            10p27{"ronna{0}"}
+            10p30{"kwetta{0}"}
+            power2{
+                other{
+                    _{
+                        _{"{0} square"}
+                    }
+                }
+            }
+            power3{
+                other{
+                    _{
+                        _{"{0} cubic"}
+                    }
+                }
+            }
+        }
+        duration{
+            century{
+                dnam{"Ọtụtụ nari afọ"}
+            }
+            day{
+                dnam{"Ọtụtụ Ubochi"}
+            }
+            decade{
+                dnam{"Ọtụtụ afọ iri"}
+            }
+            month{
+                dnam{"Ọtụtụ Ọnwa"}
+            }
+            quarter{
+                dnam{"Nkeji Nkeano"}
+                other{"{0}/q"}
+            }
+            week{
+                dnam{"Ọtụtụ Izu"}
+            }
+            year{
+                dnam{"Ọtụtụ Afọ"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"Kalori"}
+                other{"{0} Kalori"}
+            }
+        }
+        graphics{
+            dot-per-centimeter{
+                dnam{"ntụpọ kwa sentimita"}
+                other{"{0} ntụpọ kwa sentimita"}
+            }
+            dot-per-inch{
+                dnam{"ntụpọ kwa inch"}
+                other{"{0} ntụpọ kwa inch"}
+            }
+        }
+        length{
+            earth-radius{
+                dnam{"radius uwa"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"Beaufort"}
+                other{"Beaufort {0}"}
+            }
+        }
+        volume{
+            dessert-spoon{
+                dnam{"ngaji mégharia onu"}
+            }
+            dram{
+                dnam{"mmiri dram"}
+            }
+        }
+    }
+    unitsNarrow{
+        concentr{
+            item{
+                other{"{0}ihe"}
+            }
+            millimole-per-liter{
+                other{"{0}mmol/L"}
+            }
+            permillion{
+                other{"{0}ppm"}
+            }
+        }
+        duration{
+            microsecond{
+                dnam{"μsec"}
+                other{"{0}μs"}
+            }
+            nanosecond{
+                other{"{0}ns"}
+            }
+            quarter{
+                other{"{0}q"}
+            }
+        }
+        energy{
+            calorie{
+                dnam{"kal"}
+                other{"{0}kal"}
+            }
+            foodcalorie{
+                other{"{0}Kal"}
+            }
+        }
+        force{
+            newton{
+                other{"{0}N"}
+            }
+        }
+        graphics{
+            dot{
+                other{"{0}ntụpọ"}
+            }
+            dot-per-centimeter{
+                other{"{0}nksm"}
+            }
+            dot-per-inch{
+                other{"{0}nki"}
+            }
+            em{
+                other{"{0}em"}
+            }
+            megapixel{
+                other{"{0}MP"}
+            }
+            pixel{
+                other{"{0}px"}
+            }
+            pixel-per-centimeter{
+                dnam{"pksm"}
+                other{"{0}pksm"}
+            }
+            pixel-per-inch{
+                dnam{"pki"}
+                other{"{0}pki"}
+            }
+        }
+        speed{
+            beaufort{
+                other{"B{0}"}
+            }
+        }
+    }
+    unitsShort{
+        concentr{
+            item{
+                dnam{"ihe"}
+                other{"{0} ihe"}
+            }
+        }
+        duration{
+            quarter{
+                other{"{0} qtrs"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"Kal"}
+                other{"{0} Kal"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"ntụpọ"}
+                other{"{0} ntụpọ"}
+            }
+            dot-per-centimeter{
+                dnam{"nksm"}
+                other{"{0} nksm"}
+            }
+            dot-per-inch{
+                dnam{"nki"}
+                other{"{0} nki"}
+            }
+        }
+        volume{
+            drop{
+                dnam{"dobé"}
+            }
+        }
+    }
+}

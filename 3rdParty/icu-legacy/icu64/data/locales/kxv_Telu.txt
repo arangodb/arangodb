@@ -1,0 +1,69 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kxv_Telu{
+    %%Parent{"root"}
+    ExemplarCharacters{
+        "[ఁంః అ ఆ ఇ ఈ ఉ ఊ ఎ ఏ ఒ ఓ క గ చ జ ఞ ట డ{డ఼} ణ త ద న ప బ మ య ర ల వ స హ ా ి ీ ు"
+        " ూ ె ే ొ ో ్]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0 ౧ ౨ ౩ ౪ ౫ ౬ ౭ ౮ ౯]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"¤#,##,##0.00"}
+                decimalFormat{"#,##,##0.###"}
+            }
+        }
+        native{"telu"}
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "ఎ ఎమ్",
+                "పి ఎమ్",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+                yMd{"d/M/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "వారమి",
+                        "నమారా",
+                        "మాంగాడా",
+                        "వుదారా",
+                        "లాకివరా",
+                        "నుక్ వరా",
+                        "సానివరా",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "మాగ",
+                        "గుండు",
+                        "హిరెఇ",
+                        "బెసెకి",
+                        "లండి",
+                        "రాత",
+                        "బాన్దపాణా",
+                        "బార్సి",
+                        "అస్ర",
+                        "దివెడి",
+                        "పాండు",
+                        "పుసు",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"యుకె"}
+        US{"యుఎస్"}
+        metric{"దసాంసం"}
+    }
+}

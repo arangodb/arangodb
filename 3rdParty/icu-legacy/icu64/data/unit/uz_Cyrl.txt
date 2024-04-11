@@ -1,0 +1,144 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+uz_Cyrl{
+    %%Parent{"root"}
+    units{
+        duration{
+            millisecond{
+                one{"{0} миллисония"}
+                other{"{0} миллисония"}
+            }
+            minute{
+                one{"{0} дақиқа"}
+                other{"{0} дақиқа"}
+            }
+            week{
+                one{"{0} ҳафта"}
+                other{"{0} ҳафта"}
+            }
+            year{
+                one{"{0} йил"}
+                other{"{0} йил"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            day{
+                one{"{0} к"}
+                other{"{0} к"}
+            }
+            hour{
+                one{"{0} с"}
+                other{"{0} с"}
+            }
+            second{
+                one{"{0} сон"}
+                other{"{0} сон"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                one{"{0} кун"}
+                other{"{0} кун"}
+            }
+            hour{
+                one{"{0} соат"}
+                other{"{0} соат"}
+            }
+            millisecond{
+                one{"{0} мс"}
+                other{"{0} мс"}
+            }
+            minute{
+                one{"{0} дақ"}
+                other{"{0} дақ"}
+            }
+            month{
+                one{"{0} ой"}
+                other{"{0} ой"}
+            }
+            second{
+                one{"{0} сония"}
+                other{"{0} сония"}
+            }
+            week{
+                one{"{0} ҳафт"}
+                other{"{0} ҳафт"}
+            }
+            year{
+                one{"{0} й"}
+                other{"{0} й"}
+            }
+        }
+        length{
+            centimeter{
+                one{"{0} см"}
+                other{"{0} см"}
+            }
+            foot{
+                one{"{0} фут"}
+                other{"{0} фут"}
+            }
+            inch{
+                one{"{0} дюйм"}
+                other{"{0} дюйм"}
+            }
+            kilometer{
+                one{"{0} км"}
+                other{"{0} км"}
+            }
+            light-year{
+                one{"{0} ё.й."}
+                other{"{0} ё.й."}
+            }
+            meter{
+                one{"{0} м"}
+                other{"{0} м"}
+            }
+            mile{
+                one{"{0} миля"}
+                other{"{0} миля"}
+            }
+            millimeter{
+                one{"{0} мм"}
+                other{"{0} мм"}
+            }
+            picometer{
+                one{"{0} пм"}
+                other{"{0} пм"}
+            }
+            yard{
+                one{"{0} ярд"}
+                other{"{0} ярд"}
+            }
+        }
+        mass{
+            gram{
+                one{"{0} г"}
+                other{"{0} г"}
+            }
+            kilogram{
+                one{"{0} кг"}
+                other{"{0} кг"}
+            }
+            ounce{
+                one{"{0} унция"}
+                other{"{0} унция"}
+            }
+            pound{
+                one{"{0} фунт"}
+                other{"{0} фунт"}
+            }
+        }
+    }
+}

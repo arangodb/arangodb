@@ -1,0 +1,2409 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+kgp{
+    Currencies{
+        ADP{
+            "ADP",
+            "Ỹnoha Kufy-sĩ",
+        }
+        AED{
+            "AED",
+            "Ẽmĩrano Arame Jãnkamu",
+        }
+        AFA{
+            "AFA",
+            "Afeganĩ (1927–2002)",
+        }
+        AFN{
+            "AFN",
+            "Afeganĩ afegỹv",
+        }
+        ALK{
+            "ALK",
+            "Arámánja Rég (1946–1965)",
+        }
+        ALL{
+            "ALL",
+            "Arámánja Rég",
+        }
+        AMD{
+            "AMD",
+            "Arámẽnja Daram",
+        }
+        ANG{
+            "ANG",
+            "Ỹtiria Orỹnesa Kafejsĩ",
+        }
+        AOA{
+            "AOA",
+            "Ỹgora Kwanza",
+        }
+        AOK{
+            "AOK",
+            "Ỹgora Cuanza (1977–1990)",
+        }
+        AON{
+            "AON",
+            "Ỹgora cuanza tãg (1990–2000)",
+        }
+        AOR{
+            "AOR",
+            "Ỹgora cuanza ki hynhan ka nĩ (1990–2000)",
+        }
+        ARA{
+            "ARA",
+            "Arjẽtinỹ Asufraw",
+        }
+        ARL{
+            "ARL",
+            "Arjẽtinỹ Kufy Rej (1970–1983)",
+        }
+        ARM{
+            "ARM",
+            "Arjẽtinỹ Kufy (1881–1970)",
+        }
+        ARP{
+            "ARP",
+            "Arjẽtinỹ Kufy (1983–1985)",
+        }
+        ARS{
+            "ARS",
+            "Arjẽtinỹ Kufy // Arjẽntĩnỹ Kufy",
+        }
+        ATS{
+            "ATS",
+            "Agtirija Serĩm",
+        }
+        AUD{
+            "AU$",
+            "Awotyraria Nórar Si",
+        }
+        AWG{
+            "AWG",
+            "Aruma Kafejsĩ",
+        }
+        AZM{
+            "AZM",
+            "Ajermajjáv Manati (1993–2006)",
+        }
+        AZN{
+            "AZN",
+            "Manati aseri",
+        }
+        BAD{
+            "BAD",
+            "Mósinĩja-Hersegovĩna Ninỹ (1992–1994)",
+        }
+        BAM{
+            "BAM",
+            "Mósinĩja Hersegovĩna-mré Mỹrko ta ũn há",
+        }
+        BAN{
+            "BAN",
+            "Mósinĩja-Hersegovĩna Ninỹ Tãg (1994–1997)",
+        }
+        BBD{
+            "BBD",
+            "Juvã-mág Nórar",
+        }
+        BDT{
+            "BDT",
+            "Mágranési Taka",
+        }
+        BEC{
+            "BEC",
+            "Mérjika Vĩpir (conv)",
+        }
+        BEF{
+            "BEF",
+            "Mérjika Vĩpir",
+        }
+        BEL{
+            "BEL",
+            "Mérjika Vĩpir (financ)",
+        }
+        BGL{
+            "BGL",
+            "Mugarja Rev Tar",
+        }
+        BGM{
+            "BGM",
+            "Mugarja Ver kynkar",
+        }
+        BGN{
+            "BGN",
+            "Mugarja Rev",
+        }
+        BGO{
+            "BGO",
+            "Mugarja Rev (1879–1952)",
+        }
+        BHD{
+            "BHD",
+            "Marẽnh Ninỹ",
+        }
+        BIF{
+            "BIF",
+            "Murũni Vĩpir",
+        }
+        BMD{
+            "BMD",
+            "Karsa-ror-ag Nórar",
+        }
+        BND{
+            "BND",
+            "Mrunẽj Nórar",
+        }
+        BOB{
+            "BOB",
+            "Morivija Jãnkamu",
+        }
+        BOL{
+            "BOL",
+            "Morivijanũ (1863–1963)",
+        }
+        BOP{
+            "BOP",
+            "Morivija Kufy",
+        }
+        BOV{
+            "BOV",
+            "Morivija Munór",
+        }
+        BRB{
+            "BRB",
+            "Mrasir Krujeru Tãg (1967–1986)",
+        }
+        BRC{
+            "BRC",
+            "Mrasir Krusanu (1986–1989)",
+        }
+        BRE{
+            "BRE",
+            "Mrasir Krujeru (1990–1993)",
+        }
+        BRL{
+            "R$",
+            "Mrasir Rejar",
+        }
+        BRN{
+            "BRN",
+            "Mrasir Krusanu Tãg (1989–1990)",
+        }
+        BRR{
+            "BRR",
+            "Mrasir Krujeru (1993–1994)",
+        }
+        BRZ{
+            "BRZ",
+            "Mrasir Krujeru (1942–1967)",
+        }
+        BSD{
+            "BSD",
+            "Mahamỹ Nórar",
+        }
+        BTN{
+            "BTN",
+            "Butỹ Guturũm",
+        }
+        BUK{
+            "BUK",
+            "Mirmỹnja Kyate",
+        }
+        BWP{
+            "BWP",
+            "Monsuvỹnỹ Pura",
+        }
+        BYB{
+            "BYB",
+            "Miero-Husija Humro Tãg (1994–1999)",
+        }
+        BYN{
+            "BYN",
+            "Miero-Husija Humro",
+        }
+        BYR{
+            "BYR",
+            "Miero-Husija Humro (2000–2016)",
+        }
+        BZD{
+            "BZD",
+            "Merise Nórar",
+        }
+        CAD{
+            "CA$",
+            "Kanỹna Nórar",
+        }
+        CDF{
+            "CDF",
+            "Kãgu Vĩpir",
+        }
+        CHE{
+            "CHE",
+            "WIR Evoro",
+        }
+        CHF{
+            "CHF",
+            "Suvisa Vĩpir",
+        }
+        CHW{
+            "CHW",
+            "WIR Vĩpir",
+        }
+        CLE{
+            "CLE",
+            "Sire Vẽjuven",
+        }
+        CLF{
+            "CLF",
+            "Sirenũ ag vẽnhkãmur ũ",
+        }
+        CLP{
+            "CLP",
+            "Sire Kufy",
+        }
+        CNH{
+            "CNH",
+            "Sĩnỹ Yvỹn (offshore)",
+        }
+        CNX{
+            "CNX",
+            "Nórar vẽnhkar mỹ máko mĩ Sĩnỹ tá",
+        }
+        CNY{
+            "CN¥",
+            "Sĩnỹ Yvỹn",
+        }
+        COP{
+            "COP",
+            "Kolãmja Kufy",
+        }
+        COU{
+            "COU",
+            "Vẽnhkãmun ũ kaja uri",
+        }
+        CRC{
+            "CRC",
+            "Kotahika Korãn",
+        }
+        CSD{
+            "CSD",
+            "Sérvija Ninỹ (2002–2006)",
+        }
+        CSK{
+            "CSK",
+            "Sékorovaka Rãgre Tar",
+        }
+        CUC{
+            "CUC",
+            "Kuma Kufy conv",
+        }
+        CUP{
+            "CUP",
+            "Kuma Kufy",
+        }
+        CVE{
+            "CVE",
+            "Pu-Tánh Vẽjuven",
+        }
+        CYP{
+            "CYP",
+            "Sipre Rimra",
+        }
+        CZK{
+            "CZK",
+            "Séka Rãgre",
+        }
+        DDM{
+            "DDM",
+            "Aremỹja Rãjur tá Jãnkamu",
+        }
+        DEM{
+            "DEM",
+            "Aremỹnhỹ Mỹrko",
+        }
+        DJF{
+            "DJF",
+            "Nhimuti Vĩpir",
+        }
+        DKK{
+            "DKK",
+            "Ninỹmỹrka Rãgre",
+        }
+        DOP{
+            "DOP",
+            "Nomĩnĩka Kufy",
+        }
+        DZD{
+            "DZD",
+            "Argerija Ninỹ",
+        }
+        ECS{
+            "ECS",
+            "Ekuvanor Sukri",
+        }
+        ECV{
+            "ECV",
+            "Ekuvanor UVC",
+        }
+        EEK{
+            "EEK",
+            "Enhtonĩja Rãgre",
+        }
+        EGP{
+            "EGP",
+            "Ejimto Rimra",
+        }
+        ERN{
+            "ERN",
+            "Eriteréja Nagfa",
+        }
+        ESA{
+            "ESA",
+            "Esipỹnja Kufy-sĩ (kãtá A)",
+        }
+        ESB{
+            "ESB",
+            "Esipỹnja Kufy-sĩ (kãtá conv)",
+        }
+        ESP{
+            "ESP",
+            "Esipỹnja Kufy-sĩ",
+        }
+        ETB{
+            "ETB",
+            "Etiópija Mir",
+        }
+        EUR{
+            "€",
+            "Evoro",
+        }
+        FIM{
+            "FIM",
+            "Fĩrỹnija Mỹrka",
+        }
+        FJD{
+            "FJC",
+            "Fiji Nórar",
+        }
+        FKP{
+            "FKP",
+            "Mỹrvinỹ Rimra",
+        }
+        FRF{
+            "FRF",
+            "Frỹsa Vĩpir",
+        }
+        GBP{
+            "£",
+            "Rimra Eterĩnỹ",
+        }
+        GEK{
+            "GEK",
+            "Jiórja Kupãni Rari",
+        }
+        GEL{
+            "GEL",
+            "Jiórja Rari",
+        }
+        GHC{
+            "GHC",
+            "Gỹnỹ Senhi (1979–2007)",
+        }
+        GHS{
+            "GHS",
+            "Gỹnỹ Senhi",
+        }
+        GIP{
+            "GIP",
+            "Nhimratar Rimra",
+        }
+        GMD{
+            "GMD",
+            "Gỹmija Narasi",
+        }
+        GNF{
+            "GNF",
+            "Ginẽ Vĩpir",
+        }
+        GNS{
+            "GNS",
+            "Ginẽ Syri",
+        }
+        GQE{
+            "GQE",
+            "Ginẽ Ekuvanor Ekuvele",
+        }
+        GRD{
+            "GRD",
+            "Grésija Narakymỹ",
+        }
+        GTQ{
+            "GTQ",
+            "Guvỹtemỹra Kensav",
+        }
+        GWE{
+            "GWE",
+            "Fóg tỹ Ginẽ Vẽjuven",
+        }
+        GWP{
+            "GWP",
+            "Ginẽ-Misav Kufy",
+        }
+        GYD{
+            "GYD",
+            "Gijỹnỹ Nórar",
+        }
+        HKD{
+            "HK$",
+            "Hãg-Kãg Nórar",
+        }
+        HNL{
+            "HNL",
+            "Ãnura Rẽpirá",
+        }
+        HRD{
+            "HRD",
+            "Krovasija Ninỹ",
+        }
+        HRK{
+            "HRK",
+            "Krovasija Kuna",
+        }
+        HTG{
+            "HTG",
+            "Ajti Runja",
+        }
+        HUF{
+            "HUF",
+            "Ũgrija Kafejsĩ",
+        }
+        IDR{
+            "IDR",
+            "Ĩnonẽsija Rupija",
+        }
+        IEP{
+            "IEP",
+            "Irỹna Rimra",
+        }
+        ILP{
+            "ILP",
+            "Isihaé Rimra",
+        }
+        ILR{
+            "ILR",
+            "Isihaé Sekév Si",
+        }
+        ILS{
+            "₪",
+            "Isihaé Sekév Tãg",
+        }
+        INR{
+            "₹",
+            "Ĩnija Rupija",
+        }
+        IQD{
+            "IQD",
+            "Iraki Ninỹ",
+        }
+        IRR{
+            "IRR",
+            "Irỹ Hi’av",
+        }
+        ISJ{
+            "ISJ",
+            "Kukryr-ga Rãgre Si",
+        }
+        ISK{
+            "ISK",
+            "Kukryr-ga Rãgre",
+        }
+        ITL{
+            "ITL",
+            "Itarija Rira",
+        }
+        JMD{
+            "JMD",
+            "Jamỹjka Nórar",
+        }
+        JOD{
+            "JOD",
+            "Jornánĩja Ninỹ",
+        }
+        JPY{
+            "JP¥",
+            "Japã Jenẽ",
+        }
+        KES{
+            "KES",
+            "Kẽnja Serĩm",
+        }
+        KGS{
+            "KGS",
+            "Kirgi-Ga Kyr",
+        }
+        KHR{
+            "KHR",
+            "Kỹmósa Hijév",
+        }
+        KMF{
+            "KMF",
+            "Komor Vĩpir",
+        }
+        KPW{
+            "KPW",
+            "Nãrti-Koréja Vãn",
+        }
+        KRH{
+            "KRH",
+            "Koréja Sur Huvỹ (1953–1962)",
+        }
+        KRO{
+            "KRO",
+            "Koréja Sur Vãn (1945–1953)",
+        }
+        KRW{
+            "₩",
+            "Koréja Sur Vãn",
+        }
+        KWD{
+            "KWD",
+            "Kuvajti Ninỹ",
+        }
+        KYD{
+            "KYD",
+            "Kanhmỹ Vãsogso Nórar",
+        }
+        KZT{
+            "KZT",
+            "Kajakinhtỹv Tẽge",
+        }
+        LAK{
+            "LAK",
+            "Ravusi Kim",
+        }
+        LBP{
+            "LBP",
+            "Rimanũ Rimra",
+        }
+        LKR{
+            "LKR",
+            "Sirijỹká Rupija",
+        }
+        LRD{
+            "LRD",
+            "Rimérijỹ Nórar",
+        }
+        LSL{
+            "LSL",
+            "Resotu Roti",
+        }
+        LTL{
+            "LTL",
+            "Rituvỹnja Ritasi",
+        }
+        LTT{
+            "LTT",
+            "Rituvỹnja Taronỹ",
+        }
+        LUC{
+            "LUC",
+            "Rusẽmurgo Vĩpir conv.",
+        }
+        LUF{
+            "LUF",
+            "Rusẽmurgo Vĩpir",
+        }
+        LUL{
+            "LUL",
+            "Rusẽmurgo Vĩpir Jãnkamu",
+        }
+        LVL{
+            "LVL",
+            "Rativija Rati",
+        }
+        LVR{
+            "LVR",
+            "Rativija Humro",
+        }
+        LYD{
+            "LYD",
+            "Rimija Ninỹ",
+        }
+        MAD{
+            "MAD",
+            "Ar-Magrim Nirham",
+        }
+        MAF{
+            "MAF",
+            "Ar-Magrim Vĩpir",
+        }
+        MCF{
+            "MCF",
+            "Mõnỹku Vĩpir",
+        }
+        MDC{
+            "MDC",
+            "Mãrnova Kopã",
+        }
+        MDL{
+            "MDL",
+            "Mãrnova Revu",
+        }
+        MGA{
+            "MGA",
+            "Mỹna-Gasikar Ari-ary",
+        }
+        MGF{
+            "MGF",
+            "Mỹna-Gasikar Vĩpir",
+        }
+        MKD{
+            "MKD",
+            "Mỹsenonĩja Ninỹ",
+        }
+        MKN{
+            "MKN",
+            "Mỹsenonĩja Ninỹ (1992–1993)",
+        }
+        MLF{
+            "MLF",
+            "Mỹri Vĩpir",
+        }
+        MMK{
+            "MMK",
+            "Mijẽn-Mỹ Kijate",
+        }
+        MNT{
+            "MNT",
+            "Mãgórija Tugrig",
+        }
+        MOP{
+            "MOP",
+            "Mỹkav Pataka",
+        }
+        MRO{
+            "MRO",
+            "Mũritỹni Ov-Gija (1973–2017)",
+        }
+        MRU{
+            "MRU",
+            "Mũritỹni Ov-Gija",
+        }
+        MTL{
+            "MTL",
+            "Mỹrta Rirá",
+        }
+        MTP{
+            "MTP",
+            "Mỹrta Rimra",
+        }
+        MUR{
+            "MUR",
+            "Mãriso Rupija",
+        }
+        MVR{
+            "MVR",
+            "Mỹrniva Rupija",
+        }
+        MWK{
+            "MWK",
+            "Mỹravi Kuvasa",
+        }
+        MXN{
+            "MX$",
+            "Mẽsiku Kufy",
+        }
+        MXP{
+            "MXP",
+            "Mẽsiku Kufy Kupri (1861–1992)",
+        }
+        MXV{
+            "MXV",
+            "Mẽsiku Pir Rãg (UDI)",
+        }
+        MYR{
+            "MYR",
+            "Mỹraja Rĩggin",
+        }
+        MZE{
+            "MZE",
+            "Mãsỹmiki Vẽjuven",
+        }
+        MZM{
+            "MZM",
+            "Mãsỹmiki Mẽtikar (1980–2006)",
+        }
+        MZN{
+            "MZN",
+            "Mãsỹmiki Mẽtikar",
+        }
+        NAD{
+            "NAD",
+            "Nỹmĩmija Nórar",
+        }
+        NGN{
+            "NGN",
+            "Nĩjérija Nỹjra",
+        }
+        NIC{
+            "NIC",
+            "Nĩkaraguva Kórnoma (1988–1991)",
+        }
+        NIO{
+            "NIO",
+            "Nĩkaraguva Kórnoma",
+        }
+        NLG{
+            "NLG",
+            "Orỹna Kafejsĩ",
+        }
+        NOK{
+            "NOK",
+            "Nãrovéga Rãgre",
+        }
+        NPR{
+            "NPR",
+            "Nẽpar Rupija",
+        }
+        NZD{
+            "NZ$",
+            "Zirỹnija Tãg Nórar",
+        }
+        OMR{
+            "OMR",
+            "Omỹ Hijar",
+        }
+        PAB{
+            "PAB",
+            "Panỹmỹ Mavo-Mova",
+        }
+        PEI{
+            "PEI",
+            "Peru Ĩnti",
+        }
+        PEN{
+            "PEN",
+            "Peru Rã Tãg",
+        }
+        PES{
+            "PES",
+            "Peru Rã (1863–1965)",
+        }
+        PGK{
+            "PGK",
+            "Papuva Kinỹ",
+        }
+        PHP{
+            "PHP",
+            "Firipinỹ Kufy",
+        }
+        PKR{
+            "PKR",
+            "Pakinhtỹv Rupiya",
+        }
+        PLN{
+            "PLN",
+            "Poronĩja Rẽrĩr",
+        }
+        PLZ{
+            "PLZ",
+            "Poronĩja Rẽrĩr (1950–1995)",
+        }
+        PTE{
+            "Vẽj.",
+            "Purutuga Vẽjuven",
+        }
+        PYG{
+            "PYG",
+            "Paraguvaj Garnĩ",
+        }
+        QAR{
+            "QAR",
+            "Katar Hijar",
+        }
+        RHD{
+            "RHD",
+            "Ronésija Nórar",
+        }
+        ROL{
+            "ROL",
+            "Romẽnija Rev (1952–2006)",
+        }
+        RON{
+            "RON",
+            "Romẽnija Rev",
+        }
+        RSD{
+            "RSD",
+            "Séruvija Ninỹ",
+        }
+        RUB{
+            "RUB",
+            "Husija Humro",
+        }
+        RUR{
+            "RUR",
+            "Husija Humro (1991–1998)",
+        }
+        RWF{
+            "RWF",
+            "Huvỹna Vĩpir",
+        }
+        SAR{
+            "SAR",
+            "Aramija Savnita Hijar",
+        }
+        SBD{
+            "SBD",
+            "Saromỹ Vẽsogso Nórar",
+        }
+        SCR{
+            "SCR",
+            "Sejséri Rupija",
+        }
+        SDD{
+            "SDD",
+            "Suná Ninỹ (1992–2007)",
+        }
+        SDG{
+            "SDG",
+            "Suná Rimbra",
+        }
+        SDP{
+            "SDP",
+            "Suná Rimbra (1957–1998)",
+        }
+        SEK{
+            "SEK",
+            "Suvésija Rãgre",
+        }
+        SGD{
+            "SGD",
+            "Sĩgapur Nórar",
+        }
+        SHP{
+            "SHP",
+            "Sỹta Herenỹ Rimra",
+        }
+        SIT{
+            "SIT",
+            "Enhrovenĩja Torar Há",
+        }
+        SKK{
+            "SKK",
+            "Enhrovakija Rãgre",
+        }
+        SLE{
+            "SLE",
+            "Krĩ Mĩgkusũg-fi Re’onĩ",
+        }
+        SLL{
+            "SLL",
+            "Krĩ Mĩgkusũg-fi Re’onĩ (1964—2022)",
+        }
+        SOS{
+            "SOS",
+            "Somỹrija Serĩm",
+        }
+        SRD{
+            "SRD",
+            "Surinỹm Nórar",
+        }
+        SRG{
+            "SRG",
+            "Surinỹm Kafejsĩ",
+        }
+        SSP{
+            "SSP",
+            "Suná-Sur Rimra",
+        }
+        STD{
+            "STD",
+            "Sỹtomẽ Prĩsipi-mré Nómra (1977–2017)",
+        }
+        STN{
+            "STN",
+            "Sỹtomẽ Prĩsipi-mré Nómra",
+        }
+        SUR{
+            "SUR",
+            "Sovijéti Humro",
+        }
+        SVC{
+            "SVC",
+            "Er Sarvanor Korãn",
+        }
+        SYP{
+            "SYP",
+            "Sirija Rimra",
+        }
+        SZL{
+            "SZL",
+            "Suvasi-Ga Rirỹgenĩ",
+        }
+        THB{
+            "฿",
+            "Taj-Ga Mati",
+        }
+        TJR{
+            "TJR",
+            "Tanijikinhtỹv Humro",
+        }
+        TJS{
+            "TJS",
+            "Tanijikinhtỹv Somãnĩ",
+        }
+        TMM{
+            "TMM",
+            "Turkomẽnisitỹ Manati (1993–2009)",
+        }
+        TMT{
+            "TMT",
+            "Tukomẽnũ Manati",
+        }
+        TND{
+            "TND",
+            "Tunĩsija Ninỹ",
+        }
+        TOP{
+            "TOP",
+            "Tãga Pa’ỹga",
+        }
+        TPE{
+            "TPE",
+            "Timor Vẽjuven",
+        }
+        TRL{
+            "TRL",
+            "Turkija Rira (1922–2005)",
+        }
+        TRY{
+            "TRY",
+            "Turkija Rira",
+        }
+        TTD{
+            "TTD",
+            "Tirinĩna Tomago-mré Nórar",
+        }
+        TWD{
+            "NT$",
+            "Tajvỹ Nórar Tãg",
+        }
+        TZS{
+            "TZS",
+            "Tỹnjỹnĩja Serĩm",
+        }
+        UAH{
+            "UAH",
+            "Ukrỹnĩja Hyryvinja",
+        }
+        UAK{
+            "UAK",
+            "Ukrỹnĩja Karbovanẽ",
+        }
+        UGS{
+            "UGS",
+            "Ugỹna Serĩm (1966–1987)",
+        }
+        UGX{
+            "UGX",
+            "Ugỹna Serĩm",
+        }
+        USD{
+            "US$",
+            "Nãrti-Amẽrikỹ Nórar",
+        }
+        USN{
+            "USN",
+            "Nãrti-Amẽrikỹ Nórar (kurã ũ kã)",
+        }
+        USS{
+            "USS",
+            "Nãrti-Amẽrikỹ Nórar (kurã hã)",
+        }
+        UYI{
+            "UYI",
+            "Uruguvaj Kufy vẽkãmur ũ",
+        }
+        UYP{
+            "UYP",
+            "Uruguvaj Kufy (1975–1993)",
+        }
+        UYU{
+            "UYU",
+            "Uruguvaj Kufy",
+        }
+        UZS{
+            "UZS",
+            "Unhmekinhtỹv Kyr",
+        }
+        VEB{
+            "VEB",
+            "Venẽjuvéra Morivar (1871–2008)",
+        }
+        VEF{
+            "VEF",
+            "Venẽjuvéra Morivar (2008–2018)",
+        }
+        VES{
+            "VES",
+            "Venẽjuvéra Morivar",
+        }
+        VND{
+            "₫",
+            "Vijétinỹm Nãg",
+        }
+        VNN{
+            "VNN",
+            "Vijétinỹm Nãg (1978–1985)",
+        }
+        VUV{
+            "VUV",
+            "Vanũvatu Vatu",
+        }
+        WST{
+            "WST",
+            "Samãva Tara",
+        }
+        XAF{
+            "FCFA",
+            "Vĩpir CFA tỹ BEAC",
+        }
+        XAG{
+            "XAG",
+            "Kyfé Kupri",
+        }
+        XAU{
+            "XAU",
+            "Kyfé Mỹrér",
+        }
+        XBA{
+            "XBA",
+            "Orópa Vẽnhkãmur ũ ‘e",
+        }
+        XBB{
+            "XBB",
+            "Orópa Jãnkamu ũ-pir (XBB)",
+        }
+        XBC{
+            "XBC",
+            "Orópa Nĩkrén-ja ũ-pir (XBC)",
+        }
+        XBD{
+            "XBD",
+            "Orópa Nĩkrén-ja ũ-pir",
+        }
+        XCD{
+            "EC$",
+            "Karime Rãjur Nórar",
+        }
+        XDR{
+            "XDR",
+            "Kuryj há ty Jiro",
+        }
+        XEU{
+            "XEU",
+            "Orópa Nĩkri ũ-pir",
+        }
+        XFO{
+            "XFO",
+            "Frỹsa Vĩpir-Oro",
+        }
+        XFU{
+            "XFU",
+            "Frỹsa UIC Vĩpir",
+        }
+        XOF{
+            "CFA",
+            "Vĩpir CFA tỹ BCEAO",
+        }
+        XPD{
+            "XPD",
+            "Paranho",
+        }
+        XPF{
+            "CFPF",
+            "Vĩpir CFP",
+        }
+        XPT{
+            "XPT",
+            "Pratinỹ",
+        }
+        XRE{
+            "XRE",
+            "RINET Kãryjgy",
+        }
+        XTS{
+            "XTS",
+            "Rá tỹ Nĩkri Vẽnh-kãgran-ja",
+        }
+        XXX{
+            "¤",
+            "Nĩkri veja tũ",
+        }
+        YDD{
+            "YDD",
+            "Jemẽn Ninỹ",
+        }
+        YER{
+            "YER",
+            "Jemẽn Hijar",
+        }
+        YUD{
+            "YUD",
+            "Jugusiravija Ninỹ Tar (1966–1990)",
+        }
+        YUM{
+            "YUM",
+            "Jugusiravija Ninỹ Tãg (1994–2002)",
+        }
+        YUN{
+            "YUN",
+            "Jugusiravija Ninỹ ta ũn há (1990–1992)",
+        }
+        YUR{
+            "YUR",
+            "Jugusiravija Ninỹ han mãn tãg (1992–1993)",
+        }
+        ZAL{
+            "ZAL",
+            "Ran surafrikỹnũ (virhár)",
+        }
+        ZAR{
+            "ZAR",
+            "Ran surafrikỹnũ",
+        }
+        ZMK{
+            "SMK",
+            "Kuvasa Jỹmijanũ (1968–2012)",
+        }
+        ZMW{
+            "ZMW",
+            "Kuvasa jỹmijanũ",
+        }
+        ZRN{
+            "ZRN",
+            "Jajre Tãg Sajrẽse",
+        }
+        ZRZ{
+            "ZRZ",
+            "Jajre Sajrẽse (1971–1993)",
+        }
+        ZWD{
+            "ZWD",
+            "Jimamuvé Nórar (1980– 2008)",
+        }
+        ZWL{
+            "ZWL",
+            "Jimamuvé Nórar (2009)",
+        }
+        ZWR{
+            "ZWR",
+            "Jimamuvé Nórar (2008)",
+        }
+    }
+    Currencies%narrow{
+        BYN{"p."}
+        RON{"L"}
+        SYP{"S£"}
+        TWD{"NT$"}
+    }
+    CurrencyPlurals{
+        ADP{
+            one{"Ỹnoha Kufy-sĩ"}
+            other{"Ỹnoha Kufy-sĩ ag"}
+        }
+        AED{
+            one{"EAU Jãnkamu"}
+            other{"EAU Jãnkamu ag"}
+        }
+        AFA{
+            one{"Afeganĩtã Afeganĩ (AFA)"}
+            other{"Afeganĩtã Afeganĩ ag (AFA)"}
+        }
+        AFN{
+            one{"Afeganĩ afegỹv"}
+            other{"Afeganĩ ag afegỹv"}
+        }
+        ALK{
+            one{"Arámánja Rég (1946–1965)"}
+            other{"Arámánja Rég ag (1946–1965)"}
+        }
+        ALL{
+            one{"Arámánja Rég"}
+            other{"Arámánja Rég ag"}
+        }
+        AMD{
+            one{"Arámẽnja Daram"}
+            other{"Arámẽnja Daram ag"}
+        }
+        ANG{
+            one{"Ỹtiria Orỹnesa Kafejsĩ"}
+            other{"Ỹtiria Orỹnesa Kafejsĩ ag"}
+        }
+        AOA{
+            one{"Ỹgora Kwanza"}
+            other{"Ỹgora Kwanza ag"}
+        }
+        AOK{
+            one{"Ỹgora Kwanza (AOK)"}
+            other{"Ỹgora Kwanza ag (AOK)"}
+        }
+        AON{
+            one{"Ỹgora kwanza tãg (AON)"}
+            other{"Ỹgora kwanza tãg ag (AON)"}
+        }
+        AOR{
+            one{"Ỹgora kwanza ki hynhan ka nĩ (AOR)"}
+            other{"Ỹgora kwanza ag ki hynhan ka nĩ (AOR)"}
+        }
+        ARA{
+            one{"Arjẽtinỹ Asufraw"}
+            other{"Arjẽtinỹ Asufraw ag"}
+        }
+        ARL{
+            one{"Arjẽtinỹ Kufy Rej (1970–1983)"}
+            other{"Arjẽtinỹ Kufy Rej ag (1970–1983)"}
+        }
+        ARM{
+            one{"Arjẽtinỹ Kufy (1881–1970)"}
+            other{"Arjẽtinỹ Kufy ag (1881–1970)"}
+        }
+        ARP{
+            one{"Arjẽtinỹ Kufy (1983–1985)"}
+            other{"Arjẽtinỹ Kufy ag (1983–1985)"}
+        }
+        ARS{
+            one{"Arjẽtinỹ Kufy"}
+            other{"Arjẽtinỹ Kufy ag"}
+        }
+        ATS{
+            one{"Agtirija Serĩm"}
+            other{"Agtirija Serĩm ag"}
+        }
+        AUD{
+            one{"Awotyraria Nórar Si"}
+            other{"Awotyraria Nórar Si ag"}
+        }
+        AWG{
+            one{"Aruma Kafejsĩ"}
+            other{"Aruma Kafejsĩ ag"}
+        }
+        AZM{
+            one{"Ajermajjáv Manati (1993–2006)"}
+            other{"Ajermajjáv Manati ag (1993–2006)"}
+        }
+        AZN{
+            one{"Manati aseri"}
+            other{"Manati aseri ag"}
+        }
+        BAD{
+            one{"Mósinĩja-Hersegovĩna Ninỹ"}
+            other{"Mósinĩja-Hersegovĩna Ninỹ ag"}
+        }
+        BAM{
+            one{"Mósinĩja Hersegovĩna-mré Mỹrko ta ũn há"}
+            other{"Mósinĩja Hersegovĩna-mré Mỹrko ag ta ũn há"}
+        }
+        BAN{
+            one{"Mósinĩja-Hersegovĩna Ninỹ Tãg"}
+            other{"Mósinĩja-Hersegovĩna Ninỹ Tãg ag"}
+        }
+        BBD{
+            one{"Juvã-mág Nórar"}
+            other{"Juvã-mág Nórar ag"}
+        }
+        BDT{
+            one{"Mágranési Taka"}
+            other{"Mágranési Taka ag"}
+        }
+        BEC{
+            one{"Mérjika Vĩpir (conv)"}
+            other{"Mérjika Vĩpir ag (conv)"}
+        }
+        BEF{
+            one{"Mérjika Vĩpir"}
+            other{"Mérjika Vĩpir ag"}
+        }
+        BEL{
+            one{"Mérjika Vĩpir (financ)"}
+            other{"Mérjika Vĩpir ag (financ)"}
+        }
+        BGL{
+            one{"Mugarja Rev Tar"}
+            other{"Mugarja Rev Tar ag"}
+        }
+        BGM{
+            one{"Mugarja Ver kynkar"}
+            other{"Mugarja Ver kynkar ag"}
+        }
+        BGN{
+            one{"Mugarja Rev"}
+            other{"Mugarja Rev ag"}
+        }
+        BGO{
+            one{"Mugarja Rev (1879–1952)"}
+            other{"Mugarja Rev ag (1879–1952)"}
+        }
+        BHD{
+            one{"Marẽnh Ninỹ"}
+            other{"Marẽnh Ninỹ ag"}
+        }
+        BIF{
+            one{"Murũni Vĩpir"}
+            other{"Murũni Vĩpir ag"}
+        }
+        BMD{
+            one{"Karsa-ror-ag Nórar"}
+            other{"Karsa-ror-ag Nórar ag"}
+        }
+        BND{
+            one{"Mrunẽj Nórar"}
+            other{"Mrunẽj Nórar ag"}
+        }
+        BOB{
+            one{"Morivija Jãnkamu"}
+            other{"Morivija Jãnkamu ag"}
+        }
+        BOL{
+            one{"Morivijanũ (1863–1963)"}
+            other{"Morivijanũ ag (1863–1963)"}
+        }
+        BOP{
+            one{"Morivija Kufy"}
+            other{"Morivija Kufy ag"}
+        }
+        BOV{
+            one{"Morivija Munór"}
+            other{"Morivija Munór ag"}
+        }
+        BRB{
+            one{"Mrasir Krujeru Tãg (BRB)"}
+            other{"Mrasir Krujeru Tãg ag (BRB)"}
+        }
+        BRC{
+            one{"Mrasir Krusanu"}
+            other{"Mrasir Krusanu ag"}
+        }
+        BRE{
+            one{"Mrasir Krujeru (BRE)"}
+            other{"Mrasir Krujeru ag (BRE)"}
+        }
+        BRL{
+            one{"Mrasir Rejar"}
+            other{"Mrasir Rejar ag"}
+        }
+        BRN{
+            one{"Mrasir Krusanu Tãg"}
+            other{"Mrasir Krusanu Tãg ag"}
+        }
+        BRR{
+            one{"Mrasir Krujeru"}
+            other{"Mrasir Krujeru ag"}
+        }
+        BRZ{
+            one{"Mrasir Krujeru Si"}
+            other{"Mrasir Krujeru Si ag"}
+        }
+        BSD{
+            one{"Mahamỹ Nórar"}
+            other{"Mahamỹ Nórar ag"}
+        }
+        BTN{
+            one{"Butỹ Guturũm"}
+            other{"Butỹ Guturũm ag"}
+        }
+        BUK{
+            one{"Mirmỹnja Kyate"}
+            other{"Mirmỹnja Kyate ag"}
+        }
+        BWP{
+            one{"Monsuvỹnỹ Pura"}
+            other{"Monsuvỹnỹ Pura ag"}
+        }
+        BYB{
+            one{"Miero-Husija Humro Tãg (BYB)"}
+            other{"Miero-Husija Humro Tãg ag (BYB)"}
+        }
+        BYN{
+            one{"Miero-Husija Humro"}
+            other{"Miero-Husija Humro ag"}
+        }
+        BYR{
+            one{"Miero-Husija Humro (2000–2016)"}
+            other{"Miero-Husija Humro ag (2000–2016)"}
+        }
+        BZD{
+            one{"Merise Nórar"}
+            other{"Merise Nórar ag"}
+        }
+        CAD{
+            one{"Kanỹna Nórar"}
+            other{"Kanỹna Nórar ag"}
+        }
+        CDF{
+            one{"Kãgu Vĩpir"}
+            other{"Kãgu Vĩpir ag"}
+        }
+        CHE{
+            one{"WIR Evoro"}
+            other{"WIR Evoro ag"}
+        }
+        CHF{
+            one{"Suvisa Vĩpir"}
+            other{"Suvisa Vĩpir ag"}
+        }
+        CHW{
+            one{"WIR Vĩpir"}
+            other{"WIR Vĩpir ag"}
+        }
+        CLE{
+            one{"Sire Vẽjuven"}
+            other{"Sire Vẽjuven ag"}
+        }
+        CLF{
+            one{"Sirenũ vẽnhkãmur ũ"}
+            other{"Sirenũ ag vẽnhkãmur ũ ag"}
+        }
+        CLP{
+            one{"Sire Kufy"}
+            other{"Sire Kufy ag"}
+        }
+        CNH{
+            one{"Sĩnỹ Yuãn (offshore)"}
+            other{"Sĩnỹ Yuãn ag (offshore)"}
+        }
+        CNX{
+            one{"Nórar vẽnhkar mỹ máko mĩ Sĩnỹ tá"}
+            other{"Nórar vẽnhkar mỹ máko mĩ Sĩnỹ tá ag"}
+        }
+        CNY{
+            one{"Sĩnỹ Yvỹn"}
+            other{"Sĩnỹ Yvỹn ag"}
+        }
+        COP{
+            one{"Kolãmja Kufy"}
+            other{"Kolãmja Kufy ag"}
+        }
+        COU{
+            one{"Vẽnhkãmun ũ kaja uri"}
+            other{"Vẽnhkãmun-mun ũ kaja uri ag"}
+        }
+        CRC{
+            one{"Kotahika Korãn"}
+            other{"Kotahika Korãn ag"}
+        }
+        CSD{
+            one{"Sérvija Ninỹ Si"}
+            other{"Sérvija Ninỹ Si ag"}
+        }
+        CSK{
+            one{"Coroa forte tchecoslovaca"}
+            other{"Sékorovaka Rãgre Tar ag"}
+        }
+        CUC{
+            one{"Kuma Kufy conv"}
+            other{"Kuma Kufy ag conv"}
+        }
+        CUP{
+            one{"Kuma Kufy"}
+            other{"Kuma Kufy ag"}
+        }
+        CVE{
+            one{"Pu-Tánh Vẽjuven"}
+            other{"Pu-Tánh Vẽjuven ag"}
+        }
+        CYP{
+            one{"Sipre Rimra"}
+            other{"Sipre Rimra ag"}
+        }
+        CZK{
+            one{"Séka Rãgre"}
+            other{"Séka Rãgre ag"}
+        }
+        DDM{
+            one{"Aremỹja Rãjur tá Jãnkamu"}
+            other{"Aremỹja Rãjur tá Jãnkamu ag"}
+        }
+        DEM{
+            one{"Aremỹnhỹ Mỹrko"}
+            other{"Aremỹnhỹ Mỹrko ag"}
+        }
+        DJF{
+            one{"Nhimuti Vĩpir"}
+            other{"Nhimuti Vĩpir ag"}
+        }
+        DKK{
+            one{"Ninỹmỹrka Rãgre"}
+            other{"Ninỹmỹrka Rãgre ag"}
+        }
+        DOP{
+            one{"Nomĩnĩka Kufy"}
+            other{"Nomĩnĩka Kufy ag"}
+        }
+        DZD{
+            one{"Argerija Ninỹ"}
+            other{"Argerija Ninỹ ag"}
+        }
+        ECS{
+            one{"Ekuvanor Sukri"}
+            other{"Ekuvanor Sukri ag"}
+        }
+        ECV{
+            one{"UVC tỹ Ekuvanor"}
+            other{"UVC ag tỹ Ekuvanor"}
+        }
+        EEK{
+            one{"Enhtonĩja Rãgre"}
+            other{"Enhtonĩja Rãgre ag"}
+        }
+        EGP{
+            one{"Ejimto Rimra"}
+            other{"Ejimto Rimra ag"}
+        }
+        ERN{
+            one{"Eriteréja Nagfa"}
+            other{"Eriteréja Nagfa ag"}
+        }
+        ESA{
+            one{"Esipỹnja Kufy-sĩ (kãtá A)"}
+            other{"Esipỹnja Kufy-sĩ ag (kãtá A)"}
+        }
+        ESB{
+            one{"Esipỹnja Kufy-sĩ (kãtá conv)"}
+            other{"Esipỹnja Kufy-sĩ ag (kãtá conv)"}
+        }
+        ESP{
+            one{"Esipỹnja Kufy-sĩ"}
+            other{"Esipỹnja Kufy-sĩ ag"}
+        }
+        ETB{
+            one{"Etiópija Mir"}
+            other{"Etiópija Mir ag"}
+        }
+        EUR{
+            one{"Evoro"}
+            other{"Evoro ag"}
+        }
+        FIM{
+            one{"Fĩrỹnija Mỹrka"}
+            other{"Fĩrỹnija Mỹrka’a"}
+        }
+        FJD{
+            one{"Fiji Nórar"}
+            other{"Fiji Nórar ag"}
+        }
+        FKP{
+            one{"Mỹrvinỹ Rimra"}
+            other{"Mỹrvinỹ Rimra ag"}
+        }
+        FRF{
+            one{"Frỹsa Vĩpir"}
+            other{"Frỹsa Vĩpir ag"}
+        }
+        GBP{
+            one{"Rimra Eterĩnỹ"}
+            other{"Rimra Eterĩnỹ asg"}
+        }
+        GEK{
+            one{"Jiórja Kupãni Rari"}
+            other{"Jiórja Kupãni Rari ag"}
+        }
+        GEL{
+            one{"Jiórja Rari"}
+            other{"Jiórja Rari ag"}
+        }
+        GHC{
+            one{"Gỹnỹ Senhi (1979–2007)"}
+            other{"Gỹnỹ Senhi ag (1979–2007)"}
+        }
+        GHS{
+            one{"Gỹnỹ Senhi"}
+            other{"Gỹnỹ Senhi ag"}
+        }
+        GIP{
+            one{"Nhimratar Rimra"}
+            other{"Nhimratar Rimra ag"}
+        }
+        GMD{
+            one{"Gỹmija Narasi"}
+            other{"Gỹmija Narasi ag"}
+        }
+        GNF{
+            one{"Ginẽ Vĩpir"}
+            other{"Ginẽ Vĩpir ag"}
+        }
+        GNS{
+            one{"Ginẽ Syri"}
+            other{"Ginẽ Syri ag"}
+        }
+        GQE{
+            one{"Ginẽ Ekuvanor Ekuvele"}
+            other{"Ginẽ Ekuvanor Ekuvele ag"}
+        }
+        GRD{
+            one{"Grésija Narakymỹ"}
+            other{"Grésija Narakymỹ ag"}
+        }
+        GTQ{
+            one{"Guvỹtemỹra Kensav"}
+            other{"Guvỹtemỹra Kensav ag"}
+        }
+        GWE{
+            one{"Fóg tỹ Ginẽ Vẽjuven"}
+            other{"Fóg tỹ Ginẽ Vẽjuven ag"}
+        }
+        GWP{
+            one{"Ginẽ-Misav Kufy"}
+            other{"Ginẽ-Misav Kufy ag"}
+        }
+        GYD{
+            one{"Gijỹnỹ Nórar"}
+            other{"Gijỹnỹ Nórar ag"}
+        }
+        HKD{
+            one{"Hãg-Kãg Nórar"}
+            other{"Hãg-Kãg Nórar ag"}
+        }
+        HNL{
+            one{"Ãnura Rẽpirá"}
+            other{"Ãnura Rẽpirá ag"}
+        }
+        HRD{
+            one{"Krovasija Ninỹ"}
+            other{"Krovasija Ninỹ ag"}
+        }
+        HRK{
+            one{"Krovasija Kuna"}
+            other{"Krovasija Kuna ag"}
+        }
+        HTG{
+            one{"Ajti Runja"}
+            other{"Ajti Runja ag"}
+        }
+        HUF{
+            one{"Ũgrija Kafejsĩ"}
+            other{"Ũgrija Kafejsĩ ag"}
+        }
+        IDR{
+            one{"Ĩnonẽsija Rupija"}
+            other{"Ĩnonẽsija Rupija ag"}
+        }
+        IEP{
+            one{"Irỹna Rimra"}
+            other{"Irỹna Rimra ag"}
+        }
+        ILP{
+            one{"Isihaé Rimra"}
+            other{"Isihaé Rimra ag"}
+        }
+        ILR{
+            one{"Isihaé Sekév Si"}
+            other{"Isihaé Sekév Si ag"}
+        }
+        ILS{
+            one{"Isihaé Sekév Tãg"}
+            other{"Isihaé Sekév Tãg ag"}
+        }
+        INR{
+            one{"Ĩnija Rupija"}
+            other{"Ĩnija Rupija ag"}
+        }
+        IQD{
+            one{"Iraki Ninỹ"}
+            other{"Iraki Ninỹ ag"}
+        }
+        IRR{
+            one{"Irỹ Hi’av"}
+            other{"Irỹ Hi’av ag"}
+        }
+        ISJ{
+            one{"Kukryr-ga Rãgre Si"}
+            other{"Kukryr-ga Rãgre Si ag"}
+        }
+        ISK{
+            one{"Kukryr-ga Rãgre"}
+            other{"Kukryr-ga Rãgre ag"}
+        }
+        ITL{
+            one{"Itarija Rira"}
+            other{"Itarija Rira ag"}
+        }
+        JMD{
+            one{"Jamỹjka Nórar"}
+            other{"Jamỹjka Nórar ag"}
+        }
+        JOD{
+            one{"Jornánĩja Ninỹ"}
+            other{"Jornánĩja Ninỹ ag"}
+        }
+        JPY{
+            one{"Japã Jenẽ"}
+            other{"Japã Jenẽ ag"}
+        }
+        KES{
+            one{"Kẽnja Serĩm"}
+            other{"Kẽnja Serĩm ag"}
+        }
+        KGS{
+            one{"Kirgi-Ga Kyr"}
+            other{"Kirgi-Ga Kyr ag"}
+        }
+        KHR{
+            one{"Kỹmósa Hijév"}
+            other{"Kỹmósa Hijév ag"}
+        }
+        KMF{
+            one{"Komor Vĩpir"}
+            other{"Komor Vĩpir ag"}
+        }
+        KPW{
+            one{"Nãrti-Koréja Vãn"}
+            other{"Nãrti-Koréja Vãn sag"}
+        }
+        KRH{
+            one{"Koréja Sur Huvỹ"}
+            other{"Koréja Sur Huvỹ ag"}
+        }
+        KRO{
+            one{"Koréja Sur Vãn Si"}
+            other{"Koréja Sur Vãn Si ag"}
+        }
+        KRW{
+            one{"Koréja Sur Vãn"}
+            other{"Koréja Sur Vãn ag"}
+        }
+        KWD{
+            one{"Kuvajti Ninỹ"}
+            other{"Kuvajti Ninỹ ag"}
+        }
+        KYD{
+            one{"Kanhmỹ Vãsogso Nórar"}
+            other{"Kanhmỹ Vãsogso Nórar ag"}
+        }
+        KZT{
+            one{"Kajakinhtỹv Tẽge"}
+            other{"Kajakinhtỹv Tẽge ag"}
+        }
+        LAK{
+            one{"Ravusi Kim"}
+            other{"Ravusi Kim ag"}
+        }
+        LBP{
+            one{"Rimanũ Rimra"}
+            other{"Rimanũ Rimra ag"}
+        }
+        LKR{
+            one{"Sirijỹká Rupija"}
+            other{"Sirijỹká Rupija ag"}
+        }
+        LRD{
+            one{"Rimérijỹ Nórar"}
+            other{"Rimérijỹ Nórar ag"}
+        }
+        LSL{
+            one{"Resotu Roti"}
+            other{"Resotu Roti ag"}
+        }
+        LTL{
+            one{"Rituvỹnja Ritasi"}
+            other{"Rituvỹnja Ritasi ag"}
+        }
+        LTT{
+            one{"Rituvỹnja Taronỹ"}
+            other{"Rituvỹnja Taronỹ ag"}
+        }
+        LUC{
+            one{"Rusẽmurgo Vĩpir conv."}
+            other{"Rusẽmurgo Vĩpir ag conv."}
+        }
+        LUF{
+            one{"Rusẽmurgo Vĩpir"}
+            other{"Rusẽmurgo Vĩpir ag"}
+        }
+        LUL{
+            one{"Rusẽmurgo Vĩpir Jãnkamu"}
+            other{"Rusẽmurgo Vĩpir Jãnkamu ag"}
+        }
+        LVL{
+            one{"Rativija Rati"}
+            other{"Rativija Rati ag"}
+        }
+        LVR{
+            one{"Rativija Humro"}
+            other{"Rativija Humro ag"}
+        }
+        LYD{
+            one{"Rimija Ninỹ"}
+            other{"Rimija Ninỹ ag"}
+        }
+        MAD{
+            one{"Ar-Magrim Nirham"}
+            other{"Ar-Magrim Nirham ag"}
+        }
+        MAF{
+            one{"Ar-Magrim Vĩpir"}
+            other{"Ar-Magrim Vĩpir ag"}
+        }
+        MCF{
+            one{"Mõnỹku Vĩpir"}
+            other{"Mõnỹku Vĩpir ag"}
+        }
+        MDC{
+            one{"Mãrnova Kopã"}
+            other{"Mãrnova Kopã ag"}
+        }
+        MDL{
+            one{"Mãrnova Revu"}
+            other{"Mãrnova Revu ag"}
+        }
+        MGA{
+            one{"Mỹna-Gasikar Ari-ary"}
+            other{"Mỹna-Gasikar Ari-ary ag"}
+        }
+        MGF{
+            one{"Mỹna-Gasikar Vĩpir"}
+            other{"Mỹna-Gasikar Vĩpir ag"}
+        }
+        MKD{
+            one{"Mỹsenonĩja Ninỹ"}
+            other{"Mỹsenonĩja Ninỹ ag"}
+        }
+        MKN{
+            one{"Mỹsenonĩja Ninỹ (1992–1993)"}
+            other{"Mỹsenonĩja Ninỹ ag (1992–1993)"}
+        }
+        MLF{
+            one{"Mỹri Vĩpir"}
+            other{"Mỹri Vĩpir ag"}
+        }
+        MMK{
+            one{"Mijẽn-Mỹ Kijate"}
+            other{"Mijẽn-Mỹ Kijate ag"}
+        }
+        MNT{
+            one{"Mãgórija Tugrig"}
+            other{"Mãgórija Tugrig ag"}
+        }
+        MOP{
+            one{"Mỹkav Pataka"}
+            other{"Mỹkav Pataka ag"}
+        }
+        MRO{
+            one{"Mũritỹni Ov-Gija (1973–2017)"}
+            other{"Mũritỹni Ov-Gija ag (1973–2017)"}
+        }
+        MRU{
+            one{"Mũritỹni Ov-Gija"}
+            other{"Mũritỹni Ov-Gija ag"}
+        }
+        MTL{
+            one{"Mỹrta Rirá"}
+            other{"Mỹrta Rirá ag"}
+        }
+        MTP{
+            one{"Mỹrta Rimra"}
+            other{"Mỹrta Rimra ag"}
+        }
+        MUR{
+            one{"Mãriso Rupija"}
+            other{"Mãriso Rupija ag"}
+        }
+        MVR{
+            one{"Mỹrniva Rupija"}
+            other{"Mỹrniva Rupija ag"}
+        }
+        MWK{
+            one{"Mỹravi Kuvasa"}
+            other{"Mỹravi Kuvasa ag"}
+        }
+        MXN{
+            one{"Mẽsiku Kufy"}
+            other{"Mẽsiku Kufy ag"}
+        }
+        MXP{
+            one{"Mẽsiku Kufy Kupri (1861–1992)"}
+            other{"Mẽsiku Kufy Kupri ag (1861–1992)"}
+        }
+        MXV{
+            one{"Mẽsiku Pir Rãg (UDI)"}
+            other{"Mẽsiku Pir Rãg ag (UDI)"}
+        }
+        MYR{
+            one{"Mỹraja Rĩggin"}
+            other{"Mỹraja Rĩggin ag"}
+        }
+        MZE{
+            one{"Mãsỹmiki Vẽjuven"}
+            other{"Mãsỹmiki Vẽjuven ag"}
+        }
+        MZM{
+            one{"Mãsỹmiki Mẽtikar Si"}
+            other{"Mãsỹmiki Mẽtikar Si ag"}
+        }
+        MZN{
+            one{"Mãsỹmiki Mẽtikar"}
+            other{"Mãsỹmiki Mẽtikar ag"}
+        }
+        NAD{
+            one{"Nỹmĩmija Nórar"}
+            other{"Nỹmĩmija Nórar ag"}
+        }
+        NGN{
+            one{"Nĩjérija Nỹjra"}
+            other{"Nĩjérija Nỹjra ag"}
+        }
+        NIC{
+            one{"Nĩkaraguva Kórnoma (1988–1991)"}
+            other{"Nĩkaraguva Kórnoma ag (1988–1991)"}
+        }
+        NIO{
+            one{"Nĩkaraguva Kórnoma"}
+            other{"Nĩkaraguva Kórnoma ag"}
+        }
+        NLG{
+            one{"Orỹna Kafejsĩ"}
+            other{"Orỹna Kafejsĩ ag"}
+        }
+        NOK{
+            one{"Nãrovéga Rãgre"}
+            other{"Nãrovéga Rãgre ag"}
+        }
+        NPR{
+            one{"Nẽpar Rupija"}
+            other{"Nẽpar Rupija ag"}
+        }
+        NZD{
+            one{"Zirỹnija Tãg Nórar"}
+            other{"Zirỹnija Tãg Nórar ag"}
+        }
+        OMR{
+            one{"Omỹ Hijar"}
+            other{"Omỹ Hijar ag"}
+        }
+        PAB{
+            one{"Panỹmỹ Mavo-Mova"}
+            other{"Panỹmỹ Mavo-Mova ag"}
+        }
+        PEI{
+            one{"Peru Ĩnti"}
+            other{"Peru Ĩnti ag"}
+        }
+        PEN{
+            one{"Peru Rã Tãg"}
+            other{"Peru Rã Tãg ag"}
+        }
+        PES{
+            one{"Peru Rã (1863–1965)"}
+            other{"Peru Rã ag (1863–1965)"}
+        }
+        PGK{
+            one{"Papuva Kinỹ"}
+            other{"Papuva Kinỹ ag"}
+        }
+        PHP{
+            one{"Firipinỹ Kufy"}
+            other{"Firipinỹ Kufy ag"}
+        }
+        PKR{
+            one{"Pakinhtỹv Rupiya"}
+            other{"Pakinhtỹv Rupiya ag"}
+        }
+        PLN{
+            one{"Poronĩja Rẽrĩr"}
+            other{"Poronĩja Rẽrĩr ag"}
+        }
+        PLZ{
+            one{"Poronĩja Rẽrĩr (1950–1995)"}
+            other{"Poronĩja Rẽrĩr ag (1950–1995)"}
+        }
+        PTE{
+            one{"Purutuga Vẽjuven"}
+            other{"Purutuga Vẽjuven ag"}
+        }
+        PYG{
+            one{"Paraguvaj Garnĩ"}
+            other{"Paraguvaj Garnĩ ag"}
+        }
+        QAR{
+            one{"Katar Hijar"}
+            other{"Katar Hijar ag"}
+        }
+        RHD{
+            one{"Ronésija Nórar"}
+            other{"Ronésija Nórar ag"}
+        }
+        ROL{
+            one{"Romẽnija Rev Si"}
+            other{"Romẽnija Rev Si ag"}
+        }
+        RON{
+            one{"Romẽnija Rev"}
+            other{"Romẽnija Rev ag"}
+        }
+        RSD{
+            one{"Séruvija Ninỹ"}
+            other{"Séruvija Ninỹ ag"}
+        }
+        RUB{
+            one{"Husija Humro"}
+            other{"Husija Humro ag"}
+        }
+        RUR{
+            one{"Husija Humro (1991–1998)"}
+            other{"Husija Humro ag (1991–1998)"}
+        }
+        RWF{
+            one{"Huvỹna Vĩpir"}
+            other{"Huvỹna Vĩpir ag"}
+        }
+        SAR{
+            one{"Aramija Savnita Hijar"}
+            other{"Aramija Savnita Hijar ag"}
+        }
+        SBD{
+            one{"Saromỹ Vẽsogso Nórar"}
+            other{"Saromỹ Vẽsogso Nórar ag"}
+        }
+        SCR{
+            one{"Sejséri Rupija"}
+            other{"Sejséri Rupija ag"}
+        }
+        SDD{
+            one{"Suná Ninỹ Si"}
+            other{"Suná Ninỹ Si ag"}
+        }
+        SDG{
+            one{"Suná Rimbra"}
+            other{"Suná Rimbra ag"}
+        }
+        SDP{
+            one{"Suná Rimbra Si"}
+            other{"Suná Rimbra Si ag"}
+        }
+        SEK{
+            one{"Suvésija Rãgre"}
+            other{"Suvésija Rãgre ag"}
+        }
+        SGD{
+            one{"Sĩgapur Nórar"}
+            other{"Sĩgapur Nórar ag"}
+        }
+        SHP{
+            one{"Sỹta Herenỹ Rimra"}
+            other{"Sỹta Herenỹ Rimra ag"}
+        }
+        SIT{
+            one{"Enhrovenĩja Torar"}
+            other{"Enhrovenĩja Tora ag"}
+        }
+        SKK{
+            one{"Enhrovakija Rãgre"}
+            other{"Enhrovakija Rãgre ag"}
+        }
+        SLE{
+            one{"Krĩ Mĩgkusũg-fi Re’onĩ"}
+            other{"Krĩ Mĩgkusũg-fi Re’onĩ ag"}
+        }
+        SLL{
+            one{"Krĩ Mĩgkusũg-fi Re’onĩ (1964—2022)"}
+            other{"Krĩ Mĩgkusũg-fi Re’onĩ ag (1964—2022)"}
+        }
+        SOS{
+            one{"Somỹrija Serĩm"}
+            other{"Somỹrija Serĩm ag"}
+        }
+        SRD{
+            one{"Surinỹm Nórar"}
+            other{"Surinỹm Nórar ag"}
+        }
+        SRG{
+            one{"Surinỹm Kafejsĩ"}
+            other{"Surinỹm Kafejsĩ ag"}
+        }
+        SSP{
+            one{"Suná-Sur Rimra"}
+            other{"Suná-Sur Rimra ag"}
+        }
+        STD{
+            one{"Sỹtomẽ Prĩsipi-mré Nómra (1977–2017)"}
+            other{"Sỹtomẽ Prĩsipi-mré Nómra ag (1977–2017)"}
+        }
+        STN{
+            one{"Sỹtomẽ Prĩsipi-mré Nómra"}
+            other{"Sỹtomẽ Prĩsipi-mré Nómra ag"}
+        }
+        SUR{
+            one{"Sovijéti Humro"}
+            other{"Sovijéti Humro ag"}
+        }
+        SVC{
+            one{"Er Sarvanor Korãn"}
+            other{"Er Sarvanor Korãn ag"}
+        }
+        SYP{
+            one{"Sirija Rimra"}
+            other{"Sirija Rimra ag"}
+        }
+        SZL{
+            one{"Suvasi-Ga Rirỹgenĩ"}
+            other{"Suvasi-Ga Rirỹgenĩ ag"}
+        }
+        THB{
+            one{"Taj-Ga Mati"}
+            other{"Taj-Ga Mati ag"}
+        }
+        TJR{
+            one{"Tanijikinhtỹv Humro"}
+            other{"Tanijikinhtỹv Humro ag"}
+        }
+        TJS{
+            one{"Tanijikinhtỹv Somãnĩ"}
+            other{"Tanijikinhtỹv Somãnĩ ag"}
+        }
+        TMM{
+            one{"Turkomẽnisitỹ Manati (1993–2009)"}
+            other{"Turkomẽnisitỹ Manati ag (1993–2009)"}
+        }
+        TMT{
+            one{"Tukomẽnũ Manati"}
+            other{"Tukomẽnũ Manati ag"}
+        }
+        TND{
+            one{"Tunĩsija Ninỹ"}
+            other{"Tunĩsija Ninỹ ag"}
+        }
+        TOP{
+            one{"Tãga Pa’ỹga"}
+            other{"Tãga Pa’ỹga ag"}
+        }
+        TPE{
+            one{"Timor Vẽjuven"}
+            other{"Timor Vẽjuven ag"}
+        }
+        TRL{
+            one{"Turkija Rira Si"}
+            other{"Turkija Rira Si ag"}
+        }
+        TRY{
+            one{"Turkija Rira"}
+            other{"Turkija Rira ag"}
+        }
+        TTD{
+            one{"Tirinĩna Tomago-mré Nórar"}
+            other{"Tirinĩna Tomago-mré Nórar ag"}
+        }
+        TWD{
+            one{"Tajvỹ Nórar Tãg"}
+            other{"Tajvỹ Nórar Tãg ag"}
+        }
+        TZS{
+            one{"Tỹnjỹnĩja Serĩm"}
+            other{"Tỹnjỹnĩja Serĩm ag"}
+        }
+        UAH{
+            one{"Ukrỹnĩja Hyryvinja"}
+            other{"Ukrỹnĩja Hyryvinja ag"}
+        }
+        UAK{
+            one{"Ukrỹnĩja Karbovanẽ"}
+            other{"Ukrỹnĩja Karbovanẽ ag"}
+        }
+        UGS{
+            one{"Serĩm tỹ Ugỹna (1966–1987)"}
+            other{"Serĩm tỹ Ugỹna ag (1966–1987)"}
+        }
+        UGX{
+            one{"Ugỹna Serĩm"}
+            other{"Ugỹna Serĩm ag"}
+        }
+        USD{
+            one{"Nãrti-Amẽrikỹ Nórar"}
+            other{"Nãrti-Amẽrikỹ Nórar ag"}
+        }
+        USN{
+            one{"Nórar Amẽrikỹn (kurã ũ kã)"}
+            other{"Nórar Amẽrikỹn ag (kurã ũ kã)"}
+        }
+        USS{
+            one{"Nórar Amẽrikỹn (kurã hã)"}
+            other{"Nórar Amẽrikỹn ag (kurã hã)"}
+        }
+        UYI{
+            one{"Uruguvaj Kufy vẽkãmur ũ"}
+            other{"Uruguvaj Kufy vẽkãmur ũ ag"}
+        }
+        UYP{
+            one{"Uruguvaj Kufy (1975–1993)"}
+            other{"Uruguvaj Kufy ag (1975–1993)"}
+        }
+        UYU{
+            one{"Uruguvaj Kufy"}
+            other{"Uruguvaj Kufy ag"}
+        }
+        UZS{
+            one{"Unhmekinhtỹv Kyr"}
+            other{"Unhmekinhtỹv Kyr ag"}
+        }
+        VEB{
+            one{"Venẽjuvéra Morivar (1871–2008)"}
+            other{"Venẽjuvéra Morivar ag (1871–2008)"}
+        }
+        VEF{
+            one{"Venẽjuvéra Morivar (2008–2018)"}
+            other{"Venẽjuvéra Morivar ag (2008–2018)"}
+        }
+        VES{
+            one{"Venẽjuvéra Morivar"}
+            other{"Venẽjuvéra Morivar ag"}
+        }
+        VND{
+            one{"Vijétinỹm Nãg"}
+            other{"Vijétinỹm Nãg ag"}
+        }
+        VNN{
+            one{"Vijétinỹm Nãg (1978–1985)"}
+            other{"Vijétinỹm Nãg ag (1978–1985)"}
+        }
+        VUV{
+            one{"Vanũvatu Vatu"}
+            other{"Vanũvatu Vatu ag"}
+        }
+        WST{
+            one{"Samãva Tara"}
+            other{"Samãva Tara ag"}
+        }
+        XAF{
+            one{"Vĩpir CFA tỹ BEAC"}
+            other{"Vĩpir CFA tỹ BEAC ag"}
+        }
+        XBA{
+            one{"Orópa tá Vẽnhkãmur ũ vẽnkikro"}
+            other{"Orópa tá Vẽnhkãmur ũ vẽnkikro ag"}
+        }
+        XBB{
+            one{"Orópa Jãnkamu ũ-pir (XBB)"}
+            other{"Orópa Jãnkamu ũ-pir ag (XBB)"}
+        }
+        XBC{
+            one{"Orópa Nĩkrén-ja ũ-pir (XBC)"}
+            other{"Orópa Nĩkrén-ja ũ-pir ag (XBC)"}
+        }
+        XBD{
+            one{"Orópa Nĩkrén-ja ũ-pir"}
+            other{"Orópa Nĩkrén-ja ũ-pir ag"}
+        }
+        XCD{
+            one{"Karime Rãjur Nórar"}
+            other{"Karime Rãjur Nórar ag"}
+        }
+        XDR{
+            other{"Kuryj ty Vẽnhkãgán há"}
+        }
+        XEU{
+            one{"Orópa Nĩkri ũ-pir"}
+            other{"Orópa Nĩkri ũ-pir ag"}
+        }
+        XFO{
+            one{"Frỹsa Vĩpir-Oro"}
+            other{"Frỹsa Vĩpir-Oro ag"}
+        }
+        XFU{
+            one{"Frỹsa UIC Vĩpir"}
+            other{"Frỹsa UIC Vĩpir ag"}
+        }
+        XOF{
+            one{"Vĩpir CFA tỹ BCEAO"}
+            other{"Vĩpir CFA tỹ BCEAO ag"}
+        }
+        XPD{
+            one{"Paranho"}
+            other{"Paranho ag"}
+        }
+        XPF{
+            one{"Vĩpir CFP"}
+            other{"Vĩpir CFP ag"}
+        }
+        XPT{
+            one{"Pratinỹ"}
+            other{"Pratinỹ ag"}
+        }
+        XRE{
+            one{"RINET Kãryjgy"}
+            other{"RINET Kãryjgy ag"}
+        }
+        XTS{
+            one{"Rá tỹ Nĩkri Vẽnh-kãgran-ja"}
+            other{"Rá kar tỹ Nĩkri Vẽnh-kãgran-ja"}
+        }
+        XXX{
+            one{"(jãnkamu veja tũ)"}
+            other{"(nĩkri ag veja tũ)"}
+        }
+        YDD{
+            one{"Jemẽn Ninỹ"}
+            other{"Jemẽn Ninỹ ag"}
+        }
+        YER{
+            one{"Jemẽn Hijar"}
+            other{"Jemẽn Hijar ag"}
+        }
+        YUD{
+            one{"Jugusiravija Ninỹ Tar"}
+            other{"Jugusiravija Ninỹ Tar ag"}
+        }
+        YUM{
+            one{"Jugusiravija Ninỹ Tãg"}
+            other{"Jugusiravija Ninỹ Tãg ag"}
+        }
+        YUN{
+            one{"Jugusiravija Ninỹ ta ũn há"}
+            other{"Jugusiravija Ninỹ ta ũn há ag"}
+        }
+        YUR{
+            one{"Jugusiravija Ninỹ han mãn tãg"}
+            other{"Jugusiravija Ninỹ han mãn tãg ag"}
+        }
+        ZAL{
+            one{"Sur-Afrika Ran (virhár)"}
+            other{"Sur-Afrika Ran ag (virhár)"}
+        }
+        ZAR{
+            one{"Ran surafrikỹnũ"}
+            other{"Ran surafrikỹnũ ag"}
+        }
+        ZMK{
+            one{"Jỹmija Kuvasa (1968–2012)"}
+            other{"Jỹmija Kuvasa ag (1968–2012)"}
+        }
+        ZMW{
+            one{"Kuvasa jỹmijanũ"}
+            other{"Kuvasa jỹmijanũ ag"}
+        }
+        ZRN{
+            one{"Jajre tá Jajre Tãg"}
+            other{"Jajre tá Jajre Tãg ag"}
+        }
+        ZRZ{
+            other{"Jajre tá Jajre"}
+        }
+        ZWD{
+            one{"Jimamuvé Nórar"}
+            other{"Jimamuvé Nórar ag"}
+        }
+        ZWL{
+            one{"Jimamuvé Nórar (2009)"}
+            other{"Jimamuvé Nórar ag (2009)"}
+        }
+        ZWR{
+            one{"Jimamuvé Nórar (2008)"}
+            other{"Jimamuvé Nórar ag (2008)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+}

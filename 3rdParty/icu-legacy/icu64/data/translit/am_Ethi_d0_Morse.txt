@@ -1,0 +1,664 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+#
+# File: am_Ethi_d0_Morse.txt
+# Generated from CLDR
+#
+
+########################################################################
+# A Morse code for the Amharic Language
+#	By Israel Paz, and Hailemariam Dersso
+#	Zede Journal, Volume 1, 1965.
+#
+#	https://www.ajol.info/index.php/zj/article/view/120702
+#	https://www.ajol.info/index.php/zj/article/view/120702/110146
+#
+# Prepared by Daniel Yacob <yacob@geez.org>
+#
+########################################################################
+#
+# MINIMAL FILTER: Ethiopic-Morse Code
+#
+:: [[:Zs:]0-9!\?\+/@()\[\]_:;,\.'"$=\-[:Ethiopic:]] ;
+([:Lo:])([:Zs:]+)([:Lo:]) → | $1⁄⁂⁄$2$3 ;  # ⁄⁂⁄ is assumed to be a sufficiently weird enough sequence that won't naturally appear in any normal content
+#
+########################################################################
+########################################################################
+#
+# Define All Transformation Variables
+#
+########################################################################
+#
+$ግዕዝ = ' '; # default
+$ካዕብ = ' ..- ' ;
+$ሣልስ = ' .. ' ;
+$ራብዕ = ' .- ' ;
+$ኃምስ = ' ..-... ' ;
+$ሳድስ = ' . ' ;
+$ሳብዕ = ' --- ' ;
+# $ሳምን =   ;
+$ወ = '.--' ;
+$ዘመደ_ግዕዝ = $ካዕብ  $ወ $ግዕዝ ;
+$ዘመደ_ካዕብ = $ካዕብ  $ወ $ካዕብ ;
+$ዘመደ_ሣልስ = $ካዕብ  $ወ $ሣልስ ;
+$ዘመደ_ራብዕ = $ካዕብ  $ወ $ራብዕ ;
+$ዘመደ_ኃምስ = $ካዕብ  $ወ $ኃምስ ;
+#
+$ሀ = '....' ;
+$ለ = '.-..' ;
+$ሐ = '....' ;
+$መ = '--' ;
+$ሠ = '...' ;
+$ረ = '.-.' ;
+$ሰ = '...' ;
+# $ꬁ = ;  not supported in Amharic Morse Code
+$ሸ = '.-.-.' ;
+# $ⶠ = ;  not supported in Amharic Morse Code
+$ቀ = '--.-' ;
+# $ⷀ =  ;  not supported in Amharic Morse Code
+# $ቐ =  ;  not supported in Amharic Morse Code
+$በ = '-...' ;
+$ቨ = '...-' ;
+$ተ = '-' ;
+$ቸ = '----' ;
+# $ⶨ = ;  not supported in Amharic Morse Code
+$ኀ = '....' ;
+$ነ = '-.' ;
+$ኘ = '-.-.-' ;
+$አ = '..--';
+$ከ = '-.-' ;
+# $ⷈ = ;  not supported in Amharic Morse Code
+$ኸ = '....' ;
+# $ⷐ = ;  not supported in Amharic Morse Code
+$ዘ = '--..'  ;
+$ዠ = '.-.--' ;
+# $ⶰ = ;  not supported in Amharic Morse Code
+# $ꬑ = ;  not supported in Amharic Morse Code
+$የ = '-.--' ;
+$ደ = '-..' ;
+# $ዸ = ⠙ ;  not supported in Amharic Morse Code
+# $ꬉ = ;  not supported in Amharic Morse Code
+$ጀ = '.---' ;
+$ገ = '--.' ;
+# $ⷘ = ;  not supported in Amharic Morse Code
+# $ጘ = ;   not supported in Amharic Morse Code
+$ጠ = '..-...' ;
+$ጨ = '-...-' ;
+# $ⶸ = ;  not supported in Amharic Morse Code
+# $ꬠ = ;  not supported in Amharic Morse Code
+$ጰ = '.--..' ;
+$ጸ = '-..-' ;
+# $ꬨ = ;  not supported in Amharic Morse Code
+$ፀ = '-..-' ;
+$ፈ = '..-.' ;
+$ፐ = '.--.' ;
+#
+# Archaic Letters:
+#
+ፙ → | ምያ ;
+ፘ → | ርያ ;
+ፚ → | ፍያ ;
+########################################################################
+# Start of Syllabic Transformations
+########################################################################
+#
+ሐ → | ሀ ; # ETHIOPIC SYLLABLE HHA
+ሑ → | ሁ ; # ETHIOPIC SYLLABLE HHU
+ሓ → | ሃ ; # ETHIOPIC SYLLABLE HHAA
+ሔ → | ሄ ; # ETHIOPIC SYLLABLE HHEE
+ሒ → | ሂ ; # ETHIOPIC SYLLABLE HHI
+ሕ → | ህ ; # ETHIOPIC SYLLABLE HHE
+ሖ → | ሆ ; # ETHIOPIC SYLLABLE HHO
+ሗ → | ኋ ; # ETHIOPIC SYLLABLE HWA
+#
+ኀ → | ሆ ; # ETHIOPIC SYLLABLE XA
+ኁ → | ሁ ; # ETHIOPIC SYLLABLE XU
+ኂ → | ሂ ; # ETHIOPIC SYLLABLE XI
+ኃ → | ሃ ; # ETHIOPIC SYLLABLE XAA
+ኄ → | ሄ ; # ETHIOPIC SYLLABLE XEE
+ኅ → | ህ ; # ETHIOPIC SYLLABLE XE
+ኆ → | ሆ ; # ETHIOPIC SYLLABLE XO
+# ኇ ↔ $ኀ $ሳምን ; # ETHIOPIC SYLLABLE XOA  not supported in Amharic Morse Code
+#
+ሆ ↔ $ሀ $ሳብዕ ; # ETHIOPIC SYLLABLE HO
+ሄ ↔ $ሀ $ኃምስ ; # ETHIOPIC SYLLABLE HEE
+ኌ ↔ $ሀ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE XWEE
+ኍ ↔ $ሀ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE XWE
+ኊ ↔ $ሀ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE XWI
+ኋ ↔ $ሀ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE XWAA
+ኈ ↔ $ሀ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE XWA
+#
+ሁ ↔ $ሀ $ካዕብ ; # ETHIOPIC SYLLABLE HU
+ሂ ↔ $ሀ $ሣልስ ; # ETHIOPIC SYLLABLE HI
+# ሇ ↔ $ሀ $ሳምን ; # ETHIOPIC SYLLABLE HOA  not supported in Amharic Morse Code
+ሃ ↔ $ሀ $ራብዕ ; # ETHIOPIC SYLLABLE HAA
+ህ ↔ $ሀ $ሳድስ ; # ETHIOPIC SYLLABLE HE
+ሀ ↔ $ሀ $ግዕዝ ; # ETHIOPIC SYLLABLE HA
+#
+ቮ ↔ $ቨ $ሳብዕ ; # ETHIOPIC SYLLABLE VO
+ቬ ↔ $ቨ $ኃምስ ; # ETHIOPIC SYLLABLE VEE
+ቯ ↔ $ቨ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE VWA
+ቩ ↔ $ቨ $ካዕብ ; # ETHIOPIC SYLLABLE VU
+ቪ ↔ $ቨ $ሣልስ ; # ETHIOPIC SYLLABLE VI
+ቫ ↔ $ቨ $ራብዕ ; # ETHIOPIC SYLLABLE VAA
+ቭ ↔ $ቨ $ሳድስ ; # ETHIOPIC SYLLABLE VE
+ቨ ↔ $ቨ $ግዕዝ ; # ETHIOPIC SYLLABLE VA
+#
+ሠ → | ሰ  ; # ETHIOPIC SYLLABLE SZA
+ሡ → | ሱ  ; # ETHIOPIC SYLLABLE SZU
+ሢ → | ሲ  ; # ETHIOPIC SYLLABLE SZI
+ሣ → | ሳ  ; # ETHIOPIC SYLLABLE SZAA
+ሤ → | ሴ  ; # ETHIOPIC SYLLABLE SZEE
+ሥ → | ስ  ; # ETHIOPIC SYLLABLE SZE
+ሦ → | ሶ  ; # ETHIOPIC SYLLABLE SZO
+ሧ → | ሷ  ; # ETHIOPIC SYLLABLE SZWA
+#
+ሶ ↔ $ሰ $ሳብዕ ; # ETHIOPIC SYLLABLE SO
+ሴ ↔ $ሰ $ኃምስ ; # ETHIOPIC SYLLABLE SEE
+ሷ ↔ $ሰ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE SWA
+ሱ ↔ $ሰ $ካዕብ ; # ETHIOPIC SYLLABLE SU
+ሳ ↔ $ሰ $ራብዕ ; # ETHIOPIC SYLLABLE SAA
+ሲ ↔ $ሰ $ሣልስ ; # ETHIOPIC SYLLABLE SI
+# ⶃ ↔ $ሰ $ሳምን ; # ETHIOPIC SYLLABLE SOA  not supported in Amharic Morse Code
+ስ ↔ $ሰ $ሳድስ ; # ETHIOPIC SYLLABLE SE
+ሰ ↔ $ሰ $ግዕዝ ; # ETHIOPIC SYLLABLE SA
+#
+ጦ ↔ $ጠ $ሳብዕ ; # ETHIOPIC SYLLABLE THO
+ጤ ↔ $ጠ $ኃምስ ; # ETHIOPIC SYLLABLE THEE
+ጧ ↔ $ጠ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE THWA
+ጡ ↔ $ጠ $ካዕብ ; # ETHIOPIC SYLLABLE THU
+ጢ ↔ $ጠ $ሣልስ ; # ETHIOPIC SYLLABLE THI
+ጣ ↔ $ጠ $ራብዕ ; # ETHIOPIC SYLLABLE THAA
+# ⶏ ↔ $ጠ $ሳምን ; # ETHIOPIC SYLLABLE THOA  not supported in Amharic Morse Code
+ጥ ↔ $ጠ $ሳድስ ; # ETHIOPIC SYLLABLE THE
+ጠ ↔ $ጠ $ግዕዝ ; # ETHIOPIC SYLLABLE THA
+#
+ፎ ↔ $ፈ $ሳብዕ ; # ETHIOPIC SYLLABLE FO
+ፌ ↔ $ፈ $ኃምስ ; # ETHIOPIC SYLLABLE FEE
+ᎊ ↔ $ፈ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE FWEE
+ᎋ ↔ $ፈ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE FWE
+ᎉ ↔ $ፈ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE FWI
+ፏ ↔ $ፈ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE FWA
+ᎈ ↔ $ፈ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE SEBATBEIT FWA
+ፉ ↔ $ፈ $ካዕብ ; # ETHIOPIC SYLLABLE FU
+ፊ ↔ $ፈ $ሣልስ ; # ETHIOPIC SYLLABLE FI
+ፋ ↔ $ፈ $ራብዕ ; # ETHIOPIC SYLLABLE FAA
+ፍ ↔ $ፈ $ሳድስ ; # ETHIOPIC SYLLABLE FE
+ፈ ↔ $ፈ $ግዕዝ ; # ETHIOPIC SYLLABLE FA
+#
+ጆ ↔ $ጀ $ሳብዕ ; # ETHIOPIC SYLLABLE JO
+ጄ ↔ $ጀ $ኃምስ ; # ETHIOPIC SYLLABLE JEE
+ጇ ↔ $ጀ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE JWA
+ጁ ↔ $ጀ $ካዕብ ; # ETHIOPIC SYLLABLE JU
+ጂ ↔ $ጀ $ሣልስ ; # ETHIOPIC SYLLABLE JI
+ጃ ↔ $ጀ $ራብዕ ; # ETHIOPIC SYLLABLE JAA
+# ⶎ ↔ $ጀ $ሳምን ; # ETHIOPIC SYLLABLE JOA  not supported in Amharic Morse Code
+ጅ ↔ $ጀ $ሳድስ ; # ETHIOPIC SYLLABLE JE
+ጀ ↔ $ጀ $ግዕዝ ; # ETHIOPIC SYLLABLE JA
+#
+ጶ ↔ $ጰ $ሳብዕ ; # ETHIOPIC SYLLABLE PHO
+ጴ ↔ $ጰ $ኃምስ ; # ETHIOPIC SYLLABLE PHEE
+ጷ ↔ $ጰ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE PHWA
+ጱ ↔ $ጰ $ካዕብ ; # ETHIOPIC SYLLABLE PHU
+ጲ ↔ $ጰ $ሣልስ ; # ETHIOPIC SYLLABLE PHI
+ጳ ↔ $ጰ $ራብዕ ; # ETHIOPIC SYLLABLE PHAA
+# ⶑ ↔ $ጰ $ሳምን ; # ETHIOPIC SYLLABLE PHOA  not supported in Amharic Morse Code
+ጵ ↔ $ጰ $ሳድስ ; # ETHIOPIC SYLLABLE PHE  - Note the conflict with !
+ጰ ↔ $ጰ $ግዕዝ ; # ETHIOPIC SYLLABLE PHA
+#
+ፖ ↔ $ፐ $ሳብዕ ; # ETHIOPIC SYLLABLE PO
+ፔ ↔ $ፐ $ኃምስ ; # ETHIOPIC SYLLABLE PEE
+ᎎ ↔ $ፐ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE PWEE
+ᎏ ↔ $ፐ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE PWE
+ᎍ ↔ $ፐ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE PWI
+ፗ ↔ $ፐ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE PWA
+ᎌ ↔ $ፐ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE SEBATBEIT PWA
+ፑ ↔ $ፐ $ካዕብ ; # ETHIOPIC SYLLABLE PU
+ፒ ↔ $ፐ $ሣልስ ; # ETHIOPIC SYLLABLE PI
+ፓ ↔ $ፐ $ራብዕ ; # ETHIOPIC SYLLABLE PAA
+# ⶒ ↔ $ፐ $ሳምን ; # ETHIOPIC SYLLABLE POA  not supported in Amharic Morse Code
+ፕ ↔ $ፐ $ሳድስ ; # ETHIOPIC SYLLABLE PE
+ፐ ↔ $ፐ $ግዕዝ ; # ETHIOPIC SYLLABLE PA
+#
+ዎ ↔ $ወ $ሳብዕ ; # ETHIOPIC SYLLABLE WO
+ዌ ↔ $ወ $ኃምስ ; # ETHIOPIC SYLLABLE WEE
+ዉ ↔ $ወ $ካዕብ ; # ETHIOPIC SYLLABLE WU
+ዊ ↔ $ወ $ሣልስ ; # ETHIOPIC SYLLABLE WI
+ዋ ↔ $ወ $ራብዕ ; # ETHIOPIC SYLLABLE WAA
+# ዏ ↔ $ወ $ሳምን ; # ETHIOPIC SYLLABLE WOA  not supported in Amharic Morse Code
+ው ↔ $ወ $ሳድስ ; # ETHIOPIC SYLLABLE WE
+ወ ↔ $ወ $ግዕዝ ; # ETHIOPIC SYLLABLE WA
+#
+ሾ ↔ $ሸ $ሳብዕ ; # ETHIOPIC SYLLABLE SHO
+ሼ ↔ $ሸ $ኃምስ ; # ETHIOPIC SYLLABLE SHEE
+ሿ ↔ $ሸ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE SHWA
+ሹ ↔ $ሸ $ካዕብ ; # ETHIOPIC SYLLABLE SHU
+ሻ ↔ $ሸ $ራብዕ ; # ETHIOPIC SYLLABLE SHAA
+ሺ ↔ $ሸ $ሣልስ ; # ETHIOPIC SYLLABLE SHI
+# ⶄ ↔ $ሸ $ሳምን ; # ETHIOPIC SYLLABLE SHOA  not supported in Amharic Morse Code
+ሽ ↔ $ሸ $ሳድስ ; # ETHIOPIC SYLLABLE SHE
+ሸ ↔ $ሸ $ግዕዝ ; # ETHIOPIC SYLLABLE SHA
+#
+ዦ ↔ $ዠ $ሳብዕ ; # ETHIOPIC SYLLABLE ZHO
+ዤ ↔ $ዠ $ኃምስ ; # ETHIOPIC SYLLABLE ZHEE
+ዧ ↔ $ዠ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE ZHWA
+ዡ ↔ $ዠ $ካዕብ ; # ETHIOPIC SYLLABLE ZHU
+ዢ ↔ $ዠ $ሣልስ ; # ETHIOPIC SYLLABLE ZHI
+ዣ ↔ $ዠ $ራብዕ ; # ETHIOPIC SYLLABLE ZHAA
+ዥ ↔ $ዠ $ሳድስ ; # ETHIOPIC SYLLABLE ZHE
+ዠ ↔ $ዠ $ግዕዝ ; # ETHIOPIC SYLLABLE ZHA
+#
+ሎ ↔ $ለ $ሳብዕ ; # ETHIOPIC SYLLABLE LO
+ሌ ↔ $ለ $ኃምስ ; # ETHIOPIC SYLLABLE LEE
+ሏ ↔ $ለ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE LWA
+ሉ ↔ $ለ $ካዕብ ; # ETHIOPIC SYLLABLE LU
+ሊ ↔ $ለ $ሣልስ ; # ETHIOPIC SYLLABLE LI
+ላ ↔ $ለ $ራብዕ ; # ETHIOPIC SYLLABLE LAA
+# ⶀ ↔ $ለ $ሳምን ; # ETHIOPIC SYLLABLE LOA  not supported in Amharic Morse Code
+ል ↔ $ለ $ሳድስ ; # ETHIOPIC SYLLABLE LE
+ለ ↔ $ለ $ግዕዝ ; # ETHIOPIC SYLLABLE LA
+#
+ሮ ↔ $ረ $ሳብዕ ; # ETHIOPIC SYLLABLE RO
+ሬ ↔ $ረ $ኃምስ ; # ETHIOPIC SYLLABLE REE
+ሯ ↔ $ረ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE RWA
+ሩ ↔ $ረ $ካዕብ ; # ETHIOPIC SYLLABLE RU
+ሪ ↔ $ረ $ሣልስ ; # ETHIOPIC SYLLABLE RI
+ራ ↔ $ረ $ራብዕ ; # ETHIOPIC SYLLABLE RAA
+# ⶂ ↔ $ረ $ሳምን ; # ETHIOPIC SYLLABLE R0A
+ር ↔ $ረ $ሳድስ ; # ETHIOPIC SYLLABLE RE
+ረ ↔ $ረ $ግዕዝ ; # ETHIOPIC SYLLABLE RA
+#
+ቆ ↔ $ቀ $ሳብዕ ; # ETHIOPIC SYLLABLE QO
+ቄ ↔ $ቀ $ኃምስ ; # ETHIOPIC SYLLABLE QEE
+ቌ ↔ $ቀ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE QWEE
+ቍ ↔ $ቀ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE QWE
+ቊ ↔ $ቀ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE QWI
+ቋ ↔ $ቀ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE QWAA
+ቈ ↔ $ቀ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE QWA
+ቁ ↔ $ቀ $ካዕብ ; # ETHIOPIC SYLLABLE QU
+ቂ ↔ $ቀ $ሣልስ ; # ETHIOPIC SYLLABLE QI
+ቃ ↔ $ቀ $ራብዕ ; # ETHIOPIC SYLLABLE QAA
+# ቇ ↔ $ቀ $ሳምን ; # ETHIOPIC SYLLABLE QOA  not supported in Amharic Morse Code
+ቅ ↔ $ቀ $ሳድስ ; # ETHIOPIC SYLLABLE QE
+ቀ ↔ $ቀ $ግዕዝ ; # ETHIOPIC SYLLABLE QA
+#
+ዞ ↔ $ዘ $ሳብዕ ; # ETHIOPIC SYLLABLE ZO
+ዜ ↔ $ዘ $ኃምስ ; # ETHIOPIC SYLLABLE ZEE
+ዟ ↔ $ዘ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE ZWA
+ዙ ↔ $ዘ $ካዕብ ; # ETHIOPIC SYLLABLE ZU
+ዚ ↔ $ዘ $ሣልስ ; # ETHIOPIC SYLLABLE ZI
+ዛ ↔ $ዘ $ራብዕ ; # ETHIOPIC SYLLABLE ZAA
+# ⶋ ↔ $ዘ $ሳምን ; # ETHIOPIC SYLLABLE ZHOA  not supported in Amharic Morse Code
+ዝ ↔ $ዘ $ሳድስ ; # ETHIOPIC SYLLABLE ZE
+ዘ ↔ $ዘ $ግዕዝ ; # ETHIOPIC SYLLABLE ZA
+#
+ቾ ↔ $ቸ $ሳብዕ ; # ETHIOPIC SYLLABLE CO
+ቼ ↔ $ቸ $ኃምስ ; # ETHIOPIC SYLLABLE CEE
+ቿ ↔ $ቸ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE CWA
+ቹ ↔ $ቸ $ካዕብ ; # ETHIOPIC SYLLABLE CU
+ቺ ↔ $ቸ $ሣልስ ; # ETHIOPIC SYLLABLE CI
+ቻ ↔ $ቸ $ራብዕ ; # ETHIOPIC SYLLABLE CAA
+# ⶇ ↔ $ቸ $ሳምን ; # ETHIOPIC SYLLABLE COA  not supported in Amharic Morse Code
+ች ↔ $ቸ $ሳድስ ; # ETHIOPIC SYLLABLE CE
+ቸ ↔ $ቸ $ግዕዝ ; # ETHIOPIC SYLLABLE CA
+#
+ጎ ↔ $ገ $ሳብዕ ; # ETHIOPIC SYLLABLE GO
+ጌ ↔ $ገ $ኃምስ ; # ETHIOPIC SYLLABLE GEE
+ጔ ↔ $ገ $ዘመደ_ኃምስ; # ETHIOPIC SYLLABLE GWEE
+ጕ ↔ $ገ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE GWE
+ጒ ↔ $ገ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE GWI
+ጓ ↔ $ገ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE GWAA
+ጐ ↔ $ገ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE GWA
+ጉ ↔ $ገ $ካዕብ ; # ETHIOPIC SYLLABLE GU
+ጊ ↔ $ገ $ሣልስ ; # ETHIOPIC SYLLABLE GI
+ጋ ↔ $ገ $ራብዕ ; # ETHIOPIC SYLLABLE GAA
+# ጏ ↔ $ገ $ሳምን ; # ETHIOPIC SYLLABLE GOA  not supported in Amharic Morse Code
+ግ ↔ $ገ $ሳድስ ; # ETHIOPIC SYLLABLE GE
+ገ ↔ $ገ $ግዕዝ ; # ETHIOPIC SYLLABLE GA
+#
+ሞ ↔ $መ $ሳብዕ ; # ETHIOPIC SYLLABLE MO
+ሜ ↔ $መ $ኃምስ ; # ETHIOPIC SYLLABLE MEE
+ᎂ ↔ $መ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE MWEE
+ᎃ ↔ $መ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE MWE
+ᎁ ↔ $መ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE MWI
+ሟ ↔ $መ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE MWA
+ᎀ ↔ $መ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE SEBATBEIT MWA
+ሙ ↔ $መ $ካዕብ ; # ETHIOPIC SYLLABLE MU
+ማ ↔ $መ $ራብዕ ; # ETHIOPIC SYLLABLE MAA
+ሚ ↔ $መ $ሣልስ ; # ETHIOPIC SYLLABLE MI
+# ⶁ ↔ $መ $ሳምን ; # ETHIOPIC SYLLABLE MOA  not supported in Amharic Morse Code
+ም ↔ $መ $ሳድስ ; # ETHIOPIC SYLLABLE ME
+መ ↔ $መ $ግዕዝ ; # ETHIOPIC SYLLABLE MA
+#
+ቶ ↔ $ተ $ሳብዕ ; # ETHIOPIC SYLLABLE TO
+ቴ ↔ $ተ $ኃምስ ; # ETHIOPIC SYLLABLE TEE
+ቷ ↔ $ተ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE TWA
+ቱ ↔ $ተ $ካዕብ ; # ETHIOPIC SYLLABLE TU
+ቲ ↔ $ተ $ሣልስ ; # ETHIOPIC SYLLABLE TI
+ታ ↔ $ተ $ራብዕ ; # ETHIOPIC SYLLABLE TAA
+# ⶆ ↔ $ተ $ሳምን ; # ETHIOPIC SYLLABLE TOA  not supported in Amharic Morse Code
+ት ↔ $ተ $ሳድስ ; # ETHIOPIC SYLLABLE TE
+ተ ↔ $ተ $ግዕዝ ; # ETHIOPIC SYLLABLE TA
+#
+ዮ ↔ $የ $ሳብዕ ; # ETHIOPIC SYLLABLE YO
+ዬ ↔ $የ $ኃምስ ; # ETHIOPIC SYLLABLE YEE
+ዩ ↔ $የ $ካዕብ ; # ETHIOPIC SYLLABLE YU
+ዪ ↔ $የ $ሣልስ ; # ETHIOPIC SYLLABLE YI
+ያ ↔ $የ $ራብዕ ; # ETHIOPIC SYLLABLE YAA
+# ዯ ↔ $የ $ሳምን ; # ETHIOPIC SYLLABLE YOA  not supported in Amharic Morse Code
+ይ ↔ $የ $ሳድስ ; # ETHIOPIC SYLLABLE YE
+የ ↔ $የ $ግዕዝ ; # ETHIOPIC SYLLABLE YA
+#
+ኞ ↔ $ኘ $ሳብዕ ; # ETHIOPIC SYLLABLE NYO
+ኜ ↔ $ኘ $ኃምስ ; # ETHIOPIC SYLLABLE NYEE
+ኟ ↔ $ኘ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE NYWA
+ኙ ↔ $ኘ $ካዕብ ; # ETHIOPIC SYLLABLE NYU
+ኚ ↔ $ኘ $ሣልስ ; # ETHIOPIC SYLLABLE NYI
+ኛ ↔ $ኘ $ራብዕ ; # ETHIOPIC SYLLABLE NYAA
+# ⶉ ↔ $ኘ $ሳምን  ; # ETHIOPIC SYLLABLE NYOA  not supported in Amharic Morse Code
+ኝ ↔ $ኘ $ሳድስ ; # ETHIOPIC SYLLABLE NYE
+ኘ ↔ $ኘ $ግዕዝ ; # ETHIOPIC SYLLABLE NYA
+#
+ኮ ↔ $ከ $ሳብዕ ; # ETHIOPIC SYLLABLE KO
+ኬ ↔ $ከ $ኃምስ ; # ETHIOPIC SYLLABLE KEE
+ኴ ↔ $ከ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE KWEE
+ኵ ↔ $ከ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE KWE
+ኲ ↔ $ከ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE KWI
+ኳ ↔ $ከ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE KWAA
+ኰ ↔ $ከ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE KWA
+ኩ ↔ $ከ $ካዕብ ; # ETHIOPIC SYLLABLE KU
+ኪ ↔ $ከ $ሣልስ ; # ETHIOPIC SYLLABLE KI
+ካ ↔ $ከ $ራብዕ ; # ETHIOPIC SYLLABLE KAA
+# ኯ ↔ $ከ $ሳምን ; # ETHIOPIC SYLLABLE KOA  not supported in Amharic Morse Code
+ክ ↔ $ከ $ሳድስ ; # ETHIOPIC SYLLABLE KE
+ከ ↔ $ከ $ግዕዝ ; # ETHIOPIC SYLLABLE KA
+#
+ኸ → | ሀ  ; # ETHIOPIC SYLLABLE KXA
+ኹ → | ሁ  ; # ETHIOPIC SYLLABLE KXU
+ኺ → | ሂ  ; # ETHIOPIC SYLLABLE KXI
+ኻ → | ሃ  ; # ETHIOPIC SYLLABLE KXAA
+ኼ → | ሄ  ; # ETHIOPIC SYLLABLE KXEE
+ኽ → | ህ  ; # ETHIOPIC SYLLABLE KXE
+ኾ → | ሆ  ; # ETHIOPIC SYLLABLE KXO
+#
+ዀ → | ኈ  ; # ETHIOPIC SYLLABLE KXWA
+ዅ → | ኊ  ; # ETHIOPIC SYLLABLE KXWE
+ዃ → | ኋ  ; # ETHIOPIC SYLLABLE KXWAA
+ዄ → | ኌ  ; # ETHIOPIC SYLLABLE KXWEE
+ዂ → | ኊ  ; # ETHIOPIC SYLLABLE KXWI
+#
+ኖ ↔ $ነ $ሳብዕ ; # ETHIOPIC SYLLABLE NO
+ኔ ↔ $ነ $ኃምስ ; # ETHIOPIC SYLLABLE NEE
+ኗ ↔ $ነ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE NWA
+ኑ ↔ $ነ $ካዕብ ; # ETHIOPIC SYLLABLE NU
+ኒ ↔ $ነ $ሣልስ ; # ETHIOPIC SYLLABLE NI
+ና ↔ $ነ $ራብዕ ; # ETHIOPIC SYLLABLE NAA
+# ⶈ ↔ $ነ $ሳምን  ; # ETHIOPIC SYLLABLE NOA  not supported in Amharic Morse Code
+ን ↔ $ነ $ሳድስ ; # ETHIOPIC SYLLABLE NE
+ነ ↔ $ነ $ግዕዝ ; # ETHIOPIC SYLLABLE NA
+#
+ጮ ↔ $ጨ $ሳብዕ ; # ETHIOPIC SYLLABLE CHO
+ጬ ↔ $ጨ $ኃምስ ; # ETHIOPIC SYLLABLE CHEE
+ጯ ↔ $ጨ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE CHWA
+ጩ ↔ $ጨ $ካዕብ ; # ETHIOPIC SYLLABLE CHU
+ጪ ↔ $ጨ $ሣልስ ; # ETHIOPIC SYLLABLE CHI
+ጫ ↔ $ጨ $ራብዕ ; # ETHIOPIC SYLLABLE CHAA
+# ⶐ ↔ $ጨ $ሳምን  ; # ETHIOPIC SYLLABLE CHOA  not supported in Amharic Morse Code
+ጭ ↔ $ጨ $ሳድስ ; # ETHIOPIC SYLLABLE CHE
+ጨ ↔ $ጨ $ግዕዝ ; # ETHIOPIC SYLLABLE CHA
+#
+ቦ ↔ $በ $ሳብዕ ; # ETHIOPIC SYLLABLE BO
+ቤ ↔ $በ $ኃምስ ; # ETHIOPIC SYLLABLE BEE
+ᎆ ↔ $በ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE BWEE
+ᎇ ↔ $በ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE BWE
+ᎅ ↔ $በ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE BWI
+ቧ ↔ $በ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE BWA
+ᎄ ↔ $በ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE SEBATBEIT BWA
+ቡ ↔ $በ $ካዕብ ; # ETHIOPIC SYLLABLE BU
+ቢ ↔ $በ $ሣልስ ; # ETHIOPIC SYLLABLE BI
+ባ ↔ $በ $ራብዕ ; # ETHIOPIC SYLLABLE BAA
+# ⶅ ↔ $በ $ሳምን  ; # ETHIOPIC SYLLABLE BOA  not supported in Amharic Morse Code
+ብ ↔ $በ $ሳድስ ; # ETHIOPIC SYLLABLE BE
+በ ↔ $በ $ግዕዝ ; # ETHIOPIC SYLLABLE BA
+#
+ፆ → | ጾ  ; # ETHIOPIC SYLLABLE TZO
+ፄ → | ጼ  ; # ETHIOPIC SYLLABLE TZEE
+ፁ → | ጹ  ; # ETHIOPIC SYLLABLE TZU
+ፂ → | ጺ  ; # ETHIOPIC SYLLABLE TZI
+ፃ → | ጻ  ; # ETHIOPIC SYLLABLE TZAA
+# ፇ ↔ $ፀ $ሳምን  ; # ETHIOPIC SYLLABLE TZOA  not supported in Amharic Morse Code
+ፅ → | ጽ  ; # ETHIOPIC SYLLABLE TZE
+ፀ → | ጸ  ; # ETHIOPIC SYLLABLE TZA
+#
+ጾ ↔ $ጸ $ሳብዕ ; # ETHIOPIC SYLLABLE TSO
+ጼ ↔ $ጸ $ኃምስ ; # ETHIOPIC SYLLABLE TSEE
+ጿ ↔ $ጸ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE TSWA
+ጹ ↔ $ጸ $ካዕብ ; # ETHIOPIC SYLLABLE TSU
+ጺ ↔ $ጸ $ሣልስ ; # ETHIOPIC SYLLABLE TSI
+ጻ ↔ $ጸ $ራብዕ ; # ETHIOPIC SYLLABLE TSAA
+ጽ ↔ $ጸ $ሳድስ ; # ETHIOPIC SYLLABLE TSE
+ጸ ↔ $ጸ $ግዕዝ ; # ETHIOPIC SYLLABLE TSA
+#
+ዶ ↔ $ደ $ሳብዕ ; # ETHIOPIC SYLLABLE DO
+ዴ ↔ $ደ $ኃምስ ; # ETHIOPIC SYLLABLE DEE
+ዷ ↔ $ደ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE DWA
+ዱ ↔ $ደ $ካዕብ ; # ETHIOPIC SYLLABLE DU
+ዲ ↔ $ደ $ሣልስ ; # ETHIOPIC SYLLABLE DI
+ዳ ↔ $ደ $ራብዕ ; # ETHIOPIC SYLLABLE DAA
+# ⶌ ↔ $ደ $ሳምን  ; # ETHIOPIC SYLLABLE DOA  not supported in Amharic Morse Code
+ድ ↔ $ደ $ሳድስ ; # ETHIOPIC SYLLABLE DE
+ደ ↔ $ደ $ግዕዝ ; # ETHIOPIC SYLLABLE DA
+#
+# ኧ ↔ $glottal $ኧ ; # ETHIOPIC SYLLABLE GLOTTAL WA  not supported in Amharic Morse Code
+ኦ ↔ $አ $ሳብዕ ; # ETHIOPIC SYLLABLE GLOTTAL O
+ኤ ↔ $አ $ኃምስ ; # ETHIOPIC SYLLABLE GLOTTAL EE
+ኡ ↔ $አ $ካዕብ ; # ETHIOPIC SYLLABLE GLOTTAL U
+ኢ ↔ $አ $ሣልስ ; # ETHIOPIC SYLLABLE GLOTTAL I
+ኣ ↔ $አ $ራብዕ ; # ETHIOPIC SYLLABLE GLOTTAL AA
+# ⶊ ↔ $glottal $ኦa ; # ETHIOPIC SYLLABLE GLOTTAL OA  not supported in Amharic Morse Code
+እ ↔ $አ $ሳድስ ; # ETHIOPIC SYLLABLE GLOTTAL E
+አ ↔ $አ $ግዕዝ ; # ETHIOPIC SYLLABLE GLOTTAL A
+#
+ዐ → | አ ; # ETHIOPIC SYLLABLE PHARYNGEAL A
+ዑ → | ኡ ; # ETHIOPIC SYLLABLE PHARYNGEAL U
+ዒ → | ኢ ; # ETHIOPIC SYLLABLE PHARYNGEAL I
+ዓ → | ኣ ; # ETHIOPIC SYLLABLE PHARYNGEAL AA
+ዔ → | ኤ ; # ETHIOPIC SYLLABLE PHARYNGEAL EE
+ዕ → | እ ; # ETHIOPIC SYLLABLE PHARYNGEAL E
+ዖ → | ኦ ; # ETHIOPIC SYLLABLE PHARYNGEAL O
+#
+# ⶠ ↔ $ⶠ $ግዕዝ ; # ETHIOPIC SYLLABLE SSA
+# ⶡ ↔ $ⶠ $ካዕብ ; # ETHIOPIC SYLLABLE SSU
+# ⶣ ↔ $ⶠ $ራብዕ ; # ETHIOPIC SYLLABLE SSAA
+# ⶤ ↔ $ⶠ $ኃምስ ; # ETHIOPIC SYLLABLE SSEE
+# ⶢ ↔ $ⶠ $ሣልስ ; # ETHIOPIC SYLLABLE SSI
+# ⶦ ↔ $ⶠ $ሳብዕ ; # ETHIOPIC SYLLABLE SSO
+# ⶥ ↔ $ⶠ $ሳድስ ; # ETHIOPIC SYLLABLE SSE
+# ⷀ ↔ $ቀy $ግዕዝ ; # ETHIOPIC SYLLABLE QYA
+# ⷁ ↔ $ቀy $ካዕብ ; # ETHIOPIC SYLLABLE QYU
+# ⷃ ↔ $ቀy $ራብዕ ; # ETHIOPIC SYLLABLE QYAA
+# ⷄ ↔ $ቀy $ኃምስ ; # ETHIOPIC SYLLABLE QYEE
+# ⷂ ↔ $ቀy $ሣልስ ; # ETHIOPIC SYLLABLE QYI
+# ⷆ ↔ $ቀy $ሳብዕ ; # ETHIOPIC SYLLABLE QYO
+# ⷅ ↔ $ቀy $ሳድስ ; # ETHIOPIC SYLLABLE QYE
+#
+# ቐ ↔ $ቐ $ግዕዝ ; # ETHIOPIC SYLLABLE QHA
+# ቔ ↔ $ቐ $ኃምስ ; # ETHIOPIC SYLLABLE QHEE
+# ቒ ↔ $ቐ $ሣልስ ; # ETHIOPIC SYLLABLE QHI
+# ቓ ↔ $ቐ $ራብዕ ; # ETHIOPIC SYLLABLE QHAA
+# ቖ ↔ $ቐ $ሳብዕ ; # ETHIOPIC SYLLABLE QHO
+#
+# ቘ ↔ $ቐ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE QHWA
+# ቝ ↔ $ቐ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE QHWI
+# ቜ ↔ $ቐ $ዘመደ_ኃምስ ; # ETHIOPIC SYLLABLE QHWEE
+# ቚ ↔ $ቐ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE QHWE
+# ቛ ↔ $ቐ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE QHWAA
+# ቑ ↔ $ቐ $ካዕብ ; # ETHIOPIC SYLLABLE QHU
+# ቕ ↔ $ቐ $ሳድስ ; # ETHIOPIC SYLLABLE QHE
+#
+# ⶸ ↔ $ጨx $ግዕዝ ; # ETHIOPIC SYLLABLE CCHA
+# ⶹ ↔ $ጨx $ካዕብ ; # ETHIOPIC SYLLABLE CCHU
+# ⶼ ↔ $ጨx $ኃምስ ; # ETHIOPIC SYLLABLE CCHEE
+# ⶺ ↔ $ጨx $ሣልስ ; # ETHIOPIC SYLLABLE CCHI
+# ⶻ ↔ $ጨx $ራብዕ ; # ETHIOPIC SYLLABLE CCHAA
+# ⶾ ↔ $ጨx $ሳብዕ ; # ETHIOPIC SYLLABLE CCHO
+# ⶽ ↔ $ጨx $ሳድስ ; # ETHIOPIC SYLLABLE CCHE
+#
+# ⶨ ↔ $ቸx $ግዕዝ ; # ETHIOPIC SYLLABLE CCA
+# ⶩ ↔ $ቸx $ካዕብ ; # ETHIOPIC SYLLABLE CCU
+# ⶬ ↔ $ቸx $ኃምስ ; # ETHIOPIC SYLLABLE CCEE
+# ⶪ ↔ $ቸx $ሣልስ ; # ETHIOPIC SYLLABLE CCI
+# ⶫ ↔ $ቸx $ራብዕ ; # ETHIOPIC SYLLABLE CCAA
+# ⶮ ↔ $ቸx $ሳብዕ ; # ETHIOPIC SYLLABLE CCO
+# ⶭ ↔ $ቸx $ሳድስ ; # ETHIOPIC SYLLABLE CCE
+#
+# ጘ ↔ $ጘ $ግዕዝ ; # ETHIOPIC SYLLABLE GGA
+# ጜ ↔ $ጘ $ኃምስ ; # ETHIOPIC SYLLABLE GGEE
+# ጚ ↔ $ጘ $ሣልስ ; # ETHIOPIC SYLLABLE GGI
+# ጛ ↔ $ጘ $ራብዕ ; # ETHIOPIC SYLLABLE GGAA
+# ጞ ↔ $ጘ $ሳብዕ ; # ETHIOPIC SYLLABLE GGO
+#
+# ⶓ ↔ $ጘ $ዘመደ_ግዕዝ ; # ETHIOPIC SYLLABLE GGWA
+# ⶖ ↔ $ጘ $ዘመደ_ካዕብ ; # ETHIOPIC SYLLABLE GGWE
+# ⶕ ↔ $ጘ $ዘመደ_ኃምስ; # ETHIOPIC SYLLABLE GGWEE
+# ⶔ ↔ $ጘ $ዘመደ_ሣልስ ; # ETHIOPIC SYLLABLE GGWI
+# ጟ ↔ $ጘ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE GGWAA
+# ጙ ↔ $ጘ $ካዕብ ; # ETHIOPIC SYLLABLE GGU
+# ጝ ↔ $ጘ $ሳድስ ; # ETHIOPIC SYLLABLE GGE
+#
+# $wordBoundary{ኣ ↔ $ኣ ; # ETHIOPIC SYLLABLE GLOTTAL AA
+# $wordBoundary{ኧ ↔ $ኧ ; # ETHIOPIC SYLLABLE GLOTTAL WA
+# $wordBoundary{አ ↔ $አ ; # ETHIOPIC SYLLABLE GLOTTAL A
+# $wordBoundary{ኡ ↔ $ኡ ; # ETHIOPIC SYLLABLE GLOTTAL U
+# $wordBoundary{ኤ ↔ $ኤ ; # ETHIOPIC SYLLABLE GLOTTAL EE
+# $wordBoundary{ኢ ↔ $ኢ ; # ETHIOPIC SYLLABLE GLOTTAL I
+# $wordBoundary{እ ↔ $እ ; # ETHIOPIC SYLLABLE GLOTTAL E
+# $wordBoundary{ⶊ ↔ $ⶊ ; # ETHIOPIC SYLLABLE GLOTTAL OA
+# $wordBoundary{ኦ ↔ $ኦ ; # ETHIOPIC SYLLABLE GLOTTAL O
+#
+# ⷐ ← $ⷐ $ግዕዝ ; # ETHIOPIC SYLLABLE XYA
+# ⷑ ← $ⷐ $ካዕብ ; # ETHIOPIC SYLLABLE XYU
+# ⷔ ← $ⷐ $ኃምስ ; # ETHIOPIC SYLLABLE XYEE
+# ⷒ ← $ⷐ $ሣልስ ; # ETHIOPIC SYLLABLE XYI
+# ⷓ ← $ⷐ $ራብዕ ; # ETHIOPIC SYLLABLE XYAA
+# ⷖ ← $ⷐ $ሳብዕ ; # ETHIOPIC SYLLABLE XYO
+# ⷕ ← $ⷐ $ሳድስ ; # ETHIOPIC SYLLABLE XYE
+#
+# ⷈ ← $ከy $ግዕዝ ; # ETHIOPIC SYLLABLE KYA
+# ⷉ ← $ከy $ካዕብ ; # ETHIOPIC SYLLABLE KYU
+# ⷌ ← $ከy $ኃምስ ; # ETHIOPIC SYLLABLE KYEE
+# ⷊ ← $ከy $ሣልስ ; # ETHIOPIC SYLLABLE KYI
+# ⷋ ← $ከy $ራብዕ ; # ETHIOPIC SYLLABLE KYAA
+# ⷎ ← $ከy $ሳብዕ ; # ETHIOPIC SYLLABLE KYO
+# ⷍ ← $ከy $ሳድስ ; # ETHIOPIC SYLLABLE KYE
+#
+# ⶰ ↔ $ዠx $ግዕዝ ; # ETHIOPIC SYLLABLE ZZA
+# ⶱ ↔ $ዠx $ካዕብ ; # ETHIOPIC SYLLABLE ZZU
+# ⶴ ↔ $ዠx $ኃምስ ; # ETHIOPIC SYLLABLE ZZEE
+# ⶲ ↔ $ዠx $ሣልስ ; # ETHIOPIC SYLLABLE ZZI
+# ⶳ ↔ $ዠx $ራብዕ ; # ETHIOPIC SYLLABLE ZZAA
+# ⶶ ↔ $ዠx $ሳብዕ ; # ETHIOPIC SYLLABLE ZZO
+# ⶵ ↔ $ዠx $ሳድስ ; # ETHIOPIC SYLLABLE ZZE
+#
+# ዸ ↔ $ዸ $ግዕዝ ; # ETHIOPIC SYLLABLE DDA
+# ዿ ↔ $ዸ $ዘመደ_ራብዕ ; # ETHIOPIC SYLLABLE DDWA
+# ዹ ↔ $ዸ $ካዕብ ; # ETHIOPIC SYLLABLE DDU
+# ዼ ↔ $ዸ $ኃምስ ; # ETHIOPIC SYLLABLE DDEE
+# ዺ ↔ $ዸ $ሣልስ ; # ETHIOPIC SYLLABLE DDI
+# ዻ ↔ $ዸ $ራብዕ ; # ETHIOPIC SYLLABLE DDAA
+# ⶍ ↔ $ዸ $ሳምን ; # ETHIOPIC SYLLABLE DDOA
+# ዾ ↔ $ዸ $ሳብዕ ; # ETHIOPIC SYLLABLE DDO
+# ዽ ↔ $ዸ $ሳድስ ; # ETHIOPIC SYLLABLE DDE
+#
+# ⷘ ↔ $ገy $ግዕዝ ; # ETHIOPIC SYLLABLE GYA
+# ⷙ ↔ $ገy $ካዕብ ; # ETHIOPIC SYLLABLE GYU
+# ⷜ ↔ $ገy $ኃምስ ; # ETHIOPIC SYLLABLE GYEE
+# ⷚ ↔ $ገy $ሣልስ ; # ETHIOPIC SYLLABLE GYI
+# ⷛ ↔ $ገy $ራብዕ ; # ETHIOPIC SYLLABLE GYAA
+# ⷞ ↔ $ገy $ሳብዕ ; # ETHIOPIC SYLLABLE GYO
+# ⷝ ↔ $ገy $ሳድስ ; # ETHIOPIC SYLLABLE GYE
+########################################################################
+# Start of Punctuation Transformations
+########################################################################
+። ↔ '...... ' ;
+፤ ↔ '.-.-.- ' ;
+\" ↔ '.-..-. ' ;
+\? ↔ '..--..' ;
+\! ↔ '-.-.--' ;
+\$ ↔ '...-..- ' ;
+\[ → '-.--. ' ;
+\] → '-.--.- ' ;
+\( ↔ '-.--. ' ;
+\) ↔ '-.--.- ' ;
+\/ ↔ '-..-. ' ;
+\- ↔ '-....- ' ;
+\_ ↔ '..--.- ' ;
+\+ → '.-.-. ' ;
+\= → '-...- ' ;
+\@ ↔ '.--.-. ' ;
+\& ↔ '.-... ' ;
+\. → '.-.-.- ' ;
+\, ↔ '--..-- ' ;
+\: ↔ '---... ' ;
+፣ → '.-.-.- ' ;
+፥ → '.-.-.- ' ;
+፨ → '...... ' ;
+፠ → '...... ' ;
+፧ → '..--..' ;
+፡ ↔ '-.-.-. ' ;
+\; → '-.-.-. ' ;
+‹ → '.----. ' ;
+› → '.----. ' ;
+\' ↔ '.----. ' ;
+« → '.-..-. ' ;
+» → '.-..-. ' ;
+########################################################################
+# Start of Numeric Transformations
+########################################################################
+፳ → | 20 ; # ETHIOPIC NUMBER TWENTY
+፴ → | 30 ; # ETHIOPIC NUMBER THIRTY
+፵ → | 40 ; # ETHIOPIC NUMBER FORTY
+፶ → | 50 ; # ETHIOPIC NUMBER FIFTY
+፷ → | 60 ; # ETHIOPIC NUMBER SIXTY
+፸ → | 70 ; # ETHIOPIC NUMBER SEVENTY
+፹ → | 80 ; # ETHIOPIC NUMBER EIGHTY
+፺ → | 90 ; # ETHIOPIC NUMBER NINETY
+፪ → |  2 ; # ETHIOPIC DIGIT TWO
+፫ → |  3 ; # ETHIOPIC DIGIT THREE
+፬ → |  4 ; # ETHIOPIC DIGIT FOUR
+፭ → |  5 ; # ETHIOPIC DIGIT FIVE
+፮ → |  6 ; # ETHIOPIC DIGIT SIX
+፯ → |  7 ; # ETHIOPIC DIGIT SEVEN
+፰ → |  8 ; # ETHIOPIC DIGIT EIGHT
+፱ → |  9 ; # ETHIOPIC DIGIT NINE
+፼ → | 10000 ; # ETHIOPIC NUMBER TEN HUNDRED
+፻ → | 100 ; # ETHIOPIC NUMBER HUNDRED
+፲ → |  10 ; # ETHIOPIC NUMBER TEN
+፩ → |   1 ; # ETHIOPIC DIGIT ONE
+1 ↔ '.---- ' ;
+2 ↔ '..--- ' ;
+3 ↔ '...-- ' ;
+4 ↔ '....- ' ;
+5 ↔ '..... ' ;
+6 ↔ '-.... ' ;
+7 ↔ '--... ' ;
+8 ↔ '---.. ' ;
+9 ↔ '----. ' ;
+0 ↔ '----- ' ;
+::Null;
+⁄⁂⁄ ↔ \/ ;
+#
+# TODO: Seek a better way to handle this. The conversion adds a space to the end of every sequence to terminate it.
+#       The CLDR "TestTransforms" unit test will strip off the space at the end of a line in the am-Latn-t-am-Ethi-m0-morse-code.txt
+#       test file thus breaking the comparison with generated words.  The following will strip off the space at the end of
+#       a converted string to fascilitate compatibility with the unit tests.
+#
+([.-])' '[$] → $1;
+# Inverse Fiter : Morse Code-Ethiopic
+#
+## fix this:
+:: ([.- ]) ;
+#
+########################################################################
+

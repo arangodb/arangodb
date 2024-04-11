@@ -1,0 +1,70 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ks_Deva{
+    %%Parent{"root"}
+    Currencies{
+        BRL{
+            "R$",
+            "ब्राज़िली रील",
+        }
+        CNY{
+            "CN¥",
+            "चीनी युवान",
+        }
+        EUR{
+            "€",
+            "यूरो",
+        }
+        GBP{
+            "£",
+            "बरतानवी पूनड",
+        }
+        INR{
+            "₹",
+            "इंडियन रूपी",
+        }
+        JPY{
+            "JP¥",
+            "जापानी येन",
+        }
+        RUB{
+            "RUB",
+            "रूसी रूबल",
+        }
+        USD{
+            "$",
+            "US डॉलर",
+        }
+        XXX{
+            "¤",
+            "नामोलुम करन्सी",
+        }
+    }
+    CurrencyPlurals{
+        BRL{
+            one{"ब्राज़िली रील"}
+            other{"ब्राज़िली रीलज़"}
+        }
+        EUR{
+            one{"यूरो"}
+            other{"यूरोज़"}
+        }
+        INR{
+            one{"इंडियन रूपी"}
+            other{"इंडियन रुपीज़"}
+        }
+        USD{
+            one{"US डॉलर"}
+            other{"US डॉलर्ज़"}
+        }
+        XXX{
+            one{"(करन्सी हुंद नामोलुम यूनिट)"}
+            other{"(नामोलुम करन्सी)"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+}

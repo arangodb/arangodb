@@ -1,0 +1,355 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+en_AU{
+    %%Parent{"en_001"}
+    units{
+        concentr{
+            permille{
+                dnam{"per mill"}
+                one{"{0} per mill"}
+                other{"{0} per mill"}
+            }
+        }
+        energy{
+            kilowatt-hour{
+                dnam{"kilowatt hours"}
+                one{"{0} kilowatt hour"}
+                other{"{0} kilowatt hours"}
+            }
+        }
+        length{
+            kilometer{
+                dnam{"kilometre"}
+            }
+            micrometer{
+                dnam{"micrometres"}
+            }
+        }
+        pressure{
+            pound-force-per-square-inch{
+                dnam{"pounds per square inch"}
+                one{"{0} pound per square inch"}
+                other{"{0} pounds per square inch"}
+            }
+        }
+        temperature{
+            generic{
+                dnam{"degrees"}
+                one{"{0} degree"}
+                other{"{0} degrees"}
+            }
+        }
+        volume{
+            fluid-ounce-imperial{
+                dnam{"Imp. fluid ounces"}
+                one{"{0} Imp. fluid ounce"}
+                other{"{0} Imp. fluid ounces"}
+            }
+        }
+    }
+    unitsNarrow{
+        concentr{
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dL"}
+                one{"{0}mg/dL"}
+                other{"{0}mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/L"}
+                one{"{0}mmol/L"}
+                other{"{0}mmol/L"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"L/100km"}
+                one{"{0}L/100km"}
+                other{"{0}L/100km"}
+            }
+            liter-per-kilometer{
+                dnam{"L/km"}
+                one{"{0}L/km"}
+                other{"{0}L/km"}
+            }
+        }
+        duration{
+            century{
+                dnam{"C."}
+                one{"{0}C."}
+                other{"{0}C."}
+            }
+            microsecond{
+                dnam{"μsec."}
+            }
+            millisecond{
+                dnam{"msec."}
+            }
+            second{
+                dnam{"sec."}
+                one{"{0}s."}
+                other{"{0}s."}
+                per{"{0} ps."}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                one{"{0} km/h"}
+                other{"{0} km/h"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°C"}
+                other{"{0}°C"}
+            }
+        }
+        volume{
+            bushel{
+                one{"{0} bus."}
+                other{"{0} bus."}
+            }
+            centiliter{
+                dnam{"cL"}
+                one{"{0}cL"}
+                other{"{0}cL"}
+            }
+            deciliter{
+                dnam{"dL"}
+                one{"{0}dL"}
+                other{"{0}dL"}
+            }
+            dessert-spoon{
+                dnam{"dsp US"}
+                one{"{0}dsp US"}
+                other{"{0}dsp US"}
+            }
+            dessert-spoon-imperial{
+                dnam{"dsp Imp"}
+                one{"{0}dsp-Imp"}
+                other{"{0}dsp-Imp"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp fl oz"}
+                one{"{0}fl oz Im"}
+                other{"{0}fl oz Im"}
+            }
+            gallon{
+                dnam{"gal US"}
+                one{"{0} gal US"}
+                other{"{0} gal US"}
+            }
+            gallon-imperial{
+                dnam{"gal."}
+                one{"{0}gal."}
+                other{"{0}gal."}
+                per{"{0}/gal."}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0}hL"}
+                other{"{0}hL"}
+            }
+            liter{
+                one{"{0}L"}
+                other{"{0}L"}
+                per{"{0}/L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0}ML"}
+                other{"{0}ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0}mL"}
+                other{"{0}mL"}
+            }
+            quart{
+                dnam{"qt US"}
+                one{"{0}qt US"}
+                other{"{0}qt US"}
+            }
+        }
+    }
+    unitsShort{
+        angle{
+            arc-minute{
+                dnam{"arcmin."}
+                one{"{0} arcmin."}
+                other{"{0} arcmin."}
+            }
+            arc-second{
+                dnam{"arcsec."}
+                one{"{0} arcsec."}
+                other{"{0} arcsec."}
+            }
+        }
+        concentr{
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dL"}
+                one{"{0} mg/dL"}
+                other{"{0} mg/dL"}
+            }
+            millimole-per-liter{
+                one{"{0} mmol/L"}
+                other{"{0} mmol/L"}
+            }
+            permille{
+                dnam{"per mill"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"L/100 km"}
+                one{"{0} L/100 km"}
+                other{"{0} L/100 km"}
+            }
+            liter-per-kilometer{
+                one{"{0} L/km"}
+                other{"{0} L/km"}
+            }
+            mile-per-gallon{
+                dnam{"miles/gal. US"}
+                one{"{0} m.p.g. US"}
+                other{"{0} m.p.g. US"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"miles/gal."}
+                one{"{0} m.p.g."}
+                other{"{0} m.p.g."}
+            }
+        }
+        duration{
+            century{
+                dnam{"C."}
+                one{"{0} C."}
+                other{"{0} C."}
+            }
+            microsecond{
+                dnam{"μsec."}
+            }
+            millisecond{
+                dnam{"millisec."}
+            }
+            nanosecond{
+                dnam{"nanosec."}
+            }
+            second{
+                dnam{"sec."}
+                one{"{0} sec."}
+                other{"{0} secs"}
+                per{"{0} ps."}
+            }
+        }
+        energy{
+            kilocalorie{
+                dnam{"Cal"}
+                one{"{0} Cal"}
+                other{"{0} Cal"}
+            }
+            kilowatt-hour{
+                dnam{"kWh"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"AU"}
+                one{"{0} AU"}
+                other{"{0} AU"}
+            }
+        }
+        mass{
+            carat{
+                one{"{0} CM"}
+                other{"{0} CM"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                dnam{"in Hg"}
+            }
+            millibar{
+                dnam{"mb"}
+                one{"{0} mb"}
+                other{"{0} mb"}
+            }
+            millimeter-ofhg{
+                dnam{"mm Hg"}
+                one{"{0} mm Hg"}
+                other{"{0} mm Hg"}
+            }
+        }
+        speed{
+            meter-per-second{
+                dnam{"metres/sec."}
+                one{"{0} m/s."}
+                other{"{0} m/s."}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"deg C"}
+            }
+            fahrenheit{
+                dnam{"deg F"}
+            }
+            generic{
+                dnam{"deg."}
+            }
+        }
+        volume{
+            bushel{
+                one{"{0} bus."}
+                other{"{0} bus."}
+            }
+            centiliter{
+                dnam{"cL"}
+                one{"{0} cL"}
+                other{"{0} cL"}
+            }
+            deciliter{
+                dnam{"dL"}
+                one{"{0} dL"}
+                other{"{0} dL"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp. fl oz"}
+                one{"{0} fl oz Imp."}
+                other{"{0} fl oz Imp."}
+            }
+            gallon{
+                dnam{"gal US"}
+                one{"{0} gal US"}
+                other{"{0} gal US"}
+                per{"{0}/gal US"}
+            }
+            gallon-imperial{
+                dnam{"gal."}
+                one{"{0} gal."}
+                other{"{0} gal."}
+                per{"{0}/gal."}
+            }
+            hectoliter{
+                dnam{"hL"}
+                one{"{0} hL"}
+                other{"{0} hL"}
+            }
+            liter{
+                one{"{0} L"}
+                other{"{0} L"}
+                per{"{0}/L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                one{"{0} ML"}
+                other{"{0} ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                one{"{0} mL"}
+                other{"{0} mL"}
+            }
+        }
+    }
+}

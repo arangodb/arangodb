@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+bgc{
+    Languages{
+        bgc{"हरियाणवी"}
+        en{"अंग्रेजी"}
+    }
+    Scripts{
+        Deva{"देवानागारी"}
+    }
+    codePatterns{
+        language{"बोली: {0}"}
+        script{"लिपि: {0}"}
+        territory{"जगह: {0}"}
+    }
+}

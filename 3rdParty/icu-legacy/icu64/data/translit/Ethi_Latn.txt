@@ -1,0 +1,23 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+#
+# File: Ethi_Latn.txt
+# Generated from CLDR
+#
+
+########################################################################
+#
+# This transformation is introduced to serve as a fallback for a
+# language and variant agnostic conversion between Ethiopic-Latin,
+# and Latin-Ethiopic.  In principle, it should act like an alias
+# to the most widely used transliteration system in the present day,
+# which in turn is believed to be the # "Beta Maṣāḥǝft" system
+# maintained by the Hiob Ludolf Centre for Ethiopian Studies,
+#
+########################################################################
+#
+:: Ethiopic-Latin/Beta_Metsehaf ;
+#
+########################################################################
+

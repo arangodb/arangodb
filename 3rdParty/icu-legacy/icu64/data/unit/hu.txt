@@ -1,0 +1,3489 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+hu{
+    units{
+        acceleration{
+            g-force{
+                case{
+                    accusative{
+                        one{"{0} g gyorsulást"}
+                        other{"{0} g gyorsulást"}
+                    }
+                    instrumental{
+                        one{"{0} g gyorsulással"}
+                        other{"{0} g gyorsulással"}
+                    }
+                    terminative{
+                        one{"{0} g gyorsulásig"}
+                        other{"{0} g gyorsulásig"}
+                    }
+                    translative{
+                        one{"{0} g gyorsulássá"}
+                        other{"{0} g gyorsulássá"}
+                    }
+                }
+                one{"{0} g gyorsulás"}
+                other{"{0} g gyorsulás"}
+            }
+            meter-per-square-second{
+                case{
+                    accusative{
+                        one{"{0} méter per másodpercnégyzetet"}
+                        other{"{0} méter per másodpercnégyzetet"}
+                    }
+                    instrumental{
+                        one{"{0} méter per másodpercnégyzettel"}
+                        other{"{0} méter per másodpercnégyzettel"}
+                    }
+                    terminative{
+                        one{"{0} méter per másodpercnégyzetig"}
+                        other{"{0} méter per másodpercnégyzetig"}
+                    }
+                    translative{
+                        one{"{0} méter per másodpercnégyzetté"}
+                        other{"{0} méter per másodpercnégyzetté"}
+                    }
+                }
+                dnam{"méter per másodpercnégyzet"}
+                one{"{0} méter per másodpercnégyzet"}
+                other{"{0} méter per másodpercnégyzet"}
+            }
+        }
+        angle{
+            arc-minute{
+                case{
+                    accusative{
+                        one{"{0} ívpercet"}
+                        other{"{0} ívpercet"}
+                    }
+                    instrumental{
+                        one{"{0} ívperccel"}
+                        other{"{0} ívperccel"}
+                    }
+                    terminative{
+                        one{"{0} ívpercig"}
+                        other{"{0} ívpercig"}
+                    }
+                    translative{
+                        one{"{0} ívperccé"}
+                        other{"{0} ívperccé"}
+                    }
+                }
+                one{"{0} ívperc"}
+                other{"{0} ívperc"}
+            }
+            arc-second{
+                case{
+                    accusative{
+                        one{"{0} ívmásodpercet"}
+                        other{"{0} ívmásodpercet"}
+                    }
+                    instrumental{
+                        one{"{0} ívmásodperccel"}
+                        other{"{0} ívmásodperccel"}
+                    }
+                    terminative{
+                        one{"{0} ívmásodpercig"}
+                        other{"{0} ívmásodpercig"}
+                    }
+                    translative{
+                        one{"{0} ívmásodperccé"}
+                        other{"{0} ívmásodperccé"}
+                    }
+                }
+                one{"{0} ívmásodperc"}
+                other{"{0} ívmásodperc"}
+            }
+            degree{
+                case{
+                    accusative{
+                        one{"{0} fokot"}
+                        other{"{0} fokot"}
+                    }
+                    instrumental{
+                        one{"{0} fokkal"}
+                        other{"{0} fokkal"}
+                    }
+                    terminative{
+                        one{"{0} fokig"}
+                        other{"{0} fokig"}
+                    }
+                    translative{
+                        one{"{0} fokká"}
+                        other{"{0} fokká"}
+                    }
+                }
+                one{"{0} fok"}
+                other{"{0} fok"}
+            }
+            radian{
+                case{
+                    accusative{
+                        one{"{0} radiánt"}
+                        other{"{0} radiánt"}
+                    }
+                    instrumental{
+                        one{"{0} radiánnal"}
+                        other{"{0} radiánnal"}
+                    }
+                    terminative{
+                        one{"{0} radiánig"}
+                        other{"{0} radiánig"}
+                    }
+                    translative{
+                        one{"{0} radiánná"}
+                        other{"{0} radiánná"}
+                    }
+                }
+                dnam{"radián"}
+                one{"{0} radián"}
+                other{"{0} radián"}
+            }
+            revolution{
+                case{
+                    accusative{
+                        one{"{0} fordulatot"}
+                        other{"{0} fordulatot"}
+                    }
+                    instrumental{
+                        one{"{0} fordulattal"}
+                        other{"{0} fordulattal"}
+                    }
+                    terminative{
+                        one{"{0} fordulatig"}
+                        other{"{0} fordulatig"}
+                    }
+                    translative{
+                        one{"{0} fordulattá"}
+                        other{"{0} fordulattá"}
+                    }
+                }
+                dnam{"fordulat"}
+                one{"{0} fordulat"}
+                other{"{0} fordulat"}
+            }
+        }
+        area{
+            acre{
+                dnam{"hold"}
+                one{"{0} hold"}
+                other{"{0} hold"}
+            }
+            hectare{
+                case{
+                    accusative{
+                        one{"{0} hektárt"}
+                        other{"{0} hektárt"}
+                    }
+                    instrumental{
+                        one{"{0} hektárral"}
+                        other{"{0} hektárral"}
+                    }
+                    terminative{
+                        one{"{0} hektárig"}
+                        other{"{0} hektárig"}
+                    }
+                    translative{
+                        one{"{0} hektárrá"}
+                        other{"{0} hektárrá"}
+                    }
+                }
+                dnam{"hektár"}
+                one{"{0} hektár"}
+                other{"{0} hektár"}
+            }
+            square-centimeter{
+                case{
+                    accusative{
+                        one{"{0} négyzetcentimétert"}
+                        other{"{0} négyzetcentimétert"}
+                    }
+                    instrumental{
+                        one{"{0} négyzetcentiméterrel"}
+                        other{"{0} négyzetcentiméterrel"}
+                    }
+                    terminative{
+                        one{"{0} négyzetcentiméterig"}
+                        other{"{0} négyzetcentiméterig"}
+                    }
+                    translative{
+                        one{"{0} négyzetcentiméterré"}
+                        other{"{0} négyzetcentiméterré"}
+                    }
+                }
+                dnam{"négyzetcentiméter"}
+                one{"{0} négyzetcentiméter"}
+                other{"{0} négyzetcentiméter"}
+                per{"{0}/négyzetcentiméter"}
+            }
+            square-foot{
+                dnam{"négyzetláb"}
+                one{"{0} négyzetláb"}
+                other{"{0} négyzetláb"}
+            }
+            square-inch{
+                dnam{"négyzethüvelyk"}
+                one{"{0} négyzethüvelyk"}
+                other{"{0} négyzethüvelyk"}
+                per{"{0}/négyzethüvelyk"}
+            }
+            square-kilometer{
+                case{
+                    accusative{
+                        one{"{0} négyzetkilométert"}
+                        other{"{0} négyzetkilométert"}
+                    }
+                    instrumental{
+                        one{"{0} négyzetkilométerrel"}
+                        other{"{0} négyzetkilométerrel"}
+                    }
+                    terminative{
+                        one{"{0} négyzetkilométerig"}
+                        other{"{0} négyzetkilométerig"}
+                    }
+                    translative{
+                        one{"{0} négyzetkilométerré"}
+                        other{"{0} négyzetkilométerré"}
+                    }
+                }
+                dnam{"négyzetkilométer"}
+                one{"{0} négyzetkilométer"}
+                other{"{0} négyzetkilométer"}
+            }
+            square-meter{
+                case{
+                    accusative{
+                        one{"{0} négyzetmétert"}
+                        other{"{0} négyzetmétert"}
+                    }
+                    instrumental{
+                        one{"{0} négyzetméterrel"}
+                        other{"{0} négyzetméterrel"}
+                    }
+                    terminative{
+                        one{"{0} négyzetméterig"}
+                        other{"{0} négyzetméterig"}
+                    }
+                    translative{
+                        one{"{0} négyzetméterré"}
+                        other{"{0} négyzetméterré"}
+                    }
+                }
+                dnam{"négyzetméter"}
+                one{"{0} négyzetméter"}
+                other{"{0} négyzetméter"}
+                per{"{0}/négyzetméter"}
+            }
+            square-mile{
+                dnam{"négyzetmérföld"}
+                one{"{0} négyzetmérföld"}
+                other{"{0} négyzetmérföld"}
+                per{"{0}/négyzetmérföld"}
+            }
+            square-yard{
+                dnam{"négyzetyard"}
+                one{"{0} négyzetyard"}
+                other{"{0} négyzetyard"}
+            }
+        }
+        compound{
+            1024p1{"kibi{0}"}
+            1024p2{"mebi{0}"}
+            1024p3{"gibi{0}"}
+            1024p4{"tebi{0}"}
+            1024p5{"pebi{0}"}
+            1024p6{"exbi{0}"}
+            1024p7{"zebi{0}"}
+            1024p8{"yobe{0}"}
+            10p-1{"deci{0}"}
+            10p-12{"piko{0}"}
+            10p-15{"femto{0}"}
+            10p-18{"atto{0}"}
+            10p-2{"centi{0}"}
+            10p-21{"zepto{0}"}
+            10p-24{"yocto{0}"}
+            10p-27{"ronto{0}"}
+            10p-3{"milli{0}"}
+            10p-30{"quecto{0}"}
+            10p-6{"mikro{0}"}
+            10p-9{"nano{0}"}
+            10p1{"deka{0}"}
+            10p12{"tera{0}"}
+            10p15{"peta{0}"}
+            10p18{"exa{0}"}
+            10p2{"hekto{0}"}
+            10p21{"zetta{0}"}
+            10p24{"yotta{0}"}
+            10p27{"ronna{0}"}
+            10p3{"kilo{0}"}
+            10p30{"quetta{0}"}
+            10p6{"mega{0}"}
+            10p9{"giga{0}"}
+            per{"{0} per {1}"}
+            power2{
+                one{
+                    _{
+                        _{"négyzet{0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"négyzet{0}"}
+                    }
+                }
+            }
+            power3{
+                one{
+                    _{
+                        _{"köb{0}"}
+                    }
+                }
+                other{
+                    _{
+                        _{"köb{0}"}
+                    }
+                }
+            }
+        }
+        concentr{
+            item{
+                case{
+                    accusative{
+                        one{"{0} itemet"}
+                        other{"{0} itemet"}
+                    }
+                    instrumental{
+                        one{"{0} itemmel"}
+                        other{"{0} itemmel"}
+                    }
+                    terminative{
+                        one{"{0} itemig"}
+                        other{"{0} itemig"}
+                    }
+                    translative{
+                        one{"{0} itemmé"}
+                        other{"{0} itemmé"}
+                    }
+                }
+                one{"{0} item"}
+                other{"{0} item"}
+            }
+            karat{
+                case{
+                    accusative{
+                        one{"{0} karátot"}
+                        other{"{0} karátot"}
+                    }
+                    instrumental{
+                        one{"{0} karáttal"}
+                        other{"{0} karáttal"}
+                    }
+                    terminative{
+                        one{"{0} karátig"}
+                        other{"{0} karátig"}
+                    }
+                    translative{
+                        one{"{0} karáttá"}
+                        other{"{0} karáttá"}
+                    }
+                }
+                dnam{"karát"}
+                one{"{0} karát"}
+                other{"{0} karát"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"milligramm/deciliter"}
+                one{"{0} milligramm/deciliter"}
+                other{"{0} milligramm/deciliter"}
+            }
+            millimole-per-liter{
+                case{
+                    accusative{
+                        one{"{0} millimól/litert"}
+                        other{"{0} millimól/litert"}
+                    }
+                    instrumental{
+                        one{"{0} millimól/literrel"}
+                        other{"{0} millimól/literrel"}
+                    }
+                    terminative{
+                        one{"{0} millimól/literig"}
+                        other{"{0} millimól/literig"}
+                    }
+                    translative{
+                        one{"{0} millimól/literré"}
+                        other{"{0} millimól/literré"}
+                    }
+                }
+                one{"{0} millimól/liter"}
+                other{"{0} millimól/liter"}
+            }
+            mole{
+                case{
+                    accusative{
+                        one{"{0} mólt"}
+                        other{"{0} mólt"}
+                    }
+                    instrumental{
+                        one{"{0} móllal"}
+                        other{"{0} móllal"}
+                    }
+                    terminative{
+                        one{"{0} mólig"}
+                        other{"{0} mólig"}
+                    }
+                    translative{
+                        one{"{0} móllá"}
+                        other{"{0} móllá"}
+                    }
+                }
+                dnam{"mól"}
+                one{"{0} mól"}
+                other{"{0} mól"}
+            }
+            percent{
+                case{
+                    accusative{
+                        one{"{0} százalékot"}
+                        other{"{0} százalékot"}
+                    }
+                    instrumental{
+                        one{"{0} százalékkal"}
+                        other{"{0} százalékkal"}
+                    }
+                    terminative{
+                        one{"{0} százalékig"}
+                        other{"{0} százalékig"}
+                    }
+                    translative{
+                        one{"{0} százalékká"}
+                        other{"{0} százalékká"}
+                    }
+                }
+                one{"{0} százalék"}
+                other{"{0} százalék"}
+            }
+            permille{
+                case{
+                    accusative{
+                        one{"{0} ezreléket"}
+                        other{"{0} ezreléket"}
+                    }
+                    instrumental{
+                        one{"{0} ezrelékkel"}
+                        other{"{0} ezrelékkel"}
+                    }
+                    terminative{
+                        one{"{0} ezrelékig"}
+                        other{"{0} ezrelékig"}
+                    }
+                    translative{
+                        one{"{0} ezrelékké"}
+                        other{"{0} ezrelékké"}
+                    }
+                }
+                one{"{0} ezrelék"}
+                other{"{0} ezrelék"}
+            }
+            permillion{
+                case{
+                    accusative{
+                        one{"{0} részecske/milliót"}
+                        other{"{0} részecske/milliót"}
+                    }
+                    instrumental{
+                        one{"{0} részecske/millióval"}
+                        other{"{0} részecske/millióval"}
+                    }
+                    terminative{
+                        one{"{0} részecske/millióig"}
+                        other{"{0} részecske/millióig"}
+                    }
+                    translative{
+                        one{"{0} részecske/millióvá"}
+                        other{"{0} részecske/millióvá"}
+                    }
+                }
+                one{"{0} részecske/millió"}
+                other{"{0} részecske/millió"}
+            }
+            permyriad{
+                case{
+                    accusative{
+                        one{"{0} tízezreléket"}
+                        other{"{0} tízezreléket"}
+                    }
+                    instrumental{
+                        one{"{0} tízezrelékkel"}
+                        other{"{0} tízezrelékkel"}
+                    }
+                    terminative{
+                        one{"{0} tízezrelékig"}
+                        other{"{0} tízezrelékig"}
+                    }
+                    translative{
+                        one{"{0} tízezrelékké"}
+                        other{"{0} tízezrelékké"}
+                    }
+                }
+                dnam{"tízezrelék"}
+                one{"{0} tízezrelék"}
+                other{"{0} tízezrelék"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                case{
+                    accusative{
+                        one{"{0} liter/100 km-t"}
+                        other{"{0} liter/100 km-t"}
+                    }
+                    instrumental{
+                        one{"{0} liter/100 km-rel"}
+                        other{"{0} liter/100 km-rel"}
+                    }
+                    terminative{
+                        one{"{0} liter/100 km-ig"}
+                        other{"{0} liter/100 km-ig"}
+                    }
+                    translative{
+                        one{"{0} liter/100 km-ré"}
+                        other{"{0} liter/100 km-ré"}
+                    }
+                }
+                dnam{"liter/100 km"}
+                one{"{0} liter/100 km"}
+                other{"{0} liter/100 km"}
+            }
+            liter-per-kilometer{
+                case{
+                    accusative{
+                        one{"{0} liter per kilométert"}
+                        other{"{0} liter per kilométert"}
+                    }
+                    instrumental{
+                        one{"{0} liter per kilométerrel"}
+                        other{"{0} liter per kilométerrel"}
+                    }
+                    terminative{
+                        one{"{0} liter per kilométerig"}
+                        other{"{0} liter per kilométerig"}
+                    }
+                    translative{
+                        one{"{0} liter per kilométerré"}
+                        other{"{0} liter per kilométerré"}
+                    }
+                }
+                dnam{"liter per kilométer"}
+                one{"{0} liter per kilométer"}
+                other{"{0} liter per kilométer"}
+            }
+            mile-per-gallon{
+                dnam{"mérföld per gallon"}
+                one{"{0} mérföld per gallon"}
+                other{"{0} mérföld per gallon"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mérföld/birodalmi gallon"}
+                one{"{0} mérföld/birodalmi gallon"}
+                other{"{0} mérföld/birodalmi gallon"}
+            }
+        }
+        coordinate{
+            dnam{"kardinális irány"}
+        }
+        digital{
+            bit{
+                case{
+                    accusative{
+                        one{"{0} bitet"}
+                        other{"{0} bitet"}
+                    }
+                    instrumental{
+                        one{"{0} bittel"}
+                        other{"{0} bittel"}
+                    }
+                    terminative{
+                        one{"{0} bitig"}
+                        other{"{0} bitig"}
+                    }
+                    translative{
+                        one{"{0} bitté"}
+                        other{"{0} bitté"}
+                    }
+                }
+                one{"{0} bit"}
+                other{"{0} bit"}
+            }
+            byte{
+                case{
+                    accusative{
+                        one{"{0} bájtot"}
+                        other{"{0} bájtot"}
+                    }
+                    instrumental{
+                        one{"{0} bájttal"}
+                        other{"{0} bájttal"}
+                    }
+                    terminative{
+                        one{"{0} bájtig"}
+                        other{"{0} bájtig"}
+                    }
+                    translative{
+                        one{"{0} bájttá"}
+                        other{"{0} bájttá"}
+                    }
+                }
+                one{"{0} bájt"}
+                other{"{0} bájt"}
+            }
+            gigabit{
+                case{
+                    accusative{
+                        one{"{0} gigabitet"}
+                        other{"{0} gigabitet"}
+                    }
+                    instrumental{
+                        one{"{0} gigabittel"}
+                        other{"{0} gigabittel"}
+                    }
+                    terminative{
+                        one{"{0} gigabitig"}
+                        other{"{0} gigabitig"}
+                    }
+                    translative{
+                        one{"{0} gigabitté"}
+                        other{"{0} gigabitté"}
+                    }
+                }
+                dnam{"gigabit"}
+                one{"{0} gigabit"}
+                other{"{0} gigabit"}
+            }
+            gigabyte{
+                case{
+                    accusative{
+                        one{"{0} gigabájtot"}
+                        other{"{0} gigabájtot"}
+                    }
+                    instrumental{
+                        one{"{0} gigabájttal"}
+                        other{"{0} gigabájttal"}
+                    }
+                    terminative{
+                        one{"{0} gigabájtig"}
+                        other{"{0} gigabájtig"}
+                    }
+                    translative{
+                        one{"{0} gigabájttá"}
+                        other{"{0} gigabájttá"}
+                    }
+                }
+                dnam{"gigabájt"}
+                one{"{0} gigabájt"}
+                other{"{0} gigabájt"}
+            }
+            kilobit{
+                case{
+                    accusative{
+                        one{"{0} kilobitet"}
+                        other{"{0} kilobitet"}
+                    }
+                    instrumental{
+                        one{"{0} kilobittel"}
+                        other{"{0} kilobittel"}
+                    }
+                    terminative{
+                        one{"{0} kilobitig"}
+                        other{"{0} kilobitig"}
+                    }
+                    translative{
+                        one{"{0} kilobitté"}
+                        other{"{0} kilobitté"}
+                    }
+                }
+                dnam{"kilobit"}
+                one{"{0} kilobit"}
+                other{"{0} kilobit"}
+            }
+            kilobyte{
+                case{
+                    accusative{
+                        one{"{0} kilobájtot"}
+                        other{"{0} kilobájtot"}
+                    }
+                    instrumental{
+                        one{"{0} kilobájttal"}
+                        other{"{0} kilobájttal"}
+                    }
+                    terminative{
+                        one{"{0} kilobájtig"}
+                        other{"{0} kilobájtig"}
+                    }
+                    translative{
+                        one{"{0} kilobájttá"}
+                        other{"{0} kilobájttá"}
+                    }
+                }
+                dnam{"kilobájt"}
+                one{"{0} kilobájt"}
+                other{"{0} kilobájt"}
+            }
+            megabit{
+                case{
+                    accusative{
+                        one{"{0} megabitet"}
+                        other{"{0} megabitet"}
+                    }
+                    instrumental{
+                        one{"{0} megabittel"}
+                        other{"{0} megabittel"}
+                    }
+                    terminative{
+                        one{"{0} megabitig"}
+                        other{"{0} megabitig"}
+                    }
+                    translative{
+                        one{"{0} megabitté"}
+                        other{"{0} megabitté"}
+                    }
+                }
+                dnam{"megabit"}
+                one{"{0} megabit"}
+                other{"{0} megabit"}
+            }
+            megabyte{
+                case{
+                    accusative{
+                        one{"{0} megabájtot"}
+                        other{"{0} megabájtot"}
+                    }
+                    instrumental{
+                        one{"{0} megabájttal"}
+                        other{"{0} megabájttal"}
+                    }
+                    terminative{
+                        one{"{0} megabájtig"}
+                        other{"{0} megabájtig"}
+                    }
+                    translative{
+                        one{"{0} megabájttá"}
+                        other{"{0} megabájttá"}
+                    }
+                }
+                dnam{"megabájt"}
+                one{"{0} megabájt"}
+                other{"{0} megabájt"}
+            }
+            petabyte{
+                case{
+                    accusative{
+                        one{"{0} petabájtot"}
+                        other{"{0} petabájtot"}
+                    }
+                    instrumental{
+                        one{"{0} petabájttal"}
+                        other{"{0} petabájttal"}
+                    }
+                    terminative{
+                        one{"{0} petabájtig"}
+                        other{"{0} petabájtig"}
+                    }
+                    translative{
+                        one{"{0} petabájttá"}
+                        other{"{0} petabájttá"}
+                    }
+                }
+                dnam{"petabájt"}
+                one{"{0} petabájt"}
+                other{"{0} petabájt"}
+            }
+            terabit{
+                case{
+                    accusative{
+                        one{"{0} terabitet"}
+                        other{"{0} terabitet"}
+                    }
+                    instrumental{
+                        one{"{0} terabittel"}
+                        other{"{0} terabittel"}
+                    }
+                    terminative{
+                        one{"{0} terabitig"}
+                        other{"{0} terabitig"}
+                    }
+                    translative{
+                        one{"{0} terabitté"}
+                        other{"{0} terabitté"}
+                    }
+                }
+                dnam{"terabit"}
+                one{"{0} terabit"}
+                other{"{0} terabit"}
+            }
+            terabyte{
+                case{
+                    accusative{
+                        one{"{0} terabájtot"}
+                        other{"{0} terabájtot"}
+                    }
+                    instrumental{
+                        one{"{0} terabájttal"}
+                        other{"{0} terabájttal"}
+                    }
+                    terminative{
+                        one{"{0} terabájtig"}
+                        other{"{0} terabájtig"}
+                    }
+                    translative{
+                        one{"{0} terabájttá"}
+                        other{"{0} terabájttá"}
+                    }
+                }
+                dnam{"terabájt"}
+                one{"{0} terabájt"}
+                other{"{0} terabájt"}
+            }
+        }
+        duration{
+            century{
+                case{
+                    accusative{
+                        one{"{0} évszázadot"}
+                        other{"{0} évszázadot"}
+                    }
+                    instrumental{
+                        one{"{0} évszázaddal"}
+                        other{"{0} évszázaddal"}
+                    }
+                    terminative{
+                        one{"{0} évszázadig"}
+                        other{"{0} évszázadig"}
+                    }
+                    translative{
+                        one{"{0} évszázaddá"}
+                        other{"{0} évszázaddá"}
+                    }
+                }
+                dnam{"évszázad"}
+                one{"{0} évszázad"}
+                other{"{0} évszázad"}
+            }
+            day{
+                case{
+                    accusative{
+                        one{"{0} napot"}
+                        other{"{0} napot"}
+                    }
+                    instrumental{
+                        one{"{0} nappal"}
+                        other{"{0} nappal"}
+                    }
+                    terminative{
+                        one{"{0} napig"}
+                        other{"{0} napig"}
+                    }
+                    translative{
+                        one{"{0} nappá"}
+                        other{"{0} nappá"}
+                    }
+                }
+                one{"{0} nap"}
+                other{"{0} nap"}
+            }
+            day-person{
+                case{
+                    accusative{
+                        one{"{0} napot"}
+                        other{"{0} napot"}
+                    }
+                    instrumental{
+                        one{"{0} nappal"}
+                        other{"{0} nappal"}
+                    }
+                    terminative{
+                        one{"{0} napig"}
+                        other{"{0} napig"}
+                    }
+                    translative{
+                        one{"{0} nappá"}
+                        other{"{0} nappá"}
+                    }
+                }
+                one{"{0} nap"}
+                other{"{0} nap"}
+            }
+            decade{
+                case{
+                    accusative{
+                        one{"{0} évtizedet"}
+                        other{"{0} évtizedet"}
+                    }
+                    instrumental{
+                        one{"{0} évtizeddel"}
+                        other{"{0} évtizeddel"}
+                    }
+                    terminative{
+                        one{"{0} évtizedig"}
+                        other{"{0} évtizedig"}
+                    }
+                    translative{
+                        one{"{0} évtizeddé"}
+                        other{"{0} évtizeddé"}
+                    }
+                }
+                dnam{"évtized"}
+                one{"{0} évtized"}
+                other{"{0} évtized"}
+            }
+            hour{
+                case{
+                    accusative{
+                        one{"{0} órát"}
+                        other{"{0} órát"}
+                    }
+                    instrumental{
+                        one{"{0} órával"}
+                        other{"{0} órával"}
+                    }
+                    terminative{
+                        one{"{0} óráig"}
+                        other{"{0} óráig"}
+                    }
+                    translative{
+                        one{"{0} órává"}
+                        other{"{0} órává"}
+                    }
+                }
+                dnam{"óra"}
+                one{"{0} óra"}
+                other{"{0} óra"}
+                per{"{0}/óra"}
+            }
+            microsecond{
+                case{
+                    accusative{
+                        one{"{0} mikroszekundumot"}
+                        other{"{0} mikroszekundumot"}
+                    }
+                    instrumental{
+                        one{"{0} mikroszekundummal"}
+                        other{"{0} mikroszekundummal"}
+                    }
+                    terminative{
+                        one{"{0} mikroszekundumig"}
+                        other{"{0} mikroszekundumig"}
+                    }
+                    translative{
+                        one{"{0} mikroszekundummá"}
+                        other{"{0} mikroszekundummá"}
+                    }
+                }
+                dnam{"mikroszekundum"}
+                one{"{0} mikroszekundum"}
+                other{"{0} mikroszekundum"}
+            }
+            millisecond{
+                case{
+                    accusative{
+                        one{"{0} ezredmásodpercet"}
+                        other{"{0} ezredmásodpercig"}
+                    }
+                    instrumental{
+                        one{"{0} ezredmásodperccel"}
+                        other{"{0} ezredmásodperccel"}
+                    }
+                    terminative{
+                        one{"{0} ezredmásodpercig"}
+                        other{"{0} ezredmásodpercig"}
+                    }
+                    translative{
+                        one{"{0} ezredmásodperccé"}
+                        other{"{0} ezredmásodperccé"}
+                    }
+                }
+                dnam{"ezredmásodperc"}
+                one{"{0} ezredmásodperc"}
+                other{"{0} ezredmásodperc"}
+            }
+            minute{
+                case{
+                    accusative{
+                        one{"{0} percet"}
+                        other{"{0} percet"}
+                    }
+                    instrumental{
+                        one{"{0} perccel"}
+                        other{"{0} perccel"}
+                    }
+                    terminative{
+                        one{"{0} percig"}
+                        other{"{0} percig"}
+                    }
+                    translative{
+                        one{"{0} perccé"}
+                        other{"{0} perccé"}
+                    }
+                }
+                dnam{"perc"}
+                one{"{0} perc"}
+                other{"{0} perc"}
+                per{"{0}/perc"}
+            }
+            month{
+                case{
+                    accusative{
+                        one{"{0} hónapot"}
+                        other{"{0} hónapot"}
+                    }
+                    instrumental{
+                        one{"{0} hónappal"}
+                        other{"{0} hónappal"}
+                    }
+                    terminative{
+                        one{"{0} hónapig"}
+                        other{"{0} hónapig"}
+                    }
+                    translative{
+                        one{"{0} hónappá"}
+                        other{"{0} hónappá"}
+                    }
+                }
+                one{"{0} hónap"}
+                other{"{0} hónap"}
+                per{"{0}/hónap"}
+            }
+            nanosecond{
+                case{
+                    accusative{
+                        one{"{0} nanoszekundumot"}
+                        other{"{0} nanoszekundumot"}
+                    }
+                    instrumental{
+                        one{"{0} nanoszekundummal"}
+                        other{"{0} nanoszekundummal"}
+                    }
+                    terminative{
+                        one{"{0} nanoszekundumig"}
+                        other{"{0} nanoszekundumig"}
+                    }
+                    translative{
+                        one{"{0} nanoszekundummá"}
+                        other{"{0} nanoszekundummá"}
+                    }
+                }
+                dnam{"nanoszekundum"}
+                one{"{0} nanoszekundum"}
+                other{"{0} nanoszekundum"}
+            }
+            quarter{
+                case{
+                    accusative{
+                        one{"{0} negyedévet"}
+                        other{"{0} negyedévet"}
+                    }
+                    instrumental{
+                        one{"{0} negyedévvel"}
+                        other{"{0} negyedévvel"}
+                    }
+                    terminative{
+                        one{"{0} negyedévig"}
+                        other{"{0} negyedévig"}
+                    }
+                    translative{
+                        one{"{0} negyedévvé"}
+                        other{"{0} negyedévvé"}
+                    }
+                }
+                dnam{"negyedév"}
+                one{"{0} negyedév"}
+                other{"{0} negyedév"}
+            }
+            second{
+                case{
+                    accusative{
+                        one{"{0} másodpercet"}
+                        other{"{0} másodpercet"}
+                    }
+                    instrumental{
+                        one{"{0} másodperccel"}
+                        other{"{0} másodperccel"}
+                    }
+                    terminative{
+                        one{"{0} másodpercig"}
+                        other{"{0} másodpercig"}
+                    }
+                    translative{
+                        one{"{0} másodperccé"}
+                        other{"{0} másodperccé"}
+                    }
+                }
+                dnam{"másodperc"}
+                one{"{0} másodperc"}
+                other{"{0} másodperc"}
+                per{"{0}/másodperc"}
+            }
+            week{
+                case{
+                    accusative{
+                        one{"{0} hetet"}
+                        other{"{0} hetet"}
+                    }
+                    instrumental{
+                        one{"{0} héttel"}
+                        other{"{0} héttel"}
+                    }
+                    terminative{
+                        one{"{0} hétig"}
+                        other{"{0} hétig"}
+                    }
+                    translative{
+                        one{"{0} hétté"}
+                        other{"{0} hétté"}
+                    }
+                }
+                one{"{0} hét"}
+                other{"{0} hét"}
+            }
+            year{
+                case{
+                    accusative{
+                        one{"{0} évet"}
+                        other{"{0} évet"}
+                    }
+                    instrumental{
+                        one{"{0} évvel"}
+                        other{"{0} évvel"}
+                    }
+                    terminative{
+                        one{"{0} évig"}
+                        other{"{0} évig"}
+                    }
+                    translative{
+                        one{"{0} évvé"}
+                        other{"{0} évvé"}
+                    }
+                }
+                one{"{0} év"}
+                other{"{0} év"}
+            }
+        }
+        electric{
+            ampere{
+                case{
+                    accusative{
+                        one{"{0} ampert"}
+                        other{"{0} ampert"}
+                    }
+                    instrumental{
+                        one{"{0} amperrel"}
+                        other{"{0} amperrel"}
+                    }
+                    terminative{
+                        one{"{0} amperig"}
+                        other{"{0} amperig"}
+                    }
+                    translative{
+                        one{"{0} amperré"}
+                        other{"{0} amperré"}
+                    }
+                }
+                dnam{"amper"}
+                one{"{0} amper"}
+                other{"{0} amper"}
+            }
+            milliampere{
+                case{
+                    accusative{
+                        one{"{0} milliampert"}
+                        other{"{0} milliampert"}
+                    }
+                    instrumental{
+                        one{"{0} milliamperrel"}
+                        other{"{0} milliamperrel"}
+                    }
+                    terminative{
+                        one{"{0} milliamperig"}
+                        other{"{0} milliamperig"}
+                    }
+                    translative{
+                        one{"{0} milliamperré"}
+                        other{"{0} milliamperré"}
+                    }
+                }
+                dnam{"milliamper"}
+                one{"{0} milliamper"}
+                other{"{0} milliamper"}
+            }
+            ohm{
+                case{
+                    accusative{
+                        one{"{0} ohmot"}
+                        other{"{0} ohmot"}
+                    }
+                    instrumental{
+                        one{"{0} ohmmal"}
+                        other{"{0} ohmmal"}
+                    }
+                    terminative{
+                        one{"{0} ohmig"}
+                        other{"{0} ohmig"}
+                    }
+                    translative{
+                        one{"{0} ohmmá"}
+                        other{"{0} ohmmá"}
+                    }
+                }
+                dnam{"ohm"}
+                one{"{0} ohm"}
+                other{"{0} ohm"}
+            }
+            volt{
+                case{
+                    accusative{
+                        one{"{0} voltot"}
+                        other{"{0} voltot"}
+                    }
+                    instrumental{
+                        one{"{0} volttal"}
+                        other{"{0} volttal"}
+                    }
+                    terminative{
+                        one{"{0} voltig"}
+                        other{"{0} voltig"}
+                    }
+                    translative{
+                        one{"{0} volttá"}
+                        other{"{0} volttá"}
+                    }
+                }
+                dnam{"volt"}
+                one{"{0} volt"}
+                other{"{0} volt"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"brit hőegység"}
+                one{"{0} brit hőegység"}
+                other{"{0} brit hőegység"}
+            }
+            calorie{
+                case{
+                    accusative{
+                        one{"{0} kalóriát"}
+                        other{"{0} kalóriát"}
+                    }
+                    instrumental{
+                        one{"{0} kalóriával"}
+                        other{"{0} kalóriával"}
+                    }
+                    terminative{
+                        one{"{0} kalóriáig"}
+                        other{"{0} kalóriáig"}
+                    }
+                    translative{
+                        one{"{0} kalóriává"}
+                        other{"{0} kalóriává"}
+                    }
+                }
+                dnam{"kalória"}
+                one{"{0} kalória"}
+                other{"{0} kalória"}
+            }
+            electronvolt{
+                dnam{"elektronvolt"}
+                one{"{0} elektronvolt"}
+                other{"{0} elektronvolt"}
+            }
+            foodcalorie{
+                dnam{"kalória"}
+                one{"{0} kalória"}
+                other{"{0} kalória"}
+            }
+            joule{
+                case{
+                    accusative{
+                        one{"{0} joule-t"}
+                        other{"{0} joule-t"}
+                    }
+                    instrumental{
+                        one{"{0} joule-lal"}
+                        other{"{0} joule-lal"}
+                    }
+                    terminative{
+                        one{"{0} joule-ig"}
+                        other{"{0} joule-ig"}
+                    }
+                    translative{
+                        one{"{0} joule-lá"}
+                        other{"{0} joule-lá"}
+                    }
+                }
+                dnam{"joule"}
+                one{"{0} joule"}
+                other{"{0} joule"}
+            }
+            kilocalorie{
+                dnam{"kilokalória"}
+                one{"{0} kilokalória"}
+                other{"{0} kilokalória"}
+            }
+            kilojoule{
+                case{
+                    accusative{
+                        one{"{0} kilojoule-t"}
+                        other{"{0} kilojoule-t"}
+                    }
+                    instrumental{
+                        one{"{0} kilojoule-lal"}
+                        other{"{0} kilojoule-lal"}
+                    }
+                    terminative{
+                        one{"{0} kilojoule-ig"}
+                        other{"{0} kilojoule-ig"}
+                    }
+                    translative{
+                        one{"{0} kilojoule-lá"}
+                        other{"{0} kilojoule-lá"}
+                    }
+                }
+                dnam{"kilojoule"}
+                one{"{0} kilojoule"}
+                other{"{0} kilojoule"}
+            }
+            kilowatt-hour{
+                case{
+                    accusative{
+                        one{"{0} kilowattórát"}
+                        other{"{0} kilowattórát"}
+                    }
+                    instrumental{
+                        one{"{0} kilowattórával"}
+                        other{"{0} kilowattórával"}
+                    }
+                    terminative{
+                        one{"{0} kilowattóráig"}
+                        other{"{0} kilowattóráig"}
+                    }
+                    translative{
+                        one{"{0} kilowattórává"}
+                        other{"{0} kilowattórává"}
+                    }
+                }
+                dnam{"kilowattóra"}
+                one{"{0} kilowattóra"}
+                other{"{0} kilowattóra"}
+            }
+            therm-us{
+                dnam{"amerikai therm"}
+                one{"{0} amerikai therm"}
+                other{"{0} amerikai therm"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                case{
+                    accusative{
+                        one{"{0} kWh/100 km-t"}
+                        other{"{0} kWh/100 km-t"}
+                    }
+                    instrumental{
+                        one{"{0} kWh/100 km-rel"}
+                        other{"{0} kWh/100 km-rel"}
+                    }
+                    terminative{
+                        one{"{0} kWh/100 km-ig"}
+                        other{"{0} kWh/100 km-ig"}
+                    }
+                    translative{
+                        one{"{0} kWh/100 km-ré"}
+                        other{"{0} kWh/100 km-ré"}
+                    }
+                }
+                one{"{0} kWh/100 km"}
+                other{"{0} kWh/100 km"}
+            }
+            newton{
+                case{
+                    accusative{
+                        one{"{0} newtont"}
+                        other{"{0} newtont"}
+                    }
+                    instrumental{
+                        one{"{0} newtonnal"}
+                        other{"{0} newtonnal"}
+                    }
+                    terminative{
+                        one{"{0} newtonig"}
+                        other{"{0} newtonig"}
+                    }
+                    translative{
+                        one{"{0} newtonná"}
+                        other{"{0} newtonná"}
+                    }
+                }
+                dnam{"newton"}
+                one{"{0} newton"}
+                other{"{0} newton"}
+            }
+            pound-force{
+                dnam{"fonterő"}
+                one{"{0} fonterő"}
+                other{"{0} fonterő"}
+            }
+        }
+        frequency{
+            gigahertz{
+                case{
+                    accusative{
+                        one{"{0} gigahertzet"}
+                        other{"{0} gigahertzet"}
+                    }
+                    instrumental{
+                        one{"{0} gigahertzcel"}
+                        other{"{0} gigahertzcel"}
+                    }
+                    terminative{
+                        one{"{0} gigahertzig"}
+                        other{"{0} gigahertzig"}
+                    }
+                    translative{
+                        one{"{0} gigahertzcé"}
+                        other{"{0} gigahertzcé"}
+                    }
+                }
+                dnam{"gigahertz"}
+                one{"{0} gigahertz"}
+                other{"{0} gigahertz"}
+            }
+            hertz{
+                case{
+                    accusative{
+                        one{"{0} hertzet"}
+                        other{"{0} hertzet"}
+                    }
+                    instrumental{
+                        one{"{0} hertzcel"}
+                        other{"{0} hertzcel"}
+                    }
+                    terminative{
+                        one{"{0} hertzig"}
+                        other{"{0} hertzig"}
+                    }
+                    translative{
+                        one{"{0} hertzcé"}
+                        other{"{0} hertzcé"}
+                    }
+                }
+                dnam{"hertz"}
+                one{"{0} hertz"}
+                other{"{0} hertz"}
+            }
+            kilohertz{
+                case{
+                    accusative{
+                        one{"{0} kilohertzet"}
+                        other{"{0} kilohertzet"}
+                    }
+                    instrumental{
+                        one{"{0} kilohertzcel"}
+                        other{"{0} kilohertzcel"}
+                    }
+                    terminative{
+                        one{"{0} kilohertzig"}
+                        other{"{0} kilohertzig"}
+                    }
+                    translative{
+                        one{"{0} kilohertzcé"}
+                        other{"{0} kilohertzcé"}
+                    }
+                }
+                dnam{"kilohertz"}
+                one{"{0} kilohertz"}
+                other{"{0} kilohertz"}
+            }
+            megahertz{
+                case{
+                    accusative{
+                        one{"{0} megahertzet"}
+                        other{"{0} megahertzet"}
+                    }
+                    instrumental{
+                        one{"{0} megahertzcel"}
+                        other{"{0} megahertzcel"}
+                    }
+                    terminative{
+                        one{"{0} megahertzig"}
+                        other{"{0} megahertzig"}
+                    }
+                    translative{
+                        one{"{0} megahertzcé"}
+                        other{"{0} megahertzcé"}
+                    }
+                }
+                dnam{"megahertz"}
+                one{"{0} megahertz"}
+                other{"{0} megahertz"}
+            }
+        }
+        graphics{
+            dot-per-centimeter{
+                dnam{"pont per centiméter"}
+                one{"{0} pont per centiméter"}
+                other{"{0} pont per centiméter"}
+            }
+            dot-per-inch{
+                dnam{"pont per hüvelyk"}
+                one{"{0} pont per hüvelyk"}
+                other{"{0} pont per hüvelyk"}
+            }
+            em{
+                case{
+                    accusative{
+                        one{"{0} kvirtet"}
+                        other{"{0} kvirtet"}
+                    }
+                    instrumental{
+                        one{"{0} kvirttel"}
+                        other{"{0} kvirttel"}
+                    }
+                    terminative{
+                        one{"{0} kvirtig"}
+                        other{"{0} kvirtig"}
+                    }
+                    translative{
+                        one{"{0} kvirtté"}
+                        other{"{0} kvirtté"}
+                    }
+                }
+                dnam{"nyomdai em"}
+                one{"{0} kvirt"}
+                other{"{0} kvirt"}
+            }
+            megapixel{
+                case{
+                    accusative{
+                        one{"{0} millió képpontot"}
+                        other{"{0} millió képpontot"}
+                    }
+                    instrumental{
+                        one{"{0} millió képponttal"}
+                        other{"{0} millió képponttal"}
+                    }
+                    terminative{
+                        one{"{0} millió képpontig"}
+                        other{"{0} millió képpontig"}
+                    }
+                    translative{
+                        one{"{0} millió képponttá"}
+                        other{"{0} millió képponttá"}
+                    }
+                }
+                dnam{"millió képpont"}
+                one{"{0} millió képpont"}
+                other{"{0} millió képpont"}
+            }
+            pixel{
+                case{
+                    accusative{
+                        one{"{0} képpontot"}
+                        other{"{0} képpontot"}
+                    }
+                    instrumental{
+                        one{"{0} képponttal"}
+                        other{"{0} képponttal"}
+                    }
+                    terminative{
+                        one{"{0} képpontig"}
+                        other{"{0} képpontig"}
+                    }
+                    translative{
+                        one{"{0} képponttá"}
+                        other{"{0} képponttá"}
+                    }
+                }
+                one{"{0} képpont"}
+                other{"{0} képpont"}
+            }
+            pixel-per-centimeter{
+                case{
+                    accusative{
+                        one{"{0} képpont per centimétert"}
+                        other{"{0} képpont per centimétert"}
+                    }
+                    instrumental{
+                        one{"{0} képpont per centiméterrel"}
+                        other{"{0} képpont per centiméterrel"}
+                    }
+                    terminative{
+                        one{"{0} képpont per centiméterig"}
+                        other{"{0} képpont per centiméterig"}
+                    }
+                    translative{
+                        one{"{0} képpont per centiméterré"}
+                        other{"{0} képpont per centiméterré"}
+                    }
+                }
+                dnam{"képpont per centiméter"}
+                one{"{0} képpont per centiméter"}
+                other{"{0} képpont per centiméter"}
+            }
+            pixel-per-inch{
+                dnam{"képpont per hüvelyk"}
+                one{"{0} képpont per hüvelyk"}
+                other{"{0} képpont per hüvelyk"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"csillagászati egység"}
+                one{"{0} csillagászati egység"}
+                other{"{0} csillagászati egység"}
+            }
+            centimeter{
+                case{
+                    accusative{
+                        one{"{0} centimétert"}
+                        other{"{0} centimétert"}
+                    }
+                    instrumental{
+                        one{"{0} centiméterrel"}
+                        other{"{0} centiméterrel"}
+                    }
+                    terminative{
+                        one{"{0} centiméterig"}
+                        other{"{0} centiméterig"}
+                    }
+                    translative{
+                        one{"{0} centiméterré"}
+                        other{"{0} centiméterré"}
+                    }
+                }
+                dnam{"centiméter"}
+                one{"{0} centiméter"}
+                other{"{0} centiméter"}
+                per{"{0}/centimeter"}
+            }
+            decimeter{
+                case{
+                    accusative{
+                        one{"{0} decimétert"}
+                        other{"{0} decimétert"}
+                    }
+                    instrumental{
+                        one{"{0} deciméterrel"}
+                        other{"{0} deciméterrel"}
+                    }
+                    terminative{
+                        one{"{0} deciméterig"}
+                        other{"{0} deciméterig"}
+                    }
+                    translative{
+                        one{"{0} deciméterré"}
+                        other{"{0} deciméterré"}
+                    }
+                }
+                dnam{"deciméter"}
+                one{"{0} deciméter"}
+                other{"{0} deciméter"}
+            }
+            earth-radius{
+                dnam{"földsugár"}
+                one{"{0} földsugár"}
+                other{"{0} földsugár"}
+            }
+            furlong{
+                one{"{0} furlong"}
+                other{"{0} furlong"}
+            }
+            inch{
+                per{"{0}/hüvelyk"}
+            }
+            kilometer{
+                case{
+                    accusative{
+                        one{"{0} kilométert"}
+                        other{"{0} kilométert"}
+                    }
+                    instrumental{
+                        one{"{0} kilométerrel"}
+                        other{"{0} kilométerrel"}
+                    }
+                    terminative{
+                        one{"{0} kilométerig"}
+                        other{"{0} kilométerig"}
+                    }
+                    translative{
+                        one{"{0} kilométerré"}
+                        other{"{0} kilométerré"}
+                    }
+                }
+                dnam{"kilométer"}
+                one{"{0} kilométer"}
+                other{"{0} kilométer"}
+                per{"{0}/kilométer"}
+            }
+            meter{
+                case{
+                    accusative{
+                        one{"{0} métert"}
+                        other{"{0} métert"}
+                    }
+                    instrumental{
+                        one{"{0} méterrel"}
+                        other{"{0} méterrel"}
+                    }
+                    terminative{
+                        one{"{0} méterig"}
+                        other{"{0} méterig"}
+                    }
+                    translative{
+                        one{"{0} méterré"}
+                        other{"{0} méterré"}
+                    }
+                }
+                dnam{"méter"}
+                one{"{0} méter"}
+                other{"{0} méter"}
+                per{"{0}/méter"}
+            }
+            micrometer{
+                case{
+                    accusative{
+                        one{"{0} mikrométert"}
+                        other{"{0} mikrométert"}
+                    }
+                    instrumental{
+                        one{"{0} mikrométerrel"}
+                        other{"{0} mikrométerrel"}
+                    }
+                    terminative{
+                        one{"{0} mikrométerig"}
+                        other{"{0} mikrométerig"}
+                    }
+                    translative{
+                        one{"{0} mikrométerré"}
+                        other{"{0} mikrométerré"}
+                    }
+                }
+                dnam{"mikrométer"}
+                one{"{0} mikrométer"}
+                other{"{0} mikrométer"}
+            }
+            mile{
+                dnam{"mérföld"}
+                one{"{0} mérföld"}
+                other{"{0} mérföld"}
+            }
+            mile-scandinavian{
+                case{
+                    accusative{
+                        one{"{0} svéd mérföldet"}
+                        other{"{0} svéd mérföldet"}
+                    }
+                    instrumental{
+                        one{"{0} svéd mérfölddel"}
+                        other{"{0} svéd mérfölddel"}
+                    }
+                    terminative{
+                        one{"{0} svéd mérföldig"}
+                        other{"{0} svéd mérföldig"}
+                    }
+                    translative{
+                        one{"{0} svéd mérfölddé"}
+                        other{"{0} svéd mérfölddé"}
+                    }
+                }
+                dnam{"svéd mérföld"}
+                one{"{0} svéd mérföld"}
+                other{"{0} svéd mérföld"}
+            }
+            millimeter{
+                case{
+                    accusative{
+                        one{"{0} millimétert"}
+                        other{"{0} millimétert"}
+                    }
+                    instrumental{
+                        one{"{0} milliméterrel"}
+                        other{"{0} milliméterrel"}
+                    }
+                    terminative{
+                        one{"{0} milliméterig"}
+                        other{"{0} milliméterig"}
+                    }
+                    translative{
+                        one{"{0} milliméterré"}
+                        other{"{0} milliméterré"}
+                    }
+                }
+                dnam{"milliméter"}
+                one{"{0} milliméter"}
+                other{"{0} milliméter"}
+            }
+            nanometer{
+                case{
+                    accusative{
+                        one{"{0} nanométert"}
+                        other{"{0} nanométert"}
+                    }
+                    instrumental{
+                        one{"{0} nanométerrel"}
+                        other{"{0} nanométerrel"}
+                    }
+                    terminative{
+                        one{"{0} nanométerig"}
+                        other{"{0} nanométerig"}
+                    }
+                    translative{
+                        one{"{0} nanométerré"}
+                        other{"{0} nanométerré"}
+                    }
+                }
+                dnam{"nanométer"}
+                one{"{0} nanométer"}
+                other{"{0} nanométer"}
+            }
+            nautical-mile{
+                dnam{"tengeri mérföld"}
+                one{"{0} tengeri mérföld"}
+                other{"{0} tengeri mérföld"}
+            }
+            parsec{
+                dnam{"parszek"}
+                one{"{0} parszek"}
+                other{"{0} parszek"}
+            }
+            picometer{
+                case{
+                    accusative{
+                        one{"{0} pikométert"}
+                        other{"{0} pikométert"}
+                    }
+                    instrumental{
+                        one{"{0} pikométerrel"}
+                        other{"{0} pikométerrel"}
+                    }
+                    terminative{
+                        one{"{0} pikométerig"}
+                        other{"{0} pikométerig"}
+                    }
+                    translative{
+                        one{"{0} pikométerré"}
+                        other{"{0} pikométerré"}
+                    }
+                }
+                dnam{"pikométer"}
+                one{"{0} pikométer"}
+                other{"{0} pikométer"}
+            }
+            point{
+                one{"{0} pont"}
+                other{"{0} pont"}
+            }
+            solar-radius{
+                one{"{0} Nap-sugár"}
+                other{"{0} Nap-sugár"}
+            }
+            yard{
+                dnam{"yard"}
+                one{"{0} yard"}
+                other{"{0} yard"}
+            }
+        }
+        light{
+            candela{
+                case{
+                    accusative{
+                        one{"{0} kandelát"}
+                        other{"{0} kandelát"}
+                    }
+                    instrumental{
+                        one{"{0} kandelával"}
+                        other{"{0} kandelával"}
+                    }
+                    terminative{
+                        one{"{0} kandeláig"}
+                        other{"{0} kandeláig"}
+                    }
+                    translative{
+                        one{"{0} kandelává"}
+                        other{"{0} kandelává"}
+                    }
+                }
+                dnam{"kandela"}
+                one{"{0} kandela"}
+                other{"{0} kandela"}
+            }
+            lumen{
+                case{
+                    accusative{
+                        one{"{0} lument"}
+                        other{"{0} lument"}
+                    }
+                    instrumental{
+                        one{"{0} lumennel"}
+                        other{"{0} lumennel"}
+                    }
+                    terminative{
+                        one{"{0} lumenig"}
+                        other{"{0} lumenig"}
+                    }
+                    translative{
+                        one{"{0} lumenné"}
+                        other{"{0} lumenné"}
+                    }
+                }
+                dnam{"lumen"}
+                one{"{0} lumen"}
+                other{"{0} lumen"}
+            }
+            lux{
+                case{
+                    accusative{
+                        one{"{0} luxot"}
+                        other{"{0} luxot"}
+                    }
+                    instrumental{
+                        one{"{0} luxszal"}
+                        other{"{0} luxszal"}
+                    }
+                    terminative{
+                        one{"{0} luxig"}
+                        other{"{0} luxig"}
+                    }
+                    translative{
+                        one{"{0} luxszá"}
+                        other{"{0} luxszá"}
+                    }
+                }
+                dnam{"lux"}
+                one{"{0} lux"}
+                other{"{0} lux"}
+            }
+            solar-luminosity{
+                dnam{"Nap-fényerő"}
+                one{"{0} Nap-fényerő"}
+                other{"{0} Nap-fényerő"}
+            }
+        }
+        mass{
+            carat{
+                case{
+                    accusative{
+                        one{"{0} karátot"}
+                        other{"{0} karátot"}
+                    }
+                    instrumental{
+                        one{"{0} karáttal"}
+                        other{"{0} karáttal"}
+                    }
+                    terminative{
+                        one{"{0} karátig"}
+                        other{"{0} karátig"}
+                    }
+                    translative{
+                        one{"{0} karáttá"}
+                        other{"{0} karáttá"}
+                    }
+                }
+                dnam{"karát"}
+                one{"{0} karát"}
+                other{"{0} karát"}
+            }
+            dalton{
+                dnam{"dalton"}
+                one{"{0} dalton"}
+                other{"{0} dalton"}
+            }
+            earth-mass{
+                dnam{"Föld-tömeg"}
+                one{"{0} Föld-tömeg"}
+                other{"{0} Föld-tömeg"}
+            }
+            gram{
+                case{
+                    accusative{
+                        one{"{0} grammot"}
+                        other{"{0} grammot"}
+                    }
+                    instrumental{
+                        one{"{0} grammal"}
+                        other{"{0} grammal"}
+                    }
+                    terminative{
+                        one{"{0} grammig"}
+                        other{"{0} grammig"}
+                    }
+                    translative{
+                        one{"{0} grammá"}
+                        other{"{0} grammá"}
+                    }
+                }
+                dnam{"gramm"}
+                one{"{0} gramm"}
+                other{"{0} gramm"}
+                per{"{0}/gramm"}
+            }
+            kilogram{
+                case{
+                    accusative{
+                        one{"{0} kilogrammot"}
+                        other{"{0} kilogrammot"}
+                    }
+                    instrumental{
+                        one{"{0} kilogrammal"}
+                        other{"{0} kilogrammal"}
+                    }
+                    terminative{
+                        one{"{0} kilogrammig"}
+                        other{"{0} kilogrammig"}
+                    }
+                    translative{
+                        one{"{0} kilogrammá"}
+                        other{"{0} kilogrammá"}
+                    }
+                }
+                dnam{"kilogramm"}
+                one{"{0} kilogramm"}
+                other{"{0} kilogramm"}
+                per{"{0}/kilogramm"}
+            }
+            microgram{
+                case{
+                    accusative{
+                        one{"{0} mikrogrammot"}
+                        other{"{0} mikrogrammot"}
+                    }
+                    instrumental{
+                        one{"{0} mikrogrammal"}
+                        other{"{0} mikrogrammal"}
+                    }
+                    terminative{
+                        one{"{0} mikrogrammig"}
+                        other{"{0} mikrogrammig"}
+                    }
+                    translative{
+                        one{"{0} mikrogrammá"}
+                        other{"{0} mikrogrammá"}
+                    }
+                }
+                dnam{"mikrogramm"}
+                one{"{0} mikrogramm"}
+                other{"{0} mikrogramm"}
+            }
+            milligram{
+                case{
+                    accusative{
+                        one{"{0} milligrammot"}
+                        other{"{0} milligrammot"}
+                    }
+                    instrumental{
+                        one{"{0} milligrammal"}
+                        other{"{0} milligrammal"}
+                    }
+                    terminative{
+                        one{"{0} milligrammig"}
+                        other{"{0} milligrammig"}
+                    }
+                    translative{
+                        one{"{0} milligrammá"}
+                        other{"{0} milligrammá"}
+                    }
+                }
+                dnam{"milligramm"}
+                one{"{0} milligramm"}
+                other{"{0} milligramm"}
+            }
+            ounce{
+                dnam{"uncia"}
+                one{"{0} uncia"}
+                other{"{0} uncia"}
+                per{"{0}/uncia"}
+            }
+            ounce-troy{
+                dnam{"troy uncia"}
+                one{"{0} troy uncia"}
+                other{"{0} troy uncia"}
+            }
+            pound{
+                dnam{"font"}
+                one{"{0} font"}
+                other{"{0} font"}
+                per{"{0}/font"}
+            }
+            solar-mass{
+                dnam{"Nap-tömeg"}
+                one{"{0} Nap-tömeg"}
+                other{"{0} Nap-tömeg"}
+            }
+            stone{
+                dnam{"stone"}
+                one{"{0} stone"}
+                other{"{0} stone"}
+            }
+            ton{
+                dnam{"amerikai tonna"}
+                one{"{0} amerikai tonna"}
+                other{"{0} amerikai tonna"}
+            }
+            tonne{
+                case{
+                    accusative{
+                        one{"{0} metrikus tonnát"}
+                        other{"{0} metrikus tonnát"}
+                    }
+                    instrumental{
+                        one{"{0} metrikus tonnával"}
+                        other{"{0} metrikus tonnával"}
+                    }
+                    terminative{
+                        one{"{0} metrikus tonnáig"}
+                        other{"{0} metrikus tonnáig"}
+                    }
+                    translative{
+                        one{"{0} metrikus tonnává"}
+                        other{"{0} metrikus tonnává"}
+                    }
+                }
+                dnam{"metrikus tonna"}
+                one{"{0} metrikus tonna"}
+                other{"{0} metrikus tonna"}
+            }
+        }
+        power{
+            gigawatt{
+                case{
+                    accusative{
+                        one{"{0} gigawattot"}
+                        other{"{0} gigawattot"}
+                    }
+                    instrumental{
+                        one{"{0} gigawattal"}
+                        other{"{0} gigawattal"}
+                    }
+                    terminative{
+                        one{"{0} gigawattig"}
+                        other{"{0} gigawattig"}
+                    }
+                    translative{
+                        one{"{0} gigawattá"}
+                        other{"{0} gigawattá"}
+                    }
+                }
+                dnam{"gigawatt"}
+                one{"{0} gigawatt"}
+                other{"{0} gigawatt"}
+            }
+            horsepower{
+                dnam{"lóerő"}
+                one{"{0} lóerő"}
+                other{"{0} lóerő"}
+            }
+            kilowatt{
+                case{
+                    accusative{
+                        one{"{0} kilowattot"}
+                        other{"{0} kilowattot"}
+                    }
+                    instrumental{
+                        one{"{0} kilowattal"}
+                        other{"{0} kilowattal"}
+                    }
+                    terminative{
+                        one{"{0} kilowattig"}
+                        other{"{0} kilowattig"}
+                    }
+                    translative{
+                        one{"{0} kilowattá"}
+                        other{"{0} kilowattá"}
+                    }
+                }
+                dnam{"kilowatt"}
+                one{"{0} kilowatt"}
+                other{"{0} kilowatt"}
+            }
+            megawatt{
+                case{
+                    accusative{
+                        one{"{0} megawattot"}
+                        other{"{0} megawattot"}
+                    }
+                    instrumental{
+                        one{"{0} megawattal"}
+                        other{"{0} megawattal"}
+                    }
+                    terminative{
+                        one{"{0} megawattig"}
+                        other{"{0} megawattig"}
+                    }
+                    translative{
+                        one{"{0} megawattá"}
+                        other{"{0} megawattá"}
+                    }
+                }
+                dnam{"megawatt"}
+                one{"{0} megawatt"}
+                other{"{0} megawatt"}
+            }
+            milliwatt{
+                case{
+                    accusative{
+                        one{"{0} milliwattot"}
+                        other{"{0} milliwattot"}
+                    }
+                    instrumental{
+                        one{"{0} milliwattal"}
+                        other{"{0} milliwattal"}
+                    }
+                    terminative{
+                        one{"{0} milliwattig"}
+                        other{"{0} milliwattig"}
+                    }
+                    translative{
+                        one{"{0} milliwattá"}
+                        other{"{0} milliwattá"}
+                    }
+                }
+                dnam{"milliwatt"}
+                one{"{0} milliwatt"}
+                other{"{0} milliwatt"}
+            }
+            watt{
+                case{
+                    accusative{
+                        one{"{0} wattot"}
+                        other{"{0} wattot"}
+                    }
+                    instrumental{
+                        one{"{0} wattal"}
+                        other{"{0} wattal"}
+                    }
+                    terminative{
+                        one{"{0} wattig"}
+                        other{"{0} wattig"}
+                    }
+                    translative{
+                        one{"{0} wattá"}
+                        other{"{0} wattá"}
+                    }
+                }
+                dnam{"watt"}
+                one{"{0} watt"}
+                other{"{0} watt"}
+            }
+        }
+        pressure{
+            atmosphere{
+                case{
+                    accusative{
+                        one{"{0} atmoszférát"}
+                        other{"{0} atmoszférát"}
+                    }
+                    instrumental{
+                        one{"{0} atmoszférával"}
+                        other{"{0} atmoszférával"}
+                    }
+                    terminative{
+                        one{"{0} atmoszféráig"}
+                        other{"{0} atmoszféráig"}
+                    }
+                    translative{
+                        one{"{0} atmoszférává"}
+                        other{"{0} atmoszférává"}
+                    }
+                }
+                dnam{"atmoszféra"}
+                one{"{0} atmoszféra"}
+                other{"{0} atmoszféra"}
+            }
+            bar{
+                case{
+                    accusative{
+                        one{"{0} bart"}
+                        other{"{0} bart"}
+                    }
+                    instrumental{
+                        one{"{0} barral"}
+                        other{"{0} barral"}
+                    }
+                    terminative{
+                        one{"{0} barig"}
+                        other{"{0} barig"}
+                    }
+                    translative{
+                        one{"{0} barrá"}
+                        other{"{0} barrá"}
+                    }
+                }
+                one{"{0} bar"}
+                other{"{0} bar"}
+            }
+            hectopascal{
+                case{
+                    accusative{
+                        one{"{0} hektopascalt"}
+                        other{"{0} hektopascalt"}
+                    }
+                    instrumental{
+                        one{"{0} hektopascallal"}
+                        other{"{0} hektopascallal"}
+                    }
+                    terminative{
+                        one{"{0} hektopascalig"}
+                        other{"{0} hektopascalig"}
+                    }
+                    translative{
+                        one{"{0} hektopascallá"}
+                        other{"{0} hektopascallá"}
+                    }
+                }
+                dnam{"hektopascal"}
+                one{"{0} hektopascal"}
+                other{"{0} hektopascal"}
+            }
+            inch-ofhg{
+                dnam{"higanyhüvelyk"}
+                one{"{0} higanyhüvelyk"}
+                other{"{0} higanyhüvelyk"}
+            }
+            kilopascal{
+                case{
+                    accusative{
+                        one{"{0} kilopascalt"}
+                        other{"{0} kilopascalt"}
+                    }
+                    instrumental{
+                        one{"{0} kilopascallal"}
+                        other{"{0} kilopascallal"}
+                    }
+                    terminative{
+                        one{"{0} kilopascalig"}
+                        other{"{0} kilopascalig"}
+                    }
+                    translative{
+                        one{"{0} kilopascallá"}
+                        other{"{0} kilopascallá"}
+                    }
+                }
+                dnam{"kilopascal"}
+                one{"{0} kilopascal"}
+                other{"{0} kilopascal"}
+            }
+            megapascal{
+                case{
+                    accusative{
+                        one{"{0} megapascalt"}
+                        other{"{0} megapascalt"}
+                    }
+                    instrumental{
+                        one{"{0} megapascallal"}
+                        other{"{0} megapascallal"}
+                    }
+                    terminative{
+                        one{"{0} megapascalig"}
+                        other{"{0} megapascalig"}
+                    }
+                    translative{
+                        one{"{0} megapascallá"}
+                        other{"{0} megapascallá"}
+                    }
+                }
+                dnam{"megapascal"}
+                one{"{0} megapascal"}
+                other{"{0} megapascal"}
+            }
+            millibar{
+                case{
+                    accusative{
+                        one{"{0} millibart"}
+                        other{"{0} millibart"}
+                    }
+                    instrumental{
+                        one{"{0} millibarral"}
+                        other{"{0} millibarral"}
+                    }
+                    terminative{
+                        one{"{0} millibarig"}
+                        other{"{0} millibarig"}
+                    }
+                    translative{
+                        one{"{0} millibarrá"}
+                        other{"{0} millibarrá"}
+                    }
+                }
+                dnam{"millibar"}
+                one{"{0} millibar"}
+                other{"{0} millibar"}
+            }
+            millimeter-ofhg{
+                dnam{"higanymilliméter"}
+                one{"{0} higanymilliméter"}
+                other{"{0} higanymilliméter"}
+            }
+            pascal{
+                case{
+                    accusative{
+                        one{"{0} pascalt"}
+                        other{"{0} pascalt"}
+                    }
+                    instrumental{
+                        one{"{0} pascallal"}
+                        other{"{0} pascallal"}
+                    }
+                    terminative{
+                        one{"{0} pascalig"}
+                        other{"{0} pascalig"}
+                    }
+                    translative{
+                        one{"{0} pascallá"}
+                        other{"{0} pascallá"}
+                    }
+                }
+                dnam{"pascal"}
+                one{"{0} pascal"}
+                other{"{0} pascal"}
+            }
+            pound-force-per-square-inch{
+                dnam{"font per négyzethüvelyk"}
+                one{"{0} font per négyzethüvelyk"}
+                other{"{0} font per négyzethüvelyk"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"Beaufort"}
+                one{"Beaufort {0}"}
+                other{"Beaufort {0}"}
+            }
+            kilometer-per-hour{
+                case{
+                    accusative{
+                        one{"{0} kilométer per órát"}
+                        other{"{0} kilométer per órát"}
+                    }
+                    instrumental{
+                        one{"{0} kilométer per órával"}
+                        other{"{0} kilométer per órával"}
+                    }
+                    terminative{
+                        one{"{0} kilométer per óráig"}
+                        other{"{0} kilométer per óráig"}
+                    }
+                    translative{
+                        one{"{0} kilométer per órává"}
+                        other{"{0} kilométer per órává"}
+                    }
+                }
+                dnam{"kilométer per óra"}
+                one{"{0} kilométer per óra"}
+                other{"{0} kilométer per óra"}
+            }
+            knot{
+                dnam{"csomó"}
+                one{"{0} csomó"}
+                other{"{0} csomó"}
+            }
+            meter-per-second{
+                case{
+                    accusative{
+                        one{"{0} méter per másodpercet"}
+                        other{"{0} méter per másodpercet"}
+                    }
+                    instrumental{
+                        one{"{0} méter per másodperccel"}
+                        other{"{0} méter per másodperccel"}
+                    }
+                    terminative{
+                        one{"{0} méter per másodpercig"}
+                        other{"{0} méter per másodpercig"}
+                    }
+                    translative{
+                        one{"{0} méter per másodperccé"}
+                        other{"{0} méter per másodperccé"}
+                    }
+                }
+                dnam{"méter per másodperc"}
+                one{"{0} méter per másodperc"}
+                other{"{0} méter per másodperc"}
+            }
+            mile-per-hour{
+                dnam{"mérföld per óra"}
+                one{"{0} mérföld per óra"}
+                other{"{0} mérföld per óra"}
+            }
+        }
+        temperature{
+            celsius{
+                case{
+                    accusative{
+                        one{"{0} Celsius-fokot"}
+                        other{"{0} Celsius-fokot"}
+                    }
+                    instrumental{
+                        one{"{0} Celsius-fokkal"}
+                        other{"{0} Celsius-fokkal"}
+                    }
+                    terminative{
+                        one{"{0} Celsius-fokig"}
+                        other{"{0} Celsius-fokig"}
+                    }
+                    translative{
+                        one{"{0} Celsius-fokká"}
+                        other{"{0} Celsius-fokká"}
+                    }
+                }
+                dnam{"Celsius-fok"}
+                one{"{0} Celsius-fok"}
+                other{"{0} Celsius-fok"}
+            }
+            fahrenheit{
+                dnam{"Fahrenheit-fok"}
+                one{"{0} Fahrenheit-fok"}
+                other{"{0} Fahrenheit-fok"}
+            }
+            generic{
+                case{
+                    accusative{
+                        one{"{0} fokot"}
+                        other{"{0} fokot"}
+                    }
+                    instrumental{
+                        one{"{0} fokkal"}
+                        other{"{0} fokkal"}
+                    }
+                    terminative{
+                        one{"{0} fokig"}
+                        other{"{0} fokig"}
+                    }
+                    translative{
+                        one{"{0} fokká"}
+                        other{"{0} fokká"}
+                    }
+                }
+                one{"{0} fok"}
+                other{"{0} fok"}
+            }
+            kelvin{
+                case{
+                    accusative{
+                        one{"{0} kelvint"}
+                        other{"{0} kelvint"}
+                    }
+                    instrumental{
+                        one{"{0} kelvinnel"}
+                        other{"{0} kelvinnel"}
+                    }
+                    terminative{
+                        one{"{0} kelvinig"}
+                        other{"{0} kelvinig"}
+                    }
+                    translative{
+                        one{"{0} kelvinné"}
+                        other{"{0} kelvinné"}
+                    }
+                }
+                dnam{"kelvin"}
+                one{"{0} kelvin"}
+                other{"{0} kelvin"}
+            }
+        }
+        torque{
+            newton-meter{
+                case{
+                    accusative{
+                        one{"{0} newtonmétert"}
+                        other{"{0} newtonmétert"}
+                    }
+                    instrumental{
+                        one{"{0} newtonméterrel"}
+                        other{"{0} newtonméterrel"}
+                    }
+                    terminative{
+                        one{"{0} newtonméterig"}
+                        other{"{0} newtonméterig"}
+                    }
+                    translative{
+                        one{"{0} newtonméterré"}
+                        other{"{0} newtonméterré"}
+                    }
+                }
+                dnam{"newtonméter"}
+                one{"{0} newtonméter"}
+                other{"{0} newtonméter"}
+            }
+            pound-force-foot{
+                dnam{"fontláb"}
+                one{"{0} fontláb"}
+                other{"{0} fontláb"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"hold-láb"}
+                one{"{0} hold-láb"}
+                other{"{0} hold-láb"}
+            }
+            centiliter{
+                case{
+                    accusative{
+                        one{"{0} centilitert"}
+                        other{"{0} centilitert"}
+                    }
+                    instrumental{
+                        one{"{0} centiliterrel"}
+                        other{"{0} centiliterrel"}
+                    }
+                    terminative{
+                        one{"{0} centiliterig"}
+                        other{"{0} centiliterig"}
+                    }
+                    translative{
+                        one{"{0} centiliterré"}
+                        other{"{0} centiliterré"}
+                    }
+                }
+                dnam{"centiliter"}
+                one{"{0} centiliter"}
+                other{"{0} centiliter"}
+            }
+            cubic-centimeter{
+                case{
+                    accusative{
+                        one{"{0} köbcentimétert"}
+                        other{"{0} köbcentimétert"}
+                    }
+                    instrumental{
+                        one{"{0} köbcentiméterrel"}
+                        other{"{0} köbcentiméterrel"}
+                    }
+                    terminative{
+                        one{"{0} köbcentiméterig"}
+                        other{"{0} köbcentiméterig"}
+                    }
+                    translative{
+                        one{"{0} köbcentiméterré"}
+                        other{"{0} köbcentiméterré"}
+                    }
+                }
+                dnam{"köbcentiméter"}
+                one{"{0} köbcentiméter"}
+                other{"{0} köbcentiméter"}
+                per{"{0}/köbcentiméter"}
+            }
+            cubic-foot{
+                dnam{"köbláb"}
+                one{"{0} köbláb"}
+                other{"{0} köbláb"}
+            }
+            cubic-inch{
+                dnam{"köbhüvelyk"}
+                one{"{0} köbhüvelyk"}
+                other{"{0} köbhüvelyk"}
+            }
+            cubic-kilometer{
+                case{
+                    accusative{
+                        one{"{0} köbkilométert"}
+                        other{"{0} köbkilométert"}
+                    }
+                    instrumental{
+                        one{"{0} köbkilométerrel"}
+                        other{"{0} köbkilométerrel"}
+                    }
+                    terminative{
+                        one{"{0} köbkilométerig"}
+                        other{"{0} köbkilométerig"}
+                    }
+                    translative{
+                        one{"{0} köbkilométerré"}
+                        other{"{0} köbkilométerré"}
+                    }
+                }
+                dnam{"köbkilométer"}
+                one{"{0} köbkilométer"}
+                other{"{0} köbkilométer"}
+            }
+            cubic-meter{
+                case{
+                    accusative{
+                        one{"{0} köbmétert"}
+                        other{"{0} köbmétert"}
+                    }
+                    instrumental{
+                        one{"{0} köbméterrel"}
+                        other{"{0} köbméterrel"}
+                    }
+                    terminative{
+                        one{"{0} köbméterig"}
+                        other{"{0} köbméterig"}
+                    }
+                    translative{
+                        one{"{0} köbméterré"}
+                        other{"{0} köbméterré"}
+                    }
+                }
+                dnam{"köbméter"}
+                one{"{0} köbméter"}
+                other{"{0} köbméter"}
+                per{"{0}/köbméter"}
+            }
+            cubic-mile{
+                dnam{"köbmérföld"}
+                one{"{0} köbmérföld"}
+                other{"{0} köbmérföld"}
+            }
+            cubic-yard{
+                dnam{"köbyard"}
+                one{"{0} köbyard"}
+                other{"{0} köbyard"}
+            }
+            cup{
+                dnam{"csésze"}
+                one{"{0} csésze"}
+                other{"{0} csésze"}
+            }
+            cup-metric{
+                case{
+                    accusative{
+                        one{"{0} bögrét"}
+                        other{"{0} bögrét"}
+                    }
+                    instrumental{
+                        one{"{0} bögrével"}
+                        other{"{0} bögrével"}
+                    }
+                    terminative{
+                        one{"{0} bögréig"}
+                        other{"{0} bögréig"}
+                    }
+                    translative{
+                        one{"{0} bögrévé"}
+                        other{"{0} bögrévé"}
+                    }
+                }
+                dnam{"bögre"}
+                one{"{0} bögre"}
+                other{"{0} bögre"}
+            }
+            deciliter{
+                case{
+                    accusative{
+                        one{"{0} decilitert"}
+                        other{"{0} decilitert"}
+                    }
+                    instrumental{
+                        one{"{0} deciliterrel"}
+                        other{"{0} deciliterrel"}
+                    }
+                    terminative{
+                        one{"{0} deciliterig"}
+                        other{"{0} deciliterig"}
+                    }
+                    translative{
+                        one{"{0} deciliterré"}
+                        other{"{0} deciliterré"}
+                    }
+                }
+                dnam{"deciliter"}
+                one{"{0} deciliter"}
+                other{"{0} deciliter"}
+            }
+            dram{
+                dnam{"dram"}
+                one{"{0} dram"}
+                other{"{0} dram"}
+            }
+            fluid-ounce{
+                dnam{"folyadékuncia"}
+                one{"{0} folyadékuncia"}
+                other{"{0} folyadékuncia"}
+            }
+            fluid-ounce-imperial{
+                dnam{"bir. folyadék uncia"}
+                one{"{0} bir. folyadék uncia"}
+                other{"{0} bir. folyadék uncia"}
+            }
+            gallon{
+                dnam{"gallon"}
+                one{"{0} gallon"}
+                other{"{0} gallon"}
+                per{"{0}/gallon"}
+            }
+            gallon-imperial{
+                dnam{"birodalmi gallon"}
+                one{"{0} birodalmi gallon"}
+                other{"{0} birodalmi gallon"}
+                per{"{0}/birodalmi gallon"}
+            }
+            hectoliter{
+                case{
+                    accusative{
+                        one{"{0} hektolitert"}
+                        other{"{0} hektolitert"}
+                    }
+                    instrumental{
+                        one{"{0} hektoliterrel"}
+                        other{"{0} hektoliterrel"}
+                    }
+                    terminative{
+                        one{"{0} hektoliterig"}
+                        other{"{0} hektoliterig"}
+                    }
+                    translative{
+                        one{"{0} hektoliterré"}
+                        other{"{0} hektoliterré"}
+                    }
+                }
+                dnam{"hektoliter"}
+                one{"{0} hektoliter"}
+                other{"{0} hektoliter"}
+            }
+            liter{
+                case{
+                    accusative{
+                        one{"{0} litert"}
+                        other{"{0} litert"}
+                    }
+                    instrumental{
+                        one{"{0} literrel"}
+                        other{"{0} literrel"}
+                    }
+                    terminative{
+                        one{"{0} literig"}
+                        other{"{0} literig"}
+                    }
+                    translative{
+                        one{"{0} literré"}
+                        other{"{0} literré"}
+                    }
+                }
+                dnam{"liter"}
+                one{"{0} liter"}
+                other{"{0} liter"}
+                per{"{0}/liter"}
+            }
+            megaliter{
+                case{
+                    accusative{
+                        one{"{0} megalitert"}
+                        other{"{0} megalitert"}
+                    }
+                    instrumental{
+                        one{"{0} megaliterrel"}
+                        other{"{0} megaliterrel"}
+                    }
+                    terminative{
+                        one{"{0} megaliterig"}
+                        other{"{0} megaliterig"}
+                    }
+                    translative{
+                        one{"{0} megaliterré"}
+                        other{"{0} megaliterré"}
+                    }
+                }
+                dnam{"megaliter"}
+                one{"{0} megaliter"}
+                other{"{0} megaliter"}
+            }
+            milliliter{
+                case{
+                    accusative{
+                        one{"{0} millilitert"}
+                        other{"{0} millilitert"}
+                    }
+                    instrumental{
+                        one{"{0} milliliterrel"}
+                        other{"{0} milliliterrel"}
+                    }
+                    terminative{
+                        one{"{0} milliliterig"}
+                        other{"{0} milliliterig"}
+                    }
+                    translative{
+                        one{"{0} milliliterré"}
+                        other{"{0} milliliterré"}
+                    }
+                }
+                dnam{"milliliter"}
+                one{"{0} milliliter"}
+                other{"{0} milliliter"}
+            }
+            pint{
+                dnam{"pint"}
+                one{"{0} pint"}
+                other{"{0} pint"}
+            }
+            pint-metric{
+                case{
+                    accusative{
+                        one{"{0} metrikus pintet"}
+                        other{"{0} metrikus pintet"}
+                    }
+                    instrumental{
+                        one{"{0} metrikus pinttel"}
+                        other{"{0} metrikus pinttel"}
+                    }
+                    terminative{
+                        one{"{0} metrikus pintig"}
+                        other{"{0} metrikus pintig"}
+                    }
+                    translative{
+                        one{"{0} metrikus pintté"}
+                        other{"{0} metrikus pintté"}
+                    }
+                }
+                dnam{"metrikus pint"}
+                one{"{0} metrikus pint"}
+                other{"{0} metrikus pint"}
+            }
+            quart{
+                dnam{"quart"}
+                one{"{0} quart"}
+                other{"{0} quart"}
+            }
+            quart-imperial{
+                dnam{"birodalmi kvart"}
+                one{"{0} birodalmi kvart"}
+                other{"{0} birodalmi kvart"}
+            }
+            tablespoon{
+                dnam{"evőkanál"}
+                one{"{0} evőkanál"}
+                other{"{0} evőkanál"}
+            }
+            teaspoon{
+                dnam{"kávéskanál"}
+                one{"{0} kávéskanál"}
+                other{"{0} kávéskanál"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            degree{
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+        }
+        area{
+            acre{
+                one{"{0} ac"}
+                other{"{0} ac"}
+            }
+        }
+        concentr{
+            millimole-per-liter{
+                dnam{"mmol/l"}
+            }
+            percent{
+                dnam{"%"}
+            }
+            permille{
+                dnam{"‰"}
+            }
+            permillion{
+                dnam{"ppm"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                one{"{0} l/100 km"}
+                other{"{0} l/100 km"}
+            }
+        }
+        digital{
+            byte{
+                dnam{"B"}
+                one{"{0} B"}
+                other{"{0} B"}
+            }
+        }
+        duration{
+            month{
+                one{"{0} h."}
+                other{"{0} h."}
+            }
+        }
+        graphics{
+            megapixel{
+                dnam{"MP"}
+            }
+            pixel{
+                dnam{"px"}
+            }
+        }
+        length{
+            point{
+                dnam{"pt"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+            }
+        }
+        mass{
+            gram{
+                dnam{"g"}
+            }
+            ounce{
+                one{"{0} oz"}
+                other{"{0} uncia"}
+            }
+            pound{
+                one{"{0} lb"}
+                other{"{0} font"}
+            }
+        }
+        pressure{
+            inch-ofhg{
+                dnam{"Hgin"}
+            }
+        }
+        speed{
+            beaufort{
+                one{"B{0}"}
+                other{"B{0}"}
+            }
+        }
+        volume{
+            dram{
+                dnam{"fl.dr."}
+                one{"{0} fl.dr."}
+                other{"{0} fl.dr."}
+            }
+            pinch{
+                dnam{"csi"}
+                one{"{0} csi"}
+                other{"{0} csi"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"g gyorsulás"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"ívperc"}
+            }
+            arc-second{
+                dnam{"ívmásodperc"}
+            }
+            degree{
+                dnam{"fok"}
+                one{"{0} fok"}
+                other{"{0} fok"}
+            }
+            revolution{
+                dnam{"ford."}
+                one{"{0} ford."}
+                other{"{0} ford."}
+            }
+        }
+        area{
+            acre{
+                dnam{"kh"}
+                one{"{0} kh"}
+                other{"{0} kh"}
+            }
+            hectare{
+                dnam{"ha"}
+            }
+        }
+        concentr{
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dl"}
+                one{"{0} mg/dl"}
+                other{"{0} mg/dl"}
+            }
+            millimole-per-liter{
+                dnam{"millimól/liter"}
+                one{"{0} mmol/l"}
+                other{"{0} mmol/l"}
+            }
+            percent{
+                dnam{"százalék"}
+            }
+            permille{
+                dnam{"ezrelék"}
+            }
+            permillion{
+                dnam{"részecske/millió"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"l/100 km"}
+                one{"{0} l/100 km"}
+                other{"{0} l/100km"}
+            }
+            liter-per-kilometer{
+                dnam{"l/km"}
+                one{"{0} l/km"}
+                other{"{0} l/km"}
+            }
+            mile-per-gallon{
+                dnam{"mpg"}
+                one{"{0} mpg"}
+                other{"{0} mpg"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mérföld/bir. gallon"}
+                one{"{0} mpg bir."}
+                other{"{0} mpg bir."}
+            }
+        }
+        coordinate{
+            dnam{"irány"}
+            east{"{0} K"}
+            north{"{0} É"}
+            south{"{0} D"}
+            west{"{0} Ny"}
+        }
+        digital{
+            byte{
+                dnam{"bájt"}
+                one{"{0} bájt"}
+                other{"{0} bájt"}
+            }
+        }
+        duration{
+            century{
+                dnam{"sz."}
+                one{"{0} sz."}
+                other{"{0} sz."}
+            }
+            day{
+                dnam{"nap"}
+                one{"{0} nap"}
+                other{"{0} nap"}
+                per{"{0}/nap"}
+            }
+            decade{
+                dnam{"dek"}
+                one{"{0} dek"}
+                other{"{0} dek"}
+            }
+            hour{
+                dnam{"ó"}
+                one{"{0} ó"}
+                other{"{0} ó"}
+                per{"{0}/ó"}
+            }
+            minute{
+                dnam{"p"}
+                one{"{0} p"}
+                other{"{0} p"}
+                per{"{0}/p"}
+            }
+            month{
+                dnam{"hónap"}
+                one{"{0} hónap"}
+                other{"{0} hónap"}
+                per{"{0}/hó"}
+            }
+            quarter{
+                dnam{"n.év"}
+                one{"{0} n.év"}
+                other{"{0} n.év"}
+                per{"{0}/n.év"}
+            }
+            second{
+                dnam{"mp"}
+                one{"{0} mp"}
+                other{"{0} mp"}
+                per{"{0}/mp"}
+            }
+            week{
+                dnam{"hét"}
+                one{"{0} hét"}
+                other{"{0} hét"}
+                per{"{0}/hét"}
+            }
+            year{
+                dnam{"év"}
+                one{"{0} év"}
+                other{"{0} év"}
+                per{"{0}/év"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"A"}
+            }
+            ohm{
+                dnam{"Ω"}
+            }
+            volt{
+                dnam{"V"}
+            }
+        }
+        energy{
+            foodcalorie{
+                dnam{"cal"}
+                one{"{0} cal"}
+                other{"{0} cal"}
+            }
+            joule{
+                dnam{"J"}
+            }
+            therm-us{
+                dnam{"USA therm"}
+                one{"{0} USA therm"}
+                other{"{0} USA therm"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"kWh/100 km"}
+                one{"{0} kWh/100 km"}
+                other{"{0} kWh/100 km"}
+            }
+        }
+        graphics{
+            dot{
+                one{"{0} képpont"}
+                other{"{0} képpont"}
+            }
+            dot-per-centimeter{
+                dnam{"dpcm"}
+                one{"{0} dpcm"}
+                other{"{0} dpcm"}
+            }
+            dot-per-inch{
+                dnam{"dpi"}
+                one{"{0} dpi"}
+                other{"{0} dpi"}
+            }
+            megapixel{
+                dnam{"megapixel"}
+            }
+            pixel{
+                dnam{"képpont"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"CsE"}
+                one{"{0} CsE"}
+                other{"{0} CsE"}
+            }
+            fathom{
+                dnam{"öl"}
+                one{"{0} öl"}
+                other{"{0} öl"}
+            }
+            foot{
+                dnam{"láb"}
+                one{"{0} láb"}
+                other{"{0} láb"}
+                per{"{0}/láb"}
+            }
+            furlong{
+                dnam{"furlong"}
+            }
+            inch{
+                dnam{"hüvelyk"}
+                one{"{0} hüvelyk"}
+                other{"{0} hüvelyk"}
+            }
+            light-year{
+                dnam{"fényév"}
+                one{"{0} fényév"}
+                other{"{0} fényév"}
+            }
+            meter{
+                dnam{"m"}
+            }
+            mile{
+                dnam{"mf"}
+                one{"{0} mf"}
+                other{"{0} mf"}
+            }
+            mile-scandinavian{
+                dnam{"mil"}
+                one{"{0} mil"}
+                other{"{0} mil"}
+            }
+            point{
+                dnam{"pont"}
+            }
+            solar-radius{
+                dnam{"Nap-sugár"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"Kt"}
+                one{"{0} Kt"}
+                other{"{0} Kt"}
+            }
+        }
+        power{
+            horsepower{
+                dnam{"LE"}
+                one{"{0} LE"}
+                other{"{0} LE"}
+            }
+            watt{
+                dnam{"W"}
+            }
+        }
+        pressure{
+            millibar{
+                one{"{0} mb"}
+                other{"{0} mb"}
+            }
+            millimeter-ofhg{
+                dnam{"Hgmm"}
+                one{"{0} Hgmm"}
+                other{"{0} Hgmm"}
+            }
+        }
+        speed{
+            mile-per-hour{
+                dnam{"mph"}
+                one{"{0} mph"}
+                other{"{0} mph"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+            fahrenheit{
+                one{"{0} °F"}
+                other{"{0} °F"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"Nm"}
+                one{"{0} Nm"}
+                other{"{0} Nm"}
+            }
+        }
+        volume{
+            barrel{
+                dnam{"hordó"}
+                one{"{0} hordó"}
+                other{"{0} hordó"}
+            }
+            bushel{
+                dnam{"véka"}
+                one{"{0} véka"}
+                other{"{0} véka"}
+            }
+            centiliter{
+                dnam{"cl"}
+                one{"{0} cl"}
+                other{"{0} cl"}
+            }
+            cup{
+                dnam{"cs."}
+                one{"{0} cs."}
+                other{"{0} cs."}
+            }
+            cup-metric{
+                dnam{"bg"}
+                one{"{0} bg"}
+                other{"{0} bg"}
+            }
+            deciliter{
+                dnam{"dl"}
+                one{"{0} dl"}
+                other{"{0} dl"}
+            }
+            dessert-spoon{
+                dnam{"desszertkanál"}
+                one{"{0} desszertkanál"}
+                other{"{0} desszertkanál"}
+            }
+            dessert-spoon-imperial{
+                dnam{"bir. desszertkanál"}
+                one{"{0} bir. desszertkanál"}
+                other{"{0} bir. desszertkanál"}
+            }
+            dram{
+                dnam{"fluid dram"}
+                one{"{0} fl dram"}
+                other{"{0} fl dram"}
+            }
+            drop{
+                dnam{"csepp"}
+                one{"{0} csepp"}
+                other{"{0} csepp"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                one{"{0} fl oz"}
+                other{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"bir. f. uncia"}
+                one{"{0} bir. f. uncia"}
+                other{"{0} bir. f. uncia"}
+            }
+            gallon{
+                dnam{"gal"}
+                one{"{0} gal"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            gallon-imperial{
+                dnam{"bir. gal"}
+                one{"{0} bir. gal"}
+                other{"{0} bir. gal"}
+                per{"{0}/bir. gal"}
+            }
+            hectoliter{
+                dnam{"hl"}
+                one{"{0} hl"}
+                other{"{0} hl"}
+            }
+            jigger{
+                dnam{"adagolópohár"}
+                one{"{0} adagolópohár"}
+                other{"{0} adagolópohár"}
+            }
+            liter{
+                dnam{"l"}
+            }
+            megaliter{
+                dnam{"Ml"}
+                one{"{0} Ml"}
+                other{"{0} Ml"}
+            }
+            milliliter{
+                dnam{"ml"}
+                one{"{0} ml"}
+                other{"{0} ml"}
+            }
+            pinch{
+                dnam{"csipet"}
+                one{"{0} csipet"}
+                other{"{0} csipet"}
+            }
+            quart-imperial{
+                dnam{"bir. qt"}
+                one{"{0} bir. qt"}
+                other{"{0} bir. qt"}
+            }
+            tablespoon{
+                dnam{"ek."}
+                one{"{0} ek."}
+                other{"{0} ek."}
+            }
+            teaspoon{
+                dnam{"kk."}
+                one{"{0} kk."}
+                other{"{0} kk."}
+            }
+        }
+    }
+}

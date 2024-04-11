@@ -1,0 +1,78 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+prg{
+    ExemplarCharacters{"[aā b c dḑ eē f gģ h iī j kķ l m nņ oō p q rŗ sš tț uū v w x y zž]"}
+    ExemplarCharactersIndex{"[AĀ B C DḐ EĒ F GĢ H IĪ J KĶ L M NŅ OŌ P Q RŖ SŠ TȚ UŪ V W X Y ZŽ]"}
+    ExemplarCharactersNumbers{"[  \\- ‑ , % ‰ + 0 1 2 3 4 5 6 7 8 9]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … “„ ( ) \\[ \\] \\{ \\}]"}
+    NumberElements{
+        latn{
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            symbols{
+                decimal{","}
+                group{" "}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "ankstāinan",
+                "pa pussideinan",
+            }
+            availableFormats{
+                Hmsv{"HH:mm:ss; v"}
+                hm{"h:mm a"}
+                hms{"h:mm:ss a"}
+                hmsv{"h:mm:ss a; v"}
+                yMMMd{"dd.MM 'st'. y"}
+                yMd{"d.M.y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "nadīli",
+                        "panadīli",
+                        "wisasīdis",
+                        "pussisawaiti",
+                        "ketwirtiks",
+                        "pēntniks",
+                        "sabattika",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "rags",
+                        "wassarins",
+                        "pūlis",
+                        "sakkis",
+                        "zallaws",
+                        "sīmenis",
+                        "līpa",
+                        "daggis",
+                        "sillins",
+                        "spallins",
+                        "lapkrūtis",
+                        "sallaws",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"“"}
+        alternateQuotationStart{"„"}
+        quotationEnd{"“"}
+        quotationStart{"„"}
+    }
+    measurementSystemNames{
+        UK{"brītiskan"}
+        US{"amērikaniskan"}
+        metric{"mētriskan"}
+    }
+}

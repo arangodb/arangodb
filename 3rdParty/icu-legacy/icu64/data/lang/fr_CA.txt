@@ -1,0 +1,137 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+fr_CA{
+    Languages{
+        ady{"adygué"}
+        ang{"vieil anglais"}
+        asa{"asou"}
+        bbj{"ghomala"}
+        bik{"bicol"}
+        byn{"bilen"}
+        byv{"medumba"}
+        chg{"tchagatay"}
+        chn{"chinook"}
+        ckb{"kurde central"}
+        cr{"cri"}
+        crg{"michif"}
+        crl{"cri du Nord-Est"}
+        crr{"algonquin de la Caroline"}
+        den{"slave"}
+        dgr{"tlicho"}
+        ebu{"embou"}
+        esu{"yupik central"}
+        ewo{"ewondo"}
+        frc{"cajun"}
+        frp{"franco-provençal"}
+        goh{"vieux haut-allemand"}
+        gu{"gujarati"}
+        ii{"yi de Sichuan"}
+        ken{"kenyang"}
+        kg{"kongo"}
+        kl{"kalaallisut"}
+        ks{"kashmiri"}
+        ksb{"chambala"}
+        liv{"live"}
+        lu{"luba-katanga"}
+        lzh{"chinois classique"}
+        mgh{"makhuwa-meetto"}
+        mgo{"meta’"}
+        mr{"marathe"}
+        mwr{"marwari"}
+        mwv{"mentawai"}
+        nds_NL{"bas saxon"}
+        njo{"ao naga"}
+        nmg{"kwasio"}
+        nwc{"newari classique"}
+        nyn{"nkole"}
+        oka{"okanagan"}
+        pau{"palauan"}
+        pdc{"allemand de Pennsylvanie"}
+        pdt{"bas allemand mennonite"}
+        peo{"vieux perse"}
+        pfl{"palatin"}
+        pis{"pidgin"}
+        pro{"ancien occitan"}
+        quc{"k’iche’"}
+        rar{"rarotonga"}
+        sbp{"sangu"}
+        sdh{"kurde méridional"}
+        sei{"seri"}
+        sga{"vieil irlandais"}
+        sly{"selayar"}
+        smn{"sami d’Inari"}
+        stq{"frison de Saterland"}
+        sus{"sosso"}
+        sw_CD{"swahili congolais"}
+        tru{"turoyo"}
+        tzm{"tamazight"}
+    }
+    Languages%long{
+        zh_Hans{"chinois, mandarin simplifié"}
+        zh_Hant{"chinois, mandarin traditionnel"}
+    }
+    Languages%menu{
+        ckb{"kurde central"}
+        yue{"chinois, cantonais"}
+        zh{"chinois, mandarin"}
+    }
+    Languages%short{
+        en_US{"anglais (É.-U.)"}
+    }
+    Languages%variant{
+        ckb{"sorani"}
+        ug{"ouïghour"}
+    }
+    Scripts{
+        Deva{"devanagari"}
+        Gujr{"gujarati"}
+        Hanb{"hanb"}
+        Hans{"idéogrammes han simplifiés"}
+        Hant{"idéogrammes han traditionnels"}
+        Hrkt{"syllabaires japonais"}
+        Olck{"ol chiki"}
+        Zsye{"émoji"}
+    }
+    Scripts%stand-alone{
+        Hans{"caractères chinois simplifiés"}
+        Hant{"caractères chinois traditionnels"}
+    }
+    Types{
+        collation{
+            big5han{"ordre de tri chinois traditionnel - Big5"}
+            dictionary{"ordre de tri du dictionnaire"}
+            eor{"ordre multilingue européen"}
+            gb2312han{"ordre de tri chinois simplifié - GB2312"}
+            phonebook{"ordre de tri de l’annuaire"}
+            pinyin{"ordre de tri pinyin"}
+            searchjl{"Rechercher par consonne initiale en hangeul"}
+            stroke{"ordre de tri des traits"}
+            traditional{"ordre de tri traditionnel"}
+            zhuyin{"ordre de tri zhuyin"}
+        }
+        d0{
+            fwidth{"pleine chasse"}
+            hwidth{"demi-chasse"}
+        }
+        m0{
+            bgn{"BGN (commission de toponymie des États-Unis)"}
+            ungegn{"GENUNG"}
+        }
+        numbers{
+            gujr{"chiffres gujaratis"}
+            mong{"Chiffres mongols"}
+        }
+    }
+    characterLabelPattern{
+        category-list{"{0} : {1}"}
+    }
+    codePatterns{
+        language{"langue : {0}"}
+        script{"écriture : {0}"}
+        territory{"région : {0}"}
+    }
+    localeDisplayPattern{
+        keyTypePattern{"{0} : {1}"}
+    }
+}

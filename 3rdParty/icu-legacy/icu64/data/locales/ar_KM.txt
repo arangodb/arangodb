@@ -1,0 +1,38 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ar_KM{
+    NumberElements{
+        default{"arab"}
+        default_latn{"latn"}
+    }
+    calendar{
+        gregorian{
+            DateTimePatterns{
+                "HH:mm:ss zzzz",
+                "HH:mm:ss z",
+                "HH:mm:ss",
+                "HH:mm",
+                "EEEE، d MMMM y",
+                "d MMMM y",
+                "dd‏/MM‏/y",
+                "d‏/M‏/y",
+                "{1}، {0}",
+                "{1}، {0}",
+                "{1}، {0}",
+                "{1}، {0}",
+                "{1}، {0}",
+            }
+            DateTimeSkeletons{
+                "HHmmsszzzz",
+                "HHmmssz",
+                "HHmmss",
+                "HHmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMdd",
+                "yMd",
+            }
+        }
+    }
+}

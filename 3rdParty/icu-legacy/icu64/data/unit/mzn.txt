@@ -1,0 +1,511 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mzn{
+    units{
+        duration{
+            hour{
+                other{"{0} ساعِت"}
+            }
+            minute{
+                dnam{"دقیقه"}
+                other{"{0} دقیقه"}
+            }
+            month{
+                per{"{0} ماه پیش"}
+            }
+            week{
+                per{"{0} هفته پیش"}
+            }
+            year{
+                per{"{0} سال پیش"}
+            }
+        }
+        electric{
+            ampere{
+                other{"{0} آمپر"}
+            }
+            milliampere{
+                other{"{0} میلی‌آمپر"}
+            }
+            ohm{
+                dnam{"اُهم"}
+            }
+            volt{
+                dnam{"وُلت"}
+                other{"{0} ولت"}
+            }
+        }
+        energy{
+            calorie{
+                other{"{0} کالری"}
+            }
+            joule{
+                other{"{0} ژول"}
+            }
+            kilocalorie{
+                other{"{0} کیلوکالری"}
+            }
+            kilojoule{
+                other{"{0} کیلوژول"}
+            }
+            kilowatt-hour{
+                dnam{"کیلووات بر ساعت"}
+                other{"{0} کیلووات-ساعت"}
+            }
+        }
+        frequency{
+            gigahertz{
+                other{"{0} گیگاهرتز"}
+            }
+            hertz{
+                other{"{0} هرتز"}
+            }
+            kilohertz{
+                other{"{0} کیلوهرتز"}
+            }
+            megahertz{
+                other{"{0} مگاهرتز"}
+            }
+        }
+        mass{
+            gram{
+                other{"{0} گرم"}
+                per{"{0} هر گرم دله"}
+            }
+            kilogram{
+                other{"{0} کیلوگرم"}
+                per{"{0} هر کیلوگرم دله"}
+            }
+            microgram{
+                other{"{0} میکروگرم"}
+            }
+            milligram{
+                other{"{0} میلی‌گرم"}
+            }
+            ounce{
+                other{"{0} اونس"}
+                per{"{0} هر اونس دله"}
+            }
+            ounce-troy{
+                other{"{0} تروی اونس"}
+            }
+            pound{
+                other{"{0} پوند"}
+                per{"{0} هر پوند دله"}
+            }
+            ton{
+                other{"{0} تُن"}
+            }
+            tonne{
+                dnam{"متریک تُن"}
+                other{"{0} متریک تُن"}
+            }
+        }
+        power{
+            gigawatt{
+                other{"{0} گیگاوات"}
+            }
+            horsepower{
+                other{"{0} اسب بخار"}
+            }
+            kilowatt{
+                other{"{0} کیلووات"}
+            }
+            megawatt{
+                other{"{0} مگاوات"}
+            }
+            milliwatt{
+                other{"{0} میلی‌وات"}
+            }
+            watt{
+                other{"{0} وات"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                other{"{0} کیلومتر بر ساعت"}
+            }
+            knot{
+                other{"{0} گره"}
+            }
+            meter-per-second{
+                other{"{0} متر بر ثانیه"}
+            }
+            mile-per-hour{
+                other{"{0} مایل بر ساعت"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"درجه سلسیوس"}
+                other{"{0} درجه سلسیوس"}
+            }
+            fahrenheit{
+                dnam{"فارنهایت"}
+                other{"{0} فارنهایت"}
+            }
+            kelvin{
+                dnam{"کلوین"}
+                other{"{0} کلوین"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"آکر-فوت"}
+                other{"{0} آکر-فوت"}
+            }
+            centiliter{
+                other{"{0} سانتی‌لیتر"}
+            }
+            cubic-centimeter{
+                dnam{"سانتی‌متر مکعب"}
+                other{"{0} سانتی‌متر مکعب"}
+                per{"{0} هر سانتی‌متر مکعب دله"}
+            }
+            cubic-foot{
+                dnam{"فوت مکعب"}
+                other{"{0} فوت مکعب"}
+            }
+            cubic-inch{
+                dnam{"اینچ مکعب"}
+                other{"{0} اینچ مکعب"}
+            }
+            cubic-kilometer{
+                dnam{"کیلومتر مکعب"}
+                other{"{0} کیلومتر مکعب"}
+            }
+            cubic-meter{
+                dnam{"متر مکعب"}
+                other{"{0} متر مکعب"}
+                per{"{0} هر متر مکعب دله"}
+            }
+            cubic-mile{
+                dnam{"مایل مکعب"}
+                other{"{0} مایل مکعب"}
+            }
+            cubic-yard{
+                dnam{"یارد مکعب"}
+                other{"{0} یارد مکعب"}
+            }
+            cup{
+                other{"{0} دَییل"}
+            }
+            cup-metric{
+                dnam{"متریک دَییل"}
+                other{"{0} متریک دَییل"}
+            }
+            deciliter{
+                other{"{0} دسی‌لیتر"}
+            }
+            fluid-ounce{
+                other{"{0} فلوید اونس"}
+            }
+            gallon{
+                other{"{0} گالون"}
+                per{"{0} هر گالون دله"}
+            }
+            hectoliter{
+                other{"{0} هکتولیتر"}
+            }
+            liter{
+                per{"{0} هر لیتر دله"}
+            }
+            megaliter{
+                other{"{0} مگالیتر"}
+            }
+            milliliter{
+                other{"{0} میلی‌لیتر"}
+            }
+            pint{
+                other{"{0} پاینت"}
+            }
+            pint-metric{
+                other{"{0} متریک پاینت"}
+            }
+            quart{
+                other{"{0} ربع"}
+            }
+            tablespoon{
+                other{"{0}تا کال"}
+            }
+            teaspoon{
+                other{"{0} چایی‌خاری کچه"}
+            }
+        }
+    }
+    unitsNarrow{
+        duration{
+            hour{
+                other{"{0} ساعِت"}
+            }
+        }
+        volume{
+            liter{
+                other{"{0} l"}
+            }
+        }
+    }
+    unitsShort{
+        consumption{
+            mile-per-gallon{
+                dnam{"mpg"}
+                other{"{0} mpg"}
+            }
+        }
+        digital{
+            bit{
+                dnam{"بیت"}
+                other{"{0} بیت"}
+            }
+            byte{
+                dnam{"بایت"}
+                other{"{0} بایت"}
+            }
+            gigabit{
+                dnam{"گیگابیت"}
+                other{"{0} گیگابیت"}
+            }
+            gigabyte{
+                dnam{"گیگابایت"}
+                other{"{0} گیگابایت"}
+            }
+            kilobit{
+                dnam{"کیلوبیت"}
+                other{"{0} کیلوبیت"}
+            }
+            kilobyte{
+                dnam{"کیلوبایت"}
+                other{"{0} کیلوبایت"}
+            }
+            megabit{
+                dnam{"مگابیت"}
+                other{"{0} مگابیت"}
+            }
+            megabyte{
+                dnam{"مگابایت"}
+                other{"{0} مگابایت"}
+            }
+            terabit{
+                dnam{"ترابیت"}
+                other{"{0} ترابیت"}
+            }
+            terabyte{
+                dnam{"ترابایت"}
+                other{"{0} ترابایت"}
+            }
+        }
+        duration{
+            century{
+                dnam{"قرن"}
+                other{"{0} قرن"}
+            }
+            day{
+                dnam{"روز"}
+                other{"{0} روز"}
+                per{"{0} روز"}
+            }
+            hour{
+                dnam{"ساعت"}
+                per{"{0} ساعِت"}
+            }
+            microsecond{
+                dnam{"میکروثانیه"}
+                other{"{0} میکروثانیه"}
+            }
+            millisecond{
+                dnam{"میلی‌ثانیه"}
+                other{"{0} میلی‌ثانیه"}
+            }
+            minute{
+                dnam{"دَقه"}
+                other{"{0} دَقه"}
+                per{"{0} دَقه"}
+            }
+            month{
+                dnam{"ماه"}
+                other{"{0} ماه"}
+                per{"{0} ماه"}
+            }
+            nanosecond{
+                dnam{"نانوثانیه"}
+                other{"{0} نانوثانیه"}
+            }
+            second{
+                dnam{"ثانیه"}
+                other{"{0} ثانیه"}
+                per{"{0} ثانیه"}
+            }
+            week{
+                dnam{"هفته"}
+                other{"{0} هفته"}
+                per{"{0} هفته"}
+            }
+            year{
+                dnam{"سال"}
+                other{"{0} سال"}
+                per{"{0} سال"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"آمپر"}
+            }
+            milliampere{
+                dnam{"میلی‌آمپر"}
+            }
+            ohm{
+                dnam{"اهم"}
+            }
+            volt{
+                dnam{"ولت"}
+            }
+        }
+        energy{
+            calorie{
+                dnam{"کالری"}
+            }
+            joule{
+                dnam{"ژول"}
+            }
+            kilocalorie{
+                dnam{"کیلوکالری"}
+            }
+            kilojoule{
+                dnam{"کیلوژول"}
+            }
+            kilowatt-hour{
+                dnam{"کیلووات-ساعت"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"گیگاهرتز"}
+            }
+            hertz{
+                dnam{"هرتز"}
+            }
+            kilohertz{
+                dnam{"کیلوهرتز"}
+            }
+            megahertz{
+                dnam{"مگاهرتز"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"قیراط"}
+                other{"{0} قیراط"}
+            }
+            gram{
+                dnam{"گرم"}
+            }
+            kilogram{
+                dnam{"کیلوگرم"}
+            }
+            microgram{
+                dnam{"میکروگرم"}
+            }
+            milligram{
+                dnam{"میلی‌گرم"}
+            }
+            ounce{
+                dnam{"اونس"}
+            }
+            ounce-troy{
+                dnam{"تروی اونس"}
+            }
+            pound{
+                dnam{"پوند"}
+            }
+            ton{
+                dnam{"تُن"}
+            }
+        }
+        power{
+            gigawatt{
+                dnam{"گیگاوات"}
+            }
+            horsepower{
+                dnam{"اسب‌بخار"}
+            }
+            kilowatt{
+                dnam{"کیلووات"}
+            }
+            megawatt{
+                dnam{"مگاوات"}
+            }
+            milliwatt{
+                dnam{"میلی‌وات"}
+            }
+            watt{
+                dnam{"وات"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"کیلومتر بر ساعت"}
+            }
+            knot{
+                dnam{"گره"}
+            }
+            meter-per-second{
+                dnam{"متر بر ثانیه"}
+            }
+            mile-per-hour{
+                dnam{"مایل بر ساعت"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"آکرفوت"}
+            }
+            centiliter{
+                dnam{"سانتی‌لیتر"}
+            }
+            cup{
+                dnam{"دَییل"}
+            }
+            deciliter{
+                dnam{"دسی‌لیتر"}
+            }
+            fluid-ounce{
+                dnam{"فلوید اونس"}
+                other{"{0} fl oz"}
+            }
+            gallon{
+                dnam{"گالون"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            hectoliter{
+                dnam{"هکتولیتر"}
+            }
+            liter{
+                dnam{"لیتر"}
+                other{"{0} لیتر"}
+            }
+            megaliter{
+                dnam{"مگالیتر"}
+            }
+            milliliter{
+                dnam{"میلی‌لیتر"}
+            }
+            pint{
+                dnam{"پاینت"}
+            }
+            pint-metric{
+                dnam{"متریک پاینت"}
+            }
+            quart{
+                dnam{"ربع"}
+            }
+            tablespoon{
+                dnam{"کال"}
+            }
+            teaspoon{
+                dnam{"چایی‌خاری کچه"}
+            }
+        }
+    }
+}

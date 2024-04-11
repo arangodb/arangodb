@@ -1,0 +1,928 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+mi{
+    zoneStrings{
+        "Africa:Cairo"{
+            ec{"Kairo"}
+        }
+        "Africa:Nairobi"{
+            ec{"Ngāiropi"}
+        }
+        "Africa:Tripoli"{
+            ec{"Tiriporī"}
+        }
+        "Africa:Tunis"{
+            ec{"Tūnīhi"}
+        }
+        "America:Antigua"{
+            ec{"Te Motu Nehe"}
+        }
+        "America:Barbados"{
+            ec{"Papatohe"}
+        }
+        "America:Belize"{
+            ec{"Pērihi"}
+        }
+        "America:Cambridge_Bay"{
+            ec{"Kemureti Pei"}
+        }
+        "America:Cayman"{
+            ec{"Kāmana"}
+        }
+        "America:Chicago"{
+            ec{"Hikāko"}
+        }
+        "America:Costa_Rica"{
+            ec{"Koto Rika"}
+        }
+        "America:Dominica"{
+            ec{"Tominika"}
+        }
+        "America:El_Salvador"{
+            ec{"Whakaora"}
+        }
+        "America:Goose_Bay"{
+            ec{"Kuihi Pei"}
+        }
+        "America:Grand_Turk"{
+            ec{"Tākoru Nui"}
+        }
+        "America:Grenada"{
+            ec{"Kerenata"}
+        }
+        "America:Guatemala"{
+            ec{"Kuatamāra"}
+        }
+        "America:Havana"{
+            ec{"Hawhāna"}
+        }
+        "America:Jamaica"{
+            ec{"Hemeika"}
+        }
+        "America:Los_Angeles"{
+            ec{"Ngā Anahera"}
+        }
+        "America:Martinique"{
+            ec{"Mātiniki"}
+        }
+        "America:Mexico_City"{
+            ec{"Mēhiko Tāonenui"}
+        }
+        "America:New_York"{
+            ec{"Te Āporo Nui"}
+        }
+        "America:Puerto_Rico"{
+            ec{"Peta Riko"}
+        }
+        "America:St_Johns"{
+            ec{"Hato Hone"}
+        }
+        "America:St_Lucia"{
+            ec{"Hato Ruihia"}
+        }
+        "America:St_Thomas"{
+            ec{"Hato Tamati"}
+        }
+        "America:St_Vincent"{
+            ec{"Hato Wēneti"}
+        }
+        "America:Toronto"{
+            ec{"Tāroto"}
+        }
+        "America:Vancouver"{
+            ec{"Te Whanga-a-Kiwa"}
+        }
+        "Antarctica:Davis"{
+            ec{"Rēweti"}
+        }
+        "Antarctica:Macquarie"{
+            ec{"Makoare"}
+        }
+        "Asia:Baghdad"{
+            ec{"Pākatata"}
+        }
+        "Asia:Bahrain"{
+            ec{"Pāreina"}
+        }
+        "Asia:Bangkok"{
+            ec{"Pangakoko"}
+        }
+        "Asia:Brunei"{
+            ec{"Poronai"}
+        }
+        "Asia:Dubai"{
+            ec{"Tupae"}
+        }
+        "Asia:Gaza"{
+            ec{"Kāha"}
+        }
+        "Asia:Hong_Kong"{
+            ec{"Hongipua"}
+        }
+        "Asia:Jakarta"{
+            ec{"Tiakāta"}
+        }
+        "Asia:Jerusalem"{
+            ec{"Hiruhārama"}
+        }
+        "Asia:Katmandu"{
+            ec{"Katamarū"}
+        }
+        "Asia:Kuala_Lumpur"{
+            ec{"Kuara Rūpa"}
+        }
+        "Asia:Kuwait"{
+            ec{"Kūweiti"}
+        }
+        "Asia:Macau"{
+            ec{"Makau"}
+        }
+        "Asia:Manila"{
+            ec{"Manira"}
+        }
+        "Asia:Phnom_Penh"{
+            ec{"Penoma Pena"}
+        }
+        "Asia:Qatar"{
+            ec{"Katā"}
+        }
+        "Asia:Riyadh"{
+            ec{"Riata"}
+        }
+        "Asia:Seoul"{
+            ec{"Houra"}
+        }
+        "Asia:Shanghai"{
+            ec{"Hangahai"}
+        }
+        "Asia:Singapore"{
+            ec{"Hingapoa"}
+        }
+        "Asia:Tehran"{
+            ec{"Terāna"}
+        }
+        "Asia:Tokyo"{
+            ec{"Tōkio"}
+        }
+        "Atlantic:Bermuda"{
+            ec{"Pāmura"}
+        }
+        "Atlantic:Cape_Verde"{
+            ec{"Te Kūrae Matomato"}
+        }
+        "Atlantic:South_Georgia"{
+            ec{"Hōria ki Te Tonga"}
+        }
+        "Atlantic:St_Helena"{
+            ec{"Hato Hērena"}
+        }
+        "Australia:Adelaide"{
+            ec{"Atireira"}
+        }
+        "Australia:Brisbane"{
+            ec{"Piripane"}
+        }
+        "Australia:Darwin"{
+            ec{"Tāwini"}
+        }
+        "Australia:Hobart"{
+            ec{"Hopatāone"}
+        }
+        "Australia:Melbourne"{
+            ec{"Poipiripi"}
+        }
+        "Australia:Perth"{
+            ec{"Pētia"}
+        }
+        "Australia:Sydney"{
+            ec{"Poihākena"}
+        }
+        "Etc:UTC"{
+            ls{"Wā Aonui Kōtuitui"}
+        }
+        "Etc:Unknown"{
+            ec{"Tāone Tē Mōhiotia"}
+        }
+        "Europe:Amsterdam"{
+            ec{"Pāpuniāmita"}
+        }
+        "Europe:Andorra"{
+            ec{"Anatōra"}
+        }
+        "Europe:Athens"{
+            ec{"Ātene"}
+        }
+        "Europe:Berlin"{
+            ec{"Pearīni"}
+        }
+        "Europe:Brussels"{
+            ec{"Paruhi"}
+        }
+        "Europe:Budapest"{
+            ec{"Putapēhi"}
+        }
+        "Europe:Copenhagen"{
+            ec{"Kopeheikana"}
+        }
+        "Europe:Dublin"{
+            ec{"Tapurini"}
+            ld{"Wā Airihi Arowhānui"}
+        }
+        "Europe:Helsinki"{
+            ec{"Hēriki"}
+        }
+        "Europe:Isle_of_Man"{
+            ec{"Te Moutere Mana"}
+        }
+        "Europe:Istanbul"{
+            ec{"Itapūru"}
+        }
+        "Europe:Lisbon"{
+            ec{"Rīpene"}
+        }
+        "Europe:London"{
+            ec{"Rānana"}
+            ld{"Wā Piritana Raumati"}
+        }
+        "Europe:Luxembourg"{
+            ec{"Rakapuō"}
+        }
+        "Europe:Madrid"{
+            ec{"Mātiri"}
+        }
+        "Europe:Malta"{
+            ec{"Mārata"}
+        }
+        "Europe:Monaco"{
+            ec{"Monāko"}
+        }
+        "Europe:Moscow"{
+            ec{"Mohikau"}
+        }
+        "Europe:Oslo"{
+            ec{"Ōhoro"}
+        }
+        "Europe:Paris"{
+            ec{"Parī"}
+        }
+        "Europe:Prague"{
+            ec{"Parāka"}
+        }
+        "Europe:Rome"{
+            ec{"Rōma"}
+        }
+        "Europe:San_Marino"{
+            ec{"Hana Marino"}
+        }
+        "Europe:Stockholm"{
+            ec{"Tokoomo"}
+        }
+        "Europe:Vatican"{
+            ec{"Te Poho-o-Pita"}
+        }
+        "Europe:Vienna"{
+            ec{"Whiena"}
+        }
+        "Europe:Zurich"{
+            ec{"Hūrika"}
+        }
+        "Indian:Christmas"{
+            ec{"Kirihimete"}
+        }
+        "Indian:Cocos"{
+            ec{"Kokohi"}
+        }
+        "Indian:Comoro"{
+            ec{"Komoro"}
+        }
+        "Indian:Maldives"{
+            ec{"Māratiri"}
+        }
+        "Indian:Mauritius"{
+            ec{"Marihi"}
+        }
+        "Pacific:Apia"{
+            ec{"Āpia"}
+        }
+        "Pacific:Auckland"{
+            ec{"Tāmaki Makaurau"}
+        }
+        "Pacific:Chatham"{
+            ec{"Rēkohu"}
+        }
+        "Pacific:Fiji"{
+            ec{"Whītī"}
+        }
+        "Pacific:Guam"{
+            ec{"Kuama"}
+        }
+        "Pacific:Norfolk"{
+            ec{"Nōpoke"}
+        }
+        "Pacific:Noumea"{
+            ec{"Nūmea"}
+        }
+        "Pacific:Pago_Pago"{
+            ec{"Pango Pango"}
+        }
+        "Pacific:Palau"{
+            ec{"Pārau"}
+        }
+        "Pacific:Port_Moresby"{
+            ec{"Pota Moahipi"}
+        }
+        "Pacific:Wallis"{
+            ec{"Wārihi"}
+        }
+        "meta:Afghanistan"{
+            ls{"Wā Awhekenetāna"}
+        }
+        "meta:Africa_Central"{
+            ls{"Wā o Te Puku o Āwherika"}
+        }
+        "meta:Africa_Eastern"{
+            ls{"Wā o Āwherika ki te rāwhiti"}
+        }
+        "meta:Africa_Southern"{
+            ls{"Wā Arowhānui o Āwherika ki te tonga"}
+        }
+        "meta:Africa_Western"{
+            ld{"Wā Raumati o Āwherika ki te uru"}
+            lg{"Wā o Āwherika ki te uru"}
+            ls{"Wā Arowhānui o Āwerika ki te uru"}
+        }
+        "meta:Alaska"{
+            ld{"Wā Awatea Alaska"}
+            lg{"Wā Alaska"}
+            ls{"Wā Arowhānui Alaska"}
+        }
+        "meta:Amazon"{
+            ld{"Wā Amahona Raumati"}
+            lg{"Wā Amahona"}
+            ls{"Wā Amahona Arowhānui"}
+        }
+        "meta:America_Central"{
+            ld{"Wā Awatea Waenga"}
+            lg{"Wā Waenga"}
+            ls{"Wā Arowhānui Waenga"}
+        }
+        "meta:America_Eastern"{
+            ld{"Wā Awatea Rāwhiti"}
+            lg{"Wā Rāwhiti"}
+            ls{"Wā Arowhānui Rāwhiti"}
+        }
+        "meta:America_Mountain"{
+            ld{"Wā Awatea Maunga"}
+            lg{"Wā Maunga"}
+            ls{"Wā Arowhānui Maunga"}
+        }
+        "meta:America_Pacific"{
+            ld{"Wā Awatea Kiwa"}
+            lg{"Wā Kiwa"}
+            ls{"Wā Arowhānui Kiwa"}
+        }
+        "meta:Apia"{
+            ld{"Wā Āpia Awatea"}
+            lg{"Wā Āpia"}
+            ls{"Wā Āpia Arowhānui"}
+        }
+        "meta:Arabian"{
+            ld{"Wā Arāpia Awatea"}
+            lg{"Wā Arāpia"}
+            ls{"Wā Arāpia Arowhānui"}
+        }
+        "meta:Argentina"{
+            ld{"Wā Āketina Raumati"}
+            lg{"Wā Āketina"}
+            ls{"Wā Āketina Arowhānui"}
+        }
+        "meta:Argentina_Western"{
+            ld{"Wā Āketina ki te uru Raumati"}
+            lg{"Wā Āketina ki te uru"}
+            ls{"Wā Āketina ki te uru Arowhānui"}
+        }
+        "meta:Armenia"{
+            ld{"Wā Āmenia Raumati"}
+            lg{"Wā Āmenia"}
+            ls{"Wā Āmenia Arowhānui"}
+        }
+        "meta:Atlantic"{
+            ld{"Wā Awatea Ranatiki"}
+            lg{"Wā Ranatiki"}
+            ls{"Wā Arowhānui Ranatiki"}
+        }
+        "meta:Australia_Central"{
+            ld{"Wā Ahitereiria Waenga Awatea"}
+            lg{"Wā Ahitereiria Waenga"}
+            ls{"Wā Ahitereiria Waenga Arowhānui"}
+        }
+        "meta:Australia_CentralWestern"{
+            ld{"Wā Ahitereiria Waenga-Uru Awatea"}
+            lg{"Wā Ahitereiria Waenga-Uru"}
+            ls{"Wā Ahitereiria Waenga-Uru Arowhānui"}
+        }
+        "meta:Australia_Eastern"{
+            ld{"Wā Ahitereiria ki te Rāwhiti Awatea"}
+            lg{"Wā Ahitereiria ki te Rāwhiti"}
+            ls{"Wā Ahitereiria ki te Rāwhiti Arowhānui"}
+        }
+        "meta:Australia_Western"{
+            ld{"Wā Ahitereiria ki te Uru Awatea"}
+            lg{"Wā Ahitereiria ki te Uru"}
+            ls{"Wā Ahitereiria ki te Uru Arowhānui"}
+        }
+        "meta:Azerbaijan"{
+            ld{"Wā Atepaihānia Raumati"}
+            lg{"Wā Atepaihānia"}
+            ls{"Wā Atepaihānia Arowhānui"}
+        }
+        "meta:Azores"{
+            ld{"Wā Azores Raumati"}
+            lg{"Wā Azores"}
+            ls{"Wā Azores Arowhānui"}
+        }
+        "meta:Bangladesh"{
+            ld{"Wā Pākaratēhi Raumati"}
+            lg{"Wā Pākaratēhi"}
+            ls{"Wā Pākaratēhi Arowhānui"}
+        }
+        "meta:Bhutan"{
+            ls{"Wā Pūtana"}
+        }
+        "meta:Bolivia"{
+            ls{"Wā Poriwia"}
+        }
+        "meta:Brasilia"{
+            ld{"Wā Parīhia Raumati"}
+            lg{"Wā Parīhia"}
+            ls{"Wā Parīhia Arowhānui"}
+        }
+        "meta:Brunei"{
+            ls{"Wā Poronai Darussalam"}
+        }
+        "meta:Cape_Verde"{
+            ld{"Wā Raumati o Te Kūrae Matomato"}
+            lg{"Wā o Te Kūrae Matomato"}
+            ls{"Wā Arowhānui o Te Kūrae Matomato"}
+        }
+        "meta:Chamorro"{
+            ls{"Wā Chamorro Arowhānui"}
+        }
+        "meta:Chatham"{
+            ld{"Wā Rēkohu Awatea"}
+            lg{"Wā Rēkohu"}
+            ls{"Wā Rēkohu Arowhānui"}
+        }
+        "meta:Chile"{
+            ld{"Wā Hiri Raumati"}
+            lg{"Wā Hiri"}
+            ls{"Wā Hiri Arowhānui"}
+        }
+        "meta:China"{
+            ld{"Wā Haina Awatea"}
+            lg{"Wā Haina"}
+            ls{"Wā Haina Arowhānui"}
+        }
+        "meta:Choibalsan"{
+            ld{"Wā Choibalsan Raumati"}
+            lg{"Wā Choibalsan"}
+            ls{"Wā Choibalsan Arowhānui"}
+        }
+        "meta:Christmas"{
+            ls{"Wā o Te Moutere Kirihimete"}
+        }
+        "meta:Cocos"{
+            ls{"Wā o Ngā Moutere Kokohi"}
+        }
+        "meta:Colombia"{
+            ld{"Wā Koromōpia Raumati"}
+            lg{"Wā Koromōpia"}
+            ls{"Wā Koromōpia Arowhānui"}
+        }
+        "meta:Cook"{
+            ld{"Wā Kuki Airani Raumati Haurua"}
+            lg{"Wā Kuki Airani"}
+            ls{"Wā Kuki Airani Arowhānui"}
+        }
+        "meta:Cuba"{
+            ld{"Wā Awatea Kiupa"}
+            lg{"Wā Kiupa"}
+            ls{"Wā Arowhānui Kiupa"}
+        }
+        "meta:Davis"{
+            ls{"Wā Rēweti"}
+        }
+        "meta:DumontDUrville"{
+            ls{"Wā Dumont-d’Urville"}
+        }
+        "meta:East_Timor"{
+            ls{"Wā o Timoa ki te Rāwhiti"}
+        }
+        "meta:Easter"{
+            ld{"Wā ki te Moutere Aranga Raumati"}
+            lg{"Wā ki te Moutere o Aranga"}
+            ls{"Wā ki te Moutere Aranga Arowhānui"}
+        }
+        "meta:Ecuador"{
+            ls{"Wā Ekuatoa"}
+        }
+        "meta:Europe_Central"{
+            ld{"Wā Raumati Uropi Waenga"}
+            lg{"Wā Uropi Waenga"}
+            ls{"Wā Arowhānui Uropi Waenga"}
+        }
+        "meta:Europe_Eastern"{
+            ld{"Wā Raumati Uropi Rāwhiti"}
+            lg{"Wā Uropi Rāwhiti"}
+            ls{"Wā Arowhānui Uropi Rāwhiti"}
+        }
+        "meta:Europe_Further_Eastern"{
+            ls{"Wā Ūropi ki te rāwhiti rawa"}
+        }
+        "meta:Europe_Western"{
+            ld{"Wā Raumati Uropi Uru"}
+            lg{"Wā Uropi Uru"}
+            ls{"Wā Arowhānui Uropi Uru"}
+        }
+        "meta:Falkland"{
+            ld{"Wā ki Ngā Motu Whākana Raumati"}
+            lg{"Wā ki Ngā Motu Whākana"}
+            ls{"Wā ki Ngā Motu Whākana Arowhānui"}
+        }
+        "meta:Fiji"{
+            ld{"Wā Whītī Raumati"}
+            lg{"Wā Whītī"}
+            ls{"Wā Whītī Arowhānui"}
+        }
+        "meta:French_Guiana"{
+            ls{"Wā Kiāna Wīwī"}
+        }
+        "meta:French_Southern"{
+            ls{"Wā Wīwī o Te Tonga me te Kōpakatanga ki te Tonga"}
+        }
+        "meta:GMT"{
+            ls{"Wā Toharite Kiriwīti"}
+        }
+        "meta:Galapagos"{
+            ls{"Wā Galapagos"}
+        }
+        "meta:Gambier"{
+            ls{"Wā Gambier"}
+        }
+        "meta:Georgia"{
+            ld{"Wā Hōria Raumati"}
+            lg{"Wā Hōria"}
+            ls{"Wā Hōria Arowhānui"}
+        }
+        "meta:Gilbert_Islands"{
+            ls{"Wā Kiripati"}
+        }
+        "meta:Greenland_Eastern"{
+            ld{"Wā Raumati o Whenuakāriki ki te rāwhiti"}
+            lg{"Wā Whenuakāriki ki te rāwhiti"}
+            ls{"Wā Arowhānui o Whenuakāriki ki te rāwhiti"}
+        }
+        "meta:Greenland_Western"{
+            ld{"Wā Raumati o Whenuakāriki ki te uru"}
+            lg{"Wā Whenuakāriki ki te uru"}
+            ls{"Wā Arowhānui o Whenuakāriki ki te uru"}
+        }
+        "meta:Gulf"{
+            ls{"Wā Whanga Arowhānui"}
+        }
+        "meta:Guyana"{
+            ls{"Wā Kaiana"}
+        }
+        "meta:Hawaii_Aleutian"{
+            ld{"Wā Awatea Hawaii-Aleutian"}
+            lg{"Wā Hawaii-Aleutian"}
+            ls{"Wā Arowhānui Hawaii-Aleutian"}
+        }
+        "meta:Hong_Kong"{
+            ld{"Wā Hongipua Raumati"}
+            lg{"Wā Hongipua"}
+            ls{"Wā Hongipua Arowhānui"}
+        }
+        "meta:Hovd"{
+            ld{"Wā Hovd Raumati"}
+            lg{"Wā Hovd"}
+            ls{"Wā Hovd Arowhānui"}
+        }
+        "meta:India"{
+            ls{"Wā Īnia"}
+        }
+        "meta:Indian_Ocean"{
+            ls{"Wā o Te Moana Īnia"}
+        }
+        "meta:Indochina"{
+            ls{"Wā Īniahaina"}
+        }
+        "meta:Indonesia_Central"{
+            ls{"Wā Initonīhia Waenga"}
+        }
+        "meta:Indonesia_Eastern"{
+            ls{"Wā Initonīhia ki te rāwhiti"}
+        }
+        "meta:Indonesia_Western"{
+            ls{"Wā Initonīhia ki te uru"}
+        }
+        "meta:Iran"{
+            ld{"Wā Irāna Awatea"}
+            lg{"Wā Irāna"}
+            ls{"Wā Irāna Arowhānui"}
+        }
+        "meta:Irkutsk"{
+            ld{"Wā Irkutsk Raumati"}
+            lg{"Wā Irkutsk"}
+            ls{"Wā Irkutsk Arowhānui"}
+        }
+        "meta:Israel"{
+            ld{"Wā Iharaira Awatea"}
+            lg{"Wā Iharaira"}
+            ls{"Wā Iharaira Arowhānui"}
+        }
+        "meta:Japan"{
+            ld{"Wā Hapani Awatea"}
+            lg{"Wā Hapani"}
+            ls{"Wā Hapani Arowhānui"}
+        }
+        "meta:Kazakhstan_Eastern"{
+            ls{"Wā Katatānga ki te Rāwhiti"}
+        }
+        "meta:Kazakhstan_Western"{
+            ls{"Wā Katatānga ki te Uru"}
+        }
+        "meta:Korea"{
+            ld{"Wā Kōrea Awatea"}
+            lg{"Wā Kōrea"}
+            ls{"Wā Kōrea Arowhānui"}
+        }
+        "meta:Kosrae"{
+            ls{"Wā Kosrae"}
+        }
+        "meta:Krasnoyarsk"{
+            ld{"Wā Krasnoyarsk Raumati"}
+            lg{"Wā Krasnoyarsk"}
+            ls{"Wā Krasnoyarsk Arowhānui"}
+        }
+        "meta:Kyrgystan"{
+            ls{"Wā Kikitānga"}
+        }
+        "meta:Line_Islands"{
+            ls{"Wā o Ngā Mouter o Te Raina"}
+        }
+        "meta:Lord_Howe"{
+            ld{"Wā Lord Howe Awatea"}
+            lg{"Wā Lord Howe"}
+            ls{"Wā Lord Howe Arowhānui"}
+        }
+        "meta:Magadan"{
+            ld{"Wā Magadan Raumati"}
+            lg{"Wā Magadan"}
+            ls{"Wā Magadan Arowhānui"}
+        }
+        "meta:Malaysia"{
+            ls{"Wā Mareia"}
+        }
+        "meta:Maldives"{
+            ls{"Wā Māratiri"}
+        }
+        "meta:Marquesas"{
+            ls{"Wā Marquesas"}
+        }
+        "meta:Marshall_Islands"{
+            ls{"Wā o Ngā Motu Māhara"}
+        }
+        "meta:Mauritius"{
+            ld{"Wā Marihi Raumati"}
+            lg{"Wā Marihi"}
+            ls{"Wā Marihi Arowhānui"}
+        }
+        "meta:Mawson"{
+            ls{"Wā Mawson"}
+        }
+        "meta:Mexico_Pacific"{
+            ld{"Wā Awatea Mēhiko Kiwa"}
+            lg{"Wā Mēhiko Kiwa"}
+            ls{"Wā Arowhānui Mēhiko Kiwa"}
+        }
+        "meta:Mongolia"{
+            ld{"Wā Ulaanbaatar Raumati"}
+            lg{"Wā Ulaanbaatar"}
+            ls{"Wā Ulaanbaatar Arowhānui"}
+        }
+        "meta:Moscow"{
+            ld{"Wā Mohikau Raumati"}
+            lg{"Wā Mohikau"}
+            ls{"Wā Mohikau Arowhānui"}
+        }
+        "meta:Myanmar"{
+            ls{"Wā Pēma"}
+        }
+        "meta:Nauru"{
+            ls{"Wā Nauru"}
+        }
+        "meta:Nepal"{
+            ls{"Wā Nepōra"}
+        }
+        "meta:New_Caledonia"{
+            ld{"Wā Whenua Kanaki Raumati"}
+            lg{"Wā Whenua Kanaki"}
+            ls{"Wā Whenua Kanaki Arowhānui"}
+        }
+        "meta:New_Zealand"{
+            ld{"Wā Aotearoa Awatea"}
+            lg{"Wā Aotearoa"}
+            ls{"Wā Aotearoa Arowhānui"}
+        }
+        "meta:Newfoundland"{
+            ld{"Wā Awatea Newfoundland"}
+            lg{"Wā Newfoundland"}
+            ls{"Wā Arowhānui Newfoundland"}
+        }
+        "meta:Niue"{
+            ls{"Wā Niue"}
+        }
+        "meta:Norfolk"{
+            ld{"Wā o Te Moutere Nōpoke Awatea"}
+            lg{"Wā o Te Moutere Nōpoke"}
+            ls{"Wā o Te Moutere Nōpoke Arowhānui"}
+        }
+        "meta:Noronha"{
+            ld{"Wā Fernando de Noronha Raumati"}
+            lg{"Wā Fernando de Noronha"}
+            ls{"Wā Fernando de Noronha Arowhānui"}
+        }
+        "meta:Novosibirsk"{
+            ld{"Wā Novosibirsk Raumati"}
+            lg{"Wā Novosibirsk"}
+            ls{"Wā Novosibirsk Arowhānui"}
+        }
+        "meta:Omsk"{
+            ld{"Wā Omsk Raumati"}
+            lg{"Wā Omsk"}
+            ls{"Wā Omsk Arowhānui"}
+        }
+        "meta:Pakistan"{
+            ld{"Wā Pakitāne Raumati"}
+            lg{"Wā Pakitāne"}
+            ls{"Wā Pakitāne Arowhānui"}
+        }
+        "meta:Palau"{
+            ls{"Wā Pārau"}
+        }
+        "meta:Papua_New_Guinea"{
+            ls{"Wā Papua Nūkini"}
+        }
+        "meta:Paraguay"{
+            ld{"Wā Parakai Raumati"}
+            lg{"Wā Parakai"}
+            ls{"Wā Parakai Arowhānui"}
+        }
+        "meta:Peru"{
+            ld{"Wā Peru Raumati"}
+            lg{"Wā Peru"}
+            ls{"Wā Peru Arowhānui"}
+        }
+        "meta:Philippines"{
+            ld{"Wā Piripīni Raumati"}
+            lg{"Wā Piripīni"}
+            ls{"Wā Piripīni Arowhānui"}
+        }
+        "meta:Phoenix_Islands"{
+            ls{"Wā o Ngā Moutere Phoenix"}
+        }
+        "meta:Pierre_Miquelon"{
+            ld{"Wā Awatea o St. Pierre me Miquelon"}
+            lg{"Wā St. Pierre me Miquelon"}
+            ls{"Wā Arowhānui o St. Pierre me Miquelon"}
+        }
+        "meta:Pitcairn"{
+            ls{"Wā Pitcairn"}
+        }
+        "meta:Ponape"{
+            ls{"Wā Ponape"}
+        }
+        "meta:Pyongyang"{
+            ls{"Wā Pyongyang"}
+        }
+        "meta:Reunion"{
+            ls{"Wā Reunion"}
+        }
+        "meta:Rothera"{
+            ls{"Wā Rothera"}
+        }
+        "meta:Sakhalin"{
+            ld{"Wā Sakhalin Raumati"}
+            lg{"Wā Sakhalin"}
+            ls{"Wā Sakhalin Arowhānui"}
+        }
+        "meta:Samoa"{
+            ld{"Wā Hāmoa Awatea"}
+            lg{"Wā Hāmoa"}
+            ls{"Wā Hāmoa Arowhānui"}
+        }
+        "meta:Seychelles"{
+            ls{"Wā Heikere"}
+        }
+        "meta:Singapore"{
+            ls{"Wā Hingapoa Arowhānui"}
+        }
+        "meta:Solomon"{
+            ls{"Wā o Ngā Motu Horomona"}
+        }
+        "meta:South_Georgia"{
+            ls{"Wā Hōria ki te Tonga"}
+        }
+        "meta:Suriname"{
+            ls{"Wā Huriname"}
+        }
+        "meta:Syowa"{
+            ls{"Wā Syowa"}
+        }
+        "meta:Tahiti"{
+            ls{"Wā Tahiti"}
+        }
+        "meta:Taipei"{
+            ld{"Wā Taipei Awatea"}
+            lg{"Wā Taipei"}
+            ls{"Wā Taipei Arowhānui"}
+        }
+        "meta:Tajikistan"{
+            ls{"Wā Takiritānga"}
+        }
+        "meta:Tokelau"{
+            ls{"Wā Tokerau"}
+        }
+        "meta:Tonga"{
+            ld{"Wā Tonga Raumati"}
+            lg{"Wā Tonga"}
+            ls{"Wā Tonga Arowhānui"}
+        }
+        "meta:Truk"{
+            ls{"Wā Chuuk"}
+        }
+        "meta:Turkmenistan"{
+            ld{"Wā Tukumanatānga Raumati"}
+            lg{"Wā Tukumanatānga"}
+            ls{"Wā Tukumanatānga Arowhānui"}
+        }
+        "meta:Tuvalu"{
+            ls{"Wā Tūwaru"}
+        }
+        "meta:Uruguay"{
+            ld{"Wā Urukoi Raumati"}
+            lg{"Wā Urukoi"}
+            ls{"Wā Urukoi Arowhānui"}
+        }
+        "meta:Uzbekistan"{
+            ld{"Wā Uhipeketāne Raumati"}
+            lg{"Wā Uhipeketāne"}
+            ls{"Wā Uhipeketāne Arowhānui"}
+        }
+        "meta:Vanuatu"{
+            ld{"Wā Whenuatū Raumati"}
+            lg{"Wā Whenuatū"}
+            ls{"Wā Whenuatū Arowhānui"}
+        }
+        "meta:Venezuela"{
+            ls{"Wā Penehūera"}
+        }
+        "meta:Vladivostok"{
+            ld{"Wā Vladivostok Raumati"}
+            lg{"Wā Vladivostok"}
+            ls{"Wā Vladivostok Arowhānui"}
+        }
+        "meta:Volgograd"{
+            ld{"Wā Volgograd Raumati"}
+            lg{"Wā Volgograd"}
+            ls{"Wā Volgograd Arowhānui"}
+        }
+        "meta:Vostok"{
+            ls{"Wā Vostok"}
+        }
+        "meta:Wake"{
+            ls{"Wā o Te Motu Wake"}
+        }
+        "meta:Wallis"{
+            ls{"Wā Wārihi me Whutuna"}
+        }
+        "meta:Yakutsk"{
+            ld{"Wā Yakutsk Raumati"}
+            lg{"Wā Yakutsk"}
+            ls{"Wā Yakutsk Arowhānui"}
+        }
+        "meta:Yekaterinburg"{
+            ld{"Wā Yekaterinburg Raumati"}
+            lg{"Wā Yekaterinburg"}
+            ls{"Wā Yekaterinburg Arowhānui"}
+        }
+        "meta:Yukon"{
+            ls{"Wā Yukon"}
+        }
+        regionFormat{"{0} Wā"}
+        regionFormatDaylight{"{0} Wā Awatea"}
+        regionFormatStandard{"{0} Wā Arowhānui"}
+    }
+}

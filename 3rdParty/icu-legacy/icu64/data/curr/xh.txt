@@ -1,0 +1,1277 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+xh{
+    Currencies{
+        AED{
+            "AED",
+            "I-Dirham yase-UAE",
+        }
+        AFN{
+            "AFN",
+            "I-Afghani yase-Afghanistan",
+        }
+        ALL{
+            "ALL",
+            "I-Lek yase-Albania",
+        }
+        AMD{
+            "AMD",
+            "I-Dram yase Armenia",
+        }
+        ANG{
+            "ANG",
+            "Netherlands Antillean Guilder",
+        }
+        AOA{
+            "AOA",
+            "I-Kwanza yase-Angola",
+        }
+        ARS{
+            "ARS",
+            "IPeso yase-Argentina",
+        }
+        AUD{
+            "A$",
+            "IDola yase-Australia",
+        }
+        AWG{
+            "AWG",
+            "Aruban Florin",
+        }
+        AZN{
+            "AZN",
+            "I-Manat yase-Azerbeijan",
+        }
+        BAM{
+            "BAM",
+            "I-Convertible Mark yaseBosnia-Herzegovina",
+        }
+        BBD{
+            "BBD",
+            "Barbadian Dollar",
+        }
+        BDT{
+            "BDT",
+            "I-Taka yaseBangladesh",
+        }
+        BGN{
+            "BGN",
+            "I-Lev yaseBulgaria",
+        }
+        BHD{
+            "BHD",
+            "I-Dinar yaseBahrain",
+        }
+        BIF{
+            "BIF",
+            "I-Franc yaseBurundi",
+        }
+        BMD{
+            "BMD",
+            "Bermudan Dollar",
+        }
+        BND{
+            "BND",
+            "IDola yaseBrunei",
+        }
+        BOB{
+            "BOB",
+            "I-Boliviano yaseBolivia",
+        }
+        BRL{
+            "R$",
+            "I-Real yaseBrazil",
+        }
+        BSD{
+            "BSD",
+            "Bahamian Dollar",
+        }
+        BTN{
+            "BTN",
+            "I-Ngultrum yaseBhutan",
+        }
+        BWP{
+            "BWP",
+            "I-Pula yaseBotswana",
+        }
+        BYN{
+            "BYN",
+            "I-Ruble yaseBelarus",
+        }
+        BZD{
+            "BZD",
+            "Belize Dollar",
+        }
+        CAD{
+            "CA$",
+            "Canadian Dollar",
+        }
+        CDF{
+            "CDF",
+            "I-Franc yaseCongo",
+        }
+        CHF{
+            "CHF",
+            "I-Franc yaseSwitzerland",
+        }
+        CLP{
+            "CLP",
+            "I-Peso yaseChile",
+        }
+        CNH{
+            "I-CNH",
+            "I-Chinese Yuan (offshore)",
+        }
+        CNY{
+            "CN¥",
+            "I-Yuan yaseTshayina",
+        }
+        COP{
+            "COP",
+            "I-Peso yaseColombia",
+        }
+        CRC{
+            "CRC",
+            "Costa Rican Colón",
+        }
+        CUC{
+            "CUC",
+            "Cuban Convertible Peso",
+        }
+        CUP{
+            "CUP",
+            "Cuban Peso",
+        }
+        CVE{
+            "CVE",
+            "Cape Verdean Escudo",
+        }
+        CZK{
+            "CZK",
+            "I-Koruna yaseCzech",
+        }
+        DJF{
+            "DJF",
+            "I-Franc yaseDjibouti",
+        }
+        DKK{
+            "DKK",
+            "I-Krone yaseDenmark",
+        }
+        DOP{
+            "DOP",
+            "Dominican Peso",
+        }
+        DZD{
+            "DZD",
+            "I-Dinar yase-Algeria",
+        }
+        EGP{
+            "EGP",
+            "IPonti yase-Egypt",
+        }
+        ERN{
+            "ERN",
+            "I-Nakfa yase-Eritria",
+        }
+        ETB{
+            "ETB",
+            "I-Birr yase-Ethopia",
+        }
+        EUR{
+            "€",
+            "I-Euro",
+        }
+        FJD{
+            "FJD",
+            "IDola yaseFiji",
+        }
+        FKP{
+            "FKP",
+            "Iponti yaseFalkland Islands",
+        }
+        GBP{
+            "£",
+            "IPonti yaseBritane",
+        }
+        GEL{
+            "GEL",
+            "I-Lari yaseGeorgia",
+        }
+        GHS{
+            "GHS",
+            "I-Cedi yaseGhana",
+        }
+        GIP{
+            "GIP",
+            "IPonti yaseGilbraltar",
+        }
+        GMD{
+            "GMD",
+            "I-Dalasi yaseGambia",
+        }
+        GNF{
+            "GNF",
+            "I-Franc yaseGuinea",
+        }
+        GTQ{
+            "GTQ",
+            "Guatemalan Quetzal",
+        }
+        GYD{
+            "GYD",
+            "IDola yaseGuyana",
+        }
+        HKD{
+            "HK$",
+            "IDola yaseHong Kong",
+        }
+        HNL{
+            "HNL",
+            "Honduran Lempira",
+        }
+        HRK{
+            "HRK",
+            "I-Kuna yaseCrotia",
+        }
+        HTG{
+            "HTG",
+            "Haitian Gourde",
+        }
+        HUF{
+            "HUF",
+            "I-Forint yaseHungay",
+        }
+        IDR{
+            "IDR",
+            "I-Rupiah yase-Indonesia",
+        }
+        ILS{
+            "₪",
+            "I-New Shekel yase-Israel",
+        }
+        INR{
+            "₹",
+            "I-Rupee yase-Indiya",
+        }
+        IQD{
+            "IQD",
+            "I-Dinar yase-Iraq",
+        }
+        IRR{
+            "IRR",
+            "I-Rial yase-Iran",
+        }
+        ISK{
+            "ISK",
+            "I-Króna yase-Iceland",
+        }
+        JMD{
+            "JMD",
+            "Jamaican Dollar",
+        }
+        JOD{
+            "JOD",
+            "I-Dinar yaseJordan",
+        }
+        JPY{
+            "¥",
+            "I-Yen yaseJapan",
+        }
+        KES{
+            "KES",
+            "I-Shilling yaseKenya",
+        }
+        KGS{
+            "KGS",
+            "I-Som yaseKyrgystan",
+        }
+        KHR{
+            "KHR",
+            "I-Riel yaseCambodia",
+        }
+        KMF{
+            "KMF",
+            "I-Franc yaseComoros",
+        }
+        KPW{
+            "KPW",
+            "I-Won yaseNorth Korea",
+        }
+        KRW{
+            "₩",
+            "I-Won yaseSouth Korea",
+        }
+        KWD{
+            "KWD",
+            "I-Dinar yaseKuwait",
+        }
+        KYD{
+            "KYD",
+            "Cayman Islands Dollar",
+        }
+        KZT{
+            "KZT",
+            "I-Tenge yaseKhazakhstan",
+        }
+        LAK{
+            "LAK",
+            "I-Kip yaseLaos",
+        }
+        LBP{
+            "LBP",
+            "IPonti yaseLebanon",
+        }
+        LKR{
+            "LKR",
+            "I-Rupee yaseSri Lanka",
+        }
+        LRD{
+            "LRD",
+            "IDola yaseLiberia",
+        }
+        LSL{
+            "LSL",
+            "I-Loti yaseLesotho",
+        }
+        LYD{
+            "LYD",
+            "Libyan Dinar",
+        }
+        MAD{
+            "MAD",
+            "Moroccan Dirham",
+        }
+        MDL{
+            "MDL",
+            "Moldovan Leu",
+        }
+        MGA{
+            "MGA",
+            "I-Ariary yaseMadagascar",
+        }
+        MKD{
+            "MKD",
+            "Macedonian Denar",
+        }
+        MMK{
+            "MMK",
+            "I-Kyat yaseMyanmar",
+        }
+        MNT{
+            "MNT",
+            "I-Tugrik yaseMongolia",
+        }
+        MOP{
+            "MOP",
+            "I-Pataca yaseMacao",
+        }
+        MRU{
+            "MRU",
+            "I-Ouguiya yaseMauritania",
+        }
+        MUR{
+            "MUR",
+            "I-Rupee yaseMauritius",
+        }
+        MVR{
+            "MVR",
+            "I-Rufiyaa yaseMaldives",
+        }
+        MWK{
+            "MWK",
+            "I-Kwacha yaseMalawi",
+        }
+        MXN{
+            "MX$",
+            "Mexican Peso",
+        }
+        MYR{
+            "MYR",
+            "I-Ringgit yaseMalysia",
+        }
+        MZN{
+            "MZN",
+            "I-Metical yaseMozambique",
+        }
+        NAD{
+            "NAD",
+            "IDola yaseNamibia",
+        }
+        NGN{
+            "NGN",
+            "I-Naira yaseNigeria",
+        }
+        NIO{
+            "NIO",
+            "Nicaraguan Córdoba",
+        }
+        NOK{
+            "NOK",
+            "I-Krone yaseNorway",
+        }
+        NPR{
+            "NPR",
+            "I-Rupee yaseNepal",
+        }
+        NZD{
+            "NZ$",
+            "IDola yaseNew Zealand",
+        }
+        OMR{
+            "OMR",
+            "I-Rial yase-Oman",
+        }
+        PAB{
+            "PAB",
+            "Panamanian Balboa",
+        }
+        PEN{
+            "PEN",
+            "I-Sol yasePeruvia",
+        }
+        PGK{
+            "PGK",
+            "I-Kina yasePapua New Guinea",
+        }
+        PHP{
+            "₱",
+            "I-Peso yasePhilippines",
+        }
+        PKR{
+            "PKR",
+            "I-Rupee yasePakistan",
+        }
+        PLN{
+            "PLN",
+            "Polish Zloty",
+        }
+        PYG{
+            "PYG",
+            "I-Guarani yaseParaguay",
+        }
+        QAR{
+            "QAR",
+            "I-Riyal yaseQatar",
+        }
+        RON{
+            "RON",
+            "I-Leu yaseRomania",
+        }
+        RSD{
+            "RSD",
+            "I-Dinar yaseSerbia",
+        }
+        RUB{
+            "RUB",
+            "I-Ruble yaseRashiya",
+        }
+        RWF{
+            "RWF",
+            "I-Franc yaseRwanda",
+        }
+        SAR{
+            "SAR",
+            "I-Riyal yaseSaudi",
+        }
+        SBD{
+            "SBD",
+            "IDola yaseSolomon Islands",
+        }
+        SCR{
+            "SCR",
+            "I-Rupee yaseSeychelles",
+        }
+        SDG{
+            "SDG",
+            "Sudanese Pound",
+        }
+        SEK{
+            "SEK",
+            "I-Krona yaseSweden",
+        }
+        SGD{
+            "SGD",
+            "IDola yaseSingapore",
+        }
+        SHP{
+            "SHP",
+            "IPonti yaseSt. Helena",
+        }
+        SLE{
+            "SLE",
+            "I-Loeone yaseSierra Leone",
+        }
+        SLL{
+            "SLL",
+            "I-Loeone yaseSierra Leone (1964—2022)",
+        }
+        SOS{
+            "SOS",
+            "I-Shilling yaseSomalia",
+        }
+        SRD{
+            "SRD",
+            "IDola yaseSuriname",
+        }
+        SSP{
+            "SSP",
+            "IPonti yaseSouth Sudan",
+        }
+        STN{
+            "STN",
+            "I-Dobra yaseSão Tomé & Príncipe",
+        }
+        SYP{
+            "SYP",
+            "IPonti yaseSiriya",
+        }
+        SZL{
+            "SZL",
+            "I-Lilangeni yase-Eswatini",
+        }
+        THB{
+            "THB",
+            "I-Baht yaseThailand",
+        }
+        TJS{
+            "TJS",
+            "I-Somoni yaseTajikistan",
+        }
+        TMT{
+            "TMT",
+            "I-Manat yaseTurkmenistan",
+        }
+        TND{
+            "TND",
+            "Tunisian Dinar",
+        }
+        TOP{
+            "TOP",
+            "I-Paʻanga yaseTonga",
+        }
+        TRY{
+            "TRY",
+            "I-Lira yaseTurkey",
+        }
+        TTD{
+            "TTD",
+            "Trinidad & Tobago Dollar",
+        }
+        TWD{
+            "NT$",
+            "IDola yaseNew Taiwan",
+        }
+        TZS{
+            "TZS",
+            "I-Shilling yaseTanzania",
+        }
+        UAH{
+            "UAH",
+            "I-Hryvnia yase-Ukraine",
+        }
+        UGX{
+            "UGX",
+            "I-Shilling yase-Uganda",
+        }
+        USD{
+            "$",
+            "US Dollar",
+        }
+        UYU{
+            "UYU",
+            "I-Peso yase-Uruguay",
+        }
+        UZS{
+            "UZS",
+            "I-Som yase-Uzbekistan",
+        }
+        VES{
+            "VES",
+            "I-Bolívar yaseVenezuela",
+        }
+        VND{
+            "₫",
+            "I-Dong yaseVietnam",
+        }
+        VUV{
+            "VUV",
+            "I-Vatu yaseVanuatu",
+        }
+        WST{
+            "WST",
+            "I-Tala yaseSamoa",
+        }
+        XAF{
+            "FCFA",
+            "Central African CFA Franc",
+        }
+        XCD{
+            "EC$",
+            "East Caribbean Dollar",
+        }
+        XOF{
+            "F CFA",
+            "West African CFA Franc",
+        }
+        XPF{
+            "CFPF",
+            "I-Franc yaseCFP",
+        }
+        XXX{
+            "¤",
+            "Ikharensi Engaziwayo",
+        }
+        YER{
+            "YER",
+            "I-Rial yaseYemen",
+        }
+        ZAR{
+            "R",
+            "IRandi yaseMzantsi Afrika",
+        }
+        ZMW{
+            "ZMW",
+            "I-Kwacha yaseZambi",
+        }
+    }
+    CurrencyPlurals{
+        AED{
+            one{"I-dirham yase-UAE"}
+            other{"Ii-dirham zase-UAE"}
+        }
+        AFN{
+            one{"I-Afghani yase-Afghanistan"}
+            other{"Ii-Afghani zase-Afghanistan"}
+        }
+        ALL{
+            one{"I-lek yase-Albania"}
+            other{"Ii-lekë zase-Albania"}
+        }
+        AMD{
+            one{"I-dram yase-Armenia"}
+            other{"Ii-dram zase-Armenia"}
+        }
+        ANG{
+            one{"Netherlands Antillean guilder"}
+            other{"Netherlands Antillean guilders"}
+        }
+        AOA{
+            one{"I-kwanza yase-Angola"}
+            other{"Ii-kwanza zase-Angola"}
+        }
+        ARS{
+            one{"Ipeso yase-Argentina"}
+            other{"Iipeso zase-Argentina"}
+        }
+        AUD{
+            one{"Idola yase-Australia"}
+            other{"Iidola zase-Australia"}
+        }
+        AWG{
+            one{"Aruban florin"}
+            other{"Aruban florin"}
+        }
+        AZN{
+            one{"I-manat yase-Azerbaijan"}
+            other{"Ii-manat zase-Azerbaijan"}
+        }
+        BAM{
+            one{"I-convertible mark yaseBosnia-Herzegovina"}
+            other{"Ii-convertible mark zaseBosnia-Herzegovina"}
+        }
+        BBD{
+            one{"Barbadian dollar"}
+            other{"Barbadian dollars"}
+        }
+        BDT{
+            one{"I-taka yaseBangladesh"}
+            other{"Ii-taka yaseBanglaesh"}
+        }
+        BGN{
+            one{"I-lev yaseBulgaria"}
+            other{"Ii-leva zaseBulgaria"}
+        }
+        BHD{
+            one{"I-dinar yaseBahrain"}
+            other{"Ii-dinar zaseBahrain"}
+        }
+        BIF{
+            one{"I-franc yaseBurundi"}
+            other{"Ii-franc zaseBurundi"}
+        }
+        BMD{
+            one{"Bermudan dollar"}
+            other{"Bermudan dollars"}
+        }
+        BND{
+            one{"Idola yaseBrunei"}
+            other{"Iidola zaseBrunei"}
+        }
+        BOB{
+            one{"I-boliviano yaseBolivia"}
+            other{"I-bolivianos yaseBolivia"}
+        }
+        BRL{
+            one{"I-real yaseBrazil"}
+            other{"Ii-reals zaseBrazil"}
+        }
+        BSD{
+            one{"Bahamian dollar"}
+            other{"Bahamian dollars"}
+        }
+        BTN{
+            one{"I-ngultrum yaseBhutan"}
+            other{"Ii-ngultrum zaseBhutan"}
+        }
+        BWP{
+            one{"I-pula yaseBotswana"}
+            other{"I-Pula yaseBotswana"}
+        }
+        BYN{
+            one{"I-ruble yaseBelarus"}
+            other{"Ii-ruble zaseBelarus"}
+        }
+        BZD{
+            one{"Belize dollar"}
+            other{"Belize dollars"}
+        }
+        CAD{
+            one{"Canadian dollar"}
+            other{"Canadian dollars"}
+        }
+        CDF{
+            one{"I-franc yaseCongo"}
+            other{"Ii-franc zaseCongo"}
+        }
+        CHF{
+            one{"I-franc yaseSwitzerland"}
+            other{"Ii-francs zaseSitzerland"}
+        }
+        CLP{
+            one{"I-peso yaseChile"}
+            other{"Ii-pesos zaseChile"}
+        }
+        CNH{
+            one{"I-Chinese yuan (offshore)"}
+            other{"I-Chinese yuan (offshore)"}
+        }
+        CNY{
+            one{"I-yuan yaseTshayina"}
+            other{"I-yuan yaseTshayina"}
+        }
+        COP{
+            one{"I-peso yaseColombia"}
+            other{"Ii-peso zaseColombia"}
+        }
+        CRC{
+            one{"Costa Rican colón"}
+            other{"Costa Rican colóns"}
+        }
+        CUC{
+            one{"Cuban convertible peso"}
+            other{"Cuban convertible pesos"}
+        }
+        CUP{
+            one{"Cuban peso"}
+            other{"Cuban pesos"}
+        }
+        CVE{
+            one{"I-escudo yaseCape Verde"}
+            other{"Ii-escudo zaseCape Verde"}
+        }
+        CZK{
+            one{"I-koruna yaseCzech"}
+            other{"Ii-koruna zaseCzech"}
+        }
+        DJF{
+            one{"I-franc yaseDjibouti"}
+            other{"Ii-franc zaseDjibouti"}
+        }
+        DKK{
+            one{"I-krone yaseDenmark"}
+            other{"I-kroner yaseDenmark"}
+        }
+        DOP{
+            one{"Dominican peso"}
+            other{"Dominican pesos"}
+        }
+        DZD{
+            one{"I-dinar yase-Algeria"}
+            other{"Ii-dinar zase-Algeria"}
+        }
+        EGP{
+            one{"Iponti yase-Egypt"}
+            other{"Iiponti zaseYiputa"}
+        }
+        ERN{
+            one{"I-nakfa yase-Eritria"}
+            other{"Ii-nakfa zase-Eritria"}
+        }
+        ETB{
+            one{"I-birr yase-Ethopia"}
+            other{"Ii-birr zase-Ethopia"}
+        }
+        EUR{
+            one{"i-euro"}
+            other{"ii-euro"}
+        }
+        FJD{
+            one{"Idola yaseFiji"}
+            other{"Iidola zaseFiji"}
+        }
+        FKP{
+            one{"IPonti yaseFalkland Islands"}
+            other{"Iiponti zaseFalkland Islands"}
+        }
+        GBP{
+            one{"Iponti yaseBritane"}
+            other{"Iiponti zaseBritane"}
+        }
+        GEL{
+            one{"I-lari yaseGeorgia"}
+            other{"Ii-lari zaseGeorgia"}
+        }
+        GHS{
+            one{"I-cedi yaseGhana"}
+            other{"Ii-cedi zaseGhana"}
+        }
+        GIP{
+            one{"Iponti yaseGibraltar"}
+            other{"Iiponti zaseGibraltar"}
+        }
+        GMD{
+            one{"I-dalasi yaseGambia"}
+            other{"Ii-dalasi zaseGambia"}
+        }
+        GNF{
+            one{"I-franc yaseGuinea"}
+            other{"Ii-franc zaseGuinea"}
+        }
+        GTQ{
+            one{"Guatemalan quetzal"}
+            other{"Guatemalan quetzals"}
+        }
+        GYD{
+            one{"Idola yaseGuyana"}
+            other{"Iidola zaseGuyana"}
+        }
+        HKD{
+            one{"Idola yaseHong Kong"}
+            other{"Iidola zaseHong Kong"}
+        }
+        HNL{
+            one{"Honduran lempira"}
+            other{"Honduran lempiras"}
+        }
+        HRK{
+            one{"I-kuna yaseCroatia"}
+            other{"Ii-kuna zaseCroatia"}
+        }
+        HTG{
+            one{"Haitian gourde"}
+            other{"Haitian gourdes"}
+        }
+        HUF{
+            one{"I-forint yaseHungary"}
+            other{"Ii-forint zaseHungary"}
+        }
+        IDR{
+            one{"I-rupiah yase-Indonesia"}
+            other{"Ii-rupiah zase-Indonesia"}
+        }
+        ILS{
+            one{"I-new shekel yase-Israel"}
+            other{"Ii-new shekel zase-Israel"}
+        }
+        INR{
+            one{"I-rupee yase-Indiya"}
+            other{"Ii-rupee zase-Indiya"}
+        }
+        IQD{
+            one{"I-dinar yase-Iraq"}
+            other{"Ii-dinar zase-Iraq"}
+        }
+        IRR{
+            one{"I-rial yase-Iran"}
+            other{"Ii-rial zase-Iran"}
+        }
+        ISK{
+            one{"I-króna yase-Iceland"}
+            other{"Ii-krónur zase-Iceland"}
+        }
+        JMD{
+            one{"Jamaican dollar"}
+            other{"Jamaican dollars"}
+        }
+        JOD{
+            one{"I-dinar yaseJordan"}
+            other{"Ii-dinar zaseJordan"}
+        }
+        JPY{
+            one{"I-yen yaseJapan"}
+            other{"I-yen yaseJapan"}
+        }
+        KES{
+            one{"I-shilling yaseKenya"}
+            other{"Iis-shilling zaseKenya"}
+        }
+        KGS{
+            one{"I-som yaseKyrgystan"}
+            other{"Ii-som zaseKyrgystan"}
+        }
+        KHR{
+            one{"I-riel yaseCambodia"}
+            other{"Ii-riel zaseCambodia"}
+        }
+        KMF{
+            one{"I-franc yaseComoros"}
+            other{"Ii-franc zaseComoros"}
+        }
+        KPW{
+            one{"I-won yaseNorth Korea"}
+            other{"I-won yaseNorth Korea"}
+        }
+        KRW{
+            one{"I-won yaseSouth Korea"}
+            other{"I-won yaseSouth Korean"}
+        }
+        KWD{
+            one{"I-dinar yaseKuwait"}
+            other{"Ii-dinar zaseKuwait"}
+        }
+        KYD{
+            one{"Cayman Islands dollar"}
+            other{"Cayman Islands dollars"}
+        }
+        KZT{
+            one{"I-tenge yaseKhazakhstan"}
+            other{"Ii-tenge zaseKhazakhstan"}
+        }
+        LAK{
+            one{"I-kip yaseLaos"}
+            other{"Ii-kip zaseLaos"}
+        }
+        LBP{
+            one{"Iponti yaseLebanon"}
+            other{"Iiponti zaseLebanon"}
+        }
+        LKR{
+            one{"I-rupee yaseSri Lanka"}
+            other{"Ii-rupee zaseSri Lanka"}
+        }
+        LRD{
+            one{"Idola yaseLiberia"}
+            other{"Iidola zaseLiberia"}
+        }
+        LSL{
+            one{"I-loti yaseLesotho"}
+            other{"Ii-loti zaseLesotho"}
+        }
+        LYD{
+            one{"I-dinar yaseLibya"}
+            other{"Ii-dinar zaseLibya"}
+        }
+        MAD{
+            one{"I-dirham yaseMorocco"}
+            other{"Ii-dirham zaseMorocco"}
+        }
+        MDL{
+            one{"I-leu yaseMoldova"}
+            other{"I-lei yaseMoldova"}
+        }
+        MGA{
+            one{"I-ariary yaseMadagascar"}
+            other{"Ii-ariary zaseMadagascar"}
+        }
+        MKD{
+            one{"I-denar yaseMacedonia"}
+            other{"Ii-denar zaseMacedonia"}
+        }
+        MMK{
+            one{"I-kyat yaseMyanmar"}
+            other{"Ii-kyat zaseMyanmar"}
+        }
+        MNT{
+            one{"I-tugrik yaseMongolia"}
+            other{"Ii-tugrik zaseMongolia"}
+        }
+        MOP{
+            one{"I-pataca yaseMacao"}
+            other{"Ii-pataca zaseMacao"}
+        }
+        MRU{
+            one{"I-ouguiya yaseMauritania"}
+            other{"Ii-ouguiya zaseMauritania"}
+        }
+        MUR{
+            one{"I-rupee yaseMauritius"}
+            other{"Ii-rupee zaseMaritius"}
+        }
+        MVR{
+            one{"I-rufiyaa yaseMaldives"}
+            other{"Ii-rufiyaa zaseMaldives"}
+        }
+        MWK{
+            one{"I-kwacha yaseMalawi"}
+            other{"Ii-kwacha zaseMalawi"}
+        }
+        MXN{
+            one{"Mexican peso"}
+            other{"Mexican pesos"}
+        }
+        MYR{
+            one{"I-ringgit yaseMalaysia"}
+            other{"Ii-ringgit zaseMalaysia"}
+        }
+        MZN{
+            one{"I-metical yaseMozambique"}
+            other{"Ii-metical zaseMozambique"}
+        }
+        NAD{
+            one{"Idola yaseNamibia"}
+            other{"Iidola zaseNamibia"}
+        }
+        NGN{
+            one{"I-naira yaseNigeria"}
+            other{"Ii-naira zaseNigeria"}
+        }
+        NIO{
+            one{"Nicaraguan córdoba"}
+            other{"Nicaraguan córdobas"}
+        }
+        NOK{
+            one{"I-krone yaseNorway"}
+            other{"Ii-kroner zaseNorway"}
+        }
+        NPR{
+            one{"I-rupee yaseNepal"}
+            other{"Ii-rupee zaseNepal"}
+        }
+        NZD{
+            one{"Idola yaseNew Zealand"}
+            other{"Iidola zaseNew Zealand"}
+        }
+        OMR{
+            one{"I-rial yase-Oman"}
+            other{"Ii-rial zase-Oman"}
+        }
+        PAB{
+            one{"Panamanian balboa"}
+            other{"Panamanian balboas"}
+        }
+        PEN{
+            one{"I-sol yasePeruvia"}
+            other{"Ii-sol zasePeruvia"}
+        }
+        PGK{
+            one{"I-kina yasePapua New Guinea"}
+            other{"I-kina yasePapua New Guinea"}
+        }
+        PHP{
+            one{"I-peso yasePhilippiines"}
+            other{"Ii-peso zasePhilippines"}
+        }
+        PKR{
+            one{"I-rupee yasePakistan"}
+            other{"Ii-rupee zasePakistan"}
+        }
+        PLN{
+            one{"I-zloty yasePoland"}
+            other{"Ii-zloty zasePoland"}
+        }
+        PYG{
+            one{"I-guarani yaseParaguay"}
+            other{"Ii-guarani zaseParaguay"}
+        }
+        QAR{
+            one{"I-riyal yaseQatar"}
+            other{"Ii-riyal zaseQatar"}
+        }
+        RON{
+            one{"I-leu yaseRomania"}
+            other{"Ii-lei zaseRomania"}
+        }
+        RSD{
+            one{"I-dinar yaseSerbia"}
+            other{"Ii-dinars zaseSerbia"}
+        }
+        RUB{
+            one{"I-ruble yaseRashiya"}
+            other{"Ii-ruble zaseRashiya"}
+        }
+        RWF{
+            one{"I-franc yaseRwanda"}
+            other{"Ii-franc zaseRwanda"}
+        }
+        SAR{
+            one{"I-riyal yaseSaudi"}
+            other{"Ii-riyal zaseSaudi"}
+        }
+        SBD{
+            one{"Idola yaseSolomon Islands"}
+            other{"Iidola zaseSolomon Islands"}
+        }
+        SCR{
+            one{"I-rupee yaseSeychelles"}
+            other{"Ii-rupee zaseSeychelles"}
+        }
+        SDG{
+            one{"Iponti yaseSudan"}
+            other{"Iiponti zaseSudan"}
+        }
+        SEK{
+            one{"I-krona yaseSweden"}
+            other{"Ii-kronor zaseSweden"}
+        }
+        SGD{
+            one{"Idola yaseSingapore"}
+            other{"Iidola zaseSingapore"}
+        }
+        SHP{
+            one{"Iponti yaseSt. Helena"}
+            other{"Iiponti zaseSt. Helena"}
+        }
+        SLE{
+            one{"I-leone yaseSierra Leone"}
+            other{"Ii-leones zaseSierra Leone"}
+        }
+        SLL{
+            one{"I-leone yaseSierra Leone (1964—2022)"}
+            other{"Ii-leones zaseSierra Leone (1964—2022)"}
+        }
+        SOS{
+            one{"I-shilling yaseSomalia"}
+            other{"Ii-shilling zaseSomalia"}
+        }
+        SRD{
+            one{"Idola yaseSuriname"}
+            other{"Iidola zaseSuriname"}
+        }
+        SSP{
+            one{"Iponti yaseSouth Sudan"}
+            other{"Iiponti zaseSouth Sudan"}
+        }
+        STN{
+            one{"I-dobra yaseSão Tomé & Príncipe"}
+            other{"Ii-dobra zaseSão Tomé & Príncipe"}
+        }
+        SYP{
+            one{"Iponti yaseSiriya"}
+            other{"Iiponti zaseSiriya"}
+        }
+        SZL{
+            one{"I-lilangeni yase-Eswatini"}
+            other{"I-emalangeni yase-Eswatini"}
+        }
+        THB{
+            one{"I-baht yaseThailand"}
+            other{"I-baht yaseThailand"}
+        }
+        TJS{
+            one{"I-somoni yaseTajikistan"}
+            other{"Ii-somonis zaseTajikistan"}
+        }
+        TMT{
+            one{"I-manat yaseTurkmenistan"}
+            other{"I-manat yaseTurkmenistan"}
+        }
+        TND{
+            one{"I-dinar yaseTunisia"}
+            other{"Ii-dinar zaseTunisia"}
+        }
+        TOP{
+            one{"I-paʻanga yaseTonga"}
+            other{"I-paʻanga yaseTonga"}
+        }
+        TRY{
+            one{"I-lira yaseTurkey"}
+            other{"I-Lira yaseTurkey"}
+        }
+        TTD{
+            one{"Trinidad & Tobago dollar"}
+            other{"Trinidad & Tobago dollars"}
+        }
+        TWD{
+            one{"Idola yaseNew Taiwan"}
+            other{"Iidola zaseNew Taiwan"}
+        }
+        TZS{
+            one{"I-shilling yaseTanzania"}
+            other{"Ii-shilling zaseTanzania"}
+        }
+        UAH{
+            one{"I-hryvnia yase-Ukraine"}
+            other{"Ii-hryvnias zase-Ukraine"}
+        }
+        UGX{
+            one{"I-shilling yase-Uganda"}
+            other{"Ii-shilling zase-Uganda"}
+        }
+        USD{
+            one{"US dollar"}
+            other{"US dollars"}
+        }
+        UYU{
+            one{"I-peso yase-Uruguay"}
+            other{"Ii-peso zase-Uruguay"}
+        }
+        UZS{
+            one{"I-som yase-Uzbekistan"}
+            other{"I-som yase-Uzbekistan"}
+        }
+        VES{
+            one{"I-bolivar yaseVenezuela"}
+            other{"Ii-bolivar zaseVenezuela"}
+        }
+        VND{
+            one{"I-dong yaseVietnam"}
+            other{"I-dong yaseVietnam"}
+        }
+        VUV{
+            one{"I-vatu yaseVanuatu"}
+            other{"Ii-vatu zaseVanuatu"}
+        }
+        WST{
+            one{"I-tala yaseSamoa"}
+            other{"I-tala yaseSamoa"}
+        }
+        XAF{
+            one{"I-CFA franc yaseCentral Africa"}
+            other{"Ii-CFA francs zaseCentral Africa"}
+        }
+        XCD{
+            one{"East Caribbean dollar"}
+            other{"East Caribbean dollars"}
+        }
+        XOF{
+            one{"I-CFA franc yaseWest Africa"}
+            other{"Ii-CFA franc zaseWest Africa"}
+        }
+        XPF{
+            one{"I-franc yaseCFP"}
+            other{"Ii-franc zaseCFP"}
+        }
+        XXX{
+            one{"(ikharensi exabiso lingaziwayo)"}
+            other{"(ikharensi engaziwayo)"}
+        }
+        YER{
+            one{"I-rial yaseYemen"}
+            other{"Ii-rial zaseYemen"}
+        }
+        ZAR{
+            one{"Irandi yaseMzantsi Afrika"}
+            other{"Irandi yaseMzantsi Afrika"}
+        }
+        ZMW{
+            one{"I-kwacha yaseZambia"}
+            other{"I-kwacha yaseZambia"}
+        }
+    }
+    CurrencyUnitPatterns{
+        one{"{0} {1}"}
+        other{"{0} {1}"}
+    }
+}

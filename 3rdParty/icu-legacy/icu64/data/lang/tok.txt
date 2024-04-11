@@ -1,0 +1,32 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+tok{
+    Languages{
+        en{"toki Inli"}
+        tok{"toki pona"}
+        uz{"toki Opeki"}
+    }
+    Scripts{
+        Arab{"sitelen Alapi"}
+        Jpan{"sitelen Nijon"}
+        Latn{"sitelen Lasina"}
+        Zxxx{"sitelen ala"}
+        Zzzz{"sitelen ante"}
+    }
+    Types{
+        numbers{
+            arab{"sitelen nanpa Alapi"}
+            latn{"sitelen nanpa Lasina"}
+        }
+    }
+    codePatterns{
+        language{"toki li {0}"}
+        script{"sitelen li {0}"}
+        territory{"ma li {0}"}
+    }
+    localeDisplayPattern{
+        pattern{"{0} pi {1}"}
+        separator{"{0} pi {1}"}
+    }
+}

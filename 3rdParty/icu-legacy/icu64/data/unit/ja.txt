@@ -1,0 +1,1944 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+ja{
+    units{
+        acceleration{
+            meter-per-square-second{
+                dnam{"メートル毎秒毎秒"}
+                other{"{0} メートル毎秒毎秒"}
+            }
+        }
+        angle{
+            radian{
+                other{"{0} ラジアン"}
+            }
+            revolution{
+                other{"{0} 回転"}
+            }
+        }
+        area{
+            acre{
+                other{"{0} エーカー"}
+            }
+            dunam{
+                other{"{0} ドゥナム"}
+            }
+            hectare{
+                other{"{0} ヘクタール"}
+            }
+            square-centimeter{
+                dnam{"平方センチメートル"}
+                other{"{0} 平方センチメートル"}
+                per{"{0}/平方センチメートル"}
+            }
+            square-foot{
+                other{"{0} 平方フィート"}
+            }
+            square-inch{
+                other{"{0} 平方インチ"}
+                per{"{0}/平方インチ"}
+            }
+            square-kilometer{
+                dnam{"平方キロメートル"}
+                other{"{0} 平方キロメートル"}
+                per{"{0}/平方キロメートル"}
+            }
+            square-meter{
+                dnam{"平方メートル"}
+                other{"{0} 平方メートル"}
+                per{"{0}/平方メートル"}
+            }
+            square-mile{
+                other{"{0} 平方マイル"}
+                per{"{0}/平方マイル"}
+            }
+            square-yard{
+                other{"{0} 平方ヤード"}
+            }
+        }
+        compound{
+            1024p1{"キビ{0}"}
+            1024p2{"メビ{0}"}
+            1024p3{"ギビ{0}"}
+            1024p4{"テビ{0}"}
+            1024p5{"ペビ{0}"}
+            1024p6{"エクスビ{0}"}
+            1024p7{"ゼビ{0}"}
+            1024p8{"ヨビ{0}"}
+            10p-1{"デシ{0}"}
+            10p-12{"ピコ{0}"}
+            10p-15{"フェムト{0}"}
+            10p-18{"アト{0}"}
+            10p-2{"センチ{0}"}
+            10p-21{"ゼプト{0}"}
+            10p-24{"ヨクト{0}"}
+            10p-27{"ロント{0}"}
+            10p-3{"ミリ{0}"}
+            10p-30{"クエクト{0}"}
+            10p-6{"マイクロ{0}"}
+            10p-9{"ナノ{0}"}
+            10p1{"デカ{0}"}
+            10p12{"テラ{0}"}
+            10p15{"ペタ{0}"}
+            10p18{"エクサ{0}"}
+            10p2{"ヘクト{0}"}
+            10p21{"ゼタ{0}"}
+            10p24{"ヨタ{0}"}
+            10p27{"ロナ{0}"}
+            10p3{"キロ{0}"}
+            10p30{"クエタ{0}"}
+            10p6{"メガ{0}"}
+            10p9{"ギガ{0}"}
+            per{"{0}毎{1}"}
+            power2{
+                other{
+                    _{
+                        _{"平方{0}"}
+                    }
+                }
+            }
+            power3{
+                other{
+                    _{
+                        _{"立方{0}"}
+                    }
+                }
+            }
+        }
+        concentr{
+            milligram-ofglucose-per-deciliter{
+                other{"{0} ミリグラム毎デシリットル"}
+            }
+            millimole-per-liter{
+                other{"{0} ミリモル毎リットル"}
+            }
+            mole{
+                other{"{0} モル"}
+            }
+            percent{
+                other{"{0} パーセント"}
+            }
+            permille{
+                other{"{0} パーミル"}
+            }
+            permyriad{
+                other{"{0} パーミリアド"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"リットル毎100キロメートル"}
+                other{"{0} リットル毎100キロメートル"}
+            }
+            liter-per-kilometer{
+                dnam{"リットル毎キロメートル"}
+                other{"{0} リットル毎キロメートル"}
+            }
+            mile-per-gallon{
+                dnam{"マイル毎ガロン"}
+                other{"{0} マイル毎ガロン"}
+            }
+            mile-per-gallon-imperial{
+                other{"{0} マイル毎英ガロン"}
+            }
+        }
+        digital{
+            bit{
+                other{"{0} ビット"}
+            }
+            byte{
+                other{"{0} バイト"}
+            }
+            gigabit{
+                other{"{0} ギガビット"}
+            }
+            gigabyte{
+                dnam{"ギガバイト"}
+                other{"{0} ギガバイト"}
+            }
+            kilobit{
+                other{"{0} キロビット"}
+            }
+            kilobyte{
+                dnam{"キロバイト"}
+                other{"{0} キロバイト"}
+            }
+            megabit{
+                other{"{0} メガビット"}
+            }
+            megabyte{
+                dnam{"メガバイト"}
+                other{"{0} メガバイト"}
+            }
+            petabyte{
+                other{"{0} ペタバイト"}
+            }
+            terabit{
+                other{"{0} テラビット"}
+            }
+            terabyte{
+                other{"{0} テラバイト"}
+            }
+        }
+        duration{
+            microsecond{
+                other{"{0} マイクロ秒"}
+            }
+            millisecond{
+                other{"{0} ミリ秒"}
+            }
+            nanosecond{
+                other{"{0} ナノ秒"}
+            }
+            quarter{
+                other{"{0} 四半期"}
+            }
+        }
+        electric{
+            ampere{
+                other{"{0} アンペア"}
+            }
+            milliampere{
+                other{"{0} ミリアンペア"}
+            }
+            ohm{
+                other{"{0} オーム"}
+            }
+            volt{
+                other{"{0} ボルト"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                other{"{0} 英熱量"}
+            }
+            calorie{
+                dnam{"カロリー"}
+                other{"{0} カロリー"}
+            }
+            electronvolt{
+                other{"{0} 電子ボルト"}
+            }
+            foodcalorie{
+                dnam{"カロリー"}
+                other{"{0} カロリー"}
+            }
+            joule{
+                other{"{0} ジュール"}
+            }
+            kilocalorie{
+                dnam{"キロカロリー"}
+                other{"{0} キロカロリー"}
+            }
+            kilojoule{
+                other{"{0} キロジュール"}
+            }
+            kilowatt-hour{
+                other{"{0} キロワット時"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"キロワット時毎100キロメートル"}
+                other{"{0} キロワット時毎100キロメートル"}
+            }
+            newton{
+                other{"{0} ニュートン"}
+            }
+            pound-force{
+                other{"{0} 重量ポンド"}
+            }
+        }
+        frequency{
+            gigahertz{
+                dnam{"ギガヘルツ"}
+                other{"{0} ギガヘルツ"}
+            }
+            hertz{
+                dnam{"ヘルツ"}
+                other{"{0} ヘルツ"}
+            }
+            kilohertz{
+                dnam{"キロヘルツ"}
+                other{"{0} キロヘルツ"}
+            }
+            megahertz{
+                dnam{"メガヘルツ"}
+                other{"{0} メガヘルツ"}
+            }
+        }
+        graphics{
+            dot-per-centimeter{
+                dnam{"ドット/cm"}
+                other{"{0} ドット/cm"}
+            }
+            dot-per-inch{
+                dnam{"ドット/インチ"}
+                other{"{0} ドット/インチ"}
+            }
+            em{
+                dnam{"フォントサイズ em"}
+            }
+            megapixel{
+                other{"{0} メガピクセル"}
+            }
+            pixel{
+                other{"{0} ピクセル"}
+            }
+            pixel-per-centimeter{
+                dnam{"ピクセル/cm"}
+                other{"{0} ピクセル/cm"}
+            }
+            pixel-per-inch{
+                dnam{"ピクセル/インチ"}
+                other{"{0} ピクセル/インチ"}
+            }
+        }
+        length{
+            astronomical-unit{
+                other{"{0} 天文単位"}
+            }
+            centimeter{
+                dnam{"センチメートル"}
+                other{"{0} センチメートル"}
+                per{"{0}/センチメートル"}
+            }
+            decimeter{
+                other{"{0} デシメートル"}
+            }
+            earth-radius{
+                dnam{"地球半径"}
+                other{"{0} 地球半径"}
+            }
+            fathom{
+                other{"{0} ファゾム"}
+            }
+            foot{
+                other{"{0} フィート"}
+                per{"{0}/フィート"}
+            }
+            furlong{
+                other{"{0} ハロン"}
+            }
+            inch{
+                other{"{0} インチ"}
+                per{"{0}/インチ"}
+            }
+            kilometer{
+                dnam{"キロメートル"}
+                other{"{0} キロメートル"}
+                per{"{0}/キロメートル"}
+            }
+            meter{
+                dnam{"メートル"}
+                other{"{0} メートル"}
+                per{"{0}/メートル"}
+            }
+            micrometer{
+                other{"{0} マイクロメートル"}
+            }
+            mile{
+                other{"{0} マイル"}
+            }
+            mile-scandinavian{
+                other{"{0} スカンジナビアマイル"}
+            }
+            millimeter{
+                dnam{"ミリメートル"}
+                other{"{0} ミリメートル"}
+            }
+            nanometer{
+                other{"{0} ナノメートル"}
+            }
+            parsec{
+                other{"{0} パーセク"}
+            }
+            picometer{
+                other{"{0} ピコメートル"}
+            }
+            point{
+                other{"{0} ポイント"}
+            }
+            solar-radius{
+                other{"{0} 太陽半径"}
+            }
+            yard{
+                other{"{0} ヤード"}
+            }
+        }
+        light{
+            candela{
+                dnam{"カンデラ"}
+                other{"{0} カンデラ"}
+            }
+            lumen{
+                dnam{"ルーメン"}
+                other{"{0} ルーメン"}
+            }
+            lux{
+                other{"{0} ルクス"}
+            }
+            solar-luminosity{
+                other{"{0} 太陽光度"}
+            }
+        }
+        mass{
+            carat{
+                other{"{0} カラット"}
+            }
+            dalton{
+                other{"{0} ダルトン"}
+            }
+            earth-mass{
+                other{"{0} 地球質量"}
+            }
+            gram{
+                other{"{0} グラム"}
+                per{"{0}/グラム"}
+            }
+            kilogram{
+                dnam{"キログラム"}
+                other{"{0} キログラム"}
+                per{"{0}/キログラム"}
+            }
+            microgram{
+                other{"{0} マイクログラム"}
+            }
+            milligram{
+                dnam{"ミリグラム"}
+                other{"{0} ミリグラム"}
+            }
+            ounce{
+                other{"{0} オンス"}
+                per{"{0}/オンス"}
+            }
+            ounce-troy{
+                other{"{0} トロイオンス"}
+            }
+            pound{
+                other{"{0} ポンド"}
+                per{"{0}/ポンド"}
+            }
+            solar-mass{
+                other{"{0} 太陽質量"}
+            }
+            stone{
+                other{"{0} ストーン"}
+            }
+            ton{
+                other{"{0} 米トン"}
+            }
+            tonne{
+                dnam{"トン"}
+                other{"{0} トン"}
+            }
+        }
+        power{
+            gigawatt{
+                other{"{0} ギガワット"}
+            }
+            kilowatt{
+                other{"{0} キロワット"}
+            }
+            megawatt{
+                other{"{0} メガワット"}
+            }
+            milliwatt{
+                other{"{0} ミリワット"}
+            }
+            watt{
+                other{"{0} ワット"}
+            }
+        }
+        pressure{
+            atmosphere{
+                other{"{0} 気圧"}
+            }
+            bar{
+                other{"{0} バール"}
+            }
+            hectopascal{
+                dnam{"ヘクトパスカル"}
+                other{"{0} ヘクトパスカル"}
+            }
+            inch-ofhg{
+                other{"{0} 水銀柱インチ"}
+            }
+            kilopascal{
+                dnam{"キロパスカル"}
+                other{"{0} キロパスカル"}
+            }
+            megapascal{
+                dnam{"メガパスカル"}
+                other{"{0} メガパスカル"}
+            }
+            millibar{
+                other{"{0} ミリバール"}
+            }
+            millimeter-ofhg{
+                other{"{0} 水銀柱ミリメートル"}
+            }
+            pascal{
+                other{"{0} パスカル"}
+            }
+            pound-force-per-square-inch{
+                other{"{0} 重量ポンド毎平方インチ"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"ビューフォート風力階級"}
+                other{"ビューフォート風力階級 {0}"}
+            }
+            kilometer-per-hour{
+                dnam{"キロメートル毎時"}
+                other{"時速 {0} キロメートル"}
+            }
+            knot{
+                other{"{0} ノット"}
+            }
+            meter-per-second{
+                dnam{"メートル毎秒"}
+                other{"秒速 {0} メートル"}
+            }
+            mile-per-hour{
+                other{"時速 {0} マイル"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"摂氏"}
+                other{"摂氏 {0} 度"}
+            }
+            fahrenheit{
+                dnam{"華氏"}
+                other{"華氏 {0} 度"}
+            }
+            generic{
+                dnam{"度"}
+                other{"{0}度"}
+            }
+            kelvin{
+                dnam{"ケルビン"}
+                other{"{0} ケルビン"}
+            }
+        }
+        torque{
+            newton-meter{
+                other{"{0} ニュートンメートル"}
+            }
+            pound-force-foot{
+                other{"{0} ポンドフィート"}
+            }
+        }
+        volume{
+            acre-foot{
+                other{"{0} エーカーフィート"}
+            }
+            barrel{
+                other{"{0} バレル"}
+            }
+            bushel{
+                other{"{0} ブッシェル"}
+            }
+            centiliter{
+                other{"{0} センチリットル"}
+            }
+            cubic-centimeter{
+                dnam{"立方センチメートル"}
+                other{"{0} 立方センチメートル"}
+                per{"{0}/立方センチメートル"}
+            }
+            cubic-foot{
+                other{"{0} 立方フィート"}
+            }
+            cubic-inch{
+                other{"{0} 立方インチ"}
+            }
+            cubic-kilometer{
+                dnam{"立方キロメートル"}
+                other{"{0} 立方キロメートル"}
+            }
+            cubic-meter{
+                dnam{"立方メートル"}
+                other{"{0} 立方メートル"}
+                per{"{0}/立方メートル"}
+            }
+            cubic-mile{
+                other{"{0} 立方マイル"}
+            }
+            cubic-yard{
+                other{"{0} 立方ヤード"}
+            }
+            cup-metric{
+                other{"{0} メトリックカップ"}
+            }
+            deciliter{
+                other{"{0} デシリットル"}
+            }
+            dram{
+                dnam{"ドラム"}
+                other{"{0} ドラム"}
+            }
+            fluid-ounce{
+                other{"{0} 液量オンス"}
+            }
+            fluid-ounce-imperial{
+                other{"{0} 英液量オンス"}
+            }
+            gallon{
+                other{"{0} ガロン"}
+                per{"{0}/ガロン"}
+            }
+            gallon-imperial{
+                other{"{0} 英ガロン"}
+                per{"{0}/英ガロン"}
+            }
+            hectoliter{
+                other{"{0} ヘクトリットル"}
+            }
+            liter{
+                other{"{0} リットル"}
+                per{"{0}/リットル"}
+            }
+            megaliter{
+                other{"{0} メガリットル"}
+            }
+            milliliter{
+                other{"{0} ミリリットル"}
+            }
+            pint{
+                other{"{0} パイント"}
+            }
+            pint-metric{
+                other{"{0} メトリックパイント"}
+            }
+            quart{
+                other{"{0} クォート"}
+            }
+            quart-imperial{
+                other{"{0} 英クォート"}
+            }
+            tablespoon{
+                other{"{0} テーブルスプーン"}
+            }
+            teaspoon{
+                other{"{0} ティースプーン"}
+            }
+        }
+    }
+    unitsNarrow{
+        acceleration{
+            g-force{
+                other{"{0}G"}
+            }
+            meter-per-square-second{
+                other{"{0}m/s²"}
+            }
+        }
+        angle{
+            arc-minute{
+                other{"{0}′"}
+            }
+            arc-second{
+                other{"{0}″"}
+            }
+            degree{
+                other{"{0}°"}
+            }
+            radian{
+                dnam{"rad"}
+                other{"{0}rad"}
+            }
+            revolution{
+                dnam{"rev"}
+                other{"{0}rev"}
+            }
+        }
+        area{
+            acre{
+                other{"{0}ac"}
+            }
+            bu-jp{
+                other{"{0}歩"}
+            }
+            cho{
+                other{"{0}町"}
+            }
+            hectare{
+                other{"{0}ha"}
+            }
+            se-jp{
+                other{"{0}畝"}
+            }
+            square-centimeter{
+                other{"{0}cm²"}
+            }
+            square-foot{
+                dnam{"ft²"}
+                other{"{0}ft²"}
+            }
+            square-inch{
+                dnam{"in²"}
+                other{"{0}in²"}
+            }
+            square-kilometer{
+                other{"{0}km²"}
+            }
+            square-meter{
+                other{"{0}m²"}
+            }
+            square-mile{
+                dnam{"mi²"}
+                other{"{0}mi²"}
+            }
+            square-yard{
+                dnam{"yd²"}
+                other{"{0}yd²"}
+            }
+        }
+        concentr{
+            item{
+                other{"{0}項目"}
+            }
+            karat{
+                other{"{0}K"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"mg/dL"}
+                other{"{0}mg/dL"}
+            }
+            millimole-per-liter{
+                dnam{"mmol/L"}
+                other{"{0}mmol/L"}
+            }
+            mole{
+                dnam{"mol"}
+                other{"{0}mol"}
+            }
+            percent{
+                dnam{"%"}
+            }
+            permille{
+                dnam{"‰"}
+            }
+            permillion{
+                other{"{0}ppm"}
+            }
+            permyriad{
+                dnam{"‱"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                other{"{0}L/100km"}
+            }
+            liter-per-kilometer{
+                other{"{0}L/km"}
+            }
+            mile-per-gallon{
+                dnam{"mpg"}
+                other{"{0}mpg"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"マイル/英ガロン"}
+                other{"{0}mpg Imp."}
+            }
+        }
+        coordinate{
+            east{"{0}E"}
+            north{"{0}N"}
+            south{"{0}S"}
+            west{"{0}W"}
+        }
+        digital{
+            bit{
+                other{"{0}b"}
+            }
+            byte{
+                dnam{"B"}
+                other{"{0}B"}
+            }
+            gigabit{
+                dnam{"Gb"}
+                other{"{0}Gb"}
+            }
+            gigabyte{
+                other{"{0}GB"}
+            }
+            kilobit{
+                dnam{"kb"}
+                other{"{0}kb"}
+            }
+            kilobyte{
+                other{"{0}KB"}
+            }
+            megabit{
+                dnam{"Mb"}
+                other{"{0}Mb"}
+            }
+            megabyte{
+                other{"{0}MB"}
+            }
+            petabyte{
+                dnam{"PB"}
+                other{"{0}PB"}
+            }
+            terabit{
+                dnam{"Tb"}
+                other{"{0}Tb"}
+            }
+            terabyte{
+                dnam{"TB"}
+                other{"{0}TB"}
+            }
+        }
+        duration{
+            century{
+                other{"{0}世紀"}
+            }
+            day{
+                other{"{0}d"}
+            }
+            decade{
+                other{"{0}十年"}
+            }
+            hour{
+                other{"{0}h"}
+            }
+            microsecond{
+                dnam{"μs"}
+                other{"{0}μs"}
+            }
+            millisecond{
+                dnam{"ms"}
+                other{"{0}ms"}
+            }
+            minute{
+                other{"{0}m"}
+            }
+            month{
+                other{"{0}m"}
+            }
+            nanosecond{
+                dnam{"ns"}
+                other{"{0}ns"}
+            }
+            quarter{
+                other{"{0}Q"}
+                per{"{0}/Q"}
+            }
+            second{
+                other{"{0}s"}
+            }
+            week{
+                other{"{0}w"}
+            }
+            year{
+                other{"{0}y"}
+            }
+        }
+        electric{
+            ampere{
+                other{"{0}A"}
+            }
+            milliampere{
+                other{"{0}mA"}
+            }
+            ohm{
+                other{"{0}Ω"}
+            }
+            volt{
+                other{"{0}V"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                other{"{0}BTU"}
+            }
+            calorie{
+                other{"{0}calth"}
+            }
+            electronvolt{
+                dnam{"eV"}
+            }
+            foodcalorie{
+                other{"{0}cal"}
+            }
+            joule{
+                other{"{0}J"}
+            }
+            kilocalorie{
+                other{"{0}kcal"}
+            }
+            kilojoule{
+                other{"{0}kJ"}
+            }
+            kilowatt-hour{
+                dnam{"kWh"}
+                other{"{0}kWh"}
+            }
+            therm-us{
+                other{"{0}米サーム"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                other{"{0}kWh/100km"}
+            }
+            newton{
+                dnam{"N"}
+                other{"{0}N"}
+            }
+            pound-force{
+                dnam{"lbf"}
+                other{"{0}lbf"}
+            }
+        }
+        frequency{
+            gigahertz{
+                other{"{0}GHz"}
+            }
+            hertz{
+                other{"{0}Hz"}
+            }
+            kilohertz{
+                other{"{0}kHz"}
+            }
+            megahertz{
+                other{"{0}MHz"}
+            }
+        }
+        graphics{
+            dot{
+                other{"{0}ドット"}
+            }
+            dot-per-centimeter{
+                other{"{0}dpcm"}
+            }
+            dot-per-inch{
+                other{"{0}dpi"}
+            }
+            em{
+                other{"{0}em"}
+            }
+            megapixel{
+                dnam{"MP"}
+                other{"{0}MP"}
+            }
+            pixel{
+                dnam{"px"}
+                other{"{0}px"}
+            }
+            pixel-per-centimeter{
+                other{"{0}ppcm"}
+            }
+            pixel-per-inch{
+                other{"{0}ppi"}
+            }
+        }
+        length{
+            astronomical-unit{
+                other{"{0}au"}
+            }
+            centimeter{
+                other{"{0}cm"}
+            }
+            decimeter{
+                other{"{0}dm"}
+            }
+            earth-radius{
+                other{"{0}R⊕"}
+            }
+            fathom{
+                other{"{0}fth"}
+            }
+            foot{
+                other{"{0}′"}
+            }
+            furlong{
+                other{"{0}fur"}
+            }
+            inch{
+                other{"{0}″"}
+            }
+            jo-jp{
+                other{"{0}丈"}
+            }
+            ken{
+                other{"{0}間"}
+            }
+            kilometer{
+                other{"{0}km"}
+            }
+            light-year{
+                other{"{0}光年"}
+            }
+            meter{
+                other{"{0}m"}
+            }
+            micrometer{
+                other{"{0}μm"}
+            }
+            mile{
+                other{"{0}mi"}
+            }
+            mile-scandinavian{
+                other{"{0}smi"}
+            }
+            millimeter{
+                other{"{0}mm"}
+            }
+            nanometer{
+                other{"{0}nm"}
+            }
+            nautical-mile{
+                other{"{0}海里"}
+            }
+            parsec{
+                other{"{0}pc"}
+            }
+            picometer{
+                other{"{0}pm"}
+            }
+            point{
+                dnam{"pt"}
+                other{"{0}pt"}
+            }
+            ri-jp{
+                other{"{0}里"}
+            }
+            rin{
+                other{"{0}厘"}
+            }
+            shaku-cloth{
+                other{"{0}鯨尺"}
+            }
+            shaku-length{
+                other{"{0}尺"}
+            }
+            solar-radius{
+                dnam{"R☉"}
+                other{"{0}R☉"}
+            }
+            sun{
+                other{"{0}寸"}
+            }
+            yard{
+                other{"{0}yd"}
+            }
+        }
+        light{
+            candela{
+                other{"{0}cd"}
+            }
+            lumen{
+                other{"{0}lm"}
+            }
+            lux{
+                other{"{0}lx"}
+            }
+            solar-luminosity{
+                dnam{"L☉"}
+                other{"{0}L☉"}
+            }
+        }
+        mass{
+            carat{
+                other{"{0}ct"}
+            }
+            dalton{
+                dnam{"Da"}
+                other{"{0}Da"}
+            }
+            earth-mass{
+                dnam{"M⊕"}
+                other{"{0}M⊕"}
+            }
+            fun{
+                dnam{"分"}
+                other{"{0}分"}
+            }
+            grain{
+                other{"{0}グレーン"}
+            }
+            gram{
+                dnam{"g"}
+                other{"{0}g"}
+            }
+            kilogram{
+                other{"{0}kg"}
+            }
+            microgram{
+                dnam{"μg"}
+                other{"{0}μg"}
+            }
+            milligram{
+                other{"{0}mg"}
+            }
+            ounce{
+                other{"{0}oz"}
+            }
+            ounce-troy{
+                dnam{"oz t"}
+                other{"{0}oz t"}
+            }
+            pound{
+                other{"{0}lb"}
+            }
+            solar-mass{
+                dnam{"M☉"}
+                other{"{0}M☉"}
+            }
+            stone{
+                other{"{0}st"}
+            }
+            ton{
+                other{"{0}s/t"}
+            }
+            tonne{
+                other{"{0}t"}
+            }
+        }
+        power{
+            gigawatt{
+                other{"{0}GW"}
+            }
+            horsepower{
+                other{"{0}hp"}
+            }
+            kilowatt{
+                dnam{"kW"}
+                other{"{0}kW"}
+            }
+            megawatt{
+                other{"{0}MW"}
+            }
+            milliwatt{
+                dnam{"mW"}
+                other{"{0}mW"}
+            }
+            watt{
+                other{"{0}W"}
+            }
+        }
+        pressure{
+            atmosphere{
+                other{"{0}atm"}
+            }
+            bar{
+                other{"{0}bar"}
+            }
+            hectopascal{
+                other{"{0}hPa"}
+            }
+            inch-ofhg{
+                other{"{0}\u0022 Hg"}
+            }
+            kilopascal{
+                other{"{0}kPa"}
+            }
+            megapascal{
+                other{"{0}MPa"}
+            }
+            millibar{
+                other{"{0}mb"}
+            }
+            millimeter-ofhg{
+                other{"{0}mmHg"}
+            }
+            pascal{
+                dnam{"Pa"}
+                other{"{0}Pa"}
+            }
+            pound-force-per-square-inch{
+                other{"{0}psi"}
+            }
+        }
+        speed{
+            beaufort{
+                other{"B{0}"}
+            }
+            kilometer-per-hour{
+                other{"{0}km/h"}
+            }
+            knot{
+                other{"{0}kn"}
+            }
+            meter-per-second{
+                other{"{0}m/s"}
+            }
+            mile-per-hour{
+                other{"{0}mi/h"}
+            }
+        }
+        temperature{
+            kelvin{
+                other{"{0}K"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"N⋅m"}
+                other{"{0}N⋅m"}
+            }
+            pound-force-foot{
+                dnam{"lbf⋅ft"}
+                other{"{0}lbf⋅ft"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"ac ft"}
+                other{"{0}ac ft"}
+            }
+            barrel{
+                dnam{"bbl"}
+                other{"{0}bbl"}
+            }
+            bushel{
+                other{"{0}bu"}
+            }
+            centiliter{
+                dnam{"cL"}
+                other{"{0}cL"}
+            }
+            cubic-centimeter{
+                other{"{0}cm³"}
+            }
+            cubic-foot{
+                dnam{"ft³"}
+                other{"{0}ft³"}
+            }
+            cubic-inch{
+                dnam{"in³"}
+                other{"{0}in³"}
+            }
+            cubic-kilometer{
+                other{"{0}km³"}
+            }
+            cubic-meter{
+                other{"{0}m³"}
+            }
+            cubic-mile{
+                dnam{"mi³"}
+                other{"{0}mi³"}
+            }
+            cubic-yard{
+                dnam{"yd³"}
+                other{"{0}yd³"}
+            }
+            cup{
+                dnam{"カップ"}
+                other{"{0}カップ"}
+            }
+            cup-jp{
+                other{"{0}カップ"}
+            }
+            cup-metric{
+                other{"{0}mc"}
+            }
+            deciliter{
+                dnam{"dL"}
+                other{"{0}dL"}
+            }
+            dessert-spoon{
+                other{"中さじ{0}"}
+            }
+            dessert-spoon-imperial{
+                other{"{0}英デザートスプーン"}
+            }
+            dram{
+                other{"{0}fl dr"}
+            }
+            drop{
+                other{"{0}滴"}
+            }
+            fluid-ounce{
+                dnam{"fl oz"}
+                other{"{0}fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"Imp fl oz"}
+                other{"{0}Imp fl oz"}
+            }
+            gallon{
+                dnam{"gal"}
+                other{"{0}gal"}
+            }
+            gallon-imperial{
+                dnam{"Imp gal"}
+                other{"{0}gal Imp."}
+            }
+            hectoliter{
+                dnam{"hL"}
+                other{"{0}hL"}
+            }
+            jigger{
+                other{"{0}ジガー"}
+            }
+            koku{
+                other{"{0}石"}
+            }
+            kosaji{
+                other{"小さじ{0}"}
+            }
+            liter{
+                dnam{"L"}
+                other{"{0}L"}
+            }
+            megaliter{
+                dnam{"ML"}
+                other{"{0}ML"}
+            }
+            milliliter{
+                dnam{"mL"}
+                other{"{0}ml"}
+            }
+            osaji{
+                other{"大さじ{0}"}
+            }
+            pinch{
+                other{"{0}つまみ"}
+            }
+            pint{
+                dnam{"pt"}
+                other{"{0}pt"}
+            }
+            pint-metric{
+                other{"{0}mpt"}
+            }
+            quart{
+                dnam{"qt"}
+                other{"{0}qt"}
+            }
+            quart-imperial{
+                dnam{"qt Imp"}
+                other{"{0}qt-Imp."}
+            }
+            sai{
+                other{"{0}才"}
+            }
+            shaku{
+                other{"{0}勺"}
+            }
+            tablespoon{
+                dnam{"tbsp"}
+                other{"{0}tbsp"}
+            }
+            teaspoon{
+                dnam{"tsp"}
+                other{"{0}tsp"}
+            }
+            to-jp{
+                other{"{0}斗"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            g-force{
+                dnam{"重力加速度"}
+            }
+        }
+        angle{
+            arc-minute{
+                dnam{"分"}
+                other{"{0} 分"}
+            }
+            arc-second{
+                dnam{"秒"}
+                other{"{0} 秒"}
+            }
+            degree{
+                dnam{"度"}
+                other{"{0} 度"}
+            }
+            radian{
+                dnam{"ラジアン"}
+            }
+            revolution{
+                dnam{"回転"}
+            }
+        }
+        area{
+            acre{
+                dnam{"エーカー"}
+            }
+            bu-jp{
+                dnam{"歩"}
+                other{"{0} 歩"}
+            }
+            cho{
+                dnam{"町"}
+                other{"{0} 町"}
+            }
+            dunam{
+                dnam{"ドゥナム"}
+                other{"{0}ドゥナム"}
+            }
+            hectare{
+                dnam{"ヘクタール"}
+            }
+            se-jp{
+                dnam{"畝"}
+                other{"{0} 畝"}
+            }
+            square-foot{
+                dnam{"平方フィート"}
+            }
+            square-inch{
+                dnam{"平方インチ"}
+            }
+            square-mile{
+                dnam{"平方マイル"}
+            }
+            square-yard{
+                dnam{"平方ヤード"}
+            }
+        }
+        concentr{
+            item{
+                dnam{"項目"}
+                other{"{0} 項目"}
+            }
+            karat{
+                dnam{"金"}
+                other{"{0} 金"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"ミリグラム毎デシリットル"}
+            }
+            millimole-per-liter{
+                dnam{"ミリモル毎リットル"}
+            }
+            mole{
+                dnam{"モル"}
+            }
+            percent{
+                dnam{"パーセント"}
+            }
+            permille{
+                dnam{"パーミル"}
+            }
+            permyriad{
+                dnam{"パーミリアド"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"マイル/ガロン"}
+                other{"{0} mpg"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"マイル毎英ガロン"}
+            }
+        }
+        coordinate{
+            dnam{"方位"}
+            east{"東経{0}"}
+            north{"北緯{0}"}
+            south{"南緯{0}"}
+            west{"西経{0}"}
+        }
+        digital{
+            bit{
+                dnam{"ビット"}
+            }
+            byte{
+                dnam{"バイト"}
+            }
+            gigabit{
+                dnam{"ギガビット"}
+            }
+            kilobit{
+                dnam{"キロビット"}
+            }
+            kilobyte{
+                dnam{"KB"}
+                other{"{0} KB"}
+            }
+            megabit{
+                dnam{"メガビット"}
+            }
+            petabyte{
+                dnam{"ペタバイト"}
+            }
+            terabit{
+                dnam{"テラビット"}
+            }
+            terabyte{
+                dnam{"テラバイト"}
+            }
+        }
+        duration{
+            century{
+                dnam{"世紀"}
+                other{"{0} 世紀"}
+            }
+            day{
+                dnam{"日"}
+                other{"{0} 日"}
+                per{"{0}/日"}
+            }
+            decade{
+                dnam{"十年"}
+                other{"{0} 十年"}
+            }
+            hour{
+                dnam{"時間"}
+                other{"{0} 時間"}
+                per{"{0}/時間"}
+            }
+            microsecond{
+                dnam{"マイクロ秒"}
+            }
+            millisecond{
+                dnam{"ミリ秒"}
+            }
+            minute{
+                dnam{"分"}
+                other{"{0} 分"}
+                per{"{0}/分"}
+            }
+            month{
+                dnam{"か月"}
+                other{"{0} か月"}
+                per{"{0}/月"}
+            }
+            nanosecond{
+                dnam{"ナノ秒"}
+            }
+            quarter{
+                dnam{"四半期"}
+                other{"{0}四半期"}
+                per{"{0}/四半期"}
+            }
+            second{
+                dnam{"秒"}
+                other{"{0} 秒"}
+                per{"{0}/秒"}
+            }
+            week{
+                dnam{"週間"}
+                other{"{0} 週間"}
+                per{"{0}/週"}
+            }
+            year{
+                dnam{"年"}
+                other{"{0} 年"}
+                per{"{0}/年"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"アンペア"}
+            }
+            milliampere{
+                dnam{"ミリアンペア"}
+            }
+            ohm{
+                dnam{"オーム"}
+            }
+            volt{
+                dnam{"ボルト"}
+            }
+        }
+        energy{
+            british-thermal-unit{
+                dnam{"英熱量"}
+                other{"{0} BTU"}
+            }
+            electronvolt{
+                dnam{"電子ボルト"}
+            }
+            foodcalorie{
+                dnam{"cal"}
+                other{"{0} cal"}
+            }
+            joule{
+                dnam{"ジュール"}
+            }
+            kilojoule{
+                dnam{"キロジュール"}
+            }
+            kilowatt-hour{
+                dnam{"キロワット時"}
+            }
+            therm-us{
+                dnam{"米サーム"}
+                other{"{0} 米サーム"}
+            }
+        }
+        force{
+            newton{
+                dnam{"ニュートン"}
+            }
+            pound-force{
+                dnam{"重量ポンド"}
+            }
+        }
+        graphics{
+            dot{
+                dnam{"ドット"}
+                other{"{0} ドット"}
+            }
+            dot-per-centimeter{
+                dnam{"dpcm"}
+                other{"{0} dpcm"}
+            }
+            dot-per-inch{
+                dnam{"dpi"}
+                other{"{0} dpi"}
+            }
+            megapixel{
+                dnam{"メガピクセル"}
+            }
+            pixel{
+                dnam{"ピクセル"}
+            }
+        }
+        length{
+            astronomical-unit{
+                dnam{"天文単位"}
+            }
+            decimeter{
+                dnam{"デシメートル"}
+            }
+            fathom{
+                dnam{"ファゾム"}
+            }
+            foot{
+                dnam{"フィート"}
+            }
+            furlong{
+                dnam{"ハロン"}
+            }
+            inch{
+                dnam{"インチ"}
+            }
+            jo-jp{
+                dnam{"丈"}
+                other{"{0} 丈"}
+            }
+            ken{
+                dnam{"間"}
+                other{"{0} 間"}
+            }
+            light-year{
+                dnam{"光年"}
+                other{"{0} 光年"}
+            }
+            meter{
+                dnam{"m"}
+            }
+            micrometer{
+                dnam{"マイクロメートル"}
+            }
+            mile{
+                dnam{"マイル"}
+            }
+            mile-scandinavian{
+                dnam{"スカンジナビアマイル"}
+            }
+            nanometer{
+                dnam{"ナノメートル"}
+            }
+            nautical-mile{
+                dnam{"海里"}
+                other{"{0} 海里"}
+            }
+            parsec{
+                dnam{"パーセク"}
+            }
+            picometer{
+                dnam{"ピコメートル"}
+            }
+            point{
+                dnam{"ポイント"}
+            }
+            ri-jp{
+                dnam{"里"}
+                other{"{0} 里"}
+            }
+            rin{
+                dnam{"厘"}
+                other{"{0} 厘"}
+            }
+            shaku-cloth{
+                dnam{"鯨尺"}
+                other{"{0} 鯨尺"}
+            }
+            shaku-length{
+                dnam{"尺"}
+                other{"{0} 尺"}
+            }
+            solar-radius{
+                dnam{"太陽半径"}
+            }
+            sun{
+                dnam{"寸"}
+                other{"{0} 寸"}
+            }
+            yard{
+                dnam{"ヤード"}
+            }
+        }
+        light{
+            lux{
+                dnam{"ルクス"}
+            }
+            solar-luminosity{
+                dnam{"太陽光度"}
+            }
+        }
+        mass{
+            carat{
+                dnam{"カラット"}
+                other{"{0} ct"}
+            }
+            dalton{
+                dnam{"ダルトン"}
+            }
+            earth-mass{
+                dnam{"地球質量"}
+            }
+            fun{
+                dnam{"分 - 質量"}
+                other{"{0} 分 - 質量"}
+            }
+            grain{
+                dnam{"グレーン"}
+                other{"{0} グレーン"}
+            }
+            gram{
+                dnam{"グラム"}
+            }
+            microgram{
+                dnam{"マイクログラム"}
+            }
+            ounce{
+                dnam{"オンス"}
+            }
+            ounce-troy{
+                dnam{"トロイオンス"}
+            }
+            pound{
+                dnam{"ポンド"}
+            }
+            solar-mass{
+                dnam{"太陽質量"}
+            }
+            stone{
+                dnam{"ストーン"}
+            }
+            ton{
+                dnam{"米トン"}
+                other{"{0} s/t"}
+            }
+        }
+        power{
+            gigawatt{
+                dnam{"ギガワット"}
+            }
+            horsepower{
+                dnam{"馬力"}
+                other{"{0} 馬力"}
+            }
+            kilowatt{
+                dnam{"キロワット"}
+            }
+            megawatt{
+                dnam{"メガワット"}
+            }
+            milliwatt{
+                dnam{"ミリワット"}
+            }
+            watt{
+                dnam{"ワット"}
+            }
+        }
+        pressure{
+            atmosphere{
+                dnam{"気圧"}
+            }
+            bar{
+                dnam{"バール"}
+            }
+            inch-ofhg{
+                dnam{"水銀柱インチ"}
+            }
+            millibar{
+                dnam{"ミリバール"}
+                other{"{0} mb"}
+            }
+            millimeter-ofhg{
+                dnam{"水銀柱ミリメートル"}
+            }
+            pascal{
+                dnam{"パスカル"}
+            }
+            pound-force-per-square-inch{
+                dnam{"重量ポンド毎平方インチ"}
+            }
+        }
+        speed{
+            beaufort{
+                dnam{"風力階級"}
+            }
+            knot{
+                dnam{"ノット"}
+            }
+            mile-per-hour{
+                dnam{"マイル毎時"}
+                other{"{0} mph"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"ニュートンメートル"}
+            }
+            pound-force-foot{
+                dnam{"ポンドフィート"}
+            }
+        }
+        volume{
+            acre-foot{
+                dnam{"エーカーフィート"}
+            }
+            barrel{
+                dnam{"バレル"}
+            }
+            bushel{
+                dnam{"ブッシェル"}
+            }
+            centiliter{
+                dnam{"センチリットル"}
+            }
+            cubic-foot{
+                dnam{"立方フィート"}
+            }
+            cubic-inch{
+                dnam{"立方インチ"}
+            }
+            cubic-mile{
+                dnam{"立方マイル"}
+            }
+            cubic-yard{
+                dnam{"立方ヤード"}
+            }
+            cup{
+                dnam{"カップ - 米国"}
+                other{"{0} カップ - 米国"}
+            }
+            cup-jp{
+                dnam{"カップ"}
+                other{"{0} カップ"}
+            }
+            cup-metric{
+                dnam{"メトリックカップ"}
+            }
+            deciliter{
+                dnam{"デシリットル"}
+            }
+            dessert-spoon{
+                dnam{"中さじ"}
+                other{"中さじ {0}"}
+            }
+            dessert-spoon-imperial{
+                dnam{"英デザートスプーン"}
+                other{"{0} 英デザートスプーン"}
+            }
+            dram{
+                dnam{"液量ドラム"}
+                other{"{0} 液量ドラム"}
+            }
+            drop{
+                dnam{"滴"}
+                other{"{0} 滴"}
+            }
+            fluid-ounce{
+                dnam{"液量オンス"}
+                other{"{0} fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"英液量オンス"}
+                other{"{0} fl oz Imp"}
+            }
+            gallon{
+                dnam{"ガロン"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            gallon-imperial{
+                dnam{"英ガロン"}
+            }
+            hectoliter{
+                dnam{"ヘクトリットル"}
+            }
+            jigger{
+                dnam{"ジガー"}
+                other{"{0} ジガー"}
+            }
+            koku{
+                dnam{"石"}
+                other{"{0} 石"}
+            }
+            kosaji{
+                dnam{"小さじ"}
+                other{"小さじ {0}"}
+            }
+            liter{
+                dnam{"リットル"}
+                other{"{0} L"}
+                per{"{0}/L"}
+            }
+            megaliter{
+                dnam{"メガリットル"}
+            }
+            milliliter{
+                dnam{"ミリリットル"}
+                other{"{0} ml"}
+            }
+            osaji{
+                dnam{"大さじ"}
+                other{"大さじ {0}"}
+            }
+            pinch{
+                dnam{"つまみ"}
+                other{"{0} つまみ"}
+            }
+            pint{
+                dnam{"パイント"}
+            }
+            pint-metric{
+                dnam{"メトリックパイント"}
+            }
+            quart{
+                dnam{"クォート"}
+            }
+            quart-imperial{
+                dnam{"英クォート"}
+            }
+            sai{
+                dnam{"才"}
+                other{"{0} 才"}
+            }
+            shaku{
+                dnam{"勺"}
+                other{"{0} 勺"}
+            }
+            tablespoon{
+                dnam{"テーブルスプーン"}
+            }
+            teaspoon{
+                dnam{"ティースプーン"}
+            }
+            to-jp{
+                dnam{"斗"}
+                other{"{0} 斗"}
+            }
+        }
+    }
+}

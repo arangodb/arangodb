@@ -1,0 +1,60 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+za{
+    ExemplarCharacters{"[a b c d e f g h i j k l m n o p q r s t u v w x y z]"}
+    ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″]"}
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "banhaet",
+                "banringzgvaq",
+            }
+            availableFormats{
+                Hmsv{"v HH:mm:ss"}
+                hm{"a h:mm"}
+                hms{"a h:mm:ss"}
+                hmsv{"v a h:mm:ss"}
+                yMMMd{"'bi' y 'ndwen' M 'ngoenz' d"}
+                yMd{"y/M/d"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "ngoenzsinghgiz",
+                        "singhgizit",
+                        "singhgizngeih",
+                        "singhgizsam",
+                        "singhgizseiq",
+                        "singhgizhaj",
+                        "singhgizroek",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "ndwenit",
+                        "ndwenngeih",
+                        "ndwensam",
+                        "ndwenseiq",
+                        "ndwenngux",
+                        "ndwenloeg",
+                        "ndwencaet",
+                        "ndwenbet",
+                        "ndwengouj",
+                        "ndwencib",
+                        "ndwencib’it",
+                        "ndwencibngeih",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        UK{"yinghci"}
+        US{"meijci"}
+        metric{"gunghci"}
+    }
+}

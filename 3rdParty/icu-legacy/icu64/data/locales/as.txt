@@ -1,0 +1,1240 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+as{
+    AuxExemplarCharacters{"[\u200C\u200D ৲ ৎ র]"}
+    ExemplarCharacters{
+        "[় অ আ ই ঈ উ ঊ ঋ এ ঐ ও ঔ ং ঁ ঃ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড{ড়} ঢ{ঢ়} ণ ত থ দ ধ"
+        " ন প ফ ব ভ ম য{য়} ৰ ল ৱ শ ষ স হ {ক্ষ} া ি ী ু ূ ৃ ে ৈ ো ৌ ্]"
+    }
+    ExemplarCharactersIndex{
+        "[় অ আ ই ঈ উ ঊ ঋ এ ঐ ও ঔ ং ঃ ক খ গ ঘ ঙ চ ছ জ ঝ ঞ ট ঠ ড ঢ ণ ৎ ত থ দ ধ ন প ফ ব"
+        " ভ ম য ৰ ল ৱ শ ষ স হ ্]"
+    }
+    ExemplarCharactersNumbers{"[\\- ‑ , . % ‰ + 0০ 1১ 2২ 3৩ 4৪ 5৫ 6৬ 7৭ 8৮ 9৯]"}
+    ExemplarCharactersPunctuation{
+        "[\\- ‐‑ – — , ; \\: ! ? . … । '‘’ \u0022“” ( ) \\[ \\] § @ * / \\& # † ‡ ′ ″"
+        "]"
+    }
+    NumberElements{
+        beng{
+            patterns{
+                currencyFormat%noCurrency{"#,##0.00"}
+            }
+        }
+        default{"beng"}
+        latn{
+            miscPatterns{
+                atLeast{"{0}+"}
+            }
+            patterns{
+                accountingFormat{"¤#,##0.00;(¤#,##0.00)"}
+                accountingFormat%noCurrency{"#,##0.00;(#,##0.00)"}
+                currencyFormat{"¤ #,##,##0.00"}
+                currencyPatternAppendISO{"{0} ¤¤"}
+                decimalFormat{"#,##,##0.###"}
+                percentFormat{"#,##,##0%"}
+            }
+            patternsLong{
+                decimalFormat{
+                    1000{
+                        one{"0 হাজাৰ"}
+                        other{"0 হাজাৰ"}
+                    }
+                    10000{
+                        one{"00 হাজাৰ"}
+                        other{"00 হাজাৰ"}
+                    }
+                    100000{
+                        one{"0 লাখ"}
+                        other{"0 লাখ"}
+                    }
+                    1000000{
+                        one{"0 নিযুত"}
+                        other{"0 নিযুত"}
+                    }
+                    10000000{
+                        one{"00 নিযুত"}
+                        other{"00 নিযুত"}
+                    }
+                    100000000{
+                        one{"000 নিযুত"}
+                        other{"000 নিযুত"}
+                    }
+                    1000000000{
+                        one{"0 শত কোটি"}
+                        other{"0 শত কোটি"}
+                    }
+                    10000000000{
+                        one{"00 শত কোটি"}
+                        other{"00 শত কোটি"}
+                    }
+                    100000000000{
+                        one{"000 শত কোটি"}
+                        other{"000 শত কোটি"}
+                    }
+                    1000000000000{
+                        one{"0 শত পৰাৰ্দ্ধ"}
+                        other{"0 শত পৰাৰ্দ্ধ"}
+                    }
+                    10000000000000{
+                        one{"00 শত পৰাৰ্দ্ধ"}
+                        other{"00 শত পৰাৰ্দ্ধ"}
+                    }
+                    100000000000000{
+                        one{"000 শত পৰাৰ্দ্ধ"}
+                        other{"000 শত পৰাৰ্দ্ধ"}
+                    }
+                }
+            }
+            patternsShort{
+                currencyFormat{
+                    1000{
+                        one{"¤ 0 হাজাৰ"}
+                        other{"¤ 0 হাজাৰ"}
+                    }
+                    10000{
+                        one{"¤ 00 হাজাৰ"}
+                        other{"¤ 00 হাজাৰ"}
+                    }
+                    100000{
+                        one{"¤ 000 লাখ"}
+                        other{"¤ 000 লাখ"}
+                    }
+                    1000000{
+                        one{"¤ 0 নিযুত"}
+                        other{"¤ 0 নিযুত"}
+                    }
+                    10000000{
+                        one{"¤ 00 নিযুত"}
+                        other{"¤ 00 নিযুত"}
+                    }
+                    100000000{
+                        one{"¤ 000 নিযুত"}
+                        other{"¤ 000 নিযুত"}
+                    }
+                    1000000000{
+                        one{"¤ 0 শত কোটি"}
+                        other{"¤ 0 শত কোটি"}
+                    }
+                    10000000000{
+                        one{"¤ 00 শত কোটি"}
+                        other{"¤ 00 শত কোটি"}
+                    }
+                    100000000000{
+                        one{"¤ 000 শত কোটি"}
+                        other{"¤ 000 শত কোটি"}
+                    }
+                    1000000000000{
+                        one{"¤ 0 শত পৰাৰ্দ্ধ"}
+                        other{"¤ 0 শত পৰাৰ্দ্ধ"}
+                    }
+                    10000000000000{
+                        one{"¤ 00 শত পৰাৰ্দ্ধ"}
+                        other{"¤ 00 শত পৰাৰ্দ্ধ"}
+                    }
+                    100000000000000{
+                        one{"¤ 000 শত পৰাৰ্দ্ধ"}
+                        other{"¤ 000 শত পৰাৰ্দ্ধ"}
+                    }
+                }
+                decimalFormat{
+                    1000{
+                        one{"0 হাজাৰ"}
+                        other{"0 হাজাৰ"}
+                    }
+                    10000{
+                        one{"00 হাজাৰ"}
+                        other{"00 হাজাৰ"}
+                    }
+                    100000{
+                        one{"0 লাখ"}
+                        other{"0 লাখ"}
+                    }
+                    1000000{
+                        one{"0 নিযুত"}
+                        other{"0 নিযুত"}
+                    }
+                    10000000{
+                        one{"00 নিযুত"}
+                        other{"00 নিযুত"}
+                    }
+                    100000000{
+                        one{"000 নিঃ"}
+                        other{"000 নিঃ"}
+                    }
+                    1000000000{
+                        one{"0 শঃ কোঃ"}
+                        other{"0 শঃ কোঃ"}
+                    }
+                    10000000000{
+                        one{"00 শঃ কোঃ"}
+                        other{"00 শঃ কোঃ"}
+                    }
+                    100000000000{
+                        one{"000 শঃ কঃ"}
+                        other{"000 শঃ কঃ"}
+                    }
+                    1000000000000{
+                        one{"0 শঃ পঃ"}
+                        other{"0 শঃ পঃ"}
+                    }
+                    10000000000000{
+                        one{"00 শঃ পঃ"}
+                        other{"00 শঃ পঃ"}
+                    }
+                    100000000000000{
+                        one{"000 শঃ পঃ"}
+                        other{"000 শঃ পঃ"}
+                    }
+                }
+            }
+        }
+        minimalPairs{
+            ordinal{
+                other{"সোঁফালে {0}ৰ্থ পাক লওক৷"}
+            }
+            plural{
+                one{"আপুনি তাত {0} দিন আছিল, আপোনাৰ দিনটো কেনে আছিল?"}
+                other{"আপুনি তাত {0} দিন আছিল, আপোনাৰ দিনবোৰ কেনে আছিল?"}
+            }
+        }
+        native{"beng"}
+    }
+    calendar{
+        generic{
+            DateTimePatterns{
+                "a h.mm.ss zzzz",
+                "a h.mm.ss z",
+                "a h.mm.ss",
+                "a h.mm",
+                "G y MMMM d, EEEE",
+                "G y MMMM d",
+                "G y MMM d",
+                "GGGGG y-MM-dd",
+                "{1} {0}",
+                "{1} {0} বজাত",
+                "{1} {0} বজাত",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
+                EBhm{"E B h:mm"}
+                EBhms{"E, B h:mm:ss"}
+                Ehm{"E, a h:mm"}
+                Ehms{"E, a h:mm:ss"}
+                GyMd{"d/M/y GGGGG"}
+                MEd{"E, M/d"}
+                Md{"M/d"}
+                y{"y G"}
+                yyyy{"y G"}
+                yyyyM{"MM-y GGGGG"}
+                yyyyMEd{"E, dd-MM-y GGGGG"}
+                yyyyMMM{"MMM y G"}
+                yyyyMMMEd{"E, MMM d, y G"}
+                yyyyMMMM{"MMMM y G"}
+                yyyyMMMd{"d MMM y G"}
+                yyyyMd{"dd-MM-y GGGGG"}
+            }
+            intervalFormats{
+                Bh{
+                    h{"h – h B"}
+                }
+                Bhm{
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    G{"y G – y G"}
+                    y{"y – y G"}
+                }
+                GyM{
+                    G{"GGGGG M/y – GGGGG M/y"}
+                    M{"GGGGG M/y – M/y"}
+                    y{"GGGGG M/y – M/y"}
+                }
+                GyMEd{
+                    G{"GGGGG E, d/M/y – GGGGG E, d/M/y"}
+                    M{"GGGGG E, d/M/y – E, d/M/y"}
+                    d{"GGGGG E, d/M/y – E, d/M/y"}
+                    y{"GGGGG E, d/M/y – E, d/M/y"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM – MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G E, d MMM, y – G E, d MMM, y"}
+                    M{"G E, d MMM – E, d MMM, y"}
+                    d{"G E, d MMM – E, d MMM, y"}
+                    y{"G E, d MMM, y – E, d MMM, y"}
+                }
+                GyMMMd{
+                    G{"G d MMM, y – G d MMM, y"}
+                    M{"G d MMM – d MMM, y"}
+                    d{"G d – d MMM, y"}
+                    y{"G d MMM, y – d MMM, y"}
+                }
+                GyMd{
+                    G{"GGGGG d/M/y – GGGGG d/M/y"}
+                    M{"M/d/y – M/d/y GGGGG"}
+                    d{"GGGGG d/M/y – d/M/y"}
+                    y{"GGGGG d/M/y – d/M/y"}
+                }
+                MMM{
+                    M{"MMM – MMM"}
+                }
+                fallback{"{0} – {1}"}
+            }
+        }
+        gregorian{
+            AmPmMarkersAbbr{
+                "পূৰ্বাহ্ন",
+                "অপৰাহ্ন",
+            }
+            DateTimePatterns{
+                "a h.mm.ss zzzz",
+                "a h.mm.ss z",
+                "a h.mm.ss",
+                "a h.mm",
+                "EEEE, d MMMM, y",
+                "d MMMM, y",
+                "dd-MM-y",
+                "d-M-y",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+                "{1} {0}",
+            }
+            DateTimePatterns%atTime{
+                "{1} 'at' {0}",
+                "{1} 'at' {0}",
+                "{1}, {0}",
+                "{1}, {0}",
+            }
+            DateTimeSkeletons{
+                "ahmmsszzzz",
+                "ahmmssz",
+                "ahmmss",
+                "ahmm",
+                "yMMMMEEEEd",
+                "yMMMMd",
+                "yMMdd",
+                "yMd",
+            }
+            availableFormats{
+                Bh{"B h"}
+                Bhm{"B h:mm"}
+                Bhms{"B h:mm:ss"}
+                EBhm{"E B h:mm"}
+                EBhms{"E B h:mm:ss"}
+                Ed{"E d"}
+                Ehm{"E a h:mm"}
+                Ehms{"E a h:mm:ss"}
+                GyMd{"d/M/y GGGGG"}
+                MEd{"E, dd-MM"}
+                MMMEd{"E, d MMM"}
+                MMMMW{
+                    one{"MMMMৰ সপ্তাহ W"}
+                    other{"MMMMৰ সপ্তাহ W"}
+                }
+                MMMMd{"d MMMM"}
+                MMMd{"d MMM"}
+                Md{"dd-MM"}
+                h{"a h"}
+                hm{"a h:mm"}
+                hms{"a h:mm:ss"}
+                hmsv{"a h:mm:ss v"}
+                hmv{"a h:mm v"}
+                yM{"MM-y"}
+                yMEd{"E, dd-MM-y"}
+                yMMM{"MMM y"}
+                yMMMEd{"E, d MMM y"}
+                yMMMM{"MMMM y"}
+                yMMMd{"d MMM y"}
+                yMd{"dd-MM-y"}
+                yQQQ{"QQQ y"}
+                yQQQQ{"QQQQ y"}
+                yw{
+                    one{"Yৰ সপ্তাহ w"}
+                    other{"Yৰ সপ্তাহ w"}
+                }
+            }
+            dayNames{
+                format{
+                    abbreviated{
+                        "দেও",
+                        "সোম",
+                        "মঙ্গল",
+                        "বুধ",
+                        "বৃহ",
+                        "শুক্ৰ",
+                        "শনি",
+                    }
+                    wide{
+                        "দেওবাৰ",
+                        "সোমবাৰ",
+                        "মঙ্গলবাৰ",
+                        "বুধবাৰ",
+                        "বৃহস্পতিবাৰ",
+                        "শুক্ৰবাৰ",
+                        "শনিবাৰ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "দ",
+                        "স",
+                        "ম",
+                        "ব",
+                        "ব",
+                        "শ",
+                        "শ",
+                    }
+                }
+            }
+            eras{
+                abbreviated{
+                    "খ্ৰীঃ পূঃ",
+                    "খ্ৰীঃ",
+                }
+                abbreviated%variant{
+                    "খ্ৰীঃ পূঃ",
+                    "চি. ই.",
+                }
+                wide{
+                    "খ্ৰীষ্টপূৰ্ব",
+                    "খ্ৰীষ্টাব্দ",
+                }
+                wide%variant{
+                    "খ্ৰীষ্টপূৰ্ব",
+                    "চি. ই.",
+                }
+            }
+            intervalFormats{
+                Bh{
+                    h{"h – h B"}
+                }
+                Bhm{
+                    h{"h:mm – h:mm B"}
+                    m{"h:mm – h:mm B"}
+                }
+                Gy{
+                    y{"G y – y"}
+                }
+                GyM{
+                    G{"GGGGG M/y – GGGGG M/y"}
+                    M{"G M/y – M/y"}
+                    y{"GGGGG M/y – M/y"}
+                }
+                GyMEd{
+                    G{"GGGGG E, d/M/y – GGGGG E, d/M/y"}
+                    M{"GGGGG E, d/M/y – E, d/M/y"}
+                    d{"GGGGG E, d/M/y – E, d/M/y"}
+                    y{"GGGGG E, d/M/y – E, d/M/y"}
+                }
+                GyMMM{
+                    G{"G MMM y – G MMM y"}
+                    M{"G MMM – MMM y"}
+                    y{"G MMM y – MMM y"}
+                }
+                GyMMMEd{
+                    G{"G E, d MMM, y – G E, d MMM, y"}
+                    M{"G E, d MMM – E, d MMM, y"}
+                    d{"G E, d MMM – E, d MMM, y"}
+                    y{"G E, d MMM, y – E, d MMM, y"}
+                }
+                GyMMMd{
+                    G{"G d MMM, y – G d MMM, y"}
+                    M{"G d MMM – d MMM, y"}
+                    d{"G d – d MMM, y"}
+                    y{"G d MMM, y – d MMM, y"}
+                }
+                GyMd{
+                    G{"GGGGG d/M/y – GGGGG d/M/y"}
+                    M{"GGGGG d/M/y – d/M/y"}
+                    d{"GGGGG d/M/y – d/M/y"}
+                    y{"GGGGG d/M/y – d/M/y"}
+                }
+                MEd{
+                    M{"E, dd-MM – E, dd-MM"}
+                    d{"E, dd-MM – E, dd-MM"}
+                }
+                MMMEd{
+                    M{"E, d MMM – E, d MMM"}
+                    d{"E, d MMM – E, d MMM"}
+                }
+                MMMd{
+                    M{"d MMM – d MMM"}
+                    d{"d – d MMM"}
+                }
+                Md{
+                    M{"dd-MM – dd-MM"}
+                    d{"dd-MM – dd-MM"}
+                }
+                fallback{"{0} – {1}"}
+                h{
+                    a{"a h – a h"}
+                    h{"a h–h"}
+                }
+                hm{
+                    a{"a h:mm – a h:mm"}
+                    h{"a h:mm–h:mm"}
+                    m{"a h:mm–h:mm"}
+                }
+                hmv{
+                    a{"a h:mm – a h:mm v"}
+                    h{"a h:mm–h:mm v"}
+                    m{"a h:mm–h:mm v"}
+                }
+                hv{
+                    a{"a h – a h v"}
+                    h{"a h–h v"}
+                }
+                yM{
+                    M{"MM-y – MM-y"}
+                    y{"MM-y – MM-y"}
+                }
+                yMEd{
+                    M{"dd-MM-y, E – dd-MM-y"}
+                    d{"dd-MM-y, E – dd-MM-y"}
+                    y{"dd-MM-y, E – dd-MM-y"}
+                }
+                yMMM{
+                    M{"MMM–MMM y"}
+                    y{"MMM y – MMM y"}
+                }
+                yMMMEd{
+                    M{"E, d MMM y – E, d MMM"}
+                    d{"E, d MMM y – E, d MMM"}
+                    y{"E, d MMM y – d MMM y"}
+                }
+                yMMMM{
+                    M{"MMMM–MMMM y"}
+                    y{"MMMM y – MMMM y"}
+                }
+                yMMMd{
+                    M{"d MMM y – d MMM"}
+                    d{"d–d MMM y"}
+                    y{"d MMM y – d MMM y"}
+                }
+                yMd{
+                    M{"dd-MM-y – dd-MM-y"}
+                    d{"dd-MM-y – dd-MM-y"}
+                    y{"dd-MM-y – dd-MM-y"}
+                }
+            }
+            monthNames{
+                format{
+                    abbreviated{
+                        "জানু",
+                        "ফেব্ৰু",
+                        "মাৰ্চ",
+                        "এপ্ৰিল",
+                        "মে’",
+                        "জুন",
+                        "জুলাই",
+                        "আগ",
+                        "ছেপ্তে",
+                        "অক্টো",
+                        "নৱে",
+                        "ডিচে",
+                    }
+                    wide{
+                        "জানুৱাৰী",
+                        "ফেব্ৰুৱাৰী",
+                        "মাৰ্চ",
+                        "এপ্ৰিল",
+                        "মে’",
+                        "জুন",
+                        "জুলাই",
+                        "আগষ্ট",
+                        "ছেপ্তেম্বৰ",
+                        "অক্টোবৰ",
+                        "নৱেম্বৰ",
+                        "ডিচেম্বৰ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "জ",
+                        "ফ",
+                        "ম",
+                        "এ",
+                        "ম",
+                        "জ",
+                        "জ",
+                        "আ",
+                        "ছ",
+                        "অ",
+                        "ন",
+                        "ড",
+                    }
+                }
+            }
+            quarters{
+                format{
+                    abbreviated{
+                        "১মঃ তিঃ",
+                        "২য়ঃ তিঃ",
+                        "৩য়ঃ তিঃ",
+                        "৪ৰ্থঃ তিঃ",
+                    }
+                    wide{
+                        "প্ৰথম তিনিমাহ",
+                        "দ্বিতীয় তিনিমাহ",
+                        "তৃতীয় তিনিমাহ",
+                        "চতুৰ্থ তিনিমাহ",
+                    }
+                }
+                stand-alone{
+                    narrow{
+                        "১",
+                        "২",
+                        "৩",
+                        "৪",
+                    }
+                }
+            }
+        }
+        indian{
+            eras{
+                abbreviated{
+                    "শক",
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "চৈত্ৰ",
+                        "বৈশাখ",
+                        "জ্যেষ্ঠ",
+                        "আষাঢ়",
+                        "শ্ৰাৱণ",
+                        "ভাদ্ৰ",
+                        "অশ্বিন",
+                        "কাৰ্তিক",
+                        "অগ্ৰহায়ণ",
+                        "পৌষ",
+                        "মাঘ",
+                        "ফাল্গুন",
+                    }
+                }
+            }
+        }
+    }
+    characterLabel{
+        activities{"ক্ৰিয়া-কলাপ"}
+        african_scripts{"আফ্ৰিকান স্ক্ৰিপ্ট"}
+        american_scripts{"আমেৰিকান স্ক্ৰিপ্ট"}
+        animal{"জীৱ-জন্তু"}
+        animals_nature{"জীৱ-জন্তু বা প্ৰকৃতি"}
+        arrows{"কাঁড়"}
+        body{"শৰীৰ"}
+        box_drawing{"বক্স ড্ৰয়িং"}
+        braille{"ব্ৰেইলী"}
+        building{"বিল্ডিং"}
+        bullets_stars{"বুলেট বা তৰা"}
+        consonantal_jamo{"ব্যঞ্জনবৰ্ণ-সংক্ৰান্তীয় জামো"}
+        currency_symbols{"মুদ্ৰা প্ৰতীক"}
+        dash_connector{"ডেচ বা সংযোজক"}
+        digits{"অংক"}
+        dingbats{"ডিংবাট"}
+        divination_symbols{"ভৱিষ্যদ্বাণী প্ৰতীক"}
+        downwards_arrows{"তলমুৱা কাঁড়"}
+        downwards_upwards_arrows{"তলফালে উৰ্দ্ধমুখী কাঁড়"}
+        east_asian_scripts{"পূব এছীয় লিপি"}
+        emoji{"ইম’জি"}
+        european_scripts{"ইউৰোপীয় লিপি"}
+        female{"মহিলা"}
+        flag{"পতাকা"}
+        flags{"পতাকাসমূহ"}
+        food_drink{"খাদ্য আৰু পানীয়"}
+        format{"ফৰ্মেট"}
+        format_whitespace{"ফৰ্মেট আৰু হোৱাইটস্পেচ"}
+        full_width_form_variant{"পূৰ্ণ-প্ৰস্থৰ বৈভাষিক"}
+        geometric_shapes{"জ্যামিতিক আকৃতি"}
+        half_width_form_variant{"অৰ্ধ-প্ৰস্থৰ বৈভাষিক"}
+        han_characters{"হান বৰ্ণ"}
+        han_radicals{"হান ৰেডিকেল"}
+        hanja{"হাঞ্জা"}
+        hanzi_simplified{"হাঞ্জি (সৰলীকৃত)"}
+        hanzi_traditional{"হাঞ্জি (পৰম্পৰাগত)"}
+        heart{"হাৰ্ট"}
+        historic_scripts{"ঐতিহাসিক লিপি"}
+        ideographic_desc_characters{"আইডিঅ’গ্ৰাফিক ডেস্ক কেৰেক্টাৰ"}
+        japanese_kana{"জাপানী কানা"}
+        kanbun{"কানবান"}
+        kanji{"কাঞ্জি"}
+        keycap{"কীকেপ"}
+        leftwards_arrows{"বাওঁফালে মুখ কৰা কাঁড়"}
+        leftwards_rightwards_arrows{"বাওঁফালে সোঁফালে মুখ কৰা কাঁড়"}
+        letterlike_symbols{"বৰ্ণৰ দৰে প্ৰতীক"}
+        limited_use{"সীমিত-ব্যৱহাৰ"}
+        male{"পুৰুষ"}
+        math_symbols{"অংকৰ প্ৰতীক"}
+        middle_eastern_scripts{"মধ্য প্ৰাচ্য লিপি"}
+        miscellaneous{"বিবিধ"}
+        modern_scripts{"আধুনিক লিপি"}
+        modifier{"সংশোধক"}
+        musical_symbols{"সাংগীতিক প্ৰতীক"}
+        nature{"প্ৰকৃতি"}
+        nonspacing{"খালীস্থান নথকা"}
+        numbers{"সংখ্যা"}
+        objects{"অবজেক্ট"}
+        other{"অন্যান্য"}
+        paired{"যুগ্ম"}
+        person{"ব্যক্তি"}
+        phonetic_alphabet{"ধ্বনিগত বৰ্ণমালা"}
+        pictographs{"চিত্ৰলেখ"}
+        place{"স্থান"}
+        plant{"উদ্ভিদ"}
+        punctuation{"যতিচিহ্ন"}
+        rightwards_arrows{"সোঁফালে মুখ কৰা কাঁড়"}
+        sign_standard_symbols{"চিহ্ন বা প্ৰতীক"}
+        small_form_variant{"সৰু বৈভাষিক"}
+        smiley{"স্মাইলী"}
+        smileys_people{"স্মাইলী বা ব্যক্তি"}
+        south_asian_scripts{"দক্ষিণ এছীয় লিপি"}
+        southeast_asian_scripts{"দক্ষিণ-পূব এছীয় লিপি"}
+        spacing{"ব্যৱধান"}
+        sport{"ক্ৰীড়া"}
+        symbols{"প্ৰতীক"}
+        technical_symbols{"কাৰিকৰী প্ৰতীক"}
+        tone_marks{"স্বৰ চিহ্ন"}
+        travel{"যাত্ৰা"}
+        travel_places{"যাত্ৰা বা স্থান"}
+        upwards_arrows{"ওপৰমুৱা কাঁড়"}
+        variant_forms{"বৈভাষিক"}
+        vocalic_jamo{"স্বৰধ্বনি-সম্পৰ্কীয় জামো"}
+        weather{"বতৰ"}
+        western_asian_scripts{"পাশ্চাত্য এছীয় লিপি"}
+        whitespace{"হোৱাইটস্পেচ"}
+    }
+    fields{
+        day{
+            dn{"দিন"}
+            relative{
+                "-1"{"কালি"}
+                "-2"{"পৰহি"}
+                "0"{"আজি"}
+                "1"{"কাইলৈ"}
+                "2"{"পৰহিলৈ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} দিনত"}
+                    other{"{0} দিনত"}
+                }
+                past{
+                    one{"{0} দিন পূৰ্বে"}
+                    other{"{0} দিন পূৰ্বে"}
+                }
+            }
+        }
+        dayOfYear{
+            dn{"বছৰৰ দিন"}
+        }
+        dayperiod{
+            dn{"পূৰ্বাহ্ন/অপৰাহ্ন"}
+        }
+        era{
+            dn{"যুগ"}
+        }
+        fri{
+            relative{
+                "-1"{"যোৱা শুক্ৰবাৰ"}
+                "0"{"এই শুক্ৰবাৰ"}
+                "1"{"অহা শুক্ৰবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} শুক্ৰবাৰে"}
+                    other{"{0} শুক্ৰবাৰে"}
+                }
+                past{
+                    one{"{0} শুক্ৰবাৰৰ পূৰ্বে"}
+                    other{"{0} শুক্ৰবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        fri-short{
+            relative{
+                "-1"{"যোৱা শুক্ৰ"}
+                "0"{"এই শুক্ৰ"}
+                "1"{"অহা শুক্ৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} শুকুৰে"}
+                    other{"{0} শুকুৰে"}
+                }
+                past{
+                    one{"{0} শুক্ৰৰ পূৰ্বে"}
+                    other{"{0} শুক্ৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        hour{
+            dn{"ঘণ্টা"}
+            relative{
+                "0"{"এইটো ঘণ্টাত"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ঘণ্টাত"}
+                    other{"{0} ঘণ্টাত"}
+                }
+                past{
+                    one{"{0} ঘণ্টা পূৰ্বে"}
+                    other{"{0} ঘণ্টা পূৰ্বে"}
+                }
+            }
+        }
+        minute{
+            dn{"মিনিট"}
+            relative{
+                "0"{"এইটো মিনিটত"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} মিনিটত"}
+                    other{"{0} মিনিটত"}
+                }
+                past{
+                    one{"{0} মিনিট পূৰ্বে"}
+                    other{"{0} মিনিট পূৰ্বে"}
+                }
+            }
+        }
+        mon{
+            relative{
+                "-1"{"যোৱা সোমবাৰ"}
+                "0"{"এই সোমবাৰ"}
+                "1"{"অহা সোমবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} সোমবাৰে"}
+                    other{"{0} সোমবাৰে"}
+                }
+                past{
+                    one{"{0} সোমবাৰৰ পূৰ্বে"}
+                    other{"{0} সোমবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        mon-narrow{
+            relative{
+                "-1"{"যোৱা সোম"}
+                "0"{"এই সোম"}
+                "1"{"অহা সোম"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} সোমে"}
+                    other{"{0} সোমে"}
+                }
+                past{
+                    one{"{0} সোমৰ পূৰ্বে"}
+                    other{"{0} সোমৰ পূৰ্বে"}
+                }
+            }
+        }
+        month{
+            dn{"মাহ"}
+            relative{
+                "-1"{"যোৱা মাহ"}
+                "0"{"এই মাহ"}
+                "1"{"অহা মাহ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} মাহত"}
+                    other{"{0} মাহত"}
+                }
+                past{
+                    one{"{0} মাহ পূৰ্বে"}
+                    other{"{0} মাহ পূৰ্বে"}
+                }
+            }
+        }
+        month-narrow{
+            relative{
+                "-1"{"যোৱা মা."}
+                "0"{"এই মা."}
+                "1"{"অহা মাহ"}
+            }
+        }
+        quarter{
+            dn{"তিনি মাহ"}
+            relative{
+                "-1"{"যোৱা তিনি মাহ"}
+                "0"{"এই তিনি মাহ"}
+                "1"{"অহা তিনি মাহ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} তিনি মাহত"}
+                    other{"{0} তিনি মাহত"}
+                }
+                past{
+                    one{"{0} তিনি মাহ পূৰ্বে"}
+                    other{"{0} তিনি মাহ পূৰ্বে"}
+                }
+            }
+        }
+        sat{
+            relative{
+                "-1"{"যোৱা শনিবাৰ"}
+                "0"{"এই শনিবাৰ"}
+                "1"{"অহা শনিবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} শনিবাৰে"}
+                    other{"{0} শনিবাৰে"}
+                }
+                past{
+                    one{"{0} শনিবাৰৰ পূৰ্বে"}
+                    other{"{0} শনিবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        sat-short{
+            relative{
+                "-1"{"যোৱা শনি"}
+                "0"{"এই শনি"}
+                "1"{"অহা শনি"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} শনিয়ে"}
+                    other{"{0} শনিয়ে"}
+                }
+                past{
+                    one{"{0} শনিৰ পূৰ্বে"}
+                    other{"{0} শনিৰ পূৰ্বে"}
+                }
+            }
+        }
+        second{
+            dn{"ছেকেণ্ড"}
+            relative{
+                "0"{"এতিয়া"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} ছেকেণ্ডত"}
+                    other{"{0} ছেকেণ্ডত"}
+                }
+                past{
+                    one{"{0} ছেকেণ্ড পূৰ্বে"}
+                    other{"{0} ছেকেণ্ড পূৰ্বে"}
+                }
+            }
+        }
+        sun{
+            relative{
+                "-1"{"যোৱা দেওবাৰ"}
+                "0"{"এই দেওবাৰ"}
+                "1"{"অহা দেওবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} দেওবাৰে"}
+                    other{"{0} দেওবাৰে"}
+                }
+                past{
+                    one{"{0} দেওবাৰৰ পূৰ্বে"}
+                    other{"{0} দেওবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        thu{
+            relative{
+                "-1"{"যোৱা বৃহস্পতিবাৰ"}
+                "0"{"এই বৃহস্পতিবাৰ"}
+                "1"{"অহা বৃহস্পতিবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} বৃহস্পতিবাৰে"}
+                    other{"{0} বৃহস্পতিবাৰে"}
+                }
+                past{
+                    one{"{0} বৃহস্পতিবাৰৰ পূৰ্বে"}
+                    other{"{0} বৃহস্পতিবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        thu-short{
+            relative{
+                "-1"{"যোৱা বৃহস্পতি"}
+                "0"{"এই বৃহস্পতি"}
+                "1"{"অহা বৃহস্পতি"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} বৃহস্পতিয়ে"}
+                    other{"{0} বৃহস্পতিয়ে"}
+                }
+                past{
+                    one{"{0} বৃহস্পতিৰ পূৰ্বে"}
+                    other{"{0} বৃহস্পতিৰ পূৰ্বে"}
+                }
+            }
+        }
+        tue{
+            relative{
+                "-1"{"যোৱা মঙ্গলবাৰ"}
+                "0"{"এই মঙ্গলবাৰ"}
+                "1"{"অহা মঙ্গলবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} মঙ্গলবাৰে"}
+                    other{"{0} মঙ্গলবাৰে"}
+                }
+                past{
+                    one{"{0} মঙ্গলবাৰৰ পূৰ্বে"}
+                    other{"{0} মঙ্গলবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        tue-short{
+            relative{
+                "-1"{"যোৱা মঙ্গল"}
+                "0"{"এই মঙ্গল"}
+                "1"{"অহা মঙ্গল"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} মঙ্গলে"}
+                    other{"{0} মঙ্গলে"}
+                }
+                past{
+                    one{"{0} মঙ্গলৰ পূৰ্বে"}
+                    other{"{0} মঙ্গলৰ পূৰ্বে"}
+                }
+            }
+        }
+        wed{
+            relative{
+                "-1"{"যোৱা বুধবাৰ"}
+                "0"{"এই বুধবাৰ"}
+                "1"{"অহা বুধবাৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} বুধবাৰে"}
+                    other{"{0} বুধবাৰে"}
+                }
+                past{
+                    one{"{0} বুধবাৰৰ পূৰ্বে"}
+                    other{"{0} বুধবাৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        wed-short{
+            relative{
+                "-1"{"যোৱা বুধ"}
+                "0"{"এই বুধ"}
+                "1"{"অহা বুধ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} বুধে"}
+                    other{"{0} বুধে"}
+                }
+                past{
+                    one{"{0} বুধৰ পূৰ্বে"}
+                    other{"{0} বুধৰ পূৰ্বে"}
+                }
+            }
+        }
+        week{
+            dn{"সপ্তাহ"}
+            relative{
+                "-1"{"যোৱা সপ্তাহ"}
+                "0"{"এই সপ্তাহ"}
+                "1"{"অহা সপ্তাহ"}
+            }
+            relativePeriod{"{0}ৰ সপ্তাহ"}
+            relativeTime{
+                future{
+                    one{"{0} সপ্তাহত"}
+                    other{"{0} সপ্তাহত"}
+                }
+                past{
+                    one{"{0} সপ্তাহ পূৰ্বে"}
+                    other{"{0} সপ্তাহ পূৰ্বে"}
+                }
+            }
+        }
+        weekOfMonth{
+            dn{"মাহৰ সপ্তাহ"}
+        }
+        weekday{
+            dn{"সপ্তাহৰ দিন"}
+        }
+        weekdayOfMonth{
+            dn{"মাহৰ সপ্তাহৰ দিন"}
+        }
+        year{
+            dn{"বছৰ"}
+            relative{
+                "-1"{"যোৱা বছৰ"}
+                "0"{"এই বছৰ"}
+                "1"{"অহা বছৰ"}
+            }
+            relativeTime{
+                future{
+                    one{"{0} বছৰত"}
+                    other{"{0} বছৰত"}
+                }
+                past{
+                    one{"{0} বছৰৰ পূৰ্বে"}
+                    other{"{0} বছৰৰ পূৰ্বে"}
+                }
+            }
+        }
+        zone{
+            dn{"সময় ক্ষেত্ৰ"}
+        }
+        zone-short{
+            dn{"ক্ষেত্ৰ"}
+        }
+    }
+    listPattern{
+        or{
+            2{"{0} বা {1}"}
+            end{"{0} বা {1}"}
+        }
+        standard{
+            2{"{0} আৰু {1}"}
+            end{"{0} আৰু {1}"}
+        }
+        standard-narrow{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+        }
+        unit-narrow{
+            2{"{0} {1}"}
+            end{"{0} {1}"}
+            middle{"{0} {1}"}
+            start{"{0} {1}"}
+        }
+        unit-short{
+            2{"{0}, {1}"}
+            end{"{0}, {1}"}
+        }
+    }
+    measurementSystemNames{
+        UK{"ইউ. কে."}
+        US{"ইউ. এছ."}
+        metric{"মেট্ৰিক"}
+    }
+    parse{
+        date{
+            lenient{
+                "[\\- ‑ . /]",
+                "[\\: ∶]",
+            }
+        }
+        general{
+            lenient{
+                "[.．․﹒ 。｡︒]",
+                "['＇’ ՚ ᾽᾿ ʼ]",
+                "[%％﹪ ٪]",
+                "[‰ ؉]",
+                "[\$＄﹩]",
+                "[£ ₤]",
+                "[¥￥]",
+                "[₩￦]",
+                "[₹ ₨ {Rp} {Rs}]",
+            }
+        }
+        number{
+            lenient{
+                "[\\-－﹣ ‑ ‒ −⁻₋ ➖]",
+                "[,，﹐︐ ، ٫ 、﹑､︑]",
+                "[+＋﬩﹢⁺₊ ➕]",
+            }
+            stricter{
+                "[,，﹐︐ ٫]",
+                "[.．․﹒ ｡]",
+            }
+        }
+    }
+    personNames{
+        nameOrderLocales{
+            givenFirst{
+                "und",
+                "as",
+            }
+            surnameFirst{
+                "ko",
+                "si",
+                "ta",
+                "te",
+                "vi",
+                "yue",
+                "zh",
+            }
+        }
+        namePattern{
+            givenFirst-long-addressing-formal{"{title} {surname}"}
+            givenFirst-long-addressing-informal{"{given-informal}"}
+            givenFirst-long-monogram-informal{"{given-informal-monogram-allCaps}{surname-monogram-allCaps}"}
+            givenFirst-long-referring-formal{"{given} {given2} {surname} {credentials}"}
+            givenFirst-long-referring-informal{"{given-informal} {surname}"}
+            givenFirst-medium-addressing-formal{"{title} {surname}"}
+            givenFirst-medium-addressing-informal{"{given-informal}"}
+            givenFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-medium-referring-formal{"{given} {given2-initial} {surname} {credentials}"}
+            givenFirst-medium-referring-informal{"{given-informal} {surname}"}
+            givenFirst-short-addressing-formal{"{title} {surname}"}
+            givenFirst-short-addressing-informal{"{given-informal}"}
+            givenFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            givenFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            givenFirst-short-referring-formal{"{given-initial} {given2-initial} {surname}"}
+            givenFirst-short-referring-informal{"{given-informal} {surname-initial}"}
+            sorting-long-referring-formal{"{surname-core}, {given} {given2} {surname-prefix}"}
+            sorting-long-referring-informal{"{surname}, {given-informal}"}
+            sorting-medium-referring-formal{"{surname-core}, {given} {given2-initial} {surname-prefix}"}
+            sorting-medium-referring-informal{"{surname}, {given-informal}"}
+            sorting-short-referring-formal{"{surname-core}, {given-initial} {given2-initial} {surname-prefix}"}
+            sorting-short-referring-informal{"{surname}, {given-informal}"}
+            surnameFirst-long-addressing-formal{"{title} {surname}"}
+            surnameFirst-long-addressing-informal{"{given-informal}"}
+            surnameFirst-long-monogram-informal{"{surname-monogram-allCaps}{given-informal-monogram-allCaps}"}
+            surnameFirst-long-referring-formal{"{surname} {given} {given2} {credentials}"}
+            surnameFirst-long-referring-informal{"{surname} {given-informal}"}
+            surnameFirst-medium-addressing-formal{"{title} {surname}"}
+            surnameFirst-medium-addressing-informal{"{given-informal}"}
+            surnameFirst-medium-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-medium-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-medium-referring-formal{"{surname} {given} {given2-initial} {credentials}"}
+            surnameFirst-medium-referring-informal{"{surname} {given-informal}"}
+            surnameFirst-short-addressing-formal{"{title} {surname}"}
+            surnameFirst-short-addressing-informal{"{given-informal}"}
+            surnameFirst-short-monogram-formal{"{surname-monogram-allCaps}"}
+            surnameFirst-short-monogram-informal{"{given-informal-monogram-allCaps}"}
+            surnameFirst-short-referring-formal{"{surname} {given-initial} {given2-initial}"}
+            surnameFirst-short-referring-informal{"{surname} {given-initial}"}
+        }
+    }
+}

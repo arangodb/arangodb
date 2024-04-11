@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+oc{
+    Languages{
+        en{"anglés"}
+        oc{"occitan"}
+    }
+    Scripts{
+        Latn{"latin"}
+    }
+    codePatterns{
+        language{"Lenga : {0}"}
+        script{"Escritura : {0}"}
+        territory{"Region : {0}"}
+    }
+}

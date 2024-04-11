@@ -1,0 +1,85 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lij{
+    AuxExemplarCharacters{"[õō œ ř]"}
+    ExemplarCharacters{"[aàâä æ b cç d eéèêë f g h iìîï j k l m nñ oóòôö p q r s t uùûü v w x y z]"}
+    ExemplarCharactersIndex{"[A B C D E F G H I J K L M N O P Q R S T U V W X Y Z]"}
+    ExemplarCharactersNumbers{"[\\- ‑ , . ' % ‰ + − 0 1 2 3 4 5 6 7 8 9 ª º]"}
+    ExemplarCharactersPunctuation{"[\\- ‐‑ – — , ; \\: ! ? . … ’ \u0022“” « » ( ) \\[ \\] § @ * / \\& # † ‡]"}
+    NumberElements{
+        latn{
+            miscPatterns{
+                range{"{0}-{1}"}
+            }
+            patterns{
+                currencyFormat{"#,##0.00 ¤"}
+            }
+            symbols{
+                decimal{","}
+                group{"."}
+            }
+        }
+        minimalPairs{
+            ordinal{
+                many{"Piggia l’{0}ª in sciâ drita."}
+                other{"Piggia a {0}ª in sciâ drita."}
+            }
+            plural{
+                one{"{0} giorno"}
+                other{"{0} giorni"}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            availableFormats{
+                hmsv{"h:mm:ss a v"}
+                yMMMd{"d MMM 'do' y"}
+                yMd{"d/M/y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "domenega",
+                        "lunesdì",
+                        "mätesdì",
+                        "mäcordì",
+                        "zeuggia",
+                        "venardì",
+                        "sabbo",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "de zenâ",
+                        "de frevâ",
+                        "de marso",
+                        "d’arvî",
+                        "de mazzo",
+                        "de zugno",
+                        "de luggio",
+                        "d’agosto",
+                        "de settembre",
+                        "d’ottobre",
+                        "de novembre",
+                        "de dexembre",
+                    }
+                }
+            }
+        }
+    }
+    delimiters{
+        alternateQuotationEnd{"”"}
+        alternateQuotationStart{"“"}
+        quotationEnd{"»"}
+        quotationStart{"«"}
+    }
+    measurementSystemNames{
+        UK{"imperiale"}
+        US{"american"}
+        metric{"metrico"}
+    }
+}

@@ -1,0 +1,114 @@
+﻿# © 2016 and later: Unicode, Inc. and others.
+# License & terms of use: http://www.unicode.org/copyright.html
+# Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+#
+# File: fa_fa_FONIPA.txt
+# Generated from CLDR
+#
+
+[\u200c \u200d] → ;  # Strip off ZWJ and ZWNJ.
+::NFD;
+# Rewrite similarly-looking Arabic letters to Persian.
+ي → ی;
+ى → ی;
+ك → ک;
+ە → ه;
+::NULL;
+$VOWEL = [ \u064E \u0650  \u064F  \u0653 ا و ی];
+$BOUNDARY = [^[:L:][:M:][:N:]];
+$IPA_CONSONANT = [ m n p b t d k ɡ ʔ f v s z ʃ ʒ ʁ ɢ h χ {t\u0361ʃ} {d\u0361ʒ} l ɾ ];
+# Vowels
+ی\u0651 → jj;
+و\u0651 → vv;
+([ \u064E \u0650  \u064F])\u0651 → \u0651 | $1;
+\u064Eی\u0652 → æj;
+\u0650ی → ej;
+یو\u0652 → iːv;
+{یو} ه $BOUNDARY → iːv;
+{یو} ه\u0654 $BOUNDARY → iːv;
+یو → juː;
+\u064Eو\u0652 → av;
+# Hamza forms
+ء → ʔ;
+ا \u064E \u0654 → ʔæ; # Needed because NFD reorders fatha before hamza
+ا \u0654 → ʔ;
+و \u0654 → ʔ;
+ی \u0652 \u0654 → ʔ; # Needed because NFD reorders sukun before hamza
+ی \u0650 \u0654 → ʔe; # Needed because NFD reorders kasra before hamza
+ی \u0654 → ʔ;
+{ \u064E ه} $BOUNDARY → æ;
+[^ːeoæ] {ه\u0654} $BOUNDARY → eje;
+[e] {ه\u0654} $BOUNDARY → je;
+[^ːeoæ] {ه} $BOUNDARY → e;
+[e] {ه} $BOUNDARY → ;
+ا\u064E → æ;
+ا\u064B $BOUNDARY → æn;
+\u064E → æ;
+یه → je;
+ی\u0670 → ɒː;
+$IPA_CONSONANT {وی} $VOWEL → uːj;
+# If yeh is preceded by a consonant and followed by a vowel,
+# it's pronounced /iːj/, but a sukun breaks that and makes it
+# be pronounced just as /j/.
+$IPA_CONSONANT {\u0652 یو} → juː;
+$IPA_CONSONANT {\u0652 ی} $VOWEL → j;
+$IPA_CONSONANT {ی} $VOWEL → iːj;
+{ی} $VOWEL → j;
+ی \u0652 → j;
+ی → iː;
+$BOUNDARY {ای} → iː;
+ا\u0653 → ɒː;
+آ → ɒː;
+ا\u0650 → e;
+$BOUNDARY {ا\u064Fو} → o;
+ا\u064F → o;
+$BOUNDARY {او} → uː;
+او → ɒːv;
+ا → ɒː; # Probably [^$BOUNDARY]
+\u0650 → e;
+ه \u0650 \u0651 → hhe; # Needed because NFD moves kasra before shadda
+ه\u0650 → he;
+خوا → χɒː;
+خوی → χiː;
+{و} $VOWEL → v;
+{و} ه $BOUNDARY → v;
+{و} ه\u0654 $BOUNDARY → v;
+$IPA_CONSONANT {و} → uː;
+$IPA_CONSONANT \u0651 {و} → uː; # shadda after a consonant
+\u064F{و} $IPA_CONSONANT → uː;
+$BOUNDARY {و} $BOUNDARY → va;
+{ \u064Fو} $VOWEL → ov;
+\u064F و \u0654 → oʔ;
+\u064Fو → o;
+\u064F → o;
+# Consonants
+پ → p;
+ب → b;
+[ت ط] → t;
+د → d;
+ک → k;
+گ → ɡ;
+ع → ʔ;
+چ → t\u0361ʃ;
+ج → d\u0361ʒ;
+ف → f;
+[س ص ث] → s;
+[ز ذ ض ظ] → z;
+ش → ʃ;
+ژ → ʒ;
+خ → χ;
+غ → ʁ;
+ق → ɢ;
+ح → h;
+م → m;
+ن → n;
+ه → h;
+ل → l;
+ر → ɾ;
+\u0652 → ;
+::NULL;
+# TODO: How to handle these?
+([$IPA_CONSONANT|$VOWEL]){\u0651} → $1;
+[ \u0651 \u0654 \u064B \u0670 ] → ;
+::NFC;
+

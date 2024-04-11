@@ -1,0 +1,122 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+en_CA{
+    Keys{
+        colCaseLevel{"Case-Sensitive Sorting"}
+        hc{"Hour cycle (12 vs. 24)"}
+        t0{"Machine-Translated"}
+    }
+    Languages{
+        ar_001{"Arabic (Modern Standard)"}
+        bn{"Bengali"}
+        mfe{"Mauritian Creole"}
+        nds_NL{"West Low German"}
+        ro_MD{"Moldovan"}
+    }
+    Languages%variant{
+        my{"Myanmar language"}
+    }
+    Types{
+        calendar{
+            buddhist{"Buddhist calendar"}
+            chinese{"Chinese calendar"}
+            coptic{"Coptic calendar"}
+            dangi{"Dangi calendar"}
+            ethiopic{"Ethiopic calendar"}
+            ethiopic-amete-alem{"Ethiopic Amete Alem calendar"}
+            gregorian{"Gregorian calendar"}
+            hebrew{"Hebrew calendar"}
+            indian{"Indian national calendar"}
+            islamic{"Hijri calendar"}
+            islamic-civil{"Hijri calendar (tabular, civil epoch)"}
+            islamic-tbla{"Hijri calendar (tabular, astronomical epoch)"}
+            islamic-umalqura{"Hijri calendar (Umm al-Qura)"}
+            iso8601{"ISO-8601 calendar"}
+            japanese{"Japanese calendar"}
+            persian{"Persian calendar"}
+            roc{"Minguo calendar"}
+        }
+        colNormalization{
+            no{"Sort Without Normalisation"}
+            yes{"Sort Unicode Normalised"}
+        }
+        d0{
+            ascii{"to ASCII"}
+            fwidth{"to full width"}
+            hwidth{"to half width"}
+            lower{"to lowercase"}
+            title{"to title case"}
+            upper{"to uppercase"}
+        }
+        fw{
+            fri{"First day of week is Friday"}
+            mon{"First day of week is Monday"}
+            sat{"First day of week is Saturday"}
+            sun{"First day of week is Sunday"}
+            thu{"First day of week is Thursday"}
+            tue{"First day of week is Tuesday"}
+            wed{"First day of week is Wednesday"}
+        }
+        hc{
+            h11{"12-hour system (0–11)"}
+            h12{"12-hour system (1–12)"}
+            h23{"24-hour system (0–23)"}
+            h24{"24-hour system (1–24)"}
+        }
+        m0{
+            bgn{"US BGN transliteration"}
+            ungegn{"UN GEGN transliteration"}
+        }
+        ms{
+            ussystem{"US measurement system"}
+        }
+        numbers{
+            adlm{"Adlam digits"}
+            arab{"Arabic-Indic digits"}
+            armn{"Armenian numerals"}
+            armnlow{"Armenian lowercase numerals"}
+            beng{"Bangla digits"}
+            cakm{"Chakma digits"}
+            deva{"Devanagari digits"}
+            ethi{"Ethiopic numerals"}
+            geor{"Georgian numerals"}
+            grek{"Greek numerals"}
+            greklow{"Greek lowercase numerals"}
+            gujr{"Gujarati digits"}
+            guru{"Gurmukhi digits"}
+            hanidec{"Chinese decimal numerals"}
+            hebr{"Hebrew numerals"}
+            java{"Javanese digits"}
+            jpan{"Japanese numerals"}
+            jpanfin{"Japanese financial numerals"}
+            khmr{"Khmer digits"}
+            knda{"Kannada digits"}
+            laoo{"Lao digits"}
+            latn{"Western digits"}
+            mlym{"Malayalam digits"}
+            mtei{"Meetei Mayek digits"}
+            mymr{"Myanmar digits"}
+            native{"Native digits"}
+            olck{"Ol Chiki digits"}
+            orya{"Odia digits"}
+            roman{"Roman numerals"}
+            romanlow{"Roman lowercase numerals"}
+            tamldec{"Tamil digits"}
+            telu{"Telugu digits"}
+            thai{"Thai digits"}
+            tibt{"Tibetan digits"}
+            vaii{"Vai digits"}
+        }
+    }
+    characterLabelPattern{
+        all{"{0}—all"}
+        compatibility{"{0}—compatibility"}
+        enclosed{"{0}—enclosed"}
+        extended{"{0}—extended"}
+        historic{"{0}—historic"}
+        miscellaneous{"{0}—miscellaneous"}
+        other{"{0}—other"}
+        scripts{"scripts—{0}"}
+    }
+}

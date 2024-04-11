@@ -1,0 +1,93 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+xh{
+    Languages{
+        af{"isiBhulu"}
+        ar{"Isi-Arabhu"}
+        ar_001{"Isi-Arabhu (Sale mihla)"}
+        bn{"IsiBangla"}
+        de{"IsiJamani"}
+        de_AT{"IsiJamani Sase-Austria"}
+        de_CH{"IsiJamani Esiyi-High Swiss"}
+        en{"IsiNgesi"}
+        en_AU{"IsiNgesi Sase-Australia"}
+        en_CA{"IsiNgesi SaseKhanada"}
+        en_GB{"IsiNgesi SaseBritane"}
+        en_US{"Isingesi SaseMelika"}
+        es{"Isi-Spanish"}
+        es_419{"IsiSpanish SaseLatin America"}
+        es_ES{"IsiSpanish SaseYurophu"}
+        es_MX{"IsiSpanish SaseMexico"}
+        fr{"IsiFrentshi"}
+        fr_CA{"IsiFrentshi SaseKhanada"}
+        fr_CH{"IsiFrentshi SaseSwitzerland"}
+        hi{"IsiHindi"}
+        hi_Latn{"IsiHindi (Latin)"}
+        id{"Isi-Indonesia"}
+        it{"IsiTaliyane"}
+        ja{"IsiJapan"}
+        ko{"Isi-Korean"}
+        nl{"IsiDatshi"}
+        nl_BE{"IsiFlemish"}
+        pl{"Isi-Polish"}
+        pt{"IsiPhuthukezi"}
+        pt_BR{"IsiPhuthukezi SaseBrazil"}
+        pt_PT{"IsiPhuthukezi SasePortugal"}
+        ru{"Isi-Russian"}
+        th{"Isi-Thai"}
+        tr{"Isi-Turkish"}
+        und{"Unknown language"}
+        xh{"IsiXhosa"}
+        zh{"IsiMandarin"}
+        zh_Hans{"IsiTshayina Esenziwe Lula"}
+        zh_Hant{"IsiTshayina Esiqhelekileyo"}
+        zu{"isiZulu"}
+    }
+    Languages%long{
+        zh_Hans{"IsiMandarin Esenziwe Lula"}
+        zh_Hant{"IsiMandarin Esiqhelekileyo"}
+    }
+    Languages%menu{
+        zh{"IsiTshayina, IsiMandarin"}
+    }
+    Languages%short{
+        en_GB{"IsiNgesi sase-UK"}
+        en_US{"IsiNgesi Sase-US"}
+    }
+    Languages%variant{
+        hi_Latn{"IsiHinglish"}
+    }
+    Scripts{
+        Arab{"Isi-Arabhu"}
+        Cyrl{"IsiCyrillic"}
+        Hans{"IsiHans Esenziwe Lula"}
+        Hant{"IsiHant Esiqhelekileyo"}
+        Jpan{"IsiJapanese"}
+        Kore{"IsiKorean"}
+        Latn{"IsiLatin"}
+        Zxxx{"Engabhalwanga"}
+        Zzzz{"Ulwimi Olungaziwayo"}
+    }
+    Scripts%stand-alone{
+        Hans{"IsiHan Esenziwe Lula"}
+        Hant{"IsiHan Esiqhelekileyo"}
+    }
+    Types{
+        calendar{
+            gregorian{"Ngokwekhalenda YeGregorian"}
+            iso8601{"Ikhalenda ye-ISO-8601"}
+        }
+        collation{
+            standard{"Standard Sort Order"}
+        }
+        numbers{
+            latn{"Western Digits"}
+        }
+    }
+    codePatterns{
+        language{"Language: {0}"}
+        script{"Script: {0}"}
+        territory{"Region: {0}"}
+    }
+}

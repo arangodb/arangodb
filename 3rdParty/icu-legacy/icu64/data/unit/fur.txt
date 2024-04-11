@@ -1,0 +1,62 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+fur{
+    units{
+        duration{
+            day{
+                one{"{0} zornade"}
+                other{"{0} zornadis"}
+            }
+            hour{
+                one{"{0} ore"}
+                other{"{0} oris"}
+            }
+            minute{
+                one{"{0} minût"}
+                other{"{0} minûts"}
+            }
+            month{
+                one{"{0} mês"}
+                other{"{0} mês"}
+            }
+            second{
+                one{"{0} secont"}
+                other{"{0} seconts"}
+            }
+            week{
+                one{"{0} setemane"}
+                other{"{0} setemanis"}
+            }
+            year{
+                one{"{0} an"}
+                other{"{0} agns"}
+            }
+        }
+    }
+    unitsShort{
+        duration{
+            day{
+                dnam{"zornadis"}
+            }
+            hour{
+                dnam{"oris"}
+            }
+            minute{
+                dnam{"minûts"}
+            }
+            month{
+                dnam{"mês"}
+            }
+            second{
+                dnam{"seconts"}
+            }
+            week{
+                dnam{"setemanis"}
+            }
+            year{
+                dnam{"agns"}
+            }
+        }
+    }
+}

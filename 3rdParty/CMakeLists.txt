@@ -107,6 +107,16 @@ set(ICU_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/${V8_SUB_DIR}/third_party/icu/")
 set(V8_INTERNAL_INCLUDE_DIR ${V8_INTERNAL_INCLUDE_DIR} PARENT_SCOPE)
 
 ################################################################################
+## Legacy ICU V 64.2 for index backwards compatibility
+################################################################################
+
+add_subdirectory(icu-legacy)
+set(ICU64_LIBS "${ICU64_LIBS}" PARENT_SCOPE)
+set(ICU64_INCLUDE "${ICU64_INCLUDE}" PARENT_SCOPE)
+
+# Potentially hand on some variables to PARENT_SCOPE
+
+################################################################################
 ## Google Abseil
 ################################################################################
 

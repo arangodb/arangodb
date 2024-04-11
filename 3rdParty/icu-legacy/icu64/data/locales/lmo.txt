@@ -1,0 +1,61 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+lmo{
+    AuxExemplarCharacters{"[áàăâåäãā æ ç éèĕêëē íìĭîïī ñ óòŏôöøō œ úùŭûüū ÿ]"}
+    ExemplarCharacters{"[a b c d e f g h i j k l m n o p q r s t u v w x y z]"}
+    ExemplarCharactersPunctuation{"[\\- ‑ — , ; \\: ! ? . … '’ \u0022“” « » ( ) \\[ \\] \\{ \\} @ /]"}
+    NumberElements{
+        latn{
+            symbols{
+                decimal{","}
+                group{"’"}
+            }
+        }
+    }
+    calendar{
+        gregorian{
+            AmPmMarkers{
+                "del matin",
+                "de sira",
+            }
+            availableFormats{
+                yMMMd{"d MMM y"}
+            }
+            dayNames{
+                format{
+                    wide{
+                        "domenega",
+                        "lundì",
+                        "mardì",
+                        "mercoldì",
+                        "sgiovedì",
+                        "venerdì",
+                        "sabet",
+                    }
+                }
+            }
+            monthNames{
+                format{
+                    wide{
+                        "sginer",
+                        "fevrer",
+                        "marz",
+                        "avril",
+                        "masg",
+                        "sgiugn",
+                        "luj",
+                        "avost",
+                        "setember",
+                        "otover",
+                        "november",
+                        "dicember",
+                    }
+                }
+            }
+        }
+    }
+    measurementSystemNames{
+        metric{"metregh"}
+    }
+}

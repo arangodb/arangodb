@@ -1,0 +1,776 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+en_CA{
+    units{
+        acceleration{
+            meter-per-square-second{
+                dnam{"metres per second squared"}
+                one{"{0} metre per second squared"}
+                other{"{0} metres per second squared"}
+            }
+        }
+        area{
+            square-centimeter{
+                dnam{"square centimetres"}
+                one{"{0} square centimetre"}
+                other{"{0} square centimetres"}
+                per{"{0} per square centimetre"}
+            }
+            square-kilometer{
+                dnam{"square kilometres"}
+                one{"{0} square kilometre"}
+                other{"{0} square kilometres"}
+                per{"{0} per square kilometre"}
+            }
+            square-meter{
+                dnam{"square metres"}
+                one{"{0} square metre"}
+                other{"{0} square metres"}
+                per{"{0} per square metre"}
+            }
+        }
+        compound{
+            10p1{"deca{0}"}
+        }
+        concentr{
+            milligram-ofglucose-per-deciliter{
+                dnam{"milligrams per decilitre"}
+                one{"{0} milligram per decilitre"}
+                other{"{0} milligrams per decilitre"}
+            }
+            millimole-per-liter{
+                dnam{"millimoles per litre"}
+                one{"{0} millimole per litre"}
+                other{"{0} millimoles per litre"}
+            }
+            permille{
+                dnam{"per mille"}
+                one{"{0} per mille"}
+                other{"{0} per mille"}
+            }
+            permyriad{
+                dnam{"per myriad"}
+                one{"{0} per myriad"}
+                other{"{0} per myriad"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"litres per 100 kilometres"}
+                one{"{0} litre per 100 kilometres"}
+                other{"{0} litres per 100 kilometres"}
+            }
+            liter-per-kilometer{
+                dnam{"litres per kilometre"}
+                one{"{0} litre per kilometre"}
+                other{"{0} litres per kilometre"}
+            }
+            mile-per-gallon{
+                dnam{"miles per US gallon"}
+                one{"{0} mile per US gallon"}
+                other{"{0} miles per US gallon"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"miles per gallon"}
+                one{"{0} mile per gallon"}
+                other{"{0} miles per gallon"}
+            }
+        }
+        energy{
+            kilowatt-hour{
+                one{"{0} kilowatt-hour"}
+                other{"{0} kilowatt-hours"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"kilowatt-hour per 100 kilometres"}
+                one{"{0} kilowatt-hour per 100 kilometres"}
+                other{"{0} kilowatt-hours per 100 kilometres"}
+            }
+        }
+        graphics{
+            dot{
+                one{"{0} dot"}
+                other{"{0} dots"}
+            }
+            dot-per-centimeter{
+                dnam{"dots per centimetre"}
+                one{"{0} dot per centimetre"}
+                other{"{0} dots per centimetre"}
+            }
+            pixel-per-centimeter{
+                dnam{"pixels per centimetre"}
+                one{"{0} pixel per centimetre"}
+                other{"{0} pixels per centimetre"}
+            }
+        }
+        length{
+            centimeter{
+                dnam{"centimetres"}
+                one{"{0} centimetre"}
+                other{"{0} centimetres"}
+                per{"{0} per centimetre"}
+            }
+            decimeter{
+                dnam{"decimetre"}
+                one{"{0} decimetre"}
+                other{"{0} decimetres"}
+            }
+            earth-radius{
+                one{"{0} earth radius"}
+                other{"{0} earth radii"}
+            }
+            kilometer{
+                dnam{"kilometres"}
+                one{"{0} kilometre"}
+                other{"{0} kilometres"}
+                per{"{0} per kilometre"}
+            }
+            meter{
+                dnam{"metres"}
+                one{"{0} metre"}
+                other{"{0} metres"}
+                per{"{0} per metre"}
+            }
+            micrometer{
+                dnam{"micrometre"}
+                one{"{0} micrometre"}
+                other{"{0} micrometres"}
+            }
+            mile-scandinavian{
+                dnam{"Scandinavian mile"}
+                one{"{0} Scandinavian mile"}
+                other{"{0} Scandinavian miles"}
+            }
+            millimeter{
+                dnam{"millimetres"}
+                one{"{0} millimetre"}
+                other{"{0} millimetres"}
+            }
+            nanometer{
+                dnam{"nanometres"}
+                one{"{0} nanometre"}
+                other{"{0} nanometres"}
+            }
+            picometer{
+                dnam{"picometres"}
+                one{"{0} picometre"}
+                other{"{0} picometres"}
+            }
+        }
+        light{
+            candela{
+                dnam{"candelas"}
+                one{"{0} candela"}
+                other{"{0} candelas"}
+            }
+            lumen{
+                dnam{"lumens"}
+                one{"{0} lumen"}
+                other{"{0} lumens"}
+            }
+        }
+        mass{
+            stone{
+                dnam{"stone"}
+                one{"{0} stone"}
+                other{"{0} stone"}
+            }
+            tonne{
+                dnam{"tonnes"}
+                one{"{0} tonne"}
+                other{"{0} tonnes"}
+            }
+        }
+        pressure{
+            millimeter-ofhg{
+                dnam{"millimetres of mercury"}
+                one{"{0} millimetre of mercury"}
+                other{"{0} millimetres of mercury"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"kilometres per hour"}
+                one{"{0} kilometre per hour"}
+                other{"{0} kilometres per hour"}
+            }
+            meter-per-second{
+                dnam{"metres per second"}
+                one{"{0} metre per second"}
+                other{"{0} metres per second"}
+            }
+        }
+        temperature{
+            generic{
+                dnam{"degree"}
+            }
+            kelvin{
+                dnam{"kelvin"}
+                one{"{0} kelvin"}
+                other{"{0} kelvin"}
+            }
+        }
+        torque{
+            newton-meter{
+                dnam{"newton metres"}
+                one{"{0} newton metre"}
+                other{"{0} newton metres"}
+            }
+        }
+        volume{
+            centiliter{
+                dnam{"centilitres"}
+                one{"{0} centilitre"}
+                other{"{0} centilitres"}
+            }
+            cubic-centimeter{
+                dnam{"cubic centimetres"}
+                one{"{0} cubic centimetre"}
+                other{"{0} cubic centimetres"}
+                per{"{0} per cubic centimetre"}
+            }
+            cubic-kilometer{
+                dnam{"cubic kilometres"}
+                one{"{0} cubic kilometre"}
+                other{"{0} cubic kilometres"}
+            }
+            cubic-meter{
+                dnam{"cubic metres"}
+                one{"{0} cubic metre"}
+                other{"{0} cubic metres"}
+                per{"{0} per cubic metre"}
+            }
+            deciliter{
+                dnam{"decilitres"}
+                one{"{0} decilitre"}
+                other{"{0} decilitres"}
+            }
+            dessert-spoon{
+                dnam{"US dessertspoon"}
+                one{"{0} US dessertspoon"}
+                other{"{0} US dessertspoons"}
+            }
+            dessert-spoon-imperial{
+                dnam{"dessertspoon"}
+                one{"{0} dessertspoon"}
+                other{"{0} dessertspoons"}
+            }
+            dram{
+                dnam{"fluid drams"}
+                one{"{0} fluid dram"}
+                other{"{0} fluid drams"}
+            }
+            fluid-ounce{
+                dnam{"US fluid ounces"}
+                one{"{0} US fluid ounce"}
+                other{"{0} US fluid ounces"}
+            }
+            fluid-ounce-imperial{
+                dnam{"fluid ounces"}
+                one{"{0} fluid ounce"}
+                other{"{0} fluid ounces"}
+            }
+            gallon{
+                dnam{"US gallons"}
+                one{"{0} US gallon"}
+                other{"{0} US gallons"}
+                per{"{0} per US gallon"}
+            }
+            gallon-imperial{
+                dnam{"gallons"}
+                one{"{0} gallon"}
+                other{"{0} gallons"}
+                per{"{0} per gallon"}
+            }
+            hectoliter{
+                dnam{"hectolitres"}
+                one{"{0} hectolitre"}
+                other{"{0} hectolitres"}
+            }
+            liter{
+                dnam{"litres"}
+                one{"{0} litre"}
+                other{"{0} litres"}
+                per{"{0} per litre"}
+            }
+            megaliter{
+                dnam{"megalitres"}
+                one{"{0} megalitre"}
+                other{"{0} megalitres"}
+            }
+            milliliter{
+                dnam{"millilitres"}
+                one{"{0} millilitre"}
+                other{"{0} millilitres"}
+            }
+            quart{
+                dnam{"US quarts"}
+                one{"{0} US quart"}
+                other{"{0} US quarts"}
+            }
+            quart-imperial{
+                dnam{"quart"}
+                one{"{0} quart"}
+                other{"{0} quarts"}
+            }
+        }
+    }
+    unitsNarrow{
+        angle{
+            revolution{
+                one{"{0}rev"}
+                other{"{0}revs"}
+            }
+        }
+        area{
+            square-inch{
+                per{"{0}/sq in"}
+            }
+            square-meter{
+                dnam{"metres²"}
+            }
+        }
+        consumption{
+            mile-per-gallon{
+                dnam{"mpg US"}
+                one{"{0}mpgUS"}
+                other{"{0}mpgUS"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"mpg"}
+                one{"{0}mpg"}
+                other{"{0}mpg"}
+            }
+        }
+        digital{
+            bit{
+                one{"{0}bit"}
+                other{"{0}bits"}
+            }
+        }
+        duration{
+            hour{
+                per{"{0}/hr"}
+            }
+            minute{
+                one{"{0}min"}
+                other{"{0}min"}
+            }
+            month{
+                per{"{0}/mo"}
+            }
+            second{
+                per{"{0}/sec"}
+            }
+            week{
+                per{"{0}/wk"}
+            }
+            year{
+                per{"{0}/yr"}
+            }
+        }
+        electric{
+            ampere{
+                dnam{"A"}
+            }
+            ohm{
+                dnam{"Ω"}
+            }
+            volt{
+                dnam{"V"}
+            }
+        }
+        length{
+            meter{
+                dnam{"metre"}
+            }
+        }
+        light{
+            lux{
+                dnam{"lx"}
+            }
+        }
+        mass{
+            carat{
+                one{"{0}ct"}
+                other{"{0}ct"}
+            }
+            pound{
+                one{"{0}lb"}
+                other{"{0}lb"}
+            }
+        }
+        power{
+            watt{
+                dnam{"W"}
+            }
+        }
+        speed{
+            kilometer-per-hour{
+                dnam{"km/h"}
+            }
+            mile-per-hour{
+                dnam{"mph"}
+            }
+        }
+        temperature{
+            celsius{
+                one{"{0}°"}
+                other{"{0}°"}
+            }
+            fahrenheit{
+                one{"{0}°F"}
+                other{"{0}°F"}
+            }
+            generic{
+                dnam{"deg"}
+            }
+        }
+        volume{
+            cup{
+                dnam{"cups"}
+            }
+            dessert-spoon{
+                dnam{"US dsp"}
+                one{"{0}USdsp"}
+                other{"{0}USdsp"}
+            }
+            dessert-spoon-imperial{
+                dnam{"dsp"}
+                one{"{0}dsp"}
+                other{"{0}dsp"}
+            }
+            dram{
+                dnam{"fl dr"}
+                one{"{0}fl dr"}
+                other{"{0}fl dr"}
+            }
+            fluid-ounce{
+                dnam{"US fl oz"}
+                one{"{0}US fl oz"}
+                other{"{0}US fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"fl oz"}
+                one{"{0}fl oz"}
+                other{"{0}fl oz"}
+            }
+            gallon{
+                dnam{"US gal"}
+                one{"{0}USgal"}
+                other{"{0}USgal"}
+                per{"{0}/USgal"}
+            }
+            gallon-imperial{
+                dnam{"gal"}
+                one{"{0}gal"}
+                other{"{0}gal"}
+                per{"{0}/gal"}
+            }
+            jigger{
+                dnam{"jiggers"}
+                one{"{0}jigger"}
+                other{"{0}jiggers"}
+            }
+            liter{
+                dnam{"litre"}
+            }
+            pint-metric{
+                dnam{"mpt"}
+            }
+            quart{
+                dnam{"US qt"}
+                one{"{0}USqt"}
+                other{"{0}USqt"}
+            }
+            quart-imperial{
+                dnam{"qt"}
+                one{"{0}qt"}
+                other{"{0}qt"}
+            }
+        }
+    }
+    unitsShort{
+        acceleration{
+            meter-per-square-second{
+                dnam{"metres/sec²"}
+            }
+        }
+        angle{
+            revolution{
+                one{"{0} rev"}
+                other{"{0} revs"}
+            }
+        }
+        area{
+            square-inch{
+                dnam{"sq inches"}
+                one{"{0} sq in"}
+                other{"{0} sq in"}
+                per{"{0}/sq in"}
+            }
+            square-meter{
+                dnam{"metres²"}
+            }
+            square-mile{
+                per{"{0}/sq mi"}
+            }
+            square-yard{
+                dnam{"sq yards"}
+                one{"{0} sq yd"}
+                other{"{0} sq yd"}
+            }
+        }
+        concentr{
+            item{
+                dnam{"items"}
+            }
+            milligram-ofglucose-per-deciliter{
+                dnam{"milligrams/decilitre"}
+            }
+            millimole-per-liter{
+                dnam{"millimoles/litre"}
+            }
+            mole{
+                dnam{"moles"}
+            }
+            permille{
+                dnam{"per mille"}
+            }
+            permyriad{
+                dnam{"per myriad"}
+            }
+        }
+        consumption{
+            liter-per-100-kilometer{
+                dnam{"litres/100 km"}
+            }
+            liter-per-kilometer{
+                dnam{"litres/km"}
+            }
+            mile-per-gallon{
+                dnam{"miles/US gal"}
+                one{"{0} mpg US"}
+                other{"{0} mpg US"}
+            }
+            mile-per-gallon-imperial{
+                dnam{"miles/gal"}
+                one{"{0} mpg"}
+                other{"{0} mpg"}
+            }
+        }
+        digital{
+            bit{
+                dnam{"bits"}
+                one{"{0} bit"}
+                other{"{0} bits"}
+            }
+            byte{
+                dnam{"bytes"}
+                one{"{0} byte"}
+                other{"{0} bytes"}
+            }
+        }
+        duration{
+            hour{
+                one{"{0} hr"}
+                other{"{0} hrs"}
+                per{"{0}/hr"}
+            }
+            microsecond{
+                one{"{0} μsec"}
+                other{"{0} μsecs"}
+            }
+            millisecond{
+                one{"{0} millisec"}
+                other{"{0} millisecs"}
+            }
+            minute{
+                one{"{0} min"}
+                other{"{0} mins"}
+            }
+            month{
+                one{"{0} mo"}
+                other{"{0} mos"}
+                per{"{0}/mo"}
+            }
+            nanosecond{
+                one{"{0} nanosec"}
+                other{"{0} nanosecs"}
+            }
+            second{
+                one{"{0} sec"}
+                other{"{0} secs"}
+                per{"{0}/sec"}
+            }
+            week{
+                per{"{0}/wk"}
+            }
+            year{
+                per{"{0}/yr"}
+            }
+        }
+        force{
+            kilowatt-hour-per-100-kilometer{
+                dnam{"kWh/100 km"}
+                one{"{0} kWh/100 km"}
+                other{"{0} kWh/100 km"}
+            }
+        }
+        length{
+            meter{
+                dnam{"metres"}
+            }
+            micrometer{
+                dnam{"μmetres"}
+            }
+        }
+        mass{
+            carat{
+                one{"{0} ct"}
+                other{"{0} ct"}
+            }
+            grain{
+                one{"{0} grain"}
+                other{"{0} grains"}
+            }
+            stone{
+                dnam{"stone"}
+            }
+        }
+        pressure{
+            bar{
+                dnam{"bars"}
+            }
+            millimeter-ofhg{
+                dnam{"mm Hg"}
+                one{"{0} mm Hg"}
+                other{"{0} mm Hg"}
+            }
+        }
+        speed{
+            meter-per-second{
+                dnam{"metres/sec"}
+            }
+        }
+        temperature{
+            celsius{
+                dnam{"deg C"}
+                one{"{0} °C"}
+                other{"{0} °C"}
+            }
+            fahrenheit{
+                dnam{"deg F"}
+                one{"{0} °F"}
+                other{"{0} °F"}
+            }
+            generic{
+                dnam{"deg"}
+            }
+        }
+        volume{
+            cubic-centimeter{
+                dnam{"cu centimetres"}
+                one{"{0}/cu cm"}
+                other{"{0}/cu cm"}
+                per{"{0}/cu cm"}
+            }
+            cubic-foot{
+                dnam{"cu feet"}
+                one{"{0} cu ft"}
+                other{"{0} cu ft"}
+            }
+            cubic-inch{
+                dnam{"cu inches"}
+                one{"{0} cu in"}
+                other{"{0} cu in"}
+            }
+            cubic-kilometer{
+                dnam{"cu kilometres"}
+                one{"{0} cu km"}
+                other{"{0} cu km"}
+            }
+            cubic-meter{
+                dnam{"cu metres"}
+                one{"{0}/cu m"}
+                other{"{0}/cu m"}
+                per{"{0}/cu m"}
+            }
+            cubic-mile{
+                dnam{"cu miles"}
+                one{"{0} cu mi"}
+                other{"{0} cu mi"}
+            }
+            cubic-yard{
+                dnam{"cu yards"}
+                one{"{0} cu yd"}
+                other{"{0} cu yd"}
+            }
+            dessert-spoon{
+                dnam{"US dssp"}
+                one{"{0} US dssp"}
+                other{"{0} US dssp"}
+            }
+            dessert-spoon-imperial{
+                dnam{"dssp"}
+                one{"{0} dssp"}
+                other{"{0} dssp"}
+            }
+            dram{
+                dnam{"fl drams"}
+                one{"{0} fl dram"}
+                other{"{0} fl drams"}
+            }
+            drop{
+                one{"{0} drops"}
+                other{"{0} drops"}
+            }
+            fluid-ounce{
+                dnam{"US fl oz"}
+                one{"{0} US fl oz"}
+                other{"{0} US fl oz"}
+            }
+            fluid-ounce-imperial{
+                dnam{"fl oz"}
+                one{"{0} fl oz"}
+                other{"{0} fl oz"}
+            }
+            gallon{
+                dnam{"US gal"}
+                one{"{0} US gal"}
+                other{"{0} US gal"}
+                per{"{0}/US gal"}
+            }
+            gallon-imperial{
+                dnam{"gal"}
+                one{"{0} gal"}
+                other{"{0} gal"}
+                per{"{0}/gal"}
+            }
+            jigger{
+                one{"{0} jiggers"}
+                other{"{0} jiggers"}
+            }
+            liter{
+                dnam{"litres"}
+            }
+            pinch{
+                one{"{0} pinches"}
+                other{"{0} pinches"}
+            }
+            quart{
+                dnam{"US qts"}
+                one{"{0} US qt"}
+                other{"{0} US qt"}
+            }
+            quart-imperial{
+                dnam{"qt"}
+                one{"{0} qt"}
+                other{"{0} qt"}
+            }
+        }
+    }
+}

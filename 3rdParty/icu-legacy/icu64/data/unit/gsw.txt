@@ -1,0 +1,37 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+gsw{
+    units{
+        duration{
+            day{
+                one{"{0} Taag"}
+                other{"{0} Tääg"}
+            }
+            hour{
+                one{"{0} Schtund"}
+                other{"{0} Schtunde"}
+            }
+            minute{
+                one{"{0} Minuute"}
+                other{"{0} Minuute"}
+            }
+            month{
+                one{"{0} Monet"}
+                other{"{0} Mönet"}
+            }
+            second{
+                one{"{0} Sekunde"}
+                other{"{0} Sekunde"}
+            }
+            week{
+                one{"{0} Wuche"}
+                other{"{0} Wuche"}
+            }
+            year{
+                one{"{0} Jahr"}
+                other{"{0} Jahr"}
+            }
+        }
+    }
+}

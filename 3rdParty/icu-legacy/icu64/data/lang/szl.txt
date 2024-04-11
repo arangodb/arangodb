@@ -1,0 +1,17 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+szl{
+    Languages{
+        en{"angelski"}
+        szl{"ślōnski"}
+    }
+    Scripts{
+        Latn{"łacińske"}
+    }
+    codePatterns{
+        language{"Jynzyk: {0}"}
+        script{"Pismo: {0}"}
+        territory{"Regiōn: {0}"}
+    }
+}

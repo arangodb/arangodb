@@ -1,0 +1,650 @@
+﻿// © 2016 and later: Unicode, Inc. and others.
+// License & terms of use: http://www.unicode.org/copyright.html
+// Generated using tools/cldr/cldr-to-icu/build-icu-data.xml
+hsb{
+    Keys{
+        calendar{"protyka"}
+        cf{"format měny"}
+        collation{"rjadowanski slěd"}
+        currency{"měna"}
+        hc{"hodźinowy cyklus (12 vs 24)"}
+        lb{"system łamanja linkow"}
+        ms{"system měrow"}
+        numbers{"ličby"}
+    }
+    Languages{
+        aa{"afaršćina"}
+        ab{"abchazišćina"}
+        ace{"achinezišćina"}
+        ada{"adangmešćina"}
+        ady{"adyghešćina"}
+        af{"afrikaanšćina"}
+        agq{"aghemšćina"}
+        ain{"ainušćina"}
+        ak{"akanšćina"}
+        ale{"aleutišćina"}
+        alt{"južna altaišćina"}
+        am{"amharšćina"}
+        an{"aragonšćina"}
+        ang{"anglosakšćina"}
+        ann{"obološćina"}
+        anp{"angikašćina"}
+        ar{"arabšćina"}
+        ar_001{"moderna wysokoarabšćina"}
+        arn{"arawkanšćina"}
+        arp{"arapahošćina"}
+        ars{"najdi arabšćina"}
+        as{"asamšćina"}
+        asa{"pare"}
+        ast{"asturšćina"}
+        atj{"atikamekwišćina"}
+        av{"awaršćina"}
+        awa{"awandhišćina"}
+        ay{"aymaršćina"}
+        az{"azerbajdźanšćina"}
+        ba{"baškiršćina"}
+        ban{"balinezišćina"}
+        bas{"basaa"}
+        be{"běłorušćina"}
+        bem{"bemba"}
+        bez{"bena"}
+        bg{"bołharšćina"}
+        bgc{"haryanvi"}
+        bho{"bhojpurišćina"}
+        bi{"bislamšćina"}
+        bin{"binišćina"}
+        bla{"siksikášćina"}
+        bm{"bambara"}
+        bn{"bengalšćina"}
+        bo{"tibetšćina"}
+        br{"bretonšćina"}
+        brx{"bodo"}
+        bs{"bosnišćina"}
+        bug{"buginezišćina"}
+        byn{"blinšćina"}
+        ca{"katalanšćina"}
+        cay{"cayugašćina"}
+        ccp{"čakma"}
+        ce{"čečenšćina"}
+        ceb{"cebuanšćina"}
+        cgg{"chiga"}
+        ch{"čamoršćina"}
+        chk{"chuukezišćina"}
+        chm{"marišćina"}
+        cho{"choctawšćina"}
+        chp{"chipewyanšćina"}
+        chr{"cherokee"}
+        chy{"cheyennešćina"}
+        ckb{"sorani"}
+        clc{"chilcotinšćina"}
+        co{"korsišćina"}
+        cr{"kri"}
+        crg{"michifšćina"}
+        crj{"južnowuchodna creešćina"}
+        crk{"plains creešćina"}
+        crl{"sewjernowuchodna creešćina"}
+        crm{"moode creešćina"}
+        crr{"carolina algonquianšćina"}
+        cs{"čěšćina"}
+        csw{"swampy creešćina"}
+        cu{"cyrkwinosłowjanšćina"}
+        cv{"chuvashišćina"}
+        cy{"walizišćina"}
+        da{"danšćina"}
+        dak{"dakotašćina"}
+        dar{"dargwašćina"}
+        dav{"taita"}
+        de{"němčina"}
+        de_AT{"awstriska němčina"}
+        de_CH{"šwicarska wysokoněmčina"}
+        dgr{"dogribšćina"}
+        dje{"zarma"}
+        doi{"dogrišćina"}
+        dsb{"delnjoserbšćina"}
+        dua{"duala"}
+        dv{"divehi"}
+        dyo{"jola-fonyi"}
+        dz{"dzongkha"}
+        dzg{"dazagašćina"}
+        ebu{"embu"}
+        ee{"ewe"}
+        efi{"efikšćina"}
+        eka{"ekajukšćina"}
+        el{"grjekšćina"}
+        en{"jendźelšćina"}
+        en_AU{"awstralska jendźelšćina"}
+        en_CA{"kanadiska jendźelšćina"}
+        en_GB{"britiska jendźelšćina"}
+        en_US{"ameriska jendźelšćina"}
+        eo{"esperanto"}
+        es{"španišćina"}
+        es_419{"łaćonskoameriska španišćina"}
+        es_ES{"europska španišćina"}
+        es_MX{"mexiska španišćina"}
+        et{"estišćina"}
+        eu{"baskišćina"}
+        ewo{"ewondo"}
+        fa{"persišćina"}
+        fa_AF{"dari"}
+        ff{"fulbšćina"}
+        fi{"finšćina"}
+        fil{"filipinšćina"}
+        fj{"fidźišćina"}
+        fo{"färöšćina"}
+        fon{"fonšćina"}
+        fr{"francošćina"}
+        fr_CA{"kanadiska francošćina"}
+        fr_CH{"šwicarska francošćina"}
+        frc{"cajun francošćina"}
+        frr{"sewjernofrizišćina"}
+        fur{"friulšćina"}
+        fy{"frizišćina"}
+        ga{"iršćina"}
+        gaa{"gašćina"}
+        gag{"gagauzišćina"}
+        gd{"šotiska gelšćina"}
+        gez{"geezišćina"}
+        gil{"gilbertezišćina"}
+        gl{"galicišćina"}
+        gn{"guarani"}
+        gor{"gorontalošćina"}
+        got{"gotšćina"}
+        gsw{"šwicarska němčina"}
+        gu{"gujarati"}
+        guz{"gusii"}
+        gv{"manšćina"}
+        gwi{"gwichʼinšćina"}
+        ha{"hausa"}
+        hai{"haidašćina"}
+        haw{"hawaiišćina"}
+        hax{"južna haidašćina"}
+        he{"hebrejšćina"}
+        hi{"hindišćina"}
+        hil{"hiligaynonšćina"}
+        hmn{"hmongšćina"}
+        hr{"chorwatšćina"}
+        hsb{"hornjoserbšćina"}
+        ht{"haitišćina"}
+        hu{"madźaršćina"}
+        hup{"hupašćina"}
+        hur{"halkomelemšćina"}
+        hy{"armenšćina"}
+        hz{"hererošćina"}
+        ia{"interlingua"}
+        iba{"ibanšćina"}
+        ibb{"ibibiošćina"}
+        id{"indonešćina"}
+        ig{"igbo"}
+        ii{"sichuan yi"}
+        ik{"inupiak"}
+        ikt{"zapadnokanadska inuktitutšćina"}
+        ilo{"ilokošćina"}
+        inh{"ingushišćina"}
+        io{"ido"}
+        is{"islandšćina"}
+        it{"italšćina"}
+        iu{"inuitšćina"}
+        ja{"japanšćina"}
+        jbo{"lojbanšćina"}
+        jgo{"ngomba"}
+        jmc{"machame"}
+        jv{"javašćina"}
+        ka{"georgišćina"}
+        kab{"kabylšćina"}
+        kac{"kachinšćina"}
+        kaj{"jjušćina"}
+        kam{"kamba"}
+        kbd{"kabardianšćina"}
+        kcg{"tyapšćina"}
+        kde{"makonde"}
+        kea{"kapverdšćina"}
+        kfo{"korošćina"}
+        kgp{"kaingangšćina"}
+        kha{"khasišćina"}
+        khq{"koyra chiini"}
+        ki{"kikuyu"}
+        kj{"kuanyamašćina"}
+        kk{"kazachšćina"}
+        kkj{"kako"}
+        kl{"gröndlandšćina"}
+        kln{"kalenjin"}
+        km{"khmeršćina"}
+        kmb{"kimbundušćina"}
+        kn{"kannadšćina"}
+        ko{"korejšćina"}
+        koi{"permska komišćina"}
+        kok{"konkani"}
+        kpe{"kpellešćina"}
+        kr{"kanurišćina"}
+        krc{"karachay-balkaršćina"}
+        krl{"karelianšćina"}
+        kru{"kurukhšćina"}
+        ks{"kašmiršćina"}
+        ksb{"šambala"}
+        ksf{"bafia"}
+        ksh{"kelnšćina"}
+        ku{"kurdišćina"}
+        kum{"kumykšćina"}
+        kv{"komišćina"}
+        kw{"kornišćina"}
+        kwk{"kwakʼwalašćina"}
+        ky{"kirgišćina"}
+        la{"łaćonšćina"}
+        lad{"ladinšćina"}
+        lag{"langi"}
+        lb{"luxemburgšćina"}
+        lez{"lezgianšćina"}
+        lg{"gandšćina"}
+        li{"limburšćina"}
+        lil{"lillooetšćina"}
+        lkt{"lakota"}
+        ln{"lingala"}
+        lo{"laošćina"}
+        lou{"Louisiana kreolšćina"}
+        loz{"lozišćina"}
+        lrc{"sewjerna lurišćina"}
+        lsm{"saamiašćina"}
+        lt{"litawšćina"}
+        lu{"luba-katanga"}
+        lua{"luba-luluašćina"}
+        lun{"lundašćina"}
+        luo{"luo"}
+        lus{"mizošćina"}
+        luy{"luhya"}
+        lv{"letišćina"}
+        mad{"madurezišćina"}
+        mag{"magahišćina"}
+        mai{"maithilšćina"}
+        mak{"makasaršćina"}
+        mas{"masaišćina"}
+        mdf{"mokshašćina"}
+        men{"mendišćina"}
+        mer{"meru"}
+        mfe{"mauriciska kreolšćina"}
+        mg{"malagassišćina"}
+        mgh{"makhuwa-meetto"}
+        mgo{"meta’"}
+        mh{"marshallezišćina"}
+        mi{"maoršćina"}
+        mic{"mi'kmaqšćina"}
+        min{"minangkabaušćina"}
+        mk{"makedonšćina"}
+        ml{"malajamšćina"}
+        mn{"mongolšćina"}
+        mni{"manipuršćina"}
+        moe{"innu-aimunšćina"}
+        moh{"mohawkšćina"}
+        mos{"mossišćina"}
+        mr{"maratišćina"}
+        ms{"malajšćina"}
+        mt{"maltašćina"}
+        mua{"mundang"}
+        mul{"wjacerěčne"}
+        mus{"krik"}
+        mwl{"mirandezišćina"}
+        my{"burmašćina"}
+        myv{"erzyašćina"}
+        mzn{"mazanderanšćina"}
+        na{"naurušćina"}
+        nap{"neapolitanšćina"}
+        naq{"nama"}
+        nb{"norwegšćina (bokmål)"}
+        nd{"sewjero-ndebele"}
+        nds{"delnjoněmčina"}
+        ne{"nepalšćina"}
+        new{"newarišćina"}
+        ng{"ndongašćina"}
+        nia{"niazišćina"}
+        niu{"niueanšćina"}
+        nl{"nižozemšćina"}
+        nl_BE{"flamšćina"}
+        nmg{"kwasio"}
+        nn{"norwegšćina (nynorsk)"}
+        nnh{"ngiemboon"}
+        no{"norwegšćina"}
+        nog{"nogaišćina"}
+        nqo{"n’ko"}
+        nr{"južna ndebelšćina"}
+        nso{"sewjerna sothošćina"}
+        nus{"nuer"}
+        nv{"navaho"}
+        ny{"nyanja"}
+        nyn{"nyankole"}
+        oc{"okcitanšćina"}
+        ojb{"sewjernozapadna ojibwašćina"}
+        ojc{"centralna ojibwašćina"}
+        ojs{"oji-creešćina"}
+        ojw{"zapadna ojibwašćina"}
+        oka{"okanaganšćina"}
+        om{"oromo"}
+        or{"orijšćina"}
+        os{"osetšćina"}
+        pa{"pandźabšćina"}
+        pag{"pangasinanšćina"}
+        pam{"pampangašćina"}
+        pap{"papiamentošćina"}
+        pau{"palauanšćina"}
+        pcm{"nigerijanski pidgin"}
+        pis{"pijinšćina"}
+        pl{"pólšćina"}
+        pqm{"maliseet-passamaquoddyšćina"}
+        prg{"prušćina"}
+        ps{"paštunšćina"}
+        pt{"portugalšćina"}
+        pt_BR{"brazilska portugalšćina"}
+        pt_PT{"europska portugalšćina"}
+        qu{"kečua"}
+        quc{"kʼicheʼ"}
+        raj{"rajasthani"}
+        rap{"rapanuišćina"}
+        rar{"rarotonganšćina"}
+        rhg{"rohingyašćina"}
+        rm{"retoromanšćina"}
+        rn{"kirundišćina"}
+        ro{"rumunšćina"}
+        ro_MD{"moldawšćina"}
+        rof{"rombo"}
+        ru{"rušćina"}
+        rup{"armanianšćina"}
+        rw{"kinjarwanda"}
+        rwk{"rwa"}
+        sa{"sanskrit"}
+        sad{"sandawešćina"}
+        sah{"jakutšćina"}
+        saq{"samburu"}
+        sat{"santalšćina"}
+        sba{"ngambayšćina"}
+        sbp{"sangu"}
+        sc{"sardinšćina"}
+        scn{"sicilšćina"}
+        sco{"scotšćina"}
+        sd{"sindhišćina"}
+        se{"sewjerosamišćina"}
+        seh{"sena"}
+        ses{"koyra senni"}
+        sg{"sango"}
+        sh{"serbochorwatšćina"}
+        shi{"tašelhit"}
+        shn{"shanšćina"}
+        si{"singhalšćina"}
+        sk{"słowakšćina"}
+        sl{"słowjenšćina"}
+        slh{"južna lushootseedšćina"}
+        sm{"samoašćina"}
+        sma{"južnosamišćina"}
+        smj{"lule-samišćina"}
+        smn{"inari-samišćina"}
+        sms{"skolt-samišćina"}
+        sn{"šonašćina"}
+        snk{"soninkešćina"}
+        so{"somališćina"}
+        sq{"albanšćina"}
+        sr{"serbišćina"}
+        srn{"sranan tongošćina"}
+        ss{"siswati"}
+        st{"južnosotšćina (Sesotho)"}
+        stq{"saterfrizišćina"}
+        str{"straits salishšćina"}
+        su{"sundanezišćina"}
+        suk{"sukumašćina"}
+        sv{"šwedšćina"}
+        sw{"suahelšćina"}
+        sw_CD{"kongoska suahelšćina"}
+        swb{"comorianšćina"}
+        syr{"syriacšćina"}
+        ta{"tamilšćina"}
+        tce{"južna tutchonšćina"}
+        te{"telugu"}
+        tem{"timnešćina"}
+        teo{"teso"}
+        tet{"tetumšćina"}
+        tg{"tadźikšćina"}
+        tgx{"tagishšćina"}
+        th{"thailandšćina"}
+        tht{"tahltanšćina"}
+        ti{"tigrinšćina"}
+        tig{"tigrešćina"}
+        tk{"turkmenšćina"}
+        tl{"tagalog"}
+        tlh{"klingonšćina"}
+        tli{"tlingitšćina"}
+        tn{"tswana"}
+        to{"tongašćina"}
+        tok{"toki ponašćina"}
+        tpi{"tok pisinšćina"}
+        tr{"turkowšćina"}
+        trv{"tarokošćina"}
+        ts{"tsonga"}
+        tt{"tataršćina"}
+        ttm{"sewjerna tutchonšćina"}
+        tum{"tumbukašćina"}
+        tvl{"tuvalušćina"}
+        tw{"twi"}
+        twq{"tasawaq"}
+        ty{"tahitišćina"}
+        tyv{"tuvinianšćina"}
+        tzm{"tamazight (srjedźny Marokko)"}
+        udm{"udmurtšćina"}
+        ug{"ujguršćina"}
+        uk{"ukrainšćina"}
+        umb{"umbundušćina"}
+        und{"njeznata rěč"}
+        ur{"urdušćina"}
+        uz{"uzbekšćina"}
+        vai{"vai"}
+        ve{"vendašćina"}
+        vi{"vietnamšćina"}
+        vo{"volapük"}
+        vun{"vunjo"}
+        wa{"walonšćina"}
+        wae{"walzeršćina"}
+        wal{"wolayttašćina"}
+        war{"warayšćina"}
+        wo{"wolof"}
+        wuu{"wu chinšćina"}
+        xal{"kalmykšćina"}
+        xh{"xhosa"}
+        xog{"soga"}
+        yav{"yangben"}
+        ybb{"yembašćina"}
+        yi{"jidišćina"}
+        yo{"jorubašćina"}
+        yrl{"nheengatušćina"}
+        yue{"kantonšćina"}
+        za{"zhuang"}
+        zgh{"tamazight"}
+        zh{"chinšćina"}
+        zh_Hans{"chinšćina (zjednorjena)"}
+        zh_Hant{"chinšćina (tradicionalna)"}
+        zu{"zulušćina"}
+        zun{"zunišćina"}
+        zxx{"žadyn rěčny wobsah"}
+        zza{"zazašćina"}
+    }
+    Languages%menu{
+        yue{"chinšćina (kantonšćina)"}
+        zh{"chinšćina (mandarin)"}
+    }
+    Languages%short{
+        en_GB{"jendźelšćina (UK)"}
+        en_US{"jendźelšćina (USA)"}
+    }
+    Languages%variant{
+        ckb{"centralna kurdišćina"}
+    }
+    Scripts{
+        Adlm{"adlamske pismo"}
+        Arab{"arabsce"}
+        Aran{"nastaliqske pismo"}
+        Armn{"armensce"}
+        Beng{"bengalsce"}
+        Bopo{"bopomofo"}
+        Brai{"Braillowe pismo"}
+        Cakm{"chakmaske pismo"}
+        Cans{"zjednotnjene kanadske aboriginske złóžkowe pismo"}
+        Cher{"cherokeeske pismo"}
+        Cyrl{"kyrilisce"}
+        Deva{"devanagari"}
+        Ethi{"etiopisce"}
+        Geor{"georgisce"}
+        Grek{"grjeksce"}
+        Gujr{"gujarati"}
+        Guru{"gurmukhi"}
+        Hanb{"chinšćina z bopomofo"}
+        Hang{"hangul"}
+        Hani{"chinsce"}
+        Hans{"zjednorjene"}
+        Hant{"tradicionalne"}
+        Hebr{"hebrejsce"}
+        Hira{"hiragana"}
+        Hrkt{"japanske złóžkowe pismo"}
+        Jamo{"jamo"}
+        Jpan{"japansce"}
+        Kana{"katakana"}
+        Khmr{"khmersce"}
+        Knda{"kannadsce"}
+        Kore{"korejsce"}
+        Laoo{"laosce"}
+        Latn{"łaćonsce"}
+        Mlym{"malayalamsce"}
+        Mong{"mongolsce"}
+        Mtei{"meitei-mayekse pismo"}
+        Mymr{"burmasce"}
+        Nkoo{"n’Koske pismo"}
+        Olck{"ol-chikiske pismo"}
+        Orya{"oriya"}
+        Rohg{"hanifiske pismo"}
+        Sinh{"singhalsce"}
+        Sund{"sundaneske pismo"}
+        Syrc{"syriacske pismo"}
+        Taml{"tamilsce"}
+        Telu{"telugu"}
+        Tfng{"tifinanghske pismo"}
+        Thaa{"thaana"}
+        Thai{"thailandsce"}
+        Tibt{"tibetsce"}
+        Vaii{"vaiske pismo"}
+        Yiii{"yiske pismo"}
+        Zmth{"matematiski zapis"}
+        Zsye{"emoji"}
+        Zsym{"symbole"}
+        Zxxx{"bjez pisma"}
+        Zyyy{"powšitkowne"}
+        Zzzz{"njeznate pismo"}
+    }
+    Scripts%stand-alone{
+        Hans{"zjednorjene chinske pismo"}
+        Hant{"tradicionalne chinske pismo"}
+    }
+    Types{
+        calendar{
+            buddhist{"buddhistiska protyka"}
+            chinese{"chinska protyka"}
+            coptic{"koptiska protyka"}
+            dangi{"dangi-protyka"}
+            ethiopic{"etiopiska protyka"}
+            ethiopic-amete-alem{"etiopiska amete-alem-protyka"}
+            gregorian{"gregorianska protyka"}
+            hebrew{"židowska protyka"}
+            islamic{"islamska protyka"}
+            islamic-civil{"islamska ciwilna protyka"}
+            islamic-umalqura{"islamska umalqura-protyka"}
+            iso8601{"protyka po iso-8601"}
+            japanese{"japanska protyka"}
+            persian{"persiska protyka"}
+            roc{"protyka republiki China"}
+        }
+        cf{
+            account{"knihiwjedniski format měny"}
+            standard{"standardny format měny"}
+        }
+        collation{
+            ducet{"rjadowanski slěd po Unicode"}
+            search{"powšitkowne pytanje"}
+            standard{"standardowy rjadowanski slěd"}
+        }
+        hc{
+            h11{"12-hodźinowy cyklus (0-11)"}
+            h12{"12-hodźinowy cyklus (1-12)"}
+            h23{"24-hodźinowy cyklus (0-23)"}
+            h24{"24-hodźinowy cyklus (1-24)"}
+        }
+        lb{
+            loose{"swobodny stil łamanja linkow"}
+            normal{"běžny stil łamanja linkow"}
+            strict{"kruty stil łamanja linkow"}
+        }
+        ms{
+            metric{"metriski system"}
+            uksystem{"britiski system měrow"}
+            ussystem{"ameriski system měrow"}
+        }
+        numbers{
+            arab{"arabsko-indiske cyfry"}
+            arabext{"rozšěrjene arabsko-indiske cyfry"}
+            armn{"armenske cyfry"}
+            armnlow{"armenske cyfry, małe pisane"}
+            beng{"bengalske cyfry"}
+            cakm{"chakmaske cyfry"}
+            deva{"devanagari-cyfry"}
+            ethi{"etiopiske cyfry"}
+            fullwide{"połnošěroke cyfry"}
+            geor{"georgiske cyfry"}
+            grek{"grjekske cyfry"}
+            greklow{"grjekske cyfry, małe pisane"}
+            gujr{"gujarati-cyfry"}
+            guru{"gurmukhi-cyfry"}
+            hanidec{"chinske decimalne ličby"}
+            hans{"zjednorjene chinske cyfry"}
+            hansfin{"zjednorjene chinske financne cyfry"}
+            hant{"tradicionalne chinske cyfry"}
+            hantfin{"tradicionalne chinske financne cyfry"}
+            hebr{"hebrejske cyfry"}
+            java{"javaske cyfry"}
+            jpan{"japanske cyfry"}
+            jpanfin{"japanske financne cyfry"}
+            khmr{"khmerske cyfry"}
+            knda{"kannadske cyfry"}
+            laoo{"laoske cyfry"}
+            latn{"arabske cyfry"}
+            mlym{"malayalamske cyfry"}
+            mtei{"meetei-mayekske cyfry"}
+            mymr{"burmaske cyfry"}
+            olck{"ol-chikiske cyfry"}
+            orya{"oriya-cyfry"}
+            roman{"romske cyfry"}
+            romanlow{"romske cyfry, małe pisane"}
+            taml{"tradicionalne tamilske cyfry"}
+            tamldec{"tamilske cyfry"}
+            telu{"telugu-cyfry"}
+            thai{"thailandske cyfry"}
+            tibt{"tibetske cyfry"}
+            vaii{"vaiske cyfry"}
+        }
+    }
+    characterLabelPattern{
+        all{"{0} — wšitke"}
+        compatibility{"{0} — kompatibelnosć"}
+        enclosed{"{0} — zakašćikowane"}
+        extended{"{0} — rozšěrjene"}
+        facing-left{"{0} dolěwa"}
+        facing-right{"{0} doprawa"}
+        historic{"{0} — historisce"}
+        miscellaneous{"{0} — rozdźělne"}
+        other{"{0} — druhe"}
+        scripts{"spisy — {0}"}
+        strokes{
+            few{"{0} smužki"}
+            one{"{0} smužka"}
+            other{"{0} smužkow"}
+            two{"{0} smužce"}
+        }
+        subscript{"indeks {0}"}
+        superscript{"horni indeks {0}"}
+    }
+    codePatterns{
+        language{"rěč: {0}"}
+        script{"pismo: {0}"}
+        territory{"region: {0}"}
+    }
+}
