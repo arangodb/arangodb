@@ -180,6 +180,7 @@ QueryRegistryFeature::QueryRegistryFeature(Server& server)
 #endif
       _allowCollectionsInExpressions(false),
       _logFailedQueries(false),
+      _enableDebugApis(true),
       _maxQueryStringLength(4096),
       _maxCollectionsPerQuery(2048),
       _peakMemoryUsageThreshold(4294967296),  // 4GB
@@ -706,6 +707,26 @@ lookups.)");
               arangodb::options::Flags::OnCoordinator,
               arangodb::options::Flags::OnSingle))
       .setIntroducedIn(31007);
+
+  // feature flag for query / transaction debug APIs.
+  // the APIs are added in 3.11.9 and on by default. the feature flag is there
+  // in case the data collection for these APIs produces undesired overhead or
+  // other issues, which is not expected.
+  // note: the feature flag will likely be removed in future versions if the
+  // API stabilizes or is removed entirely.
+  options
+      ->addOption("--query.enable-debug-apis",
+                  "Whether to enable query debug APIs.",
+                  new BooleanParameter(&_enableDebugApis),
+                  arangodb::options::makeDefaultFlags(
+                      arangodb::options::Flags::Uncommon))
+      .setIntroducedIn(31109)
+      .setLongDescription(R"(If set to `true`, the server will expose an API for
+debugging some internals of AQL queries and transactions for support purposes.
+These APIs return information about currently ongoing queries and transactions and
+which collections they affect, their acquired locks and timeouts.
+These APIs are probably only meaningful for the ArangoDB support, as their output
+is undocumented and can change from version to version.)");
 }
 
 void QueryRegistryFeature::validateOptions(

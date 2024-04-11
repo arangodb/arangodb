@@ -42,8 +42,10 @@
 #include "Network/NetworkFeature.h"
 #include "Network/Utils.h"
 #include "RestServer/DatabaseFeature.h"
+#include "RestServer/QueryRegistryFeature.h"
 #include "StorageEngine/EngineSelectorFeature.h"
 #include "StorageEngine/StorageEngine.h"
+#include "StorageEngine/TransactionCollection.h"
 #include "StorageEngine/TransactionState.h"
 #include "Transaction/Helpers.h"
 #include "Transaction/ManagerFeature.h"
@@ -62,6 +64,7 @@
 #include <fuerte/jwt.h>
 #include <velocypack/Iterator.h>
 
+#include <algorithm>
 #include <thread>
 
 namespace {
@@ -95,6 +98,18 @@ Manager::Manager(ManagerFeature& feature)
       _hotbackupCommitLockHeld(false),
       _streamingLockTimeout(feature.streamingLockTimeout()),
       _softShutdownOngoing(false) {}
+
+std::string_view Manager::typeName(MetaType type) {
+  switch (type) {
+    case MetaType::Managed:
+      return "managed";
+    case MetaType::StandaloneAQL:
+      return "standalone-aql";
+    case MetaType::Tombstone:
+      return "tombstone";
+  }
+  return "unknown";
+}
 
 void Manager::registerTransaction(TransactionId transactionId,
                                   bool isReadOnlyTransaction,
@@ -159,6 +174,12 @@ Manager::ManagedTrx::ManagedTrx(ManagerFeature const& feature, MetaType t,
       rGuard(std::move(rGuard)),
       user(::currentUser()),
       db(state ? state->vocbase().name() : ""),
+      context((state != nullptr && state->vocbase()
+                                       .server()
+                                       .getFeature<QueryRegistryFeature>()
+                                       .enableDebugApis())
+                  ? buildContextFromState(*state, t)
+                  : ""),
       rwlock() {}
 
 bool Manager::ManagedTrx::hasPerformedIntermediateCommits() const noexcept {
@@ -422,18 +443,12 @@ Result Manager::prepareOptions(transaction::Options& options) {
   }
   // enforce size limit per DBServer
   if (isFollowerTransactionOnDBServer(options)) {
-    // if we are a follower, we reuse the leader's max transaction size and
-    // slightly increase it. this is to ensure that the follower can process at
-    // least as many data as the leader, even if the data representation is
-    // slightly varied for network transport etc.
-    if (options.maxTransactionSize != UINT64_MAX) {
-      uint64_t adjust = options.maxTransactionSize / 10;
-      if (adjust < UINT64_MAX - options.maxTransactionSize) {
-        // now the transaction on the follower should be able to grow to at
-        // least the size of the transaction on the leader.
-        options.maxTransactionSize += adjust;
-      }
-    }
+    // if we are a follower, we allow transactions of arbitrary size.
+    // this is because the max transaction size should be enforced already
+    // when writing to the leader. the follower should simply accept
+    // everything that the leader was able to apply successfully.
+    options.maxTransactionSize = UINT64_MAX;
+
     // it is also important that we set this option, so that it is ok for two
     // different leaders to add "their" shards to the same follower transaction.
     // for example, if we have 3 database servers and 2 shards, so that
@@ -805,6 +820,7 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
 
     auto it = _transactions[bucket]._managed.find(tid);
     if (it == _transactions[bucket]._managed.end()) {
+      // transaction actually not found
       return nullptr;
     }
 
@@ -816,11 +832,23 @@ std::shared_ptr<transaction::Context> Manager::leaseManagedTrx(
             absl::StrCat("transaction ", tid.id(),
                          " has already been aborted"));
       }
-      return nullptr;
+
+      TRI_ASSERT(mtrx.finalStatus == transaction::Status::COMMITTED);
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_DISALLOWED_OPERATION,
+          absl::StrCat("transaction ", tid.id(),
+                       " has already been committed"));
     }
 
-    if (mtrx.expired() || !::authorized(mtrx.user)) {
-      return nullptr;  // no need to return anything
+    if (mtrx.expired()) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_NOT_FOUND,
+          absl::StrCat("transaction ", tid.id(), " has already expired"));
+    }
+    if (!::authorized(mtrx.user)) {
+      THROW_ARANGO_EXCEPTION_MESSAGE(
+          TRI_ERROR_TRANSACTION_NOT_FOUND,
+          absl::StrCat("not authorized to access transaction ", tid.id()));
     }
 
     if (AccessMode::isWriteOrExclusive(mode)) {
@@ -942,10 +970,15 @@ void Manager::returnManagedTrx(TransactionId tid, bool isSideUser) noexcept {
     WRITE_LOCKER(writeLocker, _transactions[bucket]._lock);
 
     auto it = _transactions[bucket]._managed.find(tid);
-    if (it == _transactions[bucket]._managed.end() ||
-        !::authorized(it->second.user)) {
+    if (it == _transactions[bucket]._managed.end()) {
       LOG_TOPIC("1d5b0", WARN, Logger::TRANSACTIONS)
           << "managed transaction " << tid << " not found";
+      TRI_ASSERT(false);
+      return;
+    }
+    if (!::authorized(it->second.user)) {
+      LOG_TOPIC("93894", WARN, Logger::TRANSACTIONS)
+          << "not authorized to access managed transaction " << tid;
       TRI_ASSERT(false);
       return;
     }
@@ -1171,6 +1204,9 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
     // type is changed under the transaction's write lock and the bucket's write
     // lock
     mtrx.type = MetaType::Tombstone;
+    // clear context information of commit/aborted/expired transactions so that
+    // we can save memory. there will be many tombstones on busy instances.
+    mtrx.context = std::string{};
     if (state->numCommits() > 0) {
       // note that we have performed a commit or an intermediate commit.
       // this is necessary for follower transactions
@@ -1244,16 +1280,19 @@ Result Manager::updateTransaction(TransactionId tid, transaction::Status status,
 
 /// @brief calls the callback function for each managed transaction
 void Manager::iterateManagedTrx(
-    std::function<void(TransactionId, ManagedTrx const&)> const& callback)
-    const {
+    std::function<void(TransactionId, ManagedTrx const&)> const& callback,
+    bool details) const {
   // iterate over all active transactions
   for (size_t bucket = 0; bucket < numBuckets; ++bucket) {
+    // acquiring just the bucket lock in read mode is enough here,
+    // as modifications to the transaction state lock
+    // the transaction's bucket in write mode.
     READ_LOCKER(locker, _transactions[bucket]._lock);
 
     auto& buck = _transactions[bucket];
     for (auto const& it : buck._managed) {
-      if (it.second.type == MetaType::Managed) {
-        // we only care about managed transactions here
+      if (it.second.type == MetaType::Managed ||
+          (details && it.second.type == MetaType::StandaloneAQL)) {
         callback(it.first, it.second);
       }
     }
@@ -1394,7 +1433,8 @@ bool Manager::abortManagedTrx(
 }
 
 void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
-                           std::string const& username, bool fanout) const {
+                           std::string const& username, bool fanout,
+                           bool details) const {
   TRI_ASSERT(!builder.isClosed());
 
   if (fanout) {
@@ -1414,11 +1454,20 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
     options.database = database;
     options.timeout = network::Timeout(30.0);
     options.param("local", "true");
+    if (details) {
+      options.param("details", "true");
+    }
 
     VPackBuffer<uint8_t> body;
 
-    for (auto const& coordinator : ci.getCurrentCoordinators()) {
-      if (coordinator == ServerState::instance()->getId()) {
+    auto servers = ci.getCurrentCoordinators();
+    if (details) {
+      auto dbs = ci.getCurrentDBServers();
+      std::move(dbs.begin(), dbs.end(), std::back_inserter(servers));
+    }
+
+    for (auto const& server : servers) {
+      if (server == ServerState::instance()->getId()) {
         // ourselves!
         continue;
       }
@@ -1437,8 +1486,8 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
       }
 
       auto f = network::sendRequestRetry(
-          pool, "server:" + coordinator, fuerte::RestVerb::Get,
-          "/_api/transaction", body, options, std::move(headers));
+          pool, "server:" + server, fuerte::RestVerb::Get, "/_api/transaction",
+          body, options, std::move(headers));
       futures.emplace_back(std::move(f));
     }
 
@@ -1463,16 +1512,67 @@ void Manager::toVelocyPack(VPackBuilder& builder, std::string const& database,
   }
 
   // merge with local transactions
-  iterateManagedTrx([&builder, &database](TransactionId tid,
-                                          ManagedTrx const& trx) {
-    if (::authorized(trx.user) && trx.db == database) {
-      builder.openObject(true);
-      builder.add("id", VPackValue(std::to_string(tid.id())));
-      builder.add("state",
-                  VPackValue(transaction::statusString(trx.state->status())));
-      builder.close();
-    }
-  });
+  iterateManagedTrx(
+      [&builder, &database, details](TransactionId tid, ManagedTrx const& trx) {
+        bool isAuthorized = ::authorized(trx.user) && trx.db == database;
+        if (details && arangodb::ExecContext::current().isSuperuser()) {
+          isAuthorized = true;
+        }
+        if (!isAuthorized) {
+          return;
+        }
+
+        builder.openObject(true);
+        builder.add("id", VPackValue(std::to_string(tid.id())));
+        if (trx.state == nullptr) {
+          builder.add("state", VPackValue("none"));
+        } else {
+          builder.add(
+              "state",
+              VPackValue(transaction::statusString(trx.state->status())));
+        }
+        if (details) {
+          std::string_view idType = "unknown";
+          if (tid.isCoordinatorTransactionId()) {
+            idType = "coordinator id";
+          } else if (tid.isFollowerTransactionId()) {
+            idType = "follower id";
+          } else if (tid.isLeaderTransactionId()) {
+            idType = "leader id";
+          } else if (tid.isLegacyTransactionId()) {
+            idType = "legacy id";
+          }
+          builder.add("idType", VPackValue(idType));
+          if (!ServerState::instance()->isSingleServer()) {
+            builder.add("coordinatorId",
+                        VPackValue(tid.asCoordinatorTransactionId().id()));
+          }
+          builder.add("context", VPackValue(trx.context));
+          builder.add("type", VPackValue(typeName(trx.type)));
+          if (trx.type != MetaType::Tombstone) {
+            builder.add("expired", VPackValue(trx.expired()));
+          }
+          builder.add("hasPerformedIntermediateCommits",
+                      VPackValue(trx.hasPerformedIntermediateCommits()));
+          builder.add(
+              "sideUsers",
+              VPackValue(trx.sideUsers.load(std::memory_order_relaxed)));
+          builder.add("finalStatus",
+                      VPackValue(transaction::statusString(trx.finalStatus)));
+          builder.add("timeToLive", VPackValue(trx.timeToLive));
+          builder.add("expiryTime",
+                      VPackValue(static_cast<uint64_t>(trx.expiryTime)));
+          if (!ServerState::instance()->isDBServer()) {
+            // proper user information is only present on single servers
+            // and coordinators
+            builder.add("user", VPackValue(trx.user));
+          }
+          builder.add("database", VPackValue(trx.db));
+          builder.add("server", VPackValue(ServerState::instance()->getId()));
+        }
+        builder.close();
+      },
+      details);
 }
 
 Result Manager::abortAllManagedWriteTrx(std::string const& username,
@@ -1601,6 +1701,50 @@ std::shared_ptr<ManagedContext> Manager::buildManagedContextUnderLock(
 Manager::TransactionCommitGuard Manager::getTransactionCommitGuard() {
   READ_LOCKER(guard, _hotbackupCommitLock);
   return guard;
+}
+
+std::string Manager::buildContextFromState(TransactionState& state,
+                                           MetaType t) {
+  std::string result =
+      absl::StrCat("trx type: ", typeName(t),
+                   state.isSingleOperation() ? ", single op" : ", multi op",
+                   state.isReadOnlyTransaction() ? ", read only" : "",
+                   state.isFollowerTransaction() ? ", follower" : "",
+                   ", lock timeout: ", state.lockTimeout());
+
+  if (state.hasHint(transaction::Hints::Hint::INTERMEDIATE_COMMITS)) {
+    absl::StrAppend(&result, ", intermediate commits");
+  }
+  if (state.hasHint(transaction::Hints::Hint::ALLOW_RANGE_DELETE)) {
+    absl::StrAppend(&result, ", allow range delete");
+  }
+  if (state.hasHint(transaction::Hints::Hint::FROM_TOPLEVEL_AQL)) {
+    absl::StrAppend(&result, ", from toplevel aql");
+  }
+  if (state.hasHint(transaction::Hints::Hint::GLOBAL_MANAGED)) {
+    absl::StrAppend(&result, ", global managed");
+  }
+  if (state.hasHint(transaction::Hints::Hint::INDEX_CREATION)) {
+    absl::StrAppend(&result, ", index creation");
+  }
+
+  if (state.numCollections() > 0) {
+    absl::StrAppend(&result, ", collections: [");
+    bool first = true;
+    state.allCollections([&result, &first](auto const& c) -> bool {
+      if (first) {
+        first = false;
+      } else {
+        absl::StrAppend(&result, ", ");
+      }
+      absl::StrAppend(
+          &result, "{id: ", c.id().id(), ", name: ", c.collectionName(),
+          ", access: ", AccessMode::typeString(c.accessType()), "}");
+      return true;
+    });
+    absl::StrAppend(&result, "]");
+  }
+  return result;
 }
 
 }  // namespace transaction
