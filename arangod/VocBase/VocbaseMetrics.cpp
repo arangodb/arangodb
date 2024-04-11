@@ -28,16 +28,14 @@ DECLARE_GAUGE(arangodb_vocbase_shards_read_only_by_write_concern, std::uint64_t,
               "Number of shards that are in read-only mode because the number "
               "of in-sync replicas is lower than the write-concern");
 
-DECLARE_GAUGE(arangodb_vocbase_meta_collection_lock_pending_exclusive,
-              std::uint64_t,
+DECLARE_GAUGE(arangodb_collection_shard_lock_pending_exclusive, std::uint64_t,
               "Number of pending exclusive collection lock requests.");
-DECLARE_GAUGE(arangodb_vocbase_meta_collection_lock_pending_shared,
-              std::uint64_t,
+DECLARE_GAUGE(arangodb_collection_shard_lock_pending_shared, std::uint64_t,
               "Number of pending shared collection lock requests.");
-DECLARE_GAUGE(arangodb_vocbase_meta_collection_lock_locked_exclusive,
-              std::uint64_t, "Number of held exclusive locks on collections.");
-DECLARE_GAUGE(arangodb_vocbase_meta_collection_lock_locked_shared,
-              std::uint64_t, "Number of held shared locks on collections.");
+DECLARE_GAUGE(arangodb_collection_shard_lock_locked_exclusive, std::uint64_t,
+              "Number of held exclusive locks on collections.");
+DECLARE_GAUGE(arangodb_collection_shard_lock_locked_shared, std::uint64_t,
+              "Number of held shared locks on collections.");
 
 std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
     metrics::MetricsFeature& mf, std::string_view databaseName) {
@@ -53,13 +51,13 @@ std::unique_ptr<VocbaseMetrics> VocbaseMetrics::create(
       createMetric(arangodb_vocbase_shards_read_only_by_write_concern{});
 
   metrics->meta_collection_lock_pending_exclusive =
-      createMetric(arangodb_vocbase_meta_collection_lock_pending_exclusive{});
+      createMetric(arangodb_collection_shard_lock_pending_exclusive{});
   metrics->meta_collection_lock_pending_shared =
-      createMetric(arangodb_vocbase_meta_collection_lock_pending_shared{});
+      createMetric(arangodb_collection_shard_lock_pending_shared{});
   metrics->meta_collection_lock_locked_exclusive =
-      createMetric(arangodb_vocbase_meta_collection_lock_locked_exclusive{});
+      createMetric(arangodb_collection_shard_lock_locked_exclusive{});
   metrics->meta_collection_lock_locked_shared =
-      createMetric(arangodb_vocbase_meta_collection_lock_locked_shared{});
+      createMetric(arangodb_collection_shard_lock_locked_shared{});
 
   return metrics;
 }

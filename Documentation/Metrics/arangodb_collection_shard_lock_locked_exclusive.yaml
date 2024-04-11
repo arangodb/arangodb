@@ -1,4 +1,4 @@
-name: arangodb_vocbase_meta_collection_lock_locked_exclusive
+name: arangodb_collection_shard_lock_locked_exclusive
 introducedIn: "3.12.1"
 help: |
   Number of exclusively locked collections.

@@ -39,20 +39,20 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
   const getAllMetrics = function () {
     return getCompleteMetricsValues([
-          "arangodb_vocbase_meta_collection_lock_pending_exclusive",
-          "arangodb_vocbase_meta_collection_lock_pending_shared",
-          "arangodb_vocbase_meta_collection_lock_locked_exclusive",
-          "arangodb_vocbase_meta_collection_lock_locked_shared"],
+          "arangodb_collection_shard_lock_pending_exclusive",
+          "arangodb_collection_shard_lock_pending_shared",
+          "arangodb_collection_shard_lock_locked_exclusive",
+          "arangodb_collection_shard_lock_locked_shared"],
         "dbservers"
     );
   };
 
   const assertMetrics = function (expected) {
     const actual = getAllMetrics();
-    assertEqual(expected.arangodb_vocbase_meta_collection_lock_pending_exclusive, actual[0]);
-    assertEqual(expected.arangodb_vocbase_meta_collection_lock_pending_shared, actual[1]);
-    assertEqual(expected.arangodb_vocbase_meta_collection_lock_locked_exclusive, actual[2]);
-    assertEqual(expected.arangodb_vocbase_meta_collection_lock_locked_shared, actual[3]);
+    assertEqual(expected.arangodb_collection_shard_lock_pending_exclusive, actual[0]);
+    assertEqual(expected.arangodb_collection_shard_lock_pending_shared, actual[1]);
+    assertEqual(expected.arangodb_collection_shard_lock_locked_exclusive, actual[2]);
+    assertEqual(expected.arangodb_collection_shard_lock_locked_shared, actual[3]);
   };
 
   return {
@@ -70,10 +70,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
     testSharedLock: function () {
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 0,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 0,
+          arangodb_collection_shard_lock_locked_shared: 0,
         });
       }
 
@@ -82,10 +82,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 1,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 0,
+          arangodb_collection_shard_lock_locked_shared: 1,
         });
       }
 
@@ -93,10 +93,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 0,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 0,
+          arangodb_collection_shard_lock_locked_shared: 0,
         });
       }
     },
@@ -104,10 +104,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
     testExclusiveLock: function () {
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 0,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 0,
+          arangodb_collection_shard_lock_locked_shared: 0,
         });
       }
 
@@ -116,10 +116,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 1,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 0,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 1,
+          arangodb_collection_shard_lock_locked_shared: 0,
         });
       }
 
@@ -127,10 +127,10 @@ function TransactionRocksDBMetaCollectionLockMetricsSuite() {
 
       {
         assertMetrics({
-          arangodb_vocbase_meta_collection_lock_pending_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_pending_shared: 0,
-          arangodb_vocbase_meta_collection_lock_locked_exclusive: 0,
-          arangodb_vocbase_meta_collection_lock_locked_shared: 0,
+          arangodb_collection_shard_lock_pending_exclusive: 0,
+          arangodb_collection_shard_lock_pending_shared: 0,
+          arangodb_collection_shard_lock_locked_exclusive: 0,
+          arangodb_collection_shard_lock_locked_shared: 0,
         });
       }
     },
