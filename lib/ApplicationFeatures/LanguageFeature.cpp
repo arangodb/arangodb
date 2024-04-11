@@ -69,7 +69,7 @@ void setCollator(std::string_view language, void* icuDataPtr,
   }
 }
 
-void setLocale(icu::Locale& locale) {
+void setLocale(icu_64_64::Locale& locale) {
   using arangodb::basics::Utf8Helper;
   std::string languageName;
 
@@ -78,7 +78,7 @@ void setLocale(icu::Locale& locale) {
         absl::StrCat(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage(), "_",
                      Utf8Helper::DefaultUtf8Helper.getCollatorCountry());
     locale =
-        icu::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
+        icu_64_64::Locale(Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str(),
                     Utf8Helper::DefaultUtf8Helper.getCollatorCountry().c_str()
                     /*
                        const   char * variant  = 0,
@@ -86,7 +86,7 @@ void setLocale(icu::Locale& locale) {
                     */
         );
   } else {
-    locale = icu::Locale(
+    locale = icu_64_64::Locale(
         Utf8Helper::DefaultUtf8Helper.getCollatorLanguage().c_str());
     languageName = Utf8Helper::DefaultUtf8Helper.getCollatorLanguage();
   }
@@ -263,7 +263,7 @@ void LanguageFeature::prepare() {
 
 void LanguageFeature::start() { ::setLocale(_locale); }
 
-icu::Locale& LanguageFeature::getLocale() { return _locale; }
+icu_64_64::Locale& LanguageFeature::getLocale() { return _locale; }
 
 std::tuple<std::string_view, LanguageType> LanguageFeature::getLanguage()
     const {
